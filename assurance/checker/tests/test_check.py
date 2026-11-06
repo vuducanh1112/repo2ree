@@ -22,9 +22,9 @@ EXAMPLE_RULES = tomllib.loads(
 [[invariant]]
 id = "example-execution-was-dispatched"
 pattern = "requires"
-summary = "Every attempt that executed was dispatched by the supervisor."
+summary = "Every attempt that executed was started by the supervisor."
 when = { entity = "Attempt", to = "executing" }
-require = { boundary = "dispatch", message = "exec_action", key_from = "$key", order = "before" }
+require = { boundary = "start_run", message = "start_run", key_from = "$key", order = "before" }
 
 # A guard on a fact's listed values, entered from the absent state.
 [[invariant]]
@@ -58,6 +58,21 @@ def journal(source_id: str = "api-000001", *, closed: bool = True, complete: boo
         process="api",
         rank=int(source_id.rsplit("-", 1)[1]),
         hosts=frozenset({"api", "supervisor"}),
+        complete=complete,
+        closed=closed,
+        vocabulary=SPEC.vocabulary_digest,
+    )
+
+
+def bench(source_id: str = "workbench-000001", *, closed: bool = True, complete: bool = True) -> Source:
+    """A journal of the workbench serving store lab-1, one epoch per process."""
+    return Source(
+        id=source_id,
+        kind="journal",
+        process="workbench",
+        instance="lab-1",
+        rank=int(source_id.rsplit("-", 1)[1]),
+        hosts=frozenset({"workbench"}),
         complete=complete,
         closed=closed,
         vocabulary=SPEC.vocabulary_digest,
@@ -120,9 +135,9 @@ class Recorder:
                 facts=step,
             )
 
-    def settle(self, key: str, current: str, target: str, attempt_id: str | None) -> None:
+    def settle(self, key: str, current: str, target: str, attempt_id: str | None, source: str = "api-000001") -> None:
         self._add(
-            "api-000001",
+            source,
             kind="transition",
             owner="api",
             subject="AuthorApiAction",
@@ -167,7 +182,24 @@ class Recorder:
                 facts=facts,
             )
 
-    def dispatch(
+    def start(self, key: str, *outcomes: tuple[str, str | None], source: str = "api-000001") -> str:
+        """Record a start_run exchange; returns the request's reference, which the attempt cites."""
+        self._add(
+            source,
+            kind="send",
+            owner="supervisor",
+            subject="start_run",
+            key=key,
+            message="start_run",
+            facts={"operation": "build_runtime", "run_id": "run-1", "session": "s1"},
+        )
+        request = f"{source}#{self.positions[source]}"
+        for kind, message in outcomes:
+            facts: dict[str, Any] = {"reason": "x"} if kind == "abandon" else {}
+            self._add(source, kind=kind, owner="supervisor", subject="start_run", key=key, message=message, facts=facts)
+        return request
+
+    def follow(
         self,
         key: str,
         *outcomes: tuple[str, str | None],
@@ -175,26 +207,47 @@ class Recorder:
         commit: str | None = "c" * 40,
         status: str = "succeeded",
         record: str | None = None,
-    ) -> str:
-        """Record an exchange; returns the request's reference, which the attempt cites."""
+        source: str = "api-000001",
+    ) -> None:
+        """Record one round of a follow_run exchange."""
         self._add(
-            "api-000001",
+            source,
             kind="send",
             owner=owner,
-            subject="dispatch",
+            subject="follow_run",
             key=key,
-            message="exec_action",
-            facts={"operation": "build_runtime", "run_id": "run-1", "session": "s1"},
+            message="follow_run",
+            facts={"run_id": "run-1", "session": "s1"},
         )
-        request = f"api-000001#{self.positions['api-000001']}"
         for kind, message in outcomes:
             facts: dict[str, Any] = (
                 {"status": status, "commit": commit} | ({"record": record} if record else {})
-                if message == "result"
+                if message == "settled"
                 else ({"reason": "x"} if kind == "abandon" else {})
             )
-            self._add("api-000001", kind=kind, owner=owner, subject="dispatch", key=key, message=message, facts=facts)
-        return request
+            self._add(source, kind=kind, owner=owner, subject="follow_run", key=key, message=message, facts=facts)
+
+    def execution(self, key: str, *path: str, start: str | None = None, source: str = "workbench-000001") -> None:
+        """An executor the workbench journals from ``start`` through ``path``."""
+        for current, target in pairwise([start, *path]):
+            assert target is not None
+            facts: dict[str, Any] = {"operation": "build_runtime", "run_id": "run-1"} if current is None else {}
+            if target in {"exited", "stopped"}:
+                facts |= {"exit_code": 0, "status": "succeeded"}
+            if target == "stopped":
+                facts["cause"] = "cancel"
+            if target == "lost":
+                facts |= {"status": "interrupted", "reason": "vanished"}
+            self._add(
+                source,
+                kind="transition",
+                owner="workbench",
+                subject="Execution",
+                key=key,
+                source_state=current,
+                target_state=target,
+                facts=facts,
+            )
 
     def session(
         self,
@@ -246,19 +299,21 @@ class Recorder:
 
 
 def verdicts(recorder: Recorder, *sources: Source) -> dict[str, str]:
-    result = check(SPEC, Evidence(sources=sources or (journal(), git(REE)), events=tuple(recorder.events)))
+    result = check(SPEC, Evidence(sources=sources or (journal(), bench(), git(REE)), events=tuple(recorder.events)))
     return {rule.rule: str(rule.verdict) for rule in result.rules} | {"overall": str(result.verdict)}
 
 
 def findings(recorder: Recorder, rule: str, *sources: Source) -> list[str]:
-    result = check(SPEC, Evidence(sources=sources or (journal(), git(REE)), events=tuple(recorder.events)))
+    result = check(SPEC, Evidence(sources=sources or (journal(), bench(), git(REE)), events=tuple(recorder.events)))
     return [f"{f.verdict}: {f.reason}" for r in result.rules if r.rule == rule for f in r.findings]
 
 
 def complete_command(recorder: Recorder, run: str = "run-1", attempt: str = "a1") -> None:
     recorder.run(run, "requested", "running")
-    request = recorder.dispatch(attempt, ("receive", "result"))
+    request = recorder.start(attempt, ("receive", "accepted"))
+    recorder.execution(attempt, "started", "exited")
     recorder.attempt(attempt, dispatched_by=request)
+    recorder.follow(attempt, ("receive", "settled"))
     recorder.settle(run, "running", "succeeded", attempt)
 
 
@@ -300,11 +355,14 @@ def test_a_discontinuous_history_is_violated_only_when_the_source_is_complete() 
     assert gappy[0].startswith("inconclusive")
 
 
-def test_a_run_left_active_in_a_closed_journal_is_violated_but_open_one_is_not() -> None:
+def test_a_run_left_active_when_the_api_closed_for_good_is_violated_but_not_across_a_restart() -> None:
     recorder = Recorder()
     recorder.run("run-1", "requested", "running")
-    assert findings(recorder, "machine:AuthorApiAction") == ["violated: still running when api-000001 closed"]
-    assert verdicts(recorder, journal(closed=False), git(REE))["machine:AuthorApiAction"] == "passed"
+    final = journal().model_copy(update={"final": True})
+    assert findings(recorder, "machine:AuthorApiAction", final, git(REE)) == [
+        "violated: still running when api-000001 closed for good"
+    ]
+    assert verdicts(recorder, journal(), git(REE))["machine:AuthorApiAction"] == "passed"
 
 
 def test_an_event_from_a_component_that_does_not_own_the_entity_is_violated() -> None:
@@ -327,21 +385,170 @@ def test_an_event_from_a_component_that_does_not_own_the_entity_is_violated() ->
 @pytest.mark.parametrize(
     ("outcomes", "reason"),
     [
-        ((("receive", "result"), ("receive", "result")), "2 outcomes for one request"),
-        ((("receive", "exec_action"),), "received exec_action, which is not a response"),
+        ((("receive", "accepted"), ("receive", "busy")), "2 outcomes for one request"),
+        ((("receive", "start_run"),), "received start_run, which is not a response"),
         ((), "no outcome before api-000001 closed"),
     ],
 )
-def test_dispatch_exchanges_have_exactly_one_outcome(outcomes: tuple[tuple[str, str | None], ...], reason: str) -> None:
+def test_start_exchanges_have_exactly_one_outcome(outcomes: tuple[tuple[str, str | None], ...], reason: str) -> None:
     recorder = Recorder()
-    recorder.dispatch("a1", *outcomes)
-    assert f"violated: {reason}" in findings(recorder, "boundary:dispatch")
+    recorder.start("a1", *outcomes)
+    assert f"violated: {reason}" in findings(recorder, "boundary:start_run")
 
 
-def test_an_abandoned_dispatch_is_a_legal_outcome() -> None:
+def test_an_abandoned_start_is_a_legal_outcome() -> None:
     recorder = Recorder()
-    recorder.dispatch("a1", ("abandon", None))
-    assert verdicts(recorder)["boundary:dispatch"] == "passed"
+    recorder.start("a1", ("abandon", None))
+    assert verdicts(recorder)["boundary:start_run"] == "passed"
+
+
+def test_a_command_is_followed_again_after_each_abandoned_follow() -> None:
+    recorder = Recorder()
+    recorder.follow("a1", ("abandon", None))
+    recorder.follow("a1", ("abandon", None))
+    recorder.follow("a1", ("receive", "settled"), commit=None, status="failed")
+    assert verdicts(recorder)["boundary:follow_run"] == "passed"
+
+
+def test_a_follow_sent_again_before_the_last_had_an_outcome_is_violated() -> None:
+    recorder = Recorder()
+    recorder.follow("a1")
+    recorder.follow("a1", ("receive", "settled"), commit=None, status="failed")
+    assert findings(recorder, "boundary:follow_run") == ["violated: sent again before api-000001#1 had an outcome"]
+
+
+def test_a_follow_left_open_by_a_crashed_api_is_superseded_by_the_next_process() -> None:
+    recorder = Recorder()
+    recorder.follow("a1")
+    recorder.follow("a1", ("receive", "settled"), commit=None, status="failed", source="api-000002")
+    crashed = journal(closed=False)
+    assert verdicts(recorder, crashed, journal("api-000002"), bench(), git(REE))["boundary:follow_run"] == "passed"
+
+
+def test_an_outcome_without_a_follow_is_violated() -> None:
+    recorder = Recorder()
+    recorder.follow("a1", ("receive", "settled"), ("receive", "unknown"), commit=None, status="failed")
+    assert findings(recorder, "boundary:follow_run") == ["violated: an outcome was recorded without a request"]
+
+
+def test_an_accepted_start_without_an_executor_is_violated() -> None:
+    recorder = Recorder()
+    recorder.start("a1", ("receive", "accepted"))
+    assert findings(recorder, "accepted-runs-started") == ["violated: Execution a1 was never recorded"]
+
+
+def test_two_executors_in_one_ree_at_once_are_violated() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started")
+    recorder.execution("a2", "started", "exited")
+    recorder.execution("a3", "started", "exited")
+    assert findings(recorder, "one-execution-per-ree") == [
+        "violated: Execution a1 was started",
+        "violated: Execution a1 was started",
+    ]
+
+
+def test_an_executor_after_the_last_one_ended_is_allowed() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started", "adopted", "exited")
+    recorder.execution("a2", "started", "exited")
+    assert verdicts(recorder)["one-execution-per-ree"] == "passed"
+
+
+def test_a_lost_executor_settles_its_attempt_as_interrupted() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", "interrupted", changed=False)
+    recorder.execution("a1", "started", "lost")
+    found = verdicts(recorder)
+    assert found["lost-executions-settle-their-attempt"] == "passed"
+    assert found["canceled-attempts-change-nothing"] == "passed"
+
+
+def test_a_lost_executor_whose_attempt_is_left_executing_is_not_settled() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", completed=False)
+    recorder.execution("a1", "started", "lost")
+    assert findings(recorder, "lost-executions-settle-their-attempt") == ["inconclusive: Attempt a1 is still executing"]
+
+
+def test_an_interrupted_attempt_that_changed_the_ree_is_violated() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", "interrupted", changed=True)
+    assert findings(recorder, "canceled-attempts-change-nothing") == [
+        "violated: completed -> captured with {'changed': True}"
+    ]
+
+
+def test_an_executor_left_running_is_taken_over_by_the_next_workbench_process() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started")
+    recorder.execution("a1", "adopted", start="started", source="workbench-000002")
+    recorder.execution("a1", "exited", start="adopted", source="workbench-000002")
+    found = verdicts(recorder, journal(), bench(), bench("workbench-000002"), git(REE))
+    assert found["machine:Execution"] == "passed"
+
+
+def test_an_executor_the_next_workbench_process_never_takes_over_is_violated() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started")
+    found = findings(recorder, "machine:Execution", journal(), bench(), bench("workbench-000002"), git(REE))
+    assert found == ["violated: still started when workbench-000002, a later journal of its owner, closed"]
+
+
+def test_an_executor_the_next_workbench_process_does_not_take_over_first_is_violated() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started")
+    recorder._add(
+        "workbench-000002",
+        kind="transition",
+        owner="workbench",
+        subject="Execution",
+        key="a1",
+        source_state="started",
+        target_state="started",
+        facts={},
+    )
+    found = findings(recorder, "machine:Execution", journal(), bench(), bench("workbench-000002"), git(REE))
+    assert "violated: workbench-000002 took it over with started -> started" in found
+
+
+def test_an_executor_left_running_by_a_closed_journal_is_open_until_the_next_one_closes() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started")
+    found = verdicts(recorder, journal(), bench(), bench("workbench-000002", closed=False), git(REE))
+    assert found["machine:Execution"] == "passed"
+
+
+def test_an_executor_still_running_when_its_store_closed_for_good_is_violated() -> None:
+    recorder = Recorder()
+    recorder.execution("a1", "started")
+    final = bench().model_copy(update={"final": True})
+    assert findings(recorder, "machine:Execution", journal(), final, git(REE)) == [
+        "violated: still started when workbench-000001 closed for good"
+    ]
+
+
+def test_an_action_left_running_by_the_api_is_resumed_by_the_next_api_process() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "requested", "running")
+    recorder.settle("run-1", "running", "resumed", None, source="api-000002")
+    recorder.settle("run-1", "resumed", "failed", None, source="api-000002")
+    found = verdicts(recorder, journal(), journal("api-000002"), bench(), git(REE))
+    assert found["machine:AuthorApiAction"] == "passed"
+
+
+def test_a_request_left_open_by_a_crashed_api_ended_with_it() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "requested", action="view_action")
+    found = verdicts(recorder, journal(closed=False), journal("api-000002"), bench(), git(REE))
+    assert found["machine:AuthorApiAction"] == "passed"
+
+
+def test_an_action_the_next_api_process_leaves_open_is_violated() -> None:
+    recorder = Recorder()
+    recorder.run("run-1", "requested", "running")
+    found = findings(recorder, "machine:AuthorApiAction", journal(), journal("api-000002"), bench(), git(REE))
+    assert found == ["violated: still running when api-000002, a later journal of its owner, closed"]
 
 
 def test_success_without_a_captured_attempt_is_violated_when_git_covers_the_ree() -> None:
@@ -382,27 +589,29 @@ def test_workbench_actions_need_no_attempt() -> None:
 
 def test_an_attempt_never_captured_is_violated_once_the_evidence_covers_the_result() -> None:
     recorder = Recorder()
-    recorder.dispatch("a1", ("receive", "result"))
+    recorder.follow("a1", ("receive", "settled"))
     recorder.attempt("a1", captured=False)
     expected = "violated: Attempt a1 is still completed, not captured"
-    assert findings(recorder, "dispatch-success-is-captured") == [expected]
+    assert findings(recorder, "follow-success-is-captured") == [expected]
 
 
 def test_an_attempt_still_open_when_its_history_was_taken_is_inconclusive() -> None:
     recorder = Recorder()
-    recorder.dispatch("a1", ("receive", "result"))
+    recorder.follow("a1", ("receive", "settled"))
     recorder.attempt("a1", captured=False)
     # The history was taken after the request (#1) but before the result (#2) it must precede.
     taken = git(REE, cut={"api-000001": (1, 1)})
-    assert findings(recorder, "dispatch-success-is-captured", journal(), taken) == [
+    assert findings(recorder, "follow-success-is-captured", journal(), taken) == [
         "inconclusive: Attempt a1 is still completed"
     ]
 
 
 def canceled_run(recorder: Recorder, **attempt: Any) -> None:
     recorder.run("run-1", "requested", "running")
-    request = recorder.dispatch("a1", ("receive", "result"))
+    request = recorder.start("a1", ("receive", "accepted"))
+    recorder.execution("a1", "started", "stopped")
     recorder.attempt("a1", "canceled", dispatched_by=request, **attempt)
+    recorder.follow("a1", ("receive", "settled"), status="canceled")
     recorder.settle("run-1", "running", "canceling", "a1")
     recorder.settle("run-1", "canceling", "canceled", "a1")
 
@@ -441,7 +650,7 @@ def test_a_canceled_attempt_that_changed_the_ree_is_violated() -> None:
 def test_an_attempt_without_a_dispatch_is_violated() -> None:
     recorder = Recorder()
     recorder.attempt("a1")
-    assert findings(recorder, "example-execution-was-dispatched") == ["violated: no dispatch.exec_action a1"]
+    assert findings(recorder, "example-execution-was-dispatched") == ["violated: no start_run.start_run a1"]
 
 
 def test_evidence_from_a_successful_attempt_passes() -> None:
@@ -502,7 +711,7 @@ def test_a_journal_is_judged_by_what_it_holds_not_by_the_vocabulary_it_names() -
     recorder = Recorder()
     complete_command(recorder)
     older = journal().model_copy(update={"vocabulary": "sha256:old"})
-    assert verdicts(recorder, older, git(REE))["overall"] == "passed"
+    assert verdicts(recorder, older, bench(), git(REE))["overall"] == "passed"
 
 
 def test_what_owners_record_beyond_the_vocabulary_is_reported_and_never_judged() -> None:
@@ -529,13 +738,13 @@ def test_what_owners_record_beyond_the_vocabulary_is_reported_and_never_judged()
         facts={"action": "build_runtime", "queue": "fast"},
     )
     recorder.settle("run-2", "requested", "failed", None)
-    result = check(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    result = check(SPEC, Evidence(sources=(journal(), bench(), git(REE)), events=tuple(recorder.events)))
     assert result.verdict == "passed"
     assert [(extra.subject, extra.fact, extra.count) for extra in result.extras] == [
         ("AuthorApiAction", "queue", 1),
         ("Deposit", None, 1),
     ]
-    model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    model, _, _ = replay(SPEC, Evidence(sources=(journal(), bench(), git(REE)), events=tuple(recorder.events)))
     assert "queue" not in model.instances["AuthorApiAction"]["run-2"].facts
 
 
@@ -564,17 +773,17 @@ def test_a_declared_fact_of_another_type_is_violated() -> None:
 
 def test_a_message_missing_a_required_fact_leaves_the_exchange_inconclusive() -> None:
     recorder = Recorder()
-    recorder.dispatch("a1")
+    recorder.follow("a1")
     recorder._add(
         "api-000001",
         kind="receive",
         owner="supervisor",
-        subject="dispatch",
+        subject="follow_run",
         key="a1",
-        message="result",
+        message="settled",
         facts={"commit": "c" * 40},
     )
-    assert findings(recorder, "boundary:dispatch") == ["inconclusive: missing required facts ['status']"]
+    assert findings(recorder, "boundary:follow_run") == ["inconclusive: missing required facts ['status']"]
 
 
 def test_transitions_recorded_against_a_boundary_are_violated() -> None:
@@ -584,13 +793,13 @@ def test_transitions_recorded_against_a_boundary_are_violated() -> None:
         "api-000001",
         kind="transition",
         owner="supervisor",
-        subject="dispatch",
+        subject="start_run",
         key="a1",
         source_state=None,
         target_state="sent",
         facts={},
     )
-    assert findings(recorder, "boundary:dispatch") == ["violated: transitions recorded against a boundary"]
+    assert findings(recorder, "boundary:start_run") == ["violated: transitions recorded against a boundary"]
 
 
 def test_a_journal_of_a_process_the_vocabulary_does_not_place_is_not_judged() -> None:
@@ -605,11 +814,11 @@ def test_a_journal_of_a_process_the_vocabulary_does_not_place_is_not_judged() ->
         complete=True,
         closed=True,
     )
-    assert verdicts(recorder, journal(), git(REE), provider)["evidence"] == "passed"
+    assert verdicts(recorder, journal(), bench(), git(REE), provider)["evidence"] == "passed"
 
 
 def judgements(recorder: Recorder) -> list[tuple[str, str, str]]:
-    model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    model, _, _ = replay(SPEC, Evidence(sources=(journal(), bench(), git(REE)), events=tuple(recorder.events)))
     return [(j.rule, j.event, j.verdict) for j in judge_occurrences(model)]
 
 
@@ -619,7 +828,7 @@ def test_each_occurrence_is_judged_at_the_event_that_triggered_it() -> None:
     found = judgements(recorder)
     settled = next(e for e in recorder.events if e.subject == "AuthorApiAction" and e.target_state == "succeeded")
     assert ("api-success-is-recorded", settled.ref, "passed") in found
-    model, _, _ = replay(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
+    model, _, _ = replay(SPEC, Evidence(sources=(journal(), bench(), git(REE)), events=tuple(recorder.events)))
     captured = next(j for j in judge_occurrences(model) if j.rule == "example-execution-was-dispatched")
     assert (captured.subject, captured.key) == ("Attempt", "a1")
     assert {verdict for _, _, verdict in found} == {"passed"}
@@ -764,22 +973,24 @@ def test_a_store_snapshot_after_the_owners_stopped_must_match_exactly() -> None:
 def test_without_citations_the_order_across_sources_is_unknown() -> None:
     recorder = Recorder()
     recorder.run("run-1", "requested", "running")
-    recorder.dispatch("a1", ("receive", "result"), commit=None)
+    recorder.start("a1", ("receive", "accepted"))
+    recorder.execution("a1", "started", "exited")
+    recorder.follow("a1", ("receive", "settled"), commit=None)
     recorder.attempt("a1")  # Names no request, and the result names no commit.
     recorder.settle("run-1", "running", "succeeded", "a1")
     result = verdicts(recorder)
     assert result["example-execution-was-dispatched"] == "inconclusive"
-    assert result["dispatch-success-is-captured"] == "inconclusive"
+    assert result["follow-success-is-captured"] == "inconclusive"
     assert result["api-success-is-recorded"] == "inconclusive"
     assert findings(recorder, "example-execution-was-dispatched") == [
-        "inconclusive: the evidence cannot order dispatch.exec_action a1 against it"
+        "inconclusive: the evidence cannot order start_run.start_run a1 against it"
     ]
 
 
 def failed_capture(recorder: Recorder, *, named: str | None, recorded: str = "sha256:" + "f" * 64) -> None:
     """A build whose capture failed, settled failed; its result names ``named`` as the attempt's record."""
     recorder.run("run-1", "requested", "running")
-    recorder.dispatch("a1", ("receive", "result"), commit=None, status="failed", record=named)
+    recorder.follow("a1", ("receive", "settled"), commit=None, status="failed", record=named)
     recorder.attempt("a1", failed_record=recorded)
     recorder.settle("run-1", "running", "failed", "a1")
 
@@ -797,7 +1008,7 @@ def test_a_failed_capture_is_ordered_by_the_record_its_result_names() -> None:
 def test_a_result_naming_another_record_than_the_failed_capture_left_is_violated() -> None:
     recorder = Recorder()
     failed_capture(recorder, named="sha256:" + "e" * 64)
-    assert findings(recorder, "boundary:dispatch") == [
+    assert findings(recorder, "boundary:follow_run") == [
         f"violated: names sha256:{'e' * 64}, but the evidence records ['sha256:{'f' * 64}']"
     ]
 
@@ -805,11 +1016,14 @@ def test_a_result_naming_another_record_than_the_failed_capture_left_is_violated
 def test_a_citation_of_a_record_the_evidence_does_not_hold_is_violated() -> None:
     recorder = Recorder()
     recorder.run("run-1", "requested", "running")
-    recorder.dispatch("a1", ("receive", "result"), commit="d" * 40)  # Not the commit that captured a1.
+    recorder.start("a1", ("receive", "accepted"))
+    recorder.follow("a1", ("receive", "settled"), commit="d" * 40)  # Not the commit that captured a1.
     recorder.attempt("a1", dispatched_by="api-000001#99")  # Not the request that sent it.
     recorder.settle("run-1", "running", "succeeded", "a1")
-    assert sorted(findings(recorder, "boundary:dispatch")) == [
+    assert findings(recorder, "boundary:start_run") == [
         "violated: names api-000001#99, but the evidence records ['api-000001#3']",
+    ]
+    assert findings(recorder, "boundary:follow_run") == [
         f"violated: names {'d' * 40}, but the evidence records ['{'c' * 40}']",
     ]
 
@@ -855,13 +1069,13 @@ def test_a_session_ends_with_the_api_process_that_crashed_holding_it() -> None:
     assert (result["one-session-per-store"], result["machine:WorkbenchSession"]) == ("passed", "passed")
 
 
-def test_a_dispatch_names_the_session_it_was_sent_on() -> None:
+def test_a_start_names_the_session_it_was_sent_on() -> None:
     recorder = Recorder()
     complete_command(recorder)
     recorder.events = [
         event.model_copy(update={"facts": {k: v for k, v in event.facts.items() if k != "session"}})
-        if event.message == "exec_action"
+        if event.message == "start_run"
         else event
         for event in recorder.events
     ]
-    assert findings(recorder, "boundary:dispatch") == ["inconclusive: missing required facts ['session']"]
+    assert findings(recorder, "boundary:start_run") == ["inconclusive: missing required facts ['session']"]

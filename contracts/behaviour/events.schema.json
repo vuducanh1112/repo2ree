@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:4b153a7f23f100704b38fea8f45a22a6f27072cac9919cef8bbe041f45c94cda",
+  "x-vocabulary": "sha256:c421f8255acc89d33fefe0334ccbde0dd5ad569b121a682d0ca7e7dd36c74afd",
   "type": "object",
   "properties": {
     "v": {
@@ -54,7 +54,10 @@
       "$ref": "#/$defs/cancel_run"
     },
     {
-      "$ref": "#/$defs/dispatch"
+      "$ref": "#/$defs/follow_run"
+    },
+    {
+      "$ref": "#/$defs/start_run"
     }
   ],
   "$defs": {
@@ -190,7 +193,8 @@
               "Ree",
               "WorkbenchSession",
               "cancel_run",
-              "dispatch"
+              "follow_run",
+              "start_run"
             ]
           }
         },
@@ -298,7 +302,8 @@
               "enum": [
                 "succeeded",
                 "failed",
-                "canceled"
+                "canceled",
+                "interrupted"
               ]
             },
             "record": {
@@ -380,7 +385,8 @@
                     "enum": [
                       "succeeded",
                       "failed",
-                      "canceled"
+                      "canceled",
+                      "interrupted"
                     ]
                   },
                   "record": {
@@ -463,7 +469,8 @@
                     "enum": [
                       "succeeded",
                       "failed",
-                      "canceled"
+                      "canceled",
+                      "interrupted"
                     ]
                   },
                   "record": {
@@ -545,7 +552,8 @@
                     "enum": [
                       "succeeded",
                       "failed",
-                      "canceled"
+                      "canceled",
+                      "interrupted"
                     ]
                   },
                   "record": {
@@ -598,6 +606,7 @@
             "requested",
             "running",
             "canceling",
+            "resumed",
             "succeeded",
             "failed",
             "canceled"
@@ -608,6 +617,7 @@
             "requested",
             "running",
             "canceling",
+            "resumed",
             "succeeded",
             "failed",
             "canceled"
@@ -718,6 +728,7 @@
                   "canceling",
                   "failed",
                   "requested",
+                  "resumed",
                   "running",
                   "succeeded"
                 ]
@@ -850,15 +861,19 @@
           "enum": [
             null,
             "started",
+            "adopted",
             "exited",
-            "stopped"
+            "stopped",
+            "lost"
           ]
         },
         "to": {
           "enum": [
             "started",
+            "adopted",
             "exited",
-            "stopped"
+            "stopped",
+            "lost"
           ]
         },
         "facts": {
@@ -872,8 +887,13 @@
             },
             "cause": {
               "enum": [
-                "cancel",
-                "caller_gone"
+                "cancel"
+              ]
+            },
+            "commit": {
+              "type": [
+                "string",
+                "null"
               ]
             },
             "dispatched_by": {
@@ -888,8 +908,27 @@
             "operation": {
               "type": "string"
             },
+            "reason": {
+              "enum": [
+                "vanished"
+              ]
+            },
+            "record": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "run_id": {
               "type": "string"
+            },
+            "status": {
+              "enum": [
+                "succeeded",
+                "failed",
+                "canceled",
+                "interrupted"
+              ]
             }
           }
         }
@@ -925,8 +964,13 @@
                   },
                   "cause": {
                     "enum": [
-                      "cancel",
-                      "caller_gone"
+                      "cancel"
+                    ]
+                  },
+                  "commit": {
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   },
                   "dispatched_by": {
@@ -941,13 +985,33 @@
                   "operation": {
                     "type": "string"
                   },
+                  "reason": {
+                    "enum": [
+                      "vanished"
+                    ]
+                  },
+                  "record": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "run_id": {
                     "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "canceled",
+                      "interrupted"
+                    ]
                   }
                 },
                 "required": [
                   "cause",
-                  "exit_code"
+                  "exit_code",
+                  "status"
                 ]
               }
             },
@@ -979,8 +1043,13 @@
                   },
                   "cause": {
                     "enum": [
-                      "cancel",
-                      "caller_gone"
+                      "cancel"
+                    ]
+                  },
+                  "commit": {
+                    "type": [
+                      "string",
+                      "null"
                     ]
                   },
                   "dispatched_by": {
@@ -995,12 +1064,110 @@
                   "operation": {
                     "type": "string"
                   },
+                  "reason": {
+                    "enum": [
+                      "vanished"
+                    ]
+                  },
+                  "record": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "run_id": {
                     "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "canceled",
+                      "interrupted"
+                    ]
                   }
                 },
                 "required": [
-                  "exit_code"
+                  "exit_code",
+                  "status"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "lost"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "canceled_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "cancel"
+                    ]
+                  },
+                  "commit": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "exit_code": {
+                    "type": "integer"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "enum": [
+                      "vanished"
+                    ]
+                  },
+                  "record": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "run_id": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "succeeded",
+                      "failed",
+                      "canceled",
+                      "interrupted"
+                    ]
+                  }
+                },
+                "required": [
+                  "reason",
+                  "status"
                 ]
               }
             },
@@ -1010,7 +1177,7 @@
           }
         }
       ],
-      "description": "One executor process a workbench started for a command, from its start to its end. Evidence: journal."
+      "description": "One executor process a workbench started for a command, from its start to its end, across workbench restarts. Evidence: journal."
     },
     "Receipt": {
       "type": "object",
@@ -1501,7 +1668,7 @@
       "description": "One workbench's connection serving one store, from its hello to the end of its socket. Evidence: journal."
     },
     "cancel_run": {
-      "description": "One request to stop the executor of a dispatched command, and the single outcome the sender observed.",
+      "description": "One request to stop the executor of a started command, and the single outcome the sender observed.",
       "oneOf": [
         {
           "type": "object",
@@ -1684,8 +1851,8 @@
         }
       ]
     },
-    "dispatch": {
-      "description": "One typed command sent to a workbench and the single outcome the sender observed.",
+    "follow_run": {
+      "description": "One watch over a started command, until it ends or the session it was sent on does.",
       "oneOf": [
         {
           "type": "object",
@@ -1694,7 +1861,7 @@
               "const": "send"
             },
             "subject": {
-              "const": "dispatch"
+              "const": "follow_run"
             },
             "owner": {
               "const": "supervisor"
@@ -1710,7 +1877,7 @@
             },
             "message": {
               "enum": [
-                "exec_action"
+                "follow_run"
               ]
             }
           },
@@ -1726,7 +1893,236 @@
               "if": {
                 "properties": {
                   "message": {
-                    "const": "exec_action"
+                    "const": "follow_run"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "run_id": {
+                        "type": "string"
+                      },
+                      "session": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "session"
+                    ]
+                  }
+                },
+                "required": [
+                  "facts"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "receive"
+            },
+            "subject": {
+              "const": "follow_run"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "settled",
+                "unknown",
+                "error"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "settled"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "commit": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "record": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "status": {
+                        "enum": [
+                          "succeeded",
+                          "failed",
+                          "canceled",
+                          "interrupted"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "status"
+                    ]
+                  }
+                },
+                "required": [
+                  "facts"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "unknown"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "error"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "abandon"
+            },
+            "subject": {
+              "const": "follow_run"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": "null"
+            },
+            "facts": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key"
+          ]
+        }
+      ]
+    },
+    "start_run": {
+      "description": "One typed command sent to a workbench to start, and the single answer the sender observed.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "send"
+            },
+            "subject": {
+              "const": "start_run"
+            },
+            "owner": {
+              "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "start_run"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "start_run"
                   }
                 }
               },
@@ -1764,7 +2160,7 @@
               "const": "receive"
             },
             "subject": {
-              "const": "dispatch"
+              "const": "start_run"
             },
             "owner": {
               "const": "supervisor"
@@ -1780,7 +2176,8 @@
             },
             "message": {
               "enum": [
-                "result",
+                "accepted",
+                "busy",
                 "unavailable",
                 "error"
               ]
@@ -1798,7 +2195,7 @@
               "if": {
                 "properties": {
                   "message": {
-                    "const": "result"
+                    "const": "accepted"
                   }
                 }
               },
@@ -1806,35 +2203,26 @@
                 "properties": {
                   "facts": {
                     "type": "object",
-                    "properties": {
-                      "commit": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "record": {
-                        "type": [
-                          "string",
-                          "null"
-                        ]
-                      },
-                      "status": {
-                        "enum": [
-                          "succeeded",
-                          "failed",
-                          "canceled"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "status"
-                    ]
+                    "properties": {}
                   }
-                },
-                "required": [
-                  "facts"
-                ]
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "busy"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
               }
             },
             {
@@ -1880,7 +2268,7 @@
               "const": "abandon"
             },
             "subject": {
-              "const": "dispatch"
+              "const": "start_run"
             },
             "owner": {
               "const": "supervisor"

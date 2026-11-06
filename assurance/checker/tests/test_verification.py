@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from test_check import REE, Recorder, complete_command, git, journal
+from test_check import REE, Recorder, bench, complete_command, git, journal
 
 from repo2ree_assurance_checker.check import check, judge_occurrences, replay
 from repo2ree_assurance_checker.cli import main
@@ -18,7 +18,7 @@ SPEC = load_spec()
 def evidence() -> Evidence:
     recorder = Recorder()
     complete_command(recorder)
-    return Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events))
+    return Evidence(sources=(journal(), bench(), git(REE)), events=tuple(recorder.events))
 
 
 def test_the_artifact_reads_back_as_the_model_it_verified() -> None:
@@ -36,9 +36,9 @@ def test_the_artifact_reads_back_as_the_model_it_verified() -> None:
             assert [(r.source_state, r.state, r.event) for r in read.reached] == [
                 (item.source_state, item.state, item.event) for item in instance.reached
             ]
-    exchange = verified.exchanges["dispatch"]["a1"]
-    assert exchange.request == model.exchanges["dispatch"]["a1"].request
-    assert exchange.outcome == model.exchanges["dispatch"]["a1"].outcome
+    exchange = verified.exchanges["start_run"]["a1"]
+    assert exchange.request == model.exchanges["start_run"]["a1"].request
+    assert exchange.outcome == model.exchanges["start_run"]["a1"].outcome
 
 
 def test_the_check_command_writes_the_artifact_beside_its_reports(tmp_path: Path) -> None:

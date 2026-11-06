@@ -5,6 +5,7 @@
 # registry holds the connection, so the API process journals both. A session is that socket,
 # and ends with the API process at the latest: a workbench that redials, after a lost socket or
 # a restarted API, opens a new session, and its nonce says whether the same process came back.
+# The commands started on a session run on when it ends; a later session follows them.
 # Its machine is entities/workbench_session.toml.
 
 name = "WorkbenchSession"

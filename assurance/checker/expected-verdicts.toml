@@ -7,27 +7,6 @@
 # A fix that makes such a test conform makes its entry stale, and a stale entry
 # fails the gate too: remove it with the fix's oracle commit.
 
-[[expected]]
-test = "api/tests/faults/test_faults.py::test_an_api_crash_fails_the_build_in_flight_and_the_ree_builds_after"
-violated = ["executions-stop-only-on-cancel"]
-reason = """The workbench stops a running executor when the connection its command came on \
-ends, so a build in flight when the API crashes is stopped as its caller gone, not because \
-anyone canceled it. Expected until a run outlives the connection that started it."""
-
-[[expected]]
-test = "api/tests/faults/test_faults.py::test_a_paused_workbench_does_not_leave_its_build_running"
-violated = ["executions-stop-only-on-cancel"]
-reason = """The workbench stops a running executor when the connection its command came on \
-ends, so a build in flight when the workbench is paused is stopped as its caller gone, not because \
-anyone canceled it. Expected until a run outlives the connection that started it."""
-
-[[expected]]
-test = "api/tests/faults/test_faults.py::test_a_partitioned_workbench_fails_its_build"
-violated = ["executions-stop-only-on-cancel"]
-reason = """The workbench stops a running executor when the connection its command came on \
-ends, so a build in flight when the workbench is partitioned is stopped as its caller gone, not because \
-anyone canceled it. Expected until a run outlives the connection that started it."""
-
 # Specified rules, edges, and messages no gated test reaches, and why.
 #
 # Each test's verdicts pass a rule nothing triggered, so only the suite as a whole
@@ -38,10 +17,10 @@ anyone canceled it. Expected until a run outlives the connection that started it
 # entry goes. This list is what a receipt does not prove.
 
 [[unreached]]
-items = ["dispatch: abandoned"]
+items = ["start_run: abandoned", "start_run: unavailable"]
 reason = """A command for an REE whose store no workbench serves is refused before it is sent \
-(store_unavailable), so a dispatch is abandoned only when the connection drops between routing \
-and sending, a window no fault can be aimed at."""
+(store_unavailable), and a workbench answers a start at once, so a start goes unanswered only when \
+the connection drops between routing and the answer, a window no fault can be aimed at."""
 
 [[unreached]]
 items = ["Attempt pending -> capture_failed"]
@@ -55,9 +34,32 @@ reason = """Needs the attempt's record to fail to be written a moment after the 
 written, before the handler starts; no fault can be aimed at that. Core's unit tests take it."""
 
 [[unreached]]
-items = ["dispatch: error"]
-reason = """Needs a workbench that answers a dispatched action with a transport or protocol \
+items = ["start_run: error", "follow_run: error"]
+reason = """Needs a workbench that answers a start or a follow with a transport or protocol \
 error; no tier makes one."""
+
+[[unreached]]
+items = ["follow_run: unknown"]
+reason = """Needs a command its workbench never started, followed: the API follows only what was \
+accepted, from a store that keeps its executions. The supervisor's unit tests take it."""
+
+[[unreached]]
+items = ["Execution adopted -> adopted", "Execution adopted -> lost", "Execution adopted -> stopped"]
+reason = """Needs a second fault during a command a restarted workbench took over: a restart, a \
+crash, or a cancel. The gated tiers inject one fault per command; the workbench's unit tests take \
+adoption and its endings."""
+
+[[unreached]]
+items = [
+  "AuthorApiAction canceling -> resumed",
+  "AuthorApiAction resumed -> canceled",
+  "AuthorApiAction resumed -> canceling",
+  "AuthorApiAction resumed -> failed",
+  "AuthorApiAction resumed -> resumed",
+]
+reason = """The API crash is staged during a build that then succeeds: a cancel around the crash, a \
+failing resumed build, or a second crash needs a second fault the gated tiers do not stage. The \
+API's unit tests take resuming."""
 
 [[unreached]]
 items = [

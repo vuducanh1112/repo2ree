@@ -1,0 +1,15 @@
+# The start_run exchange's rules: which records of it and of the receiver's entities name each
+# other. Its messages and facts are declared in vocabulary/start_run.toml.
+
+name = "start_run"
+
+# The attempt and the executor name the journal record of the request that started them, so
+# their order across the journals and Git is evidenced rather than assumed: a record that names
+# another can only have been written after it existed.
+[[cites]]
+by = { entity = "Attempt", reached = "pending", fact = "dispatched_by" }
+cited = { message = "start_run" }
+
+[[cites]]
+by = { entity = "Execution", reached = "started", fact = "dispatched_by" }
+cited = { message = "start_run" }

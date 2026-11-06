@@ -65,7 +65,7 @@ def test_the_checked_in_specification_is_valid() -> None:
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert spec.hosted_by("workbench") == {"workbench"}
     assert spec.hosted_by("executor") == {"core"}
-    assert set(spec.boundaries) == {"cancel_run", "dispatch"}
+    assert set(spec.boundaries) == {"cancel_run", "follow_run", "start_run"}
     assert spec.digest.startswith("sha256:")
     assert spec.vocabulary_digest.startswith("sha256:")
     assert spec.entities["Attempt"].required == {
@@ -74,7 +74,10 @@ def test_the_checked_in_specification_is_valid() -> None:
         "capture_failed": ("record",),
     }
     assert spec.entities["Ree"].required == {"draft": ("cause",), "sealed": ("cause",)}
-    assert spec.boundaries["dispatch"].required == {"exec_action": ("session",), "result": ("status",)}
+    assert spec.boundaries["start_run"].required == {"start_run": ("session",)}
+    assert spec.boundaries["follow_run"].required == {"follow_run": ("session",), "settled": ("status",)}
+    assert spec.boundaries["follow_run"].repeats
+    assert spec.entities["Execution"].reconciled_by == ("adopted", "exited", "stopped", "lost")
 
 
 def test_the_published_contract_matches_the_vocabulary() -> None:
@@ -111,6 +114,12 @@ def test_the_vocabulary_digest_changes_with_the_contract_but_not_with_the_rules(
     [
         (lambda docs: docs.machine("AuthorApiAction").update(initial="paused"), "unknown states"),
         (lambda docs: docs.machine("Attempt").update(ends_with_owner=True), "can end with that process"),
+        (lambda docs: docs.machine("Execution").update(reconciled_by=["gone"]), "reconciled by unknown states"),
+        (lambda docs: docs.machine("Attempt").update(reconciled_by=["captured"]), "outlives the process"),
+        (
+            lambda docs: docs.machine("Execution").update(ends_with_owner=True),
+            "outlives the process",
+        ),
         (
             lambda docs: docs.machine("AuthorApiAction")["transitions"].append(
                 {"from": "requested", "to": ["running"]}
@@ -167,7 +176,7 @@ def producers(docs: Documents) -> dict[str, Any]:
     ("mutate", "message"),
     [
         (
-            lambda docs: rule(docs, "dispatch-success-is-captured")["require"]["where"].update(outcome="succeded"),
+            lambda docs: rule(docs, "follow-success-is-captured")["require"]["where"].update(outcome="succeded"),
             r"outcome names values its declaration does not list: \['succeded'\]",
         ),
         (
@@ -192,7 +201,7 @@ def test_rules_name_only_values_the_vocabulary_lists(mutate: Any, message: str) 
 
 def test_boundary_facts_are_required_on_every_record_of_their_message() -> None:
     docs = documents()
-    docs.words("dispatch")["facts"]["result"]["status"] = {"type": "str", "required_in": ["result"]}
+    docs.words("follow_run")["facts"]["settled"]["status"] = {"type": "str", "required_in": ["settled"]}
     with pytest.raises(ValidationError, match="use required = true"):
         docs.parse()
 
@@ -225,7 +234,7 @@ def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
     assert {name: entity.edges for name, entity in old.entities.items()} == {
         name: entity.edges for name, entity in spec.entities.items()
     }
-    assert old.boundaries["dispatch"].cites == spec.boundaries["dispatch"].cites
+    assert old.boundaries["follow_run"].cites == spec.boundaries["follow_run"].cites
 
 
 @pytest.mark.parametrize(
@@ -252,7 +261,7 @@ def test_incoherent_invariants_are_rejected(change: dict[str, Any], message: str
     recorded = next(item for item in docs.invariants["invariant"] if item["id"] == "api-success-is-recorded")
     recorded.update(change)
     if change.get("pattern") == "excludes":
-        recorded["when"] = {"boundary": "dispatch", "message": "result"}
+        recorded["when"] = {"boundary": "follow_run", "message": "settled"}
     with pytest.raises(ValidationError, match=message):
         docs.parse()
 
@@ -270,34 +279,34 @@ def test_owners_and_boundary_ends_must_be_declared_components() -> None:
         (
             {
                 "by": {"entity": "AuthorApiAction", "reached": "requested", "fact": "path"},
-                "cited": {"message": "exec_action"},
+                "cited": {"message": "follow_run"},
             },
             "not keyed by attempt_id",
         ),
         (
-            {"by": {"entity": "Attempt", "reached": "gone", "fact": "operation"}, "cited": {"message": "exec_action"}},
+            {"by": {"entity": "Attempt", "reached": "gone", "fact": "operation"}, "cited": {"message": "follow_run"}},
             "unknown state 'gone'",
         ),
         (
-            {"by": {"entity": "Attempt", "reached": "pending", "fact": "nope"}, "cited": {"message": "exec_action"}},
+            {"by": {"entity": "Attempt", "reached": "pending", "fact": "nope"}, "cited": {"message": "follow_run"}},
             "undeclared fact 'nope'",
         ),
         (
             {
-                "by": {"message": "result", "fact": "nope"},
+                "by": {"message": "settled", "fact": "nope"},
                 "cited": {"entity": "Attempt", "reached": "captured", "fact": "commit"},
             },
             "undeclared fact 'nope'",
         ),
         (
-            {"by": {"message": "result", "fact": "status"}, "cited": {"message": "exec_action"}},
+            {"by": {"message": "settled", "fact": "status"}, "cited": {"message": "follow_run"}},
             "one of the exchange's messages and one entity record",
         ),
     ],
 )
 def test_citations_link_a_message_and_a_record_keyed_like_the_exchange(citation: dict[str, Any], problem: str) -> None:
     docs = documents()
-    next(boundary for boundary in docs.boundaries if boundary["name"] == "dispatch")["cites"] = [citation]
+    next(boundary for boundary in docs.boundaries if boundary["name"] == "follow_run")["cites"] = [citation]
     with pytest.raises(ValidationError, match=problem):
         docs.parse()
 

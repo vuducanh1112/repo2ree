@@ -4,10 +4,12 @@
 name = "AuthorApiAction"
 initial = "requested"
 terminal = ["succeeded", "failed", "canceled"]
-# The API answers every request before it stops, and drains its workers on an orderly
-# shutdown, so an action still open in a closed journal was abandoned. An upload the
-# author never completed is the API's to settle (as failed) before it closes.
-settles_before_close = true
+# An action whose command still runs outlives the API process that took it, and the next one takes
+# it over; one never answered by the time the API stops for good was abandoned.
+settles_before_close = "final"
+# An API process that starts takes over every action the last one left watching a command, or
+# settles it, before its journal closes; a request it was still answering ended with it.
+reconciled_by = ["resumed", "succeeded", "failed", "canceled"]
 
 [[transitions]]
 from = "requested"
@@ -26,14 +28,19 @@ why = "The author canceled before the work started."
 
 [[transitions]]
 from = "running"
-to = ["succeeded", "failed", "canceling"]
+to = ["succeeded", "failed", "canceling", "resumed"]
 
 [[transitions]]
 from = "canceling"
-to = ["canceled"]
-why = "The work stopped."
+to = ["canceled", "resumed"]
+why = "The work stopped; or a later API process takes over watching it stop."
 
 [[transitions]]
 from = "canceling"
 to = ["succeeded", "failed"]
 why = "The work reached its capture before the cancel took effect; its outcome stands."
+
+[[transitions]]
+from = "resumed"
+to = ["resumed", "succeeded", "failed", "canceling", "canceled"]
+why = "A resumed action settles as a running one does, is canceled, or is taken over again after another restart."

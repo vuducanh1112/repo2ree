@@ -52,6 +52,10 @@ class EntitySpec(SpecModel):
     # True: an instance lives no longer than the process that journals it. Still open when that
     # process's journal ends, it is in no state for anything its next journal records.
     ends_with_owner: bool = False
+    # The states an instance left open by one of its owner's journals moves to first in the next
+    # journal of the same process instance, which must record one before it closes. Only an instance
+    # left in a state with an edge to one that takes it over without settling it outlives its process.
+    reconciled_by: tuple[Name, ...] = ()
     summary: str
     states: dict[Name, str]
     facts: dict[Name, FactType] = Field(default_factory=dict)
@@ -75,6 +79,15 @@ class EntitySpec(SpecModel):
         for transition in self.transitions:
             merged[transition.source].update(transition.targets)
         return {state: frozenset(merged.get(state, ())) for state in self.states}
+
+    def survives(self, state: str | None) -> bool:
+        """Whether an instance left in ``state`` by its owner's journal is the next journal's to take over.
+
+        It is when ``state`` has an edge into a state that takes it over and does not settle it; an
+        instance in any other state ended with the process that held it.
+        """
+        takers = set(self.reconciled_by) - set(self.terminal)
+        return state is not None and bool(self.edges.get(state, frozenset()) & takers)
 
     def allows(self, source: str | None, target: str) -> bool:
         if not self.constrained:
@@ -107,6 +120,11 @@ class EntitySpec(SpecModel):
             raise ValueError(f"{self.name}: an entity that settles needs a terminal state")
         if self.ends_with_owner and self.evidence != "journal":
             raise ValueError(f"{self.name}: only an entity a process journals can end with that process")
+        if self.reconciled_by:
+            if unknown := set(self.reconciled_by) - states:
+                raise ValueError(f"{self.name}: reconciled by unknown states {sorted(unknown)}")
+            if self.evidence != "journal" or self.ends_with_owner:
+                raise ValueError(f"{self.name}: only an entity that outlives the process journaling it is reconciled")
         if not self.constrained and (self.transitions or self.terminal or set(self.initial) != states):
             raise ValueError(f"{self.name}: an unconstrained entity starts anywhere and declares no edges")
         if self.key in self.facts:
@@ -191,6 +209,8 @@ class BoundarySpec(SpecModel):
     required: dict[Name, tuple[Name, ...]] = Field(default_factory=dict)
     # The only values a fact may take, by message, for the facts that list them.
     allowed: dict[Name, dict[Name, tuple[str, ...]]] = Field(default_factory=dict)
+    # Rounds of one request and its one outcome may follow each other under one key.
+    repeats: bool = False
     # Records of the exchange and of an entity keyed like it that name each other:
     # the only way the checker orders evidence across sources.
     cites: tuple[Citation, ...] = ()
@@ -230,6 +250,7 @@ class MachineRules(SpecModel):
     terminal: tuple[Name, ...] = ()
     settles_before_close: bool | Literal["final"]
     ends_with_owner: bool = False
+    reconciled_by: tuple[Name, ...] = ()
     transitions: tuple[Transition, ...]
 
     @field_validator("initial", mode="before")

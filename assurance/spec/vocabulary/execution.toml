@@ -1,8 +1,10 @@
-# The words for one executor process a workbench starts for a dispatched command.
+# The words for one executor process a workbench starts for a command it was asked to run.
 #
 # Recorded where the executor runs: the workbench starts it and sees it end, and journals
-# both in the journal of the store it serves. The Attempt is what core recorded inside the
-# REE; the Execution is what the workbench did with the process that ran it. Its machine is
+# both in the journal of the store it serves. The executor runs apart from the workbench
+# process that started it, so it may outlive that process: the store's next workbench
+# process adopts it, or finds it gone. The Attempt is what core recorded inside the REE;
+# the Execution is what the workbench did with the process that ran it. Its machine is
 # entities/execution.toml.
 
 name = "Execution"
@@ -11,21 +13,36 @@ owner = "workbench"
 key = "attempt_id"
 partition = "ree_id"
 evidence = "journal"
-summary = "One executor process a workbench started for a command, from its start to its end."
+summary = "One executor process a workbench started for a command, from its start to its end, across workbench restarts."
 
 [states]
 started = "The executor process runs the command."
+adopted = "The executor still runs, and a later workbench process of the same store took it over."
 exited = "Settled: the executor ended with no one having asked it to stop."
 stopped = "Settled: the executor ended after the workbench asked it to stop."
+lost = "Settled: the executor was gone without having reported how it ended."
 
 [facts]
 operation = "str"
 run_id = "str"
-# The journal record of the request that dispatched it (see boundaries/dispatch.toml).
+# The journal record of the request that started it (see boundaries/start_run.toml).
 dispatched_by = "str?"
 exit_code = { type = "int", required_in = ["exited", "stopped"] }
 # For a stop a cancel_run asked for: the journal record of that request (see boundaries/cancel_run.toml).
 canceled_by = "str?"
+# How the command ended, as the executor reported it, or as the workbench settled it once the executor was lost.
+commit = "str?"
+record = "str?"
+
+[facts.status]
+type = "str"
+required_in = ["exited", "stopped", "lost"]
+
+[facts.status.values]
+succeeded = "The command did what it was asked."
+failed = "The command could not do it."
+canceled = "The command stopped because its run was canceled."
+interrupted = "The executor ended without reporting; its attempt was rolled back."
 
 [facts.cause]
 type = "str"
@@ -33,4 +50,10 @@ required_in = ["stopped"]
 
 [facts.cause.values]
 cancel = "A cancel_run for the command's run asked the workbench to stop it."
-caller_gone = "The request that started it was cancelled, or the session it came on ended."
+
+[facts.reason]
+type = "str"
+required_in = ["lost"]
+
+[facts.reason.values]
+vanished = "Neither the executor nor how it ended was found when the workbench looked."

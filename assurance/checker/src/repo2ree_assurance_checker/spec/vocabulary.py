@@ -128,6 +128,8 @@ class BoundaryVocabulary(SpecModel):
     responses: tuple[Name, ...] = Field(min_length=1)
     messages: dict[Name, str]
     facts: dict[Name, dict[Name, FactEntry]] = Field(default_factory=dict)
+    # Whether one key's exchange may be repeated: rounds of one request and its one outcome, in turn.
+    repeats: bool = False
 
     @model_validator(mode="after")
     def required_everywhere(self) -> Self:

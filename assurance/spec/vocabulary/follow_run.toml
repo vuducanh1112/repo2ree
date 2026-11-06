@@ -1,0 +1,44 @@
+# The words for watching a started command until it ends, from the supervisor.
+#
+# A command runs for as long as it runs, across sessions and API processes, so it is watched by
+# as many follows as it takes, one after another: each is sent on one session, and ends with the
+# command's outcome, with the workbench not knowing the command, or abandoned when its session
+# ends first. Log lines stream while it lasts and are not journaled. Its rules are
+# boundaries/follow_run.toml.
+
+name = "follow_run"
+kind = "boundary"
+sender = "supervisor"
+receiver = "workbench"
+key = "attempt_id"
+repeats = true
+partition = "ree_id"
+summary = "One watch over a started command, until it ends or the session it was sent on does."
+request = "follow_run"
+responses = ["settled", "unknown", "error"]
+
+[messages]
+follow_run = "The request to watch the command of an attempt, sent over the workbench's connection."
+settled = "The command ended, and this is how."
+unknown = "The workbench knows no execution of the attempt."
+error = "The workbench reported a transport or protocol error."
+
+[facts.follow_run]
+run_id = "str"
+session = { type = "str", required = true }
+
+[facts.settled]
+# The commit that captured the attempt, as the workbench reported it.
+commit = "str?"
+# For an attempt whose capture failed: the digest of its record, as the workbench reported it.
+record = "str?"
+
+[facts.settled.status]
+type = "str"
+required = true
+
+[facts.settled.status.values]
+succeeded = "The command did what it was asked."
+failed = "The command could not do it."
+canceled = "The command stopped because its run was canceled."
+interrupted = "The executor ended without reporting; its attempt was rolled back."

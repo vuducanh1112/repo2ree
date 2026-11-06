@@ -23,8 +23,8 @@ capture_failed = "Recording failed; the REE files were rolled back to the before
 [facts]
 run_id = "str"
 scope = "str"
-# The journal record of the request that dispatched this attempt (see boundaries/dispatch.toml).
-# Absent for an attempt nothing dispatched, such as one run in-process.
+# The journal record of the request that started this attempt (see boundaries/start_run.toml).
+# Absent for an attempt nothing started, such as one run in-process.
 dispatched_by = "str?"
 commit = { type = "str", required_in = ["captured"] }
 changed = { type = "bool", required_in = ["captured"] }
@@ -41,6 +41,7 @@ required_in = ["completed"]
 succeeded = "The command did what it was asked."
 failed = "The command could not do it."
 canceled = "The command stopped because its run was canceled."
+interrupted = "The executor ended without reporting; the REE files were rolled back to the before-snapshot."
 
 # The command core ran: one of the typed commands the product dispatches into an REE.
 [facts.operation]

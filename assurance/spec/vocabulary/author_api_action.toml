@@ -21,6 +21,7 @@ summary = "One thing an author asked of an REE, from the request to the answer t
 requested = "The API accepted the request and nothing runs yet. An upload stays here until the author completes it."
 running = "The work is under way: a workbench is being set up, or a command runs in the REE."
 canceling = "The author canceled, and the outcome is not settled yet."
+resumed = "A later API process took the action over: the command it watches still runs in the REE's store."
 succeeded = "Settled: the author was told it worked."
 failed = "Settled: the author was told it did not work."
 canceled = "Settled: the work stopped because the author canceled it."

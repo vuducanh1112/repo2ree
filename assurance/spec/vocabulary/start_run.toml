@@ -1,0 +1,33 @@
+# The words for starting one typed command in the workbench serving its REE's store.
+#
+# Recorded on the sender's side: the supervisor journals each request before it is sent and
+# the one answer it observed. The answer says only whether the command started; how it ends is
+# reported by follow_run, on this session or a later one. The receiver's evidence is the
+# Execution the workbench journals and the Attempt core records, each naming the request. Its
+# rules are boundaries/start_run.toml.
+
+name = "start_run"
+kind = "boundary"
+sender = "supervisor"
+receiver = "workbench"
+key = "attempt_id"
+partition = "ree_id"
+summary = "One typed command sent to a workbench to start, and the single answer the sender observed."
+request = "start_run"
+responses = ["accepted", "busy", "unavailable", "error"]
+
+[messages]
+start_run = "The command envelope, sent over the workbench's connection."
+accepted = "The workbench started an executor for the command."
+busy = "The workbench refused: another execution holds the REE."
+unavailable = "The workbench reported that it cannot run commands."
+error = "The workbench reported a transport or protocol error."
+
+[facts.start_run]
+operation = "str"
+run_id = "str"
+
+# The WorkbenchSession the command was sent on: a command is sent on a session or not at all.
+[facts.start_run.session]
+type = "str"
+required = true

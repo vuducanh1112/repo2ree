@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from pydantic import JsonValue
@@ -14,7 +15,7 @@ from repo2ree_assurance_checker.check.results import (
     edge,
     finding,
 )
-from repo2ree_assurance_checker.evidence import Event, Evidence
+from repo2ree_assurance_checker.evidence import Event, Evidence, Source
 from repo2ree_assurance_checker.spec import (
     BoundarySpec,
     EntitySpec,
@@ -84,15 +85,20 @@ def replay_entity(
         instance = Instance(spec.name, key, ordered[0].partition, frozenset(spec.terminal))
         instances[key] = instance
         subject = f"{spec.name} {key}"
+        previous: Event | None = None
         for event in ordered:
             reasons: list[tuple[FindingVerdict, str]] = []
+            target = event.target_state or ""
+            taken_over = previous is not None and later_epoch(evidence, previous, event)
+            if taken_over and spec.survives(instance.current) and target not in spec.reconciled_by:
+                reasons.append(("violated", f"{event.source} took it over with {edge(event.source_state, target)}"))
+            previous = event
             if event.owner != spec.owner:
                 reasons.append(("violated", f"recorded by {event.owner}, but {spec.owner} owns {spec.name}"))
             required = spec.required.get(event.target_state or "", ())
             reasons.extend(fact_problems(spec.facts, required, event.facts, spec.allowed))
             if event.partition != instance.partition:
                 reasons.append(("violated", f"moved from partition {instance.partition} to {event.partition}"))
-            target = event.target_state or ""
             move = edge(event.source_state, target)
             if instance.settled:
                 reasons.append(("violated", f"changed after settling in {instance.current}: {move}"))
@@ -110,6 +116,11 @@ def replay_entity(
             instance.reached.append(Reached(instance.current, target, {**instance.facts, **facts}, event))
             instance.current = target
             instance.facts.update(facts)
+        if not instance.settled and spec.survives(instance.current):
+            for later in unreconciled(evidence, ordered[-1]):
+                verdict: FindingVerdict = "violated" if later.complete else "inconclusive"
+                reason = f"still {instance.current} when {later.id}, a later journal of its owner, closed"
+                findings.append(finding(verdict, subject, reason, ordered[-1]))
         if not instance.settled and spec.terminal:
             last = evidence.source(ordered[-1].source)
             if spec.settles_at(last.closed, last.final):
@@ -165,6 +176,14 @@ def replay_boundary(
                 allowed = spec.allowed.get(message, {})
                 for verdict, problem in fact_problems(declared, required, event.facts, allowed):
                     violation(problem, event, verdict=verdict)
+        if spec.repeats:
+            pending = _rounds(evidence, ordered, violation)
+            if pending is not None:
+                if evidence.source(pending.source).closed:
+                    violation(f"no outcome before {pending.source} closed", pending)
+                else:
+                    open_count += 1
+            continue
         sends = [event for event in ordered if event.kind == "send"]
         outcomes = [event for event in ordered if event.kind in {"receive", "abandon"}]
         if not sends:
@@ -190,3 +209,45 @@ def replay_boundary(
         findings=tuple(findings),
     )
     return exchanges, result, counts
+
+
+def _rounds(evidence: Evidence, ordered: list[Event], violation: Callable[..., None]) -> Event | None:
+    """Check a repeated exchange's rounds, each one request and then its one outcome; the request still open.
+
+    A request left open by a journal that ended without closing (its process crashed) is
+    superseded by a request from a later journal; one its own journal closed on, or one the
+    same journal sends again before its outcome, is not.
+    """
+    pending: Event | None = None
+    for event in ordered:
+        if event.kind == "send":
+            if pending is not None:
+                origin = evidence.source(pending.source)
+                if origin.closed or not later_epoch(evidence, pending, event):
+                    violation(f"sent again before {pending.ref} had an outcome", pending, event)
+            pending = event
+        elif event.kind in {"receive", "abandon"}:
+            if pending is None:
+                violation("an outcome was recorded without a request", event)
+            pending = None
+    return pending
+
+
+def later_epoch(evidence: Evidence, earlier: Event, later: Event) -> bool:
+    """Whether ``later`` is in a later journal of the process instance that journaled ``earlier``."""
+    first, second = evidence.source(earlier.source), evidence.source(later.source)
+    if not first.kind == second.kind == "journal":
+        return False
+    return first.lineage == second.lineage and first.rank < second.rank
+
+
+def unreconciled(evidence: Evidence, last: Event) -> list[Source]:
+    """The closed later journals of the process instance that journaled ``last``: each should have taken it over."""
+    origin = evidence.source(last.source)
+    if origin.kind != "journal":
+        return []
+    return [
+        source
+        for source in evidence.sources
+        if source.kind == "journal" and source.lineage == origin.lineage and source.rank > origin.rank and source.closed
+    ]

@@ -1,0 +1,14 @@
+# The follow_run exchange's rules: which records of it and of the receiver's entities name each
+# other. Its messages and facts are declared in vocabulary/follow_run.toml.
+
+name = "follow_run"
+
+# A settled follow names the commit that captured the attempt, or, when capturing it failed, the
+# digest of the record that says so: it can only have been received after that existed.
+[[cites]]
+by = { message = "settled", fact = "commit" }
+cited = { entity = "Attempt", reached = "captured", fact = "commit" }
+
+[[cites]]
+by = { message = "settled", fact = "record" }
+cited = { entity = "Attempt", reached = "capture_failed", fact = "record" }

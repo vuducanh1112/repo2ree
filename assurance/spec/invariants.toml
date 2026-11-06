@@ -3,19 +3,44 @@
 # ---- Control plane ------------------------------------------------------------
 
 [[invariant]]
-id = "dispatch-success-is-captured"
+id = "follow-success-is-captured"
 pattern = "requires"
-summary = "A successful dispatch result is backed by a captured, successful attempt."
-when = { boundary = "dispatch", message = "result", where = { status = "succeeded" } }
+summary = "A command is reported to have succeeded only once a captured, successful attempt backs it."
+when = { boundary = "follow_run", message = "settled", where = { status = "succeeded" } }
 require = { entity = "Attempt", key_from = "$key", reached = "captured", where = { outcome = "succeeded" }, order = "before" }
 
-# Canceling an attempt rolls the REE back to its before-snapshot: the capture
+# A workbench answers that it started a command only when it did.
+[[invariant]]
+id = "accepted-runs-started"
+pattern = "requires"
+summary = "A workbench accepts a command only when it started an executor for it."
+when = { boundary = "start_run", message = "accepted" }
+require = { entity = "Execution", key_from = "$key", reached = "started" }
+
+# An attempt's capture and rollback cover the whole REE, so two attempts in one REE at once would
+# undo each other's work: an executor holds its REE until it ends.
+[[invariant]]
+id = "one-execution-per-ree"
+pattern = "excludes"
+summary = "A workbench starts an executor only while no other runs in the same REE."
+when = { entity = "Execution", to = "started" }
+require = { entity = "Execution", in_states = ["started", "adopted"] }
+
+# An executor that vanished leaves its attempt to the workbench, which has core roll it back.
+[[invariant]]
+id = "lost-executions-settle-their-attempt"
+pattern = "requires"
+summary = "An executor found gone has its attempt captured as interrupted, or its capture failed."
+when = { entity = "Execution", to = "lost" }
+require = { entity = "Attempt", key_from = "$key", reached = ["captured", "capture_failed"] }
+
+# Canceling or interrupting an attempt rolls the REE back to its before-snapshot: the capture
 # commit's tree is the tree it started from.
 [[invariant]]
 id = "canceled-attempts-change-nothing"
 pattern = "guard"
-summary = "A canceled attempt is captured with the REE as it was before the attempt."
-when = { entity = "Attempt", to = "captured", where = { outcome = "canceled" } }
+summary = "A canceled or interrupted attempt is captured with the REE as it was before the attempt."
+when = { entity = "Attempt", to = "captured", where = { outcome = { in = ["canceled", "interrupted"] } } }
 require = { where = { changed = false } }
 
 # A store is served by one workbench at a time: a second one claiming it is refused, never
@@ -28,7 +53,7 @@ when = { entity = "WorkbenchSession", to = "connected" }
 require = { entity = "WorkbenchSession", in_states = ["connected"] }
 
 # A workbench stops an executor only because a cancel asked it to: a caller that went away,
-# or a session that ended, is not a reason to stop the command it started.
+# a session that ended, or a restart is not a reason to stop the command it started.
 [[invariant]]
 id = "executions-stop-only-on-cancel"
 pattern = "guard"

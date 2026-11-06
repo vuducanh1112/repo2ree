@@ -3,13 +3,19 @@
 
 name = "Execution"
 initial = "started"
-terminal = ["exited", "stopped"]
-# The workbench does not wait for its executors before it stops: one still running when its
-# journal ended was left behind with the process that started it.
-settles_before_close = false
-ends_with_owner = true
+terminal = ["exited", "stopped", "lost"]
+# An executor outlives the workbench process that started it, but a store closed for good runs none.
+settles_before_close = "final"
+# A workbench process that starts serving a store takes over every executor the last one left
+# running, or settles it, before that process's journal closes.
+reconciled_by = ["adopted", "exited", "stopped", "lost"]
 
 [[transitions]]
 from = "started"
-to = ["exited", "stopped"]
-why = "The executor ends: by itself, or after the workbench asked it to stop."
+to = ["adopted", "exited", "stopped", "lost"]
+why = "The executor ends by itself, after a cancel asked it to stop, or was gone when a restarted workbench looked; or a restarted workbench takes it over."
+
+[[transitions]]
+from = "adopted"
+to = ["adopted", "exited", "stopped", "lost"]
+why = "An adopted executor ends as one the workbench started does, or is taken over again after another restart."
