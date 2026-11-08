@@ -38,15 +38,31 @@ test-e2e-system jobs=E2E_JOBS *select: build-e2e-bundles (_tier-system jobs "tes
 [group('E2E tests')]
 test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_tier-faults jobs "tests" select)
 
+# Build and load the image of a machine the environments tier installs a workbench on.
+[private]
+_load-environment name: _stage-nix-sources
+    nix build .#testbed-environment-{{ name }} -o {{ quote(ROOT + "/dist/environments/" + name) }}
+    docker load --input {{ quote(ROOT + "/dist/environments/" + name) }}
+
+# Check one machine a workbench is installed on starts, runs what it offers, and leaves nothing behind.
+[group('E2E tests')]
+check-environment name: (_load-environment name)
+    python -m repo2ree_testbed environment {{ quote(name) }}
+
+# Run the golden path on one machine a workbench is installed on (bare, docker, podman, slurm), not gated.
+[group('E2E tests')]
+test-e2e-environment name: (_load-environment name)
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/environments/run_environment_suite.py") }} --tier e2e-environment-{{ name }} --environment {{ quote(name) }} --per-test --exit-on tests
+
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
 test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
-    CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Fuzz every API operation against its contract on one stack, not gated.
 [group('E2E tests')]
 test-e2e-fuzz: build-e2e-bundles
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers.
 [group('E2E tests')]
@@ -91,8 +107,8 @@ demo-api cast=DEFAULT_API_DEMO_CAST transcript="": build-e2e-bundles
     transcript={{ quote(transcript) }}
     transcript=${transcript:-${cast%.cast}.md}
     mkdir -p "$(dirname "$cast")"
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/api/tests/e2e/api_walkthrough.py") }} --tier demo-api --compute-locations 1 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
-    python3 {{ quote(ROOT + "/api/tests/e2e/render_cast_transcript.py") }} "$cast" "$transcript"
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/walkthrough/api_walkthrough.py") }} --tier demo-api --compute-locations 1 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
+    python3 {{ quote(ROOT + "/testbed/suites/walkthrough/render_cast_transcript.py") }} "$cast" "$transcript"
 
 # Start the local image-backed stack.
 [group('Stack management')]

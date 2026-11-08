@@ -84,7 +84,7 @@ devPkgs.mkShell {
     # Cyclomatic complexity for the metrics reports.
     python313Packages.lizard
 
-    # asciinema records the pure-API workbench walkthrough (api/tests/e2e/
+    # asciinema records the pure-API workbench walkthrough (testbed/suites/walkthrough/
     # api_walkthrough.py) as a terminal .cast; agg renders that .cast to an
     # SVG/GIF artifact. The walkthrough itself is stdlib-only python — no client
     # dependency to add here.

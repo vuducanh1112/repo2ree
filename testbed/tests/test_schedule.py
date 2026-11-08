@@ -10,9 +10,9 @@ from repo2ree_testbed.stack.clients import TestCase
 CASES = [
     TestCase(name, name.replace("::", "--"), (name,))
     for name in (
-        "api/tests/system/test_authoring.py::test_sealed_ree_is_frozen",
-        "api/tests/system/test_authoring.py::test_a_bundle_never_loads_into_a_sealed_ree",
-        "api/tests/system/test_failures.py::test_canceling_a_running_build",
+        "testbed/suites/system/test_authoring.py::test_sealed_ree_is_frozen",
+        "testbed/suites/system/test_authoring.py::test_a_bundle_never_loads_into_a_sealed_ree",
+        "testbed/suites/system/test_failures.py::test_canceling_a_running_build",
     )
 ]
 

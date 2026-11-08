@@ -49,7 +49,7 @@ internet and always yields the same commit.
 The REE scripts that run a project, kept beside it rather than in it so the
 project stays an ordinary source tree. `recipes/instant_hello_world/` holds
 the build (what inference generates for the project), activation, experiment
-and verify scripts that both the system suite (`api/tests/system`) and the
+and verify scripts that both the system suite (`testbed/suites/system`) and the
 instant GUI suite (`gui/tests/e2e-instant`) author;
 `recipes/instant_docker_hello_world/` does the same for the Docker project.
 

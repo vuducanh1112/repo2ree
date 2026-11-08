@@ -59,6 +59,7 @@
           inherit pkgs;
           name = "api";
         };
+        testbedEnvironments = import ./testbed/environments { inherit pkgs buildRevision; };
         benchChecks = import ./nix/bench-checks.nix { inherit pkgs buildRevision; };
         guiImage = import ./nix/gui-image.nix {
           inherit pkgs;
@@ -84,6 +85,11 @@
           # The workbench closure as an image to derive from — not a workbench you can
           # run on its own: it carries no toolchain.
           workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
+          # The machines the environments tier installs a workbench on.
+          testbed-environment-bare = testbedEnvironments.bare;
+          testbed-environment-docker = testbedEnvironments.docker;
+          testbed-environment-podman = testbedEnvironments.podman;
+          testbed-environment-slurm = testbedEnvironments.slurm;
           backend-image = import ./nix/backend-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;
           api-env = apiClosure.env;

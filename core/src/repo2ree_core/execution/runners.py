@@ -115,12 +115,14 @@ class ContainerScriptRunner:
 
         The script runs as its image's user (often root, which an environment may need), so on a
         host whose engine keeps file ownership what it wrote would be root's, and unreadable here.
+        The workspace itself names the owner, as the container sees it: a rootless engine maps this
+        user to the container's root, and to it this user's own id is someone else's.
         """
         user = f"{os.getuid()}:{os.getgid()}"
         if user == "0:0":
             return
         handed = subprocess.run(
-            [self.engine, "run", "--rm", "--user", "0:0", *mounts, image, "chown", "-R", user, str(workspace)],
+            [self.engine, "run", "--rm", "--user", "0:0", *mounts, image, *_hand_back_command(workspace)],
             check=False,
             capture_output=True,
             text=True,
@@ -163,6 +165,10 @@ class ContainerScriptRunner:
         return image_id
 
 
+def _hand_back_command(workspace: Path) -> list[str]:
+    return ["sh", "-c", 'chown -R "$(stat -c %u:%g "$0")" "$0"', str(workspace)]
+
+
 def _inspect(engine: str, image: str) -> tuple[str, str] | None:
     """A local image's id, and its content digest: its registry digest, or its id when it has none."""
     inspected = subprocess.run(
@@ -175,6 +181,9 @@ def _inspect(engine: str, image: str) -> tuple[str, str] | None:
     if inspected.returncode != 0:
         return None
     image_id, _, repo_digest = inspected.stdout.strip().partition(" ")
+    # Docker prints the id with its algorithm, and Podman without.
+    if image_id and ":" not in image_id:
+        image_id = f"sha256:{image_id}"
     digest = repo_digest.rpartition("@")[2] or image_id
     return (image_id, digest) if image_id.startswith("sha256:") and digest.startswith("sha256:") else None
 

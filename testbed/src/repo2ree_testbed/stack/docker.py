@@ -40,6 +40,12 @@ def engine_path(path: Path) -> str:
     return ""
 
 
+def engine_side(path: Path) -> str:
+    """``path`` as the engine sees it."""
+    local, _, engine = engine_path(path).partition("=")
+    return engine + str(path.resolve()).removeprefix(local) if engine else str(path.resolve())
+
+
 def networks(container: str) -> dict[str, Network]:
     output = capture(["docker", "inspect", "-f", "{{json .NetworkSettings.Networks}}", container])
     try:

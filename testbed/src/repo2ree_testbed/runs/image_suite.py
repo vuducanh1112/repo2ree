@@ -37,7 +37,7 @@ def main() -> int:
             stack.up()
         urls = stack.check()
         if args.suite == "demo-api":
-            run([str(ROOT / "api/tests/e2e/api_walkthrough.py"), "--base-url", urls.api])
+            run([str(ROOT / "testbed/suites/walkthrough/api_walkthrough.py"), "--base-url", urls.api])
         else:
             run([*PLAYWRIGHT, f"--project={args.suite}"], cwd=GUI, env={"E2E_BASE_URL": urls.gui})
     except (OSError, RuntimeError, subprocess.CalledProcessError) as error:

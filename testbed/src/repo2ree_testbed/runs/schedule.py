@@ -74,6 +74,7 @@ class SuiteRun:
             parameters={
                 "compute_locations": self.deployment.compute_locations,
                 "backend": self.deployment.backend,
+                **({"environment": self.deployment.environment.name} if self.deployment.environment else {}),
             },
             platform=provenance.platform(),
             machine=provenance.machine(),

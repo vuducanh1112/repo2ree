@@ -99,6 +99,7 @@ check-package +packages: _check-write-hint
         echo "Running $package checks..."
         paths=("$package/src")
         if [[ -d "$package/tests" ]]; then paths+=("$package/tests"); fi
+        if [[ -d "$package/suites" ]]; then paths+=("$package/suites"); fi
         ruff check "${paths[@]}"
         ruff format --check "${paths[@]}"
         mypy "${paths[@]}"

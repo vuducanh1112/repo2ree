@@ -15,6 +15,7 @@ from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.runs.prune import prune
 from repo2ree_testbed.runs.schedule import PerTest, Schedule, SuiteRun, WholeSuite
 from repo2ree_testbed.stack.clients import Client, Playwright, Script
+from repo2ree_testbed.stack.environments import ENVIRONMENTS
 from repo2ree_testbed.stack.services import Backend, Deployment
 
 type ExitOn = Literal["tests", "run"]
@@ -81,6 +82,11 @@ def parse(argv: list[str] | None = None) -> Invocation:
         default="container",
         help="run the author's scripts in a container from each REE's image, or on the store's host",
     )
+    parser.add_argument(
+        "--environment",
+        choices=sorted(ENVIRONMENTS),
+        help="install each store's workbench on this machine, whose scripts run where the machine runs them",
+    )
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
     parser.add_argument("--exec-bundle", type=Path, default=ROOT / "dist/bundles/exec")
     parser.add_argument("--tools-bundle", type=Path, default=ROOT / "dist/bundles/tools")
@@ -107,10 +113,12 @@ def parse(argv: list[str] | None = None) -> Invocation:
         client = playwright
     else:
         client = Script(args.script, args.record)
+    environment = ENVIRONMENTS[args.environment] if args.environment else None
     deployment = Deployment(
         tier=args.project or args.tier,
         compute_locations=args.compute_locations,
-        backend=args.backend,
+        backend=environment.backend if environment else args.backend,
+        environment=environment,
         state_root=args.state_root,
         exec_bundle=args.exec_bundle,
         tools_bundle=args.tools_bundle,

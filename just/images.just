@@ -8,7 +8,7 @@
 # new Python files without staging their contents or changing the index state.
 [private]
 _stage-nix-sources:
-    @git add -N $(python scripts/closures.py stage-paths) core/src executor/src workbench/src nix 2>/dev/null || true
+    @git add -N $(python scripts/closures.py stage-paths) core/src executor/src workbench/src nix testbed/environments 2>/dev/null || true
 
 # Build and load the GUI image.
 [group('Images')]

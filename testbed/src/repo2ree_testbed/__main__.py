@@ -7,6 +7,7 @@ import sys
 
 COMMANDS = {
     "e2e": "repo2ree_testbed.runs.e2e",
+    "environment": "repo2ree_testbed.runs.environment",
     "images": "repo2ree_testbed.stack.images",
     "image-suite": "repo2ree_testbed.runs.image_suite",
     "workbench-cleanup": "repo2ree_testbed.stack.workbench_cleanup",

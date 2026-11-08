@@ -1,3 +1,4 @@
+import shutil
 import signal
 import subprocess
 import sys
@@ -9,6 +10,7 @@ import pytest
 from repo2ree_testbed.stack import images as image_stack
 from repo2ree_testbed.stack import workbench_cleanup as cleanup
 from repo2ree_testbed.stack.process import descendants, kill_tree
+from repo2ree_testbed.stack.stack import remove_state
 
 
 def test_each_further_store_has_a_workbench_and_a_directory_of_its_own() -> None:
@@ -101,3 +103,19 @@ def test_a_killed_workbench_takes_the_processes_it_started_with_it(tmp_path: Pat
     while _alive(executor):
         assert time.monotonic() < deadline, "the executor outlived its workbench"
         time.sleep(0.05)
+
+
+def test_state_a_stack_cannot_remove_is_reported(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    state = tmp_path / "state"
+    state.mkdir()
+    monkeypatch.setattr(shutil, "rmtree", lambda *_, **__: None)
+
+    assert remove_state(state) is False
+
+
+def test_state_a_stack_removed_is_gone(tmp_path: Path) -> None:
+    state = tmp_path / "state"
+    (state / "store").mkdir(parents=True)
+
+    assert remove_state(state) is True
+    assert not state.exists()

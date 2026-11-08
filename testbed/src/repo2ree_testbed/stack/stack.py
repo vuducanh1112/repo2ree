@@ -25,6 +25,7 @@ from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.docker import engine_path
+from repo2ree_testbed.stack.environments import machine_command
 from repo2ree_testbed.stack.injector import (
     HISTORY_LOCK_IN_REE,
     FaultUnavailableError,
@@ -74,6 +75,15 @@ class Layout:
     def rees(self) -> tuple[str, ...]:
         manifest = read(DossierManifest, self.dossier / "manifest.json")
         return manifest.rees() if manifest else ()
+
+
+def remove_state(directory: Path) -> bool:
+    """Whether the state a run left is gone: what it cannot remove says something changed its owner."""
+    shutil.rmtree(directory, ignore_errors=True)
+    if not directory.exists():
+        return True
+    print(f"could not remove {directory}: a stack must leave nothing behind", file=sys.stderr)
+    return False
 
 
 class _ReeListed(BaseModel):
@@ -139,6 +149,7 @@ class E2EStack:
         self.stopped = False
         self.stop_lock = threading.Lock()
         self.client_status: int | None = None
+        self.state_left = False
         self.phases: dict[str, float] = {}
 
     @contextmanager
@@ -225,19 +236,40 @@ class E2EStack:
         for index, service in enumerate(services, start=1):
             environment = dict(service.environment)
             # Through a relay of its own, so a partition fault can cut it off the API.
-            relay = self.relays.get(index) or Relay("127.0.0.1", self.port or 0)
+            machine = self.deployment.environment
+            relay = self.relays.get(index) or Relay(
+                "127.0.0.1",
+                self.port or 0,
+                listen="0.0.0.0" if machine else "127.0.0.1",  # noqa: S104
+            )
             self.relays[index] = relay
-            environment["WORKBENCH_API_WS_URL"] = f"ws://127.0.0.1:{relay.port}/workbench/connect"
+            host, network = workbench_host() if machine else ("127.0.0.1", "")
+            environment["WORKBENCH_API_WS_URL"] = f"ws://{host}:{relay.port}/workbench/connect"
             if self.layout.telemetry is not None:
                 environment["TRACE_FILE"] = str(self.layout.telemetry / f"location-{index}.ndjson")
             log = self.workbench_log(index)
             print(f">> starting {service.label} {index}/{len(services)} (log: {log})")
-            command = ["uv", "run", "--package", service.package, "coverage", "run", "--parallel-mode"]
-            launch = (
-                [*command, "-m", service.module, *service.arguments],
-                {**self.environment, **environment, "COVERAGE_FILE": str(self.coverage_file)},
-                log,
-            )
+            if machine is not None:
+                state = self.control_state / f"workbench-{index}"
+                state.mkdir(parents=True, exist_ok=True)
+                telemetry = (self.layout.telemetry,) if self.layout.telemetry is not None else ()
+                installed = machine_command(
+                    machine,
+                    environment,
+                    ["repo2ree-workbench", *service.arguments],
+                    container=f"{self.layout.run_token}-{index}",
+                    owner=self.layout.run_token,
+                    network=network,
+                    mounts=(state, *telemetry),
+                )
+                launch = (installed, self.environment, log)
+            else:
+                command = ["uv", "run", "--package", service.package, "coverage", "run", "--parallel-mode"]
+                launch = (
+                    [*command, "-m", service.module, *service.arguments],
+                    {**self.environment, **environment, "COVERAGE_FILE": str(self.coverage_file)},
+                    log,
+                )
             self.launches.append(launch)
             self.locations.append(self.launch(*launch))
 
@@ -424,8 +456,8 @@ class E2EStack:
         if self.api_url:
             with self.phase("export"):
                 exported = self.collect_stopped()
-            if exported:
-                shutil.rmtree(self.control_state, ignore_errors=True)
+            if exported and not remove_state(self.control_state):
+                self.state_left = True
         with self.phase("cleanup"):
             try:
                 save_bench_logs(self.layout.run_token, self.layout.logs)
@@ -491,4 +523,4 @@ class E2EStack:
             self.client_status = self.run_client()
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")
         self.stop()
-        return self.client_status
+        return self.client_status or int(self.state_left)

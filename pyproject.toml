@@ -186,6 +186,8 @@ extend-ignore = [
 # Test code is shaped by pytest, not by the rules that govern the packages it
 # exercises. Each entry below is a property of how pytest works rather than a
 # concession: silencing it in `src` too would lose real signal.
+# The testbed's suites are tests of the whole product, kept beside the harness that runs them.
+"testbed/suites/*" = ["S101", "INP001", "PLC0415", "SLF001", "PLW1510", "T201", "PT011"]
 "*/tests/*" = [
     "S101",    # assert is the standard pytest assertion pattern
     # Test dirs deliberately ship no __init__.py so module names come from file
@@ -532,7 +534,7 @@ ignore_missing_imports = true
 # same, since a test importing a symbol through the module under test is reading
 # that module's surface rather than building on it.
 [[tool.mypy.overrides]]
-module = ["*.tests.*", "conftest", "scriptinfer_helpers", "api_integration_bench", "system_client", "test_spec", "test_check", "traceview_scenario"]
+module = ["*.tests.*", "testbed.suites.*", "conftest", "scriptinfer_helpers", "api_integration_bench", "system_client", "test_spec", "test_check", "traceview_scenario"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 disallow_untyped_calls = false

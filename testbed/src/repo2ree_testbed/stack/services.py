@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from repo2ree_testbed.stack.docker import engine_path, first_network, own_container
+from repo2ree_testbed.stack.environments import Environment
 from repo2ree_testbed.stack.store_images import STORE_IMAGES
 
 # Each compute location is a workbench serving a store of REEs, admitted with that store's token.
@@ -22,6 +23,8 @@ class Deployment:
     exec_bundle: Path
     tools_bundle: Path
     backend: Backend = "container"
+    # The machine each store's workbench is installed on; without one, it runs from source here.
+    environment: Environment | None = None
 
 
 @dataclass(frozen=True)

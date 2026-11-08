@@ -16,9 +16,9 @@ _HOLD_POLL_SECONDS = 0.05
 
 
 class Relay:
-    def __init__(self, upstream_host: str, upstream_port: int) -> None:
+    def __init__(self, upstream_host: str, upstream_port: int, *, listen: str = "127.0.0.1") -> None:
         self._upstream = (upstream_host, upstream_port)
-        self._listener = socket.create_server(("127.0.0.1", 0))
+        self._listener = socket.create_server((listen, 0))
         self._healed = threading.Event()
         self._healed.set()
         self._closed = threading.Event()

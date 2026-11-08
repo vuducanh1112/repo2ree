@@ -24,7 +24,6 @@ import pytest
 from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
-from repo2ree_workbench.connection import LONGEST_RECONNECT
 
 ROOT = Path(__file__).resolve().parents[3]
 RESULT = "result.txt"
@@ -116,9 +115,9 @@ def project_archive() -> bytes:
     return INSTANT.archive()
 
 
-# The longest a healed bench may take to dial back in, as the bench under test holds its connection,
-# with 15 s to spare.
-RECONNECT_BOUND = LONGEST_RECONNECT + 15
+# How long a workbench whose network came back takes to reconnect: a ping unanswered (40s), the close
+# handshake (10s), the pause before dialing (3s), and the dial (10s), and some margin.
+RECONNECT_BOUND = 78
 
 
 class ApiError(AssertionError):

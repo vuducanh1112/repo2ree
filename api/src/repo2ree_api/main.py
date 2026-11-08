@@ -119,7 +119,7 @@ in this order:
 7. `deleteRee` — tear the workbench down.
 
 A complete, CI-asserted walkthrough of this sequence as real `curl` calls lives
-in `api/tests/e2e/api_walkthrough.py` (see the external documentation
+in `testbed/suites/walkthrough/api_walkthrough.py` (see the external documentation
 link).
 """
 
@@ -144,7 +144,7 @@ app = FastAPI(
     # dangle. Points at the walkthrough script on the public Codeberg mirror.
     openapi_external_docs={
         "description": "End-to-end API authoring walkthrough (real curl session, CI-asserted)",
-        "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/api/tests/e2e/api_walkthrough.py",
+        "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/testbed/suites/walkthrough/api_walkthrough.py",
     },
     lifespan=lifespan,
 )
