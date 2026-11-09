@@ -5,7 +5,13 @@ if [ -f /sys/fs/cgroup/cgroup.controllers ]; then
   sed -e 's/ / +/g' -e 's/^/+/' </sys/fs/cgroup/cgroup.controllers >/sys/fs/cgroup/cgroup.subtree_control
 fi
 
-dockerd --group "$gid" >/var/log/dockerd.log 2>&1 &
+dns=()
+servers=${REPO2REE_ENVIRONMENT_DNS:-}
+for server in ${servers//,/ }; do
+  dns+=(--dns "$server")
+done
+
+dockerd --group "$gid" "${dns[@]}" >/var/log/dockerd.log 2>&1 &
 
 for _ in $(seq 60); do
   "${run_as[@]}" docker info >/dev/null 2>&1 && break

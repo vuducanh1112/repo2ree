@@ -4,12 +4,12 @@ import pytest
 
 from repo2ree_testbed.runs.e2e import parse
 from repo2ree_testbed.runs.environment import probe
-from repo2ree_testbed.stack.environments import ENVIRONMENTS, machine_command
+from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName, machine_command
 
 
 def command(name: str) -> list[str]:
     return machine_command(
-        ENVIRONMENTS[name],
+        ENVIRONMENTS[EnvironmentName(name)],
         {"WORKBENCH_STORE": "lab-1=/state/store", "WORKBENCH_TOOLS_BUNDLE": "/dist/tools"},
         ("repo2ree-workbench", "--flag"),
         container="run-1",
@@ -24,7 +24,7 @@ def test_a_workbench_installed_on_a_machine_gets_only_what_the_machine_lacks() -
 
     assert "WORKBENCH_STORE=lab-1=/state/store" in bare
     assert not any("WORKBENCH_TOOLS_BUNDLE" in part for part in bare)
-    assert bare[-3:] == [ENVIRONMENTS["bare"].image, "repo2ree-workbench", "--flag"]
+    assert bare[-3:] == [ENVIRONMENTS[EnvironmentName.BARE].image, "repo2ree-workbench", "--flag"]
 
 
 def test_a_machine_with_services_starts_as_root_and_is_told_the_user() -> None:
@@ -46,10 +46,10 @@ def test_a_machines_scratch_volume_carries_its_owner_for_cleanup() -> None:
 
 
 def test_a_check_runs_a_container_where_the_machine_has_an_engine() -> None:
-    assert "repo2ree-workbench --help" in probe(ENVIRONMENTS["bare"])
-    assert "docker run --rm" not in probe(ENVIRONMENTS["bare"])
-    assert "docker run --rm" in probe(ENVIRONMENTS["docker"])
-    assert "podman run --rm" in probe(ENVIRONMENTS["podman"])
+    assert "repo2ree-workbench --help" in probe(ENVIRONMENTS[EnvironmentName.BARE])
+    assert "docker run --rm" not in probe(ENVIRONMENTS[EnvironmentName.BARE])
+    assert "docker run --rm" in probe(ENVIRONMENTS[EnvironmentName.DOCKER])
+    assert "podman run --rm" in probe(ENVIRONMENTS[EnvironmentName.PODMAN])
 
 
 @pytest.mark.parametrize(
@@ -60,5 +60,5 @@ def test_a_machine_says_where_its_scripts_run(name: str, backend: str) -> None:
 
     deployment = parse(args).deployment
 
-    assert deployment.environment == ENVIRONMENTS[name]
+    assert deployment.environment == ENVIRONMENTS[EnvironmentName(name)]
     assert deployment.backend == backend

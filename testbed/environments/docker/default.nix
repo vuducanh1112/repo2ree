@@ -8,4 +8,6 @@ machine {
     pkgs.procps
   ];
   entrypoint = ./entrypoint.sh;
+  # An REE that declares it needs a container engine reaches this machine's daemon.
+  variables.WORKBENCH_SCRIPT_ENGINE = "socket";
 }

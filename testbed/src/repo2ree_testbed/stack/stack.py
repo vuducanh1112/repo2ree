@@ -25,13 +25,14 @@ from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.docker import engine_path
-from repo2ree_testbed.stack.environments import machine_command
+from repo2ree_testbed.stack.environments import DNS_VARIABLE, machine_command
 from repo2ree_testbed.stack.injector import (
     HISTORY_LOCK_IN_REE,
     FaultUnavailableError,
     Injector,
     WorkbenchFault,
 )
+from repo2ree_testbed.stack.machine_dns import host_nameservers
 from repo2ree_testbed.stack.origins import Origins
 from repo2ree_testbed.stack.process import fetch_as, kill_tree, listed, reachable, terminate, wait_until
 from repo2ree_testbed.stack.relay import Relay
@@ -253,6 +254,8 @@ class E2EStack:
                 state = self.control_state / f"workbench-{index}"
                 state.mkdir(parents=True, exist_ok=True)
                 telemetry = (self.layout.telemetry,) if self.layout.telemetry is not None else ()
+                if machine.nested_daemon:
+                    environment[DNS_VARIABLE] = ",".join(host_nameservers(machine.image))
                 installed = machine_command(
                     machine,
                     environment,

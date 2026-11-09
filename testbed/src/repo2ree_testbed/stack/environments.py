@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
@@ -16,9 +17,19 @@ _SOURCE_ONLY = frozenset(
 )
 
 
+class EnvironmentName(StrEnum):
+    BARE = "bare"
+    DOCKER = "docker"
+    PODMAN = "podman"
+    SLURM = "slurm"
+
+
+DNS_VARIABLE = "REPO2REE_ENVIRONMENT_DNS"
+
+
 @dataclass(frozen=True)
 class Environment:
-    name: str
+    name: EnvironmentName
     # Where a workbench on this machine runs the author's scripts, and with which engine.
     backend: Literal["container", "host"]
     engine: str = ""
@@ -26,19 +37,30 @@ class Environment:
     privileged: bool = False
     # Directories its services write to that the image's own layers cannot hold.
     scratch: tuple[str, ...] = ()
+    # Whether tests may run on machines of this kind side by side.
+    parallel: bool = True
+    # Whether it runs a Docker daemon of its own, which needs telling the host's DNS servers.
+    nested_daemon: bool = False
 
     @property
     def image(self) -> str:
         return f"repo2ree-environment-{self.name}:local"
 
 
-ENVIRONMENTS = {
+ENVIRONMENTS: dict[EnvironmentName, Environment] = {
     environment.name: environment
     for environment in (
-        Environment("bare", "host"),
-        Environment("docker", "container", engine="docker", privileged=True, scratch=("/var/lib/docker",)),
-        Environment("podman", "container", engine="podman", privileged=True),
-        Environment("slurm", "host", privileged=True),
+        Environment(EnvironmentName.BARE, "host"),
+        Environment(
+            EnvironmentName.DOCKER,
+            "container",
+            engine="docker",
+            privileged=True,
+            scratch=("/var/lib/docker",),
+            nested_daemon=True,
+        ),
+        Environment(EnvironmentName.PODMAN, "container", engine="podman", privileged=True),
+        Environment(EnvironmentName.SLURM, "host", privileged=True, parallel=False),
     )
 }
 
