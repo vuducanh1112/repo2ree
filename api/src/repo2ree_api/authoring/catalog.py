@@ -33,6 +33,7 @@ from repo2ree_authoring.templates import (
     experiment_run_templates,
     verify_templates,
 )
+from repo2ree_ree.environment import EnvironmentKind
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
@@ -75,11 +76,11 @@ _STEP_ACTIONS: dict[str, list[str]] = {
     "metadata": ["patchReeDefinition"],
     "hbom": ["startHbomGeneration", "patchReeDefinition"],
     "evaluate": ["startEvaluate"],
-    "build": ["startBuild"],
+    "build": ["startBuild", "generateScriptCandidates", "writeReeFile"],
     "sbom": ["startSbomGeneration"],
     "crosscheck": ["startSbomCrossCheck"],
-    "activation": ["startActivationTest"],
-    "experiments": ["startExperiment"],
+    "activation": ["startActivationTest", "generateScriptCandidates", "writeReeFile"],
+    "experiments": ["startExperiment", "patchReeDefinition", "generateScriptCandidates", "writeReeFile"],
     "seal": ["sealRee"],
 }
 
@@ -118,11 +119,10 @@ script_templates_router = APIRouter(tags=["files"])
 class ScriptTemplateEntry(BaseModel):
     """One named starter-template variant for an REE-owned script.
 
-    Every catalog section lists these; exactly one entry per section carries
-    ``is_default`` (for the seeded scripts it is the content a fresh REE starts
-    with). The run-script sections currently carry a single ``docker`` variant
-    each; the keys exist so further strategies can be added without changing
-    the catalog shape.
+    Every catalog section lists these; one entry per environment carries
+    ``is_default`` (for the seeded scripts it is the content a fresh REE in that
+    environment starts with). ``environment`` is the REE environment kind a
+    variant suits, or null for one that suits any.
     """
 
     key: str
@@ -130,13 +130,15 @@ class ScriptTemplateEntry(BaseModel):
     description: str
     body: str
     is_default: bool
+    environment: EnvironmentKind | None = None
 
 
 class BuildScriptTemplates(BaseModel):
     """The build-script templates and the reserved path they all belong at.
 
-    One entry per standard runtime-packaging strategy; the default entry
-    (``is_default``) is the content a fresh REE's build script is seeded with.
+    One entry per standard runtime-packaging strategy; the default entry for an
+    environment (``is_default``) is the content a fresh REE's build script there is
+    seeded with.
     """
 
     path: str
@@ -146,8 +148,8 @@ class BuildScriptTemplates(BaseModel):
 class ActivationScriptTemplates(BaseModel):
     """The activation run-script templates and both reserved activation paths.
 
-    The default template (``is_default``) is the content a fresh REE's
-    activation script is seeded with. ``verify_script_path`` is where an
+    The default template for an environment (``is_default``) is the content a
+    fresh REE's activation script there is seeded with. ``verify_script_path`` is where an
     activation verify script belongs when the author writes one; declaring it
     on the intent is an explicit act (a declared verify script must exist and
     pass).
@@ -182,17 +184,19 @@ class ScriptTemplateCatalog(BaseModel):
 
 
 def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]:
-    # The core catalogs order their entries default-first; publish that as an
-    # explicit flag so clients don't have to know the positional convention.
+    # The core catalogs order each environment's entries default-first; publish that as
+    # an explicit flag so clients don't have to know the positional convention.
+    defaults = {template.environment: template for template in reversed(templates)}
     return [
         ScriptTemplateEntry(
             key=template.key,
             label=template.label,
             description=template.description,
             body=template.body,
-            is_default=index == 0,
+            is_default=defaults[template.environment] is template,
+            environment=template.environment,
         )
-        for index, template in enumerate(templates)
+        for template in templates
     ]
 
 
@@ -205,10 +209,12 @@ def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]
 def list_script_templates() -> ScriptTemplateCatalog:
     """Starter templates for the REE-owned scripts and where each belongs.
 
-    Static per deployment. Each section marks its default entry with
-    ``is_default``; the default build and activation templates are the same
-    content a fresh REE is seeded with. The experiment templates are for
-    scripts created on demand under the reserved experiments directory.
+    Static per deployment. Each section marks the default entry for each
+    environment with ``is_default``; the default build and activation templates
+    are the content a fresh REE in that environment is seeded with. The experiment
+    templates are for scripts created on demand under the reserved experiments
+    directory. For scripts fitted to the REE's own project, use
+    ``generateScriptCandidates``.
     """
     return ScriptTemplateCatalog(
         build=BuildScriptTemplates(

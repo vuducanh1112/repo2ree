@@ -53,9 +53,15 @@ class ReeCreatePayload(StrictRequestModel):
 
 
 class ReeDefinitionPatchPayload(StrictRequestModel):
-    """Merge top-level fields into the current portable REE definition."""
+    """Replace top-level fields of the current portable REE definition."""
 
-    definition_patch: dict[str, object] = Field(default_factory=dict)
+    definition_patch: dict[str, object] = Field(
+        default_factory=dict,
+        description="Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, "
+        "and sizes are derived from the files, so a patch names only what the author decides, such as "
+        '`{"build_runtime": {"runtime_path": "runtime.tar"}}` or '
+        '`{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.',
+    )
     expected_version: str | None = None
 
 
@@ -74,7 +80,9 @@ class SourceAcquirePayload(StrictRequestModel):
 
 
 class UploadInitPayload(StrictRequestModel):
-    file_name: str
+    file_name: str = Field(
+        description="The archive's name: one ending in .zip is read as a zip, any other as a tarball."
+    )
     size: int = Field(ge=0)
     content_type: str
 
@@ -100,6 +108,6 @@ class WorkspaceFileContentPayload(StrictRequestModel):
 
 
 class ReeSealPayload(StrictRequestModel):
-    include_source: bool = False
-    include_runtime: bool = False
-    include_results: bool = False
+    include_source: bool = Field(default=False, description="Put the source snapshot in the sealed archive.")
+    include_runtime: bool = Field(default=False, description="Put the declared runtime artifact in the sealed archive.")
+    include_results: bool = Field(default=False, description="Put everything under results/ in the sealed archive.")

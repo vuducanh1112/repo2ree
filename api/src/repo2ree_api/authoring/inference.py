@@ -75,7 +75,11 @@ class GenerateScriptCandidatesPayload(BaseModel):
     responses=ERROR_RESPONSES,
 )
 def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandidatesPayload) -> InferenceReport:
-    """Synchronously generate candidate scripts for the requested targets.
+    """Synchronously generate candidate scripts for the requested targets, from the REE's own project.
+
+    This proposes the build script (from a Dockerfile or a requirements.txt, say)
+    and scaffolds the activation and experiment scripts. Nothing is written:
+    ``writeReeFile`` is how a candidate is adopted.
 
     Read-only and always recomputed: every call rescans and re-runs the DAGs
     against current inputs, so it needs no idempotency key and returns the report

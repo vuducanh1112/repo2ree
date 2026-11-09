@@ -98,29 +98,41 @@ workbench services.
 
 ## Authoring lifecycle
 
-Provisioning, uploads, and execution stages are asynchronous: they return a
-`run_id`, and clients await completion by long-polling `observeRun` until the
-run reaches a terminal status (`succeeded`, `failed`, `canceled`). Definition
-and file edits, reads, and sealing are synchronous. A REE is authored end to end
-in this order:
+Creating an REE, source extraction, every execution stage, and sealing are
+asynchronous: they return a `run_id`. `observeRun` waits until there are new log
+entries or the run ends, so it can return while the run is still `running`: call
+it again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,
+`canceled`). Definition and file edits, reads, and generating script candidates
+are synchronous. A REE is authored end to end in this order:
 
-1. `createRee` — provision a workbench; await the returned provisioning run.
-2. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
+1. Discover: `listStores` says what each store's workbench offers (`backend`,
+   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,
+   and the operations that advance each. `listScriptTemplates` gives the starter
+   scripts and where they belong.
+2. `createRee` — create the REE in a store; await the returned run. It declares the
+   image you ask for or the store's first, or the store's host if it offers none,
+   and starts with scripts that suit that environment.
+3. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
    `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned
-   upload URL), then `completeSourceUpload`; await the extraction run.
-3. `getReeState` — compact durable state plus file metadata, never inline
-   contents; read file bytes via `readReeFile`.
-4. Author the workspace: `writeReeFile` / `deleteReeFile`, and record catalog
-   metadata via `patchReeDefinition`.
-5. Optionally build and assess: `startBuild`, `startActivationTest`,
-   `startEvaluate` / `getEvaluateReport`.
-6. `sealRee` — freeze the REE; the returned document carries
+   `upload_url`, relative to this API), then `completeSourceUpload`; await the
+   extraction run.
+4. `getReeState` — compact durable state plus file metadata, never inline contents;
+   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.
+5. Build: `generateScriptCandidates` proposes a build script from the project.
+   `writeReeFile` writes it, `patchReeDefinition` declares its
+   `build_runtime.runtime_path`, then `startBuild`.
+6. `generateScriptCandidates` also scaffolds the activation script, then
+   `startActivationTest`. The scaffolds refuse to run until you fill in the command.
+7. Declare each experiment via `patchReeDefinition`, write its run and verify
+   scripts as in step 6, then `startExperiment`.
+8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,
+   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.
+9. `sealRee` — freeze the REE; await the returned run, after which `getRee` carries
    `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.
-7. `deleteRee` — tear the workbench down.
+10. `deleteRee` — delete the REE from its store.
 
-A complete, CI-asserted walkthrough of this sequence as real `curl` calls lives
-in `testbed/suites/walkthrough/api_walkthrough.py` (see the external documentation
-link).
+The external documentation link is a walkthrough of this sequence as real `curl`
+calls.
 """
 
 _OPENAPI_TAGS = [
@@ -143,7 +155,7 @@ app = FastAPI(
     # the repo (fetched from a live server), so a repo-relative path would
     # dangle. Points at the walkthrough script on the public Codeberg mirror.
     openapi_external_docs={
-        "description": "End-to-end API authoring walkthrough (real curl session, CI-asserted)",
+        "description": "End-to-end API authoring walkthrough (real curl session)",
         "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/testbed/suites/walkthrough/api_walkthrough.py",
     },
     lifespan=lifespan,
@@ -332,4 +344,4 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     responses={500: {"model": ErrorEnvelope}},
 )
 def read_root() -> HealthResponse:
-    return HealthResponse(status="online", message="This is the REE API backend.")
+    return HealthResponse(status="online", message="This is the REE API backend. It describes itself at /openapi.json.")

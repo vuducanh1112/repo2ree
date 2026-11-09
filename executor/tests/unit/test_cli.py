@@ -22,6 +22,7 @@ from click.testing import CliRunner
 
 import repo2ree_core.persistence.layout as layout_mod
 import repo2ree_executor.cli as cli_module
+from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_executor.cli import cli
@@ -345,3 +346,10 @@ def test_build_archive_before_seal_writes_a_draft_bundle(initialized_ree: Path) 
         assert "ree.zip" not in archive.namelist()
         manifest = json.loads(archive.read("ree/ree.json"))
     assert "seal" not in manifest
+
+
+def test_init_ree_seeds_the_scripts_of_its_environment(ree_root: Path) -> None:
+    result = runner.invoke(cli, ["init-ree", "--name", "demo", "--environment", "host"])
+
+    assert result.exit_code == 0, result.output
+    assert "docker" not in ReeDirectory(ReeLayout.in_workbench()).overlay.read_text(RESERVED_BUILD_SCRIPT)

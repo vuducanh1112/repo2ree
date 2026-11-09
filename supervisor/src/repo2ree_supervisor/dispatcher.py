@@ -40,6 +40,7 @@ from repo2ree_protocol.queries import (
     READ_REE_FILE_PATH,
 )
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.environment import EnvironmentKind
 from repo2ree_ree.model import Ree
 from repo2ree_ree.review import ReviewSet
 from repo2ree_supervisor.client import ReeBusyError, WorkbenchClient, WorkbenchUnavailableError
@@ -482,10 +483,12 @@ class CommandDispatcher:
         with us (see ``WorkbenchClient.copy_in``)."""
         self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)
 
-    def init_ree(self, handle: ReeRoute, name: str) -> None:
+    def init_ree(self, handle: ReeRoute, name: str, environment: EnvironmentKind = "image") -> None:
         """Create the REE in the store its workbench serves; refused where one is already."""
         with self._locks(handle.ree_id):
-            self._workbench.exec_simple(handle.workbench_id, ["init-ree", "--name", name], ree_id=handle.ree_id)
+            self._workbench.exec_simple(
+                handle.workbench_id, ["init-ree", "--name", name, "--environment", environment], ree_id=handle.ree_id
+            )
 
     def delete_ree(self, handle: ReeRoute) -> None:
         """Delete the REE from the store its workbench serves; refused while one of its runs is active."""

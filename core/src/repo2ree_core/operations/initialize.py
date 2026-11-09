@@ -11,6 +11,7 @@ from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_ree.environment import EnvironmentKind
 from repo2ree_ree.model import (
     BuildRuntimeDefinition,
     CapturePolicy,
@@ -28,7 +29,7 @@ class InitializationResult:
     snapshot_id: str
 
 
-def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
+def initialize_ree(layout: ReeLayout, *, name: str, environment: EnvironmentKind = "image") -> InitializationResult:
     """Preserve existing files on retry, including after a failed first capture.
 
     A pre-existing REE without history gets an explicitly named existing-state
@@ -40,7 +41,7 @@ def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
         existing = store.manifest_exists()
         if not existing:
             store.ensure_dirs()
-            store.ensure_reserved_overlay_scripts()
+            store.ensure_reserved_overlay_scripts(environment)
             build = store.overlay.absolute(RESERVED_BUILD_SCRIPT)
             activation = store.overlay.absolute(RESERVED_ACTIVATION_SCRIPT)
             store.write_ree(

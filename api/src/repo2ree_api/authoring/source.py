@@ -78,6 +78,7 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
     responses=ERROR_RESPONSES,
 )
 def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
+    """Start a source upload: a zip or tarball whose bytes go to the returned ``upload_url``."""
     return UploadInitResponse.model_validate(
         mint_upload_token(ree_id, payload, upload_route="source:upload", purpose="source", action="upload_source")
     )
@@ -91,6 +92,7 @@ def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResp
     responses=ERROR_RESPONSES,
 )
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
+    """Store the archive's raw bytes; ``completeSourceUpload`` then extracts them."""
     return UploadStoredResponse.model_validate(
         await stage_upload_bytes(ree_id, upload_token, request, purpose="source")
     )

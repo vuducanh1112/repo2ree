@@ -114,6 +114,8 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
     responses=ERROR_RESPONSES,
 )
 def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
+    """Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal."""
+
     def record_sealed_ree(handle: ReeRoute, result: ActionResult) -> ActionResult:
         document = command_dispatcher.get_ree_document(handle)
         _record_in_ree_index(ree_id, document)

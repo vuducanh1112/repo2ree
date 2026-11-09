@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nProvisioning, uploads, and execution stages are asynchronous: they return a\n`run_id`, and clients await completion by long-polling `observeRun` until the\nrun reaches a terminal status (`succeeded`, `failed`, `canceled`). Definition\nand file edits, reads, and sealing are synchronous. A REE is authored end to end\nin this order:\n\n1. `createRee` \u2014 provision a workbench; await the returned provisioning run.\n2. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   upload URL), then `completeSourceUpload`; await the extraction run.\n3. `getReeState` \u2014 compact durable state plus file metadata, never inline\n   contents; read file bytes via `readReeFile`.\n4. Author the workspace: `writeReeFile` / `deleteReeFile`, and record catalog\n   metadata via `patchReeDefinition`.\n5. Optionally build and assess: `startBuild`, `startActivationTest`,\n   `startEvaluate` / `getEvaluateReport`.\n6. `sealRee` \u2014 freeze the REE; the returned document carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n7. `deleteRee` \u2014 tear the workbench down.\n\nA complete, CI-asserted walkthrough of this sequence as real `curl` calls lives\nin `testbed/suites/walkthrough/api_walkthrough.py` (see the external documentation\nlink).\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_runtime.runtime_path`, then `startBuild`.\n6. `generateScriptCandidates` also scaffolds the activation script, then\n   `startActivationTest`. The scaffolds refuse to run until you fill in the command.\n7. Declare each experiment via `patchReeDefinition`, write its run and verify\n   scripts as in step 6, then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -12,6 +12,7 @@
           "rees"
         ],
         "summary": "Create Ree Route",
+        "description": "Create an empty REE in a store, in a background run.",
         "operationId": "createRee",
         "requestBody": {
           "required": true,
@@ -443,6 +444,7 @@
           "rees"
         ],
         "summary": "Delete Ree Route",
+        "description": "Delete the REE from its store.",
         "operationId": "deleteRee",
         "parameters": [
           {
@@ -1185,6 +1187,7 @@
           "runs"
         ],
         "summary": "Observe Ree Run",
+        "description": "Wait up to ``wait_seconds`` for new log entries or the run's end, whichever is first.\n\nIt can return while the run is still going: call it again with ``next_cursor``\nuntil ``run.status`` is terminal.",
         "operationId": "observeRun",
         "parameters": [
           {
@@ -1630,7 +1633,7 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks its default entry with\n``is_default``; the default build and activation templates are the same\ncontent a fresh REE is seeded with. The experiment templates are for\nscripts created on demand under the reserved experiments directory.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks the default entry for each\nenvironment with ``is_default``; the default build and activation templates\nare the content a fresh REE in that environment is seeded with. The experiment\ntemplates are for scripts created on demand under the reserved experiments\ndirectory. For scripts fitted to the REE's own project, use\n``generateScriptCandidates``.",
         "operationId": "listScriptTemplates",
         "responses": {
           "200": {
@@ -1896,6 +1899,7 @@
           "sources"
         ],
         "summary": "Upload Init Route",
+        "description": "Start a source upload: a zip or tarball whose bytes go to the returned ``upload_url``.",
         "operationId": "initializeSourceUpload",
         "parameters": [
           {
@@ -2039,6 +2043,7 @@
           "sources"
         ],
         "summary": "Store Upload Bytes Route",
+        "description": "Store the archive's raw bytes; ``completeSourceUpload`` then extracts them.",
         "operationId": "uploadSourceBytes",
         "parameters": [
           {
@@ -2456,6 +2461,7 @@
           "rees"
         ],
         "summary": "Patch Ree Definition Route",
+        "description": "Replace top-level fields of the definition and return the whole REE document.",
         "operationId": "patchReeDefinition",
         "parameters": [
           {
@@ -2882,6 +2888,7 @@
           "files"
         ],
         "summary": "Put Workspace File Content Route",
+        "description": "Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.\n\n``listScriptTemplates`` says where each script belongs. ``if_match`` refuses\nthe write if the file has changed since its etag was read.",
         "operationId": "writeReeFile",
         "parameters": [
           {
@@ -3180,7 +3187,7 @@
           "files"
         ],
         "summary": "Generate Script Candidates Route",
-        "description": "Synchronously generate candidate scripts for the requested targets.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
+        "description": "Synchronously generate candidate scripts for the requested targets, from the REE's own project.\n\nThis proposes the build script (from a Dockerfile or a requirements.txt, say)\nand scaffolds the activation and experiment scripts. Nothing is written:\n``writeReeFile`` is how a candidate is adopted.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
         "operationId": "generateScriptCandidates",
         "parameters": [
           {
@@ -5294,6 +5301,7 @@
           "rees"
         ],
         "summary": "Seal Ree Route",
+        "description": "Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal.",
         "operationId": "sealRee",
         "parameters": [
           {
@@ -8207,7 +8215,7 @@
           "templates"
         ],
         "title": "ActivationScriptTemplates",
-        "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template (``is_default``) is the content a fresh REE's\nactivation script is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
+        "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template for an environment (``is_default``) is the content a\nfresh REE's activation script there is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
       },
       "ArchiveBindingAttestation": {
         "properties": {
@@ -8808,7 +8816,7 @@
           "templates"
         ],
         "title": "BuildScriptTemplates",
-        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry\n(``is_default``) is the content a fresh REE's build script is seeded with."
+        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry for an\nenvironment (``is_default``) is the content a fresh REE's build script there is\nseeded with."
       },
       "BundleContents": {
         "properties": {
@@ -12522,7 +12530,8 @@
           "definition_patch": {
             "additionalProperties": true,
             "type": "object",
-            "title": "Definition Patch"
+            "title": "Definition Patch",
+            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"build_runtime\": {\"runtime_path\": \"runtime.tar\"}}` or `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
           },
           "expected_version": {
             "anyOf": [
@@ -12539,7 +12548,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ReeDefinitionPatchPayload",
-        "description": "Merge top-level fields into the current portable REE definition."
+        "description": "Replace top-level fields of the current portable REE definition."
       },
       "ReeDefinitionReplacePayload": {
         "properties": {
@@ -12889,16 +12898,19 @@
           "include_source": {
             "type": "boolean",
             "title": "Include Source",
+            "description": "Put the source snapshot in the sealed archive.",
             "default": false
           },
           "include_runtime": {
             "type": "boolean",
             "title": "Include Runtime",
+            "description": "Put the declared runtime artifact in the sealed archive.",
             "default": false
           },
           "include_results": {
             "type": "boolean",
             "title": "Include Results",
+            "description": "Put everything under results/ in the sealed archive.",
             "default": false
           }
         },
@@ -14757,6 +14769,21 @@
           "is_default": {
             "type": "boolean",
             "title": "Is Default"
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "host"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Environment"
           }
         },
         "type": "object",
@@ -14768,7 +14795,7 @@
           "is_default"
         ],
         "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; exactly one entry per section carries\n``is_default`` (for the seeded scripts it is the content a fresh REE starts\nwith). The run-script sections currently carry a single ``docker`` variant\neach; the keys exist so further strategies can be added without changing\nthe catalog shape."
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``environment`` is the REE environment kind a\nvariant suits, or null for one that suits any."
       },
       "ScriptValidation": {
         "properties": {
@@ -15831,7 +15858,8 @@
         "properties": {
           "file_name": {
             "type": "string",
-            "title": "File Name"
+            "title": "File Name",
+            "description": "The archive's name: one ending in .zip is read as a zip, any other as a tarball."
           },
           "size": {
             "type": "integer",
@@ -16195,7 +16223,7 @@
     }
   ],
   "externalDocs": {
-    "description": "End-to-end API authoring walkthrough (real curl session, CI-asserted)",
+    "description": "End-to-end API authoring walkthrough (real curl session)",
     "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/testbed/suites/walkthrough/api_walkthrough.py"
   }
 }

@@ -14,7 +14,10 @@ export interface paths {
         /** List Rees Route */
         get: operations["listRees"];
         put?: never;
-        /** Create Ree Route */
+        /**
+         * Create Ree Route
+         * @description Create an empty REE in a store, in a background run.
+         */
         post: operations["createRee"];
         delete?: never;
         options?: never;
@@ -33,7 +36,10 @@ export interface paths {
         get: operations["getRee"];
         put?: never;
         post?: never;
-        /** Delete Ree Route */
+        /**
+         * Delete Ree Route
+         * @description Delete the REE from its store.
+         */
         delete: operations["deleteRee"];
         options?: never;
         head?: never;
@@ -118,7 +124,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Observe Ree Run */
+        /**
+         * Observe Ree Run
+         * @description Wait up to ``wait_seconds`` for new log entries or the run's end, whichever is first.
+         *
+         *     It can return while the run is still going: call it again with ``next_cursor``
+         *     until ``run.status`` is terminal.
+         */
         get: operations["observeRun"];
         put?: never;
         post?: never;
@@ -177,10 +189,12 @@ export interface paths {
          * List Script Templates
          * @description Starter templates for the REE-owned scripts and where each belongs.
          *
-         *     Static per deployment. Each section marks its default entry with
-         *     ``is_default``; the default build and activation templates are the same
-         *     content a fresh REE is seeded with. The experiment templates are for
-         *     scripts created on demand under the reserved experiments directory.
+         *     Static per deployment. Each section marks the default entry for each
+         *     environment with ``is_default``; the default build and activation templates
+         *     are the content a fresh REE in that environment is seeded with. The experiment
+         *     templates are for scripts created on demand under the reserved experiments
+         *     directory. For scripts fitted to the REE's own project, use
+         *     ``generateScriptCandidates``.
          */
         get: operations["listScriptTemplates"];
         put?: never;
@@ -217,7 +231,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload Init Route */
+        /**
+         * Upload Init Route
+         * @description Start a source upload: a zip or tarball whose bytes go to the returned ``upload_url``.
+         */
         post: operations["initializeSourceUpload"];
         delete?: never;
         options?: never;
@@ -233,7 +250,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Store Upload Bytes Route */
+        /**
+         * Store Upload Bytes Route
+         * @description Store the archive's raw bytes; ``completeSourceUpload`` then extracts them.
+         */
         put: operations["uploadSourceBytes"];
         post?: never;
         delete?: never;
@@ -290,7 +310,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Patch Ree Definition Route */
+        /**
+         * Patch Ree Definition Route
+         * @description Replace top-level fields of the definition and return the whole REE document.
+         */
         patch: operations["patchReeDefinition"];
         trace?: never;
     };
@@ -319,7 +342,13 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Put Workspace File Content Route */
+        /**
+         * Put Workspace File Content Route
+         * @description Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
+         *
+         *     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
+         *     the write if the file has changed since its etag was read.
+         */
         put: operations["writeReeFile"];
         post?: never;
         /** Delete Workspace File Content Route */
@@ -340,7 +369,11 @@ export interface paths {
         put?: never;
         /**
          * Generate Script Candidates Route
-         * @description Synchronously generate candidate scripts for the requested targets.
+         * @description Synchronously generate candidate scripts for the requested targets, from the REE's own project.
+         *
+         *     This proposes the build script (from a Dockerfile or a requirements.txt, say)
+         *     and scaffolds the activation and experiment scripts. Nothing is written:
+         *     ``writeReeFile`` is how a candidate is adopted.
          *
          *     Read-only and always recomputed: every call rescans and re-runs the DAGs
          *     against current inputs, so it needs no idempotency key and returns the report
@@ -622,7 +655,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Seal Ree Route */
+        /**
+         * Seal Ree Route
+         * @description Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal.
+         */
         post: operations["sealRee"];
         delete?: never;
         options?: never;
@@ -1123,8 +1159,8 @@ export interface components {
          * ActivationScriptTemplates
          * @description The activation run-script templates and both reserved activation paths.
          *
-         *     The default template (``is_default``) is the content a fresh REE's
-         *     activation script is seeded with. ``verify_script_path`` is where an
+         *     The default template for an environment (``is_default``) is the content a
+         *     fresh REE's activation script there is seeded with. ``verify_script_path`` is where an
          *     activation verify script belongs when the author writes one; declaring it
          *     on the intent is an explicit act (a declared verify script must exist and
          *     pass).
@@ -1451,8 +1487,9 @@ export interface components {
          * BuildScriptTemplates
          * @description The build-script templates and the reserved path they all belong at.
          *
-         *     One entry per standard runtime-packaging strategy; the default entry
-         *     (``is_default``) is the content a fresh REE's build script is seeded with.
+         *     One entry per standard runtime-packaging strategy; the default entry for an
+         *     environment (``is_default``) is the content a fresh REE's build script there is
+         *     seeded with.
          */
         BuildScriptTemplates: {
             /** Path */
@@ -2963,10 +3000,13 @@ export interface components {
         };
         /**
          * ReeDefinitionPatchPayload
-         * @description Merge top-level fields into the current portable REE definition.
+         * @description Replace top-level fields of the current portable REE definition.
          */
         ReeDefinitionPatchPayload: {
-            /** Definition Patch */
+            /**
+             * Definition Patch
+             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"build_runtime": {"runtime_path": "runtime.tar"}}` or `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
+             */
             definition_patch?: {
                 [key: string]: unknown;
             };
@@ -3082,16 +3122,19 @@ export interface components {
         ReeSealPayload: {
             /**
              * Include Source
+             * @description Put the source snapshot in the sealed archive.
              * @default false
              */
             include_source: boolean;
             /**
              * Include Runtime
+             * @description Put the declared runtime artifact in the sealed archive.
              * @default false
              */
             include_runtime: boolean;
             /**
              * Include Results
+             * @description Put everything under results/ in the sealed archive.
              * @default false
              */
             include_results: boolean;
@@ -3792,11 +3835,10 @@ export interface components {
          * ScriptTemplateEntry
          * @description One named starter-template variant for an REE-owned script.
          *
-         *     Every catalog section lists these; exactly one entry per section carries
-         *     ``is_default`` (for the seeded scripts it is the content a fresh REE starts
-         *     with). The run-script sections currently carry a single ``docker`` variant
-         *     each; the keys exist so further strategies can be added without changing
-         *     the catalog shape.
+         *     Every catalog section lists these; one entry per environment carries
+         *     ``is_default`` (for the seeded scripts it is the content a fresh REE in that
+         *     environment starts with). ``environment`` is the REE environment kind a
+         *     variant suits, or null for one that suits any.
          */
         ScriptTemplateEntry: {
             /** Key */
@@ -3809,6 +3851,8 @@ export interface components {
             body: string;
             /** Is Default */
             is_default: boolean;
+            /** Environment */
+            environment?: ("image" | "host") | null;
         };
         /**
          * ScriptValidation
@@ -4218,7 +4262,10 @@ export interface components {
         };
         /** UploadInitPayload */
         UploadInitPayload: {
-            /** File Name */
+            /**
+             * File Name
+             * @description The archive's name: one ending in .zip is read as a zip, any other as a tarball.
+             */
             file_name: string;
             /** Size */
             size: number;

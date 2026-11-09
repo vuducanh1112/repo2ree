@@ -50,6 +50,11 @@ def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
     responses=ERROR_RESPONSES,
 )
 def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
+    """Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
+
+    ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
+    the write if the file has changed since its etag was read.
+    """
     with author_api_action("write_file", ree_id, path=payload.path):
         return _write_file(ree_id, payload)
 

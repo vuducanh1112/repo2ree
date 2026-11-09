@@ -25,6 +25,7 @@ definition_router = APIRouter(tags=["rees"])
     responses=ERROR_RESPONSES,
 )
 def patch_ree_definition_route(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDocument:
+    """Replace top-level fields of the definition and return the whole REE document."""
     with author_api_action("edit_definition", ree_id):
         return _patch_definition(ree_id, payload)
 

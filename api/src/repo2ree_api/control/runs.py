@@ -131,6 +131,11 @@ def observe_ree_run(
     wait_seconds: Annotated[float, Query(ge=0, le=30)] = 25,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> RunObservation:
+    """Wait up to ``wait_seconds`` for new log entries or the run's end, whichever is first.
+
+    It can return while the run is still going: call it again with ``next_cursor``
+    until ``run.status`` is terminal.
+    """
     with author_api_action("watch_action", ree_id, run_id=run_id, about_action_id=run_action_id(ree_id, run_id)):
         return _observe(ree_id, run_id, cursor, wait_seconds, limit)
 

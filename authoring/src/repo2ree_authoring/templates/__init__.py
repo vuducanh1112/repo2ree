@@ -8,10 +8,10 @@ and verify templates cannot be seeded (their paths only exist once an
 experiment is named), so the API serves them for clients to prefill from.
 
 Every script kind carries a catalog of named :class:`ScriptTemplate` variants,
-one per standard case, so new strategies (a nix build, a bare-venv runtime, …)
-slot in as further entries. Currently each run-script kind has a single
-``docker`` variant. The first entry of a catalog is the default; for the
-seeded scripts it is the content a fresh REE starts with.
+one per standard case, so new strategies (a nix build, …) slot in as further
+entries. A run-script variant names the environment it suits: its first variant
+for an environment is that environment's default, and for the seeded scripts it
+is the content a fresh REE there starts with.
 
 Leaf module like ``reserved_paths``: it imports nothing from
 ``repo2ree_core``, so any layer can load templates without an import cycle.
@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from importlib.resources import files
+
+from repo2ree_ree.environment import EnvironmentKind
 
 
 def _template(name: str) -> str:
@@ -41,10 +43,12 @@ class ScriptTemplate:
     label: str
     description: str
     body: str
+    # The environment it suits; None for one that suits any, as a verify script does.
+    environment: EnvironmentKind | None = None
 
 
-def reserved_script_template(reserved_path: str) -> str:
-    """Return the default starter template for a seeded reserved script path.
+def reserved_script_template(reserved_path: str, environment: EnvironmentKind = "image") -> str:
+    """Return the default starter template for a seeded reserved script path in ``environment``.
 
     Catalogs are keyed by the script's file name, so the lookup is stable
     under renames of the reserved directory itself.
@@ -53,7 +57,8 @@ def reserved_script_template(reserved_path: str) -> str:
         "build_script.sh": build_templates,
         "activation.sh": activation_templates,
     }
-    return catalogs[reserved_path.rsplit("/", 1)[-1]]()[0].body
+    templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
+    return next(template.body for template in templates if template.environment == environment)
 
 
 def build_templates() -> tuple[ScriptTemplate, ...]:
@@ -64,6 +69,14 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
             label="Docker image",
             description="Build the project's Dockerfile into an image and save it as the runtime tarball.",
             body=_template("build_script_docker.sh"),
+            environment="image",
+        ),
+        ScriptTemplate(
+            key="venv",
+            label="Python virtual environment",
+            description="Install requirements.txt into a virtual environment on the host and pack it as the runtime.",
+            body=_template("build_script_venv.sh"),
+            environment="host",
         ),
     )
 
@@ -76,6 +89,14 @@ def activation_templates() -> tuple[ScriptTemplate, ...]:
             label="Docker runtime",
             description="Load the saved runtime image and run a command inside it to prove the runtime works.",
             body=_template("activation_docker.sh"),
+            environment="image",
+        ),
+        ScriptTemplate(
+            key="venv",
+            label="Python virtual environment",
+            description="Restore the packed virtual environment and run a command with it to prove the runtime works.",
+            body=_template("activation_venv.sh"),
+            environment="host",
         ),
     )
 
@@ -89,6 +110,15 @@ def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
             description="Load the saved runtime image and run the experiment inside it, "
             "teeing stdout to a workspace log the verify script can read.",
             body=_template("experiment_run_docker.sh"),
+            environment="image",
+        ),
+        ScriptTemplate(
+            key="venv",
+            label="Python virtual environment",
+            description="Restore the packed virtual environment and run the experiment with it, "
+            "writing stdout to a workspace log the verify script can read.",
+            body=_template("experiment_run_venv.sh"),
+            environment="host",
         ),
     )
 

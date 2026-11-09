@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -22,9 +23,14 @@ from repo2ree_ree.reserved_paths import (
 
 def _assert_entries_match(entries: list[dict[str, Any]], expected_keys: list[str]) -> None:
     assert [entry["key"] for entry in entries] == expected_keys
-    # Exactly one entry per section is the explicit default: the first, per
+    # Each environment has exactly one explicit default: its first entry, per
     # the core catalogs' ordering.
-    assert [entry["is_default"] for entry in entries] == [True] + [False] * (len(entries) - 1)
+    first: dict[str | None, str] = {}
+    for entry in entries:
+        first.setdefault(entry["environment"], entry["key"])
+    assert [entry["is_default"] for entry in entries] == [
+        first[entry["environment"]] == entry["key"] for entry in entries
+    ]
     for entry in entries:
         assert entry["label"]
         assert entry["description"]
@@ -56,3 +62,32 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
 
     # The verify templates mirror the packaged registry, default first.
     _assert_entries_match(body["verify"], [t.key for t in verify_templates()])
+
+
+def test_a_host_environment_has_templates_that_need_no_container_engine(client: TestClient) -> None:
+    body = client.get("/api/v1/script-templates").json()
+
+    for section in (body["build"], body["activation"], body["experiment"]):
+        [host] = [entry for entry in section["templates"] if entry["environment"] == "host"]
+        assert host["is_default"]
+        assert "docker" not in host["body"]
+
+
+def test_the_steps_and_the_overview_name_operations_there_are(client: TestClient) -> None:
+    document = client.get("/openapi.json").json()
+    operations = {operation["operationId"] for path in document["paths"].values() for operation in path.values()}
+    steps = client.get("/api/v1/ree-steps").json()["steps"]
+
+    assert {action for step in steps for action in step["actions"]} <= operations
+    assert set(re.findall(r"`([a-z][A-Za-z]+[A-Z][A-Za-z]+)`", document["info"]["description"])) <= operations | {
+        "next_cursor",
+        "upload_url",
+    }
+    assert "generateScriptCandidates" in document["info"]["description"]
+
+
+def test_script_inference_is_how_a_step_gets_its_script(client: TestClient) -> None:
+    actions = {step["key"]: step["actions"] for step in client.get("/api/v1/ree-steps").json()["steps"]}
+
+    for step in ("build", "activation", "experiments"):
+        assert "generateScriptCandidates" in actions[step]

@@ -15,15 +15,18 @@ import pytest
 
 from repo2ree_authoring.lint import lint_script
 from repo2ree_authoring.lint.lint import CONTRACT_ONLY
+from repo2ree_authoring.templates import reserved_script_template
 from repo2ree_protocol.command import ScriptTarget, TargetKind
 from repo2ree_protocol.lint import ScriptDeclarations
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "authoring/src/repo2ree_authoring/templates"
 
-# The templates name `runtime.tar`, so an REE declaring that path is the one
-# they are written for. Declaring something else would make every template
-# "wrong" for a reason that is about the REE, not about the template.
-_DECLARATIONS = ScriptDeclarations(runtime_path="runtime.tar")
+# Each template names its runtime, so an REE declaring that path is the one it
+# is written for. Declaring something else would make every template "wrong" for
+# a reason that is about the REE, not about the template.
+_DOCKER = ScriptDeclarations(runtime_path="runtime.tar")
+_VENV = ScriptDeclarations(runtime_path="runtime-venv.tar.gz")
 
 
 def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
@@ -31,7 +34,7 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
     report = lint_script(
         ScriptTarget(kind=kind, path=f"ree-scripts/{name}"),
         source,
-        declarations=_DECLARATIONS,
+        declarations=_VENV if "venv" in name else _DOCKER,
         tiers=CONTRACT_ONLY,
     )
     return tuple(finding.code for finding in report.findings)
@@ -43,6 +46,9 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
         ("build_script_docker.sh", "build"),
         ("activation_docker.sh", "activation_run"),
         ("experiment_run_docker.sh", "experiment_run"),
+        ("build_script_venv.sh", "build"),
+        ("activation_venv.sh", "activation_run"),
+        ("experiment_run_venv.sh", "experiment_run"),
     ],
 )
 def test_a_run_or_build_template_lints_clean(name: str, kind: TargetKind) -> None:
@@ -65,12 +71,21 @@ def test_a_verify_template_says_only_that_it_is_unedited(name: str) -> None:
     assert set(_lint_template(name, "experiment_verify")) <= {"unedited_placeholder"}
 
 
+def test_a_fresh_ree_starts_with_scripts_that_suit_its_environment() -> None:
+    assert "docker build" in reserved_script_template(RESERVED_BUILD_SCRIPT, "image")
+    assert "docker" not in reserved_script_template(RESERVED_BUILD_SCRIPT, "host")
+    assert "docker" not in reserved_script_template(RESERVED_ACTIVATION_SCRIPT, "host")
+
+
 def test_every_template_is_covered_by_a_case_above() -> None:
     # A new template that nobody linted would quietly escape this file.
     covered = {
         "build_script_docker.sh",
         "activation_docker.sh",
         "experiment_run_docker.sh",
+        "build_script_venv.sh",
+        "activation_venv.sh",
+        "experiment_run_venv.sh",
         "verify_stdout_contains.sh",
         "verify_stdout_regex.sh",
         "verify_numeric_tolerance.sh",

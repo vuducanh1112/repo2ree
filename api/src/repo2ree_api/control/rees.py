@@ -53,6 +53,7 @@ rees_router = APIRouter(tags=["rees"])
     responses=ERROR_RESPONSES,
 )
 def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
+    """Create an empty REE in a store, in a background run."""
     ree_id = uuid.uuid4().hex
     return _create_in_store(ree_id, payload.name or ree_id[:8], payload.store_id.strip(), payload)
 
@@ -79,7 +80,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
         try:
             handle = require_handle(rid)
             environment = _store_environment(_store_images(store_id) or (), requested)
-            command_dispatcher.init_ree(handle, name)
+            command_dispatcher.init_ree(handle, name, environment.kind)
         except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
             ree_registry.delete(rid)
             detail = exc.detail if isinstance(exc, HTTPException) else exc
@@ -242,6 +243,7 @@ def _ree_state(ree_id: str) -> ReeState:
     responses=ERROR_RESPONSES,
 )
 def delete_ree_route(ree_id: str) -> DeleteReeResponse:
+    """Delete the REE from its store."""
     with author_api_action("delete_ree", ree_id):
         record = ree_registry.get(ree_id)
         if record is None:
