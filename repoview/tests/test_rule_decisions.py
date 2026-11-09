@@ -7,11 +7,21 @@ from collections import Counter
 from pathlib import Path
 
 from repo2ree_repoview.overview.bundle import Bundle
-from repo2ree_repoview.overview.exports import SPEC_EXPORT, Operations, Spec, exported
+from repo2ree_repoview.overview.exports import SPEC_EXPORT, Operations, ShowcaseRuns, Spec, exported
 from repo2ree_repoview.overview.html import rule_link
-from repo2ree_repoview.overview.pages.coverage import page_coverage
+from repo2ree_repoview.overview.pages.coverage import page_coverage, page_showcase_coverage
 from repo2ree_repoview.overview.pages.gates import evidence_links
-from repo2ree_repoview.overview.receipt import Decision, Evidence, Exercised, Finding, Receipt, decisions
+from repo2ree_repoview.overview.receipt import (
+    Decision,
+    Evidence,
+    Exercised,
+    Finding,
+    Receipt,
+    RunRecord,
+    TierNeed,
+    decisions,
+    receipt_tests,
+)
 
 RUN, PASSING, FAILING = "e2e-system-1", "tests::passing", "tests::lost"
 
@@ -56,7 +66,7 @@ def test_each_rule_a_test_triggered_is_decided_by_that_test(tmp_path: Path) -> N
     bundled_test(bundle, failing, [{**ends, "verdict": "violated", "triggered": 1, "findings": [finding]}], ())
     evidence = Evidence(tests={(RUN, PASSING): passing, (RUN, FAILING): failing})
 
-    decided = decisions(bundle, receipt(), evidence)
+    decided = decisions(bundle, receipt_tests(receipt()), evidence)
     assert list(decided) == ["allocation-ends"]  # A rule no test triggered was decided by none.
     held, broken = decided["allocation-ends"]
     assert (held.test, held.verdict, held.excused) == (PASSING, "passed", None)
@@ -129,3 +139,95 @@ def test_a_test_links_its_traces_once_whose_page_has_a_tab_per_ree(tmp_path: Pat
     assert evidence_links(bundle, "evidence/two").endswith(
         '<a href="evidence.html?from=assurance-gate#evidence/two/traces/dossier.html">traces · 2 REEs</a>'
     )
+
+
+def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tmp_path: Path) -> None:
+    spec = Spec.model_validate_json(exported(SPEC_EXPORT))
+    showcases = ShowcaseRuns.model_validate(
+        {
+            "format": "repo2ree-showcase-runs/1",
+            "tiers": [
+                {
+                    "tier": "showcase",
+                    "surface": "browser",
+                    "environment": None,
+                    "recipe": "just test-showcase",
+                    "run": None,
+                },
+                {
+                    "tier": "showcase-api-bare",
+                    "surface": "api",
+                    "environment": "bare",
+                    "recipe": "just api-showcase-on bare",
+                    "run": f"test-artifacts/e2e/{RUN}",
+                },
+            ],
+            "showcases": [
+                {
+                    "name": "python_venv",
+                    "kind": "showcase",
+                    "environment": "bare",
+                    "tests": [
+                        {
+                            "surface": "api",
+                            "workflow": "authoring",
+                            "file": "testbed/suites/showcase/python_venv/test_python_venv_authoring.py",
+                            "tier": "showcase-api-bare",
+                            "run": f"test-artifacts/e2e/{RUN}",
+                            "test": PASSING,
+                        },
+                        {
+                            "surface": "browser",
+                            "workflow": "review",
+                            "file": "gui/tests/showcase/python-venv-review.spec.ts",
+                            "tier": "showcase",
+                            "run": None,
+                            "test": None,
+                        },
+                    ],
+                }
+            ],
+        }
+    )
+    record = RunRecord.model_validate(
+        {
+            "build_revision": "c" * 40,
+            "platform": "linux/amd64",
+            "tests": [{"name": PASSING, "directory": "tests/p", "outcome": "failed"}],
+        }
+    )
+    decided = {
+        "allocation-ends": [
+            Decision(PASSING, "invariant", "passed", 2, (), None, "t/verification/assurance.html", ("t/traces/r.html",))
+        ]
+    }
+    exercised = Exercised(Counter(), Counter({"allocation-ends": 2}), Counter())
+    bundle = Bundle(tmp_path / "overview", "a" * 40)
+    bundled_test(bundle, "t", [], ("r",))
+
+    page = page_showcase_coverage(
+        spec,
+        showcases,
+        {f"test-artifacts/e2e/{RUN}": record},
+        {(RUN, PASSING): "passed"},
+        exercised,
+        decided,
+        Evidence(tests={(RUN, PASSING): "t"}),
+        bundle,
+        [TierNeed("showcase-api-bare", "linux/amd64", "test-showcase-api-bare", None, None)],
+    )
+
+    assert (page.slug, page.title) == ("showcase-gate", "Showcase gate")
+    assert '<h4 id="showcase-python_venv"><code>python_venv</code> · API on <code>bare</code></h4>' in page.body
+    assert "test_python_venv_authoring.py" in page.body
+    assert 'href="evidence.html?from=showcase-gate#t/traces/r.html"' in page.body
+    assert "not in this clone</span>: <code>just test-showcase</code>" in page.body
+    # A test whose behaviour passed but which itself failed says both.
+    assert '<span class="no">failed</span>' in page.body
+    assert '<span class="no">needed</span>: <code>just test-showcase-api-bare</code>' in page.body
+    assert "<code>just test-showcase</code>" in page.body
+    assert f"<code>{RUN}</code>" in page.body
+    assert '<span class="no">1 failed</span>' in page.body
+    assert 'href="evidence.html?from=showcase-gate#t/verification/assurance.html"' in page.body
+    assert "operations.html#" not in page.body
+    assert "1 tests in 1 runs" in page.teaser

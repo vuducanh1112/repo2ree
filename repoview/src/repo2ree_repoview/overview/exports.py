@@ -376,3 +376,43 @@ class Operations(Export):
     lanes: tuple[Lane, ...]
     operations: tuple[Operation, ...]
     undrawn: tuple[Undrawn, ...] = ()
+
+
+# ---------------------------------------------------------------------------- showcase runs
+
+
+class ShowcaseTier(Document):
+    tier: str
+    surface: Literal["api", "browser"]
+    environment: str | None
+    recipe: str
+    run: str | None
+
+
+class ShowcaseTest(Document):
+    surface: Literal["api", "browser"]
+    workflow: Literal["authoring", "review"] | None
+    file: str
+    tier: str
+    run: str | None
+    test: str | None
+
+
+class Showcase(Document):
+    name: str
+    kind: Literal["showcase", "feature"]
+    environment: str | None
+    tests: tuple[ShowcaseTest, ...]
+
+
+class ShowcaseRuns(Export):
+    """Which run of each showcase tier to read, and each showcase's tests in them
+    (``python -m repo2ree_testbed showcase-runs``)."""
+
+    FORMAT = "repo2ree-showcase-runs/1"
+
+    tiers: tuple[ShowcaseTier, ...]
+    showcases: tuple[Showcase, ...]
+
+    def runs(self) -> tuple[str, ...]:
+        return tuple(tier.run for tier in self.tiers if tier.run)

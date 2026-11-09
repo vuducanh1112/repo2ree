@@ -76,7 +76,7 @@ REPORT = {
 
 
 def test_each_part_is_drawn_with_the_operations_that_moved_it(tmp_path: Path) -> None:
-    drawn = drawings(spec(), run_with(tmp_path, REPORT), {})
+    drawn = drawings(spec(), run_with(tmp_path, REPORT), {}, Evidence())
     assert "build_runtime 3" in drawn[part_drawing("Ree", "runtime")]
     assert "run_experiment 3 ✗" in drawn[part_drawing("Ree", "definition.catalog.version")]
     assert part_drawing("Ree", "definition.experiments[*]") == "spec/aggregates/Ree/definition.experiments.svg"

@@ -1,7 +1,7 @@
 # Draw the behaviour specification's machines: the system map, each machine as allowed and as the
-# assurance-gate receipt's tests took it (as this tree judges them), and each part of an aggregate with the operations that moved it.
+# assurance-gate receipt's tests and the showcases' took it (as this tree judges them), and each part of an aggregate with the operations that moved it.
 [group('Diagrams')]
-generate-spec-diagrams: export-spec (assess-behaviour "")
+generate-spec-diagrams: export-spec (assess-behaviour "") visualize-showcases
     #!/usr/bin/env bash
     set -euo pipefail
     written=$(python -m repo2ree_repoview spec-diagrams --spec {{ quote(EXPORT_DIR + "/spec.json") }} -o {{ quote(DIAGRAM_DIR + "/spec") }})

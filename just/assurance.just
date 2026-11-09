@@ -45,6 +45,24 @@ export-operations: (assess-behaviour "")
     python -m repo2ree_assurance_traceview operations "${verifications[@]}" -o {{ quote(EXPORT_DIR + "/operations.json") }}
     {{ STAMP_EXPORTS }} --by export-operations {{ quote(EXPORT_DIR + "/operations.json") }}
 
+# Write which run of each showcase tier the overview reads: the newest finished one that ran every test.
+[group('Assurance')]
+export-showcases:
+    mkdir -p {{ quote(EXPORT_DIR) }}
+    python -m repo2ree_testbed showcase-runs -o {{ quote(EXPORT_DIR + "/showcases.json") }}
+    {{ STAMP_EXPORTS }} --by export-showcases {{ quote(EXPORT_DIR + "/showcases.json") }}
+
+# Assess and draw the showcase runs the overview reads, as the assurance gate's runs are.
+[group('Assurance')]
+visualize-showcases: export-showcases
+    #!/usr/bin/env bash
+    set -euo pipefail
+    listed=$(python -m repo2ree_testbed showcase-runs --list)
+    [[ -n "$listed" ]] || exit 0
+    mapfile -t runs <<< "$listed"
+    python -m repo2ree_testbed assess "${runs[@]}"
+    python -m repo2ree_testbed visualize "${runs[@]}"
+
 # Assess per-test runs with this tree and judge them as the assurance gate would (the newest of each tier by default), certifying nothing.
 [group('E2E tests')]
 judge-e2e *runs:

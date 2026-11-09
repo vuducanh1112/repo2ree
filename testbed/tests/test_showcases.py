@@ -1,16 +1,21 @@
 """Every project is laid out alike, and every showcase has its machine and a test of each workflow."""
 
+import subprocess
 from typing import get_args
 
 import pytest
 
+from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.runs.api_showcase import e2e_arguments
 from repo2ree_testbed.showcases import (
     ALL_PROJECTS,
     API_FEATURES,
     API_SUITE,
     ENVIRONMENT_VARIABLE,
+    FEATURES,
     FEATURES_ENVIRONMENT,
+    GUI_SHOWCASES,
+    GUI_SUITE,
     PROJECTS,
     SHOWCASES,
     Project,
@@ -21,6 +26,7 @@ from repo2ree_testbed.showcases import (
     api_suite,
     api_suites,
     api_test,
+    api_tier,
     environments_in_use,
     requested_environment,
 )
@@ -95,3 +101,15 @@ def test_a_machine_that_does_not_exist_is_refused_in_a_run(monkeypatch: pytest.M
     monkeypatch.delenv(ENVIRONMENT_VARIABLE)
     with pytest.raises(ValueError, match="not a valid"):
         requested_environment()
+
+
+def test_every_browser_showcase_spec_is_a_showcase_or_a_feature() -> None:
+    named = [spec for workflows in GUI_SHOWCASES.values() for spec in workflows.values()]
+    named += [feature.gui for feature in FEATURES.values() if feature.gui]
+    assert sorted(named) == sorted(path.name for path in GUI_SUITE.glob("*.spec.ts"))
+    assert all(feature.api is None or feature.api.is_file() for feature in FEATURES.values())
+
+
+def test_each_machine_an_api_showcase_runs_on_has_a_recipe_for_its_tier() -> None:
+    recipes = subprocess.run(["just", "--summary"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
+    assert {f"test-{api_tier(environment)}" for environment in environments_in_use()} <= set(recipes)

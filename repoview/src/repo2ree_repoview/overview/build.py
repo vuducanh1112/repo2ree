@@ -2,7 +2,8 @@
 
 It runs nothing. It reads what the recipes `just repo-overview` depends on wrote: the
 zones, the behaviour specification, the operations traceview folds from the
-assurance-gate receipt's verifications, and the Just recipes (reports/exports/), and the
+assurance-gate receipt's verifications, which showcase runs to read, and the Just recipes
+(reports/exports/), and the
 generated architecture, domain, specification, and recipe diagrams (reports/diagrams/), and
 the assurance-gate receipt's tests assessed and drawn again (reports/behaviour/). Beside them
 it reads the gates' receipts, the coverage and excuses of the last
@@ -26,13 +27,13 @@ from pathlib import Path
 from repo2ree_repoview.diagrams.recipes import read_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.contracts import Environment, OpenApi
-from repo2ree_repoview.overview.exports import EXPORTS, Operations, Spec, Zones
+from repo2ree_repoview.overview.exports import EXPORTS, Operations, ShowcaseRuns, Spec, Zones
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.api import page_api
 from repo2ree_repoview.overview.pages.architecture import page_architecture
 from repo2ree_repoview.overview.pages.configuration import page_configuration
-from repo2ree_repoview.overview.pages.coverage import page_coverage
+from repo2ree_repoview.overview.pages.coverage import page_coverage, page_showcase_coverage
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
 from repo2ree_repoview.overview.pages.operations import page_operations
@@ -46,10 +47,16 @@ from repo2ree_repoview.overview.receipt import (
     AggregateMoves,
     Exercised,
     bundle_evidence,
+    bundle_runs,
     decisions,
+    gate_needs,
     judged_now,
     read_receipt,
     receipt_states,
+    receipt_tests,
+    run_tests,
+    runs_on_disk,
+    tier_receipts,
     unreached,
 )
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
@@ -127,6 +134,10 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     operations = Operations.model_validate_json(kept(bundle, exports, "operations"))
     recipes = read_recipes(kept(bundle, exports, "just-recipes"))
     excused = unreached()
+    showcases = ShowcaseRuns.model_validate_json(kept(bundle, exports, "showcases"))
+    showcase_runs = list(runs_on_disk(showcases.runs()))
+    showcase_evidence = bundle_runs(bundle, showcase_runs)
+    verdicts = judged_now()
     # What logs/just/ held when the overview was built, kept as the overview read it.
     timings = summarize(read_invocations())
     bundle.write(
@@ -134,13 +145,33 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     )
     pages = [
         page_zones(zones),
-        page_gates(receipt, excused, bundle, evidence, judged_now()),
+        page_gates(receipt, excused, bundle, evidence, verdicts),
         page_receipts(now),
         page_operations(operations, receipt, bundle, evidence),
         page_vocabulary(spec),
         page_specification(spec, bundle),
         page_coverage(
-            spec, receipt, Exercised.over(evidence), excused, decisions(bundle, receipt, evidence), operations, bundle
+            spec,
+            receipt,
+            Exercised.over(evidence),
+            excused,
+            decisions(bundle, receipt_tests(receipt), evidence),
+            operations,
+            bundle,
+        ),
+        page_showcase_coverage(
+            spec,
+            showcases,
+            {
+                str(run.relative_to(ROOT)) if run.is_relative_to(ROOT) else str(run): record
+                for run, record in showcase_runs
+            },
+            verdicts,
+            Exercised.over(showcase_evidence),
+            decisions(bundle, run_tests(showcase_runs), showcase_evidence),
+            showcase_evidence,
+            bundle,
+            gate_needs(now, tier_receipts()).get("showcase-gate", []),
         ),
         *(
             page_aggregate(aggregate, AggregateMoves.over(evidence, name), bundle)

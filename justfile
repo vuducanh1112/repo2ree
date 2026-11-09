@@ -70,9 +70,9 @@ generate-diagrams: generate-architecture-diagrams generate-domain-diagrams gener
 prune *args:
     python scripts/prune.py {{ args }}
 
-# Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour, architecture, recipes, configuration, API.
+# Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour and its coverage by the gate and the showcases, architecture, recipes, configuration, API.
 [group('Repository')]
-repo-overview: generate-diagrams export-zones export-spec visualize-behaviour export-operations export-just-recipes
+repo-overview: generate-diagrams export-zones export-spec visualize-behaviour visualize-showcases export-operations export-just-recipes
     python -m repo2ree_repoview overview
 
 # Write the zones and each tracked file's place as JSON (repo2ree-zones/1) for the overview.

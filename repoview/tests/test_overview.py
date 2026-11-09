@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,9 @@ def exports(tmp_path: Path) -> Path:
     (directory / "zones.json").write_text(exported(ZONES_EXPORT))
     (directory / "operations.json").write_text(exported(operations_export(gate_verifications(read_receipt()))))
     (directory / "just-recipes.json").write_text(exported(("just", "--dump", "--dump-format", "json")))
+    (directory / "showcases.json").write_text(
+        exported((sys.executable, "-m", "repo2ree_testbed", "showcase-runs", "-o", "/dev/stdout"))
+    )
     return directory
 
 
@@ -71,6 +75,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
         f"{name}.html"
         for name in (
             *("index", "zones", "assurance-gate", "receipts", "operations", "vocabulary", "specification", "coverage"),
+            "showcase-gate",
             *("ree-machine", "architecture", "just-recipes", "configuration", "api"),
             # The frame its bundled evidence is shown in.
             "evidence",
@@ -81,7 +86,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
     assert manifest["revision"] == head.stdout.strip()
     for entry in manifest["copied"]:
         assert sha256(target / entry["path"]) == entry["sha256"], entry["path"]
-    owned = {"spec", "zones", "operations", "just-recipes"}
+    owned = {"spec", "zones", "operations", "just-recipes", "showcases"}
     kinds = {entry["kind"]: entry["path"] for entry in manifest["copied"] if entry.get("kind") in owned}
     assert kinds == {kind: f"inputs/{kind}.json" for kind in owned}
 

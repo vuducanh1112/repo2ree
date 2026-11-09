@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import tomllib
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -178,12 +178,14 @@ def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
 class RunTest(Document):
     name: str
     directory: str
+    outcome: str = ""
     rees: tuple[str, ...] = ()
     behaviour: str | None = None
 
 
 class RunRecord(Document):
     build_revision: str = ""
+    platform: str = ""
     # In a report of the run: the commit whose checker assessed it, "" from a dirty tree.
     assessed_revision: str = ""
     tests: tuple[RunTest, ...] = ()
@@ -212,11 +214,33 @@ class Evidence:
     verifications: dict[str, str] = field(default_factory=dict)
 
 
-def gate_runs(receipt: Receipt | None) -> Iterator[tuple[Path, RunRecord]]:
-    """The receipt's runs that are still on disk, with their records."""
-    for run in (ROOT / name for name in receipt.runs) if receipt else ():
+def runs_on_disk(names: Iterable[str]) -> Iterator[tuple[Path, RunRecord]]:
+    """The runs named, from the repository root, that are still on disk, with their records."""
+    for run in (ROOT / name for name in names):
         if (run / "run.json").is_file():
             yield run, RunRecord.model_validate_json((run / "run.json").read_bytes())
+
+
+def gate_runs(receipt: Receipt | None) -> Iterator[tuple[Path, RunRecord]]:
+    """The receipt's runs that are still on disk, with their records."""
+    return runs_on_disk(receipt.runs if receipt else ())
+
+
+@dataclass(frozen=True)
+class TestRef:
+    """One test whose verdicts a coverage page sums: its run's name, its own, and the excuse it was judged with."""
+
+    run: str
+    test: str
+    excused: str | None = None
+
+
+def receipt_tests(receipt: Receipt | None) -> tuple[TestRef, ...]:
+    return tuple(TestRef(test.run, test.test, test.excused) for test in receipt.tests) if receipt else ()
+
+
+def run_tests(runs: Iterable[tuple[Path, RunRecord]]) -> tuple[TestRef, ...]:
+    return tuple(TestRef(run.name, test.name) for run, record in runs for test in record.tests)
 
 
 def reported(run: Path, test: RunTest, reports: Path = REPORTS) -> Path:
@@ -253,10 +277,15 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
     if receipt is None:
         return Evidence()
     bundle.copy(RECEIPT, "evidence/assurance-gate.json", Origin(kind="receipt"))
+    return bundle_runs(bundle, gate_runs(receipt))
+
+
+def bundle_runs(bundle: Bundle, chosen: Iterable[tuple[Path, RunRecord]]) -> Evidence:
+    """Copy these runs' evidence into the bundle."""
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
     verifications: dict[str, str] = {}
-    for run, record in gate_runs(receipt):
+    for run, record in chosen:
         origin = Origin(run=run.name, run_revision=record.build_revision)
         assessed = REPORTS / run.name / "run.json"
         assessed_revision = (
@@ -423,10 +452,10 @@ class Decision:
     traces: tuple[str, ...]
 
 
-def decisions(bundle: Bundle, receipt: Receipt | None, evidence: Evidence) -> dict[str, list[Decision]]:
-    """Each triggered rule with the tests that decided it, in receipt order."""
+def decisions(bundle: Bundle, tests: Iterable[TestRef], evidence: Evidence) -> dict[str, list[Decision]]:
+    """Each triggered rule with the tests that decided it, in the order given."""
     decided: dict[str, list[Decision]] = {}
-    for test in receipt.tests if receipt else ():
+    for test in tests:
         directory = evidence.tests.get((test.run, test.test))
         if directory is None or not (bundle.root / directory / "verification/assurance.json").is_file():
             continue

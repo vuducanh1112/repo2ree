@@ -46,6 +46,7 @@ RecipeScript = Literal["build_script.sh", "activation.sh", "experiment.sh", "exp
 PROJECTS = ROOT / "examples/projects"
 API_SUITE = ROOT / "testbed/suites/showcase"
 API_FEATURES = API_SUITE / "features"
+GUI_SUITE = ROOT / "gui/tests/showcase"
 SOURCE = "source"
 ENVIRONMENT_VARIABLE = "SHOWCASE_ENVIRONMENT"
 
@@ -187,6 +188,32 @@ SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
 }
 # The API tests of one feature rather than one project, and the machine they run on.
 FEATURES_ENVIRONMENT = EnvironmentName.BARE
+
+# The browser showcases each showcase has so far, by workflow: spec files of GUI_SUITE.
+GUI_SHOWCASES: dict[ShowcaseName, dict[Workflow, str]] = {
+    ShowcaseName.JAVA_MAVEN: {"authoring": "java-maven.spec.ts"},
+    ShowcaseName.PYTHON_DOCKER: {"authoring": "python-docker.spec.ts", "review": "review.spec.ts"},
+    ShowcaseName.PYTHON_VENV: {"authoring": "python-venv.spec.ts"},
+}
+
+
+class FeatureName(StrEnum):
+    ORIGINS = "origins"
+    ROUTING = "routing"
+
+
+@dataclass(frozen=True)
+class FeatureTests:
+    """The tests of one feature rather than one project: an API test file, a browser spec file, or both."""
+
+    api: Path | None
+    gui: str | None
+
+
+FEATURES: dict[FeatureName, FeatureTests] = {
+    FeatureName.ORIGINS: FeatureTests(API_FEATURES / "test_origins.py", "origins.spec.ts"),
+    FeatureName.ROUTING: FeatureTests(None, "routing.spec.ts"),
+}
 
 
 def _refusals() -> list[str]:

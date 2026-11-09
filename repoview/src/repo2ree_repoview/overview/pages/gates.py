@@ -14,20 +14,20 @@ DOSSIER_PAGE = "dossier.html"
 SLUG = "assurance-gate"
 
 
-def evidence_links(bundle: Bundle, directory: str | None) -> str:
+def evidence_links(bundle: Bundle, directory: str | None, origin: str = SLUG) -> str:
     """Links to a test's bundled verdict report and its behaviour traces: one link, to the whole dossier's page
     where there is one, whose tabs lead to each REE's."""
     if directory is None:
         return '<span class="muted">not bundled</span>'
     links = []
     if (bundle.root / directory / "verification/assurance.html").is_file():
-        links.append(f'<a href="{esc(in_frame(f"{directory}/verification/assurance.html", SLUG))}">verdicts</a>')
+        links.append(f'<a href="{esc(in_frame(f"{directory}/verification/assurance.html", origin))}">verdicts</a>')
     pages = sorted((bundle.root / directory / "traces").glob("*.html"))
     whole = next((page for page in pages if page.name == DOSSIER_PAGE), None)
     traces = [page for page in pages if page is not whole]
     if traces:
         label = "trace" if len(traces) == 1 else f"traces · {len(traces)} REEs"
-        shown = in_frame(f"{directory}/traces/{(whole or traces[0]).name}", SLUG)
+        shown = in_frame(f"{directory}/traces/{(whole or traces[0]).name}", origin)
         links.append(f'<a href="{esc(shown)}">{label}</a>')
     return " · ".join(links) or '<span class="muted">none</span>'
 
