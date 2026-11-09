@@ -158,8 +158,10 @@ def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
             if len(proven) == len(showcase)
             else ("stale" if proven or any(n.last for n in showcase) else "missing")
         )
-        detail = f"{len(proven)} of {len(showcase)} platforms proven: " + ", ".join(
-            f"{need.place} {'ok' if need.current else 'needed'}" for need in showcase
+        places = list(dict.fromkeys(need.place for need in showcase))
+        done = {place: all(n.current for n in showcase if n.place == place) for place in places}
+        detail = f"{sum(done.values())} of {len(places)} platforms proven: " + ", ".join(
+            f"{place} {'ok' if ok else 'needed'}" for place, ok in done.items()
         )
         found.append(ReceiptState("Showcase gate", "just showcase-gate", showcase_state, detail))
     # One per platform, each from a machine of that platform (scripts/gates/publish_gate.py).
