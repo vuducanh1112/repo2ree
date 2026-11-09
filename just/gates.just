@@ -76,7 +76,7 @@ _run-missing-tiers gate:
 gate-plan gate="publish-gate":
     python -m scripts.gates.tiers plan {{ quote(gate) }} --platforms {{ quote(PUBLISH_PLATFORMS) }}
 
-# Prove the showcase tier on every platform in PUBLISH_PLATFORMS: run it here unless this platform has a current receipt, then require them all.
+# Prove the showcase tiers, browser and API, on every platform in PUBLISH_PLATFORMS: run each here unless this platform has a current receipt, then require them all.
 [group('Release gates')]
 showcase-gate: _require-clean-tree (_run-missing-tiers "showcase-gate")
     python -m scripts.gates.tiers require showcase-gate --platforms {{ quote(PUBLISH_PLATFORMS) }}

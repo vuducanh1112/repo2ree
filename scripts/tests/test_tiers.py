@@ -27,8 +27,13 @@ def record(**changes: Any) -> dict[str, Any]:
 def test_the_policy_names_a_place_for_every_tier_a_gate_needs() -> None:
     policy = tiers.load_policy()
     assert policy.gates["publish-gate"].tiers["showcase"] == "here"
-    assert policy.gates["showcase-gate"].tiers == {"showcase": "each"}
-    assert policy.tiers["showcase"].judged
+    assert policy.gates["showcase-gate"].tiers == {
+        "showcase": "each",
+        "showcase-api-bare": "each",
+        "showcase-api-docker": "each",
+        "showcase-api-slurm": "each",
+    }
+    assert all(policy.tiers[tier].judged for tier in policy.gates["showcase-gate"].tiers)
 
 
 def test_a_gate_naming_an_unknown_place_is_refused(tmp_path: Path) -> None:
