@@ -1,4 +1,4 @@
-"""The example projects the suites author REEs from.
+"""The example projects the suites author REEs from, and the showcases: each project and the machine it needs.
 
 A project is a folder of ``examples/projects``: ``source/`` is the tree that gets uploaded, unpacking to
 ``source/`` in the workspace, and ``recipe/`` holds the scripts that run it.
@@ -7,6 +7,7 @@ A project is a folder of ``examples/projects``: ``source/`` is the tree that get
 from __future__ import annotations
 
 import io
+import os
 import tarfile
 from dataclasses import dataclass
 from enum import StrEnum
@@ -15,6 +16,7 @@ from typing import Literal
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.run_watch import INSTANT_RUN, QUIET_NETWORK_RUN, RunWatch
+from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
 from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 
 
@@ -29,11 +31,23 @@ class ProjectName(StrEnum):
     STOCHASTIC = "stochastic"
 
 
+class ShowcaseName(StrEnum):
+    JAVA_MAVEN = "java_maven"
+    PYTHON_DOCKER = "python_docker"
+    PYTHON_VENV = "python_venv"
+    SLURM = "slurm"
+    STOCHASTIC = "stochastic"
+
+
+Workflow = Literal["authoring", "review"]
 ExpectedVerdict = Literal["identical", "reproduced"]
 RecipeScript = Literal["build_script.sh", "activation.sh", "experiment.sh", "experiment.verify.sh"]
 
 PROJECTS = ROOT / "examples/projects"
+API_SUITE = ROOT / "testbed/suites/showcase"
+API_FEATURES = API_SUITE / "features"
 SOURCE = "source"
+ENVIRONMENT_VARIABLE = "SHOWCASE_ENVIRONMENT"
 
 
 @dataclass(frozen=True)
@@ -156,3 +170,66 @@ ALL_PROJECTS: tuple[Project, ...] = (
     SLURM,
     STOCHASTIC,
 )
+
+
+@dataclass(frozen=True)
+class ShowcaseConfig:
+    project: Project
+    environment: EnvironmentName
+
+
+SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
+    ShowcaseName.JAVA_MAVEN: ShowcaseConfig(JAVA_MAVEN, EnvironmentName.DOCKER),
+    ShowcaseName.PYTHON_DOCKER: ShowcaseConfig(PYTHON_DOCKER, EnvironmentName.DOCKER),
+    ShowcaseName.PYTHON_VENV: ShowcaseConfig(PYTHON_VENV, EnvironmentName.BARE),
+    ShowcaseName.SLURM: ShowcaseConfig(SLURM, EnvironmentName.SLURM),
+    ShowcaseName.STOCHASTIC: ShowcaseConfig(STOCHASTIC, EnvironmentName.BARE),
+}
+# The API tests of one feature rather than one project, and the machine they run on.
+FEATURES_ENVIRONMENT = EnvironmentName.BARE
+
+
+def _refusals() -> list[str]:
+    """What is wrong with the showcases as declared."""
+    refusals = [f"{name} has no config" for name in ShowcaseName if name not in SHOWCASES]
+    for name, config in SHOWCASES.items():
+        if config.project.name.value != name.value:
+            refusals.append(f"{name} runs the project {config.project.name}")
+        containers = ENVIRONMENTS[config.environment].backend == "container"
+        if containers and config.project.image is None:
+            refusals.append(f"{name} runs in containers on {config.environment} and declares no bench image")
+        if not containers and config.project.image is not None:
+            refusals.append(f"{name} runs directly on {config.environment} and declares a bench image")
+    return refusals
+
+
+if _refused := _refusals():
+    raise ValueError("; ".join(_refused))
+
+
+def api_suite(name: ShowcaseName) -> Path:
+    return API_SUITE / name
+
+
+def api_test(name: ShowcaseName, workflow: Workflow) -> Path:
+    return api_suite(name) / f"test_{name}_{workflow}.py"
+
+
+def environments_in_use() -> tuple[EnvironmentName, ...]:
+    used = {config.environment for config in SHOWCASES.values()} | {FEATURES_ENVIRONMENT}
+    return tuple(environment for environment in EnvironmentName if environment in used)
+
+
+def api_suites(environment: EnvironmentName) -> tuple[Path, ...]:
+    """The API suites that run on ``environment``."""
+    suites = tuple(api_suite(name) for name, config in SHOWCASES.items() if config.environment == environment)
+    return (*suites, API_FEATURES) if environment == FEATURES_ENVIRONMENT else suites
+
+
+def api_tier(environment: EnvironmentName) -> str:
+    return f"showcase-api-{environment}"
+
+
+def requested_environment() -> EnvironmentName:
+    """The machine this process was asked to run the API showcases on; an unknown one is refused."""
+    return EnvironmentName(os.environ.get(ENVIRONMENT_VARIABLE, ""))

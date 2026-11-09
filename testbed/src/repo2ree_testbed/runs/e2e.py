@@ -132,9 +132,9 @@ def exit_status(status: int, exit_on: ExitOn, completed: bool) -> int:
     return 0 if exit_on == "run" and completed else status
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(line_buffering=True)  # type: ignore[union-attr]
-    invocation = parse()
+    invocation = parse(argv)
     prune()
     run = SuiteRun(invocation.deployment, invocation.client, invocation.schedule)
 

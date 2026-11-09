@@ -64,6 +64,20 @@ test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
 test-e2e-fuzz: build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
+# Run every API showcase, authoring and review, each on the machine it needs. To select tests, use `api-showcase-on`.
+[group('E2E tests')]
+api-showcase jobs=E2E_JOBS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for environment in $(python -m repo2ree_testbed api-showcase environments); do
+        just api-showcase-on "$environment" {{ quote(jobs) }}
+    done
+
+# Run the API showcases of one machine (e.g. `just api-showcase-on slurm`): each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
+[group('E2E tests')]
+api-showcase-on environment jobs=E2E_JOBS *select: (_load-environment environment)
+    python -m repo2ree_testbed api-showcase run {{ quote(environment) }} --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
+
 # Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers.
 [group('E2E tests')]
 test-showcase jobs=E2E_JOBS *select: build-e2e-bundles

@@ -17,6 +17,7 @@ COMMANDS = {
     "coverage": "repo2ree_testbed.python_coverage",
     "machine": "repo2ree_testbed.runs.machine",
     "record": "repo2ree_testbed.runs.record",
+    "api-showcase": "repo2ree_testbed.runs.api_showcase",
 }
 
 
