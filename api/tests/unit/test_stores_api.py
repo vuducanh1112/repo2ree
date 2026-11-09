@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 import uuid
 from collections.abc import Iterator
@@ -152,6 +153,26 @@ def test_the_operator_registers_a_store_and_mints_and_revokes_its_tokens(
     assert store_admin.main(["revoke", token[:8]]) == 0
     assert store_admin.main(["revoke", token[:8]]) == 1
     assert store_admin.main(["token", "lab-missing"]) == 2
+
+
+def test_a_token_is_never_read_as_an_option(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(service_settings, "CONTROL_STATE_DIR", tmp_path)
+
+    assert store_admin.main(["add", "lab-cli"]) == 0
+    assert store_admin.main(["token", "lab-cli"]) == 0
+    token = capsys.readouterr().out.strip().splitlines()[-1]
+
+    assert re.fullmatch("[0-9a-f]{64}", token)
+
+
+def test_an_older_token_starting_with_a_dash_can_still_be_named(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(service_settings, "CONTROL_STATE_DIR", tmp_path)
+
+    assert store_admin.main(["revoke", "--", "-bjpLJnZ"]) == 1
 
 
 def test_a_served_store_offers_its_workbench_images_and_refuses_others(client: TestClient, lab: str) -> None:

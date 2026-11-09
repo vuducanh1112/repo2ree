@@ -80,7 +80,7 @@ class StoreRegistry:
             stores, tokens = self._read()
             if store_id not in stores:
                 raise UnknownStoreError(store_id)
-            token = secrets.token_urlsafe(32)
+            token = secrets.token_hex(32)
             tokens.append(
                 TokenRecord(
                     prefix=token[:TOKEN_PREFIX_LENGTH], digest=_digest(token), store_id=store_id, created_at=_now()

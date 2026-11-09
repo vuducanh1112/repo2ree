@@ -3,6 +3,7 @@
     python -m repo2ree_api.store_admin add lab-a --label "Lab A"
     python -m repo2ree_api.store_admin token lab-a     # prints a new token, once
     python -m repo2ree_api.store_admin revoke <first 8 characters of a token>
+    python -m repo2ree_api.store_admin revoke -- <first 8 characters>   # of an older token starting with -
     python -m repo2ree_api.store_admin bootstrap lab-a --token-file PATH   # add if missing, token to PATH
     python -m repo2ree_api.store_admin list
 
@@ -28,7 +29,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     add.add_argument("store_id")
     add.add_argument("--label", default="")
     commands.add_parser("token", help="mint a token for a store's workbench").add_argument("store_id")
-    commands.add_parser("revoke", help="revoke the tokens starting with PREFIX").add_argument("prefix")
+    revoke = commands.add_parser("revoke", help="revoke the tokens starting with PREFIX; -- before one starting with -")
+    revoke.add_argument("prefix")
     commands.add_parser("list", help="list the registered stores")
     bootstrap = commands.add_parser(
         "bootstrap", help="register a store unless it is, and write a new token for its workbench to a file"
