@@ -38,7 +38,7 @@ const STORE_BACKEND = process.env.E2E_STORE_BACKEND ?? "container";
 
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
-  return packedProject("python_hello_world");
+  return packedProject("python_docker");
 }
 
 /**
@@ -63,20 +63,11 @@ export function authoredRee(): string {
  * test-artifacts/ safe to delete even though a test reads this back.
  */
 export function pythonPipHelloWorld(): string {
-  mkdirSync(FIXTURES_DIR, { recursive: true });
-  const archive = path.join(FIXTURES_DIR, "python-pip-hello-world.tar.gz");
-  execFileSync("tar", [
-    "-czf",
-    archive,
-    "-C",
-    path.join(EXAMPLES_DIR, "projects"),
-    "python_pip_hello_world",
-  ]);
-  return archive;
+  return packedProject("python_venv");
 }
 
 /** Where the instant project's runtime lands: a packed venv inside the project root. */
-export const INSTANT_RUNTIME_PATH = "instant_hello_world/runtime-venv.tar.gz";
+export const INSTANT_RUNTIME_PATH = "source/runtime-venv.tar.gz";
 
 /**
  * Absolute path to the instant hello-world source archive: standard library
@@ -84,10 +75,10 @@ export const INSTANT_RUNTIME_PATH = "instant_hello_world/runtime-venv.tar.gz";
  * a Docker daemon. Packed on demand like {@link pythonPipHelloWorld}.
  */
 export function instantHelloWorld(): string {
-  return packedProject("instant_hello_world");
+  return packedProject("instant");
 }
 
-export const INSTANT_DOCKER_RUNTIME_PATH = "instant_docker_hello_world/runtime-image.tar";
+export const INSTANT_DOCKER_RUNTIME_PATH = "source/runtime-image.tar";
 
 /**
  * Absolute path to the instant Docker project's source archive: a Dockerfile the
@@ -95,11 +86,14 @@ export const INSTANT_DOCKER_RUNTIME_PATH = "instant_docker_hello_world/runtime-i
  * nothing pulled or downloaded.
  */
 export function instantDockerHelloWorld(): string {
-  return packedProject("instant_docker_hello_world");
+  return packedProject("instant_docker");
 }
 
-/** An example project packed as an upload, `<project>/…` inside, as an author would pack it. */
-export function packedProject(project: string): string {
+/** The example projects: each `examples/projects/<name>/` holds `source/` and `recipe/`. */
+type ExampleProject = "instant" | "instant_docker" | "java_maven" | "python_docker" | "python_venv";
+
+/** An example project's source packed as an upload, `source/…` inside. */
+export function packedProject(project: ExampleProject): string {
   mkdirSync(FIXTURES_DIR, { recursive: true });
   const archive = path.join(FIXTURES_DIR, `${project.replaceAll("_", "-")}.tar.gz`);
   execFileSync("tar", [
@@ -107,18 +101,18 @@ export function packedProject(project: string): string {
     archive,
     "--exclude=__pycache__",
     "-C",
-    path.join(EXAMPLES_DIR, "projects"),
-    project,
+    path.join(EXAMPLES_DIR, "projects", project),
+    "source",
   ]);
   return archive;
 }
 
-/** One of the scripts that run the instant project (`examples/recipes/instant_hello_world/`). */
+/** One of the scripts that run an instant project (`examples/projects/<project>/recipe/`). */
 export function instantRecipe(
   name: "build_script.sh" | "activation.sh" | "experiment.sh",
-  project: "instant_hello_world" | "instant_docker_hello_world" = "instant_hello_world",
+  project: "instant" | "instant_docker" = "instant",
 ): string {
-  return readFileSync(path.join(EXAMPLES_DIR, "recipes", project, name), "utf8");
+  return readFileSync(path.join(EXAMPLES_DIR, "projects", project, "recipe", name), "utf8");
 }
 
 /**

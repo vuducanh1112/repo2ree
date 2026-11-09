@@ -8,10 +8,8 @@ modules (a uniquely named module, so it cannot collide with another tier's
 
 from __future__ import annotations
 
-import io
 import os
 import re
-import tarfile
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
@@ -23,6 +21,7 @@ import pytest
 
 from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
+from repo2ree_testbed.showcases import INSTANT, SOURCE, Project, RecipeScript
 from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -40,74 +39,16 @@ TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 STORE_BACKEND = os.environ.get("E2E_STORE_BACKEND", "container")
 
 
-@dataclass(frozen=True)
-class Fixture:
-    """A project an REE is authored from: its recipes, what its build produces, and the bench it needs.
-
-    Both fixtures need nothing downloaded. ``INSTANT`` runs on a bench without a Docker
-    daemon, its runtime a packed venv; ``INSTANT_DOCKER`` runs on a dind bench, its
-    runtime an image the bench's own daemon builds FROM scratch.
-    """
-
-    project: Path
-    runtime: str
-    experiment: str
-    image: str
-    # Whether the build script is the one script inference proposes, or the recipe's.
-    infer_build: bool
-
-    @property
-    def name(self) -> str:
-        return self.project.name
-
-    @property
-    def experiment_script(self) -> str:
-        return f"ree-scripts/experiments/{self.experiment}.sh"
-
-    @property
-    def experiment_verify(self) -> str:
-        return f"ree-scripts/experiments/{self.experiment}.verify.sh"
-
-    def recipe(self, name: str) -> str:
-        return (ROOT / "examples/recipes" / self.name / name).read_text()
-
-    def archive(self) -> bytes:
-        """The project packed as an upload, without interpreter caches."""
-        buffer = io.BytesIO()
-        with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
-            archive.add(
-                self.project, arcname=self.name, filter=lambda info: None if "__pycache__" in info.name else info
-            )
-        return buffer.getvalue()
-
-
-INSTANT = Fixture(
-    project=ROOT / "examples/projects/instant_hello_world",
-    runtime="instant_hello_world/runtime-venv.tar.gz",
-    experiment="instant-hello",
-    image=LIGHTWEIGHT_IMAGE,
-    infer_build=True,
-)
-INSTANT_DOCKER = Fixture(
-    project=ROOT / "examples/projects/instant_docker_hello_world",
-    runtime="instant_docker_hello_world/runtime-image.tar",
-    experiment="instant-docker-hello",
-    image=DIND_IMAGE,
-    # Inference proposes `docker build` of the project as it stands; the recipe also
-    # brings the bench's busybox into the build context, which a FROM scratch image needs.
-    infer_build=False,
-)
-
-# The instant fixture's names, as most suites use it.
-PROJECT = INSTANT.project
-PROJECT_DIR = INSTANT.name
+# The instant project's names, as most suites use it.
+PROJECT = INSTANT.source
+PROJECT_DIR = SOURCE
 RUNTIME = INSTANT.runtime
 EXPERIMENT = INSTANT.experiment
 EXPERIMENT_SCRIPT = INSTANT.experiment_script
 EXPERIMENT_VERIFY = INSTANT.experiment_verify
 
 
-def recipe(name: str) -> str:
+def recipe(name: RecipeScript) -> str:
     return INSTANT.recipe(name)
 
 
@@ -178,12 +119,16 @@ class Api:
         entries = self.get(f"/api/v1/rees/{ree_id}/runs/{run_id}/logs").get("entries", [])
         return "\n".join(f"[{entry.get('level')}] {entry.get('message')}" for entry in entries[-30:])
 
-    def stage(self, ree_id: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    def stage(
+        self, ree_id: str, path: str, payload: dict[str, Any] | None = None, *, watch: RunWatch = INSTANT_RUN
+    ) -> dict[str, Any]:
         """Start a background stage and wait for it to settle, whatever its outcome."""
-        return self.wait(ree_id, self.post(f"/api/v1/rees/{ree_id}/{path}", payload))
+        return self.wait(ree_id, self.post(f"/api/v1/rees/{ree_id}/{path}", payload), watch=watch)
 
-    def succeed(self, ree_id: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-        run = self.stage(ree_id, path, payload)
+    def succeed(
+        self, ree_id: str, path: str, payload: dict[str, Any] | None = None, *, watch: RunWatch = INSTANT_RUN
+    ) -> dict[str, Any]:
+        run = self.stage(ree_id, path, payload, watch=watch)
         if run["status"] != "succeeded":
             raise ApiError(f"{path} ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
         return run
@@ -197,7 +142,7 @@ class Api:
             raise ApiError("no workbench serves a store")
         return str(served[0])
 
-    def create(self, name: str, *, image: str = LIGHTWEIGHT_IMAGE, location: str | None = None) -> str:
+    def create(self, name: str, *, image: str | None = LIGHTWEIGHT_IMAGE, location: str | None = None) -> str:
         """A new REE in a store (the first served, or ``location``), declaring ``image`` from the store's
         offer, or its host when the store runs scripts there."""
         store = {"name": name, "store_id": location or self.store()}
@@ -235,7 +180,7 @@ class Api:
 
     # ---- authoring ----------------------------------------------------------
 
-    def upload_source(self, ree_id: str, data: bytes, name: str = "instant-hello-world.tar.gz") -> dict[str, Any]:
+    def upload_source(self, ree_id: str, data: bytes, name: str = INSTANT.upload_name) -> dict[str, Any]:
         upload = self.post(
             f"/api/v1/rees/{ree_id}/source:upload-init",
             {"file_name": name, "size": len(data), "content_type": "application/gzip"},
@@ -269,18 +214,27 @@ class Api:
     def audit(self, ree_id: str) -> dict[str, Any]:
         return dict(self.get(f"/api/v1/rees/{ree_id}/state")["audit"])
 
-    def seal(self, ree_id: str) -> dict[str, Any]:
+    def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
         payload = {"include_source": True, "include_runtime": True, "include_results": True}
-        return self.stage(ree_id, "ree:seal", payload)
+        return self.stage(ree_id, "ree:seal", payload, watch=watch)
+
+    def load(self, ree_id: str, bundle: bytes) -> None:
+        """Seat a sealed REE's archive in ``ree_id``, as a reviewer does."""
+        upload = self.post(
+            f"/api/v1/rees/{ree_id}/ree:upload-init",
+            {"file_name": "ree.zip", "size": len(bundle), "content_type": "application/zip"},
+        )
+        self.request("PUT", upload["upload_url"], content=bundle)
+        self.succeed(ree_id, "ree:load", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
 
     # ---- a fixture project, step by step ------------------------------------
 
-    def acquire(self, ree_id: str, fixture: Fixture = INSTANT) -> None:
-        run = self.upload_source(ree_id, fixture.archive(), f"{fixture.name.replace('_', '-')}.tar.gz")
+    def acquire(self, ree_id: str, fixture: Project = INSTANT) -> None:
+        run = self.upload_source(ree_id, fixture.archive(), fixture.upload_name)
         if run["status"] != "succeeded":
             raise ApiError(f"source ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
 
-    def build(self, ree_id: str, script: str | None = None, fixture: Fixture = INSTANT) -> dict[str, Any]:
+    def build(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
         """Declare the runtime, author the build (inferred unless given or the fixture brings one), and run it."""
         self.patch(ree_id, {"build_runtime": {"runtime_path": fixture.runtime}})
         if script is None and not fixture.infer_build:
@@ -289,25 +243,25 @@ class Api:
             result = self.infer(ree_id, "build")
             script = str(result["candidates"][0]["body"])
         self.write(ree_id, BUILD_SCRIPT, script)
-        return self.stage(ree_id, "build-runtime")
+        return self.stage(ree_id, "build-runtime", watch=fixture.watch)
 
-    def activate(self, ree_id: str, script: str | None = None, fixture: Fixture = INSTANT) -> dict[str, Any]:
+    def activate(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
         self.write(ree_id, ACTIVATION_SCRIPT, script or fixture.recipe("activation.sh"))
         self.patch(ree_id, {"test_activation": {}})
-        return self.stage(ree_id, "activation-test")
+        return self.stage(ree_id, "activation-test", watch=fixture.watch)
 
     def experiment(
-        self, ree_id: str, *, run: str | None = None, verify: str | None = None, fixture: Fixture = INSTANT
+        self, ree_id: str, *, run: str | None = None, verify: str | None = None, fixture: Project = INSTANT
     ) -> dict[str, Any]:
         self.write(ree_id, fixture.experiment_script, run or fixture.recipe("experiment.sh"))
         self.write(ree_id, fixture.experiment_verify, verify or fixture.recipe("experiment.verify.sh"))
         self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": [RESULT]}]})
-        return self.stage(ree_id, f"experiments/{fixture.experiment}:run")
+        return self.stage(ree_id, f"experiments/{fixture.experiment}:run", watch=fixture.watch)
 
-    def author(self, ree_id: str, fixture: Fixture = INSTANT) -> None:
+    def author(self, ree_id: str, fixture: Project = INSTANT) -> None:
         """Every authoring stage of a fixture project, each required to succeed."""
         self.acquire(ree_id, fixture)
-        self.succeed(ree_id, "evaluate")
+        self.succeed(ree_id, "evaluate", watch=fixture.watch)
         self.succeed(ree_id, "generate-hbom")
         steps = (("build", self.build(ree_id, fixture=fixture)), ("activation", self.activate(ree_id, fixture=fixture)))
         for label, run in steps:
@@ -348,7 +302,7 @@ def new_ree(api: Api, request: pytest.FixtureRequest) -> Iterator[Callable[..., 
     created: list[str] = []
     label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
 
-    def create(name: str = label, **kwargs: str) -> str:
+    def create(name: str = label, **kwargs: str | None) -> str:
         ree_id: str = api.create(name[:60], **kwargs)
         created.append(ree_id)
         return ree_id

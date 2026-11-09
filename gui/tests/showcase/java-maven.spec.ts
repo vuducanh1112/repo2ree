@@ -25,7 +25,7 @@ import {
  * own `docker build` on the bench's daemon; the runtime is the saved image.
  */
 
-const PROJECT_DIR = "java_hello_world";
+const PROJECT_DIR = "source";
 const RUNTIME_PATH = `${PROJECT_DIR}/runtime.tar`;
 const IMAGE = "java-hello";
 const CLASSPATH = "'/app/target/classes:/app/target/dependency/*'";
@@ -38,10 +38,8 @@ test.describe("Java with Maven", () => {
     });
 
     await test.step("upload the project", async () => {
-      await uploadSource(page, packedProject(PROJECT_DIR));
-      await expect(
-        page.getByText("java-hello-world.tar.gz", { exact: true }).first(),
-      ).toBeVisible();
+      await uploadSource(page, packedProject("java_maven"));
+      await expect(page.getByText("java-maven.tar.gz", { exact: true }).first()).toBeVisible();
     });
 
     await test.step("evaluate", async () => {

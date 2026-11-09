@@ -10,7 +10,9 @@ import io
 import zipfile
 from collections.abc import Callable
 
-from system_client import BUILD_SCRIPT, INSTANT_DOCKER, RESULT, Api
+from system_client import BUILD_SCRIPT, RESULT, Api
+
+from repo2ree_testbed.showcases import INSTANT_DOCKER
 
 FIXTURE = INSTANT_DOCKER
 

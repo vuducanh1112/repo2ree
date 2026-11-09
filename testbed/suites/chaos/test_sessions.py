@@ -101,7 +101,7 @@ class Session:
 
     def source(self) -> str:
         data = project_archive()
-        name = "instant-hello-world.tar.gz"
+        name = "instant.tar.gz"
         init = {"file_name": name, "size": len(data), "content_type": "application/gzip"}
         upload = self.call("POST", self.ree("source:upload-init"), json=init)
         if upload.status_code != 200:

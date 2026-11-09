@@ -6,12 +6,13 @@ hand when trying the app — so it lives at the repository root rather than insi
 
 ## `projects/`
 
-Small source projects the suites author REEs from. They are ordinary source
-trees: no REE metadata, no receipts. The suites pack a project as an upload
-when they run. The real-world projects pin what they fetch: base images by
+The projects the suites author REEs from. Each folder holds `source/`, an
+ordinary source tree with no REE metadata or receipts that the suites pack as an
+upload, and `recipe/`, the scripts that run it. What each one needs deployed is
+in `testbed/src/repo2ree_testbed/showcases.py`. The real-world projects pin what they fetch: base images by
 digest, Python packages by hash.
 
-### `instant_hello_world/`
+### `instant/`
 
 The project to reach for when a test needs the whole pipeline but not a real
 toolchain. It runs on the standard library alone, and its `requirements.txt`
@@ -23,19 +24,42 @@ as the runtime. `main.py` prints fixed output, so an experiment can verify it
 exactly.
 
 Driven through core's handlers with networking disabled, source to seal takes
-about 4 s, the build about 2 s. Compare `python_hello_world/`, whose Docker
+about 4 s, the build about 2 s. Compare `python_docker/`, whose Docker
 build pulls a base image and installs pandas and takes 40 s or more.
 
 The SBOM steps are not covered yet: the scanner reads only `docker-archive:`
 runtimes, and this runtime is a packed venv.
 
-### `instant_docker_hello_world/`
+### `instant_docker/`
 
 The instant project for a bench with its own Docker daemon, the product's
 default. Its Dockerfile builds `FROM scratch`: the recipe's build copies the
 bench's busybox and musl loader into the build context, so the bench's daemon
 runs a real `docker build` (with a `RUN` step) and `docker run`, pulling and
-downloading nothing. It prints the same output as `instant_hello_world/`.
+downloading nothing. It prints the same output as `instant/`.
+
+### `slurm/`
+
+The instant project for a Slurm cluster. Its build is the same packed venv, made
+on the machine the workbench runs on; the recipe's activation and experiment
+submit `job.sh` with `srun`, and the verify script also checks the run happened
+in a job. The submission is the author's own: the product runs these scripts
+like any others. Run by `just api-showcase`, and in more depth by
+`just test-e2e-slurm`.
+
+### `apptainer/`
+
+The instant project for a cluster with Apptainer. The recipe's build makes a SIF
+from the machine's own Python and system directories, downloading nothing; its
+activation and experiment enter that SIF in a job with `srun apptainer exec`.
+Submission and container entry are the author's own. Run by `just test-e2e-slurm`.
+
+### `stochastic/`
+
+An instant project whose result changes on every run: a Monte Carlo estimate of
+pi from a freshly drawn seed, which it prints. Its verify script checks the
+estimate within a tolerance, so a reviewer's rerun is `reproduced`, not
+`identical`. Run by `just api-showcase`.
 
 ## `origins/`
 
@@ -43,15 +67,6 @@ downloading nothing. It prints the same output as `instant_hello_world/`.
 test stack serves it itself, by git and as a tarball, with a fixed commit
 author and date (`repo2ree_testbed.stack.origins`), so the fetch needs no
 internet and always yields the same commit.
-
-## `recipes/`
-
-The REE scripts that run a project, kept beside it rather than in it so the
-project stays an ordinary source tree. `recipes/instant_hello_world/` holds
-the build (what inference generates for the project), activation, experiment
-and verify scripts that both the system suite (`testbed/suites/system`) and the
-instant GUI suite (`gui/tests/e2e-instant`) author;
-`recipes/instant_docker_hello_world/` does the same for the Docker project.
 
 ## `rees/`
 

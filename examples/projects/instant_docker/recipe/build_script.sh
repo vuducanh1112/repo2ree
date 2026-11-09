@@ -5,9 +5,9 @@ set -eu
 # runtime artifact. The image is built FROM scratch: its root filesystem is the
 # bench's busybox and musl loader, added to a copy of the project outside the
 # workspace, so nothing is pulled or downloaded and the source stays as it was.
-PROJECT=instant_docker_hello_world
+PROJECT=source
 IMAGE=instant-docker-hello:latest
-RUNTIME_ARTIFACT=instant_docker_hello_world/runtime-image.tar
+RUNTIME_ARTIFACT=source/runtime-image.tar
 
 CONTEXT=$(mktemp -d)
 trap 'rm -rf "$CONTEXT"' EXIT

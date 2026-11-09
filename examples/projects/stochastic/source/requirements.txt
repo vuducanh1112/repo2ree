@@ -1,0 +1,3 @@
+# Standard library only. The file exists so the project declares its (empty)
+# dependencies and script inference takes the pip/venv branch; installing it
+# reaches no index.

@@ -45,8 +45,8 @@ import { narrate, narrated } from "./narration";
  * workbenchCleanup fixture still covers teardown when an earlier step fails.
  */
 
-const PROJECT_DIR = "python_hello_world";
-const RUNTIME_PATH = "python_hello_world/runtime.tar";
+const PROJECT_DIR = "source";
+const RUNTIME_PATH = `${PROJECT_DIR}/runtime.tar`;
 
 test.describe("REE pipeline", () => {
   test("golden path: provision through seal and release on one workbench", async ({ page }) => {
@@ -73,9 +73,7 @@ test.describe("REE pipeline", () => {
       await expect(page.getByText(/Configuration locked/)).toBeVisible();
       // The archive name appears both in the committed Source Snapshot field
       // and as the Name in the Workspace Snapshot metadata, so match the first.
-      await expect(
-        page.getByText("python-hello-world.tar.gz", { exact: true }).first(),
-      ).toBeVisible();
+      await expect(page.getByText("python-docker.tar.gz", { exact: true }).first()).toBeVisible();
 
       // Workspace Snapshot reads the REE's own source declaration and receipt:
       // acquisition names the type from the archive (a .tar.gz is a tarball),
@@ -109,7 +107,9 @@ test.describe("REE pipeline", () => {
       await page.getByPlaceholder("Filter files…").fill("upstream");
       for (const nodeName of archiveNodeNames) {
         const escaped = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        await expect(page.getByRole("button", { name: new RegExp(escaped) })).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: new RegExp(`^(Folder )?${escaped}$`) }),
+        ).toBeVisible();
       }
       await page.getByRole("button", { name: "Collapse files" }).click();
     });
@@ -241,7 +241,7 @@ test.describe("REE pipeline", () => {
       await runExperiment(page, {
         name: "python-hello",
         runScript: dockerRunScript(
-          "python python_hello_world/main.py",
+          `python ${PROJECT_DIR}/main.py`,
           RUNTIME_PATH,
           EXPERIMENT_OUTPUT_FILE,
         ),

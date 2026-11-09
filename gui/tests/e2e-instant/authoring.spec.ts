@@ -34,9 +34,7 @@ test.describe("Instant authoring", () => {
 
     await test.step("upload the project", async () => {
       await uploadSource(page, instantHelloWorld());
-      await expect(
-        page.getByText("instant-hello-world.tar.gz", { exact: true }).first(),
-      ).toBeVisible();
+      await expect(page.getByText("instant.tar.gz", { exact: true }).first()).toBeVisible();
     });
 
     await test.step("evaluate", async () => {

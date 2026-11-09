@@ -19,7 +19,7 @@ import {
   uploadSource,
 } from "../helpers/flow";
 
-const PROJECT = "instant_docker_hello_world";
+const PROJECT = "instant_docker";
 
 /**
  * The authoring golden path on the product's default bench, one with its own
@@ -39,9 +39,7 @@ test.describe("Instant Docker authoring", () => {
 
     await test.step("upload the project", async () => {
       await uploadSource(page, instantDockerHelloWorld());
-      await expect(
-        page.getByText("instant-docker-hello-world.tar.gz", { exact: true }).first(),
-      ).toBeVisible();
+      await expect(page.getByText("instant-docker.tar.gz", { exact: true }).first()).toBeVisible();
     });
 
     await test.step("evaluate", async () => {

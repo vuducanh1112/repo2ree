@@ -32,6 +32,7 @@ class RunWatch:
 
 INSTANT_RUN = RunWatch(stall=30, budget=180)
 NETWORK_RUN = RunWatch(stall=120, budget=1200)
+QUIET_NETWORK_RUN = RunWatch(stall=300, budget=1200)
 
 
 class RunNotSettledError(AssertionError):

@@ -34,7 +34,7 @@ import {
  * path; this spec only walks the stages the pip flow actually changes.
  */
 
-const PROJECT_DIR = "python_pip_hello_world";
+const PROJECT_DIR = "source";
 // Packed inside the project dir, not at the workspace root: the declared runtime
 // must live within the logical project root, or script inference refuses to
 // resolve a runtime contract for it (runtime_outside_project_root).
@@ -94,9 +94,7 @@ test.describe("REE pip pipeline", () => {
     await test.step("upload source tarball", async () => {
       const clearSource = await uploadSource(page, pythonPipHelloWorld());
       await expect(clearSource).toBeVisible();
-      await expect(
-        page.getByText("python-pip-hello-world.tar.gz", { exact: true }).first(),
-      ).toBeVisible();
+      await expect(page.getByText("python-venv.tar.gz", { exact: true }).first()).toBeVisible();
     });
 
     await test.step("run evaluation", async () => {
