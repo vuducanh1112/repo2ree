@@ -118,6 +118,12 @@ summary = "End-to-end tests the assurance gate runs, each on a stack of its own.
 "testbed/suites/faults/" = "The faults tier: faults injected by real means, at the step a test chooses"
 "testbed/suites/environments/" = "The environments tier: one golden path on each machine a workbench is installed on"
 
+[product.groups.ungated]
+summary = "End-to-end tests no gate runs yet, each on a stack of its own."
+[product.groups.ungated.paths]
+"testbed/suites/slurm/" = "REEs whose author's scripts submit their work to the cluster"
+"testbed/suites/showcase/" = "The API showcases: authoring and review of each, without a browser"
+
 [product.groups.examples]
 summary = "Inputs shared by the suites, demos, and manual tries."
 [product.groups.examples.paths]
