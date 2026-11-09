@@ -54,6 +54,11 @@ check-environment name: (_load-environment name)
 test-e2e-environment name: (_load-environment name)
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/environments/run_environment_suite.py") }} --tier e2e-environment-{{ name }} --environment {{ quote(name) }} --per-test --exit-on tests
 
+# Run what else holds of REEs whose author's scripts submit to Slurm or enter Apptainer, on the Slurm machine, not gated.
+[group('E2E tests')]
+test-e2e-slurm *select: (_load-environment "slurm")
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/slurm/run_slurm_suite.py") }} --tier e2e-slurm --environment slurm --per-test --exit-on tests {{ if select != "" { "--select " + quote(select) } else { "" } }}
+
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
 test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
