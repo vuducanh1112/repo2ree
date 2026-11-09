@@ -120,7 +120,11 @@ _REPORT_FILENAME = "reproducibility-report.json"
     responses=ERROR_RESPONSES,
 )
 def get_ree_evaluate_report(ree_id: str) -> dict[str, Any]:
-    """The persisted evaluate-run report artifact."""
+    """The persisted evaluate-run report artifact.
+
+    A threat's ``blocking`` means it holds its axis at its current level. Nothing
+    refuses to run or seal because of one.
+    """
     with author_api_action("view_evaluation_report", ree_id):
         return _evaluation_report(ree_id)
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
-from repo2ree_core.domain.ree.audit import _evidence_standing, audit
+from repo2ree_core.domain.ree.audit import _evidence_standing, _Subject, audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
 from repo2ree_protocol.audit import _STEP_FIELDS, ReeAudit
 from repo2ree_ree.digest import digest_bytes
@@ -12,6 +14,8 @@ from repo2ree_ree.environment import EnvironmentDefinition, EnvironmentObservati
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.model import (
     BuildRuntimeDefinition,
+    BundleContents,
+    BundleEntry,
     ExperimentDefinition,
     Ree,
     ReeDefinition,
@@ -427,3 +431,26 @@ def test_an_observed_hardware_receipt_stands_without_a_declaration() -> None:
 
 def test_hardware_is_not_applicable_when_neither_declared_nor_observed() -> None:
     assert audit(_built_ree()).hardware.evidence == "not_applicable"
+
+
+def _sealed_with(*paths: str) -> Ree:
+    ree = _built_ree()
+    contents = BundleContents(
+        entries=tuple(BundleEntry(path=ReePath(path), digest=_OTHER_DIGEST, size=1) for path in sorted(paths))
+    )
+    return ree.model_copy(update={"subject": ree.subject.model_copy(update={"contents": contents})})
+
+
+@pytest.mark.parametrize(
+    ("paths", "expected"),
+    [
+        ((f"results/{_EXPERIMENT_NAME}/results/run.log",), "present"),
+        (("results/another/results/run.log",), "omitted"),
+        ((), "omitted"),
+    ],
+)
+def test_an_experiments_outputs_are_present_when_they_travel_in_the_archive(
+    paths: tuple[str, ...], expected: str
+) -> None:
+    subject = _Subject.of(_sealed_with(*paths))
+    assert replace(subject, bundle_settled=True).experiment_payload(_EXPERIMENT_NAME, applicable=True) == expected

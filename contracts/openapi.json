@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_runtime.runtime_path`, then `startBuild`.\n6. `generateScriptCandidates` also scaffolds the activation script, then\n   `startActivationTest`. The scaffolds refuse to run until you fill in the command.\n7. Declare each experiment via `patchReeDefinition`, write its run and verify\n   scripts as in step 6, then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_runtime.runtime_path`, then `startBuild`.\n6. `generateScriptCandidates` also scaffolds the activation script, then\n   `startActivationTest`. The scaffolds refuse to run until you fill in the command.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script; `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -577,7 +577,7 @@
           "rees"
         ],
         "summary": "Get Ree State Route",
-        "description": "Compact automation view: durable state and file metadata, never contents.",
+        "description": "Compact automation view: durable state and file metadata, never contents.\n\nIn ``audit``, a step's ``evidence`` says whether its receipt is current. Its\n``payload`` says whether what it produced travels in the sealed archive:\n``present``, ``omitted``, or ``not_applicable`` before the seal.",
         "operationId": "getReeState",
         "parameters": [
           {
@@ -2329,6 +2329,7 @@
           "sources"
         ],
         "summary": "Remove Source Route",
+        "description": "Remove the source, keeping the REE's scripts and definition, so another can be brought in.",
         "operationId": "removeSource",
         "parameters": [
           {
@@ -3889,7 +3890,7 @@
           "runs"
         ],
         "summary": "Get Ree Evaluate Report",
-        "description": "The persisted evaluate-run report artifact.",
+        "description": "The persisted evaluate-run report artifact.\n\nA threat's ``blocking`` means it holds its axis at its current level. Nothing\nrefuses to run or seal because of one.",
         "operationId": "getEvaluateReport",
         "parameters": [
           {
@@ -12531,7 +12532,7 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Definition Patch",
-            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"build_runtime\": {\"runtime_path\": \"runtime.tar\"}}` or `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
+            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"build_runtime\": {\"runtime_path\": \"runtime.tar\"}}` or, once its run script is written, `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
           },
           "expected_version": {
             "anyOf": [

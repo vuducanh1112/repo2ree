@@ -123,13 +123,30 @@ are synchronous. A REE is authored end to end in this order:
    `build_runtime.runtime_path`, then `startBuild`.
 6. `generateScriptCandidates` also scaffolds the activation script, then
    `startActivationTest`. The scaffolds refuse to run until you fill in the command.
-7. Declare each experiment via `patchReeDefinition`, write its run and verify
-   scripts as in step 6, then `startExperiment`.
+7. For each experiment, in this order: `generateScriptCandidates` with its name
+   scaffolds the run script; `writeReeFile` writes that and a verify script;
+   `patchReeDefinition` declares the experiment, which needs its run script to
+   exist; then `startExperiment`.
 8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,
    `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.
 9. `sealRee` — freeze the REE; await the returned run, after which `getRee` carries
    `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.
 10. `deleteRee` — delete the REE from its store.
+
+To replace a source, `removeSource` keeps the REE's scripts and definition; bring
+in the new one as in step 3.
+
+## Reviewing a sealed REE
+
+1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and
+   `loadReeBundle` with the archive; await the load run.
+2. `startSourceReview` opens the review and its run reproduces the source;
+   `listReviews` gives its `review_id`.
+3. `startBuildReview`, `startActivationReview`, and `startExperimentReview` for each
+   experiment; await each run. A review's `status` is about the runs so far, so run
+   every step you want checked.
+4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`
+   evidence the archive carries, or an `independent` rebuild.
 
 The external documentation link is a walkthrough of this sequence as real `curl`
 calls.

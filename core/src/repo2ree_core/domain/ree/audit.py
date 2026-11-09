@@ -42,6 +42,7 @@ class _Subject:
     definition: ReeDefinition
     receipts: ReeReceipts
     content_digests: frozenset[Digest]
+    content_paths: frozenset[str]
     bundle_settled: bool
 
     @classmethod
@@ -50,6 +51,7 @@ class _Subject:
             definition=ree.subject.definition,
             receipts=ree.subject.receipts,
             content_digests=frozenset(entry.digest for entry in ree.subject.contents.entries),
+            content_paths=frozenset(str(entry.path) for entry in ree.subject.contents.entries),
             # A draft's inventory is empty by construction, so asking whether a
             # payload travels in the bundle has no answer until the seal.
             bundle_settled=ree.seal is not None,
@@ -59,6 +61,12 @@ class _Subject:
         if not (applicable and self.bundle_settled):
             return "not_applicable"
         return "present" if digest is not None and digest in self.content_digests else "omitted"
+
+    def experiment_payload(self, name: str, *, applicable: bool) -> PayloadStatus:
+        """An experiment's outputs have one digest over them all, so they are found by where they travel."""
+        if not (applicable and self.bundle_settled):
+            return "not_applicable"
+        return "present" if any(path.startswith(f"results/{name}/") for path in self.content_paths) else "omitted"
 
 
 # ================================================
@@ -323,10 +331,7 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
                 run=_step(
                     receipt.run_id if receipt else None,
                     reasons or (() if receipt else ("experiment has not been run",)),
-                    payload=subject.payload(
-                        receipt.produced_output_digest if receipt else None,
-                        applicable=bool(experiment.output_paths),
-                    ),
+                    payload=subject.experiment_payload(experiment.name, applicable=bool(experiment.output_paths)),
                 ),
             )
         )

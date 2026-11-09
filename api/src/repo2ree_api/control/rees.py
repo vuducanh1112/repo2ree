@@ -191,7 +191,12 @@ def get_ree_route(ree_id: str) -> ReeDocument:
     responses=ERROR_RESPONSES,
 )
 def get_ree_state_route(ree_id: str) -> ReeState:
-    """Compact automation view: durable state and file metadata, never contents."""
+    """Compact automation view: durable state and file metadata, never contents.
+
+    In ``audit``, a step's ``evidence`` says whether its receipt is current. Its
+    ``payload`` says whether what it produced travels in the sealed archive:
+    ``present``, ``omitted``, or ``not_applicable`` before the seal.
+    """
     with author_api_action("view_ree_state", ree_id):
         return _ree_state(ree_id)
 

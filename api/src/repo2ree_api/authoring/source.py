@@ -145,6 +145,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
     responses=ERROR_RESPONSES,
 )
 def remove_source_route(ree_id: str) -> ReeDocument:
+    """Remove the source, keeping the REE's scripts and definition, so another can be brought in."""
     with author_api_action("remove_source", ree_id):
         handle = require_handle(ree_id)
         with ree_command_span("remove-source", ree_id):

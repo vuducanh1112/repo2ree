@@ -140,7 +140,7 @@ def dispatch_or_fail(handle: ReeRoute, cmd: Command, run_id: str, error_message:
         status_code=400,
         detail={
             "code": f"{cmd.operation}_failed",
-            "message": error_message,
+            "message": failure.message if failure is not None else error_message,
             "details": {"operation": cmd.operation, "exit_code": result.exit_code, "outputs": outputs or None},
             "retryable": failure.retryable if failure is not None else False,
         },

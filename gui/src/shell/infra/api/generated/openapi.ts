@@ -56,6 +56,10 @@ export interface paths {
         /**
          * Get Ree State Route
          * @description Compact automation view: durable state and file metadata, never contents.
+         *
+         *     In ``audit``, a step's ``evidence`` says whether its receipt is current. Its
+         *     ``payload`` says whether what it produced travels in the sealed archive:
+         *     ``present``, ``omitted``, or ``not_applicable`` before the seal.
          */
         get: operations["getReeState"];
         put?: never;
@@ -289,7 +293,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Remove Source Route */
+        /**
+         * Remove Source Route
+         * @description Remove the source, keeping the REE's scripts and definition, so another can be brought in.
+         */
         delete: operations["removeSource"];
         options?: never;
         head?: never;
@@ -470,6 +477,9 @@ export interface paths {
         /**
          * Get Ree Evaluate Report
          * @description The persisted evaluate-run report artifact.
+         *
+         *     A threat's ``blocking`` means it holds its axis at its current level. Nothing
+         *     refuses to run or seal because of one.
          */
         get: operations["getEvaluateReport"];
         put?: never;
@@ -3005,7 +3015,7 @@ export interface components {
         ReeDefinitionPatchPayload: {
             /**
              * Definition Patch
-             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"build_runtime": {"runtime_path": "runtime.tar"}}` or `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
+             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"build_runtime": {"runtime_path": "runtime.tar"}}` or, once its run script is written, `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
              */
             definition_patch?: {
                 [key: string]: unknown;

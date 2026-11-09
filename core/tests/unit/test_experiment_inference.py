@@ -83,7 +83,7 @@ def test_undeclared_output_path_warns(tmp_path: Path) -> None:
     assert "experiment_output_declaration_missing" in _codes(result)
 
 
-def test_undeclared_experiment_blocks(tmp_path: Path) -> None:
+def test_an_undeclared_experiment_gets_the_script_that_declaring_it_needs(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     result = _experiment(
         tmp_path,
@@ -92,9 +92,9 @@ def test_undeclared_experiment_blocks(tmp_path: Path) -> None:
         files={_DOCKER_RUNTIME: docker_archive(["ree-runtime:demo"])},
         experiments=[_definition("real", [])],
     )
-    assert result.status == "not_inferred"
-    assert result.candidates == []
-    assert "experiment_not_declared" in _codes(result)
+    assert result.status == "needs_input"
+    assert result.candidates
+    assert {"experiment_not_declared", "experiment_output_declaration_missing"} <= _codes(result)
 
 
 def test_venv_runtime_experiment(tmp_path: Path) -> None:

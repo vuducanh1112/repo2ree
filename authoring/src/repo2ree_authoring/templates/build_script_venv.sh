@@ -13,6 +13,6 @@ VENV_DIR="/tmp/ree-venv"
 # declared on the REE.
 RUNTIME_ARTIFACT="runtime-venv.tar.gz"
 
-python3 -m venv "$VENV_DIR"
+python -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --no-cache-dir --requirement "$REQUIREMENTS"
 tar -czf "$RUNTIME_ARTIFACT" -C "$(dirname "$VENV_DIR")" "$(basename "$VENV_DIR")"

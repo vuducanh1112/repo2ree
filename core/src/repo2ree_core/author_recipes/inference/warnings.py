@@ -118,10 +118,15 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
             "you intend to preserve before running the experiment."
         ),
     ),
-    "experiment_not_declared": (
+    "experiment_not_named": (
         "error",
         True,
-        "The requested experiment is not declared on the REE; declare it before generating its run script.",
+        "An experiment run script is generated for a named experiment; the request names none.",
+    ),
+    "experiment_not_declared": (
+        "warning",
+        True,
+        "This experiment is not declared on the REE yet; write this run script, then declare the experiment.",
     ),
     "experiment_output_declaration_missing": (
         "warning",

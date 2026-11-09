@@ -160,5 +160,6 @@ def test_workbench_command_failure_maps_to_400_with_operation_code(
     assert resp.status_code == 400
     error = resp.json()["error"]
     assert error["code"] == "write_file_failed"
+    assert error["message"] == "reserved path"
     assert error["retryable"] is False
     assert error["details"]["outputs"] == {"reason": "reserved path"}

@@ -1,11 +1,11 @@
 """The experiment-declaration gate for experiment-run inference.
 
-Experiment inference only proceeds for an experiment the author has actually
-declared on the REE. The requested name (carried on the decision context because
-it lives on the target, not the scan) must match exactly one
-``ReeDefinition.experiments`` entry; its reserved run/verify paths and declared
-output paths become an ``ExperimentBinding`` the downstream renderer consumes.
-An undeclared experiment blocks straight to ``not_inferred``.
+Experiment inference proceeds for a named experiment, declared or not: declaring
+one needs its run script, so inference has to come first. The requested name
+(carried on the decision context because it lives on the target, not the scan)
+matches a ``ReeDefinition.experiments`` entry or the reserved slug convention; its
+run/verify paths and declared output paths become an ``ExperimentBinding`` the
+downstream renderer consumes. A request with no name blocks to ``not_inferred``.
 """
 
 from __future__ import annotations
@@ -15,11 +15,12 @@ from typing import ClassVar
 from repo2ree_core.author_recipes.inference.models import BindingKind, CheckResult, DecisionContext
 from repo2ree_core.author_recipes.inference.warnings import make_warning
 from repo2ree_protocol.inference import ExperimentBinding, ExperimentGateObservation
+from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 
 class RequestedExperimentCheck:
     code = "requested_experiment"
-    label = "Is the requested experiment declared on the REE?"
+    label = "Does the request name an experiment?"
     branches = frozenset({"absent", "found"})
     requires: frozenset[BindingKind] = frozenset()
     produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
@@ -29,11 +30,20 @@ class RequestedExperimentCheck:
 
     def evaluate(self, context: DecisionContext) -> CheckResult:
         name = context.requested_experiment
-        experiment = context.runtime.experiment(name) if name else None
-        if experiment is None:
+        if not name:
             return CheckResult(
                 branch="absent",
                 observed=ExperimentGateObservation(result="absent", requested=name, declared=False),
+                warnings=[make_warning("experiment_not_named")],
+            )
+        experiment = context.runtime.experiment(name)
+        if experiment is None:
+            return CheckResult(
+                branch="found",
+                observed=ExperimentGateObservation(result="found", requested=name, declared=False),
+                bindings=(
+                    ExperimentBinding(name=name, run_script_path=experiment_run_script_path(name), output_paths=[]),
+                ),
                 warnings=[make_warning("experiment_not_declared")],
             )
         binding = ExperimentBinding(
