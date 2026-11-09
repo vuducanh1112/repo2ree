@@ -119,7 +119,7 @@ export async function settleRun(
   { watch = projectRunWatch(), succeed = false }: SettleOptions = {},
 ): Promise<RunSummary> {
   const base = `${run.apiBase}/api/v1/rees/${run.reeId}/runs/${run.runId}`;
-  const started = Date.now();
+  const started = performance.now();
   let lastProgress = started;
   let longestSilence = 0;
   let status = "";
@@ -132,7 +132,7 @@ export async function settleRun(
     );
 
   for (;;) {
-    const now = Date.now();
+    const now = performance.now();
     const summary = (await (await page.request.get(base)).json()) as RunSummary;
     const logs = (await (
       await page.request.get(`${base}/logs`, cursor === null ? {} : { params: { cursor } })

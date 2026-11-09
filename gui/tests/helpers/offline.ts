@@ -56,13 +56,13 @@ export async function reproduceOffline(archive: string): Promise<string> {
 }
 
 async function waitForDaemon(machine: string) {
-  const deadline = Date.now() + DAEMON_START_MS;
+  const deadline = performance.now() + DAEMON_START_MS;
   for (;;) {
     try {
       await run("docker", ["exec", machine, "docker", "info"]);
       return;
     } catch (error) {
-      if (Date.now() > deadline)
+      if (performance.now() > deadline)
         throw new Error(`the offline machine's Docker never started: ${error}`);
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
