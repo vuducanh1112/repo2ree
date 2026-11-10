@@ -10,7 +10,6 @@ from repo2ree_core.domain.ree.audit import _evidence_standing, _Subject, audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
 from repo2ree_protocol.audit import _STEP_FIELDS, ReeAudit
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.environment import EnvironmentDefinition, EnvironmentObservation, HostFingerprint
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.model import (
     BuildRuntimeDefinition,
@@ -34,6 +33,7 @@ from repo2ree_ree.receipt import (
     WorkspaceDrift,
 )
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT, experiment_run_script_path
+from repo2ree_ree.workbench_environment import HostFingerprint, WorkbenchEnvironment, WorkbenchEnvironmentObservation
 
 _DIGEST = digest_bytes(b"content")
 _OTHER_DIGEST = digest_bytes(b"other")
@@ -144,21 +144,23 @@ def test_editing_the_build_script_leaves_the_build_receipt_stale_and_says_why() 
     assert runtime.receipt_run_id == RunId("build-1")
 
 
-_PYTHON = EnvironmentDefinition(kind="image", image="python:3.12-slim")
+_PYTHON = WorkbenchEnvironment(kind="image", image="python:3.12-slim")
 
 
-def _ran_under(declared: EnvironmentDefinition | None) -> EnvironmentObservation:
-    return EnvironmentObservation(declared=declared, backend="host", host=HostFingerprint(os="Linux", arch="x86_64"))
+def _ran_under(declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
+    return WorkbenchEnvironmentObservation(
+        declared=declared, backend="host", host=HostFingerprint(os="Linux", arch="x86_64")
+    )
 
 
-def _with_environment(ree: Ree, environment: EnvironmentDefinition | None) -> Ree:
-    return replace_definition(ree, ree.subject.definition.model_copy(update={"environment": environment}))
+def _with_environment(ree: Ree, environment: WorkbenchEnvironment | None) -> Ree:
+    return replace_definition(ree, ree.subject.definition.model_copy(update={"workbench_environment": environment}))
 
 
 def test_changing_the_environment_leaves_what_ran_in_it_stale_and_changing_it_back_does_not() -> None:
     declared = _with_environment(_built_ree(), _PYTHON)
-    built = _build_receipt().model_copy(update={"environment": _ran_under(_PYTHON)})
-    experiment = _experiment_receipt().model_copy(update={"environment": _ran_under(_PYTHON)})
+    built = _build_receipt().model_copy(update={"workbench_environment": _ran_under(_PYTHON)})
+    experiment = _experiment_receipt().model_copy(update={"workbench_environment": _ran_under(_PYTHON)})
     ree = commit_receipt(
         commit_receipt(
             replace_definition(
@@ -170,10 +172,10 @@ def test_changing_the_environment_leaves_what_ran_in_it_stale_and_changing_it_ba
     )
     assert audit(ree).stale_steps() == ()
 
-    moved = _with_environment(ree, EnvironmentDefinition(kind="image", image="python:3.13-slim"))
+    moved = _with_environment(ree, WorkbenchEnvironment(kind="image", image="python:3.13-slim"))
     result = audit(moved)
-    assert result.runtime.reasons == ("environment changed",)
-    assert result.experiments[0].run.reasons == ("environment changed",)
+    assert result.runtime.reasons == ("workbench environment changed",)
+    assert result.experiments[0].run.reasons == ("workbench environment changed",)
 
     assert audit(_with_environment(moved, _PYTHON)).stale_steps() == ()
 
@@ -181,10 +183,10 @@ def test_changing_the_environment_leaves_what_ran_in_it_stale_and_changing_it_ba
 def test_a_receipt_from_before_environments_stays_current_until_one_is_declared() -> None:
     ree = _built_ree()
     assert ree.subject.receipts.build is not None
-    assert ree.subject.receipts.build.environment is None
+    assert ree.subject.receipts.build.workbench_environment is None
     assert audit(ree).runtime.evidence == "current"
 
-    assert audit(_with_environment(ree, _PYTHON)).runtime.reasons == ("environment changed",)
+    assert audit(_with_environment(ree, _PYTHON)).runtime.reasons == ("workbench environment changed",)
 
 
 def test_repointing_the_source_leaves_the_source_receipt_stale() -> None:

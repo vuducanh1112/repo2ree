@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib.resources import files
 
-from repo2ree_ree.environment import EnvironmentKind
+from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
 
 def _template(name: str) -> str:
@@ -43,12 +43,12 @@ class ScriptTemplate:
     label: str
     description: str
     body: str
-    # The environment it suits; None for one that suits any, as a verify script does.
-    environment: EnvironmentKind | None = None
+    # The workbench environment it suits; None for one that suits any, as a verify script does.
+    workbench_environment: WorkbenchEnvironmentKind | None = None
 
 
-def reserved_script_template(reserved_path: str, environment: EnvironmentKind = "image") -> str:
-    """Return the default starter template for a seeded reserved script path in ``environment``.
+def reserved_script_template(reserved_path: str, workbench_environment: WorkbenchEnvironmentKind = "image") -> str:
+    """Return the default starter template for a seeded reserved script path in ``workbench_environment``.
 
     Catalogs are keyed by the script's file name, so the lookup is stable
     under renames of the reserved directory itself.
@@ -58,7 +58,7 @@ def reserved_script_template(reserved_path: str, environment: EnvironmentKind = 
         "activation.sh": activation_templates,
     }
     templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
-    return next(template.body for template in templates if template.environment == environment)
+    return next(template.body for template in templates if template.workbench_environment == workbench_environment)
 
 
 def build_templates() -> tuple[ScriptTemplate, ...]:
@@ -69,14 +69,14 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
             label="Docker image",
             description="Build the project's Dockerfile into an image and save it as the runtime tarball.",
             body=_template("build_script_docker.sh"),
-            environment="image",
+            workbench_environment="image",
         ),
         ScriptTemplate(
             key="venv",
             label="Python virtual environment",
             description="Install requirements.txt into a virtual environment on the host and pack it as the runtime.",
             body=_template("build_script_venv.sh"),
-            environment="host",
+            workbench_environment="host",
         ),
     )
 
@@ -89,14 +89,14 @@ def activation_templates() -> tuple[ScriptTemplate, ...]:
             label="Docker runtime",
             description="Load the saved runtime image and run a command inside it to prove the runtime works.",
             body=_template("activation_docker.sh"),
-            environment="image",
+            workbench_environment="image",
         ),
         ScriptTemplate(
             key="venv",
             label="Python virtual environment",
             description="Restore the packed virtual environment and run a command with it to prove the runtime works.",
             body=_template("activation_venv.sh"),
-            environment="host",
+            workbench_environment="host",
         ),
     )
 
@@ -110,7 +110,7 @@ def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
             description="Load the saved runtime image and run the experiment inside it, "
             "teeing stdout to a workspace log the verify script can read.",
             body=_template("experiment_run_docker.sh"),
-            environment="image",
+            workbench_environment="image",
         ),
         ScriptTemplate(
             key="venv",
@@ -118,7 +118,7 @@ def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
             description="Restore the packed virtual environment and run the experiment with it, "
             "writing stdout to a workspace log the verify script can read.",
             body=_template("experiment_run_venv.sh"),
-            environment="host",
+            workbench_environment="host",
         ),
     )
 

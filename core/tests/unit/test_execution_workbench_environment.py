@@ -6,10 +6,10 @@ import json
 
 import pytest
 
-from repo2ree_core.execution.environment import ENVIRONMENT_VARIABLE, observe_environment
-from repo2ree_ree.environment import EnvironmentDefinition
+from repo2ree_core.execution.workbench_environment import ENVIRONMENT_VARIABLE, observe_workbench_environment
+from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
-_DECLARED = EnvironmentDefinition(kind="image", image="python:3.12-slim", needs_container_engine=True)
+_DECLARED = WorkbenchEnvironment(kind="image", image="python:3.12-slim", needs_container_engine=True)
 _DIGEST = "sha256:" + "a" * 64
 
 
@@ -18,7 +18,7 @@ def test_the_workbench_statement_is_recorded_under_the_declaration(monkeypatch: 
         ENVIRONMENT_VARIABLE, json.dumps({"backend": "container", "image_digest": _DIGEST, "script_engine": "nested"})
     )
 
-    observed = observe_environment(_DECLARED)
+    observed = observe_workbench_environment(_DECLARED)
 
     assert (observed.declared, observed.backend, observed.image_digest, observed.script_engine) == (
         _DECLARED,
@@ -34,7 +34,7 @@ def test_without_a_readable_statement_the_executor_describes_its_host(
 ) -> None:
     monkeypatch.setenv(ENVIRONMENT_VARIABLE, statement)
 
-    observed = observe_environment(None)
+    observed = observe_workbench_environment(None)
 
     assert observed.backend == "host"
     assert observed.host is not None

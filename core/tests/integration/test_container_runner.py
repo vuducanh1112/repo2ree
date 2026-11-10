@@ -16,7 +16,7 @@ import pytest
 
 from repo2ree_core.execution.runners import ContainerScriptRunner
 from repo2ree_protocol.frames import LogSink
-from repo2ree_ree.environment import EnvironmentDefinition
+from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
 IMAGE = "alpine:3"
 # Under the checkout, which a dev container shares with the engine's host (a pytest tmp_path is not).
@@ -82,7 +82,7 @@ def test_a_script_sees_its_workspace_at_the_same_path_and_nothing_of_the_ree_aro
     assert str(workspace) in result.stdout
     assert "no history here" in result.stdout
     assert (workspace / "out.txt").read_text() == "built\n"
-    observed = runner.observe(EnvironmentDefinition(kind="image", image=IMAGE))
+    observed = runner.observe(WorkbenchEnvironment(kind="image", image=IMAGE))
     assert observed.backend == "container"
     assert observed.image_digest is not None
     assert observed.image_digest.startswith("sha256:")

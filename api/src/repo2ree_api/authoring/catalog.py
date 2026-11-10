@@ -33,13 +33,13 @@ from repo2ree_authoring.templates import (
     experiment_run_templates,
     verify_templates,
 )
-from repo2ree_ree.environment import EnvironmentKind
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
+from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
 # ================================================
 # The step catalog
@@ -121,7 +121,7 @@ class ScriptTemplateEntry(BaseModel):
 
     Every catalog section lists these; one entry per environment carries
     ``is_default`` (for the seeded scripts it is the content a fresh REE in that
-    environment starts with). ``environment`` is the REE environment kind a
+    environment starts with). ``workbench_environment`` is the REE workbench environment kind a
     variant suits, or null for one that suits any.
     """
 
@@ -130,7 +130,7 @@ class ScriptTemplateEntry(BaseModel):
     description: str
     body: str
     is_default: bool
-    environment: EnvironmentKind | None = None
+    workbench_environment: WorkbenchEnvironmentKind | None = None
 
 
 class BuildScriptTemplates(BaseModel):
@@ -186,15 +186,15 @@ class ScriptTemplateCatalog(BaseModel):
 def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]:
     # The core catalogs order each environment's entries default-first; publish that as
     # an explicit flag so clients don't have to know the positional convention.
-    defaults = {template.environment: template for template in reversed(templates)}
+    defaults = {template.workbench_environment: template for template in reversed(templates)}
     return [
         ScriptTemplateEntry(
             key=template.key,
             label=template.label,
             description=template.description,
             body=template.body,
-            is_default=defaults[template.environment] is template,
-            environment=template.environment,
+            is_default=defaults[template.workbench_environment] is template,
+            workbench_environment=template.workbench_environment,
         )
         for template in templates
     ]

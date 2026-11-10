@@ -23,10 +23,10 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
-from repo2ree_ree.environment import EnvironmentObservation
 from repo2ree_ree.model import ExperimentDefinition, Ree, TestActivationDefinition
 from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.receipt import RunExperimentReceipt, TestActivationReceipt
+from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
 
 RunnableKind = Literal["test_activation", "run_experiment"]
 RunnableDefinition = TestActivationDefinition | ExperimentDefinition
@@ -102,7 +102,7 @@ def handle_runnable_operation(
         runtime_path=runtime_path,
         runtime_digest=runtime_digest,
         produced_output_digest=produced_output_digest,
-        environment=current_runner().observe(ree.subject.definition.environment),
+        workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
     )
     try:
         save_ree(
@@ -227,7 +227,7 @@ def _successful_receipt(
     runtime_path: WorkspacePath | None,
     runtime_digest: Digest | None,
     produced_output_digest: Digest | None,
-    environment: EnvironmentObservation,
+    workbench_environment: WorkbenchEnvironmentObservation,
 ) -> TestActivationReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
     if isinstance(definition, TestActivationDefinition):
@@ -240,7 +240,7 @@ def _successful_receipt(
             verify_script_digest=definition.verify_script_digest,
             run_exit_code=0,
             verify_exit_code=0 if definition.verify_script_path is not None else None,
-            environment=environment,
+            workbench_environment=workbench_environment,
         )
     return RunExperimentReceipt(
         **envelope,
@@ -252,7 +252,7 @@ def _successful_receipt(
         run_exit_code=0,
         verify_exit_code=0 if definition.verify_script_path is not None else None,
         produced_output_digest=produced_output_digest,
-        environment=environment,
+        workbench_environment=workbench_environment,
     )
 
 

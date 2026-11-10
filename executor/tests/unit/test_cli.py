@@ -349,7 +349,7 @@ def test_build_archive_before_seal_writes_a_draft_bundle(initialized_ree: Path) 
 
 
 def test_init_ree_seeds_the_scripts_of_its_environment(ree_root: Path) -> None:
-    result = runner.invoke(cli, ["init-ree", "--name", "demo", "--environment", "host"])
+    result = runner.invoke(cli, ["init-ree", "--name", "demo", "--workbench-environment", "host"])
 
     assert result.exit_code == 0, result.output
     assert "docker" not in ReeDirectory(ReeLayout.in_workbench()).overlay.read_text(RESERVED_BUILD_SCRIPT)

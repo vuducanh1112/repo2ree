@@ -220,8 +220,8 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     assert receipt.runtime_digest == digest_bytes(_RUNTIME)
     assert receipt.run_script_digest == digest_bytes(_EXPERIMENT_SCRIPT)
     assert receipt.verify_script_digest == digest_bytes(_EXPERIMENT_VERIFY)
-    assert receipt.environment is not None
-    assert receipt.environment.declared is None
+    assert receipt.workbench_environment is not None
+    assert receipt.workbench_environment.declared is None
     assert receipt.produced_output_digest == digest_output_paths(
         layout.workspace,
         ["outputs/result.txt"],

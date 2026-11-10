@@ -72,7 +72,7 @@ def test_declaring_a_container_engine_is_refused_where_only_apptainer_is_install
 ) -> None:
     ree_id = new_ree()
     api.acquire(ree_id, APPTAINER)
-    api.patch(ree_id, {"environment": {"kind": "host", "needs_container_engine": True}})
+    api.patch(ree_id, {"workbench_environment": {"kind": "host", "needs_container_engine": True}})
 
     run = api.build(ree_id, fixture=APPTAINER)
 

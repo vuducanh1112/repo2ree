@@ -17,7 +17,6 @@ from functools import cache
 from pathlib import Path
 from typing import Literal, Protocol
 
-from repo2ree_core.execution.environment import host_fingerprint, observe_environment
 from repo2ree_core.execution.process import (
     CancelCheck,
     StepOutcome,
@@ -25,11 +24,12 @@ from repo2ree_core.execution.process import (
     format_argv,
     run_streaming_process,
 )
+from repo2ree_core.execution.workbench_environment import host_fingerprint, observe_workbench_environment
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_ree.digest import Digest
-from repo2ree_ree.environment import EnvironmentDefinition, EnvironmentObservation
 from repo2ree_ree.paths import resolve_within
+from repo2ree_ree.workbench_environment import WorkbenchEnvironment, WorkbenchEnvironmentObservation
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import ScriptSpanAttrs, record_command_status, record_span_facts
 
@@ -50,7 +50,7 @@ class ScriptRunner(Protocol):
         self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
     ) -> StreamingProcessResult: ...
 
-    def observe(self, declared: EnvironmentDefinition | None) -> EnvironmentObservation: ...
+    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation: ...
 
 
 class LocalScriptRunner:
@@ -61,8 +61,8 @@ class LocalScriptRunner:
     ) -> StreamingProcessResult:
         return run_streaming_process(argv, log=log, cwd=workspace, is_canceled=is_canceled)
 
-    def observe(self, declared: EnvironmentDefinition | None) -> EnvironmentObservation:
-        return observe_environment(declared)
+    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
+        return observe_workbench_environment(declared)
 
 
 @dataclass
@@ -139,8 +139,8 @@ class ContainerScriptRunner:
         relative = path.relative_to(local) if path.is_relative_to(local) else None
         return str(Path(engine) / relative) if relative is not None else str(path)
 
-    def observe(self, declared: EnvironmentDefinition | None) -> EnvironmentObservation:
-        return EnvironmentObservation(
+    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
+        return WorkbenchEnvironmentObservation(
             declared=declared,
             backend="container",
             image_digest=Digest(self._digest) if self._digest else None,

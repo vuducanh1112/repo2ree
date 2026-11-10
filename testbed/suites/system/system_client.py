@@ -154,7 +154,7 @@ class Api:
         if STORE_BACKEND == "container" and image == DIND_IMAGE:
             # The Docker REEs build and run images: they declare they need the engine their store gives them.
             environment = {"kind": "image", "image": image, "needs_container_engine": True}
-            self.patch(ree_id, {"environment": environment})
+            self.patch(ree_id, {"workbench_environment": environment})
         return ree_id
 
     def keep_archive(self, ree_id: str, label: str) -> Path | None:

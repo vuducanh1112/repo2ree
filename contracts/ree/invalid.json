@@ -211,7 +211,7 @@
         },
         {
           "op": "remove",
-          "path": "/subject/definition/environment/image"
+          "path": "/subject/definition/workbench_environment/image"
         }
       ],
       "error": "an image environment names its image"
@@ -225,7 +225,7 @@
         },
         {
           "op": "replace",
-          "path": "/subject/definition/environment/kind",
+          "path": "/subject/definition/workbench_environment/kind",
           "value": "host"
         }
       ],

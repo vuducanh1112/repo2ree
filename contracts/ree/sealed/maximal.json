@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:324cf6d83b8fe4921dc9f2068351845632f2c27968f89c40fdcf5cbe589e3c5a",
+    "ree_digest": "sha256:b932614b51b093eb38a2dfd458dd24336c9528cfc2da111143230fddaad6e982",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -53,11 +53,6 @@
         ],
         "version": "1.2.3",
         "website": "https://example.org/maximal"
-      },
-      "environment": {
-        "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "kind": "image",
-        "needs_container_engine": true
       },
       "experiments": [
         {
@@ -157,6 +152,11 @@
         "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7",
         "verify_script_path": "ree-scripts/activation.verify.sh",
         "verify_script_size": 32
+      },
+      "workbench_environment": {
+        "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "kind": "image",
+        "needs_container_engine": true
       }
     },
     "receipts": {
@@ -164,7 +164,16 @@
         "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
         "build_runtime_script_path": "ree-scripts/build_script.sh",
         "duration_ms": 600000,
-        "environment": {
+        "finished_at": "2026-10-01T08:13:00.000000Z",
+        "operation": "build_runtime",
+        "produced_runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "recorded_at": "2026-10-01T08:13:00.000000Z",
+        "run_id": "run-build",
+        "runtime_path": "runtime",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:03:00.000000Z",
+        "workbench_environment": {
           "backend": "container",
           "declared": {
             "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -180,15 +189,6 @@
           "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "script_engine": "socket"
         },
-        "finished_at": "2026-10-01T08:13:00.000000Z",
-        "operation": "build_runtime",
-        "produced_runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-        "recorded_at": "2026-10-01T08:13:00.000000Z",
-        "run_id": "run-build",
-        "runtime_path": "runtime",
-        "schema_version": 1,
-        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:03:00.000000Z",
         "workspace_drift": {
           "changed_path_count": 1,
           "changed_paths": [
@@ -220,7 +220,21 @@
       "experiments": {
         "train model": {
           "duration_ms": 3600000,
-          "environment": {
+          "experiment_name": "train model",
+          "finished_at": "2026-10-01T09:17:00.000000Z",
+          "operation": "run_experiment",
+          "produced_output_digest": "sha256:7b8c56be0a5f71be141f0cfaa9195e2ff8d1ef89e380560b579a82fd841429c1",
+          "recorded_at": "2026-10-01T09:17:00.000000Z",
+          "run_exit_code": 0,
+          "run_id": "run-experiment",
+          "run_script_digest": "sha256:a530c507fd893f520b973f7410ca587b02d26954cba99c2857cb9446a9c900d3",
+          "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+          "schema_version": 1,
+          "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+          "started_at": "2026-10-01T08:17:00.000000Z",
+          "verify_exit_code": 0,
+          "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38",
+          "workbench_environment": {
             "backend": "container",
             "declared": {
               "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -235,21 +249,7 @@
             },
             "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "script_engine": "socket"
-          },
-          "experiment_name": "train model",
-          "finished_at": "2026-10-01T09:17:00.000000Z",
-          "operation": "run_experiment",
-          "produced_output_digest": "sha256:7b8c56be0a5f71be141f0cfaa9195e2ff8d1ef89e380560b579a82fd841429c1",
-          "recorded_at": "2026-10-01T09:17:00.000000Z",
-          "run_exit_code": 0,
-          "run_id": "run-experiment",
-          "run_script_digest": "sha256:a530c507fd893f520b973f7410ca587b02d26954cba99c2857cb9446a9c900d3",
-          "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-          "schema_version": 1,
-          "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-          "started_at": "2026-10-01T08:17:00.000000Z",
-          "verify_exit_code": 0,
-          "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38"
+          }
         }
       },
       "hardware_observation": {
@@ -380,7 +380,20 @@
       },
       "test_activation": {
         "duration_ms": 5000,
-        "environment": {
+        "finished_at": "2026-10-01T08:16:05.000000Z",
+        "operation": "test_activation",
+        "recorded_at": "2026-10-01T08:16:05.000000Z",
+        "run_exit_code": 0,
+        "run_id": "run-activation",
+        "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
+        "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "runtime_path": "runtime",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:16:00.000000Z",
+        "verify_exit_code": 0,
+        "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7",
+        "workbench_environment": {
           "backend": "container",
           "declared": {
             "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -395,20 +408,7 @@
           },
           "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "script_engine": "socket"
-        },
-        "finished_at": "2026-10-01T08:16:05.000000Z",
-        "operation": "test_activation",
-        "recorded_at": "2026-10-01T08:16:05.000000Z",
-        "run_exit_code": 0,
-        "run_id": "run-activation",
-        "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
-        "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-        "runtime_path": "runtime",
-        "schema_version": 1,
-        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:16:00.000000Z",
-        "verify_exit_code": 0,
-        "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7"
+        }
       }
     },
     "schema_version": 1

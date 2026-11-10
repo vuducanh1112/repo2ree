@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend, declared_environment
+from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend, declared_workbench_environment
 from repo2ree_workbench.tools import tool_environment
 
 
@@ -103,7 +103,7 @@ def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_execu
     root = executor.ree_root("ree-1")
     root.mkdir(parents=True)
     environment = {"kind": "image", "image": "python:3.12-slim", "needs_container_engine": True}
-    (root / "ree.json").write_text(json.dumps({"subject": {"definition": {"environment": environment}}}))
+    (root / "ree.json").write_text(json.dumps({"subject": {"definition": {"workbench_environment": environment}}}))
 
     choice = json.loads(executor.environment(root)["REPO2REE_SCRIPT_RUNNER"])
 
@@ -116,7 +116,7 @@ def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_execu
         "owner": "",
         "refused": None,
     }
-    assert declared_environment(executor.ree_root("ree-2")) == {}
+    assert declared_workbench_environment(executor.ree_root("ree-2")) == {}
 
 
 def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -> None:

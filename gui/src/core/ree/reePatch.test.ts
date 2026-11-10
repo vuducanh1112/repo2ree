@@ -142,7 +142,7 @@ describe("toReePatchFromSlices", () => {
       ...slices,
       reeSpec: {
         ...createEmptyReeSpec(),
-        environment: {
+        workbenchEnvironment: {
           kind: "image",
           image: "python:3.12",
           pinned: false,
@@ -150,14 +150,14 @@ describe("toReePatchFromSlices", () => {
         },
       },
     });
-    expect(declared.environment).toEqual({
+    expect(declared.workbench_environment).toEqual({
       kind: "image",
       image: "python:3.12",
       needs_container_engine: true,
     });
 
     const undeclared = toReePatchFromSlices({ ...slices, reeSpec: createEmptyReeSpec() });
-    expect("environment" in undeclared).toBe(false);
+    expect("workbench_environment" in undeclared).toBe(false);
   });
 
   it("sends sizes in bytes and bandwidth in Mbps, as the sealed format records them", () => {

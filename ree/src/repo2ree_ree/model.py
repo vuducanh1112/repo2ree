@@ -5,7 +5,6 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from repo2ree_ree.digest import digest_json
-from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.primitives import Digest, ReePath, SourceType, UtcInstant, WorkspacePath
 from repo2ree_ree.receipt import (
@@ -27,6 +26,7 @@ from repo2ree_ree.reserved_paths import (
     experiment_verify_script_path,
     is_overlay_path,
 )
+from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
 CURRENT_SCHEMA_VERSION: Literal[1] = 1
 
@@ -133,7 +133,7 @@ class ReeDefinition(_DomainModel):
     catalog: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     source: SourceDefinition | None = None
     build_runtime: BuildRuntimeDefinition | None = None
-    environment: EnvironmentDefinition | None = None
+    workbench_environment: WorkbenchEnvironment | None = None
     test_activation: TestActivationDefinition | None = None
     hardware: HardwareDefinition | None = None
     experiments: tuple[ExperimentDefinition, ...] = ()

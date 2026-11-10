@@ -10,10 +10,10 @@ import {
   type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
-  type ReeEnvironment,
   type ReeExperiment,
   type ReeRunnable,
   type ReeSpec,
+  type WorkbenchEnvironment,
 } from "./ReeSpec";
 import {
   mapRawReeAudit,
@@ -120,7 +120,7 @@ function mapRawActivation(value: unknown): ReeActivation {
 // Mapper
 // ================================================
 
-function mapRawEnvironment(value: unknown): ReeEnvironment | null {
+function mapRawWorkbenchEnvironment(value: unknown): WorkbenchEnvironment | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
   const image = String(raw.image ?? "");
@@ -161,7 +161,7 @@ export function mapRawReeIntentToSlices({
       sourceType: (intent.source_type as ReeSpec["sourceType"]) || "",
       resolvedRevision: String(intent.revision ?? ""),
       runtime: String(intent.runtime ?? ""),
-      environment: mapRawEnvironment(intent.environment),
+      workbenchEnvironment: mapRawWorkbenchEnvironment(intent.workbench_environment),
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),

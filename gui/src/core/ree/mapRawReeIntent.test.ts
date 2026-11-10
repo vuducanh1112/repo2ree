@@ -89,12 +89,14 @@ describe("mapRawReeIntentToSlices", () => {
     expect(mapped.reeSpec.activation.runScript).toBe("");
   });
 
-  it("maps the declared environment, and whether its image is pinned", () => {
+  it("maps the declared workbench environment, and whether its image is pinned", () => {
     const pinned = `docker.io/library/python@sha256:${"a".repeat(64)}`;
     const image = mapRawReeIntentToSlices({
-      reeIntent: { environment: { kind: "image", image: pinned, needs_container_engine: true } },
+      reeIntent: {
+        workbench_environment: { kind: "image", image: pinned, needs_container_engine: true },
+      },
       fallbackName: "demo",
-    }).reeSpec.environment;
+    }).reeSpec.workbenchEnvironment;
     expect(image).toEqual({
       kind: "image",
       image: pinned,
@@ -103,13 +105,13 @@ describe("mapRawReeIntentToSlices", () => {
     });
 
     const tagged = mapRawReeIntentToSlices({
-      reeIntent: { environment: { kind: "image", image: "python:3.12" } },
+      reeIntent: { workbench_environment: { kind: "image", image: "python:3.12" } },
       fallbackName: "demo",
-    }).reeSpec.environment;
+    }).reeSpec.workbenchEnvironment;
     expect(tagged?.pinned).toBe(false);
 
     expect(
-      mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" }).reeSpec.environment,
+      mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" }).reeSpec.workbenchEnvironment,
     ).toBeNull();
   });
 

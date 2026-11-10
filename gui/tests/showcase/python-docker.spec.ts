@@ -145,7 +145,7 @@ test.describe("REE pipeline", () => {
       ).toBeVisible();
       // The bench declared what the build runs in: its image, pinned by digest.
       await expect(main(page).getByText(/@?sha256:[0-9a-f]{64}$/)).toBeVisible();
-      await expect(main(page).getByText("Environment not pinned")).toHaveCount(0);
+      await expect(main(page).getByText("Workbench environment not pinned")).toHaveCount(0);
 
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);

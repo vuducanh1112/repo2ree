@@ -70,17 +70,17 @@ describe("major step page workflows", () => {
     [
       "warns that a tag can move",
       { kind: "image", image: "python:3.12", pinned: false },
-      ["python:3.12", "Environment not pinned"],
+      ["python:3.12", "Workbench environment not pinned"],
       [],
     ],
     [
-      "says when the workbench host is the environment",
+      "says when the workbench host is the workbench environment",
       { kind: "host", image: "", pinned: false },
       ["Runs on the workbench host"],
-      ["Environment not pinned"],
+      ["Workbench environment not pinned"],
     ],
-    ["says when nothing is declared", null, ["No environment declared"], []],
-  ] as const)("the build header %s", async (_name, environment, shown, hidden) => {
+    ["says when nothing is declared", null, ["No workbench environment declared"], []],
+  ] as const)("the build header %s", async (_name, workbenchEnvironment, shown, hidden) => {
     renderWithShell(
       <PageBuildRuntime
         {...createStepPageProps("build", {
@@ -88,7 +88,10 @@ describe("major step page workflows", () => {
             ...exampleEditorRee,
             spec: {
               ...exampleEditorRee.spec,
-              environment: environment && { ...environment, needsContainerEngine: false },
+              workbenchEnvironment: workbenchEnvironment && {
+                ...workbenchEnvironment,
+                needsContainerEngine: false,
+              },
             },
           },
         })}
@@ -103,7 +106,7 @@ describe("major step page workflows", () => {
   it("declares the image the build runs in, and that its scripts call a container engine", async () => {
     const user = userEvent.setup();
     const onReeSpecChange = vi.fn();
-    const environment = {
+    const workbenchEnvironment = {
       kind: "image" as const,
       image: "",
       pinned: false,
@@ -112,16 +115,16 @@ describe("major step page workflows", () => {
     renderWithShell(
       <PageBuildRuntime
         {...createStepPageProps("build", {
-          ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, environment } },
+          ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, workbenchEnvironment } },
           onReeSpecChange,
         })}
       />,
       { reeId: "ree-1", services: catalogServices() },
     );
     const lastUpdate = () =>
-      onReeSpecChange.mock.calls.at(-1)?.[0](createEmptyReeSpec()).environment;
+      onReeSpecChange.mock.calls.at(-1)?.[0](createEmptyReeSpec()).workbenchEnvironment;
 
-    fireEvent.change(await screen.findByLabelText("Environment image"), {
+    fireEvent.change(await screen.findByLabelText("Workbench environment image"), {
       target: { value: "python@sha256:abc" },
     });
     expect(lastUpdate()).toEqual({

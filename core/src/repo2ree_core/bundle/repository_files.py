@@ -29,7 +29,7 @@ def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:
         source_type=source.source_type if source else "",
         revision=source.requested_ref or "" if source else "",
         swhid=str(ree.subject.receipts.source.observed_swhid or "") if ree.subject.receipts.source else "",
-        environment=definition.environment,
+        workbench_environment=definition.workbench_environment,
     ):
         target = layout.root / name.removeprefix("ree/")
         if name == "run.sh":

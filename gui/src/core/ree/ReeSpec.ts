@@ -125,9 +125,9 @@ export interface Hbom {
 }
 
 /** What the REE's scripts run in, as the REE declares it. */
-export interface ReeEnvironment {
+export interface WorkbenchEnvironment {
   kind: "image" | "host";
-  /** The image reference; empty for a host environment. */
+  /** The image reference; empty for a host workbench environment. */
   image: string;
   /** Whether the reference names a digest, so it cannot move. */
   pinned: boolean;
@@ -146,7 +146,7 @@ export interface ReeSpec {
   resolvedRevision: string;
   runtime: string;
   /** Null until the REE declares one; set when its workbench is set up. */
-  environment: ReeEnvironment | null;
+  workbenchEnvironment: WorkbenchEnvironment | null;
   activation: ReeActivation;
   sbom: string;
   /** Intrinsic content identity of the acquired source tree. Not an archival
@@ -230,7 +230,7 @@ export function createEmptyReeSpec(): ReeSpec {
     sourceType: "",
     resolvedRevision: "",
     runtime: "",
-    environment: null,
+    workbenchEnvironment: null,
     activation: createEmptyReeActivation(),
     sbom: "",
     swhid: "",

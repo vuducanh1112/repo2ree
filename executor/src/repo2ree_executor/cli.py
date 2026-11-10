@@ -52,7 +52,7 @@ from repo2ree_protocol.queries import (
     READ_REE_FILE_PATH,
 )
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.environment import EnvironmentKind
+from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.log import configure_logging as _configure_logging
 from repo2ree_telemetry.relay import setup_relay_tracing
@@ -385,19 +385,19 @@ def experiment_cmd(name: str, run_id: str | None) -> None:
 @cli.command("init-ree")
 @click.option("--name", required=True, help="Human-readable name for the REE.")
 @click.option(
-    "--environment",
-    type=click.Choice(get_args(EnvironmentKind)),
+    "--workbench-environment",
+    type=click.Choice(get_args(WorkbenchEnvironmentKind)),
     default="image",
     help="What the REE's scripts run in, which decides the scripts it starts with.",
 )
-def init_ree_cmd(name: str, environment: EnvironmentKind) -> None:
+def init_ree_cmd(name: str, workbench_environment: WorkbenchEnvironmentKind) -> None:
     """Initialize the REE through core and capture its first Git version.
 
     Retrying preserves existing files and ensures a baseline exists. A capture
     failure can leave initialized files; a later invocation retries the capture.
     """
     try:
-        result = initialize_ree(ReeLayout.in_workbench(), name=name, environment=environment)
+        result = initialize_ree(ReeLayout.in_workbench(), name=name, workbench_environment=workbench_environment)
     except HistoryCaptureError as exc:
         click.echo(json.dumps({"error": str(exc)}), err=True)
         raise click.exceptions.Exit(1) from exc

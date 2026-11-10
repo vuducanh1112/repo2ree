@@ -8769,10 +8769,10 @@
             "type": "string",
             "title": "Produced Runtime Digest"
           },
-          "environment": {
+          "workbench_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EnvironmentObservation"
+                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
               },
               {
                 "type": "null"
@@ -9857,41 +9857,6 @@
         ],
         "title": "DockerfileBinding"
       },
-      "EnvironmentDefinition": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "image",
-              "host"
-            ],
-            "title": "Kind"
-          },
-          "image": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image"
-          },
-          "needs_container_engine": {
-            "type": "boolean",
-            "title": "Needs Container Engine",
-            "default": false
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "kind"
-        ],
-        "title": "EnvironmentDefinition"
-      },
       "EnvironmentLevel": {
         "type": "integer",
         "enum": [
@@ -9900,66 +9865,6 @@
           2
         ],
         "title": "EnvironmentLevel"
-      },
-      "EnvironmentObservation": {
-        "properties": {
-          "declared": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/EnvironmentDefinition"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "backend": {
-            "type": "string",
-            "enum": [
-              "host",
-              "container"
-            ],
-            "title": "Backend"
-          },
-          "image_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Digest"
-          },
-          "host": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/HostFingerprint"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "script_engine": {
-            "type": "string",
-            "enum": [
-              "none",
-              "socket",
-              "nested"
-            ],
-            "title": "Script Engine",
-            "default": "none"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "backend"
-        ],
-        "title": "EnvironmentObservation",
-        "description": "What a step ran in: the declaration it ran under, and what was there."
       },
       "ErrorDetail": {
         "properties": {
@@ -12410,10 +12315,10 @@
               }
             ]
           },
-          "environment": {
+          "workbench_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EnvironmentDefinition"
+                "$ref": "#/components/schemas/WorkbenchEnvironment"
               },
               {
                 "type": "null"
@@ -12483,10 +12388,10 @@
               }
             ]
           },
-          "environment": {
+          "workbench_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EnvironmentDefinition"
+                "$ref": "#/components/schemas/WorkbenchEnvironment"
               },
               {
                 "type": "null"
@@ -14017,10 +13922,10 @@
             ],
             "title": "Verify Exit Code"
           },
-          "environment": {
+          "workbench_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EnvironmentObservation"
+                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
               },
               {
                 "type": "null"
@@ -14771,7 +14676,7 @@
             "type": "boolean",
             "title": "Is Default"
           },
-          "environment": {
+          "workbench_environment": {
             "anyOf": [
               {
                 "type": "string",
@@ -14784,7 +14689,7 @@
                 "type": "null"
               }
             ],
-            "title": "Environment"
+            "title": "Workbench Environment"
           }
         },
         "type": "object",
@@ -14796,7 +14701,7 @@
           "is_default"
         ],
         "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``environment`` is the REE environment kind a\nvariant suits, or null for one that suits any."
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``workbench_environment`` is the REE workbench environment kind a\nvariant suits, or null for one that suits any."
       },
       "ScriptValidation": {
         "properties": {
@@ -15659,10 +15564,10 @@
             ],
             "title": "Verify Exit Code"
           },
-          "environment": {
+          "workbench_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EnvironmentObservation"
+                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
               },
               {
                 "type": "null"
@@ -15987,6 +15892,101 @@
         "type": "object",
         "title": "WorkbenchCapabilities",
         "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there."
+      },
+      "WorkbenchEnvironment": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "host"
+            ],
+            "title": "Kind"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "needs_container_engine": {
+            "type": "boolean",
+            "title": "Needs Container Engine",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "title": "WorkbenchEnvironment"
+      },
+      "WorkbenchEnvironmentObservation": {
+        "properties": {
+          "declared": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkbenchEnvironment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "host",
+              "container"
+            ],
+            "title": "Backend"
+          },
+          "image_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Digest"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HostFingerprint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "script_engine": {
+            "type": "string",
+            "enum": [
+              "none",
+              "socket",
+              "nested"
+            ],
+            "title": "Script Engine",
+            "default": "none"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backend"
+        ],
+        "title": "WorkbenchEnvironmentObservation",
+        "description": "What a step ran in: the declaration it ran under, and what was there."
       },
       "WorkbenchList": {
         "properties": {

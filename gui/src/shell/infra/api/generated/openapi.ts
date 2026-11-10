@@ -1491,7 +1491,7 @@ export interface components {
             runtime_path: string;
             /** Produced Runtime Digest */
             produced_runtime_digest: string;
-            environment?: components["schemas"]["EnvironmentObservation"] | null;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
         };
         /**
          * BuildScriptTemplates
@@ -1964,47 +1964,11 @@ export interface components {
             /** Digest */
             digest: string;
         };
-        /** EnvironmentDefinition */
-        EnvironmentDefinition: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "image" | "host";
-            /** Image */
-            image?: string | null;
-            /**
-             * Needs Container Engine
-             * @default false
-             */
-            needs_container_engine: boolean;
-        };
         /**
          * EnvironmentLevel
          * @enum {integer}
          */
         EnvironmentLevel: 0 | 1 | 2;
-        /**
-         * EnvironmentObservation
-         * @description What a step ran in: the declaration it ran under, and what was there.
-         */
-        EnvironmentObservation: {
-            declared?: components["schemas"]["EnvironmentDefinition"] | null;
-            /**
-             * Backend
-             * @enum {string}
-             */
-            backend: "host" | "container";
-            /** Image Digest */
-            image_digest?: string | null;
-            host?: components["schemas"]["HostFingerprint"] | null;
-            /**
-             * Script Engine
-             * @default none
-             * @enum {string}
-             */
-            script_engine: "none" | "socket" | "nested";
-        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -2980,7 +2944,7 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
-            environment?: components["schemas"]["EnvironmentDefinition"] | null;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -2999,7 +2963,7 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
-            environment?: components["schemas"]["EnvironmentDefinition"] | null;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -3567,7 +3531,7 @@ export interface components {
             run_exit_code: 0;
             /** Verify Exit Code */
             verify_exit_code?: 0 | null;
-            environment?: components["schemas"]["EnvironmentObservation"] | null;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;
         };
@@ -3847,7 +3811,7 @@ export interface components {
          *
          *     Every catalog section lists these; one entry per environment carries
          *     ``is_default`` (for the seeded scripts it is the content a fresh REE in that
-         *     environment starts with). ``environment`` is the REE environment kind a
+         *     environment starts with). ``workbench_environment`` is the REE workbench environment kind a
          *     variant suits, or null for one that suits any.
          */
         ScriptTemplateEntry: {
@@ -3861,8 +3825,8 @@ export interface components {
             body: string;
             /** Is Default */
             is_default: boolean;
-            /** Environment */
-            environment?: ("image" | "host") | null;
+            /** Workbench Environment */
+            workbench_environment?: ("image" | "host") | null;
         };
         /**
          * ScriptValidation
@@ -4203,7 +4167,7 @@ export interface components {
             run_exit_code: 0;
             /** Verify Exit Code */
             verify_exit_code?: 0 | null;
-            environment?: components["schemas"]["EnvironmentObservation"] | null;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
         };
         /** Threat */
         Threat: {
@@ -4355,6 +4319,42 @@ export interface components {
              * @default 0
              */
             gpus: number;
+        };
+        /** WorkbenchEnvironment */
+        WorkbenchEnvironment: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "host";
+            /** Image */
+            image?: string | null;
+            /**
+             * Needs Container Engine
+             * @default false
+             */
+            needs_container_engine: boolean;
+        };
+        /**
+         * WorkbenchEnvironmentObservation
+         * @description What a step ran in: the declaration it ran under, and what was there.
+         */
+        WorkbenchEnvironmentObservation: {
+            declared?: components["schemas"]["WorkbenchEnvironment"] | null;
+            /**
+             * Backend
+             * @enum {string}
+             */
+            backend: "host" | "container";
+            /** Image Digest */
+            image_digest?: string | null;
+            host?: components["schemas"]["HostFingerprint"] | null;
+            /**
+             * Script Engine
+             * @default none
+             * @enum {string}
+             */
+            script_engine: "none" | "socket" | "nested";
         };
         /** WorkbenchList */
         WorkbenchList: {

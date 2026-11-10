@@ -201,14 +201,14 @@ def test_a_served_store_offers_its_workbench_images_and_refuses_others(client: T
 def test_a_new_ree_in_a_store_declares_the_image_asked_for_its_first_or_its_host(
     offered: tuple[str, ...], requested: str, declared: dict[str, str]
 ) -> None:
-    environment = rees._store_environment(offered, requested)
+    environment = rees._store_workbench_environment(offered, requested)
 
     assert environment.model_dump(exclude_defaults=True) == declared
 
 
 def test_a_store_refuses_an_image_it_stopped_offering() -> None:
     with pytest.raises(ValueError, match="does not offer"):
-        rees._store_environment(("python:3.12",), "docker:29")
+        rees._store_workbench_environment(("python:3.12",), "docker:29")
 
 
 @pytest.fixture

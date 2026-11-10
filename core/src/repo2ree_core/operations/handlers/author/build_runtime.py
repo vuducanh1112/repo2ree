@@ -91,7 +91,7 @@ def handle_build_runtime(
         workspace_drift=workspace_drift,
         runtime_path=runtime_path,
         produced_runtime_digest=produced_runtime_digest,
-        environment=current_runner().observe(ree.subject.definition.environment),
+        workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
     )
     try:
         save_ree(

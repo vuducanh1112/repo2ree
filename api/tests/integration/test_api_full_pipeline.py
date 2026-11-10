@@ -147,7 +147,9 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     # are the stage names above them, so the capture reads as this test does.
     filmstrip.frame(ree_id, "created")
     # The build runs docker build: the REE declares it needs the engine its store's host gives it.
-    _patch_definition(client, ree_id, {"environment": {"kind": "host", "image": None, "needs_container_engine": True}})
+    _patch_definition(
+        client, ree_id, {"workbench_environment": {"kind": "host", "image": None, "needs_container_engine": True}}
+    )
 
     # --- source ---------------------------------------------------------
     _await_run(client, ree_id, _upload_source(client, ree_id, _project_zip()), what="source")

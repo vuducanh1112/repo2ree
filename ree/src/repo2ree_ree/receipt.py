@@ -4,7 +4,6 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
-from repo2ree_ree.environment import EnvironmentObservation
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.primitives import (
     ArtifactPath,
@@ -16,6 +15,7 @@ from repo2ree_ree.primitives import (
     UtcInstant,
     WorkspacePath,
 )
+from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
 
 RECEIPT_SCHEMA_VERSION: Literal[1] = 1
 
@@ -94,8 +94,7 @@ class BuildRuntimeReceipt(ReceiptEnvelope):
     workspace_drift: WorkspaceDrift
     runtime_path: WorkspacePath
     produced_runtime_digest: Digest
-    # What the build ran in; absent from receipts made before environments were recorded.
-    environment: EnvironmentObservation | None = None
+    workbench_environment: WorkbenchEnvironmentObservation | None = None
 
 
 class GenerateSbomReceipt(ReceiptEnvelope):
@@ -128,7 +127,7 @@ class TestActivationReceipt(ReceiptEnvelope):
     verify_script_digest: Digest | None = None
     run_exit_code: Literal[0] = 0
     verify_exit_code: Literal[0] | None = None
-    environment: EnvironmentObservation | None = None
+    workbench_environment: WorkbenchEnvironmentObservation | None = None
 
     @model_validator(mode="after")
     def _verification_pair(self) -> TestActivationReceipt:
@@ -145,7 +144,7 @@ class RunExperimentReceipt(ReceiptEnvelope):
     verify_script_digest: Digest | None = None
     run_exit_code: Literal[0] = 0
     verify_exit_code: Literal[0] | None = None
-    environment: EnvironmentObservation | None = None
+    workbench_environment: WorkbenchEnvironmentObservation | None = None
     produced_output_digest: Digest | None = None
 
     @model_validator(mode="after")

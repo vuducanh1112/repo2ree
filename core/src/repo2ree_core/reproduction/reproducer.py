@@ -62,8 +62,8 @@ from repo2ree_core.reproduction.commands import (
 )
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
-from repo2ree_ree.environment import EnvironmentDefinition
 from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
+from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
 # ================================================
 # Constants
@@ -183,7 +183,7 @@ def reproducer_entries(
     source_type: str = "",
     revision: str = "",
     swhid: str = "",
-    environment: EnvironmentDefinition | None = None,
+    workbench_environment: WorkbenchEnvironment | None = None,
 ) -> list[tuple[str, bytes]]:
     """Return the ``(path, bytes)`` bundle entries for the reproducer.
 
@@ -203,7 +203,9 @@ def reproducer_entries(
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
-    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD).replace("@@ENVIRONMENT@@", _environment_text(environment))
+    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD).replace(
+        "@@ENVIRONMENT@@", _workbench_environment_text(workbench_environment)
+    )
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=BUNDLE_REPRODUCER_README_ENTRY_PATH)
     return [
         (BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH, run_sh),
@@ -213,19 +215,19 @@ def reproducer_entries(
     ]
 
 
-def _environment_text(environment: EnvironmentDefinition | None) -> str:
+def _workbench_environment_text(workbench_environment: WorkbenchEnvironment | None) -> str:
     """What the REE says its scripts run in, for a reader about to run them."""
-    if environment is None:
-        return "The author declared no environment: the scripts run in whatever shell runs `run.sh`."
+    if workbench_environment is None:
+        return "The author declared no workbench environment: the scripts run in whatever shell runs `run.sh`."
     engine = (
         " The scripts call a container engine, so it must be reachable from there."
-        if (environment.needs_container_engine)
+        if workbench_environment.needs_container_engine
         else ""
     )
-    if environment.kind == "host":
+    if workbench_environment.kind == "host":
         return "The author ran the scripts directly on their machine; no image describes it." + engine
-    pin = "" if environment.pinned else " It is not pinned by digest, so what it names may have moved since."
-    return f"The author's scripts ran in the container image `{environment.image}`.{pin}{engine}"
+    pin = "" if workbench_environment.pinned else " It is not pinned by digest, so what it names may have moved since."
+    return f"The author's scripts ran in the container image `{workbench_environment.image}`.{pin}{engine}"
 
 
 # ================================================

@@ -537,7 +537,7 @@ export async function buildRuntime(
 export async function declareContainerEngine(page: Page) {
   await openPort(page, "Build");
   const engine = main(page)
-    .getByRole("region", { name: "Environment" })
+    .getByRole("region", { name: "Workbench environment" })
     .getByRole("checkbox", { name: /call a container engine/ });
   if (await engine.isChecked()) return;
   const declared = page.waitForResponse(

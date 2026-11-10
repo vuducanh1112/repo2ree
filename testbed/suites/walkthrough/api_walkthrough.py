@@ -393,7 +393,7 @@ def run() -> None:
     if image:
         # This project builds with docker build: the REE declares it needs the engine its store gives it.
         environment = {"kind": "image", "image": image, "needs_container_engine": True}
-        call("PATCH", f"/api/v1/rees/{ree_id}/definition", {"definition_patch": {"environment": environment}})
+        call("PATCH", f"/api/v1/rees/{ree_id}/definition", {"definition_patch": {"workbench_environment": environment}})
         note("its scripts call a container engine (docker build, docker run), so it declares it needs one")
 
     chapter("2. Discover the authoring model")

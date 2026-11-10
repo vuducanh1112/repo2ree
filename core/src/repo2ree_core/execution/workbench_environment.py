@@ -14,21 +14,21 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from repo2ree_ree.environment import EnvironmentDefinition, EnvironmentObservation, HostFingerprint
+from repo2ree_ree.workbench_environment import HostFingerprint, WorkbenchEnvironment, WorkbenchEnvironmentObservation
 
 ENVIRONMENT_VARIABLE = "REPO2REE_ENVIRONMENT"
 _OS_RELEASE = Path("/etc/os-release")
 
 
-def observe_environment(declared: EnvironmentDefinition | None) -> EnvironmentObservation:
+def observe_workbench_environment(declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
     """The environment a step runs in under ``declared``: as the workbench states it, or this host."""
     stated = os.environ.get(ENVIRONMENT_VARIABLE, "").strip()
     if stated:
         try:
-            return EnvironmentObservation.model_validate({**json.loads(stated), "declared": declared})
+            return WorkbenchEnvironmentObservation.model_validate({**json.loads(stated), "declared": declared})
         except (ValueError, ValidationError):
             pass  # A statement this executor cannot read is no statement: describe the host instead.
-    return EnvironmentObservation(declared=declared, backend="host", host=host_fingerprint())
+    return WorkbenchEnvironmentObservation(declared=declared, backend="host", host=host_fingerprint())
 
 
 def host_fingerprint(container_engine: str = "") -> HostFingerprint:

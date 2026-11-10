@@ -1136,10 +1136,10 @@
           "title": "Produced Runtime Digest",
           "type": "string"
         },
-        "environment": {
+        "workbench_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/EnvironmentObservation"
+              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
             },
             {
               "type": "null"
@@ -2180,105 +2180,6 @@
         }
       },
       "title": "DoneFrame",
-      "type": "object"
-    },
-    "EnvironmentDefinition": {
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "enum": [
-            "image",
-            "host"
-          ],
-          "title": "Kind",
-          "type": "string"
-        },
-        "image": {
-          "anyOf": [
-            {
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image"
-        },
-        "needs_container_engine": {
-          "default": false,
-          "title": "Needs Container Engine",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "title": "EnvironmentDefinition",
-      "type": "object"
-    },
-    "EnvironmentObservation": {
-      "additionalProperties": false,
-      "description": "What a step ran in: the declaration it ran under, and what was there.",
-      "properties": {
-        "declared": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/EnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "backend": {
-          "enum": [
-            "host",
-            "container"
-          ],
-          "title": "Backend",
-          "type": "string"
-        },
-        "image_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image Digest"
-        },
-        "host": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/HostFingerprint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "script_engine": {
-          "default": "none",
-          "enum": [
-            "none",
-            "socket",
-            "nested"
-          ],
-          "title": "Script Engine",
-          "type": "string"
-        }
-      },
-      "required": [
-        "backend"
-      ],
-      "title": "EnvironmentObservation",
       "type": "object"
     },
     "ErrorFrame": {
@@ -5042,10 +4943,10 @@
           ],
           "default": null
         },
-        "environment": {
+        "workbench_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/EnvironmentDefinition"
+              "$ref": "#/$defs/WorkbenchEnvironment"
             },
             {
               "type": "null"
@@ -6514,10 +6415,10 @@
           "default": null,
           "title": "Verify Exit Code"
         },
-        "environment": {
+        "workbench_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/EnvironmentObservation"
+              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
             },
             {
               "type": "null"
@@ -7775,10 +7676,10 @@
           "default": null,
           "title": "Verify Exit Code"
         },
-        "environment": {
+        "workbench_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/EnvironmentObservation"
+              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
             },
             {
               "type": "null"
@@ -8036,6 +7937,105 @@
         }
       },
       "title": "WorkbenchCapabilities",
+      "type": "object"
+    },
+    "WorkbenchEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "image",
+            "host"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "needs_container_engine": {
+          "default": false,
+          "title": "Needs Container Engine",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "WorkbenchEnvironment",
+      "type": "object"
+    },
+    "WorkbenchEnvironmentObservation": {
+      "additionalProperties": false,
+      "description": "What a step ran in: the declaration it ran under, and what was there.",
+      "properties": {
+        "declared": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkbenchEnvironment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "backend": {
+          "enum": [
+            "host",
+            "container"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "image_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Digest"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HostFingerprint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "script_engine": {
+          "default": "none",
+          "enum": [
+            "none",
+            "socket",
+            "nested"
+          ],
+          "title": "Script Engine",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend"
+      ],
+      "title": "WorkbenchEnvironmentObservation",
       "type": "object"
     },
     "WorkbenchHello": {

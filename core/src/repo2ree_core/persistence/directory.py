@@ -26,10 +26,10 @@ from repo2ree_authoring.templates import reserved_script_template
 from repo2ree_core.persistence.files import write_atomic, write_json_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest, ree_manifest_bytes
-from repo2ree_ree.environment import EnvironmentKind
 from repo2ree_ree.model import Ree
 from repo2ree_ree.paths import validate_relative_path
 from repo2ree_ree.reserved_paths import RESERVED_OVERLAY_SCRIPTS
+from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
 # What a half-built or damaged persisted document raises on the way through
 # json and pydantic: an unreadable file, malformed bytes, or content that no
@@ -206,8 +206,8 @@ class ReeDirectory:
         artifact = self.author_artifact(str(build.runtime_path)) if build and build.runtime_path else None
         return (artifact,) if artifact is not None else ()
 
-    def ensure_reserved_overlay_scripts(self, environment: EnvironmentKind = "image") -> None:
-        """Seed the REE-owned scripts with the starter templates that suit ``environment``.
+    def ensure_reserved_overlay_scripts(self, workbench_environment: WorkbenchEnvironmentKind = "image") -> None:
+        """Seed the REE-owned scripts with the starter templates that suit ``workbench_environment``.
 
         Only missing files are created, so authored content is never touched.
         The overlay is the source of truth, while workspace is its materialized
@@ -216,7 +216,7 @@ class ReeDirectory:
         """
         for path in RESERVED_OVERLAY_SCRIPTS:
             if not self.overlay.exists(path):
-                self.overlay.write_text(path, reserved_script_template(path, environment))
+                self.overlay.write_text(path, reserved_script_template(path, workbench_environment))
             if not self.workspace.exists(path):
                 self.workspace.write_text(path, self.overlay.read_text(path))
 
