@@ -11,7 +11,7 @@ from repo2ree_testbed.showcases import (
     ALL_PROJECTS,
     API_FEATURES,
     API_SUITE,
-    ENVIRONMENT_VARIABLE,
+    API_TIER,
     FEATURES,
     FEATURES_ENVIRONMENT,
     GUI_SHOWCASES,
@@ -26,9 +26,8 @@ from repo2ree_testbed.showcases import (
     api_suite,
     api_suites,
     api_test,
-    api_tier,
     environments_in_use,
-    requested_environment,
+    machine_of,
 )
 from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
 
@@ -68,39 +67,38 @@ def test_every_machine_named_is_a_machine_there_is() -> None:
 
 
 @pytest.mark.parametrize("name", list(ShowcaseName))
-def test_a_showcase_runs_on_its_machine_alone(name: ShowcaseName) -> None:
-    for environment in EnvironmentName:
-        assert (api_suite(name) in api_suites(environment)) == (environment == SHOWCASES[name].environment)
+@pytest.mark.parametrize("workflow", get_args(Workflow))
+def test_a_showcases_tests_run_on_its_machine(name: ShowcaseName, workflow: Workflow) -> None:
+    node = f"{api_test(name, workflow).relative_to(ROOT)}::test_something"
+    assert machine_of(node) == SHOWCASES[name].environment
 
 
-def test_the_slurm_showcase_needs_the_slurm_machine_and_the_rest_do_not() -> None:
-    assert SHOWCASES[ShowcaseName.SLURM].environment == EnvironmentName.SLURM
-    assert API_FEATURES in api_suites(FEATURES_ENVIRONMENT)
+def test_the_feature_tests_run_on_the_features_machine() -> None:
+    node = f"{(API_FEATURES / 'test_origins.py').relative_to(ROOT)}::test_a_tarball_origin_is_fetched"
+    assert machine_of(node) == FEATURES_ENVIRONMENT
+
+
+def test_a_test_outside_the_api_showcases_has_no_machine() -> None:
+    with pytest.raises(ValueError, match="no test of an API showcase"):
+        machine_of("testbed/suites/system/test_authoring.py::test_something")
+    with pytest.raises(ValueError, match="no test of an API showcase"):
+        machine_of(f"{API_SUITE.relative_to(ROOT)}/conftest.py::test_something")
+
+
+def test_one_run_holds_every_api_showcase_and_the_features() -> None:
+    assert set(api_suites()) == {api_suite(name) for name in ShowcaseName} | {API_FEATURES}
     assert set(environments_in_use()) == {EnvironmentName.BARE, EnvironmentName.DOCKER, EnvironmentName.SLURM}
 
 
-def test_a_tiers_run_is_what_its_machine_needs() -> None:
-    assert e2e_arguments(EnvironmentName.SLURM, jobs=4, select=("a", "b"))[2:] == [
-        *("--tier", "showcase-api-slurm"),
-        *("--environment", "slurm"),
+def test_the_tiers_run_places_its_tests_itself() -> None:
+    assert e2e_arguments(jobs=4, select=("a", "b"))[2:] == [
+        *("--tier", API_TIER),
         *("--per-test", "--exit-on", "tests"),
-        *("--jobs", "1"),
+        *("--jobs", "4"),
         *("--select", "a b"),
     ]
-    docker = e2e_arguments(EnvironmentName.DOCKER, jobs=4)
-    assert docker[docker.index("--jobs") + 1] == "4"
-    assert "--select" not in docker
-
-
-def test_a_machine_that_does_not_exist_is_refused_in_a_run(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv(ENVIRONMENT_VARIABLE, "slurm")
-    assert requested_environment() == EnvironmentName.SLURM
-    monkeypatch.setenv(ENVIRONMENT_VARIABLE, "slrum")
-    with pytest.raises(ValueError, match="slrum"):
-        requested_environment()
-    monkeypatch.delenv(ENVIRONMENT_VARIABLE)
-    with pytest.raises(ValueError, match="not a valid"):
-        requested_environment()
+    assert "--environment" not in e2e_arguments(jobs=4)
+    assert "--select" not in e2e_arguments(jobs=4)
 
 
 def test_every_browser_showcase_spec_is_a_showcase_or_a_feature() -> None:
@@ -110,6 +108,6 @@ def test_every_browser_showcase_spec_is_a_showcase_or_a_feature() -> None:
     assert all(feature.api is None or feature.api.is_file() for feature in FEATURES.values())
 
 
-def test_each_machine_an_api_showcase_runs_on_has_a_recipe_for_its_tier() -> None:
+def test_the_api_showcase_tier_has_its_recipe() -> None:
     recipes = subprocess.run(["just", "--summary"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
-    assert {f"test-{api_tier(environment)}" for environment in environments_in_use()} <= set(recipes)
+    assert f"test-{API_TIER}" in recipes

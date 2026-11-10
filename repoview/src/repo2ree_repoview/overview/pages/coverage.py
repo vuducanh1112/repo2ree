@@ -196,7 +196,11 @@ def showcase_rows(
 ) -> list[list[str]]:
     rows = []
     for tier in showcases.tiers:
-        machine = esc(tier.environment) if tier.environment else '<span class="muted">default stack</span>'
+        machine = (
+            ", ".join(f"<code>{esc(environment)}</code>" for environment in tier.environments)
+            if tier.environments
+            else '<span class="muted">default stack</span>'
+        )
         record = records.get(tier.run) if tier.run else None
         if tier.run is None or record is None:
             missing = f'<span class="no">no run in this clone</span>: <code>{esc(tier.recipe)}</code>'
@@ -294,7 +298,7 @@ def page_showcase_coverage(
     tiers = {tier.tier: tier.recipe for tier in showcases.tiers}
     listed = "".join(showcase_section(s, tiers, records, verdicts, evidence, bundle) for s in showcases.showcases)
     runs = table(
-        ["Tier", "Surface", "Machine", "Run", "Built from", "Outcomes; behaviour as this tree judges it"],
+        ["Tier", "Surface", "Machines", "Run", "Built from", "Outcomes; behaviour as this tree judges it"],
         showcase_rows(showcases, records, verdicts),
     )
     body = (

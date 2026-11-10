@@ -384,7 +384,7 @@ class Operations(Export):
 class ShowcaseTier(Document):
     tier: str
     surface: Literal["api", "browser"]
-    environment: str | None
+    environments: tuple[str, ...]
     recipe: str
     run: str | None
 
@@ -409,7 +409,7 @@ class ShowcaseRuns(Export):
     """Which run of each showcase tier to read, and each showcase's tests in them
     (``python -m repo2ree_testbed showcase-runs``)."""
 
-    FORMAT = "repo2ree-showcase-runs/1"
+    FORMAT = "repo2ree-showcase-runs/2"
 
     tiers: tuple[ShowcaseTier, ...]
     showcases: tuple[Showcase, ...]

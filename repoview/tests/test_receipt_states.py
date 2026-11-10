@@ -68,11 +68,11 @@ def test_the_showcase_gate_card_counts_the_platforms_proven_for_head(
     monkeypatch.setattr(receipt, "PUBLISH_PLATFORMS", ("linux/amd64", "linux/arm64"))
     policy = tmp_path / "policy.toml"
     policy.write_text(
-        '[tiers.showcase]\nrecipe = "test-showcase"\n[tiers.showcase-api-bare]\nrecipe = "test-showcase-api-bare"\n'
-        '[gates.showcase-gate]\ntiers = { showcase = "each", showcase-api-bare = "each" }\n'
+        '[tiers.showcase]\nrecipe = "test-showcase"\n[tiers.showcase-api]\nrecipe = "test-showcase-api"\n'
+        '[gates.showcase-gate]\ntiers = { showcase = "each", showcase-api = "each" }\n'
     )
     monkeypatch.setattr(receipt, "POLICY", policy)
-    for tier in ("showcase", "showcase-api-bare"):
+    for tier in ("showcase", "showcase-api"):
         tier_receipt(tmp_path, tier, "linux/amd64", "tree-1")
     tier_receipt(tmp_path, "showcase", "linux/arm64", "older-tree")
 
@@ -84,7 +84,7 @@ def test_the_showcase_gate_card_counts_the_platforms_proven_for_head(
     assert [(need.tier, need.place, need.current is not None, need.last is not None) for need in needs] == [
         ("showcase", "linux/amd64", True, True),
         ("showcase", "linux/arm64", False, True),
-        ("showcase-api-bare", "linux/amd64", True, True),
-        ("showcase-api-bare", "linux/arm64", False, False),
+        ("showcase-api", "linux/amd64", True, True),
+        ("showcase-api", "linux/arm64", False, False),
     ]
     assert card.detail.endswith("linux/amd64 ok, linux/arm64 needed")

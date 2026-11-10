@@ -4,8 +4,7 @@ import json
 from pathlib import Path
 
 from repo2ree_testbed.runs.showcase_runs import BROWSER_TIER, newest, showcase_runs
-from repo2ree_testbed.showcases import api_tier, environments_in_use
-from repo2ree_testbed.stack.environments import EnvironmentName
+from repo2ree_testbed.showcases import API_TIER, environments_in_use
 
 
 def run(runs: Path, name: str, tier: str, *, selected: tuple[str, ...] = ()) -> Path:
@@ -17,14 +16,13 @@ def run(runs: Path, name: str, tier: str, *, selected: tuple[str, ...] = ()) -> 
 
 
 def test_the_newest_run_of_a_tier_that_ran_every_test_is_read(tmp_path: Path) -> None:
-    tier = api_tier(EnvironmentName.BARE)
-    run(tmp_path, "a-20261101-000000", tier)
-    kept = run(tmp_path, "a-20261102-000000", tier)
-    run(tmp_path, "a-20261103-000000", tier, selected=("one",))
-    run(tmp_path, "a-20261104-000000", api_tier(EnvironmentName.DOCKER))
+    run(tmp_path, "a-20261101-000000", API_TIER)
+    kept = run(tmp_path, "a-20261102-000000", API_TIER)
+    run(tmp_path, "a-20261103-000000", API_TIER, selected=("one",))
+    run(tmp_path, "a-20261104-000000", BROWSER_TIER)
     (tmp_path / "a-20261105-000000").mkdir()
 
-    assert newest(tier, tmp_path) == kept
+    assert newest(API_TIER, tmp_path) == kept
 
 
 def test_every_showcase_tier_is_listed_with_its_run_or_none(tmp_path: Path) -> None:
@@ -32,7 +30,8 @@ def test_every_showcase_tier_is_listed_with_its_run_or_none(tmp_path: Path) -> N
 
     tiers = showcase_runs(tmp_path).tiers
 
-    assert [tier.tier for tier in tiers] == [BROWSER_TIER, *(api_tier(e) for e in environments_in_use())]
+    assert [tier.tier for tier in tiers] == [BROWSER_TIER, API_TIER]
     assert tiers[0].run == str(browser)
-    assert all(tier.run is None for tier in tiers[1:])
-    assert {tier.environment for tier in tiers[1:]} == set(environments_in_use())
+    assert tiers[1].run is None
+    assert tiers[0].environments == ()
+    assert tiers[1].environments == environments_in_use()

@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.records import Outcome
+from repo2ree_testbed.stack.environments import EnvironmentName
 from repo2ree_testbed.stack.process import capture, free_port
 
 GUI = ROOT / "gui"
@@ -30,6 +31,8 @@ class TestCase:
     name: str
     slug: str
     selection: tuple[str, ...]
+    # The machine its stack's workbenches are installed on, when the suite places each test itself.
+    environment: EnvironmentName | None = None
 
 
 @dataclass(frozen=True)
@@ -165,9 +168,11 @@ class Script:
 
     def tests(self) -> list[TestCase]:
         cases = []
-        for node in filter(None, capture([str(self.path), "--list"], check=True).splitlines()):
+        for line in filter(None, capture([str(self.path), "--list"], check=True).splitlines()):
+            node, _, machine = line.partition("\t")
             path, _, name = node.partition("::")
-            cases.append(TestCase(node, slug(Path(path).stem, name), (node,)))
+            environment = EnvironmentName(machine) if machine else None
+            cases.append(TestCase(node, slug(Path(path).stem, name), (node,), environment))
         return cases
 
     def start(self, api_url: str, environment: Mapping[str, str], selection: Sequence[str], launch: Launch) -> Started:

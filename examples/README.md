@@ -44,8 +44,7 @@ The instant project for a Slurm cluster. Its build is the same packed venv, made
 on the machine the workbench runs on; the recipe's activation and experiment
 submit `job.sh` with `srun`, and the verify script also checks the run happened
 in a job. The submission is the author's own: the product runs these scripts
-like any others. Run by `just api-showcase`, and in more depth by
-`just test-e2e-slurm`.
+like any others. Run in more depth by `just test-e2e-slurm`.
 
 ### `apptainer/`
 
@@ -59,7 +58,7 @@ Submission and container entry are the author's own. Run by `just test-e2e-slurm
 An instant project whose result changes on every run: a Monte Carlo estimate of
 pi from a freshly drawn seed, which it prints. Its verify script checks the
 estimate within a tolerance, so a reviewer's rerun is `reproduced`, not
-`identical`. Run by `just api-showcase`.
+`identical`.
 
 ## `origins/`
 

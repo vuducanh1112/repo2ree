@@ -69,41 +69,32 @@ test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
 test-e2e-fuzz: build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
-# Run every API showcase, authoring and review, each on the machine it needs, certifying each machine's run as a showcase-gate tier. To select tests, use `api-showcase-on`.
+# Run every API showcase, authoring and review, each test on a fresh stack on the machine its showcase names; assess the run and certify it if it qualifies. Select tests by parts of their ids (e.g. `just test-showcase-api 4 conda/`).
 [group('E2E tests')]
-api-showcase jobs=E2E_JOBS:
+test-showcase-api jobs=E2E_JOBS *select: (_tier-showcase-api jobs select) (assess-behaviour "--invocation" REPO2REE_TEST_RUN_ID)
+    python -m scripts.gates.tiers certify --tier showcase-api --if-eligible
+
+[private]
+_tier-showcase-api jobs *select: _load-showcase-environments
+    python -m repo2ree_testbed api-showcase run --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
+
+# Build and load the image of each machine an API showcase runs on.
+[private]
+_load-showcase-environments:
     #!/usr/bin/env bash
     set -euo pipefail
     for environment in $(python -m repo2ree_testbed api-showcase environments); do
-        just _showcase-api-tier "$environment" {{ quote(jobs) }}
+        just --justfile {{ quote(ROOT + "/justfile") }} _load-environment "$environment"
     done
 
-# Run the API showcases on the bare machine as the showcase gate's tier, and certify the run if it qualifies.
+# Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations; assess the run and certify it if it qualifies.
 [group('E2E tests')]
-test-showcase-api-bare jobs=E2E_JOBS: (_showcase-api-tier "bare" jobs)
-
-# Run the API showcases on the docker machine as the showcase gate's tier, and certify the run if it qualifies.
-[group('E2E tests')]
-test-showcase-api-docker jobs=E2E_JOBS: (_showcase-api-tier "docker" jobs)
-
-# Run the API showcases on the slurm machine as the showcase gate's tier, and certify the run if it qualifies.
-[group('E2E tests')]
-test-showcase-api-slurm jobs=E2E_JOBS: (_showcase-api-tier "slurm" jobs)
+test-showcase jobs=E2E_JOBS *select: (_tier-showcase jobs select) (assess-behaviour "--invocation" REPO2REE_TEST_RUN_ID)
+    python -m scripts.gates.tiers certify --tier showcase --if-eligible
 
 [private]
-_showcase-api-tier environment jobs: (api-showcase-on environment jobs)
-    python -m scripts.gates.tiers certify --tier showcase-api-{{ environment }} --if-eligible
-
-# Run the API showcases of one machine (e.g. `just api-showcase-on slurm`): each test on a fresh stack, into test-artifacts/e2e/<run>/tests/<test>/.
-[group('E2E tests')]
-api-showcase-on environment jobs=E2E_JOBS *select: (_load-environment environment)
-    python -m repo2ree_testbed api-showcase run {{ quote(environment) }} --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
-
-# Run the showcase tier, real projects end to end: each scenario on a fresh stack of two compute locations, judged like the assurance tiers.
-[group('E2E tests')]
-test-showcase jobs=E2E_JOBS *select: build-e2e-bundles
+_tier-showcase jobs *select: build-e2e-bundles
     python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
-    python -m scripts.gates.tiers certify --tier showcase --if-eligible
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
 # dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.

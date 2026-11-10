@@ -1,11 +1,15 @@
 import io
+import threading
+from pathlib import Path
 
 import pytest
 
 from repo2ree_testbed.records import RunRecord
 from repo2ree_testbed.runs.e2e import Tee, exit_status, parse
-from repo2ree_testbed.runs.schedule import PerTest, selected
-from repo2ree_testbed.stack.clients import TestCase
+from repo2ree_testbed.runs.schedule import PerTest, SuiteRun, selected
+from repo2ree_testbed.stack.clients import Script, TestCase
+from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
+from repo2ree_testbed.stack.services import Deployment
 
 CASES = [
     TestCase(name, name.replace("::", "--"), (name,))
@@ -66,3 +70,40 @@ def test_the_console_is_also_written_to_the_runs_log() -> None:
     tee = Tee(console, log)
     print(">> passed in 3 s: t", file=tee)
     assert console.getvalue() == log.getvalue() == ">> passed in 3 s: t\n"
+
+
+def suite_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SuiteRun:
+    monkeypatch.setenv("REPO2REE_BUILD_REVISION", "r")
+    monkeypatch.setenv("REPO2REE_TEST_RUN_DIR", str(tmp_path / "runs"))
+    deployment = Deployment("showcase-api", 1, tmp_path / "state", tmp_path / "exec", tmp_path / "tools")
+    return SuiteRun(deployment, Script(tmp_path / "suite.py"), PerTest(4))
+
+
+def test_a_test_that_names_its_machine_is_deployed_there(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    run = suite_run(tmp_path, monkeypatch)
+    placed = run.deployment_of(TestCase("t", "t", ("t",), EnvironmentName.SLURM))
+    assert placed.environment == ENVIRONMENTS[EnvironmentName.SLURM]
+    assert placed.backend == ENVIRONMENTS[EnvironmentName.SLURM].backend
+    assert placed.tier == run.deployment.tier
+    assert run.deployment_of(TestCase("t", "t", ("t",))) == run.deployment
+
+
+def test_a_machine_that_hosts_one_stack_at_a_time_runs_its_tests_one_by_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    run = suite_run(tmp_path, monkeypatch)
+    alone = [name for name, machine in ENVIRONMENTS.items() if not machine.parallel]
+    assert EnvironmentName.SLURM in alone
+    for name in alone:
+        assert isinstance(run.one_at_a_time(name), type(threading.Lock()))
+    assert not isinstance(run.one_at_a_time(EnvironmentName.BARE), type(threading.Lock()))
+    assert not isinstance(run.one_at_a_time(None), type(threading.Lock()))
+
+
+def test_a_suite_lists_each_test_with_the_machine_it_names(tmp_path: Path) -> None:
+    suite = tmp_path / "suite.py"
+    suite.write_text("#!/bin/sh\nprintf 'a/test_one.py::test_x\\tslurm\\n'\nprintf 'a/test_two.py::test_y\\n'\n")
+    suite.chmod(0o755)
+    one, two = Script(suite).tests()
+    assert (one.name, one.selection, one.environment) == ("a/test_one.py::test_x", ("a/test_one.py::test_x",), "slurm")
+    assert (two.name, two.environment) == ("a/test_two.py::test_y", None)

@@ -34,6 +34,8 @@ class TestResult(Record):
     finished: float
     rees: tuple[str, ...]
     phases: dict[str, float]
+    # The machine its stack's workbenches were installed on (stack/environments.py), when the suite placed it.
+    environment: str = ""
 
     @property
     def duration(self) -> float:

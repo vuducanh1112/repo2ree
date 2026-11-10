@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.records import RunRecord, read
 from repo2ree_testbed.showcases import (
+    API_TIER,
     FEATURES,
     FEATURES_ENVIRONMENT,
     GUI_SHOWCASES,
@@ -23,7 +24,6 @@ from repo2ree_testbed.showcases import (
     ShowcaseName,
     Workflow,
     api_test,
-    api_tier,
     environments_in_use,
 )
 from repo2ree_testbed.stack.environments import EnvironmentName
@@ -39,8 +39,8 @@ class ShowcaseTier(BaseModel):
 
     tier: str
     surface: Surface
-    # The machine its API showcases run on; None for the browser showcases, on the default stack.
-    environment: EnvironmentName | None
+    # The machines its tests run on, each on the one its showcase names; none for the default stack.
+    environments: tuple[EnvironmentName, ...]
     recipe: str
     # From the repository root; None when this clone has no finished run of it that ran every test.
     run: str | None
@@ -73,7 +73,7 @@ class Showcase(BaseModel):
 class ShowcaseRuns(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    format: Literal["repo2ree-showcase-runs/1"] = "repo2ree-showcase-runs/1"
+    format: Literal["repo2ree-showcase-runs/2"] = "repo2ree-showcase-runs/2"
     tiers: tuple[ShowcaseTier, ...]
     showcases: tuple[Showcase, ...]
 
@@ -135,14 +135,14 @@ def showcases(found: _Found) -> tuple[Showcase, ...]:
         environment = SHOWCASES[name].environment
         tests: list[ShowcaseTest] = []
         for workflow in get_args(Workflow):
-            tests += found.tests("api", workflow, api_tier(environment), from_root(api_test(name, workflow)))
+            tests += found.tests("api", workflow, API_TIER, from_root(api_test(name, workflow)))
             if spec := GUI_SHOWCASES.get(name, {}).get(workflow):
                 tests += found.tests("browser", workflow, BROWSER_TIER, from_root(GUI_SUITE / spec))
         listed.append(Showcase(name=name, kind="showcase", environment=environment, tests=tuple(tests)))
     for feature, files in FEATURES.items():
         tests = []
         if files.api:
-            tests += found.tests("api", None, api_tier(FEATURES_ENVIRONMENT), from_root(files.api))
+            tests += found.tests("api", None, API_TIER, from_root(files.api))
         if files.gui:
             tests += found.tests("browser", None, BROWSER_TIER, from_root(GUI_SUITE / files.gui))
         machine = FEATURES_ENVIRONMENT if files.api else None
@@ -154,21 +154,18 @@ def showcase_runs(runs: Path) -> ShowcaseRuns:
     browser = ShowcaseTier(
         tier=BROWSER_TIER,
         surface="browser",
-        environment=None,
+        environments=(),
         recipe="just test-showcase",
         run=named(newest(BROWSER_TIER, runs)),
     )
-    api = (
-        ShowcaseTier(
-            tier=api_tier(environment),
-            surface="api",
-            environment=environment,
-            recipe=f"just api-showcase-on {environment}",
-            run=named(newest(api_tier(environment), runs)),
-        )
-        for environment in environments_in_use()
+    api = ShowcaseTier(
+        tier=API_TIER,
+        surface="api",
+        environments=environments_in_use(),
+        recipe=f"just test-{API_TIER}",
+        run=named(newest(API_TIER, runs)),
     )
-    tiers = (browser, *api)
+    tiers = (browser, api)
     return ShowcaseRuns(tiers=tiers, showcases=showcases(_Found(tiers)))
 
 

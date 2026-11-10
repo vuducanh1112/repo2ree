@@ -7,7 +7,6 @@ A project is a folder of ``examples/projects``: ``source/`` is the tree that get
 from __future__ import annotations
 
 import io
-import os
 import tarfile
 from dataclasses import dataclass
 from enum import StrEnum
@@ -55,7 +54,8 @@ API_FEATURES = API_SUITE / "features"
 GUI_SUITE = ROOT / "gui/tests/showcase"
 SOURCE = "source"
 RESULT = "result.txt"
-ENVIRONMENT_VARIABLE = "SHOWCASE_ENVIRONMENT"
+# The API showcases' tier: every test of API_SUITE, each on a stack on the machine its showcase names.
+API_TIER = "showcase-api"
 
 
 @dataclass(frozen=True)
@@ -286,16 +286,17 @@ def environments_in_use() -> tuple[EnvironmentName, ...]:
     return tuple(environment for environment in EnvironmentName if environment in used)
 
 
-def api_suites(environment: EnvironmentName) -> tuple[Path, ...]:
-    """The API suites that run on ``environment``."""
-    suites = tuple(api_suite(name) for name, config in SHOWCASES.items() if config.environment == environment)
-    return (*suites, API_FEATURES) if environment == FEATURES_ENVIRONMENT else suites
+def api_suites() -> tuple[Path, ...]:
+    return (*(api_suite(name) for name in SHOWCASES), API_FEATURES)
 
 
-def api_tier(environment: EnvironmentName) -> str:
-    return f"showcase-api-{environment}"
-
-
-def requested_environment() -> EnvironmentName:
-    """The machine this process was asked to run the API showcases on; an unknown one is refused."""
-    return EnvironmentName(os.environ.get(ENVIRONMENT_VARIABLE, ""))
+def machine_of(node: str) -> EnvironmentName:
+    """The machine an API test runs on, by the showcase, or the features, whose folder holds it."""
+    parts = Path(node.split("::", 1)[0]).parts
+    suite = API_SUITE.relative_to(ROOT).parts
+    if parts[: len(suite)] != suite or len(parts) <= len(suite) + 1:
+        raise ValueError(f"{node} is no test of an API showcase")
+    folder = parts[len(suite)]
+    if folder == API_FEATURES.name:
+        return FEATURES_ENVIRONMENT
+    return SHOWCASES[ShowcaseName(folder)].environment

@@ -145,20 +145,20 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
     spec = Spec.model_validate_json(exported(SPEC_EXPORT))
     showcases = ShowcaseRuns.model_validate(
         {
-            "format": "repo2ree-showcase-runs/1",
+            "format": "repo2ree-showcase-runs/2",
             "tiers": [
                 {
                     "tier": "showcase",
                     "surface": "browser",
-                    "environment": None,
+                    "environments": [],
                     "recipe": "just test-showcase",
                     "run": None,
                 },
                 {
-                    "tier": "showcase-api-bare",
+                    "tier": "showcase-api",
                     "surface": "api",
-                    "environment": "bare",
-                    "recipe": "just api-showcase-on bare",
+                    "environments": ["bare", "docker"],
+                    "recipe": "just test-showcase-api",
                     "run": f"test-artifacts/e2e/{RUN}",
                 },
             ],
@@ -172,7 +172,7 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
                             "surface": "api",
                             "workflow": "authoring",
                             "file": "testbed/suites/showcase/python_venv/test_python_venv_authoring.py",
-                            "tier": "showcase-api-bare",
+                            "tier": "showcase-api",
                             "run": f"test-artifacts/e2e/{RUN}",
                             "test": PASSING,
                         },
@@ -214,7 +214,7 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
         decided,
         Evidence(tests={(RUN, PASSING): "t"}),
         bundle,
-        [TierNeed("showcase-api-bare", "linux/amd64", "test-showcase-api-bare", None, None)],
+        [TierNeed("showcase-api", "linux/amd64", "test-showcase-api", None, None)],
     )
 
     assert (page.slug, page.title) == ("showcase-gate", "Showcase gate")
@@ -224,7 +224,8 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
     assert "not in this clone</span>: <code>just test-showcase</code>" in page.body
     # A test whose behaviour passed but which itself failed says both.
     assert '<span class="no">failed</span>' in page.body
-    assert '<span class="no">needed</span>: <code>just test-showcase-api-bare</code>' in page.body
+    assert '<span class="no">needed</span>: <code>just test-showcase-api</code>' in page.body
+    assert "<code>bare</code>, <code>docker</code>" in page.body
     assert "<code>just test-showcase</code>" in page.body
     assert f"<code>{RUN}</code>" in page.body
     assert '<span class="no">1 failed</span>' in page.body
