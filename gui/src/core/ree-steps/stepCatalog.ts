@@ -26,8 +26,8 @@ export const REE_STEPS: ReeStep[] = [
     ],
   },
   {
-    key: "build",
-    label: "Build Runtime",
+    key: "build_experiment_environment",
+    label: "Build Experiment Environment",
     iconKey: "cpu",
     outcomeLabel: "Built",
     desc: "Run the reserved build script and refresh the workspace after a successful build.",
@@ -46,7 +46,7 @@ export const REE_STEPS: ReeStep[] = [
     label: "Generate SBOM",
     iconKey: "package",
     outcomeLabel: "SBOM ready",
-    desc: "Generate a complete list of all software in your environment. This runs syft on the built runtime tarball (squashed scope) and outputs a CycloneDX JSON SBOM, which the cross-check joins against the scanned dependency inventory.",
+    desc: "Generate a complete list of all software in your environment. This runs syft on the built experiment environment tarball (squashed scope) and outputs a CycloneDX JSON SBOM, which the cross-check joins against the scanned dependency inventory.",
     params: [],
   },
   {
@@ -54,14 +54,14 @@ export const REE_STEPS: ReeStep[] = [
     label: "Test Activation",
     iconKey: "shield",
     outcomeLabel: "Activation passed",
-    desc: "Check that the packaged environment actually starts and activates. This enters the runtime through its configured entry and runs the activation command, the same way experiments enter the runtime.",
+    desc: "Check that the packaged environment actually starts and activates. This enters the experiment environment through its configured entry and runs the activation command, the same way experiments enter the experiment environment.",
     params: [],
   },
 ];
 
 const DEFAULT_REE_STEP_PARAMS: ReeStepParams = {
   evaluate: { strict: false },
-  build: {},
+  build_experiment_environment: {},
   hbom: {},
   sbom: {},
   activation: {},
@@ -74,7 +74,7 @@ export function defaultParamsForReeStep<K extends ReeStepKey>(key: K): ReeStepPa
 export function initialReeStepParams(): ReeStepParams {
   return {
     evaluate: { ...DEFAULT_REE_STEP_PARAMS.evaluate },
-    build: { ...DEFAULT_REE_STEP_PARAMS.build },
+    build_experiment_environment: { ...DEFAULT_REE_STEP_PARAMS.build_experiment_environment },
     hbom: { ...DEFAULT_REE_STEP_PARAMS.hbom },
     sbom: { ...DEFAULT_REE_STEP_PARAMS.sbom },
     activation: { ...DEFAULT_REE_STEP_PARAMS.activation },

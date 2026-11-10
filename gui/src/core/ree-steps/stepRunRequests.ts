@@ -2,7 +2,7 @@ import type { ReeSpec } from "../ree/ReeSpec";
 import type { ReeStepKey, ReeStepRunParamsByKey } from "./stepRunParams";
 import type { GenericReeStepParams } from "./stepTypes";
 
-type StepRee = Pick<ReeSpec, "runtime">;
+type StepRee = Pick<ReeSpec, "experimentEnvironmentPath">;
 
 type StepRequestParamValue = string | boolean | number | null | undefined;
 
@@ -14,8 +14,8 @@ interface ReeStepRunRequestByKey {
       idempotencyKey?: string;
     };
   };
-  build: {
-    scriptKey: "build";
+  build_experiment_environment: {
+    scriptKey: "build_experiment_environment";
     params: {
       idempotencyKey?: string;
     };
@@ -54,12 +54,12 @@ export function buildEvaluateStepRunRequest(
 }
 
 export function buildBuildStepRunRequest(
-  _params: ReeStepRunParamsByKey["build"],
+  _params: ReeStepRunParamsByKey["build_experiment_environment"],
   _ree: StepRee,
-): ReeStepRunRequestByKey["build"] {
+): ReeStepRunRequestByKey["build_experiment_environment"] {
   // The build always runs the reserved build script; there is nothing to send.
   return {
-    scriptKey: "build",
+    scriptKey: "build_experiment_environment",
     params: {},
   };
 }
@@ -105,9 +105,9 @@ export function buildStepRunRequest<K extends ReeStepKey>(
       return buildEvaluateStepRunRequest(
         params as ReeStepRunParamsByKey["evaluate"],
       ) as ReeStepRunRequest<K>;
-    case "build":
+    case "build_experiment_environment":
       return buildBuildStepRunRequest(
-        params as ReeStepRunParamsByKey["build"],
+        params as ReeStepRunParamsByKey["build_experiment_environment"],
         ree,
       ) as ReeStepRunRequest<K>;
     case "hbom":
@@ -140,7 +140,13 @@ export function buildStepRunParams(
   return buildStepRunRequest(key, params as ReeStepRunParamsByKey[typeof key], ree).params;
 }
 
-const REE_STEP_KEYS: readonly ReeStepKey[] = ["evaluate", "build", "hbom", "sbom", "activation"];
+const REE_STEP_KEYS: readonly ReeStepKey[] = [
+  "evaluate",
+  "build_experiment_environment",
+  "hbom",
+  "sbom",
+  "activation",
+];
 
 function isReeStepKey(key: string): key is ReeStepKey {
   return (REE_STEP_KEYS as readonly string[]).includes(key);

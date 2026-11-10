@@ -457,9 +457,9 @@ def test_restoring_a_snapshot_brings_back_lfs_payloads_and_removes_new_recorded_
     from repo2ree_ree.model import CapturePolicy
     from repo2ree_ree.primitives import ReePath
 
-    runtime = ree.workspace / "runtime.tar"
-    runtime.parent.mkdir(parents=True, exist_ok=True)
-    runtime.write_bytes(b"runtime built before" * 100)
+    experiment_environment = ree.workspace / "runtime.tar"
+    experiment_environment.parent.mkdir(parents=True, exist_ok=True)
+    experiment_environment.write_bytes(b"experiment environment built before" * 100)
     directory = ReeDirectory(ree)
     current = directory.read_ree()
     subject = current.subject.model_copy(
@@ -469,10 +469,10 @@ def test_restoring_a_snapshot_brings_back_lfs_payloads_and_removes_new_recorded_
     with open_history(ree) as history:
         snapshot = history.capture(operation="observe_existing_ree")
         assert git(ree, "show", f"{snapshot}:workspace/runtime.tar").startswith("version https://git-lfs")
-        runtime.write_bytes(b"half a runtime")
+        experiment_environment.write_bytes(b"half an experiment environment")
         ree.overlay_file("partial.sh").write_text("partial")
         history.restore(snapshot)
-    assert runtime.read_bytes() == b"runtime built before" * 100
+    assert experiment_environment.read_bytes() == b"experiment environment built before" * 100
     assert not ree.overlay_file("partial.sh").exists()
 
 

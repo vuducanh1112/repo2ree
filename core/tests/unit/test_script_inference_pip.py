@@ -1,8 +1,8 @@
 """The pip-requirements build strategy (root-pip-requirements-v1).
 
-The runtime for a plain requirements.txt repository is a Python virtual
+The experiment environment for a plain requirements.txt repository is a Python virtual
 environment, not a container: the generated build script creates a venv,
-installs requirements.txt with pip, and packs the venv as the runtime artifact —
+installs requirements.txt with pip, and packs the venv as the experiment environment artifact —
 one self-contained shell script that introduces no Docker. A lone pip strategy
 is confirmation-required (needs_input); a Dockerfile alongside it makes the two
 strategies an explicit decision.
@@ -28,7 +28,7 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 
 
 def _build(root: Path) -> TargetInferenceResult:
-    return infer_scripts(root, [ScriptTargetSelectorArg(kind="build")]).results[0]
+    return infer_scripts(root, [ScriptTargetSelectorArg(kind="build_experiment_environment")]).results[0]
 
 
 def _pip_candidate(result: TargetInferenceResult):
@@ -45,7 +45,7 @@ def test_root_requirements_is_confirmation_required(tmp_path: Path) -> None:
     assert candidate.body is not None
 
 
-def test_pip_build_script_is_a_venv_build_with_no_docker(tmp_path: Path) -> None:
+def test_pip_build_experiment_environment_script_is_a_venv_build_with_no_docker(tmp_path: Path) -> None:
     _tree(tmp_path, {"requirements.txt": "flask\n"})
     candidate = _pip_candidate(_build(tmp_path))
     body = candidate.body
@@ -78,18 +78,18 @@ def test_wrapper_archive_uses_wrapper_paths(tmp_path: Path) -> None:
     candidate = _pip_candidate(_build(tmp_path))
     assert candidate.body is not None
     assert "REQUIREMENTS=proj-main/requirements.txt\n" in candidate.body
-    assert "RUNTIME_ARTIFACT=proj-main/.repo2ree/artifacts/runtime-venv.tar.gz\n" in candidate.body
+    assert "EXPERIMENT_ENVIRONMENT_ARTIFACT=proj-main/.repo2ree/artifacts/runtime-venv.tar.gz\n" in candidate.body
 
 
-def test_pip_candidate_records_the_runtime_path_it_writes_to(tmp_path: Path) -> None:
+def test_pip_candidate_records_the_experiment_environment_path_it_writes_to(tmp_path: Path) -> None:
     # The venv strategy reports its own default, not docker's — a client filling
     # an empty declaration from this would otherwise declare the wrong extension.
     _tree(tmp_path, {"proj-main/requirements.txt": "flask\n", "proj-main/main.py": "x"})
     candidate = _pip_candidate(_build(tmp_path))
-    declaration = [dep for dep in candidate.dependencies if dep.kind == "runtime_declaration"]
+    declaration = [dep for dep in candidate.dependencies if dep.kind == "experiment_environment_declaration"]
     assert len(declaration) == 1
     assert declaration[0].path == "proj-main/.repo2ree/artifacts/runtime-venv.tar.gz"
-    assert declaration[0].role == "runtime"
+    assert declaration[0].role == "experiment_environment"
 
 
 def test_dockerfile_and_requirements_is_a_decision(tmp_path: Path) -> None:

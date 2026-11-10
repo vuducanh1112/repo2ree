@@ -9,13 +9,13 @@ slate. This one merge serves both phases:
 * authoring  → run in the workbench after acquisition folds the upstream source
   into the workspace (incremental overlay edits are mirrored live by the
   write/delete handlers; this is the full rebuild at pipeline boundaries);
-* reproduction → called by ``run.sh`` between ``acquire`` and the runtime restore.
+* reproduction → called by ``run.sh`` between ``acquire`` and the experiment environment restore.
 
 The upstream, overlay, and workspace dirs are fixed by REE layout, derived from
 the script's own directory, so the same script runs unchanged in the workbench
 (authoring) and inside a sealed bundle (reproduction, called by ``run.sh``).
 
-Pure merge muscle: acquiring the source and restoring the sealed runtime are the
+Pure merge muscle: acquiring the source and restoring the sealed experiment environment are the
 caller's job (a separate authoring step; ``run.sh`` orchestration at reproduction).
 
 Pure module: it builds bytes from values and performs no I/O. The generated

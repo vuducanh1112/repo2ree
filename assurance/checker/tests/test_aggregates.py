@@ -54,7 +54,7 @@ def test_every_field_and_receipt_kind_has_a_machine_after_the_lifecycle() -> Non
 
 
 def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() -> None:
-    assert allowed("field", "definition.build_runtime", "set", "set") == {
+    assert allowed("field", "definition.experiment_environment", "set", "set") == {
         "patch_ree_definition",
         "write_file",
         "load_ree_bundle",
@@ -65,37 +65,47 @@ def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() 
 
 
 def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
-    # The build script is a file: writing it changes the declaration the runtime rests on.
-    assert {"write_file", "acquire_source"} <= allowed("receipt", "runtime", "current", "stale")
-    # A new runtime makes everything run on the old one stale, but never the runtime itself.
-    assert "build_runtime" in allowed("receipt", "test_activation", "current", "stale")
-    assert "build_runtime" not in allowed("receipt", "runtime", "current", "stale")
-    assert allowed("receipt", "runtime", "missing", "current") == {"build_runtime", "load_ree_bundle"}
+    # The build experiment environment script is a file: writing it changes the declaration the experiment environment
+    # rests on.
+    assert {"write_file", "acquire_source"} <= allowed("receipt", "experiment_environment", "current", "stale")
+    # A new experiment environment makes everything run on the old one stale, but never the experiment environment
+    # itself.
+    assert "build_experiment_environment" in allowed("receipt", "test_activation", "current", "stale")
+    assert "build_experiment_environment" not in allowed("receipt", "experiment_environment", "current", "stale")
+    assert allowed("receipt", "experiment_environment", "missing", "current") == {
+        "build_experiment_environment",
+        "load_ree_bundle",
+    }
 
 
 def test_what_runs_in_the_workbench_environment_rests_on_it() -> None:
     # The author's scripts run in the declared workbench environment: changing it changes what their receipts prove.
-    for name in ("runtime", "test_activation", "experiment"):
+    for name in ("experiment_environment", "test_activation", "experiment"):
         assert "definition.workbench_environment" in ree().receipts[name].rests_on
-    assert "patch_ree_definition" in allowed("receipt", "runtime", "current", "stale")
+    assert "patch_ree_definition" in allowed("receipt", "experiment_environment", "current", "stale")
     assert allowed("field", "definition.workbench_environment", CREATED, "unset") == {"initialize_ree"}
 
 
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
     # Standing is the receipt against the document as it now stands: undoing an edit undoes its staleness.
-    assert {"patch_ree_definition", "write_file", "build_runtime"} <= allowed(
+    assert {"patch_ree_definition", "write_file", "build_experiment_environment"} <= allowed(
         "receipt", "test_activation", "stale", "current"
     )
-    assert allowed("receipt", "runtime", "current", "stale") <= allowed("receipt", "runtime", "stale", "current")
+    assert allowed("receipt", "experiment_environment", "current", "stale") <= allowed(
+        "receipt", "experiment_environment", "stale", "current"
+    )
     # Declaring an orphaned receipt's subject again makes it speak for the REE again.
-    assert "patch_ree_definition" in allowed("receipt", "runtime", "stale", "current")
+    assert "patch_ree_definition" in allowed("receipt", "experiment_environment", "stale", "current")
 
 
 def test_undeclaring_a_keyed_item_discards_its_receipt() -> None:
     for source in ("current", "stale", "missing"):
         assert "patch_ree_definition" in allowed("receipt", "experiment", source, "not_applicable")
     # An unkeyed receipt is orphaned instead, and only removing the source clears it.
-    assert allowed("receipt", "runtime", "current", "not_applicable") == {"remove_source", "load_ree_bundle"}
+    assert allowed("receipt", "experiment_environment", "current", "not_applicable") == {
+        "remove_source",
+        "load_ree_bundle",
+    }
 
 
 def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale() -> None:
@@ -105,12 +115,12 @@ def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale
 
 def test_a_receipt_starts_applicable_only_when_what_it_is_about_is_declared_from_the_start() -> None:
     assert allowed("receipt", "test_activation", CREATED, "missing") == {"initialize_ree"}
-    assert allowed("receipt", "runtime", CREATED, "not_applicable") == {"initialize_ree"}
+    assert allowed("receipt", "experiment_environment", CREATED, "not_applicable") == {"initialize_ree"}
     assert allowed("receipt", "experiment", CREATED, "missing") == {"patch_ree_definition"}
 
 
 def test_whole_document_operations_are_marked_bulk_for_views() -> None:
-    assert set(machine("receipt", "runtime").bulk) == {"load_ree_bundle", "remove_source"}
+    assert set(machine("receipt", "experiment_environment").bulk) == {"load_ree_bundle", "remove_source"}
     assert machine("field", "definition.name").bulk == ("load_ree_bundle",)
 
 
@@ -123,19 +133,24 @@ def mutated(change: Any) -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("change", "message"),
     [
-        (lambda a: a["receipts"]["runtime"].update(rests_on=["definition.nothing"]), "names undeclared fields"),
-        (lambda a: a["receipts"]["runtime"].update(about=["definition.experiments[*]"]), "is not keyed"),
+        (
+            lambda a: a["receipts"]["experiment_environment"].update(rests_on=["definition.nothing"]),
+            "names undeclared fields",
+        ),
+        (lambda a: a["receipts"]["experiment_environment"].update(about=["definition.experiments[*]"]), "is not keyed"),
         (lambda a: a["receipts"]["sbom"].update(made_from=["experiment"]), "other, unkeyed receipts"),
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
         (lambda a: a.update(writes_nothing=["write_file"]), "write nothing take edges"),
         (lambda a: a.pop("overlay"), "names no overlay"),
         (
-            lambda a: a["fields"]["definition.build_runtime"].update(files=["ree-scripts/{slug}.sh"]),
+            lambda a: a["fields"]["definition.experiment_environment"].update(files=["ree-scripts/{slug}.sh"]),
             "name its item once",
         ),
         (lambda a: a["fields"]["definition.experiments[*]"].update(files=["ree-scripts/x.sh"]), "name its item once"),
         (
-            lambda a: a["fields"]["definition.test_activation"].update(files=["ree-scripts/build_script.sh"]),
+            lambda a: a["fields"]["definition.test_activation"].update(
+                files=["ree-scripts/build_experiment_environment.sh"]
+            ),
             "claimed by more than one field",
         ),
     ],
@@ -177,10 +192,14 @@ def test_document_parts_leave_out_what_is_empty_and_key_named_lists_by_name() ->
 
 
 def test_a_change_deep_in_the_document_changes_every_part_above_it() -> None:
-    before = document_parts({"definition": {"build_runtime": {"runtime_path": None, "script": "a"}}})
-    after = document_parts({"definition": {"build_runtime": {"runtime_path": "venv", "script": "a"}}})
+    before = document_parts({"definition": {"experiment_environment": {"artifact_path": None, "script": "a"}}})
+    after = document_parts({"definition": {"experiment_environment": {"artifact_path": "venv", "script": "a"}}})
     changed = {path for path in before.keys() | after.keys() if before.get(path) != after.get(path)}
-    assert changed == {"definition", "definition.build_runtime", "definition.build_runtime.runtime_path"}
+    assert changed == {
+        "definition",
+        "definition.experiment_environment",
+        "definition.experiment_environment.artifact_path",
+    }
 
 
 def commit_document(root: Path, operation: str, document: dict[str, Any], record: dict[str, Any] | None) -> None:
@@ -311,14 +330,14 @@ def change(
 
 
 def authored() -> Evidence:
-    """Created, a runtime declared and built, an experiment declared and run, then sealed."""
+    """Created, an experiment environment declared and built, an experiment declared and run, then sealed."""
     return Evidence(
         sources=(git_source(),),
         events=(
             lifecycle(1900, None, "draft", "initialize_ree", "created"),
-            receipt(2100, "runtime", None, "not_applicable", None, "baseline"),
-            receipt(2300, "runtime", "not_applicable", "missing", "patch_ree_definition", "operation"),
-            receipt(3300, "runtime", "missing", "current", "build_runtime", "operation"),
+            receipt(2100, "experiment_environment", None, "not_applicable", None, "baseline"),
+            receipt(2300, "experiment_environment", "not_applicable", "missing", "patch_ree_definition", "operation"),
+            receipt(3300, "experiment_environment", "missing", "current", "build_experiment_environment", "operation"),
             receipt(4300, "experiment:one", None, "missing", "patch_ree_definition", "operation"),
             receipt(5300, "experiment:one", "missing", "current", "run_experiment", "operation"),
             lifecycle(6900, "draft", "sealed", "seal_ree", "operation"),
@@ -326,9 +345,21 @@ def authored() -> Evidence:
         changes=(
             *(
                 change(1900, path, None, "x", "initialize_ree", "created")
-                for path in ("capture", "definition.name", "definition.build_runtime", "definition.test_activation")
+                for path in (
+                    "capture",
+                    "definition.name",
+                    "definition.experiment_environment",
+                    "definition.test_activation",
+                )
             ),
-            change(2900, "definition.build_runtime.runtime_path", None, "p", "patch_ree_definition", "operation"),
+            change(
+                2900,
+                "definition.experiment_environment.artifact_path",
+                None,
+                "p",
+                "patch_ree_definition",
+                "operation",
+            ),
             change(4900, "definition.experiments[one]", None, "e", "patch_ree_definition", "operation"),
             change(
                 4900, "definition.experiments[one].run_script_digest", None, "d", "patch_ree_definition", "operation"
@@ -350,11 +381,11 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
     # Unkeyed fields start where the creating commit left them, whether it held them or not.
     assert moves[("definition.name", CREATED, "set", "initialize_ree")] == 1
     assert moves[("definition.catalog.version", CREATED, "unset", "initialize_ree")] == 1
-    assert moves[("definition.build_runtime.runtime_path", "unset", "set", "patch_ree_definition")] == 1
+    assert moves[("definition.experiment_environment.artifact_path", "unset", "set", "patch_ree_definition")] == 1
     # A keyed item starts when it is declared; the parts inside it are not fields of their own.
     assert moves[("definition.experiments[*]", CREATED, "set", "patch_ree_definition")] == 1
     # A receipt's first audited standing is the one the REE was created with.
-    assert moves[("runtime", CREATED, "not_applicable", "initialize_ree")] == 1
+    assert moves[("experiment_environment", CREATED, "not_applicable", "initialize_ree")] == 1
     assert moves[("experiment", "missing", "current", "run_experiment")] == 1
     assert not check_aggregate(ree(), authored()).findings
 
@@ -362,7 +393,7 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
 def test_a_move_no_edge_allows_is_reported_with_its_evidence() -> None:
     evidence = authored()
     late = change(7900, "definition.catalog.version", None, "2", "run_experiment", "operation")
-    drift = receipt(7100, "runtime", "current", "stale", None, "external")
+    drift = receipt(7100, "experiment_environment", "current", "stale", None, "external")
     result = check_aggregate(
         ree(), evidence.model_copy(update={"changes": (*evidence.changes, late), "events": (*evidence.events, drift)})
     )
@@ -373,7 +404,7 @@ def test_a_move_no_edge_allows_is_reported_with_its_evidence() -> None:
             "unset -> set by run_experiment, which no edge allows",
             ("git:ree@c7",),
         ),
-        (f"Ree {REE} runtime", f"current -> stale by {EXTERNAL}, which no edge allows", ("git:ree@c7",)),
+        (f"Ree {REE} experiment_environment", f"current -> stale by {EXTERNAL}, which no edge allows", ("git:ree@c7",)),
     ]
 
 
@@ -403,11 +434,15 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     assert ("patch_ree_definition", ("experiment[one]", "definition.experiments[one]")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle", "contents"))
     final = replayed.steps[-1].states
-    assert (final["lifecycle"], final["runtime"], final["experiment[one]"]) == ("sealed", "current", "current")
+    assert (final["lifecycle"], final["experiment_environment"], final["experiment[one]"]) == (
+        "sealed",
+        "current",
+        "current",
+    )
     names = [part.name for part in replayed.parts]
     # Drawing order: the lifecycle, each receipt after what it is about, the other groups last.
     assert names[0] == "lifecycle"
-    assert names.index("definition.build_runtime.runtime_path") < names.index("runtime")
+    assert names.index("definition.experiment_environment.artifact_path") < names.index("experiment_environment")
     assert names.index("experiment[one]") < names.index("definition.name")
     item = next(part for part in replayed.parts if part.name == "experiment[one]")
     assert (item.machine, item.item, item.group) == ("experiment", "one", "experiment")
@@ -419,7 +454,7 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
 @pytest.mark.parametrize(
     ("path", "claim"),
     [
-        ("ree-scripts/build_script.sh", ("definition.build_runtime", "")),
+        ("ree-scripts/build_experiment_environment.sh", ("definition.experiment_environment", "")),
         ("ree-scripts/activation.verify.sh", ("definition.test_activation", "")),
         ("ree-scripts/experiments/train-model.sh", ("definition.experiments[*]", "train-model")),
         ("ree-scripts/experiments/train-model.verify.sh", ("definition.experiments[*]", "train-model")),
@@ -461,7 +496,7 @@ def overlay_findings(*files: FileChange, changes: tuple[FieldChange, ...] = ()) 
 
 
 def test_a_script_changes_with_the_field_that_declares_it() -> None:
-    build = "overlay/ree-scripts/build_script.sh"
+    build = "overlay/ree-scripts/build_experiment_environment.sh"
     run = "overlay/ree-scripts/experiments/one.sh"
     assert (
         overlay_findings(
@@ -474,7 +509,7 @@ def test_a_script_changes_with_the_field_that_declares_it() -> None:
         == []
     )
     assert overlay_findings(file(5900, build, "b1", "b2", "write_file", "operation")) == [
-        f"Ree {REE} {build}: changed by write_file, but definition.build_runtime, which claims it, did not"
+        f"Ree {REE} {build}: changed by write_file, but definition.experiment_environment, which claims it, did not"
     ]
 
 
@@ -503,10 +538,10 @@ def test_each_capture_commit_reports_the_overlay_files_it_changed(tmp_path: Path
     root = tmp_path / "ree"
     subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True)
     (root / "overlay/ree-scripts").mkdir(parents=True)
-    (root / "overlay/ree-scripts/build_script.sh").write_text("echo one\n")
+    (root / "overlay/ree-scripts/build_experiment_environment.sh").write_text("echo one\n")
     subprocess.run([GIT, "-C", str(root), "add", "overlay"], check=True)
     commit_document(root, "initialize_ree", {"subject": {"definition": {"name": "demo"}}}, None)
-    (root / "overlay/ree-scripts/build_script.sh").write_text("echo two\n")
+    (root / "overlay/ree-scripts/build_experiment_environment.sh").write_text("echo two\n")
     (root / "overlay/notes.txt").write_text("kept\n")
     subprocess.run([GIT, "-C", str(root), "add", "overlay"], check=True)
     record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "write_file"}}
@@ -516,7 +551,7 @@ def test_each_capture_commit_reports_the_overlay_files_it_changed(tmp_path: Path
     evidence = load_evidence(repositories=[root], git_executable=GIT)
     moved = [(c.cause, c.operation, c.path, c.before is None, c.after is None) for c in evidence.files]
     assert moved == [
-        ("created", "initialize_ree", "overlay/ree-scripts/build_script.sh", True, False),
+        ("created", "initialize_ree", "overlay/ree-scripts/build_experiment_environment.sh", True, False),
         ("operation", "write_file", "overlay/notes.txt", True, False),
-        ("operation", "write_file", "overlay/ree-scripts/build_script.sh", False, False),
+        ("operation", "write_file", "overlay/ree-scripts/build_experiment_environment.sh", False, False),
     ]

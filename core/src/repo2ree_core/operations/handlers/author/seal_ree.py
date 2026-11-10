@@ -86,7 +86,7 @@ def handle_seal_ree(
         outputs = seal_ree(
             layout,
             source_included=args.source_included,
-            runtime_included=args.runtime_included,
+            experiment_environment_included=args.experiment_environment_included,
             results_included=args.results_included,
             sealed_at=utc_now_instant(),
             progress=_ProgressLogger(log),

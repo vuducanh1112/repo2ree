@@ -21,7 +21,7 @@ const NO_BADGES = {} as Badges;
 
 describe("executed step navCompleted", () => {
   const cases = [
-    { page: PAGE.BUILD, step: "runtime" },
+    { page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT, step: "experiment_environment" },
     { page: PAGE.SBOM, step: "sbom" },
     { page: PAGE.ACTIVATION, step: "test_activation" },
     { page: PAGE.EVALUATE, step: "evaluation" },
@@ -47,7 +47,11 @@ describe("executed step navCompleted", () => {
 
   it("ignores a session badge that the REE's own audit does not back", () => {
     const ree = reeWith({});
-    expect(resolveNavCompleted(stepFor(PAGE.BUILD), ree, { build: true } as Badges)).toBe(false);
+    expect(
+      resolveNavCompleted(stepFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree, {
+        [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: true,
+      } as Badges),
+    ).toBe(false);
   });
 });
 

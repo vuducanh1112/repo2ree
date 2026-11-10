@@ -20,8 +20,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 # What a review step is allowed to reproduce *from*.
 #
 # ``independent`` is the strong form: fetch the source from its recorded origin,
-# rebuild the runtime from that source. ``bundled`` uses what the REE already
-# carries — the frozen snapshot, the shipped runtime artifact — which makes a
+# rebuild the experiment environment from that source. ``bundled`` uses what the REE already
+# carries — the frozen snapshot, the shipped experiment environment artifact — which makes a
 # review possible with no network and no live origin, at the cost of being an
 # integrity check rather than an independent reproduction. ``auto`` picks the
 # strong form whenever the baseline supports it and falls back to ``bundled``.
@@ -46,8 +46,8 @@ class ReviewAcquireSourceCommand(BaseModel):
     args: ReviewAcquireSourceArgs
 
 
-class ReviewBuildRuntimeArgs(BaseModel):
-    """Rebuild the runtime inside an existing review attempt and certify it.
+class ReviewBuildExperimentEnvironmentArgs(BaseModel):
+    """Rebuild the experiment environment inside an existing review attempt and certify it.
 
     Joins an attempt the source step already created rather than opening a new
     one: the build is reproduced from *that* attempt's independently acquired
@@ -58,30 +58,30 @@ class ReviewBuildRuntimeArgs(BaseModel):
 
     review_id: str
     # Activation and the experiments run *in* the workspace this step leaves
-    # behind, and on an ``independent`` basis the runtime exists nowhere else —
+    # behind, and on an ``independent`` basis the experiment environment exists nowhere else —
     # so reclaiming it here would end the attempt at the build. Off by default
     # for that reason; a reviewer who wants only a build verdict passes true and
     # keeps the evidence it rests on (receipts, the reviewer's SBOM, the
     # comparison), which is kept regardless.
     prune_workspace: bool = False
     # ``independent`` runs the author's build script over the reviewer's own
-    # source; ``bundled`` certifies the runtime artifact the REE already ships
+    # source; ``bundled`` certifies the experiment environment artifact the REE already ships
     # instead of building one, for baselines whose build cannot run here.
     basis: ReviewBasis = "auto"
 
 
-class ReviewBuildRuntimeCommand(BaseModel):
+class ReviewBuildExperimentEnvironmentCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["review_build_runtime"] = "review_build_runtime"
-    args: ReviewBuildRuntimeArgs
+    operation: Literal["review_build_experiment_environment"] = "review_build_experiment_environment"
+    args: ReviewBuildExperimentEnvironmentArgs
 
 
 class ReviewActivationTestArgs(BaseModel):
-    """Probe the runtime an attempt certified, inside that attempt's workspace.
+    """Probe the experiment environment an attempt certified, inside that attempt's workspace.
 
     No ``basis``: activation runs *in* the workspace the build step left behind
-    and cannot tell how the runtime got there — deliberately, so the author's
+    and cannot tell how the experiment environment got there — deliberately, so the author's
     scripts run unchanged on either basis. What the resulting pass is worth is
     therefore not this step's to choose; it is inherited from the bases the
     source and build steps already settled (see ``reviews.attempt_basis``).
@@ -100,7 +100,7 @@ class ReviewActivationTestCommand(BaseModel):
 
 
 class ReviewRunExperimentArgs(BaseModel):
-    """Reproduce one named experiment inside an attempt whose runtime came up.
+    """Reproduce one named experiment inside an attempt whose experiment environment came up.
 
     One experiment per command, mirroring the author's ``run_experiment``: each
     reproduction gets its own run, its own log, and its own receipt, and a
@@ -259,21 +259,21 @@ class RemoveSourceCommand(BaseModel):
     args: RemoveSourceArgs = RemoveSourceArgs()
 
 
-class BuildRuntimeArgs(BaseModel):
+class BuildExperimentEnvironmentArgs(BaseModel):
     """No args — the build always runs the reserved, REE-owned build script."""
 
     model_config = ConfigDict(extra="forbid")
 
 
-class BuildRuntimeCommand(BaseModel):
+class BuildExperimentEnvironmentCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["build_runtime"] = "build_runtime"
-    args: BuildRuntimeArgs = BuildRuntimeArgs()
+    operation: Literal["build_experiment_environment"] = "build_experiment_environment"
+    args: BuildExperimentEnvironmentArgs = BuildExperimentEnvironmentArgs()
 
 
 class GenerateSbomArgs(BaseModel):
-    """No args — the scan targets the runtime the build recipe declares."""
+    """No args — the scan targets the experiment environment the build recipe declares."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -337,7 +337,7 @@ class GenerateHbomCommand(BaseModel):
 
 class ActivationTestArgs(BaseModel):
     """No args — activation runs the REE's stored Activation through its
-    runtime entry; there is no per-run script path."""
+    experiment environment entry; there is no per-run script path."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -356,7 +356,7 @@ class ActivationTestCommand(BaseModel):
 # reserved path. Spelled once, adding a kind is one edit rather than three that
 # nothing checks are in sync.
 TargetKind = Literal[
-    "build",
+    "build_experiment_environment",
     "activation_run",
     "activation_verify",
     "experiment_run",
@@ -427,7 +427,7 @@ class SealReeArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     source_included: bool = False
-    runtime_included: bool = False
+    experiment_environment_included: bool = False
     results_included: bool = False
 
 
@@ -441,7 +441,7 @@ class SealReeCommand(BaseModel):
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
     ReviewAcquireSourceCommand
-    | ReviewBuildRuntimeCommand
+    | ReviewBuildExperimentEnvironmentCommand
     | ReviewActivationTestCommand
     | ReviewRunExperimentCommand
     | MaterializeWorkspaceCommand
@@ -451,7 +451,7 @@ Command = Annotated[
     | DeleteFileCommand
     | PatchReeDefinitionCommand
     | RemoveSourceCommand
-    | BuildRuntimeCommand
+    | BuildExperimentEnvironmentCommand
     | GenerateSbomCommand
     | CrossCheckSbomCommand
     | EvaluateDependencyScoreCommand

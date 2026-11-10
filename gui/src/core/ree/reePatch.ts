@@ -9,7 +9,7 @@ import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
   catalog: Record<string, unknown>;
-  build_runtime: Record<string, unknown>;
+  experiment_environment: Record<string, unknown>;
   experiments: Array<Record<string, unknown>>;
   hardware: Record<string, unknown>;
   workbench_environment?: Record<string, unknown>;
@@ -105,7 +105,7 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     // sent as null so clearing the field clears the declaration; the recipe
     // itself is never nulled, since dropping it would discard the build script
     // the REE already owns.
-    build_runtime: { runtime_path: reeSpec.runtime || null },
+    experiment_environment: { artifact_path: reeSpec.experimentEnvironmentPath || null },
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware: serializeHbom(reeSpec.hardwareDescription),
     // Sent only once declared: a spec read before the REE declared one must not clear it.

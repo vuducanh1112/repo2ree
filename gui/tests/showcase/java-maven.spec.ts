@@ -1,8 +1,8 @@
 import { expect, test } from "../helpers/fixtures";
 import {
-  buildRuntime,
+  buildExperimentEnvironment,
   declareContainerEngine,
-  dockerBuildScript,
+  dockerBuildExperimentEnvironmentScript,
   dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
   generateScript,
@@ -26,7 +26,7 @@ import {
  */
 
 const PROJECT_DIR = "source";
-const RUNTIME_PATH = `${PROJECT_DIR}/runtime.tar`;
+const EXPERIMENT_ENVIRONMENT_PATH = `${PROJECT_DIR}/runtime.tar`;
 const IMAGE = "java-hello";
 const CLASSPATH = "'/app/target/classes:/app/target/dependency/*'";
 
@@ -47,21 +47,30 @@ test.describe("Java with Maven", () => {
     });
 
     await test.step("inference proposes the project's own docker build", async () => {
-      await openPort(page, "Build");
+      await openPort(page, "Build Experiment Environment");
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);
       expect(graph).toContain("single-project-root-dockerfile-v1");
-      await expect(page.getByLabel("Build script")).toContainText(/docker build/);
+      await expect(page.getByLabel("Build experiment environment script")).toContainText(
+        /docker build/,
+      );
     });
 
-    await test.step("build the runtime: Maven compiles and fetches org.json", async () => {
+    await test.step("build the experiment environment: Maven compiles and fetches org.json", async () => {
       // The build runs `docker build`: the REE declares it needs a container engine.
       await declareContainerEngine(page);
-      await buildRuntime(page, dockerBuildScript(PROJECT_DIR, RUNTIME_PATH, IMAGE), RUNTIME_PATH);
+      await buildExperimentEnvironment(
+        page,
+        dockerBuildExperimentEnvironmentScript(PROJECT_DIR, EXPERIMENT_ENVIRONMENT_PATH, IMAGE),
+        EXPERIMENT_ENVIRONMENT_PATH,
+      );
     });
 
     await test.step("test activation: the JVM starts", async () => {
-      await testActivation(page, dockerRunScript("java -version", RUNTIME_PATH, undefined, IMAGE));
+      await testActivation(
+        page,
+        dockerRunScript("java -version", EXPERIMENT_ENVIRONMENT_PATH, undefined, IMAGE),
+      );
     });
 
     await test.step("run the experiment", async () => {
@@ -69,7 +78,7 @@ test.describe("Java with Maven", () => {
         name: "java-hello",
         runScript: dockerRunScript(
           `java -cp ${CLASSPATH} com.example.Main`,
-          RUNTIME_PATH,
+          EXPERIMENT_ENVIRONMENT_PATH,
           EXPERIMENT_OUTPUT_FILE,
           IMAGE,
         ),

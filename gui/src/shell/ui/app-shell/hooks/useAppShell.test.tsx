@@ -30,7 +30,7 @@ describe("useAppShell", () => {
     mocks.useReeEditor.mockReset().mockReturnValue(mocks.editor);
   });
 
-  it("composes editor runtime groups with shell chrome", () => {
+  it("composes editor experiment environment groups with shell chrome", () => {
     const { result } = renderHook(() => useAppShell());
 
     expect(mocks.useReeEditor).toHaveBeenCalledWith({

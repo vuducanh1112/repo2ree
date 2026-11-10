@@ -62,11 +62,15 @@ class ScriptDeclarations(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    runtime_path: str | None = None
+    experiment_environment_path: str | None = None
 
     @classmethod
     def from_definition(cls, definition: ReeDefinition | None) -> ScriptDeclarations:
         """Project a persisted definition into the view the rules read."""
-        build_runtime = definition.build_runtime if definition else None
-        runtime_path = build_runtime.runtime_path if build_runtime else None
-        return cls(runtime_path=str(runtime_path) if runtime_path else None)
+        build_experiment_environment = definition.experiment_environment if definition else None
+        experiment_environment_path = (
+            build_experiment_environment.artifact_path if build_experiment_environment else None
+        )
+        return cls(
+            experiment_environment_path=str(experiment_environment_path) if experiment_environment_path else None
+        )

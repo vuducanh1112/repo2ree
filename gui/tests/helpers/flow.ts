@@ -67,7 +67,7 @@ export function pythonPipHelloWorld(): string {
 }
 
 /** Where the instant project's runtime lands: a packed venv inside the project root. */
-export const INSTANT_RUNTIME_PATH = "source/runtime-venv.tar.gz";
+export const INSTANT_EXPERIMENT_ENVIRONMENT_PATH = "source/runtime-venv.tar.gz";
 
 /**
  * Absolute path to the instant hello-world source archive: standard library
@@ -78,7 +78,7 @@ export function instantHelloWorld(): string {
   return packedProject("instant");
 }
 
-export const INSTANT_DOCKER_RUNTIME_PATH = "source/runtime-image.tar";
+export const INSTANT_DOCKER_EXPERIMENT_ENVIRONMENT_PATH = "source/runtime-image.tar";
 
 /**
  * Absolute path to the instant Docker project's source archive: a Dockerfile the
@@ -109,7 +109,7 @@ export function packedProject(project: ExampleProject): string {
 
 /** One of the scripts that run an instant project (`examples/projects/<project>/recipe/`). */
 export function instantRecipe(
-  name: "build_script.sh" | "activation.sh" | "experiment.sh",
+  name: "build_experiment_environment.sh" | "activation.sh" | "experiment.sh",
   project: "instant" | "instant_docker" = "instant",
 ): string {
   return readFileSync(path.join(EXAMPLES_DIR, "projects", project, "recipe", name), "utf8");
@@ -127,7 +127,7 @@ export function instantRecipe(
  */
 export function dockerRunScript(
   command: string,
-  runtimePath: string,
+  experimentEnvironmentPath: string,
   outputFile?: string,
   imageName = "pandas-hello",
 ): string {
@@ -138,10 +138,10 @@ set -eu
 
 IMAGE_NAME=${JSON.stringify(imageName)}
 TAG="latest"
-RUNTIME_FILE=${JSON.stringify(runtimePath)}
+EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(experimentEnvironmentPath)}
 
 if ! docker image inspect "$IMAGE_NAME:$TAG" >/dev/null 2>&1; then
-  docker load < "$RUNTIME_FILE"
+  docker load < "$EXPERIMENT_ENVIRONMENT_FILE"
 fi
 
 docker run --rm \\
@@ -495,12 +495,12 @@ export async function runEvaluate(page: Page) {
 /**
  * Build the runtime artifact. Declaring where the build writes it and running
  * the build both live on the single Build Runtime page — see
- * {@link declareRuntimeArtifact}, which must happen first: the build refuses to
+ * {@link declareExperimentEnvironmentArtifact}, which must happen first: the build refuses to
  * run until the produced path is declared.
  */
-export function dockerBuildScript(
+export function dockerBuildExperimentEnvironmentScript(
   projectDir: string,
-  producedRuntimePath: string,
+  producedExperimentEnvironmentPath: string,
   imageName = "pandas-hello",
 ): string {
   return `#!/usr/bin/env sh
@@ -509,24 +509,27 @@ set -eu
 IMAGE_NAME=${JSON.stringify(imageName)}
 TAG="latest"
 PROJECT_DIR=${JSON.stringify(projectDir)}
-RUNTIME_FILE=${JSON.stringify(producedRuntimePath)}
+EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(producedExperimentEnvironmentPath)}
 
 docker build -t "$IMAGE_NAME:$TAG" "$PROJECT_DIR"
-docker save "$IMAGE_NAME:$TAG" -o "$RUNTIME_FILE"
+docker save "$IMAGE_NAME:$TAG" -o "$EXPERIMENT_ENVIRONMENT_FILE"
 `;
 }
 
-export async function buildRuntime(
+export async function buildExperimentEnvironment(
   page: Page,
-  buildScript: string,
-  producedRuntimePath: string,
+  buildExperimentEnvironmentScript: string,
+  producedExperimentEnvironmentPath: string,
   options: { rebuild?: boolean } = {},
 ) {
-  await stepShot(page, "build-runtime", "before");
+  await stepShot(page, "build-experiment-environment", "before");
   // A failed build fails here, with its failure and the end of its log.
-  await runBuild(page, buildScript, producedRuntimePath, { ...options, succeed: true });
+  await runBuild(page, buildExperimentEnvironmentScript, producedExperimentEnvironmentPath, {
+    ...options,
+    succeed: true,
+  });
   await expect(main(page).getByRole("status", { name: "Built" })).toBeVisible();
-  await stepShot(page, "build-runtime", "after");
+  await stepShot(page, "build-experiment-environment", "after");
 }
 
 /**
@@ -535,7 +538,7 @@ export async function buildRuntime(
  * declares it needs one; a provider's bench has its own and ignores it.
  */
 export async function declareContainerEngine(page: Page) {
-  await openPort(page, "Build");
+  await openPort(page, "Build Experiment Environment");
   const engine = main(page)
     .getByRole("region", { name: "Workbench environment" })
     .getByRole("checkbox", { name: /call a container engine/ });
@@ -557,21 +560,23 @@ export async function declareContainerEngine(page: Page) {
 
 /**
  * Author, declare and run a build, and wait for the run to settle whatever its
- * outcome — the half of {@link buildRuntime} a spec about a failing build needs.
+ * outcome — the half of {@link buildExperimentEnvironment} a spec about a failing build needs.
  */
 export async function runBuild(
   page: Page,
-  buildScript: string,
-  producedRuntimePath: string,
+  buildExperimentEnvironmentScript: string,
+  producedExperimentEnvironmentPath: string,
   { rebuild = false, succeed = false }: { rebuild?: boolean; succeed?: boolean } = {},
 ) {
-  await openPort(page, "Build");
+  await openPort(page, "Build Experiment Environment");
   await expect(
-    main(page).getByRole("heading", { name: "Build Runtime", exact: true }),
+    main(page).getByRole("heading", { name: "Build Experiment Environment", exact: true }),
   ).toBeVisible();
   // REE owns one reserved build script — author the whole build in it directly
   // (produce the runtime artifact and land it in the workspace).
-  await page.getByLabel("Build script").fill(buildScript);
+  await page
+    .getByLabel("Build experiment environment script")
+    .fill(buildExperimentEnvironmentScript);
   // The build runs whatever script is saved when it starts: wait for the save to land.
   const scriptSaved = waitForFileWrite(page);
   await main(page).getByRole("button", { name: "Save build script" }).click();
@@ -579,7 +584,7 @@ export async function runBuild(
 
   // A rebuild keeps the declaration the first build made: re-entering the same
   // path changes nothing, so no PATCH would fire to wait on.
-  if (!rebuild) await declareRuntimeArtifact(page, producedRuntimePath);
+  if (!rebuild) await declareExperimentEnvironmentArtifact(page, producedExperimentEnvironmentPath);
 
   // Settled whatever its outcome unless asked: a caller may be building to watch it fail.
   const run = await runToEnd(
@@ -626,17 +631,22 @@ grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
  * build produces"), and the declaration is authored before the build runs — the
  * path names a file that does not exist yet.
  */
-async function declareRuntimeArtifact(page: Page, producedRuntimePath: string) {
+async function declareExperimentEnvironmentArtifact(
+  page: Page,
+  producedExperimentEnvironmentPath: string,
+) {
   // Declaring the runtime is a debounced intent PATCH. The build reads the
   // declaration server-side, and anything else that asks the backend about the
   // runtime next (script inference, most obviously) must not race it, so settle
   // the declaration here rather than in each caller.
-  const runtimeDeclared = waitForDefinitionPatch(page, { carrying: producedRuntimePath });
+  const experimentEnvironmentDeclared = waitForDefinitionPatch(page, {
+    carrying: producedExperimentEnvironmentPath,
+  });
   await page
-    .getByRole("region", { name: "Runtime artifact" })
+    .getByRole("region", { name: "Experiment environment artifact" })
     .getByRole("textbox")
-    .fill(producedRuntimePath);
-  await runtimeDeclared;
+    .fill(producedExperimentEnvironmentPath);
+  await experimentEnvironmentDeclared;
 }
 
 /** Add a hardware BOM entry (a CPU component with a device model). */
@@ -698,7 +708,7 @@ export async function crossCheckSbom(page: Page) {
   // The card flips to Re-check once the report refreshes.
   await expect(content.getByRole("button", { name: /^Re-check$/ })).toBeVisible();
   await expect(content.getByText("Cross-checked", { exact: true })).toBeVisible();
-  await expect(content.getByText(/declared deps in runtime/)).toBeVisible();
+  await expect(content.getByText(/declared deps in experiment environment/)).toBeVisible();
   await stepShot(page, "cross-check-sbom", "after");
 }
 
@@ -890,7 +900,7 @@ export async function reproduceSource(page: Page) {
  */
 export async function reproduceBuild(page: Page) {
   // A rebuild, then an SBOM scan that prints nothing while it works.
-  return reproduceReviewStep(page, "Build", { watch: quiet() });
+  return reproduceReviewStep(page, "Build Experiment Environment", { watch: quiet() });
 }
 
 /**

@@ -30,7 +30,7 @@ function savedReport(findings: unknown[]) {
       {
         schema_version: 1,
         engine_version: "1",
-        target: { kind: "build", path: "overlay/build.sh" },
+        target: { kind: "build_experiment_environment", path: "overlay/build.sh" },
         findings,
         tiers: [{ tier: "contract", status: "ran" }],
       },
@@ -48,10 +48,10 @@ function renderCard(findings: unknown[]) {
       onSave={vi.fn()}
       renderAnalysis={(content, dirty, focusLine) => (
         <ScriptAnalysis
-          target={{ kind: "build" }}
+          target={{ kind: "build_experiment_environment" }}
           source={content}
           dirty={dirty}
-          runtimePath="runtime.tar"
+          experimentEnvironmentPath="runtime.tar"
           onFocusLine={focusLine}
         />
       )}

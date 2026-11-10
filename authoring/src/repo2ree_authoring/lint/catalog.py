@@ -30,13 +30,13 @@ _CATALOG: dict[str, tuple[FindingTier, FindingSeverity, bool, str]] = {
         False,
         "The generated scaffold's 'set --' is still empty, so this script exits 64 instead of running anything.",
     ),
-    "runtime_not_referenced": (
+    "experiment_environment_not_referenced": (
         "contract",
         "warning",
         False,
         (
-            "The runtime artifact path declared on the REE does not appear anywhere in this script, "
-            "so this script may not use the runtime the REE ships."
+            "The experiment environment artifact path declared on the REE does not appear anywhere in this script, "
+            "so this script may not use the experiment environment the REE ships."
         ),
     ),
     "exit_status_masked_by_pipe": (

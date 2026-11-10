@@ -10,7 +10,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import Digest, UtcInstant
 from repo2ree_ree.receipt import (
-    BuildRuntimeReceipt,
+    BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
@@ -19,11 +19,11 @@ from repo2ree_ree.receipt import (
 )
 from repo2ree_ree.review import (
     ActivationOutcome,
-    BuildComparison,
     ExperimentComparison,
+    ExperimentEnvironmentComparison,
     ReviewAcquireSourceReceipt,
     ReviewActivationReceipt,
-    ReviewBuildRuntimeReceipt,
+    ReviewBuildExperimentEnvironmentReceipt,
     ReviewExperimentReceipt,
     SourceComparison,
 )
@@ -41,12 +41,12 @@ class ReviewAcquireSourceOutputs(BaseModel):
     comparison: SourceComparison
 
 
-class ReviewBuildRuntimeOutputs(BaseModel):
+class ReviewBuildExperimentEnvironmentOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    receipt: ReviewBuildRuntimeReceipt
-    comparison: BuildComparison
+    receipt: ReviewBuildExperimentEnvironmentReceipt
+    comparison: ExperimentEnvironmentComparison
 
 
 class ReviewActivationTestOutputs(BaseModel):
@@ -111,19 +111,19 @@ class VersionConflictOutputs(BaseModel):
         return self.model_dump(exclude={"path"} if self.path is None else set())
 
 
-class BuildRuntimeOutputs(BaseModel):
+class BuildExperimentEnvironmentOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    build_runtime_script_path: str
+    build_experiment_environment_script_path: str
     container_exit_code: int
-    receipt: BuildRuntimeReceipt
+    receipt: BuildExperimentEnvironmentReceipt
 
 
 class GenerateSbomOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     sbom_relative_path: str
-    runtime_relative_path: str
+    experiment_environment_relative_path: str
     format: str
     receipt: GenerateSbomReceipt
 
@@ -156,7 +156,7 @@ class RunnableOperationOutputs(BaseModel):
     exit_code: int | None = None
     verify_exit_code: int | None = None
     verdict: Literal["pass", "fail"] | None = None
-    runtime_path: str = ""
+    experiment_environment_path: str = ""
     receipt: TestActivationReceipt | RunExperimentReceipt | None = None
 
 
@@ -177,10 +177,10 @@ class SealOutputs(BaseModel):
     entry_count: int
 
 
-class BuildRuntimeFailureOutputs(BaseModel):
+class BuildExperimentEnvironmentFailureOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    build_runtime_script_path: str
+    build_experiment_environment_script_path: str
     container_exit_code: int | None
 
 
@@ -200,7 +200,7 @@ class LintScriptsOutputs(BaseModel):
 
 OUTPUTS: dict[str, Any] = {
     "review_acquire_source": ReviewAcquireSourceOutputs,
-    "review_build_runtime": ReviewBuildRuntimeOutputs,
+    "review_build_experiment_environment": ReviewBuildExperimentEnvironmentOutputs,
     "review_activation_test": ReviewActivationTestOutputs,
     "review_run_experiment": ReviewRunExperimentOutputs,
     "materialize_workspace": NoOutputs,
@@ -210,7 +210,7 @@ OUTPUTS: dict[str, Any] = {
     "delete_file": NoOutputs | VersionConflictOutputs,
     "patch_ree_definition": PatchReeDefinitionOutputs | VersionConflictOutputs,
     "remove_source": NoOutputs,
-    "build_runtime": BuildRuntimeOutputs | BuildRuntimeFailureOutputs,
+    "build_experiment_environment": BuildExperimentEnvironmentOutputs | BuildExperimentEnvironmentFailureOutputs,
     "generate_sbom": GenerateSbomOutputs,
     "cross_check_sbom": CrossCheckSbomOutputs,
     "evaluate_dependency_score": EvaluateOutputs,

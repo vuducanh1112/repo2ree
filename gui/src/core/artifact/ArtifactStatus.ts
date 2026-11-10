@@ -1,5 +1,5 @@
 export interface ArtifactStatus {
-  runtimeIncluded?: boolean;
+  experimentEnvironmentIncluded?: boolean;
   sealedAt?: string;
   sealHash?: string;
 }

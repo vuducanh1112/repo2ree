@@ -36,7 +36,7 @@ from repo2ree_authoring.templates import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
@@ -76,7 +76,7 @@ _STEP_ACTIONS: dict[str, list[str]] = {
     "metadata": ["patchReeDefinition"],
     "hbom": ["startHbomGeneration", "patchReeDefinition"],
     "evaluate": ["startEvaluate"],
-    "build": ["startBuild", "generateScriptCandidates", "writeReeFile"],
+    "build_experiment_environment": ["startBuildExperimentEnvironment", "generateScriptCandidates", "writeReeFile"],
     "sbom": ["startSbomGeneration"],
     "crosscheck": ["startSbomCrossCheck"],
     "activation": ["startActivationTest", "generateScriptCandidates", "writeReeFile"],
@@ -133,7 +133,7 @@ class ScriptTemplateEntry(BaseModel):
     workbench_environment: WorkbenchEnvironmentKind | None = None
 
 
-class BuildScriptTemplates(BaseModel):
+class BuildExperimentEnvironmentScriptTemplates(BaseModel):
     """The build-script templates and the reserved path they all belong at.
 
     One entry per standard runtime-packaging strategy; the default entry for an
@@ -175,7 +175,7 @@ class ExperimentScriptTemplates(BaseModel):
 
 
 class ScriptTemplateCatalog(BaseModel):
-    build: BuildScriptTemplates
+    build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
     activation: ActivationScriptTemplates
     experiment: ExperimentScriptTemplates
     # Verify scripts share one contract across runnables (activation and
@@ -217,8 +217,8 @@ def list_script_templates() -> ScriptTemplateCatalog:
     ``generateScriptCandidates``.
     """
     return ScriptTemplateCatalog(
-        build=BuildScriptTemplates(
-            path=RESERVED_BUILD_SCRIPT,
+        build_experiment_environment=BuildExperimentEnvironmentScriptTemplates(
+            path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             templates=_entries(build_templates()),
         ),
         activation=ActivationScriptTemplates(

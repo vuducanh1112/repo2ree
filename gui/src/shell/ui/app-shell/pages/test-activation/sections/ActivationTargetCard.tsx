@@ -1,37 +1,39 @@
 import { PAGE } from "@core/app-shell/pages";
-import { RuntimeTargetCard } from "@shell/ui/app-shell/components/RuntimeTargetCard";
+import { ExperimentEnvironmentTargetCard } from "@shell/ui/app-shell/components/ExperimentEnvironmentTargetCard";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
 
 interface ActivationTargetCardProps {
-  runtimePath: string;
-  runtimePathExists: boolean;
+  experimentEnvironmentPath: string;
+  experimentEnvironmentPathExists: boolean;
   sbomPath: string;
   sbomPathExists: boolean;
 }
 
 export function ActivationTargetCard({
-  runtimePath,
-  runtimePathExists,
+  experimentEnvironmentPath,
+  experimentEnvironmentPathExists,
   sbomPath,
   sbomPathExists,
 }: ActivationTargetCardProps) {
-  const runtimeReady = !!runtimePath && runtimePathExists;
+  const experimentEnvironmentReady = !!experimentEnvironmentPath && experimentEnvironmentPathExists;
 
   return (
-    <RuntimeTargetCard
-      runtimePath={runtimePath}
-      runtimePathExists={runtimePathExists}
-      tint={stageTone(PAGE.BUILD)}
+    <ExperimentEnvironmentTargetCard
+      experimentEnvironmentPath={experimentEnvironmentPath}
+      experimentEnvironmentPathExists={experimentEnvironmentPathExists}
+      tint={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT)}
       icon={Ic.archive(20)}
     >
-      <Badge tone={runtimeReady ? "info" : "neutral"}>
-        {runtimeReady ? "Runtime file present" : "Runtime pending"}
+      <Badge tone={experimentEnvironmentReady ? "info" : "neutral"}>
+        {experimentEnvironmentReady
+          ? "Experiment environment file present"
+          : "Experiment environment pending"}
       </Badge>
       <Badge tone={sbomPath && sbomPathExists ? "info" : "neutral"}>
         {sbomPath && sbomPathExists ? "SBOM attached" : "SBOM pending"}
       </Badge>
-    </RuntimeTargetCard>
+    </ExperimentEnvironmentTargetCard>
   );
 }

@@ -35,12 +35,12 @@ _REAL_OUTPUT = json.dumps(
 
 
 def test_a_comment_becomes_a_finding_in_shellchecks_own_namespace() -> None:
-    (finding,) = parse_json1(_REAL_OUTPUT, path="ree-scripts/build_script.sh")
+    (finding,) = parse_json1(_REAL_OUTPUT, path="ree-scripts/build_experiment_environment.sh")
     assert finding.code == "shellcheck:SC2086"
     assert finding.tier == "shell"
     assert finding.line == 3
     assert finding.column == 9
-    assert finding.path == "ree-scripts/build_script.sh"
+    assert finding.path == "ree-scripts/build_experiment_environment.sh"
 
 
 def test_shellcheck_never_blocks() -> None:

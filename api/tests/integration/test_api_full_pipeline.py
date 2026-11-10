@@ -35,29 +35,29 @@ from httpx import Client as TestClient
 
 from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
 
-BUILD_SCRIPT = "ree-scripts/build_script.sh"
+BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
 ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
 EXPERIMENT_NAME = "demo"
 EXPERIMENT_SCRIPT = f"ree-scripts/experiments/{EXPERIMENT_NAME}.sh"
-RUNTIME_ARTIFACT = "runtime.tar"
+EXPERIMENT_ENVIRONMENT_ARTIFACT = "runtime.tar"
 EXPERIMENT_OUTPUT = "results/demo.txt"
 
 # A real image build, because the SBOM scanner reads ``docker-archive:`` — a
-# plain tar is not a runtime it can open. Built ``FROM scratch`` so the bench
+# plain tar is not an experiment environment it can open. Built ``FROM scratch`` so the bench
 # needs no network and the whole stage stays inside the seconds CI can afford;
 # the walkthrough is where a realistic base image gets exercised.
 #
 # A module constant rather than a literal at the call site because the staleness
 # stage rewrites this file: the edit has to be a *change* to the same script, so
 # both writes must agree on what the original was.
-BUILD_SCRIPT_BODY = (
+BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT_BODY = (
     "#!/bin/sh\n"
     "set -eu\n"
     "mkdir -p image\n"
     "cp README.md requirements.txt app.py image/\n"
     "printf 'FROM scratch\\nCOPY . /\\n' > image/Dockerfile\n"
     "docker build -t pipeline-demo:test image\n"
-    f"docker save -o {RUNTIME_ARTIFACT} pipeline-demo:test\n"
+    f"docker save -o {EXPERIMENT_ENVIRONMENT_ARTIFACT} pipeline-demo:test\n"
 )
 
 
@@ -166,42 +166,51 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     filmstrip.frame(ree_id, "hbom")
 
-    # --- build: declare where the runtime lands, then produce it ---------
+    # --- build: declare where the experiment environment lands, then produce it ---------
     # The declaration comes first on purpose: the build receipt binds this path
     # to what it finds there, so a build with nowhere to look is refused.
-    _put_file(client, ree_id, BUILD_SCRIPT, BUILD_SCRIPT_BODY)
-    definition = _patch_definition(client, ree_id, {"build_runtime": {"runtime_path": RUNTIME_ARTIFACT}})
-    assert definition["build_runtime"]["runtime_path"] == RUNTIME_ARTIFACT
-    filmstrip.frame(ree_id, "declare runtime")
-    _stage(client, ree_id, "build-runtime", {}, what="build")
+    _put_file(client, ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT_BODY)
+    definition = _patch_definition(
+        client, ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT_ARTIFACT}}
+    )
+    assert definition["experiment_environment"]["artifact_path"] == EXPERIMENT_ENVIRONMENT_ARTIFACT
+    filmstrip.frame(ree_id, "declare experiment environment")
+    _stage(client, ree_id, "build-experiment-environment", {}, what="build_experiment_environment")
 
     state = client.get(f"/api/v1/rees/{ree_id}").json()
-    assert any(item.get("path") == RUNTIME_ARTIFACT for item in state["workspace_files"]), (
-        "the build did not leave a runtime at the declared path"
+    assert any(item.get("path") == EXPERIMENT_ENVIRONMENT_ARTIFACT for item in state["workspace_files"]), (
+        "the build did not leave an experiment environment at the declared path"
     )
 
-    filmstrip.frame(ree_id, "build")
+    filmstrip.frame(ree_id, "build_experiment_environment")
 
     # --- staleness: a receipt stops speaking for what it describes -------
     # Editing the build script after its receipt exists is the ordinary way an
     # REE goes stale, and until here nothing exercised it over the transport.
-    # Placed before the SBOM so only the runtime step has evidence to lose: the
+    # Placed before the SBOM so only the experiment environment step has evidence to lose: the
     # scan and the cross-check have not run, so the edit stales exactly one
     # step, and the rebuild below returns it to current before anything
     # downstream is built on it.
-    _put_file(client, ree_id, BUILD_SCRIPT, BUILD_SCRIPT_BODY + "# touched after the build\n")
+    _put_file(
+        client,
+        ree_id,
+        BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT_BODY + "# touched after the build\n",
+    )
     stale = client.get(f"/api/v1/rees/{ree_id}/state").json()["audit"]
-    assert stale["runtime"]["evidence"] == "stale", stale["runtime"]
-    assert "runtime build script changed" in stale["runtime"]["reasons"], stale["runtime"]
+    assert stale["experiment_environment"]["evidence"] == "stale", stale["experiment_environment"]
+    assert "build experiment environment script changed" in stale["experiment_environment"]["reasons"], stale[
+        "experiment_environment"
+    ]
     filmstrip.frame(ree_id, "edit build script")
 
-    _stage(client, ree_id, "build-runtime", {}, what="rebuild")
+    _stage(client, ree_id, "build-experiment-environment", {}, what="rebuild")
     recovered = client.get(f"/api/v1/rees/{ree_id}/state").json()["audit"]
-    assert recovered["runtime"]["evidence"] == "current", recovered["runtime"]
+    assert recovered["experiment_environment"]["evidence"] == "current", recovered["experiment_environment"]
     filmstrip.frame(ree_id, "rebuild")
 
     # --- sbom: scan what the build produced, then reconcile it -----------
-    # The scan reads the runtime archive, not the source; the cross-check then
+    # The scan reads the experiment environment archive, not the source; the cross-check then
     # compares that against the dependencies the evaluate stage read off the
     # source, so it needs both of the stages above to have run.
     _stage(client, ree_id, "generate-sbom", {}, what="sbom")
@@ -210,7 +219,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     filmstrip.frame(ree_id, "sbom cross-check")
 
-    # --- activation: does the runtime come up at all ---------------------
+    # --- activation: does the experiment environment come up at all ---------------------
     _put_file(client, ree_id, ACTIVATION_SCRIPT, "#!/bin/sh\nset -eu\ntar -tf runtime.tar > /dev/null\n")
     _patch_definition(client, ree_id, {"test_activation": {}})
     filmstrip.frame(ree_id, "declare activation")
@@ -270,7 +279,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     # --- seal: refused if any receipt above has gone stale ---------------
     response = client.post(
         f"/api/v1/rees/{ree_id}/ree:seal",
-        json={"include_source": True, "include_runtime": True, "include_results": True},
+        json={"include_source": True, "include_experiment_environment": True, "include_results": True},
     )
     assert response.status_code == 200, response.text
     _await_run(client, ree_id, response.json(), what="seal")
@@ -283,7 +292,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     assert receipts["source"] is not None
     assert receipts["evaluation"] is not None
     assert receipts["hardware_observation"] is not None
-    assert receipts["build"] is not None
+    assert receipts["build_experiment_environment"] is not None
     assert receipts["sbom"] is not None
     assert receipts["sbom_cross_check"] is not None
     assert receipts["test_activation"] is not None

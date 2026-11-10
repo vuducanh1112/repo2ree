@@ -18,15 +18,15 @@ from repo2ree_authoring.lint.lint import CONTRACT_ONLY
 from repo2ree_authoring.templates import reserved_script_template
 from repo2ree_protocol.command import ScriptTarget, TargetKind
 from repo2ree_protocol.lint import ScriptDeclarations
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "authoring/src/repo2ree_authoring/templates"
 
-# Each template names its runtime, so an REE declaring that path is the one it
+# Each template names its experiment environment, so an REE declaring that path is the one it
 # is written for. Declaring something else would make every template "wrong" for
 # a reason that is about the REE, not about the template.
-_DOCKER = ScriptDeclarations(runtime_path="runtime.tar")
-_VENV = ScriptDeclarations(runtime_path="runtime-venv.tar.gz")
+_DOCKER = ScriptDeclarations(experiment_environment_path="runtime.tar")
+_VENV = ScriptDeclarations(experiment_environment_path="runtime-venv.tar.gz")
 
 
 def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
@@ -43,10 +43,10 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
 @pytest.mark.parametrize(
     ("name", "kind"),
     [
-        ("build_script_docker.sh", "build"),
+        ("build_experiment_environment_docker.sh", "build_experiment_environment"),
         ("activation_docker.sh", "activation_run"),
         ("experiment_run_docker.sh", "experiment_run"),
-        ("build_script_venv.sh", "build"),
+        ("build_experiment_environment_venv.sh", "build_experiment_environment"),
         ("activation_venv.sh", "activation_run"),
         ("experiment_run_venv.sh", "experiment_run"),
     ],
@@ -72,18 +72,18 @@ def test_a_verify_template_says_only_that_it_is_unedited(name: str) -> None:
 
 
 def test_a_fresh_ree_starts_with_scripts_that_suit_its_environment() -> None:
-    assert "docker build" in reserved_script_template(RESERVED_BUILD_SCRIPT, "image")
-    assert "docker" not in reserved_script_template(RESERVED_BUILD_SCRIPT, "host")
+    assert "docker build" in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "image")
+    assert "docker" not in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
     assert "docker" not in reserved_script_template(RESERVED_ACTIVATION_SCRIPT, "host")
 
 
 def test_every_template_is_covered_by_a_case_above() -> None:
     # A new template that nobody linted would quietly escape this file.
     covered = {
-        "build_script_docker.sh",
+        "build_experiment_environment_docker.sh",
         "activation_docker.sh",
         "experiment_run_docker.sh",
-        "build_script_venv.sh",
+        "build_experiment_environment_venv.sh",
         "activation_venv.sh",
         "experiment_run_venv.sh",
         "verify_stdout_contains.sh",

@@ -28,7 +28,7 @@ function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
       source: { evidence: "missing", payload: "not_applicable", reasons: [] },
       evaluation: { evidence: "missing", payload: "not_applicable", reasons: [] },
       hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      runtime: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
       sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
       sbom_cross_check: { evidence: "missing", payload: "not_applicable", reasons: [] },
       test_activation: { evidence: "missing", payload: "not_applicable", reasons: [] },

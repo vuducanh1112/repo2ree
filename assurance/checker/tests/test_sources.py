@@ -1,4 +1,4 @@
-"""Journals written by the runtime are read back with their completeness intact."""
+"""Journals written by the experiment environment are read back with their completeness intact."""
 
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ def test_journals_of_two_instances_of_a_process_are_told_apart_and_never_ordered
 RECORD: dict[str, object] = {
     "attempt_id": "a1",
     "context": {"ree_id": "ree-1", "dispatch_record": "api-000001#3"},
-    "command": {"operation": "build_runtime"},
+    "command": {"operation": "build_experiment_environment"},
     "run_id": "build-1",
     "scope": ".",
     "operation_status": "succeeded",

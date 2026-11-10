@@ -27,7 +27,7 @@ RunOperation = Literal[
     "provision",
     "ree-load",
     "seal",
-    "build",
+    "build_experiment_environment",
     "sbom",
     "crosscheck",
     "hbom",

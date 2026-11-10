@@ -6,7 +6,11 @@ from typing import Any
 import pytest
 
 from repo2ree_core.analysis.sbom import scan as scan_module
-from repo2ree_core.analysis.sbom.scan import ScanOutcome, is_runtime_archive, scan_runtime_archive
+from repo2ree_core.analysis.sbom.scan import (
+    ScanOutcome,
+    is_experiment_environment_archive,
+    scan_experiment_environment_archive,
+)
 from repo2ree_core.execution.process import StreamingProcessResult
 
 
@@ -34,13 +38,15 @@ def test_cancel_check_reaches_the_process_runner(fake_syft: dict[str, Any], tmp_
     def never() -> bool:
         return False
 
-    scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None, is_canceled=never)
+    scan_experiment_environment_archive(
+        tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None, is_canceled=never
+    )
     assert fake_syft["kwargs"]["is_canceled"] is never
 
 
 def test_scope_stays_pinned_to_squashed(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """Both sides must mean the same thing by 'observed in the runtime'."""
-    scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
+    """Both sides must mean the same thing by 'observed in the experiment environment'."""
+    scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     cmd = fake_syft["cmd"]
     assert cmd[cmd.index("--scope") + 1] == "squashed"
 
@@ -49,16 +55,16 @@ def test_the_scanner_detects_the_kind_of_tarball_but_never_looks_beyond_it(
     fake_syft: dict[str, Any], tmp_path: Path
 ) -> None:
     """An image archive and a packed filesystem both scan; a daemon or registry never does."""
-    runtime = tmp_path / "rt.tar.gz"
-    scan_runtime_archive(runtime, tmp_path / "sbom.json", log=lambda *_: None)
+    experiment_environment = tmp_path / "rt.tar.gz"
+    scan_experiment_environment_archive(experiment_environment, tmp_path / "sbom.json", log=lambda *_: None)
     cmd = fake_syft["cmd"]
-    assert cmd[1] == str(runtime)
+    assert cmd[1] == str(experiment_environment)
     assert [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--from"] == ["docker-archive", "oci-archive", "file"]
 
 
 def test_catalogers_stay_pinned_to_installed_packages(fake_syft: dict[str, Any], tmp_path: Path) -> None:
     """A packed filesystem must not report what its lockfiles merely declare."""
-    scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
+    scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     cmd = fake_syft["cmd"]
     assert cmd[cmd.index("--override-default-catalogers") + 1] == "image"
 
@@ -66,7 +72,7 @@ def test_catalogers_stay_pinned_to_installed_packages(fake_syft: dict[str, Any],
 def test_a_canceled_scan_is_not_reported_as_a_failed_one(fake_syft: dict[str, Any], tmp_path: Path) -> None:
     """A killed scanner exits nonzero like a broken one; only one is news."""
     fake_syft["result"] = StreamingProcessResult(returncode=-15, stdout="", stderr="", canceled=True)
-    outcome = scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
+    outcome = scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     assert outcome.canceled
     assert outcome.tool_version is None
 
@@ -74,7 +80,7 @@ def test_a_canceled_scan_is_not_reported_as_a_failed_one(fake_syft: dict[str, An
 def test_a_cancel_arriving_after_the_scanner_exited_still_counts(fake_syft: dict[str, Any], tmp_path: Path) -> None:
     """The runner did not see it, but the caller must not settle a verdict."""
     fake_syft["result"] = StreamingProcessResult(returncode=0, stdout="", stderr="")
-    outcome = scan_runtime_archive(
+    outcome = scan_experiment_environment_archive(
         tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None, is_canceled=lambda: True
     )
     assert outcome.canceled
@@ -82,7 +88,7 @@ def test_a_cancel_arriving_after_the_scanner_exited_still_counts(fake_syft: dict
 
 def test_a_failed_scan_reports_its_exit_code_and_no_tool_version(fake_syft: dict[str, Any], tmp_path: Path) -> None:
     fake_syft["result"] = StreamingProcessResult(returncode=2, stdout="", stderr="boom")
-    outcome = scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
+    outcome = scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     assert outcome == ScanOutcome(returncode=2, tool_version=None, canceled=False)
 
 
@@ -92,13 +98,13 @@ def test_a_successful_scan_reads_the_tool_version_off_the_document(fake_syft: di
         '{"metadata": {"tools": {"components": [{"name": "syft", "version": "1.2.3"}]}}}',
         encoding="utf-8",
     )
-    outcome = scan_runtime_archive(tmp_path / "rt.tar", output, log=lambda *_: None)
+    outcome = scan_experiment_environment_archive(tmp_path / "rt.tar", output, log=lambda *_: None)
     assert outcome.returncode == 0
     assert outcome.tool_version == "1.2.3"
 
 
 @pytest.mark.parametrize("kind", ["container", "file"])
-def test_a_successful_scan_reports_what_it_took_the_runtime_for(
+def test_a_successful_scan_reports_what_it_took_the_experiment_environment_for(
     fake_syft: dict[str, Any], tmp_path: Path, kind: str
 ) -> None:
     output = tmp_path / "sbom.json"
@@ -106,14 +112,16 @@ def test_a_successful_scan_reports_what_it_took_the_runtime_for(
         f'{{"metadata": {{"component": {{"type": "{kind}", "name": "rt.tar"}}}}}}', encoding="utf-8"
     )
     lines: list[str] = []
-    outcome = scan_runtime_archive(tmp_path / "rt.tar", output, log=lambda _s, _l, line: lines.append(line))
+    outcome = scan_experiment_environment_archive(
+        tmp_path / "rt.tar", output, log=lambda _s, _l, line: lines.append(line)
+    )
     assert outcome.source_kind == kind
-    assert f"Scanned the runtime as: {kind}" in lines
+    assert f"Scanned the experiment environment as: {kind}" in lines
 
 
 def test_scanner_output_is_streamed_not_captured_and_replayed(fake_syft: dict[str, Any], tmp_path: Path) -> None:
     """The runner owns the log lines, so nothing is buffered until the end."""
-    scan_runtime_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
+    scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     assert "log" in fake_syft["kwargs"]
 
 
@@ -122,4 +130,4 @@ def test_scanner_output_is_streamed_not_captured_and_replayed(fake_syft: dict[st
     [("rt.tar", True), ("rt.tar.gz", True), ("rt.TGZ", True), ("rt.zip", False), ("rt", False)],
 )
 def test_recognizes_the_archive_shapes_the_scanner_consumes(path: str, expected: bool) -> None:
-    assert is_runtime_archive(path) is expected
+    assert is_experiment_environment_archive(path) is expected

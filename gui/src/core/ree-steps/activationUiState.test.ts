@@ -22,7 +22,7 @@ describe("canRunActivation", () => {
   const ready = {
     running: false,
     hasMissing: false,
-    runtimePathExists: true,
+    experimentEnvironmentPathExists: true,
   };
   it("allows run when all conditions met", () => {
     expect(canRunActivation(ready)).toBe(true);
@@ -33,8 +33,8 @@ describe("canRunActivation", () => {
   it("blocks when missing fields", () => {
     expect(canRunActivation({ ...ready, hasMissing: true })).toBe(false);
   });
-  it("blocks when runtime file absent", () => {
-    expect(canRunActivation({ ...ready, runtimePathExists: false })).toBe(false);
+  it("blocks when experiment environment file absent", () => {
+    expect(canRunActivation({ ...ready, experimentEnvironmentPathExists: false })).toBe(false);
   });
 });
 
@@ -56,23 +56,23 @@ describe("activationFooterHint", () => {
 
 describe("activationReadiness", () => {
   const empty = {
-    hasRuntime: false,
-    runtimePathExists: false,
+    hasExperimentEnvironment: false,
+    experimentEnvironmentPathExists: false,
     runDone: false,
   };
   it("empty state is 0%", () => {
     const r = activationReadiness(empty);
     expect(r).toMatchObject({ done: 0, total: 3, percent: 0 });
   });
-  it("runtime configured counts as 1", () => {
-    const r = activationReadiness({ ...empty, hasRuntime: true });
+  it("experiment environment configured counts as 1", () => {
+    const r = activationReadiness({ ...empty, hasExperimentEnvironment: true });
     expect(r.done).toBe(1);
     expect(r.percent).toBe(33);
   });
   it("fully ready is 100%", () => {
     const r = activationReadiness({
-      hasRuntime: true,
-      runtimePathExists: true,
+      hasExperimentEnvironment: true,
+      experimentEnvironmentPathExists: true,
       runDone: true,
     });
     expect(r).toMatchObject({ done: 3, total: 3, percent: 100 });

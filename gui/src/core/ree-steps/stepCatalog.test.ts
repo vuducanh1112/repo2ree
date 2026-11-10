@@ -9,7 +9,7 @@ describe("mergeStepParams", () => {
       }),
     ).toEqual({
       evaluate: { strict: true },
-      build: {},
+      build_experiment_environment: {},
       hbom: {},
       sbom: {},
       activation: {},

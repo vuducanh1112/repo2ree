@@ -1,4 +1,4 @@
-"""A reviewer reproduces a pip venv runtime's experiment."""
+"""A reviewer reproduces a pip venv experiment environment's experiment."""
 
 from __future__ import annotations
 

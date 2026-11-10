@@ -17,10 +17,10 @@ verbs so its ``--help`` mirrors the executor CLI:
   (or a mismatch) **warns** rather than failing — the fetch still happens;
 * ``materialize-workspace`` — assemble a clean ``ree/workspace/`` = the acquired
   source overlaid with the author scripts (overlay wins), re-restoring the
-  sealed runtime from ``ree/artifacts/`` (a cheap copy, never a rebuild). This
+  sealed experiment environment from ``ree/artifacts/`` (a cheap copy, never a rebuild). This
   resets state so each run starts from a deterministic slate;
-* ``build-runtime`` / ``test-activation`` / ``experiment <name>`` — run the
-  author scripts from the workspace root, reusing the sealed runtime when
+* ``build-experiment-environment`` / ``test-activation`` / ``experiment <name>`` — run the
+  author scripts from the workspace root, reusing the sealed experiment environment when
   present and otherwise building it once. Runnables that declared a verify
   script get it executed from the workspace root after their run script — a
   plain author script with nothing injected into its environment, exactly as
@@ -54,7 +54,7 @@ from repo2ree_core.persistence.layout import (
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.reproduction.commands import (
     ACQUIRE_SOURCE,
-    BUILD_RUNTIME,
+    BUILD_EXPERIMENT_ENVIRONMENT,
     EXPERIMENT,
     MATERIALIZE_WORKSPACE,
     REPRODUCTION_COMMANDS,
@@ -62,7 +62,7 @@ from repo2ree_core.reproduction.commands import (
 )
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
 # ================================================
@@ -81,7 +81,7 @@ _FIELD_SEP = "\t"
 _VERB_FUNCTIONS = {
     ACQUIRE_SOURCE.name: "do_acquire",
     MATERIALIZE_WORKSPACE.name: "do_materialize",
-    BUILD_RUNTIME.name: "do_build",
+    BUILD_EXPERIMENT_ENVIRONMENT.name: "do_build",
     TEST_ACTIVATION.name: "do_activate",
 }
 
@@ -127,19 +127,19 @@ def _replace_layout_tokens(text: str) -> str:
 
 def build_reproducer_sh(
     *,
-    build_script: str,
+    build_experiment_environment_script: str,
     activation_script: str,
     activation_verify_script: str = "",
     experiments: Sequence[tuple[str, str, str]],
-    runtime_workspace_path: str | None,
-    runtime_artifact_basename: str | None,
+    experiment_environment_workspace_path: str | None,
+    experiment_environment_artifact_basename: str | None,
 ) -> bytes:
     """Render the self-contained ``run.sh`` for a bundle.
 
     ``experiments`` is a sequence of ``(name, run_script, verify_script)``
     triples; ``verify_script`` may be empty (run only, exit code is the
-    verdict). The runtime arguments are non-empty together only when a built
-    runtime was sealed into ``ree/artifacts/``; when either is missing the
+    verdict). The experiment environment arguments are non-empty together only when a built
+    experiment environment was sealed into ``ree/artifacts/``; when either is missing the
     script builds instead of reusing. Source acquisition (snapshot-extract or
     origin-fetch + SWHID verify) is delegated to the bundled
     ``ree/acquire_source.sh`` and the clear-and-merge to the bundled
@@ -153,11 +153,11 @@ def build_reproducer_sh(
     )
     header = "\n".join(
         (
-            f"BUILD_SCRIPT={shell_single_quote(build_script)}",
+            f"BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(build_experiment_environment_script)}",
             f"ACTIVATION_SCRIPT={shell_single_quote(activation_script)}",
             f"ACTIVATION_VERIFY_SCRIPT={shell_single_quote(activation_verify_script)}",
-            f"RUNTIME_WS_PATH={shell_single_quote(runtime_workspace_path or '')}",
-            f"RUNTIME_ARTIFACT={shell_single_quote(runtime_artifact_basename or '')}",
+            f"EXPERIMENT_ENVIRONMENT_WS_PATH={shell_single_quote(experiment_environment_workspace_path or '')}",
+            f"EXPERIMENT_ENVIRONMENT_ARTIFACT={shell_single_quote(experiment_environment_artifact_basename or '')}",
         )
     )
     script = (
@@ -173,12 +173,12 @@ def build_reproducer_sh(
 
 def reproducer_entries(
     *,
-    build_script: str = RESERVED_BUILD_SCRIPT,
+    build_experiment_environment_script: str = RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     activation_script: str = RESERVED_ACTIVATION_SCRIPT,
     activation_verify_script: str = "",
     experiments: Sequence[tuple[str, str, str]] = (),
-    runtime_workspace_path: str | None = None,
-    runtime_artifact_basename: str | None = None,
+    experiment_environment_workspace_path: str | None = None,
+    experiment_environment_artifact_basename: str | None = None,
     origin_url: str = "",
     source_type: str = "",
     revision: str = "",
@@ -194,12 +194,13 @@ def reproducer_entries(
     so the bundled copy is the one with them baked in.
     """
     run_sh = build_reproducer_sh(
-        build_script=build_script or RESERVED_BUILD_SCRIPT,
+        build_experiment_environment_script=build_experiment_environment_script
+        or RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
         activation_script=activation_script or RESERVED_ACTIVATION_SCRIPT,
         activation_verify_script=activation_verify_script,
         experiments=experiments,
-        runtime_workspace_path=runtime_workspace_path,
-        runtime_artifact_basename=runtime_artifact_basename,
+        experiment_environment_workspace_path=experiment_environment_workspace_path,
+        experiment_environment_artifact_basename=experiment_environment_artifact_basename,
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
@@ -248,7 +249,7 @@ _RUN_SH_TEMPLATE = shell_text("""
     #   ree/ree.json          the sealed manifest
     #   ree/@@SNAPSHOT_FILENAME@@    frozen upstream source (omitted for a sourceless seal)
     #   ree/@@OVERLAY_DIRNAME@@/           author scripts (build/activation/experiments)
-    #   ree/@@ARTIFACTS_DIRNAME@@/         sealed build outputs (runtime, sbom, ...)
+    #   ree/@@ARTIFACTS_DIRNAME@@/         sealed build outputs (experiment environment, sbom, ...)
     #   ree/@@UPSTREAM_DIRNAME@@/          acquired source layer (created by acquire-source)
     #   ree/@@WORKSPACE_DIRNAME@@/         clean view = upstream + overlay (created by materialize)
     set -eu
@@ -279,24 +280,24 @@ _RUN_SH_TEMPLATE = shell_text("""
       sh "$REE/@@ACQUIRE_SCRIPT_FILENAME@@" "$@"
     }
 
-    # Re-restore the sealed runtime to its workspace path (a cheap copy). Returns
-    # non-zero when no runtime was sealed in, so callers can fall back to building.
-    restore_runtime() {
-      [ -n "$RUNTIME_WS_PATH" ] && [ -n "$RUNTIME_ARTIFACT" ] \\
-        && [ -f "$REE/@@ARTIFACTS_DIRNAME@@/$RUNTIME_ARTIFACT" ] || return 1
-      dest="$WS/$RUNTIME_WS_PATH"
+    # Re-restore the sealed experiment environment to its workspace path (a cheap copy). Returns
+    # non-zero when no experiment environment was sealed in, so callers can fall back to building.
+    restore_experiment_environment() {
+      [ -n "$EXPERIMENT_ENVIRONMENT_WS_PATH" ] && [ -n "$EXPERIMENT_ENVIRONMENT_ARTIFACT" ] \\
+        && [ -f "$REE/@@ARTIFACTS_DIRNAME@@/$EXPERIMENT_ENVIRONMENT_ARTIFACT" ] || return 1
+      dest="$WS/$EXPERIMENT_ENVIRONMENT_WS_PATH"
       mkdir -p "$(dirname -- "$dest")"
-      cp "$REE/@@ARTIFACTS_DIRNAME@@/$RUNTIME_ARTIFACT" "$dest"
+      cp "$REE/@@ARTIFACTS_DIRNAME@@/$EXPERIMENT_ENVIRONMENT_ARTIFACT" "$dest"
     }
 
     # Assemble a clean workspace = upstream + overlay (overlay wins), then re-restore
-    # the sealed runtime. The clear-and-merge is delegated to the bundled materialize
+    # the sealed experiment environment. The clear-and-merge is delegated to the bundled materialize
     # script — the very same one the workbench ran at authoring time — so the two
-    # cannot drift. Acquire and the runtime restore stay here as orchestration.
+    # cannot drift. Acquire and the experiment environment restore stay here as orchestration.
     do_materialize() {
       do_acquire
       sh "$REE/@@MATERIALIZE_SCRIPT_FILENAME@@"
-      restore_runtime || true
+      restore_experiment_environment || true
     }
 
     # Set up the workspace only if it is not already materialized (non-destructive),
@@ -307,10 +308,10 @@ _RUN_SH_TEMPLATE = shell_text("""
       fi
     }
 
-    # Reuse the sealed runtime when present; otherwise build it once.
-    ensure_runtime() {
-      if restore_runtime; then
-        say "Reusing sealed runtime -> $RUNTIME_WS_PATH (build skipped)"
+    # Reuse the sealed experiment environment when present; otherwise build it once.
+    ensure_experiment_environment() {
+      if restore_experiment_environment; then
+        say "Reusing sealed experiment environment -> $EXPERIMENT_ENVIRONMENT_WS_PATH (build skipped)"
       else
         do_build
       fi
@@ -351,10 +352,14 @@ _RUN_SH_TEMPLATE = shell_text("""
       run_verify_only "$verify"
     }
 
-    do_build() { ensure_workspace; say "== build-runtime =="; run_in_workspace "$BUILD_SCRIPT"; }
+    do_build() {
+      ensure_workspace
+      say "== build-experiment-environment =="
+      run_in_workspace "$BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT"
+    }
 
     do_activate() {
-      ensure_workspace; ensure_runtime
+      ensure_workspace; ensure_experiment_environment
       say "== test-activation =="
       run_verified "$ACTIVATION_SCRIPT" "$ACTIVATION_VERIFY_SCRIPT"
     }
@@ -368,7 +373,7 @@ _RUN_SH_TEMPLATE = shell_text("""
       [ -n "$line" ] || die "no experiment named: $name (try '$0 list')"
       script=$(printf '%s' "$line" | cut -f1)
       verify=$(printf '%s' "$line" | cut -f2)
-      ensure_workspace; ensure_runtime
+      ensure_workspace; ensure_experiment_environment
       say "== experiment: $name =="
       run_verified "$script" "$verify"
     }
@@ -376,7 +381,7 @@ _RUN_SH_TEMPLATE = shell_text("""
     # Verify only: re-check a claim against the outputs a previous run left in
     # the workspace, without re-running. With a name, verifies that experiment;
     # with no name, verifies activation. Needs the workspace populated but not
-    # the runtime (the verify script only reads workspace files). Fails if the
+    # the experiment environment (the verify script only reads workspace files). Fails if the
     # subject declares no verify script, or if the outputs it expects are absent
     # (never produced, or the workspace was reset since the run).
     do_verify() {
@@ -398,12 +403,12 @@ _RUN_SH_TEMPLATE = shell_text("""
       run_verify_only "$verify"
     }
 
-    # One-click: acquire -> materialize -> runtime -> activation -> every experiment.
+    # One-click: acquire -> materialize -> experiment environment -> activation -> every experiment.
     # Runs against a single materialized workspace (experiments are not isolated from
     # each other). Aborts on the first failure (set -e), including inside the loop.
     do_all() {
       do_materialize
-      ensure_runtime
+      ensure_experiment_environment
       say "== test-activation =="
       run_verified "$ACTIVATION_SCRIPT" "$ACTIVATION_VERIFY_SCRIPT"
       experiments | while IFS='\t' read -r n s v; do
@@ -459,7 +464,7 @@ _REPRODUCING_MD = shell_text("""
 
     - A POSIX shell and `tar` (present on macOS/Linux; on Windows use WSL or Git
       Bash).
-    - Whatever runtime the author's scripts call into — commonly **Docker**. Each
+    - Whatever experiment environment the author's scripts call into — commonly **Docker**. Each
       run script fully owns how it executes (for example its own `docker run …`), so
       read `ree/@@OVERLAY_DIRNAME@@/` if you want to see exactly what will run.
     - Only if the source was **not** bundled: the fetch tool for its type (`git`,
@@ -479,14 +484,14 @@ _REPRODUCING_MD = shell_text("""
     ree/ree.json           the sealed manifest (name, experiments, outputs, …)
     ree/@@SNAPSHOT_FILENAME@@    frozen upstream source (omitted for a sourceless seal)
     ree/@@OVERLAY_DIRNAME@@/           author scripts (build / activation / experiments)
-    ree/@@ARTIFACTS_DIRNAME@@/         sealed build outputs (runtime image, SBOM, …)
+    ree/@@ARTIFACTS_DIRNAME@@/         sealed build outputs (experiment environment image, SBOM, …)
     ree/@@WORKSPACE_DIRNAME@@/         created by run.sh: upstream + overlay merged
     ```
 
     ## Run it
 
     From the folder where you extracted this archive, the one-click path runs the
-    whole REE end-to-end against a single workspace — acquire, materialize, runtime,
+    whole REE end-to-end against a single workspace — acquire, materialize, experiment environment,
     activation, then every experiment in order:
 
     ```shell
@@ -499,8 +504,8 @@ _REPRODUCING_MD = shell_text("""
     sh run.sh                          # materialize a clean workspace and list commands
     sh run.sh acquire-source           # extract/fetch the source (verify SWHID if able)
     sh run.sh materialize-workspace    # assemble a clean workspace = source + overlay
-    sh run.sh build-runtime            # build the runtime from the author's build script
-    sh run.sh test-activation          # prove the runtime is inhabitable
+    sh run.sh build-experiment-environment            # build the experiment environment from the author's build script
+    sh run.sh test-activation          # prove the experiment environment is inhabitable
     sh run.sh experiment <name>        # run a named experiment and verify its result
     sh run.sh verify <name>            # verify only, without re-running (activation if <name> omitted)
     sh run.sh list                     # list commands again
@@ -528,7 +533,7 @@ _REPRODUCING_MD = shell_text("""
     `materialize-workspace` assembles `ree/@@WORKSPACE_DIRNAME@@/` from the acquired source with
     the author scripts overlaid on top, so each script runs from the workspace root
     exactly as it did when the REE was authored. It resets the workspace, so a
-    re-run starts from a clean slate; the sealed runtime is re-restored from
-    `ree/@@ARTIFACTS_DIRNAME@@/` (a copy, not a rebuild). When no runtime was sealed in,
-    `build-runtime` produces it.
+    re-run starts from a clean slate; the sealed experiment environment is re-restored from
+    `ree/@@ARTIFACTS_DIRNAME@@/` (a copy, not a rebuild). When no experiment environment was sealed in,
+    `build-experiment-environment` produces it.
 """)

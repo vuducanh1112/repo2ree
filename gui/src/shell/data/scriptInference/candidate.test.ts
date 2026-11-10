@@ -20,8 +20,8 @@ function candidate(overrides: Record<string, unknown> = {}): unknown {
 describe("selectCandidate — build", () => {
   it("returns the build target's first candidate as a generated script", () => {
     const result = selectCandidate(
-      report([{ target: { kind: "build" }, candidates: [candidate()] }]),
-      "build",
+      report([{ target: { kind: "build_experiment_environment" }, candidates: [candidate()] }]),
+      "build_experiment_environment",
     );
     expect(result.status).toBe("generated");
     if (result.status !== "generated") return;
@@ -32,25 +32,40 @@ describe("selectCandidate — build", () => {
   });
 
   it.each([
-    ["reads the runtime path off the candidate's declaration dependency", "build/runtime.tar"],
-    ["leaves it undefined when the candidate records no runtime path", undefined],
+    [
+      "reads the experiment environment path off the candidate's declaration dependency",
+      "build/runtime.tar",
+    ],
+    ["leaves it undefined when the candidate records no experiment environment path", undefined],
   ] as const)("%s", (_name, path) => {
     const dependencies = path
-      ? [{ kind: "runtime_declaration", path, digest: "", role: "runtime" }]
+      ? [
+          {
+            kind: "experiment_environment_declaration",
+            path,
+            digest: "",
+            role: "experiment_environment",
+          },
+        ]
       : [{ kind: "source", path: "Dockerfile", digest: "sha256:x", role: "dockerfile" }];
     const result = selectCandidate(
-      report([{ target: { kind: "build" }, candidates: [candidate({ dependencies })] }]),
-      "build",
+      report([
+        {
+          target: { kind: "build_experiment_environment" },
+          candidates: [candidate({ dependencies })],
+        },
+      ]),
+      "build_experiment_environment",
     );
     expect(result.status).toBe("generated");
     if (result.status !== "generated") return;
-    expect(result.script.runtimePath).toBe(path);
+    expect(result.script.experimentEnvironmentPath).toBe(path);
   });
 
   it("reports not_inferred when the build target has no candidates", () => {
     const result = selectCandidate(
-      report([{ target: { kind: "build" }, candidates: [] }]),
-      "build",
+      report([{ target: { kind: "build_experiment_environment" }, candidates: [] }]),
+      "build_experiment_environment",
     );
     expect(result.status).toBe("not_inferred");
   });
@@ -58,7 +73,7 @@ describe("selectCandidate — build", () => {
   it("reports not_inferred when there is no build target", () => {
     const result = selectCandidate(
       report([{ target: { kind: "activation_run" }, candidates: [candidate()] }]),
-      "build",
+      "build_experiment_environment",
     );
     expect(result.status).toBe("not_inferred");
   });
@@ -71,7 +86,7 @@ describe("selectCandidate — build", () => {
     const result = selectCandidate(
       report([
         {
-          target: { kind: "build" },
+          target: { kind: "build_experiment_environment" },
           candidates: [],
           warnings: [
             {
@@ -83,7 +98,7 @@ describe("selectCandidate — build", () => {
           ],
         },
       ]),
-      "build",
+      "build_experiment_environment",
     );
     expect(result.status).toBe("not_inferred");
     if (result.status !== "not_inferred") return;
@@ -96,7 +111,7 @@ describe("selectCandidate — build", () => {
     const result = selectCandidate(
       report([
         {
-          target: { kind: "build" },
+          target: { kind: "build_experiment_environment" },
           candidates: [
             candidate({
               inference_rule: "root-pip-requirements-v1",
@@ -105,7 +120,7 @@ describe("selectCandidate — build", () => {
           ],
         },
       ]),
-      "build",
+      "build_experiment_environment",
     );
     expect(result.status).toBe("generated");
     if (result.status !== "generated") return;
@@ -117,14 +132,14 @@ describe("selectCandidate — build", () => {
     const result = selectCandidate(
       report([
         {
-          target: { kind: "build" },
+          target: { kind: "build_experiment_environment" },
           candidates: [
             candidate({ inference_rule: "single-project-root-dockerfile-v1" }),
             candidate({ inference_rule: "root-pip-requirements-v1" }),
           ],
         },
       ]),
-      "build",
+      "build_experiment_environment",
     );
     expect(result.status).toBe("generated");
     if (result.status !== "generated") return;
@@ -135,8 +150,10 @@ describe("selectCandidate — build", () => {
 
   it("skips a candidate with an empty body", () => {
     const result = selectCandidate(
-      report([{ target: { kind: "build" }, candidates: [candidate({ body: "" })] }]),
-      "build",
+      report([
+        { target: { kind: "build_experiment_environment" }, candidates: [candidate({ body: "" })] },
+      ]),
+      "build_experiment_environment",
     );
     expect(result.status).toBe("not_inferred");
   });
@@ -173,9 +190,9 @@ describe("selectCandidate — run scaffolds", () => {
           candidates: [],
           warnings: [
             {
-              code: "runtime_artifact_missing",
+              code: "experiment_environment_artifact_missing",
               blocking: true,
-              message: "Build the runtime first.",
+              message: "Build the experiment environment first.",
             },
             { code: "execution_not_validated", blocking: false, message: "info" },
           ],
@@ -185,7 +202,7 @@ describe("selectCandidate — run scaffolds", () => {
     );
     expect(result.status).toBe("not_inferred");
     if (result.status !== "not_inferred") return;
-    expect(result.blockingMessages).toEqual(["Build the runtime first."]);
+    expect(result.blockingMessages).toEqual(["Build the experiment environment first."]);
   });
 
   it("matches an experiment target by name", () => {
@@ -228,7 +245,7 @@ describe("selectTrace / selectDag", () => {
           decision: { dag: "activation-run-inference" },
         },
       ],
-      [{ key: "activation-run-inference" }, { key: "build-inference" }],
+      [{ key: "activation-run-inference" }, { key: "build-experiment-environment-inference" }],
     );
     expect(selectTrace(rep, "activation_run")?.dag).toBe("activation-run-inference");
     expect(selectDag(rep, "activation_run")?.key).toBe("activation-run-inference");

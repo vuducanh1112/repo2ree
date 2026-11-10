@@ -5,7 +5,7 @@ import { fakeApiServices } from "../../../../tests/support/fakeApiServices";
 import { createShellWrapper } from "../../../../tests/support/renderApp";
 import {
   useStartActivationReviewMutation,
-  useStartBuildReviewMutation,
+  useStartBuildExperimentEnvironmentReviewMutation,
   useStartExperimentReviewMutation,
   useStartSourceReviewMutation,
 } from "./mutations";
@@ -25,7 +25,7 @@ const opened = {
 describe("review mutations", () => {
   it("starts every review stage against the current REE", async () => {
     const startSourceReview = vi.fn().mockResolvedValue(opened);
-    const startBuildReview = vi.fn().mockResolvedValue(opened);
+    const startBuildExperimentEnvironmentReview = vi.fn().mockResolvedValue(opened);
     const startActivationReview = vi.fn().mockResolvedValue(opened);
     const startExperimentReview = vi.fn().mockResolvedValue(opened);
     const { Wrapper } = createShellWrapper({
@@ -33,7 +33,7 @@ describe("review mutations", () => {
       services: fakeApiServices({
         ree: {
           startSourceReview,
-          startBuildReview,
+          startBuildExperimentEnvironmentReview,
           startActivationReview,
           startExperimentReview,
         },
@@ -42,7 +42,7 @@ describe("review mutations", () => {
     const { result } = renderHook(
       () => ({
         source: useStartSourceReviewMutation(),
-        build: useStartBuildReviewMutation(),
+        build_experiment_environment: useStartBuildExperimentEnvironmentReviewMutation(),
         activation: useStartActivationReviewMutation(),
         experiment: useStartExperimentReviewMutation(),
       }),
@@ -50,7 +50,9 @@ describe("review mutations", () => {
     );
 
     await expect(act(() => result.current.source.mutateAsync("bundled"))).resolves.toBe("review-1");
-    await act(() => result.current.build.mutateAsync({ reviewId: "review-1" }));
+    await act(() =>
+      result.current.build_experiment_environment.mutateAsync({ reviewId: "review-1" }),
+    );
     await act(() => result.current.activation.mutateAsync({ reviewId: "review-1" }));
     await act(() =>
       result.current.experiment.mutateAsync({
@@ -60,7 +62,7 @@ describe("review mutations", () => {
     );
 
     expect(startSourceReview).toHaveBeenCalledWith("ree-1", { basis: "bundled" });
-    expect(startBuildReview).toHaveBeenCalledWith("ree-1", "review-1", {
+    expect(startBuildExperimentEnvironmentReview).toHaveBeenCalledWith("ree-1", "review-1", {
       prune_workspace: false,
       basis: "auto",
     });

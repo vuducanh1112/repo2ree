@@ -36,7 +36,7 @@ class RequestedExperimentCheck:
                 observed=ExperimentGateObservation(result="absent", requested=name, declared=False),
                 warnings=[make_warning("experiment_not_named")],
             )
-        experiment = context.runtime.experiment(name)
+        experiment = context.experiment_environment.experiment(name)
         if experiment is None:
             return CheckResult(
                 branch="found",

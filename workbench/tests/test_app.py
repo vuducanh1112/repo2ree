@@ -10,7 +10,7 @@ from repo2ree_workbench.config import WorkbenchConfig
 from repo2ree_workbench.service import WorkbenchService
 
 
-def test_main_composes_telemetry_runtime_and_control_connection(
+def test_main_composes_telemetry_experiment_environment_and_control_connection(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     opaque = "test-store-token"

@@ -16,11 +16,11 @@ from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_ree.reserved_paths import experiment_slug
 from repo2ree_ree.review import (
     ActivationOutcome,
-    BuildComparison,
     ExperimentComparison,
+    ExperimentEnvironmentComparison,
     ReviewAcquireSourceReceipt,
     ReviewActivationReceipt,
-    ReviewBuildRuntimeReceipt,
+    ReviewBuildExperimentEnvironmentReceipt,
     ReviewExperimentReceipt,
     ReviewRecord,
     ReviewSet,
@@ -50,10 +50,10 @@ def write_review_source_evidence(
 
 def write_review_build_evidence(
     layout: ReviewLayout,
-    receipt: ReviewBuildRuntimeReceipt,
-    comparison: BuildComparison,
+    receipt: ReviewBuildExperimentEnvironmentReceipt,
+    comparison: ExperimentEnvironmentComparison,
 ) -> None:
-    _write_review_evidence(layout, receipt, "build", comparison.model_dump(mode="json"))
+    _write_review_evidence(layout, receipt, "build_experiment_environment", comparison.model_dump(mode="json"))
 
 
 def write_review_activation_evidence(
@@ -91,7 +91,7 @@ def write_review_experiment_evidence(
 
 def _write_review_evidence(
     layout: ReviewLayout,
-    receipt: ReviewAcquireSourceReceipt | ReviewBuildRuntimeReceipt | ReviewActivationReceipt,
+    receipt: ReviewAcquireSourceReceipt | ReviewBuildExperimentEnvironmentReceipt | ReviewActivationReceipt,
     step: ReviewStepKey,
     comparison: dict[str, object],
 ) -> None:

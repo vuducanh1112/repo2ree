@@ -47,7 +47,9 @@ const EXPERIMENT = "python-hello";
  * comes up, and the experiment asks whether the result still holds.
  */
 test.describe("Review lifecycle", () => {
-  test("reproduces another author's source, runtime, activation and result", async ({ page }) => {
+  test("reproduces another author's source, experiment environment, activation and result", async ({
+    page,
+  }) => {
     await test.step("seat someone else's REE on a fresh workbench", async () => {
       await startReeCreation(page);
       await provisionFromBundle(page, authoredRee());
@@ -58,7 +60,9 @@ test.describe("Review lifecycle", () => {
     const review = await openReviewConsole(page);
 
     await test.step("source: demanding an origin this REE never had fails", async () => {
-      await expect(review.getByRole("button", { name: "Reproduce Build" })).toBeDisabled();
+      await expect(
+        review.getByRole("button", { name: "Reproduce Build Experiment Environment" }),
+      ).toBeDisabled();
       // The bundle's source was acquired by upload, so it records a SWHID but no
       // origin. Answering a weaker question than the one asked would be worse
       // than answering none, so the step refuses rather than quietly falling
@@ -78,8 +82,10 @@ test.describe("Review lifecycle", () => {
       await expect(review.getByText(/^source verified from the REE's own artifacts/)).toBeVisible();
     });
 
-    await test.step("build: the author's recipe rebuilds their runtime", async () => {
-      await expect(review.getByRole("button", { name: "Reproduce Build" })).toBeEnabled();
+    await test.step("build: the author's recipe rebuilds their experiment environment", async () => {
+      await expect(
+        review.getByRole("button", { name: "Reproduce Build Experiment Environment" }),
+      ).toBeEnabled();
       // Back to the default: the bundle ships no runtime artifact, so there is
       // nothing to certify except by running the author's build script over the
       // source this attempt just acquired. A genuine reproduction.
@@ -101,23 +107,25 @@ test.describe("Review lifecycle", () => {
       // rather than about whether the recipe still describes this software.
       await expect(review.getByText(/closure: \d+ matched · 0 missing · 0 extra/)).toBeVisible();
       // The runtime was rebuilt, not unpacked — the notice would name it too.
-      await expect(review.getByText(/source and runtime verified/)).toHaveCount(0);
+      await expect(review.getByText(/source and experiment environment verified/)).toHaveCount(0);
     });
 
-    await test.step("activation: the rebuilt runtime is inhabitable", async () => {
+    await test.step("activation: the rebuilt experiment environment is inhabitable", async () => {
       await expect(review.getByRole("button", { name: "Reproduce Test Activation" })).toBeEnabled();
 
       expect(await reproduceActivation(page)).toBe("COMPLETE");
 
-      await expect(review.getByText("activation: the runtime is inhabitable")).toBeVisible();
+      await expect(
+        review.getByText("activation: the experiment environment is inhabitable"),
+      ).toBeVisible();
     });
 
-    await test.step("experiments open only once the runtime is known to come up", async () => {
+    await test.step("experiments open only once the experiment environment is known to come up", async () => {
       await expect(review.getByRole("button", { name: "Reproduce Experiments" })).toBeEnabled();
       await expect(review.getByText("RESULTS · 0/1 REPRODUCED")).toBeVisible();
     });
 
-    await test.step("experiments: the author's result holds in the reviewer's runtime", async () => {
+    await test.step("experiments: the author's result holds in the reviewer's experiment environment", async () => {
       // Both are passes, and which one this earns is a property of the
       // experiment rather than of the review: this one prints a fixed DataFrame,
       // so its result file comes out byte for byte the same and takes the
@@ -146,7 +154,7 @@ test.describe("Review lifecycle", () => {
       ).toBeVisible();
       await expect(
         review.getByRole("button", {
-          name: /^Open Build review evidence, (identical|equivalent|different)/,
+          name: /^Open Build Experiment Environment review evidence, (identical|equivalent|different)/,
         }),
       ).toBeVisible();
       await expect(

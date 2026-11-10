@@ -20,7 +20,7 @@ test-artifacts/machine-job/ of the clone. It shows the log until the job ends, t
 brings back what the job wrote: every file under test-artifacts/, .receipts/, and logs/ changed
 since it started, which in a clone that runs one job at a time is exactly its results,
 whatever the recipe (runs, recordings, coverage, and receipts, which bind a tree rather
-than a machine), but for runtime tarballs and archives, which stay there. Ctrl-C or a
+than a machine), but for experiment environment tarballs and archives, which stay there. Ctrl-C or a
 dropped connection only stops the showing: the job goes on, and the next run on that
 machine shows it again and brings its results back before starting anything of its own.
 `cancel` stops the job; `remove` takes the container down and deletes the clone.
@@ -70,7 +70,7 @@ SLIM_EXCLUDES = (
     "! -name '*.tgz'",
     "! -path '*/artifacts/archives/*'",
     # The REE archives a GUI test kept (helpers/flow.ts keepReeArchive): their histories are in the
-    # dossier already, and the machine keeps the archives, which carry every runtime payload.
+    # dossier already, and the machine keeps the archives, which carry every experiment environment payload.
     "! -path '*/artifacts/*/ree*.zip'",
 )
 # What every command on a remote machine runs in: the clone's .envrc, as here, with the venv it syncs.

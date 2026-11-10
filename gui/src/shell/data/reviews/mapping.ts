@@ -8,8 +8,8 @@ import type {
 } from "@core/reviews/Review";
 import type {
   ActivationOutcomeWire,
-  BuildComparisonWire,
   ExperimentComparisonWire,
+  ExperimentEnvironmentComparisonWire,
   PackageDeltaWire,
   ReviewRecordWire,
   ReviewStepStateWire,
@@ -31,7 +31,9 @@ export function mapReviewRecord(wire: ReviewRecordWire): ReviewAttempt {
           verdict: comparison.verdict,
         }
       : undefined,
-    buildComparison: wire.build_comparison ? mapBuildComparison(wire.build_comparison) : undefined,
+    experimentEnvironmentComparison: wire.experiment_environment_comparison
+      ? mapBuildComparison(wire.experiment_environment_comparison)
+      : undefined,
     activationOutcome: wire.activation_outcome
       ? mapActivationOutcome(wire.activation_outcome)
       : undefined,
@@ -53,7 +55,7 @@ function mapExperimentComparison(wire: ExperimentComparisonWire): ReviewExperime
     runExitCode: wire.run_exit_code ?? undefined,
     expectedOutputDigest: wire.expected_output_digest ?? undefined,
     observedOutputDigest: wire.observed_output_digest ?? undefined,
-    runtimeDigest: wire.runtime_digest ?? undefined,
+    experimentEnvironmentDigest: wire.experiment_environment_digest ?? undefined,
   };
 }
 
@@ -61,12 +63,12 @@ function mapStepState(wire: ReviewStepStateWire): ReviewStepState {
   return { step: wire.step, status: wire.status, failure: wire.failure ?? undefined };
 }
 
-function mapBuildComparison(wire: BuildComparisonWire): ReviewBuildComparison {
+function mapBuildComparison(wire: ExperimentEnvironmentComparisonWire): ReviewBuildComparison {
   return {
     basis: wire.basis ?? "independent",
     verdict: wire.verdict,
-    expectedRuntimeDigest: wire.expected_runtime_digest ?? undefined,
-    observedRuntimeDigest: wire.observed_runtime_digest ?? undefined,
+    expectedArtifactDigest: wire.expected_artifact_digest ?? undefined,
+    observedArtifactDigest: wire.observed_artifact_digest ?? undefined,
     matched: wire.matched ?? 0,
     missingCount: wire.missing_count ?? 0,
     extraCount: wire.extra_count ?? 0,
@@ -82,7 +84,7 @@ function mapActivationOutcome(wire: ActivationOutcomeWire): ReviewActivationOutc
   return {
     basis: wire.basis,
     verdict: wire.verdict,
-    runtimeDigest: wire.runtime_digest ?? undefined,
+    experimentEnvironmentDigest: wire.experiment_environment_digest ?? undefined,
     runExitCode: wire.run_exit_code ?? undefined,
     verifyExitCode: wire.verify_exit_code ?? undefined,
   };

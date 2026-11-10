@@ -29,7 +29,7 @@ from repo2ree_executor.cli import cli
 from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 # ================================================
 # Fixtures / helpers
@@ -42,7 +42,9 @@ runner = CliRunner()
 def test_explicit_context_joins_stdout_logs_and_git_without_tracing(initialized_ree, monkeypatch):
     monkeypatch.delenv("TRACE_RELAY", raising=False)
     context = ExecutionContext.new(ree_id="ree-1")
-    command = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="recorded"))
+    command = WriteFileCommand(
+        args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="recorded")
+    )
     invocation = runner.invoke(
         cli,
         ["execute", "--action", "-", "--run-id", "reused-run", "--execution-context", context.model_dump_json()],
@@ -105,10 +107,10 @@ def test_init_ree_bootstraps_tree_and_metadata(ree_root: Path) -> None:
     metadata = json.loads(layout.manifest.read_text())
     assert metadata["subject"]["definition"]["name"] == "demo"
     assert "seal" not in metadata
-    build = metadata["subject"]["definition"]["build_runtime"]
-    assert build["build_runtime_script_path"] == RESERVED_BUILD_SCRIPT
-    assert layout.overlay_file(RESERVED_BUILD_SCRIPT).is_file()
-    assert layout.workspace_file(RESERVED_BUILD_SCRIPT).is_file()
+    build = metadata["subject"]["definition"]["experiment_environment"]
+    assert build["build_experiment_environment_script_path"] == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+    assert layout.overlay_file(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).is_file()
+    assert layout.workspace_file(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).is_file()
 
 
 def test_init_ree_is_idempotent(initialized_ree: Path) -> None:
@@ -148,7 +150,9 @@ def test_get_ree_emits_metadata(initialized_ree: Path) -> None:
 
 
 def test_execute_writes_result_to_stdout_and_logs_to_stderr(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
+    cmd = WriteFileCommand(
+        args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="echo build\n")
+    )
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
     assert result.exit_code == 0, result.output
 
@@ -158,8 +162,8 @@ def test_execute_writes_result_to_stdout_and_logs_to_stderr(initialized_ree: Pat
 
     # the file landed in overlay and workspace for real
     layout = ReeLayout.in_workbench()
-    assert (layout.overlay / "ree-scripts/build_script.sh").read_text() == "echo build\n"
-    assert (layout.workspace / "ree-scripts/build_script.sh").read_text() == "echo build\n"
+    assert (layout.overlay / "ree-scripts/build_experiment_environment.sh").read_text() == "echo build\n"
+    assert (layout.workspace / "ree-scripts/build_experiment_environment.sh").read_text() == "echo build\n"
 
     # stderr is pure NDJSON log events (the supervisor parses every line)
     events = _stderr_events(result)
@@ -179,7 +183,7 @@ def test_run_log_records_the_whole_command_and_result_untruncated(initialized_re
     the file is the only place the bytes an operation actually received survive.
     """
     content = "echo build\n" + "x" * 4000
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content=content))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content=content))
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-2"], input=cmd.model_dump_json())
     assert result.exit_code == 0, result.output
 
@@ -235,7 +239,9 @@ def test_cancel_run_writes_cancel_marker(initialized_ree: Path) -> None:
 def test_execute_observes_existing_cancel_marker(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
     layout.run_cancel_marker("run-1").touch()
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
+    cmd = WriteFileCommand(
+        args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="echo build\n")
+    )
 
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
@@ -254,7 +260,9 @@ def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
 
     monkeypatch.setattr(cli_module, "run_command", interrupted)
     before = signal.getsignal(signal.SIGTERM)
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
+    cmd = WriteFileCommand(
+        args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="echo build\n")
+    )
 
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
@@ -265,7 +273,9 @@ def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
 def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:
     layout = ReeLayout.in_workbench()
     layout.run_cancel_marker("run-1").touch()
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="echo build\n"))
+    cmd = WriteFileCommand(
+        args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="echo build\n")
+    )
 
     runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
@@ -280,10 +290,10 @@ def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:
 
 
 def test_read_ree_file_round_trips_workspace_bytes(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_script.sh", content="payload\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="payload\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
-    result = runner.invoke(cli, ["read-ree-file", "--path", "workspace/ree-scripts/build_script.sh"])
+    result = runner.invoke(cli, ["read-ree-file", "--path", "workspace/ree-scripts/build_experiment_environment.sh"])
     assert result.exit_code == 0
     assert result.stdout_bytes == b"payload\n"
 
@@ -352,4 +362,6 @@ def test_init_ree_seeds_the_scripts_of_its_environment(ree_root: Path) -> None:
     result = runner.invoke(cli, ["init-ree", "--name", "demo", "--workbench-environment", "host"])
 
     assert result.exit_code == 0, result.output
-    assert "docker" not in ReeDirectory(ReeLayout.in_workbench()).overlay.read_text(RESERVED_BUILD_SCRIPT)
+    assert "docker" not in ReeDirectory(ReeLayout.in_workbench()).overlay.read_text(
+        RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+    )

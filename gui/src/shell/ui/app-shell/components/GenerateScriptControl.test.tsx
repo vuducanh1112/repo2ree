@@ -21,7 +21,7 @@ function mutation(outcome: ScriptInferenceOutcome | Error, isPending = false): G
 }
 
 const trace = {
-  dag: "build",
+  dag: "build_experiment_environment",
   version: 1,
   steps: [],
   edges: [],
@@ -58,15 +58,19 @@ describe("GenerateScriptControl", () => {
   });
 
   it.each([
-    ["hands over the runtime path a candidate reports", ".repo2ree/artifacts/runtime.tar", 1],
+    [
+      "hands over the experiment environment path a candidate reports",
+      ".repo2ree/artifacts/runtime.tar",
+      1,
+    ],
     ["stays silent when the candidate reports none", undefined, 0],
-  ] as const)("%s", (_name, runtimePath, calls) => {
-    const onRuntimePath = vi.fn();
+  ] as const)("%s", (_name, experimentEnvironmentPath, calls) => {
+    const onExperimentEnvironmentPath = vi.fn();
     render(
       <GenerateScriptControl
         noun="build script"
         onLoad={vi.fn()}
-        onRuntimePath={onRuntimePath}
+        onExperimentEnvironmentPath={onExperimentEnvironmentPath}
         generate={mutation({
           generation: {
             status: "generated",
@@ -76,7 +80,7 @@ describe("GenerateScriptControl", () => {
               application: "automatic_allowed",
               alternativeCount: 1,
               blockingMessages: [],
-              runtimePath,
+              experimentEnvironmentPath,
             },
           },
           trace: null,
@@ -85,8 +89,9 @@ describe("GenerateScriptControl", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Generate from repository/ }));
-    expect(onRuntimePath).toHaveBeenCalledTimes(calls);
-    if (runtimePath) expect(onRuntimePath).toHaveBeenCalledWith(runtimePath);
+    expect(onExperimentEnvironmentPath).toHaveBeenCalledTimes(calls);
+    if (experimentEnvironmentPath)
+      expect(onExperimentEnvironmentPath).toHaveBeenCalledWith(experimentEnvironmentPath);
   });
 
   it("shows alternatives, warnings, confirmation, and a decision trace", () => {

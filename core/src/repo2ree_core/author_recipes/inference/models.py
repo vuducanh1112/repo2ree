@@ -34,9 +34,9 @@ BindingKind = Literal[
     "project_root",
     "dockerfile",
     "requirements_project",
-    "runtime_plan",
-    "runtime_declaration",
-    "runtime_contract",
+    "experiment_environment_plan",
+    "experiment_environment_declaration",
+    "experiment_environment_contract",
     "image_command",
     "experiment",
     "command_candidates",
@@ -62,12 +62,12 @@ class DecisionContext(BaseModel):
 
     facts: RepositoryFacts
     policy: InferencePolicy
-    # The REE's declared name, used to derive a readable runtime image tag.
+    # The REE's declared name, used to derive a readable experiment environment image tag.
     ree_name: str = ""
     # Authored state that does not come from scanning ``upstream``: the declared
-    # runtime path, experiment declarations, and access to the built artifact /
+    # experiment environment path, experiment declarations, and access to the built artifact /
     # written build script. Empty for build inference, which needs none of it.
-    runtime: RuntimeInputs = Field(default_factory=lambda: RuntimeInputs())
+    experiment_environment: ExperimentEnvironmentInputs = Field(default_factory=lambda: ExperimentEnvironmentInputs())
     # The experiment a run/verify experiment target names. Empty for build and
     # activation targets. Set per-target by ``infer_scripts`` because the name
     # lives on the target, not on the shared scan.
@@ -98,7 +98,7 @@ class CheckResult(BaseModel):
     observed: DecisionObservation
     bindings: tuple[DecisionBinding, ...] = ()
     evidence: list[InferenceEvidence] = Field(default_factory=list)
-    # Warnings a check observes at evaluation time (e.g. a blocked runtime
+    # Warnings a check observes at evaluation time (e.g. a blocked experiment environment
     # contract). Unlike a strategy leaf's static warning codes, these depend on
     # what the check saw, so they ride on the result. The engine folds them into
     # the target's warning union along whatever path the walk takes.
@@ -166,9 +166,9 @@ class Resolver(Protocol):
 
 # Deferred imports resolved at module end to keep the union definitions above
 # free of forward-reference clutter while avoiding an import cycle.
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs  # noqa: E402
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy  # noqa: E402
 from repo2ree_core.author_recipes.inference.repository_facts import RepositoryFacts  # noqa: E402
-from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs  # noqa: E402
 
 DecisionContext.model_rebuild()
 StrategyOutcome.model_rebuild()

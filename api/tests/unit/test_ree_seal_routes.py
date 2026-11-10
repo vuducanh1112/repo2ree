@@ -39,7 +39,7 @@ def test_seal_runs_in_background_and_relays_progress(
 
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/ree:seal",
-        json={"include_source": True, "include_runtime": False, "include_results": True},
+        json={"include_source": True, "include_experiment_environment": False, "include_results": True},
     )
 
     assert response.status_code == 200, response.text

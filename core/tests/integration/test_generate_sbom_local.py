@@ -11,10 +11,10 @@ from repo2ree_core.operations.handlers.author.generate_sbom import handle_genera
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 
@@ -27,14 +27,14 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     script = b"#!/bin/sh\nexit 0\n"
-    runtime = b"local runtime archive"
-    (layout.workspace / "runtime.tar").write_bytes(runtime)
+    experiment_environment = b"local experiment environment archive"
+    (layout.workspace / "runtime.tar").write_bytes(experiment_environment)
 
     definition = ReeDefinition(
-        build_runtime=BuildRuntimeDefinition(
-            build_runtime_script_digest=digest_bytes(script),
-            build_runtime_script_size=len(script),
-            runtime_path=WorkspacePath("runtime.tar"),
+        experiment_environment=ExperimentEnvironmentDefinition(
+            build_experiment_environment_script_digest=digest_bytes(script),
+            build_experiment_environment_script_size=len(script),
+            artifact_path=WorkspacePath("runtime.tar"),
         ),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
@@ -53,18 +53,18 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
     )
     ree = commit_receipt(
         ree,
-        BuildRuntimeReceipt(
+        BuildExperimentEnvironmentReceipt(
             run_id=RunId("build-1"),
             started_at=_NOW,
             finished_at=_NOW,
             duration_ms=0,
             recorded_at=_NOW,
             snapshot_digest=digest_bytes(b"snapshot"),
-            build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT),
-            build_runtime_script_digest=digest_bytes(script),
+            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_digest=digest_bytes(script),
             workspace_drift=WorkspaceDrift(status="unknown"),
-            runtime_path=WorkspacePath("runtime.tar"),
-            produced_runtime_digest=digest_bytes(runtime),
+            artifact_path=WorkspacePath("runtime.tar"),
+            produced_artifact_digest=digest_bytes(experiment_environment),
         ),
     )
     store.write_ree(ree)
@@ -90,6 +90,6 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
     receipt = store.read_ree().subject.receipts.sbom
     assert receipt is not None
     assert receipt.run_id == "sbom-local"
-    assert receipt.runtime_digest == digest_bytes(runtime)
+    assert receipt.experiment_environment_digest == digest_bytes(experiment_environment)
     assert receipt.sbom_digest == digest_bytes(layout.sbom.read_bytes())
     assert receipt.tool_version == "test-1"

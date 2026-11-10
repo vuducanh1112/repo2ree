@@ -12,7 +12,7 @@ PASSING_VERIFY = "#!/usr/bin/env sh\nset -eu\nexit 0\n"
 
 def standing(api: Api, ree_id: str) -> dict[str, str]:
     audit = api.audit(ree_id)
-    steps = ("source", "evaluation", "hardware", "runtime", "test_activation")
+    steps = ("source", "evaluation", "hardware", "experiment_environment", "test_activation")
     found = {step: str(audit[step]["evidence"]) for step in steps}
     return found | {f"experiment:{item['name']}": str(item["run"]["evidence"]) for item in audit["experiments"]}
 
@@ -44,11 +44,19 @@ def test_removing_the_source_clears_the_evidence_made_from_it(api: Api, new_ree:
     removed = standing(api, ree_id)
     assert (removed["source"], removed["evaluation"]) == ("not_applicable", "not_applicable")
     # What is still declared waits to run again; the hardware observation stands on its own.
-    assert (removed["runtime"], removed["test_activation"], removed["hardware"]) == ("missing", "missing", "current")
+    assert (removed["experiment_environment"], removed["test_activation"], removed["hardware"]) == (
+        "missing",
+        "missing",
+        "current",
+    )
     assert api.ree(ree_id)["subject"]["definition"]["source"] is None
 
     api.acquire(ree_id)
     api.succeed(ree_id, "evaluate")
-    api.succeed(ree_id, "build-runtime")
+    api.succeed(ree_id, "build-experiment-environment")
     reacquired = standing(api, ree_id)
-    assert (reacquired["source"], reacquired["evaluation"], reacquired["runtime"]) == ("current", "current", "current")
+    assert (reacquired["source"], reacquired["evaluation"], reacquired["experiment_environment"]) == (
+        "current",
+        "current",
+        "current",
+    )

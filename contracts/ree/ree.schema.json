@@ -120,44 +120,7 @@
       "title": "AcquireSourceReceipt",
       "type": "object"
     },
-    "BuildRuntimeDefinition": {
-      "additionalProperties": false,
-      "properties": {
-        "build_runtime_script_path": {
-          "default": "ree-scripts/build_script.sh",
-          "title": "Build Runtime Script Path",
-          "type": "string"
-        },
-        "build_runtime_script_digest": {
-          "title": "Build Runtime Script Digest",
-          "type": "string"
-        },
-        "build_runtime_script_size": {
-          "minimum": 0,
-          "title": "Build Runtime Script Size",
-          "type": "integer"
-        },
-        "runtime_path": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Runtime Path"
-        }
-      },
-      "required": [
-        "build_runtime_script_digest",
-        "build_runtime_script_size"
-      ],
-      "title": "BuildRuntimeDefinition",
-      "type": "object"
-    },
-    "BuildRuntimeReceipt": {
+    "BuildExperimentEnvironmentReceipt": {
       "additionalProperties": false,
       "properties": {
         "schema_version": {
@@ -191,8 +154,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "build_runtime",
-          "default": "build_runtime",
+          "const": "build_experiment_environment",
+          "default": "build_experiment_environment",
           "title": "Operation",
           "type": "string"
         },
@@ -200,23 +163,23 @@
           "title": "Snapshot Digest",
           "type": "string"
         },
-        "build_runtime_script_path": {
-          "title": "Build Runtime Script Path",
+        "build_experiment_environment_script_path": {
+          "title": "Build Experiment Environment Script Path",
           "type": "string"
         },
-        "build_runtime_script_digest": {
-          "title": "Build Runtime Script Digest",
+        "build_experiment_environment_script_digest": {
+          "title": "Build Experiment Environment Script Digest",
           "type": "string"
         },
         "workspace_drift": {
           "$ref": "#/$defs/WorkspaceDrift"
         },
-        "runtime_path": {
-          "title": "Runtime Path",
+        "artifact_path": {
+          "title": "Artifact Path",
           "type": "string"
         },
-        "produced_runtime_digest": {
-          "title": "Produced Runtime Digest",
+        "produced_artifact_digest": {
+          "title": "Produced Artifact Digest",
           "type": "string"
         },
         "workbench_environment": {
@@ -238,13 +201,13 @@
         "duration_ms",
         "recorded_at",
         "snapshot_digest",
-        "build_runtime_script_path",
-        "build_runtime_script_digest",
+        "build_experiment_environment_script_path",
+        "build_experiment_environment_script_digest",
         "workspace_drift",
-        "runtime_path",
-        "produced_runtime_digest"
+        "artifact_path",
+        "produced_artifact_digest"
       ],
-      "title": "BuildRuntimeReceipt",
+      "title": "BuildExperimentEnvironmentReceipt",
       "type": "object"
     },
     "BundleContents": {
@@ -680,6 +643,43 @@
       "title": "ExperimentDefinition",
       "type": "object"
     },
+    "ExperimentEnvironmentDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "build_experiment_environment_script_path": {
+          "default": "ree-scripts/build_experiment_environment.sh",
+          "title": "Build Experiment Environment Script Path",
+          "type": "string"
+        },
+        "build_experiment_environment_script_digest": {
+          "title": "Build Experiment Environment Script Digest",
+          "type": "string"
+        },
+        "build_experiment_environment_script_size": {
+          "minimum": 0,
+          "title": "Build Experiment Environment Script Size",
+          "type": "integer"
+        },
+        "artifact_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Path"
+        }
+      },
+      "required": [
+        "build_experiment_environment_script_digest",
+        "build_experiment_environment_script_size"
+      ],
+      "title": "ExperimentEnvironmentDefinition",
+      "type": "object"
+    },
     "GPUDefinition": {
       "additionalProperties": false,
       "properties": {
@@ -773,12 +773,12 @@
           "title": "Operation",
           "type": "string"
         },
-        "runtime_path": {
-          "title": "Runtime Path",
+        "experiment_environment_path": {
+          "title": "Experiment Environment Path",
           "type": "string"
         },
-        "runtime_digest": {
-          "title": "Runtime Digest",
+        "experiment_environment_digest": {
+          "title": "Experiment Environment Digest",
           "type": "string"
         },
         "sbom_path": {
@@ -814,8 +814,8 @@
         "finished_at",
         "duration_ms",
         "recorded_at",
-        "runtime_path",
-        "runtime_digest",
+        "experiment_environment_path",
+        "experiment_environment_digest",
         "sbom_digest",
         "sbom_format",
         "tool_version"
@@ -1279,10 +1279,10 @@
           ],
           "default": null
         },
-        "build_runtime": {
+        "experiment_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/BuildRuntimeDefinition"
+              "$ref": "#/$defs/ExperimentEnvironmentDefinition"
             },
             {
               "type": "null"
@@ -1371,10 +1371,10 @@
           ],
           "default": null
         },
-        "build": {
+        "experiment_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/BuildRuntimeReceipt"
+              "$ref": "#/$defs/BuildExperimentEnvironmentReceipt"
             },
             {
               "type": "null"
@@ -1530,7 +1530,7 @@
           "title": "Snapshot Digest",
           "type": "string"
         },
-        "runtime_digest": {
+        "experiment_environment_digest": {
           "anyOf": [
             {
               "type": "string"
@@ -1540,7 +1540,7 @@
             }
           ],
           "default": null,
-          "title": "Runtime Digest"
+          "title": "Experiment Environment Digest"
         },
         "run_script_digest": {
           "title": "Run Script Digest",
@@ -1861,7 +1861,7 @@
           "title": "Snapshot Digest",
           "type": "string"
         },
-        "runtime_path": {
+        "experiment_environment_path": {
           "anyOf": [
             {
               "type": "string"
@@ -1871,9 +1871,9 @@
             }
           ],
           "default": null,
-          "title": "Runtime Path"
+          "title": "Experiment Environment Path"
         },
-        "runtime_digest": {
+        "experiment_environment_digest": {
           "anyOf": [
             {
               "type": "string"
@@ -1883,7 +1883,7 @@
             }
           ],
           "default": null,
-          "title": "Runtime Digest"
+          "title": "Experiment Environment Digest"
         },
         "run_script_digest": {
           "title": "Run Script Digest",

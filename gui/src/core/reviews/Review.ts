@@ -2,7 +2,11 @@ import type { ReviewStepKey } from "./reviewDag";
 
 export type ReviewStatus = "running" | "completed" | "failed" | "canceled";
 export type SourceComparisonVerdict = "identical" | "different" | "inconclusive";
-export type BuildComparisonVerdict = "identical" | "equivalent" | "different" | "inconclusive";
+export type ExperimentEnvironmentComparisonVerdict =
+  | "identical"
+  | "equivalent"
+  | "different"
+  | "inconclusive";
 
 /**
  * What the reviewer's side of a comparison was produced from, and therefore
@@ -40,9 +44,9 @@ export interface ReviewPackageDelta {
  */
 export interface ReviewBuildComparison {
   basis: ReviewEvidenceBasis;
-  verdict: BuildComparisonVerdict;
-  expectedRuntimeDigest?: string;
-  observedRuntimeDigest?: string;
+  verdict: ExperimentEnvironmentComparisonVerdict;
+  expectedArtifactDigest?: string;
+  observedArtifactDigest?: string;
   matched: number;
   missingCount: number;
   extraCount: number;
@@ -64,7 +68,7 @@ export interface ReviewBuildComparison {
 export interface ReviewActivationOutcome {
   basis: ReviewEvidenceBasis;
   verdict: ActivationVerdict;
-  runtimeDigest?: string;
+  experimentEnvironmentDigest?: string;
   runExitCode?: number;
   verifyExitCode?: number;
 }
@@ -103,7 +107,7 @@ export interface ReviewExperimentComparison {
   runExitCode?: number;
   expectedOutputDigest?: string;
   observedOutputDigest?: string;
-  runtimeDigest?: string;
+  experimentEnvironmentDigest?: string;
 }
 
 /** The lifecycle state of one step within a review attempt. */
@@ -120,7 +124,7 @@ export interface ReviewAttempt {
   status: ReviewStatus;
   steps: ReviewStepState[];
   sourceComparison?: ReviewSourceComparison;
-  buildComparison?: ReviewBuildComparison;
+  experimentEnvironmentComparison?: ReviewBuildComparison;
   activationOutcome?: ReviewActivationOutcome;
   /**
    * One entry per experiment this attempt has reproduced, keyed by name — the

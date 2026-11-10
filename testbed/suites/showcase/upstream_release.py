@@ -27,8 +27,8 @@ def publish(project: Project, release: Release) -> None:
 def author(client: Client, ree_id: str, project: Project) -> None:
     """Every authoring stage, with the build fetching from this stack's upstream."""
     client.upload_source(ree_id, project)
-    script = project.recipe("build_script.sh").replace(PLACEHOLDER, URL)
-    build = Run.model_validate(client.api.build(ree_id, script, fixture=project))
+    script = project.recipe("build_experiment_environment.sh").replace(PLACEHOLDER, URL)
+    build = Run.model_validate(client.api.build_experiment_environment(ree_id, script, fixture=project))
     assert build.status == "succeeded", client.logs(ree_id, build)
     activation = client.activate(ree_id, project)
     assert activation.status == "succeeded", client.logs(ree_id, activation)

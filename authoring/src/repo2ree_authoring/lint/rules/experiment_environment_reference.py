@@ -1,4 +1,4 @@
-"""Check whether run and build scripts mention the declared runtime path."""
+"""Check whether run and build scripts mention the declared experiment environment path."""
 
 from __future__ import annotations
 
@@ -10,13 +10,15 @@ from repo2ree_protocol.command import TargetKind
 from repo2ree_protocol.lint import Finding
 
 
-class RuntimeReferenceRule:
-    code = "runtime_not_referenced"
-    codes: ClassVar[frozenset[str]] = frozenset({"runtime_not_referenced"})
-    applies_to: ClassVar[frozenset[TargetKind]] = frozenset({"build", "activation_run", "experiment_run"})
+class ExperimentEnvironmentReferenceRule:
+    code = "experiment_environment_not_referenced"
+    codes: ClassVar[frozenset[str]] = frozenset({"experiment_environment_not_referenced"})
+    applies_to: ClassVar[frozenset[TargetKind]] = frozenset(
+        {"build_experiment_environment", "activation_run", "experiment_run"}
+    )
 
     def check(self, context: ScriptContext) -> tuple[Finding, ...]:
-        declared = context.declarations.runtime_path
+        declared = context.declarations.experiment_environment_path
         if not declared:
             return ()
         if context.words.mentions(declared) is not None:

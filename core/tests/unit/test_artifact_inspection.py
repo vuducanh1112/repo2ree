@@ -16,12 +16,12 @@ from repo2ree_core.author_recipes.inference.artifact_inspection import (
     DockerArchiveInspection,
     UnrecognizedArtifact,
     VenvArchiveInspection,
-    inspect_runtime_artifact,
+    inspect_experiment_environment_artifact,
 )
 
 
 def _inspect(data: bytes):
-    return inspect_runtime_artifact(io.BytesIO(data))
+    return inspect_experiment_environment_artifact(io.BytesIO(data))
 
 
 def test_venv_without_command_has_no_restore_dir() -> None:
@@ -89,7 +89,7 @@ def test_oci_multi_arch_index_resolves_the_config_command() -> None:
 
 def test_oci_archive_without_a_ref_has_no_repo_tags() -> None:
     # An untagged export declares no image name; downstream this is "no usable
-    # image reference", not a resolved runtime.
+    # image reference", not a resolved experiment environment.
     inspection = _inspect(oci_archive(None))
     assert isinstance(inspection, DockerArchiveInspection)
     assert inspection.repo_tags == []

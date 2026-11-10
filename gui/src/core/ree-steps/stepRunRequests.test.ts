@@ -11,7 +11,7 @@ function buildRee() {
   return {
     ...createEmptyReeSpec(),
     name: "demo",
-    runtime: "runtime.tar.gz",
+    experimentEnvironmentPath: "runtime.tar.gz",
   };
 }
 
@@ -27,12 +27,12 @@ describe("stepRunRequests", () => {
 
   it("builds a parameterless build request (reserved script is fixed)", () => {
     expect(buildBuildStepRunRequest({}, buildRee())).toEqual({
-      scriptKey: "build",
+      scriptKey: "build_experiment_environment",
       params: {},
     });
   });
 
-  it("builds parameterless sbom and activation requests (the REE names the runtime)", () => {
+  it("builds parameterless sbom and activation requests (the REE names the experiment environment)", () => {
     const ree = buildRee();
 
     expect(buildSbomStepRunRequest({}, ree)).toEqual({

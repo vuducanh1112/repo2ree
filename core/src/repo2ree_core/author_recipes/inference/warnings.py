@@ -25,7 +25,10 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
     "multiple_dockerfiles": (
         "error",
         True,
-        "More than one Dockerfile sits at the logical project root; repo2ree will not guess which one is the runtime.",
+        (
+            "More than one Dockerfile sits at the logical project root; "
+            "repo2ree will not guess which one is the experiment environment."
+        ),
     ),
     "ambiguous_build_context": (
         "error",
@@ -35,25 +38,25 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
             "context cannot be determined without explicit evidence."
         ),
     ),
-    "runtime_declaration_missing": (
+    "experiment_environment_declaration_missing": (
         "warning",
         True,
         (
-            "No runtime artifact path is declared on the REE intent; set it before "
+            "No experiment environment artifact path is declared on the REE intent; set it before "
             "the build candidate can be considered complete."
         ),
     ),
-    "runtime_outside_project_root": (
+    "experiment_environment_outside_project_root": (
         "error",
         True,
-        "The declared runtime artifact path escapes the logical project root.",
+        "The declared experiment environment artifact path escapes the logical project root.",
     ),
     "pip_environment_strategy": (
         "info",
         False,
         (
             "Builds a Python virtual environment from requirements.txt with pip and packs it as the "
-            "runtime artifact — no container. Confirm this strategy before writing."
+            "experiment environment artifact — no container. Confirm this strategy before writing."
         ),
     ),
     "python_version_unknown": (
@@ -66,31 +69,43 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
         False,
         "requirements.txt is not a lockfile; a future install may resolve different transitive versions.",
     ),
-    # --- runtime contract (activation / experiment) ---
-    "runtime_not_resolved": (
+    # --- experiment environment contract (activation / experiment) ---
+    "experiment_environment_not_resolved": (
         "error",
         True,
-        "No runtime contract could be resolved, so the runtime plumbing cannot be generated.",
+        (
+            "No experiment environment contract could be resolved, "
+            "so the experiment environment plumbing cannot be generated."
+        ),
     ),
-    "runtime_artifact_missing": (
+    "experiment_environment_artifact_missing": (
         "error",
         True,
-        "The declared runtime artifact does not exist yet; build the runtime before generating this script.",
+        (
+            "The declared experiment environment artifact does not exist yet; "
+            "build the experiment environment before generating this script."
+        ),
     ),
-    "runtime_archive_invalid": (
+    "experiment_environment_archive_invalid": (
         "error",
         True,
-        "The declared runtime artifact is not a readable archive of a recognized runtime kind.",
+        (
+            "The declared experiment environment artifact is not a readable archive "
+            "of a recognized experiment environment kind."
+        ),
     ),
-    "runtime_image_ref_missing": (
+    "experiment_environment_image_ref_missing": (
         "error",
         True,
-        "The runtime archive declares no usable image reference, so no image can be loaded and run.",
+        "The experiment environment archive declares no usable image reference, so no image can be loaded and run.",
     ),
-    "multiple_runtime_images": (
+    "multiple_experiment_environment_images": (
         "error",
         True,
-        "The runtime archive declares more than one image reference; repo2ree will not guess which is the runtime.",
+        (
+            "The experiment environment archive declares more than one image reference; "
+            "repo2ree will not guess which is the experiment environment."
+        ),
     ),
     "venv_restore_dir_assumed": (
         "warning",
@@ -107,7 +122,7 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
         True,
         (
             "No activation command was selected; edit the 'set --' line to define a finite command that "
-            "proves the runtime is usable before running activation."
+            "proves the experiment environment is usable before running activation."
         ),
     ),
     "experiment_command_missing": (
@@ -141,12 +156,12 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
         False,
         "A detected candidate command may start a server or run indefinitely; confirm it is finite before use.",
     ),
-    "shell_required_in_runtime": (
+    "shell_required_in_experiment_environment": (
         "info",
         False,
         (
             "A detected candidate is a shell-form command; it is offered verbatim and needs a shell in the "
-            "runtime (make it explicit with 'set -- sh -c ...')."
+            "experiment environment (make it explicit with 'set -- sh -c ...')."
         ),
     ),
 }

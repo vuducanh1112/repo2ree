@@ -2,11 +2,11 @@ import type { DecisionDag, DecisionTrace } from "@shell/infra/api/apiTypes";
 import { describe, expect, it } from "vitest";
 import { renderDecisionDiagram, renderDecisionTrace } from "./traceAscii";
 
-// Minimal trace shapes mirroring the backend's build-inference output; cast
+// Minimal trace shapes mirroring the backend's build-experiment-environment-inference output; cast
 // through unknown so the fixtures aren't coupled to the full generated type.
 function trace(over: Partial<Record<string, unknown>>): DecisionTrace {
   return {
-    dag: "build-inference",
+    dag: "build-experiment-environment-inference",
     version: 1,
     steps: [],
     edges: [],
@@ -65,7 +65,7 @@ const DECISION = trace({
 describe("renderDecisionTrace", () => {
   it("renders the header, prefix, forked branches, resolver, and result", () => {
     const text = renderDecisionTrace(DECISION);
-    expect(text).toContain("build-inference (v1)");
+    expect(text).toContain("build-experiment-environment-inference (v1)");
     expect(text).toContain("logical_project_root -> root");
     expect(text).toContain('logical root "." (depth 0)');
     expect(text).toContain("fork: runtime-strategies");
@@ -150,11 +150,11 @@ describe("renderDecisionTrace", () => {
   });
 });
 
-// A trimmed static DAG mirroring build-inference: a check, a fork, one check per
+// A trimmed static DAG mirroring build-experiment-environment-inference: a check, a fork, one check per
 // branch, two leaves, a resolver, and two result nodes.
 function dag(): DecisionDag {
   return {
-    key: "build-inference",
+    key: "build-experiment-environment-inference",
     version: 1,
     root: "project-root",
     nodes: [
@@ -274,7 +274,7 @@ describe("renderDecisionDiagram", () => {
   it("shows every node, marking evaluated vs not", () => {
     const text = renderDecisionDiagram(dag(), OVERLAY_TRACE);
     // Header + legend.
-    expect(text).toContain("build-inference (v1)");
+    expect(text).toContain("build-experiment-environment-inference (v1)");
     expect(text).toContain("[>] evaluated");
     // Evaluated nodes on the path.
     expect(text).toContain("[>] project-root");

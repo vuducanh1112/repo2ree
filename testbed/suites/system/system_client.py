@@ -26,10 +26,10 @@ from repo2ree_testbed.showcases import RESULT as RESULT
 from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 
 ROOT = Path(__file__).resolve().parents[3]
-BUILD_SCRIPT = "ree-scripts/build_script.sh"
+BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
 ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
 
-# A bench without a Docker daemon: the base image is the runtime environment.
+# A bench without a Docker daemon: the base image is the experiment environment environment.
 # Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
 LIGHTWEIGHT_IMAGE = PYTHON_SLIM_IMAGE
 # The Docker CLI, which a store offers for the REEs whose scripts build and run images.
@@ -42,7 +42,7 @@ STORE_BACKEND = os.environ.get("E2E_STORE_BACKEND", "container")
 # The instant project's names, as most suites use it.
 PROJECT = INSTANT.source
 PROJECT_DIR = SOURCE
-RUNTIME = INSTANT.runtime
+EXPERIMENT_ENVIRONMENT = INSTANT.experiment_environment_path
 EXPERIMENT = INSTANT.experiment
 EXPERIMENT_SCRIPT = INSTANT.experiment_script
 EXPERIMENT_VERIFY = INSTANT.experiment_verify
@@ -215,7 +215,7 @@ class Api:
         return dict(self.get(f"/api/v1/rees/{ree_id}/state")["audit"])
 
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
-        payload = {"include_source": True, "include_runtime": True, "include_results": True}
+        payload = {"include_source": True, "include_experiment_environment": True, "include_results": True}
         return self.stage(ree_id, "ree:seal", payload, watch=watch)
 
     def load(self, ree_id: str, bundle: bytes) -> None:
@@ -234,16 +234,18 @@ class Api:
         if run["status"] != "succeeded":
             raise ApiError(f"source ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
 
-    def build(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
-        """Declare the runtime, author the build (inferred unless given or the fixture brings one), and run it."""
-        self.patch(ree_id, {"build_runtime": {"runtime_path": fixture.runtime}})
+    def build_experiment_environment(
+        self, ree_id: str, script: str | None = None, fixture: Project = INSTANT
+    ) -> dict[str, Any]:
+        """Declare the experiment environment, author its build (inferred unless given or brought), and run it."""
+        self.patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
         if script is None and not fixture.infer_build:
-            script = fixture.recipe("build_script.sh")
+            script = fixture.recipe("build_experiment_environment.sh")
         if script is None:
-            result = self.infer(ree_id, "build")
+            result = self.infer(ree_id, "build_experiment_environment")
             script = str(result["candidates"][0]["body"])
-        self.write(ree_id, BUILD_SCRIPT, script)
-        return self.stage(ree_id, "build-runtime", watch=fixture.watch)
+        self.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
+        return self.stage(ree_id, "build-experiment-environment", watch=fixture.watch)
 
     def activate(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
         self.write(ree_id, ACTIVATION_SCRIPT, script or fixture.recipe("activation.sh"))
@@ -263,7 +265,10 @@ class Api:
         self.acquire(ree_id, fixture)
         self.succeed(ree_id, "evaluate", watch=fixture.watch)
         self.succeed(ree_id, "generate-hbom")
-        steps = (("build", self.build(ree_id, fixture=fixture)), ("activation", self.activate(ree_id, fixture=fixture)))
+        steps = (
+            ("build_experiment_environment", self.build_experiment_environment(ree_id, fixture=fixture)),
+            ("activation", self.activate(ree_id, fixture=fixture)),
+        )
         for label, run in steps:
             if run["status"] != "succeeded":
                 raise ApiError(f"{label} ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")

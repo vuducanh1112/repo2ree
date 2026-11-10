@@ -14,17 +14,19 @@ def test_operations_are_attempts_with_a_run_and_authoring_is_collapsed_between_t
     assert [(entry.kind, entry.name) for entry in trace.entries] == [
         ("setup", "provision"),
         ("authoring", "authoring"),
-        ("operation", "build_runtime"),
+        ("operation", "build_experiment_environment"),
         ("operation", "generate_sbom"),
     ]
     authoring = trace.entries[1]
     assert (authoring.operations, authoring.attempts, authoring.failed) == ({"patch_ree_definition": 1}, 1, 0)
-    assert [(c.step, c.before, c.after) for c in trace.entries[2].changes] == [("runtime", "missing", "current")]
+    assert [(c.step, c.before, c.after) for c in trace.entries[2].changes] == [
+        ("experiment_environment", "missing", "current")
+    ]
 
 
 def test_the_baseline_is_each_steps_standing_before_the_first_capture() -> None:
     assert trace_of(recorded()).baseline == {
-        "runtime": "not_applicable",
+        "experiment_environment": "not_applicable",
         "sbom": "not_applicable",
         "test_activation": "missing",
     }
@@ -48,8 +50,8 @@ def test_spans_annotate_but_never_change_what_was_checked() -> None:
         "run.build",
         "workbench.dispatch_action",
         "workbench.request",
-        "executor.build_runtime",
-        "command.build_runtime",
+        "executor.build_experiment_environment",
+        "command.build_experiment_environment",
         "process.exec",
     ]
 
@@ -59,8 +61,8 @@ def test_a_sequence_follows_one_operation_across_components() -> None:
     assert sequence is not None
     assert [lane.id for lane in sequence.lanes] == ["client", "api", "supervisor", "workbench", "executor", "core"]
     lines = [(row.provenance, row.lane, row.to, row.label) for row in sequence.rows]
-    assert lines[0] == ("span", "client", "api", "POST /rees/{id}/build-runtime")
-    assert ("journal", "supervisor", "workbench", "start_run · build_runtime") in lines
+    assert lines[0] == ("span", "client", "api", "POST /rees/{id}/build-experiment-environment")
+    assert ("journal", "supervisor", "workbench", "start_run · build_experiment_environment") in lines
     assert ("journal", "workbench", "supervisor", "settled · succeeded") in lines
     assert ("git", "core", None, "commit c3000000") in lines
     assert any(row.tone == "gap" and row.label == "350 ms without spans" for row in sequence.rows)
@@ -98,14 +100,17 @@ def two_rees() -> Scenario:
     s = recorded()
     s.ree, s.git, s.alloc = "ree-2", "git:ree-2", "alloc-2"
     s.provision("run-provision-2", 70.0)
-    s.operation("run-build-2", "build_runtime", "b-build", "build_runtime", 80.0)
+    s.operation("run-build-2", "build_experiment_environment", "b-build", "build_experiment_environment", 80.0)
     s.commit(1, None, "initialize_ree", "", [], (None, "draft"))
     s.commit(
         2,
         "b-build",
-        "build_runtime",
+        "build_experiment_environment",
         "run-build-2",
-        [("runtime", None, "missing", "baseline"), ("runtime", "missing", "current", "operation")],
+        [
+            ("experiment_environment", None, "missing", "baseline"),
+            ("experiment_environment", "missing", "current", "operation"),
+        ],
         ("draft", "draft"),
     )
     return s
@@ -117,10 +122,10 @@ def test_each_ree_gets_only_its_own_operations() -> None:
     assert [entry.name for entry in first.entries] == [entry.name for entry in trace_of(recorded()).entries]
     assert [(entry.kind, entry.name) for entry in second.entries] == [
         ("setup", "provision"),
-        ("operation", "build_runtime"),
+        ("operation", "build_experiment_environment"),
     ]
     assert second.history is not None
-    assert second.history.steps[-1].states["runtime"] == "current"
+    assert second.history.steps[-1].states["experiment_environment"] == "current"
     assert second.entries[1].run is not None
     assert second.entries[1].run.key == "act-run-build-2"
 
@@ -139,7 +144,7 @@ def test_review_histories_are_counted_not_drawn() -> None:
 def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between() -> None:
     s = Scenario()
     s.provision("run-provision", 0.0)
-    s.operation("run-build", "build", "a-build", "build_runtime", 10.0)
+    s.operation("run-build", "build_experiment_environment", "a-build", "build_experiment_environment", 10.0)
     # Another REE is created before the SBOM run.
     s.provision("run-reprovision", 16.0)
     s.operation("run-sbom", "sbom", "a-sbom", "generate_sbom", 25.0)
@@ -147,16 +152,19 @@ def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between()
     s.commit(
         2,
         "a-build",
-        "build_runtime",
+        "build_experiment_environment",
         "run-build",
-        [("runtime", None, "missing", "baseline"), ("runtime", "missing", "current", "operation")],
+        [
+            ("experiment_environment", None, "missing", "baseline"),
+            ("experiment_environment", "missing", "current", "operation"),
+        ],
         ("draft", "draft"),
     )
     s.commit(3, "a-sbom", "generate_sbom", "run-sbom", [("sbom", None, "current", "operation")], ("draft", "draft"))
     entries = [(entry.name, entry.outcome) for entry in trace_of(s).entries]
     assert entries == [
         ("provision", "succeeded"),
-        ("build_runtime", "succeeded"),
+        ("build_experiment_environment", "succeeded"),
         ("provision", "succeeded"),
         ("generate_sbom", "succeeded"),
     ]
@@ -167,18 +175,19 @@ def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it()
     assert history is not None
     assert [(row.label, row.group) for row in history.rows] == [
         ("lifecycle", "lifecycle"),
-        ("receipt", "runtime"),
+        ("receipt", "experiment_environment"),
         ("receipt", "sbom"),
         ("receipt", "test_activation"),
     ]
     steps = [(step.operation, step.moved) for step in history.steps]
-    # Creation moves nothing yet; a new runtime makes the SBOM made from the old one stale in the same step.
+    # Creation moves nothing yet; a new experiment environment makes the SBOM made from the old one stale in the same
+    # step.
     assert steps[0] == ("initialize_ree", ())
-    assert ("build_runtime", ("runtime", "sbom")) in steps
+    assert ("build_experiment_environment", ("experiment_environment", "sbom")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle",))
     assert history.steps[-1].states == {
         "lifecycle": "sealed",
-        "runtime": "current",
+        "experiment_environment": "current",
         "sbom": "current",
         "test_activation": "missing",
     }

@@ -99,7 +99,7 @@ def validate_dag(
             for branch, target in node.branches.items():
                 require_target(f"node {node.id} branch {branch!r}", target)
                 # A check may short-circuit straight to a result (a blocked
-                # prefix, e.g. an unresolved runtime contract). That path renders
+                # prefix, e.g. an unresolved experiment environment contract). That path renders
                 # no candidate, so it may only reach a not_inferred result.
                 dest = by_id[target]
                 if isinstance(dest, ResultNode) and dest.status != "not_inferred":
@@ -517,7 +517,7 @@ def _collect_warnings(
     """Stable, de-duplicated union of every warning affecting the target.
 
     A caller may enforce automation policy on this alone: it includes the prefix
-    checks' warnings (e.g. a blocked runtime contract) plus blocked and
+    checks' warnings (e.g. a blocked experiment environment contract) plus blocked and
     not-applicable leaves' warnings plus every returned candidate's.
     """
     seen: set[tuple[str, tuple[str, ...]]] = set()

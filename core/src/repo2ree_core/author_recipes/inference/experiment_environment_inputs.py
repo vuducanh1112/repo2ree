@@ -2,8 +2,8 @@
 
 Build inference reads only the immutable acquired tree. Activation and
 experiment inference additionally depend on state the *author* produced — the
-declared runtime path (``ReeDefinition.runtime``), experiment declarations, the
-*built* runtime artifact in the workspace, and the written build script — which
+declared experiment environment path (``ReeDefinition.runtime``), experiment declarations, the
+*built* experiment environment artifact in the workspace, and the written build script — which
 the design deliberately keeps out of ``RepositoryFacts`` and threads in here as
 separate typed dependencies.
 
@@ -53,7 +53,7 @@ class ArtifactAccessor(Protocol):
     def open(self, rel_path: str) -> BinaryIO | None:
         """A seekable binary stream over the file, or ``None`` if absent.
 
-        Used to inspect a large runtime archive member-by-member without loading
+        Used to inspect a large experiment environment archive member-by-member without loading
         the whole artifact into memory. The caller closes it.
         """
         ...
@@ -72,7 +72,7 @@ class _NullAccessor:
         return None
 
 
-class RuntimeInputs(BaseModel):
+class ExperimentEnvironmentInputs(BaseModel):
     """Authored-state inputs carried on the decision context.
 
     Immutable like the rest of the context. Holds an ``ArtifactAccessor`` (an
@@ -82,9 +82,9 @@ class RuntimeInputs(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    # The declared, workspace-relative runtime artifact
-    # path. ``None`` when the author has not declared a runtime.
-    declared_runtime_path: str | None = None
+    # The declared, workspace-relative experiment environment artifact
+    # path. ``None`` when the author has not declared an experiment environment.
+    declared_experiment_environment_path: str | None = None
     experiments: list[ExperimentDefinition] = Field(default_factory=list)
     accessor: ArtifactAccessor = Field(default_factory=_NullAccessor)
 

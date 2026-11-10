@@ -2,7 +2,7 @@
 
 The build script is the author's own and may need anything, a container engine included; the
 environment is what provides it. Activation and experiments run in the same environment, on the
-runtime the build produced. An ``image`` environment is a container image; a ``host`` environment
+experiment environment the build produced. An ``image`` environment is a container image; a ``host`` environment
 is whatever machine runs the step, described only by what was observed there.
 """
 

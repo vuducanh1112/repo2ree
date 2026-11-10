@@ -31,7 +31,7 @@ sleep 5
 def built(api: Api, ree_id: str) -> None:
     api.acquire(ree_id, SLURM)
     api.succeed(ree_id, "evaluate")
-    assert api.build(ree_id, fixture=SLURM)["status"] == "succeeded"
+    assert api.build_experiment_environment(ree_id, fixture=SLURM)["status"] == "succeeded"
 
 
 def holds(api: Api, ree_id: str, script: str) -> None:

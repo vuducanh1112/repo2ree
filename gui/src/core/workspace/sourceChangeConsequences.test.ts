@@ -11,7 +11,7 @@ function buildWorkspaceState(): SourceChangeInput {
       name: "demo",
       originUrl: "https://example.org/repo.git",
       sourceType: "git",
-      runtime: "runtime.tar.gz",
+      experimentEnvironmentPath: "runtime.tar.gz",
       sbom: "artifacts/sbom.json",
       swhid: "swh:1:dir:abc",
     },
@@ -23,7 +23,7 @@ function buildWorkspaceState(): SourceChangeInput {
       sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
     },
     artifactStatus: {
-      runtimeIncluded: true,
+      experimentEnvironmentIncluded: true,
     },
     evaluationState: { dependencyLevel: 3 },
     actionStates: {},
@@ -44,7 +44,7 @@ describe("computeSourceChangeConsequences", () => {
     expect(reset.stepParams).toEqual(nextStepParams);
     expect(reset.badges).toEqual({});
     expect(reset.sourceSnapshotArchiveName).toBe("");
-    expect(reset.reeSpec.runtime).toBe("");
+    expect(reset.reeSpec.experimentEnvironmentPath).toBe("");
     expect(reset.reeSpec.originUrl).toBe("");
     expect(reset.evaluationState.dependencyLevel).toBe(0);
   });

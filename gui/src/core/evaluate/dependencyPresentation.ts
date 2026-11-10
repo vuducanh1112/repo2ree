@@ -2,7 +2,7 @@ import type {
   DependencyEcosystem,
   DependencyStatus,
   EvaluatedDependency,
-  RuntimePresence,
+  ExperimentEnvironmentPresence,
 } from "./Threat";
 
 export interface DisplayDependency {
@@ -11,7 +11,7 @@ export interface DisplayDependency {
   status: DependencyStatus;
   scope: string | null;
   /** SBOM cross-check verdict; null until a cross-check ran. */
-  runtimePresence: RuntimePresence | null;
+  experimentEnvironmentPresence: ExperimentEnvironmentPresence | null;
   observedVersion: string | null;
 }
 
@@ -43,10 +43,10 @@ export const STATUS_LABEL: Record<DependencyStatus, string> = {
   undeclared: "undeclared",
 };
 
-export const PRESENCE_LABEL: Record<RuntimePresence, string> = {
-  observed: "in runtime",
+export const PRESENCE_LABEL: Record<ExperimentEnvironmentPresence, string> = {
+  observed: "in experiment environment",
   "version-mismatch": "version mismatch",
-  "not-observed": "not in runtime",
+  "not-observed": "not in experiment environment",
 };
 
 /**
@@ -68,7 +68,7 @@ export function groupEvaluatedDependencies(dependencies: EvaluatedDependency[]):
       version: dependency.lockedVersion ?? dependency.declaredConstraint,
       status: dependency.status,
       scope: dependency.scope,
-      runtimePresence: dependency.runtimePresence,
+      experimentEnvironmentPresence: dependency.experimentEnvironmentPresence,
       observedVersion: dependency.observedVersion,
     });
     groups.set(key, group);

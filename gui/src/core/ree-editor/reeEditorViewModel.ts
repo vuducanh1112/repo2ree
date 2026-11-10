@@ -43,7 +43,7 @@ export function createEmptyReeEditorViewModel(): ReeEditorViewModel {
   return {
     spec: createEmptyReeSpec(),
     source: { sourceAvailable: false, sourceIncluded: false },
-    artifact: { runtimeIncluded: false },
+    artifact: { experimentEnvironmentIncluded: false },
     evaluation: {
       dependencyLevel: 0,
       environmentLevel: 0,

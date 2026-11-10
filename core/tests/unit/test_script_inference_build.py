@@ -14,11 +14,11 @@ from repo2ree_core.author_recipes.inference import (
     TargetInferenceResult,
     infer_scripts,
 )
-from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import LogicalRootObservation
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import BuildRuntimeDefinition, ReeDefinition
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, ReeDefinition
 from repo2ree_ree.primitives import WorkspacePath
 
 
@@ -31,29 +31,31 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 
 
 def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
-    runtime = intent_kwargs.pop("runtime", None)
+    experiment_environment = intent_kwargs.pop("experiment_environment", None)
     name = str(intent_kwargs.pop("name", ""))
     assert not intent_kwargs
     definition = ReeDefinition(
         name=name,
-        build_runtime=(
-            BuildRuntimeDefinition(
-                build_runtime_script_digest=digest_bytes(b"build"),
-                build_runtime_script_size=5,
-                runtime_path=WorkspacePath(str(runtime)),
+        experiment_environment=(
+            ExperimentEnvironmentDefinition(
+                build_experiment_environment_script_digest=digest_bytes(b"build_experiment_environment"),
+                build_experiment_environment_script_size=5,
+                artifact_path=WorkspacePath(str(experiment_environment)),
             )
-            if runtime
+            if experiment_environment
             else None
         ),
     )
     report = infer_scripts(
         root,
-        [ScriptTargetSelectorArg(kind="build")],
+        [ScriptTargetSelectorArg(kind="build_experiment_environment")],
         definition=definition,
-        # The declared runtime path reaches inference on the runtime inputs, not
+        # The declared experiment environment path reaches inference on the experiment environment inputs, not
         # on the definition — the handler builds it there. Passing only the
         # definition would leave the declaration invisible to the renderer.
-        runtime_inputs=RuntimeInputs(declared_runtime_path=str(runtime) if runtime else None),
+        experiment_environment_inputs=ExperimentEnvironmentInputs(
+            declared_experiment_environment_path=str(experiment_environment) if experiment_environment else None
+        ),
     )
     return report.results[0]
 
@@ -72,7 +74,7 @@ def test_flat_single_dockerfile_is_complete_automatic(tmp_path: Path) -> None:
     assert len(result.candidates) == 1
     candidate = result.candidates[0]
     body = _body(result)
-    assert candidate.target.path == "ree-scripts/build_script.sh"
+    assert candidate.target.path == "ree-scripts/build_experiment_environment.sh"
     assert "DOCKERFILE=Dockerfile\n" in body
     assert "BUILD_CONTEXT=.\n" in body
     # No blocking warning on an automatic candidate.
@@ -121,20 +123,20 @@ def test_no_dockerfile_is_not_inferred_with_full_trace(tmp_path: Path) -> None:
     assert kinds[-1] == "result"
 
 
-def test_runtime_artifact_honors_the_declared_runtime(tmp_path: Path) -> None:
-    # runtime_path is where the build is expected to leave its artifact, and the
+def test_experiment_environment_artifact_honors_the_declared_experiment_environment(tmp_path: Path) -> None:
+    # experiment_environment_path is where the build is expected to leave its artifact, and the
     # build fails its post-condition when nothing lands there — so the generated
     # recipe writes exactly where the REE declares.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
-    result = _build(tmp_path, runtime="ree-out/prebuilt.tar")
-    assert "RUNTIME_ARTIFACT=ree-out/prebuilt.tar\n" in _body(result)
+    result = _build(tmp_path, experiment_environment="ree-out/prebuilt.tar")
+    assert "EXPERIMENT_ENVIRONMENT_ARTIFACT=ree-out/prebuilt.tar\n" in _body(result)
 
 
-def test_runtime_artifact_falls_back_to_the_strategy_default_when_undeclared(tmp_path: Path) -> None:
+def test_experiment_environment_artifact_falls_back_to_the_strategy_default_when_undeclared(tmp_path: Path) -> None:
     # The fallback covers inference running before a declaration exists — a
-    # freshly seeded script on an REE whose runtime is not yet declared.
+    # freshly seeded script on an REE whose experiment environment is not yet declared.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
-    assert "RUNTIME_ARTIFACT=.repo2ree/artifacts/runtime.tar\n" in _body(_build(tmp_path))
+    assert "EXPERIMENT_ENVIRONMENT_ARTIFACT=.repo2ree/artifacts/runtime.tar\n" in _body(_build(tmp_path))
 
 
 def test_image_tag_is_derived_from_the_ree_name(tmp_path: Path) -> None:
@@ -175,17 +177,19 @@ def test_candidate_records_dockerfile_dependency(tmp_path: Path) -> None:
         (None, ".repo2ree/artifacts/runtime.tar"),
     ],
 )
-def test_candidate_records_the_runtime_path_it_writes_to(tmp_path: Path, declared: str | None, expected: str) -> None:
+def test_candidate_records_the_experiment_environment_path_it_writes_to(
+    tmp_path: Path, declared: str | None, expected: str
+) -> None:
     # Declared or defaulted, the path is part of what justifies these bytes:
     # move it and regeneration renders differently. The dependency does not say
     # which of the two it was — a client compares it against its own declaration
     # — so both cases record the same role.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
-    result = _build(tmp_path, runtime=declared) if declared else _build(tmp_path)
+    result = _build(tmp_path, experiment_environment=declared) if declared else _build(tmp_path)
     candidate = result.candidates[0]
-    declaration = [dep for dep in candidate.dependencies if dep.kind == "runtime_declaration"]
+    declaration = [dep for dep in candidate.dependencies if dep.kind == "experiment_environment_declaration"]
     assert len(declaration) == 1
     assert declaration[0].path == expected
-    assert declaration[0].role == "runtime"
+    assert declaration[0].role == "experiment_environment"
     # The reported path is worthless unless it is the one the script writes to.
-    assert f"RUNTIME_ARTIFACT={expected}\n" in _body(result)
+    assert f"EXPERIMENT_ENVIRONMENT_ARTIFACT={expected}\n" in _body(result)

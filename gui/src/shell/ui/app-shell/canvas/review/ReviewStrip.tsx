@@ -15,7 +15,7 @@ function presentation(key: ReviewStepKey) {
   const shared = SHARED_STEP_META[key];
   if (shared) {
     return {
-      label: shared.label.replace(" Runtime", ""),
+      label: shared.label,
       color: stageTone(shared.key),
       icon: stepIcon(shared.iconKey)(14),
     };
@@ -28,8 +28,8 @@ function presentation(key: ReviewStepKey) {
 
 const STEP_SUBJECT: Record<ReviewStepKey, string> = {
   source: "SWHID",
-  build: "runtime · SBOM diff",
-  activation: "runtime entry",
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experiment environment · SBOM diff",
+  activation: "experiment environment entry",
   experiments: "declared experiments",
 };
 
@@ -47,7 +47,7 @@ const BASIS_OPTIONS: { value: ReviewBasisRequest; label: string; hint: string }[
   {
     value: "bundled",
     label: "From bundle",
-    hint: "Verify the source and runtime this REE already carries",
+    hint: "Verify the source and experiment environment this REE already carries",
   },
 ];
 

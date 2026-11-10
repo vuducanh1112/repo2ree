@@ -490,7 +490,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/build-runtime": {
+    "/api/v1/rees/{ree_id}/build-experiment-environment": {
         parameters: {
             query?: never;
             header?: never;
@@ -499,8 +499,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Build Runtime Run */
-        post: operations["startBuild"];
+        /** Create Build Experiment Environment Run */
+        post: operations["startBuildExperimentEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -795,7 +795,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/build:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce": {
         parameters: {
             query?: never;
             header?: never;
@@ -806,13 +806,13 @@ export interface paths {
         put?: never;
         /**
          * Start Build Review
-         * @description Rebuild the runtime inside an attempt whose source was already reproduced.
+         * @description Rebuild the experiment environment inside an attempt whose source was already reproduced.
          *
          *     Addressed by review id rather than minting a new one: the build is only
          *     meaningful against the source *this* attempt fetched for itself, and the
          *     workbench rejects the command outright when that step has not settled.
          */
-        post: operations["startBuildReview"];
+        post: operations["startBuildExperimentEnvironmentReview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -830,7 +830,7 @@ export interface paths {
         put?: never;
         /**
          * Start Activation Review
-         * @description Probe whether the runtime this attempt certified is inhabitable.
+         * @description Probe whether the experiment environment this attempt certified is inhabitable.
          *
          *     Takes no ``basis``, unlike the two steps before it: activation runs in the
          *     workspace the build left behind and inherits what that evidence is worth
@@ -854,7 +854,7 @@ export interface paths {
         put?: never;
         /**
          * Start Experiment Review
-         * @description Reproduce one experiment's result inside an attempt whose runtime came up.
+         * @description Reproduce one experiment's result inside an attempt whose experiment environment came up.
          *
          *     One experiment per call, addressed by name — the same shape as the author's
          *     ``experiments/{name}:run``. Reproducing every experiment is the client
@@ -1158,8 +1158,8 @@ export interface components {
              * @enum {string}
              */
             verdict: "passed" | "failed";
-            /** Runtime Digest */
-            runtime_digest?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
             /** Run Exit Code */
             run_exit_code?: number | null;
             /** Verify Exit Code */
@@ -1350,78 +1350,56 @@ export interface components {
                 };
             };
         };
-        /** BuildComparison */
-        BuildComparison: {
+        /** BuildExperimentEnvironmentReceipt */
+        BuildExperimentEnvironmentReceipt: {
             /**
-             * Policy
-             * @default sbom-closure
+             * Schema Version
+             * @default 1
              * @constant
              */
-            policy: "sbom-closure";
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
             /**
-             * Basis
-             * @default independent
-             * @enum {string}
+             * Operation
+             * @default build_experiment_environment
+             * @constant
              */
-            basis: "independent" | "bundled";
-            /**
-             * Verdict
-             * @enum {string}
-             */
-            verdict: "identical" | "equivalent" | "different" | "inconclusive";
-            /** Expected Runtime Digest */
-            expected_runtime_digest?: string | null;
-            /** Observed Runtime Digest */
-            observed_runtime_digest?: string | null;
-            /** Expected Sbom Digest */
-            expected_sbom_digest?: string | null;
-            /** Observed Sbom Digest */
-            observed_sbom_digest?: string | null;
-            /** Sbom Tool Version */
-            sbom_tool_version?: string | null;
-            /**
-             * Expected Package Total
-             * @default 0
-             */
-            expected_package_total: number;
-            /**
-             * Observed Package Total
-             * @default 0
-             */
-            observed_package_total: number;
-            /**
-             * Matched
-             * @default 0
-             */
-            matched: number;
-            /**
-             * Missing Count
-             * @default 0
-             */
-            missing_count: number;
-            /**
-             * Extra Count
-             * @default 0
-             */
-            extra_count: number;
-            /**
-             * Version Mismatch Count
-             * @default 0
-             */
-            version_mismatch_count: number;
-            /**
-             * Advisory Count
-             * @default 0
-             */
-            advisory_count: number;
-            /** Missing */
-            missing?: components["schemas"]["PackageDeltaRecord"][];
-            /** Extra */
-            extra?: components["schemas"]["PackageDeltaRecord"][];
-            /** Version Mismatches */
-            version_mismatches?: components["schemas"]["PackageDeltaRecord"][];
-            /** Advisory */
-            advisory?: components["schemas"]["PackageDeltaRecord"][];
+            operation: "build_experiment_environment";
+            /** Snapshot Digest */
+            snapshot_digest: string;
+            /** Build Experiment Environment Script Path */
+            build_experiment_environment_script_path: string;
+            /** Build Experiment Environment Script Digest */
+            build_experiment_environment_script_digest: string;
+            workspace_drift: components["schemas"]["WorkspaceDrift"];
+            /** Artifact Path */
+            artifact_path: string;
+            /** Produced Artifact Digest */
+            produced_artifact_digest: string;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+        };
+        /**
+         * BuildExperimentEnvironmentScriptTemplates
+         * @description The build-script templates and the reserved path they all belong at.
+         *
+         *     One entry per standard runtime-packaging strategy; the default entry for an
+         *     environment (``is_default``) is the content a fresh REE's build script there is
+         *     seeded with.
+         */
+        BuildExperimentEnvironmentScriptTemplates: {
+            /** Path */
+            path: string;
+            /** Templates */
+            templates: components["schemas"]["ScriptTemplateEntry"][];
         };
         /**
          * BuildInfo
@@ -1441,71 +1419,6 @@ export interface components {
              * @default
              */
             revision: string;
-        };
-        /** BuildRuntimeDefinition */
-        BuildRuntimeDefinition: {
-            /**
-             * Build Runtime Script Path
-             * @default ree-scripts/build_script.sh
-             */
-            build_runtime_script_path: string;
-            /** Build Runtime Script Digest */
-            build_runtime_script_digest: string;
-            /** Build Runtime Script Size */
-            build_runtime_script_size: number;
-            /** Runtime Path */
-            runtime_path?: string | null;
-        };
-        /** BuildRuntimeReceipt */
-        BuildRuntimeReceipt: {
-            /**
-             * Schema Version
-             * @default 1
-             * @constant
-             */
-            schema_version: 1;
-            /** Run Id */
-            run_id: string;
-            /** Started At */
-            started_at: string;
-            /** Finished At */
-            finished_at: string;
-            /** Duration Ms */
-            duration_ms: number;
-            /** Recorded At */
-            recorded_at: string;
-            /**
-             * Operation
-             * @default build_runtime
-             * @constant
-             */
-            operation: "build_runtime";
-            /** Snapshot Digest */
-            snapshot_digest: string;
-            /** Build Runtime Script Path */
-            build_runtime_script_path: string;
-            /** Build Runtime Script Digest */
-            build_runtime_script_digest: string;
-            workspace_drift: components["schemas"]["WorkspaceDrift"];
-            /** Runtime Path */
-            runtime_path: string;
-            /** Produced Runtime Digest */
-            produced_runtime_digest: string;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
-        };
-        /**
-         * BuildScriptTemplates
-         * @description The build-script templates and the reserved path they all belong at.
-         *
-         *     One entry per standard runtime-packaging strategy; the default entry for an
-         *     environment (``is_default``) is the content a fresh REE's build script there is
-         *     seeded with.
-         */
-        BuildScriptTemplates: {
-            /** Path */
-            path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
         };
         /** BundleContents */
         BundleContents: {
@@ -1581,7 +1494,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "source" | "dependency_inventory" | "script" | "runtime_artifact" | "runtime_declaration" | "experiment_declaration" | "baseline_result";
+            kind: "source" | "dependency_inventory" | "script" | "experiment_environment_artifact" | "experiment_environment_declaration" | "experiment_declaration" | "baseline_result";
             /** Path */
             path?: string | null;
             /** Digest */
@@ -1673,10 +1586,10 @@ export interface components {
             idempotency_key?: string | null;
         };
         /**
-         * CreateBuildReviewPayload
-         * @description Reproduce the runtime build inside an existing review attempt.
+         * CreateBuildExperimentEnvironmentReviewPayload
+         * @description Reproduce the experiment environment build inside an existing review attempt.
          */
-        CreateBuildReviewPayload: {
+        CreateBuildExperimentEnvironmentReviewPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
             /**
@@ -1692,16 +1605,16 @@ export interface components {
             basis: "auto" | "independent" | "bundled";
         };
         /**
-         * CreateBuildRuntimeRunPayload
+         * CreateBuildExperimentEnvironmentRunPayload
          * @description Run the reserved build script. Takes no parameters of its own.
          */
-        CreateBuildRuntimeRunPayload: {
+        CreateBuildExperimentEnvironmentRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
         /**
          * CreateCrossCheckSbomRunPayload
-         * @description Cross-check the recorded SBOM against the built runtime. No parameters.
+         * @description Cross-check the recorded SBOM against the built experiment environment. No parameters.
          */
         CreateCrossCheckSbomRunPayload: {
             /** Idempotency Key */
@@ -1735,9 +1648,9 @@ export interface components {
         };
         /**
          * CreateGenerateSbomRunPayload
-         * @description Scan the declared runtime artifact. Takes no parameters of its own.
+         * @description Scan the declared experiment environment artifact. Takes no parameters of its own.
          *
-         *     Which artifact gets scanned is the build recipe's ``runtime_path``, which
+         *     Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
          *     the author declared before the build ran and the build receipt binds. The
          *     handler reads it there; a client cannot name a different one.
          */
@@ -1839,14 +1752,14 @@ export interface components {
             /** Branch */
             branch?: string | null;
             /** Observed */
-            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["RuntimeContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"]) | null;
+            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["ExperimentEnvironmentContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"]) | null;
             /** Outcome */
             outcome?: string | null;
             /**
              * Bindings
              * @default []
              */
-            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["RuntimePlanBinding"] | components["schemas"]["RuntimeDeclarationBinding"] | components["schemas"]["RuntimeContractBinding"] | components["schemas"]["ImageCommandBinding"] | components["schemas"]["ExperimentBinding"] | components["schemas"]["CommandCandidatesBinding"])[];
+            bindings: (components["schemas"]["ProjectRootBinding"] | components["schemas"]["DockerfileBinding"] | components["schemas"]["RequirementsProjectBinding"] | components["schemas"]["ExperimentEnvironmentPlanBinding"] | components["schemas"]["ExperimentEnvironmentDeclarationBinding"] | components["schemas"]["ExperimentEnvironmentContractBinding"] | components["schemas"]["ImageCommandBinding"] | components["schemas"]["ExperimentBinding"] | components["schemas"]["CommandCandidatesBinding"])[];
             /** Evidence */
             evidence?: components["schemas"]["InferenceEvidence"][];
         };
@@ -1911,8 +1824,8 @@ export interface components {
              */
             locked: number;
         };
-        /** DockerRuntimeContract */
-        DockerRuntimeContract: {
+        /** DockerExperimentEnvironmentContract */
+        DockerExperimentEnvironmentContract: {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -1933,8 +1846,8 @@ export interface components {
              */
             working_directory: string;
         };
-        /** DockerRuntimePlan */
-        DockerRuntimePlan: {
+        /** DockerExperimentEnvironmentPlan */
+        DockerExperimentEnvironmentPlan: {
             /**
              * Kind
              * @default docker_archive
@@ -2078,8 +1991,8 @@ export interface components {
              * @enum {string}
              */
             status: "locked" | "pinned" | "ranged" | "unpinned" | "undeclared";
-            /** Runtime Presence */
-            runtime_presence?: ("observed" | "version-mismatch" | "not-observed") | null;
+            /** Experiment Environment Presence */
+            experiment_environment_presence?: ("observed" | "version-mismatch" | "not-observed") | null;
         };
         /** ExecutionContext */
         ExecutionContext: {
@@ -2153,8 +2066,8 @@ export interface components {
             expected_output_digest?: string | null;
             /** Observed Output Digest */
             observed_output_digest?: string | null;
-            /** Runtime Digest */
-            runtime_digest?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
         };
         /** ExperimentDefinition */
         ExperimentDefinition: {
@@ -2177,6 +2090,156 @@ export interface components {
              * @default []
              */
             output_paths: string[];
+        };
+        /** ExperimentEnvironmentComparison */
+        ExperimentEnvironmentComparison: {
+            /**
+             * Policy
+             * @default sbom-closure
+             * @constant
+             */
+            policy: "sbom-closure";
+            /**
+             * Basis
+             * @default independent
+             * @enum {string}
+             */
+            basis: "independent" | "bundled";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "identical" | "equivalent" | "different" | "inconclusive";
+            /** Expected Artifact Digest */
+            expected_artifact_digest?: string | null;
+            /** Observed Artifact Digest */
+            observed_artifact_digest?: string | null;
+            /** Expected Sbom Digest */
+            expected_sbom_digest?: string | null;
+            /** Observed Sbom Digest */
+            observed_sbom_digest?: string | null;
+            /** Sbom Tool Version */
+            sbom_tool_version?: string | null;
+            /**
+             * Expected Package Total
+             * @default 0
+             */
+            expected_package_total: number;
+            /**
+             * Observed Package Total
+             * @default 0
+             */
+            observed_package_total: number;
+            /**
+             * Matched
+             * @default 0
+             */
+            matched: number;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /**
+             * Extra Count
+             * @default 0
+             */
+            extra_count: number;
+            /**
+             * Version Mismatch Count
+             * @default 0
+             */
+            version_mismatch_count: number;
+            /**
+             * Advisory Count
+             * @default 0
+             */
+            advisory_count: number;
+            /** Missing */
+            missing?: components["schemas"]["PackageDeltaRecord"][];
+            /** Extra */
+            extra?: components["schemas"]["PackageDeltaRecord"][];
+            /** Version Mismatches */
+            version_mismatches?: components["schemas"]["PackageDeltaRecord"][];
+            /** Advisory */
+            advisory?: components["schemas"]["PackageDeltaRecord"][];
+        };
+        /**
+         * ExperimentEnvironmentContractBinding
+         * @description A resolved, non-executable experiment environment contract plus how it was established.
+         *
+         *     ``inspected_artifact`` inspected the built artifact itself;
+         *     ``unchanged_generated_build`` reused the constants of a still-unedited
+         *     inference-generated build script. Downstream renderers copy the contract's
+         *     values as explicit literals.
+         */
+        ExperimentEnvironmentContractBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "experiment_environment_contract";
+            /** Contract */
+            contract: components["schemas"]["DockerExperimentEnvironmentContract"] | components["schemas"]["VenvExperimentEnvironmentContract"];
+            /**
+             * Provenance
+             * @enum {string}
+             */
+            provenance: "inspected_artifact" | "unchanged_generated_build";
+        };
+        /** ExperimentEnvironmentContractObservation */
+        ExperimentEnvironmentContractObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "experiment_environment_contract";
+            /** Result */
+            result: string;
+            /** Experiment Environment Kind */
+            experiment_environment_kind?: string | null;
+            /** Provenance */
+            provenance?: string | null;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
+        /** ExperimentEnvironmentDeclarationBinding */
+        ExperimentEnvironmentDeclarationBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "experiment_environment_declaration";
+            /** Path */
+            path: string;
+            /** Digest */
+            digest?: string | null;
+        };
+        /** ExperimentEnvironmentDefinition */
+        ExperimentEnvironmentDefinition: {
+            /**
+             * Build Experiment Environment Script Path
+             * @default ree-scripts/build_experiment_environment.sh
+             */
+            build_experiment_environment_script_path: string;
+            /** Build Experiment Environment Script Digest */
+            build_experiment_environment_script_digest: string;
+            /** Build Experiment Environment Script Size */
+            build_experiment_environment_script_size: number;
+            /** Artifact Path */
+            artifact_path?: string | null;
+        };
+        /** ExperimentEnvironmentPlanBinding */
+        ExperimentEnvironmentPlanBinding: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "experiment_environment_plan";
+            plan: components["schemas"]["DockerExperimentEnvironmentPlan"];
         };
         /**
          * ExperimentGateObservation
@@ -2365,10 +2428,10 @@ export interface components {
              * @constant
              */
             operation: "generate_sbom";
-            /** Runtime Path */
-            runtime_path: string;
-            /** Runtime Digest */
-            runtime_digest: string;
+            /** Experiment Environment Path */
+            experiment_environment_path: string;
+            /** Experiment Environment Digest */
+            experiment_environment_digest: string;
             /** Sbom Path */
             sbom_path?: string | null;
             /** Sbom Digest */
@@ -2506,7 +2569,7 @@ export interface components {
         };
         /**
          * ImageCommandBinding
-         * @description The runtime image's declared command (Entrypoint/Cmd), parsed once when
+         * @description The experiment environment image's declared command (Entrypoint/Cmd), parsed once when
          *     the artifact is inspected and carried forward so the command-candidate check
          *     need not re-open the (possibly multi-hundred-MB) archive. Absent when the
          *     contract came from an unchanged generated build (no artifact to inspect); the
@@ -2864,7 +2927,7 @@ export interface components {
             source: components["schemas"]["StepAudit"];
             evaluation: components["schemas"]["StepAudit"];
             hardware: components["schemas"]["StepAudit"];
-            runtime: components["schemas"]["StepAudit"];
+            experiment_environment: components["schemas"]["StepAudit"];
             sbom: components["schemas"]["StepAudit"];
             sbom_cross_check: components["schemas"]["StepAudit"];
             test_activation: components["schemas"]["StepAudit"];
@@ -2943,7 +3006,7 @@ export interface components {
             name: string;
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
-            build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
+            experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
@@ -2962,7 +3025,7 @@ export interface components {
             name: string;
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
-            build_runtime?: components["schemas"]["BuildRuntimeDefinition"] | null;
+            experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
@@ -2979,7 +3042,7 @@ export interface components {
         ReeDefinitionPatchPayload: {
             /**
              * Definition Patch
-             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"build_runtime": {"runtime_path": "runtime.tar"}}` or, once its run script is written, `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
+             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"experiment_environment": {"artifact_path": "runtime.tar"}}` or, once its run script is written, `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
              */
             definition_patch?: {
                 [key: string]: unknown;
@@ -3075,7 +3138,7 @@ export interface components {
             source?: components["schemas"]["AcquireSourceReceipt"] | null;
             evaluation?: components["schemas"]["EvaluateReproducibilityReceipt"] | null;
             hardware_observation?: components["schemas"]["ObserveHardwareReceipt"] | null;
-            build?: components["schemas"]["BuildRuntimeReceipt"] | null;
+            experiment_environment?: components["schemas"]["BuildExperimentEnvironmentReceipt"] | null;
             sbom?: components["schemas"]["GenerateSbomReceipt"] | null;
             sbom_cross_check?: components["schemas"]["CrossCheckSbomReceipt"] | null;
             test_activation?: components["schemas"]["TestActivationReceipt"] | null;
@@ -3101,11 +3164,11 @@ export interface components {
              */
             include_source: boolean;
             /**
-             * Include Runtime
-             * @description Put the declared runtime artifact in the sealed archive.
+             * Include Experiment Environment
+             * @description Put the declared experiment environment artifact in the sealed archive.
              * @default false
              */
-            include_runtime: boolean;
+            include_experiment_environment: boolean;
             /**
              * Include Results
              * @description Put everything under results/ in the sealed archive.
@@ -3344,13 +3407,13 @@ export interface components {
             run_exit_code?: number | null;
             /** Verify Exit Code */
             verify_exit_code?: number | null;
-            /** Runtime Path */
-            runtime_path: string;
-            /** Runtime Digest */
-            runtime_digest: string;
+            /** Experiment Environment Path */
+            experiment_environment_path: string;
+            /** Experiment Environment Digest */
+            experiment_environment_digest: string;
         };
-        /** ReviewBuildRuntimeReceipt */
-        ReviewBuildRuntimeReceipt: {
+        /** ReviewBuildExperimentEnvironmentReceipt */
+        ReviewBuildExperimentEnvironmentReceipt: {
             /**
              * Schema Version
              * @default 1
@@ -3374,18 +3437,18 @@ export interface components {
             status: "succeeded" | "failed";
             /**
              * Operation
-             * @default build_runtime
+             * @default build_experiment_environment
              * @constant
              */
-            operation: "build_runtime";
-            /** Build Runtime Script Path */
-            build_runtime_script_path?: string | null;
-            /** Build Runtime Script Digest */
-            build_runtime_script_digest?: string | null;
-            /** Runtime Path */
-            runtime_path: string;
-            /** Produced Runtime Digest */
-            produced_runtime_digest: string;
+            operation: "build_experiment_environment";
+            /** Build Experiment Environment Script Path */
+            build_experiment_environment_script_path?: string | null;
+            /** Build Experiment Environment Script Digest */
+            build_experiment_environment_script_digest?: string | null;
+            /** Artifact Path */
+            artifact_path: string;
+            /** Produced Artifact Digest */
+            produced_artifact_digest: string;
         };
         /** ReviewExperimentReceipt */
         ReviewExperimentReceipt: {
@@ -3430,10 +3493,10 @@ export interface components {
             run_exit_code?: number | null;
             /** Verify Exit Code */
             verify_exit_code?: number | null;
-            /** Runtime Path */
-            runtime_path?: string | null;
-            /** Runtime Digest */
-            runtime_digest?: string | null;
+            /** Experiment Environment Path */
+            experiment_environment_path?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;
         };
@@ -3454,8 +3517,8 @@ export interface components {
             steps?: components["schemas"]["ReviewStepState"][];
             source_receipt?: components["schemas"]["ReviewAcquireSourceReceipt"] | null;
             source_comparison?: components["schemas"]["SourceComparison"] | null;
-            build_receipt?: components["schemas"]["ReviewBuildRuntimeReceipt"] | null;
-            build_comparison?: components["schemas"]["BuildComparison"] | null;
+            experiment_environment_receipt?: components["schemas"]["ReviewBuildExperimentEnvironmentReceipt"] | null;
+            experiment_environment_comparison?: components["schemas"]["ExperimentEnvironmentComparison"] | null;
             activation_receipt?: components["schemas"]["ReviewActivationReceipt"] | null;
             activation_outcome?: components["schemas"]["ActivationOutcome"] | null;
             /** Experiment Receipts */
@@ -3476,7 +3539,7 @@ export interface components {
              * Step
              * @enum {string}
              */
-            step: "source" | "build" | "activation" | "experiments";
+            step: "source" | "build_experiment_environment" | "activation" | "experiments";
             /**
              * Status
              * @enum {string}
@@ -3517,8 +3580,8 @@ export interface components {
             experiment_name: string;
             /** Snapshot Digest */
             snapshot_digest: string;
-            /** Runtime Digest */
-            runtime_digest?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
             /** Run Script Digest */
             run_script_digest: string;
             /** Verify Script Digest */
@@ -3595,7 +3658,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "provision" | "ree-load" | "seal" | "build" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
+            operation: "provision" | "ree-load" | "seal" | "build_experiment_environment" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
             /**
              * Status
              * @enum {string}
@@ -3614,69 +3677,6 @@ export interface components {
             failure?: components["schemas"]["Failure"] | null;
             context?: components["schemas"]["ExecutionContext"] | null;
             history?: components["schemas"]["HistoryReference"] | null;
-        };
-        /**
-         * RuntimeContractBinding
-         * @description A resolved, non-executable runtime contract plus how it was established.
-         *
-         *     ``inspected_artifact`` inspected the built artifact itself;
-         *     ``unchanged_generated_build`` reused the constants of a still-unedited
-         *     inference-generated build script. Downstream renderers copy the contract's
-         *     values as explicit literals.
-         */
-        RuntimeContractBinding: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "runtime_contract";
-            /** Contract */
-            contract: components["schemas"]["DockerRuntimeContract"] | components["schemas"]["VenvRuntimeContract"];
-            /**
-             * Provenance
-             * @enum {string}
-             */
-            provenance: "inspected_artifact" | "unchanged_generated_build";
-        };
-        /** RuntimeContractObservation */
-        RuntimeContractObservation: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "runtime_contract";
-            /** Result */
-            result: string;
-            /** Runtime Kind */
-            runtime_kind?: string | null;
-            /** Provenance */
-            provenance?: string | null;
-            /**
-             * Detail
-             * @default
-             */
-            detail: string;
-        };
-        /** RuntimeDeclarationBinding */
-        RuntimeDeclarationBinding: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "runtime_declaration";
-            /** Path */
-            path: string;
-            /** Digest */
-            digest?: string | null;
-        };
-        /** RuntimePlanBinding */
-        RuntimePlanBinding: {
-            /**
-             * @description discriminator enum property added by openapi-typescript
-             * @enum {string}
-             */
-            kind: "runtime_plan";
-            plan: components["schemas"]["DockerRuntimePlan"];
         };
         /** SbomCrossCheckSummary */
         SbomCrossCheckSummary: {
@@ -3751,8 +3751,8 @@ export interface components {
          * @description The narrow declaration view consumed by contract rules.
          */
         ScriptDeclarations: {
-            /** Runtime Path */
-            runtime_path?: string | null;
+            /** Experiment Environment Path */
+            experiment_environment_path?: string | null;
         };
         /**
          * ScriptDraftPayload
@@ -3774,7 +3774,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
             /** Experiment Name */
             experiment_name?: string | null;
             /** Path */
@@ -3793,13 +3793,13 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
             /** Experiment Name */
             experiment_name?: string | null;
         };
         /** ScriptTemplateCatalog */
         ScriptTemplateCatalog: {
-            build: components["schemas"]["BuildScriptTemplates"];
+            build_experiment_environment: components["schemas"]["BuildExperimentEnvironmentScriptTemplates"];
             activation: components["schemas"]["ActivationScriptTemplates"];
             experiment: components["schemas"]["ExperimentScriptTemplates"];
             /** Verify */
@@ -3846,8 +3846,8 @@ export interface components {
             script_digest?: string | null;
             /** Source Snapshot Digest */
             source_snapshot_digest?: string | null;
-            /** Runtime Digest */
-            runtime_digest?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
             /** Matching Run Id */
             matching_run_id?: string | null;
         };
@@ -4151,10 +4151,10 @@ export interface components {
             operation: "test_activation";
             /** Snapshot Digest */
             snapshot_digest: string;
-            /** Runtime Path */
-            runtime_path?: string | null;
-            /** Runtime Digest */
-            runtime_digest?: string | null;
+            /** Experiment Environment Path */
+            experiment_environment_path?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
             /** Run Script Digest */
             run_script_digest: string;
             /** Verify Script Digest */
@@ -4263,8 +4263,8 @@ export interface components {
             stored_at: string;
         };
         /**
-         * VenvRuntimeContract
-         * @description A packed Python virtual environment as the runtime substrate.
+         * VenvExperimentEnvironmentContract
+         * @description A packed Python virtual environment as the experiment environment substrate.
          *
          *     The build packs the venv as a gzipped tarball at ``artifact_path``; a
          *     runnable restores it to ``venv_restore_dir`` (an absolute path, because a
@@ -4274,7 +4274,7 @@ export interface components {
          *     path a repo2ree build packs; an inspected artifact overrides it with the path
          *     recovered from the venv's own ``pyvenv.cfg``.
          */
-        VenvRuntimeContract: {
+        VenvExperimentEnvironmentContract: {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -7641,7 +7641,7 @@ export interface operations {
             };
         };
     };
-    startBuild: {
+    startBuildExperimentEnvironment: {
         parameters: {
             query?: never;
             header?: never;
@@ -7652,7 +7652,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateBuildRuntimeRunPayload"];
+                "application/json": components["schemas"]["CreateBuildExperimentEnvironmentRunPayload"];
             };
         };
         responses: {
@@ -9474,7 +9474,7 @@ export interface operations {
             };
         };
     };
-    startBuildReview: {
+    startBuildExperimentEnvironmentReview: {
         parameters: {
             query?: never;
             header?: never;
@@ -9486,7 +9486,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateBuildReviewPayload"];
+                "application/json": components["schemas"]["CreateBuildExperimentEnvironmentReviewPayload"];
             };
         };
         responses: {

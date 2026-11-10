@@ -5,7 +5,7 @@ was inspected and carried here on the ``image_command`` binding — into *candid
 commands: suggestions the author confirms, never an automatic selection.
 Exec-form (JSON) values become argv candidates; shell-form values are offered
 verbatim as shell candidates (never rewritten into guessed argv) and flag that
-the runtime needs a shell. Plausibly long-running commands (servers, daemons) are
+the experiment environment needs a shell. Plausibly long-running commands (servers, daemons) are
 flagged too.
 
 The candidates ride into rendering as commented ``set --`` examples. When no
@@ -38,9 +38,9 @@ _LONG_RUNNING_HINTS = ("serve", "server", "runserver", "gunicorn", "uvicorn", "d
 
 class DockerConfigCommandsCheck:
     code = "docker_config_commands"
-    label = "Does the runtime image declare a command?"
+    label = "Does the experiment environment image declare a command?"
     branches = frozenset({"candidates", "none"})
-    requires: frozenset[BindingKind] = frozenset({"runtime_contract"})
+    requires: frozenset[BindingKind] = frozenset({"experiment_environment_contract"})
     produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
         "candidates": frozenset({"command_candidates"}),
         "none": frozenset({"command_candidates"}),
@@ -89,7 +89,7 @@ def _candidates_from_binding(
                 source="docker_config",
             )
         )
-        warnings.append(make_warning("shell_required_in_runtime"))
+        warnings.append(make_warning("shell_required_in_experiment_environment"))
         if _looks_long_running(binding.shell_command):
             warnings.append(make_warning("possibly_long_running"))
     return candidates, warnings

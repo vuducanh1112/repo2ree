@@ -47,7 +47,7 @@ export function ExperimentDetail({
   index,
   otherNames,
   locked,
-  runtimePath,
+  experimentEnvironmentPath,
   scriptContent,
   verifyScriptContent,
   onUpdate,
@@ -60,7 +60,7 @@ export function ExperimentDetail({
   index: number;
   otherNames: string[];
   locked: boolean;
-  runtimePath: string | null;
+  experimentEnvironmentPath: string | null;
   scriptContent: string;
   verifyScriptContent: string;
   onUpdate: (patch: Partial<ReeExperiment>) => void;
@@ -131,7 +131,7 @@ export function ExperimentDetail({
 
         <DetailField
           label="Run script"
-          help="This experiment owns its run script: it fully defines how it executes, including entering the built runtime (e.g. its own docker run)."
+          help="This experiment owns its run script: it fully defines how it executes, including entering the built experiment environment (e.g. its own docker run)."
         >
           <RunScriptCard
             scriptPath={scriptPath}
@@ -159,7 +159,7 @@ export function ExperimentDetail({
                 target={{ kind: "experiment_run", experimentName: experiment.name }}
                 source={content}
                 dirty={dirty}
-                runtimePath={runtimePath}
+                experimentEnvironmentPath={experimentEnvironmentPath}
                 onFocusLine={focusLine}
                 disabled={locked || !scriptPath || !experiment.name}
               />
@@ -187,7 +187,7 @@ export function ExperimentDetail({
                 target={{ kind: "experiment_verify", experimentName: experiment.name }}
                 source={content}
                 dirty={dirty}
-                runtimePath={runtimePath}
+                experimentEnvironmentPath={experimentEnvironmentPath}
                 onFocusLine={focusLine}
                 disabled={locked || !verifyScriptPath || !experiment.name}
               />

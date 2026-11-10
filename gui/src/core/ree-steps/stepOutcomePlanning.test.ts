@@ -17,8 +17,10 @@ function buildRee() {
 }
 
 describe("stepOutcomePlanning", () => {
-  it("produces a success message naming the runtime when one is set", () => {
-    const result = planBuildEffect({ ree: { ...buildRee(), runtime: "runtime.tar.gz" } });
+  it("produces a success message naming the experiment environment when one is set", () => {
+    const result = planBuildEffect({
+      ree: { ...buildRee(), experimentEnvironmentPath: "runtime.tar.gz" },
+    });
     expect(result.successMessage).toContain("runtime.tar.gz");
   });
 
@@ -46,7 +48,7 @@ describe("stepOutcomePlanning", () => {
 
   it("builds step effect plans through a single entry point", () => {
     const result = planStepServiceEffect({
-      key: "build",
+      key: "build_experiment_environment",
       params: {},
       ree: buildRee(),
       timestamp: "2026-01-01T00:00:00Z",

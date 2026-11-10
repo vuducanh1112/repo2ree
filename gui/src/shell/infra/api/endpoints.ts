@@ -34,8 +34,8 @@ export const endpoints = {
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
   operationHistory: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/history`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
-  reeBuildRuntime: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/build-runtime`,
+  reeBuildExperimentEnvironment: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/build-experiment-environment`,
   reeGenerateHbom: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/generate-hbom`,
   reeGenerateSbom: (reeId: string) =>
@@ -53,7 +53,7 @@ export const endpoints = {
   reeSourceReview: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/source:reproduce`,
   reeBuildReview: (reeId: string, reviewId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/build:reproduce`,
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/build-experiment-environment:reproduce`,
   reeActivationReview: (reeId: string, reviewId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/activation:reproduce`,
   reeExperimentReview: (reeId: string, reviewId: string, experimentName: string) =>

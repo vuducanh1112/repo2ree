@@ -15,7 +15,7 @@ faked) when it is absent. Build it with ``just build-e2e-bundles``.
 Flow exercised over the real workbench:
     init-ree -> get-ree -> acquire_source (staged upload, no network)
         -> write_file -> read-ree-file round-trip -> patch_ree_definition
-        -> build_runtime (real script run by the workbench)
+        -> build_experiment_environment (real script run by the workbench)
         -> seal_ree -> build-archive -> delete
 
 The order is the domain's, not a convenience: each step here is a precondition
@@ -50,7 +50,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 from repo2ree_protocol.command import (
     AcquireSourceArgs,
     AcquireSourceCommand,
-    BuildRuntimeCommand,
+    BuildExperimentEnvironmentCommand,
     PatchReeDefinitionArgs,
     PatchReeDefinitionCommand,
     SealReeCommand,
@@ -85,9 +85,9 @@ STORE_ID = "e2e-lab"
 # The staging slot the upload acquisition reads from; the API mints these per
 # request, but the name only has to agree with the file we place in the REE.
 _UPLOAD_TOKEN = "e2e-upload"  # noqa: S105 — a staging filename, not a credential
-# Where the build script leaves its runtime, declared on the definition so the
+# Where the build script leaves its experiment environment, declared on the definition so the
 # build receipt can bind that path to the digest found there.
-_RUNTIME_ARTIFACT = "runtime.bin"
+_EXPERIMENT_ENVIRONMENT_ARTIFACT = "runtime.bin"
 
 
 # ================================================
@@ -273,7 +273,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
     assert document.status == "draft"
 
     # --- acquire_source: the REE gets something to build from ----------
-    # Building requires acquired source: a runtime built from nothing attests to
+    # Building requires acquired source: an experiment environment built from nothing attests to
     # nothing, so the receipt chain is rooted at a snapshot digest and the
     # handler refuses without one. The upload basis is the one that needs no
     # network — stage an archive where the handler looks for it and acquire from
@@ -298,26 +298,31 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
 
     # --- write_file: dispatched over the workbench's socket -----------
     # The build always runs the reserved, REE-owned build script, so author the
-    # recipe there. It has to *produce* the declared runtime: the handler digests
+    # recipe there. It has to *produce* the declared experiment environment: the handler digests
     # the artifact for the receipt and fails the run if the script exits clean
     # without leaving one behind.
-    build_script = "ree-scripts/build_script.sh"
-    build_body = f"echo building runtime\nprintf 'runtime-bytes\\n' > {_RUNTIME_ARTIFACT}\n"
+    build_experiment_environment_script = "ree-scripts/build_experiment_environment.sh"
+    build_body = (
+        f"echo building experiment environment\nprintf 'runtime-bytes\\n' > {_EXPERIMENT_ENVIRONMENT_ARTIFACT}\n"
+    )
     result = dispatcher.dispatch_action(
         handle,
-        WriteFileCommand(args=WriteFileArgs(path=build_script, content=build_body)),
+        WriteFileCommand(args=WriteFileArgs(path=build_experiment_environment_script, content=build_body)),
         "write",
         log,
     )
     assert result.status == "succeeded"
 
     # read it back through the real read-ree-file query — full round-trip
-    assert dispatcher.read_ree_file_bytes(handle, f"workspace/{build_script}") == build_body.encode()
+    assert (
+        dispatcher.read_ree_file_bytes(handle, f"workspace/{build_experiment_environment_script}")
+        == build_body.encode()
+    )
     workspace = dispatcher.get_ree_document(handle)
-    assert any(f.path == build_script for f in workspace.workspace_files)
+    assert any(f.path == build_experiment_environment_script for f in workspace.workspace_files)
 
-    # --- declare where the build leaves its runtime --------------------
-    # Nothing infers this: the author says which artifact is the runtime, and
+    # --- declare where the build leaves its experiment environment --------------------
+    # Nothing infers this: the author says which artifact is the experiment environment, and
     # the build receipt binds that path to the digest it found there. It rides
     # on the build recipe rather than beside it — a script and what it produces
     # are one declaration, so the patch carries only the destination and the
@@ -326,7 +331,10 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
         handle,
         PatchReeDefinitionCommand(
             args=PatchReeDefinitionArgs(
-                patch={"build_runtime": {"runtime_path": _RUNTIME_ARTIFACT}}, expected_version=""
+                patch={
+                    "build_experiment_environment": {"experiment_environment_path": _EXPERIMENT_ENVIRONMENT_ARTIFACT}
+                },
+                expected_version="",
             )
         ),
         "patch-definition",
@@ -334,11 +342,11 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
     )
     assert result.status == "succeeded", result.failure
 
-    # --- build_runtime: real script execution inside the workbench -----
+    # --- build_experiment_environment: real script execution inside the workbench -----
     result = dispatcher.dispatch_action(
         handle,
-        BuildRuntimeCommand(),
-        "build",
+        BuildExperimentEnvironmentCommand(),
+        "build_experiment_environment",
         log,
     )
     assert result.status == "succeeded", result.failure

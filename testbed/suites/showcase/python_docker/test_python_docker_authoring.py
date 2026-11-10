@@ -33,12 +33,12 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
 
     assert client.evaluate(ree_id, watch=F.watch).status == "succeeded"
 
-    build = client.infer(ree_id, "build")
-    assert build.decision.dag == InferenceDag.BUILD
+    build = client.infer(ree_id, "build_experiment_environment")
+    assert build.decision.dag == InferenceDag.BUILD_EXPERIMENT_ENVIRONMENT
     assert len(build.rules()) == 2, build.rules()
     assert "docker build" in build.body_of(InferenceRule.DOCKERFILE)
 
-    run = client.build(ree_id, F)
+    run = client.build_experiment_environment(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 
     client.declare_cpu(ree_id, CPU_MODEL, CPU)
@@ -67,7 +67,7 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
     for step in (
         audit.source,
         audit.evaluation,
-        audit.runtime,
+        audit.experiment_environment,
         audit.sbom,
         audit.sbom_cross_check,
         audit.test_activation,
@@ -81,7 +81,7 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
     assert f"ree/{SBOM}" in entries
 
     output = reproduce_offline(archive)
-    assert "Reusing sealed runtime" in output
+    assert "Reusing sealed experiment environment" in output
     assert "Pandas Hello World" in output
     assert "VERIFIED: fail" not in output
     assert "VERIFIED: pass" in output

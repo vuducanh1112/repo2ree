@@ -1,7 +1,7 @@
 """What makes a bundle run without repo2ree — and the verbs it runs by.
 
 Reproducing an REE means acquiring its source, assembling a clean workspace,
-building the runtime, testing activation, and running the experiments. The
+building the experiment environment, testing activation, and running the experiments. The
 workbench does that by dispatching commands; a stranger who downloaded a bundle
 does it by running ``sh run.sh``. Both must mean the same thing by every step,
 or a bundle stops being evidence of anything.

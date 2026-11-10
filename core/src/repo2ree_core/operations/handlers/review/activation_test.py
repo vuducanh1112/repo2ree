@@ -1,4 +1,4 @@
-"""Probe the runtime a review attempt certified, inside that attempt's workspace.
+"""Probe the experiment environment a review attempt certified, inside that attempt's workspace.
 
 The reviewer-side counterpart of the author's ``activation_test`` step, and the
 only review step that certifies nothing by comparison: there is no author
@@ -6,7 +6,7 @@ artifact to reproduce, so the reviewer's own probe is the whole claim.
 
 Two consequences a comparison would otherwise have carried: the ``basis`` is
 inherited from the attempt rather than chosen, and the probe is bound to the
-runtime digest the build recorded. A runtime that does not come up *completes*
+experiment environment digest the build recorded. An experiment environment that does not come up *completes*
 the step with a ``failed`` verdict; only conditions that stop it probing at all
 fail the step. See ``docs/engineering/explanation/review-evidence.md``.
 """
@@ -19,7 +19,7 @@ from repo2ree_core.evidence.review.store import write_review_activation_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
-    CertifiedRuntime,
+    CertifiedExperimentEnvironment,
     ReviewRunnableStep,
     open_review_run,
 )
@@ -46,14 +46,14 @@ def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
     )
 
 
-def _admit(_record: ReviewRecord, certified: CertifiedRuntime) -> str | None:
+def _admit(_record: ReviewRecord, certified: CertifiedExperimentEnvironment) -> str | None:
     """Unlike an experiment, a probe of nothing is not a probe.
 
-    Activation exists to say the *runtime* comes up, so a baseline that declares
+    Activation exists to say the *experiment environment* comes up, so a baseline that declares
     none has no question here to answer.
     """
-    if not certified.runtime_path:
-        return "The certified build recorded no runtime artifact to activate"
+    if not certified.experiment_environment_path:
+        return "The certified build recorded no experiment environment artifact to activate"
     return None
 
 
@@ -61,10 +61,10 @@ _STEP = ReviewRunnableStep(
     step="activation",
     noun="review activation",
     subject="activation",
-    requires="build",
-    requires_message="Certify the runtime before probing whether it is inhabitable",
-    runtime_purpose="to activate",
-    runtime_retry_purpose="to activate",
+    requires="build_experiment_environment",
+    requires_message="Certify the experiment environment before probing whether it is inhabitable",
+    experiment_environment_purpose="to activate",
+    experiment_environment_retry_purpose="to activate",
     admit=_admit,
     select=_select,
     unresolvable="the author baseline cannot be activated",
@@ -99,8 +99,8 @@ def handle_review_activation_test(
     run_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.run_script)
     if run_script_digest is None:
         return opened.step.stop("failed", "the activation script disappeared after it ran")
-    if certified.runtime_digest is None:
-        return opened.step.stop("failed", "the certified runtime disappeared after activation")
+    if certified.experiment_environment_digest is None:
+        return opened.step.stop("failed", "the certified experiment environment disappeared after activation")
     verify_script_digest = (
         digest_file_if_exists(opened.review_layout.workspace / activation.verify_script)
         if activation.verify_script
@@ -118,28 +118,28 @@ def handle_review_activation_test(
         verify_script_path=ReePath(activation.verify_script) if activation.verify_script else None,
         verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=WorkspacePath(certified.runtime_path),
-        runtime_digest=Digest(certified.runtime_digest),
+        experiment_environment_path=WorkspacePath(certified.experiment_environment_path),
+        experiment_environment_digest=Digest(certified.experiment_environment_digest),
     )
     activation_outcome = ActivationOutcome(
         basis=certified.basis,
         verdict=verdict,
-        runtime_digest=certified.runtime_digest,
+        experiment_environment_digest=certified.experiment_environment_digest,
         run_exit_code=outcome.run_outputs.exit_code,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
     )
     write_review_activation_evidence(opened.review_layout, receipt, activation_outcome)
     _log_outcome(activation_outcome, log=log)
-    # Completed either way: a runtime that will not come up is this step
+    # Completed either way: an experiment environment that will not come up is this step
     # working, not failing. Recording it as a failure would put the attempt into
     # ``failed`` and lose the difference between "the review could not run" and
-    # "the review found the runtime uninhabitable".
+    # "the review found the experiment environment uninhabitable".
     opened.step.settle(
         opened.step.record.model_copy(update={"activation_receipt": receipt, "activation_outcome": activation_outcome}),
         timing,
         verdict=verdict,
         basis=certified.basis,
-        runtime_digest=certified.runtime_digest,
+        experiment_environment_digest=certified.experiment_environment_digest,
     )
 
     outputs = ReviewActivationTestOutputs(
@@ -155,7 +155,8 @@ def _log_outcome(outcome: ActivationOutcome, *, log: LogSink) -> None:
     log(
         "system",
         "info" if outcome.verdict == "passed" else "warn",
-        f"activation {outcome.verdict} ({outcome.basis}) against runtime {outcome.runtime_digest or 'none'}",
+        f"activation {outcome.verdict} ({outcome.basis}) "
+        f"against experiment environment {outcome.experiment_environment_digest or 'none'}",
     )
     if outcome.verdict == "failed":
         log(

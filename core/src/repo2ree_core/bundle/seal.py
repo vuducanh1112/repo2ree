@@ -72,7 +72,7 @@ def seal_ree(
     layout: ReeLayout,
     *,
     source_included: bool,
-    runtime_included: bool,
+    experiment_environment_included: bool,
     results_included: bool,
     sealed_at: UtcInstant,
     progress: ProgressSink | None = None,
@@ -94,12 +94,12 @@ def seal_ree(
             raise ValueError("Selected source snapshot is unavailable")
         if layout.snapshot_archive.is_file():
             paths.add(layout.snapshot_archive.relative_to(layout.root).as_posix())
-    runtime = ree.subject.definition.build_runtime
-    if runtime_included and runtime and runtime.runtime_path:
-        source = store.author_artifact(str(runtime.runtime_path))
+    experiment_environment = ree.subject.definition.experiment_environment
+    if experiment_environment_included and experiment_environment and experiment_environment.artifact_path:
+        source = store.author_artifact(str(experiment_environment.artifact_path))
         if source is None:
-            raise ValueError("Selected runtime is unavailable")
-        target = layout.artifacts / PurePosixPath(str(runtime.runtime_path)).name
+            raise ValueError("Selected experiment environment is unavailable")
+        target = layout.artifacts / PurePosixPath(str(experiment_environment.artifact_path)).name
         if target != source:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)

@@ -1,4 +1,4 @@
-"""Runtime execution mechanics: subprocesses and runnables.
+"""Experiment environment execution mechanics: subprocesses and runnables.
 
     process             the generic cancellable subprocess runner
     experiment/spec     projecting a portable definition into an executable plan

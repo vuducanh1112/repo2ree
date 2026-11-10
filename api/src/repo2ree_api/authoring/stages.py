@@ -30,7 +30,7 @@ from repo2ree_api.workbench.commands import require_handle
 from repo2ree_protocol.command import (
     ActivationTestArgs,
     ActivationTestCommand,
-    BuildRuntimeCommand,
+    BuildExperimentEnvironmentCommand,
     CrossCheckSbomArgs,
     CrossCheckSbomCommand,
     EvaluateDependencyScoreArgs,
@@ -41,7 +41,7 @@ from repo2ree_protocol.command import (
     RunExperimentCommand,
 )
 from repo2ree_ree.reproducibility import ReproducibilityReport
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 stages_router = APIRouter(tags=["runs"])
 
@@ -146,32 +146,38 @@ def _evaluation_report(ree_id: str) -> dict[str, Any]:
 
 
 # ================================================
-# Build runtime
+# Build experiment environment
 # ================================================
 
 
-class CreateBuildRuntimeRunPayload(CreateRunPayload):
+class CreateBuildExperimentEnvironmentRunPayload(CreateRunPayload):
     """Run the reserved build script. Takes no parameters of its own."""
 
 
 @stages_router.post(
-    "/api/v1/rees/{ree_id}/build-runtime",
-    operation_id="startBuild",
+    "/api/v1/rees/{ree_id}/build-experiment-environment",
+    operation_id="startBuildExperimentEnvironment",
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload) -> RunSummary:
+def create_build_experiment_environment_run(
+    ree_id: str, payload: CreateBuildExperimentEnvironmentRunPayload
+) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="build",
-                action="build_runtime",
-                command=BuildRuntimeCommand(),
-                run_id_prefix="build",
-                request_payload={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+                operation="build_experiment_environment",
+                action="build_experiment_environment",
+                command=BuildExperimentEnvironmentCommand(),
+                run_id_prefix="build_experiment_environment",
+                request_payload={
+                    "build_experiment_environment_script_path": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+                },
                 canceled_message="Build run canceled",
-                fallback_outputs={"build_runtime_script_path": RESERVED_BUILD_SCRIPT},
+                fallback_outputs={
+                    "build_experiment_environment_script_path": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+                },
                 idempotency_key=payload.idempotency_key,
             )
         )
@@ -184,9 +190,9 @@ def create_build_runtime_run(ree_id: str, payload: CreateBuildRuntimeRunPayload)
 
 
 class CreateGenerateSbomRunPayload(CreateRunPayload):
-    """Scan the declared runtime artifact. Takes no parameters of its own.
+    """Scan the declared experiment environment artifact. Takes no parameters of its own.
 
-    Which artifact gets scanned is the build recipe's ``runtime_path``, which
+    Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
     the author declared before the build ran and the build receipt binds. The
     handler reads it there; a client cannot name a different one.
     """
@@ -221,7 +227,7 @@ def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload)
 
 
 class CreateCrossCheckSbomRunPayload(CreateRunPayload):
-    """Cross-check the recorded SBOM against the built runtime. No parameters."""
+    """Cross-check the recorded SBOM against the built experiment environment. No parameters."""
 
 
 @stages_router.post(

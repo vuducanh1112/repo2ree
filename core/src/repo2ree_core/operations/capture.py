@@ -27,7 +27,7 @@ from repo2ree_protocol.command import (
     Command,
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
-    ReviewBuildRuntimeCommand,
+    ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
@@ -60,7 +60,7 @@ def capture_command(
         cmd,
         (
             ReviewAcquireSourceCommand,
-            ReviewBuildRuntimeCommand,
+            ReviewBuildExperimentEnvironmentCommand,
             ReviewActivationTestCommand,
             ReviewRunExperimentCommand,
         ),
@@ -334,7 +334,15 @@ def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
         return None
     standing = {
         name: step.evidence
-        for name in ("source", "evaluation", "hardware", "runtime", "sbom", "sbom_cross_check", "test_activation")
+        for name in (
+            "source",
+            "evaluation",
+            "hardware",
+            "experiment_environment",
+            "sbom",
+            "sbom_cross_check",
+            "test_activation",
+        )
         if (step := getattr(report, name)) is not None
     }
     standing.update({f"experiment:{item.name}": item.run.evidence for item in report.experiments})

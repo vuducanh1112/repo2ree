@@ -5,7 +5,7 @@ import type { LintFinding, LintReport, LintTierStatus } from "@shell/infra/api/a
 export type { LintFinding } from "@shell/infra/api/apiTypes";
 
 export type LintTargetKind =
-  | "build"
+  | "build_experiment_environment"
   | "activation_run"
   | "activation_verify"
   | "experiment_run"

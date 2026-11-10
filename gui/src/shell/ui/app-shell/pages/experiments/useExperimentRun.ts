@@ -34,7 +34,7 @@ function mapExperimentOutputs(
     exitCode: (outputs.exit_code as number | null) ?? null,
     verifyExitCode: outputs.verify_exit_code as number | null | undefined,
     verdict: outputs.verdict as "pass" | "fail" | undefined,
-    runtimePath: outputs.runtime_path as string | undefined,
+    experimentEnvironmentPath: outputs.experiment_environment_path as string | undefined,
   };
 }
 

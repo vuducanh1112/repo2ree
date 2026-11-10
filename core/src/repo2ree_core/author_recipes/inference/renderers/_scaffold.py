@@ -2,12 +2,12 @@
 
 Activation and experiment run scripts share a shape: an empty ``set --`` the
 author must fill with the command, a guard that exits 64 if it is still empty,
-and — when the runtime image declared any — the detected candidates rendered as
+and — when the experiment environment image declared any — the detected candidates rendered as
 *commented* ``set --`` examples (suggestions, never selected). Centralizing the
 shape here keeps the four renderers to just their runtime-load/run plumbing.
 
 ``set --`` is a transparent, quoting-safe argv form: it needs no ``eval``, does
-no accidental word-splitting, and assumes no shell in the runtime image.
+no accidental word-splitting, and assumes no shell in the experiment environment image.
 """
 
 from __future__ import annotations
@@ -30,13 +30,16 @@ def candidate_examples_block(candidates: list[ScriptCommandCandidate], *, noun: 
     'experiment'); it reads directly after 'the', so it carries no article."""
     if not candidates:
         return (
-            f"# No command was detected in the runtime, so none is suggested. Define the {noun} command\n"
+            "# No command was detected in the experiment environment, so none is suggested.\n"
+            f"# Define the {noun} command\n"
             "# on the 'set --' line below."
         )
-    lines = ["# Detected candidate command(s) from the runtime image (review before using):"]
+    lines = ["# Detected candidate command(s) from the experiment environment image (review before using):"]
     lines.extend(f"#   {_example(candidate)}" for candidate in candidates)
     lines.append("#")
-    lines.append(f"# They stay commented because a runtime's own command is not necessarily the {noun} command.")
+    lines.append(
+        f"# They stay commented because an experiment environment's own command is not necessarily the {noun} command."
+    )
     return "\n".join(lines)
 
 

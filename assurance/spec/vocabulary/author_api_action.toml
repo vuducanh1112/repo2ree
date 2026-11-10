@@ -62,16 +62,16 @@ write_file = "Create or overwrite a file in the REE's overlay."
 delete_file = "Delete a file from the REE's overlay."
 
 [facts.action.groups.assistance]
-suggest_scripts = "Ask for candidate build and activation scripts."
+suggest_scripts = "Ask for candidate build experiment environment and activation scripts."
 lint_scripts = "Check the REE's scripts."
 
 [facts.action.groups.evidence]
 evaluate_reproducibility = "Assess how reproducible the source's dependencies are."
 observe_hardware = "Record the hardware the REE runs on."
-build_runtime = "Build the runtime with the build script."
-generate_sbom = "List what the built runtime contains."
+build_experiment_environment = "Build the experiment environment with the build experiment environment script."
+generate_sbom = "List what the built experiment environment contains."
 cross_check_sbom = "Compare the declared dependencies with the SBOM."
-test_activation = "Check that the runtime activates."
+test_activation = "Check that the experiment environment activates."
 run_experiment = "Run one declared experiment and verify its outputs."
 
 [facts.action.groups.lifecycle]

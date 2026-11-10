@@ -14,7 +14,7 @@ describe("enforceSourceOriginRules", () => {
         sourceAcquiredBy: "upload",
         sourceIncluded: true,
       },
-      artifactStatus: { runtimeIncluded: false },
+      artifactStatus: { experimentEnvironmentIncluded: false },
       evaluationState: { dependencyLevel: 0 },
     });
 
@@ -35,7 +35,7 @@ describe("enforceSourceOriginRules", () => {
     const state = {
       reeSpec,
       workspaceSourceState,
-      artifactStatus: { runtimeIncluded: true },
+      artifactStatus: { experimentEnvironmentIncluded: true },
       evaluationState: { dependencyLevel: 2 },
     };
     const result = enforceSourceOriginRules(state);

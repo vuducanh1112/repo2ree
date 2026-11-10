@@ -59,7 +59,15 @@ CURRENT = "current"
 STALE = "stale"
 MISSING = "missing"
 NOT_APPLICABLE = "not_applicable"
-STEP_ORDER = ("source", "evaluation", "hardware", "runtime", "sbom", "sbom_cross_check", "test_activation")
+STEP_ORDER = (
+    "source",
+    "evaluation",
+    "hardware",
+    "experiment_environment",
+    "sbom",
+    "sbom_cross_check",
+    "test_activation",
+)
 
 # A workbench's connection, its store, the facts it is drawn by, and the state it opens in.
 SESSION = "WorkbenchSession"

@@ -7,11 +7,11 @@ from typing import ClassVar, Protocol
 from repo2ree_authoring.lint.catalog import catalog_codes
 from repo2ree_authoring.lint.models import ScriptContext
 from repo2ree_authoring.lint.rules.exit_status import PipeMaskingRule
+from repo2ree_authoring.lint.rules.experiment_environment_reference import ExperimentEnvironmentReferenceRule
 from repo2ree_authoring.lint.rules.placeholders import (
     EmptyCommandScaffoldRule,
     UneditedPlaceholderRule,
 )
-from repo2ree_authoring.lint.rules.runtime_reference import RuntimeReferenceRule
 from repo2ree_protocol.command import TargetKind
 from repo2ree_protocol.lint import Finding
 
@@ -29,7 +29,7 @@ RULES: tuple[LintRule, ...] = (
     UneditedPlaceholderRule(),
     EmptyCommandScaffoldRule(),
     PipeMaskingRule(),
-    RuntimeReferenceRule(),
+    ExperimentEnvironmentReferenceRule(),
 )
 
 

@@ -10,7 +10,7 @@ import { CANVAS_NODES, type NodeZone } from "./canvasNodes";
 // and `provision`/`ree-load` raise the lab itself rather than a station on it).
 const PAGE_BY_OPERATION: Readonly<Partial<Record<ReeRunOperation, AppShellPage>>> = {
   source: PAGE.SOURCE,
-  build: PAGE.BUILD,
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
   sbom: PAGE.SBOM,
   // The cross-check is the second operation on the SBOM page.
   crosscheck: PAGE.SBOM,

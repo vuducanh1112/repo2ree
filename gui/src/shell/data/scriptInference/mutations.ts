@@ -23,8 +23,8 @@ export interface ScriptInferenceOutcome {
  * persists nothing — the returned body becomes a script only when the author
  * saves it — so there are no queries to invalidate on success.
  */
-export function useGenerateBuildScript(reeId?: string) {
-  return useGenerateScriptForTarget("build", undefined, reeId);
+export function useGenerateBuildExperimentEnvironmentScript(reeId?: string) {
+  return useGenerateScriptForTarget("build_experiment_environment", undefined, reeId);
 }
 
 /**

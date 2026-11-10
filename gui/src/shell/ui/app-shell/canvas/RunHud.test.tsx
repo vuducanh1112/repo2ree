@@ -6,7 +6,11 @@ import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
 import { RunHud } from "./RunHud";
 
-const run = (runId: string, operation: "source" | "build", status: "running" | "failed") => ({
+const run = (
+  runId: string,
+  operation: "source" | "build_experiment_environment",
+  status: "running" | "failed",
+) => ({
   run_id: runId,
   ree_id: "ree-1",
   operation,
@@ -24,7 +28,7 @@ const run = (runId: string, operation: "source" | "build", status: "running" | "
 describe("RunHud", () => {
   it("follows an active run, filters its streams, and exposes failed history", async () => {
     const user = userEvent.setup();
-    const buildRun = run("build-2", "build", "running");
+    const buildRun = run("build-2", "build_experiment_environment", "running");
     const sourceRun = run("source-1", "source", "failed");
     const listRuns = vi.fn().mockResolvedValue({ runs: [buildRun, sourceRun], next_cursor: null });
     const getRun = vi
@@ -65,7 +69,10 @@ describe("RunHud", () => {
     // Auto-follow lands on the active run's tab once the run list resolves, so
     // opening the console from the footer shows whatever ran last.
     await waitFor(() =>
-      expect(screen.getByRole("tab", { name: "Build" })).toHaveAttribute("aria-selected", "true"),
+      expect(screen.getByRole("tab", { name: "Build Experiment Environment" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
     );
     expect(await screen.findByText("building")).toBeInTheDocument();
 

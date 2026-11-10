@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from repo2ree_core.author_recipes.inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
-from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_INFERENCE_DAG
+from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.author_recipes.inference.engine import DagValidationError, validate_dag
 from repo2ree_core.author_recipes.inference.registry import CHECKS, RENDERERS, RESOLVERS
@@ -22,7 +22,7 @@ def _validate(dag: DecisionDag) -> None:
 
 
 def test_reference_build_dag_is_valid() -> None:
-    _validate(BUILD_INFERENCE_DAG)  # must not raise
+    _validate(BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG)  # must not raise
 
 
 def test_activation_and_experiment_dags_are_valid() -> None:
@@ -45,7 +45,7 @@ def test_check_short_circuit_to_non_not_inferred_result_is_rejected() -> None:
 
 
 def _mutate(replace: dict[str, object]) -> DecisionDag:
-    dag = BUILD_INFERENCE_DAG.model_copy(deep=True)
+    dag = BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.model_copy(deep=True)
     nodes = [replace.get(node.id, node) for node in dag.nodes]
     if "__extra__" in replace:
         nodes.append(replace["__extra__"])

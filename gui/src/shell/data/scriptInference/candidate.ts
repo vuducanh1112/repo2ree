@@ -6,7 +6,7 @@ import { dagForTrace, findResult, type InferenceResult, traceForResult } from ".
 // engine infers them — the reduction from report to loadable script is
 // identical, so it lives here once. Build used to have its own copy of this
 // file and fell behind when the build DAG started emitting blocking warnings.
-export type ScriptTargetKind = "build" | "activation_run" | "experiment_run";
+export type ScriptTargetKind = "build_experiment_environment" | "activation_run" | "experiment_run";
 
 function matches(kind: ScriptTargetKind, experimentName?: string) {
   return (result: InferenceResult): boolean => {
@@ -44,8 +44,8 @@ export function selectCandidate(
   // declared the path or the renderer fell back to its default, so this says
   // nothing about which — deciding that is the caller's, since only it knows
   // what is currently declared.
-  const runtimePath = candidate.dependencies?.find(
-    (dep) => dep.kind === "runtime_declaration",
+  const experimentEnvironmentPath = candidate.dependencies?.find(
+    (dep) => dep.kind === "experiment_environment_declaration",
   )?.path;
   return {
     status: "generated",
@@ -55,7 +55,7 @@ export function selectCandidate(
       application: candidate.application,
       alternativeCount: candidates.length,
       blockingMessages,
-      runtimePath: runtimePath ?? undefined,
+      experimentEnvironmentPath: experimentEnvironmentPath ?? undefined,
     },
   };
 }

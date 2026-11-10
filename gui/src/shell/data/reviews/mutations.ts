@@ -39,7 +39,7 @@ function openedReviewId(run: RunSummary): string | undefined {
  * time rather than at hook time: the attempt to build in is whichever one the
  * source step opened, which is not known when the console mounts.
  */
-export function useStartBuildReviewMutation() {
+export function useStartBuildExperimentEnvironmentReviewMutation() {
   const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
   const invalidate = useReviewInvalidation(reeId);
@@ -48,7 +48,10 @@ export function useStartBuildReviewMutation() {
     mutationFn: ({ reviewId, basis = "auto" }: { reviewId: string; basis?: ReviewBasisRequest }) =>
       // The rebuilt workspace is kept: activation runs in it, and on an
       // independent basis the runtime it holds exists nowhere else.
-      runtime.reeApi.startBuildReview(reeId, reviewId, { prune_workspace: false, basis }),
+      runtime.reeApi.startBuildExperimentEnvironmentReview(reeId, reviewId, {
+        prune_workspace: false,
+        basis,
+      }),
     onSuccess: invalidate,
   });
 }

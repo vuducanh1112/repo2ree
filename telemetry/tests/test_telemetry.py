@@ -96,11 +96,11 @@ def test_command_span_attrs_apply_only_present_identity_fields() -> None:
     span = _FakeSpan()
     protocol_span = cast(Span, span)
 
-    CommandSpanAttrs(operation="build_runtime", run_id="run-1").apply(protocol_span)
+    CommandSpanAttrs(operation="build_experiment_environment", run_id="run-1").apply(protocol_span)
     record_ree_id(protocol_span, "ree-1")
 
     assert span.attributes == {
-        "repo2ree.operation": "build_runtime",
+        "repo2ree.operation": "build_experiment_environment",
         "repo2ree.run_id": "run-1",
         "repo2ree.ree_id": "ree-1",
     }
@@ -403,7 +403,7 @@ def test_record_current_span_facts_targets_the_active_span() -> None:
     # facts aimed at it must go nowhere rather than raise.
     token = _attach_span(0x33333333333333333333333333333333, 0x4444444444444444)
     try:
-        record_current_span_facts({"operation": "build_runtime"})
+        record_current_span_facts({"operation": "build_experiment_environment"})
     finally:
         context.detach(token)  # type: ignore[arg-type]
 
@@ -411,12 +411,12 @@ def test_record_current_span_facts_targets_the_active_span() -> None:
     exporter = InMemorySpanExporter()
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     with provider.get_tracer(__name__).start_as_current_span("run"):
-        record_current_span_facts({"operation": "build_runtime"}, namespace="arg")
+        record_current_span_facts({"operation": "build_experiment_environment"}, namespace="arg")
     provider.shutdown()
 
     (recorded,) = exporter.get_finished_spans()
     assert recorded.attributes is not None
-    assert recorded.attributes["repo2ree.arg.operation"] == "build_runtime"
+    assert recorded.attributes["repo2ree.arg.operation"] == "build_experiment_environment"
 
 
 def test_current_trace_context_is_none_without_a_valid_span() -> None:
@@ -572,7 +572,7 @@ def test_setup_logs_returns_a_provider_backing_a_logging_handler(
 # ================================================
 
 
-def _relayed_payload(span_name: str = "command.build_runtime") -> str:
+def _relayed_payload(span_name: str = "command.build_experiment_environment") -> str:
     """Produce one real relay payload the way the executor does.
 
     Drives ``_RelaySpanExporter`` with a genuine ended span, so everything
@@ -611,7 +611,7 @@ def test_setup_relay_tracing_streams_the_executors_spans_for_relay(monkeypatch: 
     # Registered globally in the executor process; here it is captured, so the
     # span has to be started on the provider directly.
     (provider,) = registered
-    with provider.get_tracer(__name__).start_as_current_span("command.build_runtime"):
+    with provider.get_tracer(__name__).start_as_current_span("command.build_experiment_environment"):
         pass
     provider.shutdown()
 
@@ -781,11 +781,11 @@ def test_relayed_console_sink_skips_a_malformed_payload(capsys: pytest.CaptureFi
     # A payload that survives base64 but is not OTLP protobuf: dropped with a
     # warning, and the good payload beside it still lands.
     _relayed_console_sink(
-        [base64.b64encode(b"not-a-protobuf").decode("ascii"), _relayed_payload("command.build_runtime")]
+        [base64.b64encode(b"not-a-protobuf").decode("ascii"), _relayed_payload("command.build_experiment_environment")]
     )
 
     names = [json.loads(line)["name"] for line in capsys.readouterr().out.splitlines()]
-    assert names == ["command.build_runtime"]
+    assert names == ["command.build_experiment_environment"]
 
 
 def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape(

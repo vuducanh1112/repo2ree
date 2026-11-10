@@ -1,3 +1,3 @@
 export { CrossCheckCard } from "./CrossCheckCard";
-export { RuntimeScanTargetCard } from "./RuntimeScanTargetCard";
+export { ExperimentEnvironmentScanTargetCard } from "./ExperimentEnvironmentScanTargetCard";
 export { SbomOutputCard } from "./SbomOutputCard";

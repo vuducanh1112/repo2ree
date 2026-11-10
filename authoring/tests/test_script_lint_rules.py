@@ -131,39 +131,42 @@ def test_a_verify_script_may_pipe_freely() -> None:
 
 
 # ================================================
-# Referencing the declared runtime
+# Referencing the declared experiment environment
 # ================================================
 
 
-def test_a_script_that_never_names_the_declared_runtime_is_reported() -> None:
-    report = _lint("docker run img python main.py\n", declarations=ScriptDeclarations(runtime_path="runtime.tar"))
-    findings = [f for f in report.findings if f.code == "runtime_not_referenced"]
+def test_a_script_that_never_names_the_declared_experiment_environment_is_reported() -> None:
+    report = _lint(
+        "docker run img python main.py\n",
+        declarations=ScriptDeclarations(experiment_environment_path="runtime.tar"),
+    )
+    findings = [f for f in report.findings if f.code == "experiment_environment_not_referenced"]
     assert len(findings) == 1
     assert findings[0].detail == "runtime.tar"
 
 
-def test_naming_the_runtime_once_in_an_assignment_is_enough() -> None:
+def test_naming_the_experiment_environment_once_in_an_assignment_is_enough() -> None:
     # The templates name the path once and use the variable thereafter, which is
     # the whole reason this rule is a mention check and not a dataflow claim.
-    source = 'RUNTIME_ARTIFACT="runtime.tar"\ndocker load --input "$RUNTIME_ARTIFACT"\n'
-    report = _lint(source, declarations=ScriptDeclarations(runtime_path="runtime.tar"))
-    assert "runtime_not_referenced" not in _codes(report)
+    source = 'EXPERIMENT_ENVIRONMENT_ARTIFACT="runtime.tar"\ndocker load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"\n'
+    report = _lint(source, declarations=ScriptDeclarations(experiment_environment_path="runtime.tar"))
+    assert "experiment_environment_not_referenced" not in _codes(report)
 
 
-def test_no_declared_runtime_means_nothing_to_say_about_one() -> None:
-    report = _lint("docker run img\n", declarations=ScriptDeclarations(runtime_path=None))
-    assert "runtime_not_referenced" not in _codes(report)
+def test_no_declared_experiment_environment_means_nothing_to_say_about_one() -> None:
+    report = _lint("docker run img\n", declarations=ScriptDeclarations(experiment_environment_path=None))
+    assert "experiment_environment_not_referenced" not in _codes(report)
 
 
 def test_no_declarations_at_all_mean_nothing_to_say_about_one() -> None:
     report = _lint("docker run img\n", declarations=None)
-    assert "runtime_not_referenced" not in _codes(report)
+    assert "experiment_environment_not_referenced" not in _codes(report)
 
 
-def test_a_verify_script_is_not_expected_to_touch_the_runtime() -> None:
+def test_a_verify_script_is_not_expected_to_touch_the_experiment_environment() -> None:
     report = _lint(
         "grep -Fq x result.txt\n",
         kind="experiment_verify",
-        declarations=ScriptDeclarations(runtime_path="runtime.tar"),
+        declarations=ScriptDeclarations(experiment_environment_path="runtime.tar"),
     )
-    assert "runtime_not_referenced" not in _codes(report)
+    assert "experiment_environment_not_referenced" not in _codes(report)

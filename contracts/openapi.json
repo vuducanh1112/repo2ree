@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_runtime.runtime_path`, then `startBuild`.\n6. `generateScriptCandidates` also scaffolds the activation script, then\n   `startActivationTest`. The scaffolds refuse to run until you fill in the command.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script; `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also scaffolds the activation script, then\n   `startActivationTest`. The scaffolds refuse to run until you fill in the command.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script; `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -4017,13 +4017,13 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/build-runtime": {
+    "/api/v1/rees/{ree_id}/build-experiment-environment": {
       "post": {
         "tags": [
           "runs"
         ],
-        "summary": "Create Build Runtime Run",
-        "operationId": "startBuild",
+        "summary": "Create Build Experiment Environment Run",
+        "operationId": "startBuildExperimentEnvironment",
         "parameters": [
           {
             "name": "ree_id",
@@ -4040,7 +4040,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBuildRuntimeRunPayload"
+                "$ref": "#/components/schemas/CreateBuildExperimentEnvironmentRunPayload"
               }
             }
           }
@@ -6287,14 +6287,14 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/build:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce": {
       "post": {
         "tags": [
           "reviews"
         ],
         "summary": "Start Build Review",
-        "description": "Rebuild the runtime inside an attempt whose source was already reproduced.\n\nAddressed by review id rather than minting a new one: the build is only\nmeaningful against the source *this* attempt fetched for itself, and the\nworkbench rejects the command outright when that step has not settled.",
-        "operationId": "startBuildReview",
+        "description": "Rebuild the experiment environment inside an attempt whose source was already reproduced.\n\nAddressed by review id rather than minting a new one: the build is only\nmeaningful against the source *this* attempt fetched for itself, and the\nworkbench rejects the command outright when that step has not settled.",
+        "operationId": "startBuildExperimentEnvironmentReview",
         "parameters": [
           {
             "name": "ree_id",
@@ -6320,7 +6320,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBuildReviewPayload"
+                "$ref": "#/components/schemas/CreateBuildExperimentEnvironmentReviewPayload"
               }
             }
           }
@@ -6445,7 +6445,7 @@
           "reviews"
         ],
         "summary": "Start Activation Review",
-        "description": "Probe whether the runtime this attempt certified is inhabitable.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivationTestArgs`).",
+        "description": "Probe whether the experiment environment this attempt certified is inhabitable.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivationTestArgs`).",
         "operationId": "startActivationReview",
         "parameters": [
           {
@@ -6597,7 +6597,7 @@
           "reviews"
         ],
         "summary": "Start Experiment Review",
-        "description": "Reproduce one experiment's result inside an attempt whose runtime came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``experiments/{name}:run``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
+        "description": "Reproduce one experiment's result inside an attempt whose experiment environment came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``experiments/{name}:run``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
         "operationId": "startExperimentReview",
         "parameters": [
           {
@@ -8149,7 +8149,7 @@
             ],
             "title": "Verdict"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -8158,7 +8158,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           },
           "run_exit_code": {
             "anyOf": [
@@ -8505,213 +8505,7 @@
         "title": "BehaviourState",
         "description": "The owners' persisted state, read between two sets of journal positions."
       },
-      "BuildComparison": {
-        "properties": {
-          "policy": {
-            "type": "string",
-            "const": "sbom-closure",
-            "title": "Policy",
-            "default": "sbom-closure"
-          },
-          "basis": {
-            "type": "string",
-            "enum": [
-              "independent",
-              "bundled"
-            ],
-            "title": "Basis",
-            "default": "independent"
-          },
-          "verdict": {
-            "type": "string",
-            "enum": [
-              "identical",
-              "equivalent",
-              "different",
-              "inconclusive"
-            ],
-            "title": "Verdict"
-          },
-          "expected_runtime_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Runtime Digest"
-          },
-          "observed_runtime_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Observed Runtime Digest"
-          },
-          "expected_sbom_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Sbom Digest"
-          },
-          "observed_sbom_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Observed Sbom Digest"
-          },
-          "sbom_tool_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sbom Tool Version"
-          },
-          "expected_package_total": {
-            "type": "integer",
-            "title": "Expected Package Total",
-            "default": 0
-          },
-          "observed_package_total": {
-            "type": "integer",
-            "title": "Observed Package Total",
-            "default": 0
-          },
-          "matched": {
-            "type": "integer",
-            "title": "Matched",
-            "default": 0
-          },
-          "missing_count": {
-            "type": "integer",
-            "title": "Missing Count",
-            "default": 0
-          },
-          "extra_count": {
-            "type": "integer",
-            "title": "Extra Count",
-            "default": 0
-          },
-          "version_mismatch_count": {
-            "type": "integer",
-            "title": "Version Mismatch Count",
-            "default": 0
-          },
-          "advisory_count": {
-            "type": "integer",
-            "title": "Advisory Count",
-            "default": 0
-          },
-          "missing": {
-            "items": {
-              "$ref": "#/components/schemas/PackageDeltaRecord"
-            },
-            "type": "array",
-            "title": "Missing"
-          },
-          "extra": {
-            "items": {
-              "$ref": "#/components/schemas/PackageDeltaRecord"
-            },
-            "type": "array",
-            "title": "Extra"
-          },
-          "version_mismatches": {
-            "items": {
-              "$ref": "#/components/schemas/PackageDeltaRecord"
-            },
-            "type": "array",
-            "title": "Version Mismatches"
-          },
-          "advisory": {
-            "items": {
-              "$ref": "#/components/schemas/PackageDeltaRecord"
-            },
-            "type": "array",
-            "title": "Advisory"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "verdict"
-        ],
-        "title": "BuildComparison"
-      },
-      "BuildInfo": {
-        "properties": {
-          "version": {
-            "type": "string",
-            "title": "Version",
-            "default": ""
-          },
-          "revision": {
-            "type": "string",
-            "title": "Revision",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "title": "BuildInfo",
-        "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed workbenches\nremain compatible."
-      },
-      "BuildRuntimeDefinition": {
-        "properties": {
-          "build_runtime_script_path": {
-            "type": "string",
-            "title": "Build Runtime Script Path",
-            "default": "ree-scripts/build_script.sh"
-          },
-          "build_runtime_script_digest": {
-            "type": "string",
-            "title": "Build Runtime Script Digest"
-          },
-          "build_runtime_script_size": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Build Runtime Script Size"
-          },
-          "runtime_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Runtime Path"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "build_runtime_script_digest",
-          "build_runtime_script_size"
-        ],
-        "title": "BuildRuntimeDefinition"
-      },
-      "BuildRuntimeReceipt": {
+      "BuildExperimentEnvironmentReceipt": {
         "properties": {
           "schema_version": {
             "type": "integer",
@@ -8742,32 +8536,32 @@
           },
           "operation": {
             "type": "string",
-            "const": "build_runtime",
+            "const": "build_experiment_environment",
             "title": "Operation",
-            "default": "build_runtime"
+            "default": "build_experiment_environment"
           },
           "snapshot_digest": {
             "type": "string",
             "title": "Snapshot Digest"
           },
-          "build_runtime_script_path": {
+          "build_experiment_environment_script_path": {
             "type": "string",
-            "title": "Build Runtime Script Path"
+            "title": "Build Experiment Environment Script Path"
           },
-          "build_runtime_script_digest": {
+          "build_experiment_environment_script_digest": {
             "type": "string",
-            "title": "Build Runtime Script Digest"
+            "title": "Build Experiment Environment Script Digest"
           },
           "workspace_drift": {
             "$ref": "#/components/schemas/WorkspaceDrift"
           },
-          "runtime_path": {
+          "artifact_path": {
             "type": "string",
-            "title": "Runtime Path"
+            "title": "Artifact Path"
           },
-          "produced_runtime_digest": {
+          "produced_artifact_digest": {
             "type": "string",
-            "title": "Produced Runtime Digest"
+            "title": "Produced Artifact Digest"
           },
           "workbench_environment": {
             "anyOf": [
@@ -8789,15 +8583,15 @@
           "duration_ms",
           "recorded_at",
           "snapshot_digest",
-          "build_runtime_script_path",
-          "build_runtime_script_digest",
+          "build_experiment_environment_script_path",
+          "build_experiment_environment_script_digest",
           "workspace_drift",
-          "runtime_path",
-          "produced_runtime_digest"
+          "artifact_path",
+          "produced_artifact_digest"
         ],
-        "title": "BuildRuntimeReceipt"
+        "title": "BuildExperimentEnvironmentReceipt"
       },
-      "BuildScriptTemplates": {
+      "BuildExperimentEnvironmentScriptTemplates": {
         "properties": {
           "path": {
             "type": "string",
@@ -8816,8 +8610,25 @@
           "path",
           "templates"
         ],
-        "title": "BuildScriptTemplates",
+        "title": "BuildExperimentEnvironmentScriptTemplates",
         "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry for an\nenvironment (``is_default``) is the content a fresh REE's build script there is\nseeded with."
+      },
+      "BuildInfo": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": ""
+          },
+          "revision": {
+            "type": "string",
+            "title": "Revision",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "BuildInfo",
+        "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed workbenches\nremain compatible."
       },
       "BundleContents": {
         "properties": {
@@ -8951,8 +8762,8 @@
               "source",
               "dependency_inventory",
               "script",
-              "runtime_artifact",
-              "runtime_declaration",
+              "experiment_environment_artifact",
+              "experiment_environment_declaration",
               "experiment_declaration",
               "baseline_result"
             ],
@@ -9149,7 +8960,7 @@
         "title": "CreateActivationTestRunPayload",
         "description": "Run the reserved activation script. Takes no parameters of its own."
       },
-      "CreateBuildReviewPayload": {
+      "CreateBuildExperimentEnvironmentReviewPayload": {
         "properties": {
           "idempotency_key": {
             "anyOf": [
@@ -9180,10 +8991,10 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateBuildReviewPayload",
-        "description": "Reproduce the runtime build inside an existing review attempt."
+        "title": "CreateBuildExperimentEnvironmentReviewPayload",
+        "description": "Reproduce the experiment environment build inside an existing review attempt."
       },
-      "CreateBuildRuntimeRunPayload": {
+      "CreateBuildExperimentEnvironmentRunPayload": {
         "properties": {
           "idempotency_key": {
             "anyOf": [
@@ -9199,7 +9010,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateBuildRuntimeRunPayload",
+        "title": "CreateBuildExperimentEnvironmentRunPayload",
         "description": "Run the reserved build script. Takes no parameters of its own."
       },
       "CreateCrossCheckSbomRunPayload": {
@@ -9219,7 +9030,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CreateCrossCheckSbomRunPayload",
-        "description": "Cross-check the recorded SBOM against the built runtime. No parameters."
+        "description": "Cross-check the recorded SBOM against the built experiment environment. No parameters."
       },
       "CreateEvaluateRunPayload": {
         "properties": {
@@ -9299,7 +9110,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CreateGenerateSbomRunPayload",
-        "description": "Scan the declared runtime artifact. Takes no parameters of its own.\n\nWhich artifact gets scanned is the build recipe's ``runtime_path``, which\nthe author declared before the build ran and the build receipt binds. The\nhandler reads it there; a client cannot name a different one."
+        "description": "Scan the declared experiment environment artifact. Takes no parameters of its own.\n\nWhich artifact gets scanned is the build recipe's ``experiment_environment_path``, which\nthe author declared before the build ran and the build receipt binds. The\nhandler reads it there; a client cannot name a different one."
       },
       "CreateRunPayload": {
         "properties": {
@@ -9547,7 +9358,7 @@
                     "$ref": "#/components/schemas/StrategyOutcomesObservation"
                   },
                   {
-                    "$ref": "#/components/schemas/RuntimeContractObservation"
+                    "$ref": "#/components/schemas/ExperimentEnvironmentContractObservation"
                   },
                   {
                     "$ref": "#/components/schemas/CommandCandidatesObservation"
@@ -9560,10 +9371,10 @@
                   "propertyName": "kind",
                   "mapping": {
                     "command_candidates": "#/components/schemas/CommandCandidatesObservation",
+                    "experiment_environment_contract": "#/components/schemas/ExperimentEnvironmentContractObservation",
                     "experiment_gate": "#/components/schemas/ExperimentGateObservation",
                     "logical_root": "#/components/schemas/LogicalRootObservation",
                     "path_matches": "#/components/schemas/PathMatchesObservation",
-                    "runtime_contract": "#/components/schemas/RuntimeContractObservation",
                     "strategy_outcomes": "#/components/schemas/StrategyOutcomesObservation"
                   }
                 }
@@ -9598,13 +9409,13 @@
                   "$ref": "#/components/schemas/RequirementsProjectBinding"
                 },
                 {
-                  "$ref": "#/components/schemas/RuntimePlanBinding"
+                  "$ref": "#/components/schemas/ExperimentEnvironmentPlanBinding"
                 },
                 {
-                  "$ref": "#/components/schemas/RuntimeDeclarationBinding"
+                  "$ref": "#/components/schemas/ExperimentEnvironmentDeclarationBinding"
                 },
                 {
-                  "$ref": "#/components/schemas/RuntimeContractBinding"
+                  "$ref": "#/components/schemas/ExperimentEnvironmentContractBinding"
                 },
                 {
                   "$ref": "#/components/schemas/ImageCommandBinding"
@@ -9622,12 +9433,12 @@
                   "command_candidates": "#/components/schemas/CommandCandidatesBinding",
                   "dockerfile": "#/components/schemas/DockerfileBinding",
                   "experiment": "#/components/schemas/ExperimentBinding",
+                  "experiment_environment_contract": "#/components/schemas/ExperimentEnvironmentContractBinding",
+                  "experiment_environment_declaration": "#/components/schemas/ExperimentEnvironmentDeclarationBinding",
+                  "experiment_environment_plan": "#/components/schemas/ExperimentEnvironmentPlanBinding",
                   "image_command": "#/components/schemas/ImageCommandBinding",
                   "project_root": "#/components/schemas/ProjectRootBinding",
-                  "requirements_project": "#/components/schemas/RequirementsProjectBinding",
-                  "runtime_contract": "#/components/schemas/RuntimeContractBinding",
-                  "runtime_declaration": "#/components/schemas/RuntimeDeclarationBinding",
-                  "runtime_plan": "#/components/schemas/RuntimePlanBinding"
+                  "requirements_project": "#/components/schemas/RequirementsProjectBinding"
                 }
               }
             },
@@ -9757,7 +9568,7 @@
         "type": "object",
         "title": "DependencySummary"
       },
-      "DockerRuntimeContract": {
+      "DockerExperimentEnvironmentContract": {
         "properties": {
           "kind": {
             "type": "string",
@@ -9790,9 +9601,9 @@
           "artifact_path",
           "image_ref"
         ],
-        "title": "DockerRuntimeContract"
+        "title": "DockerExperimentEnvironmentContract"
       },
-      "DockerRuntimePlan": {
+      "DockerExperimentEnvironmentPlan": {
         "properties": {
           "kind": {
             "type": "string",
@@ -9825,7 +9636,7 @@
           "image_ref",
           "artifact_path"
         ],
-        "title": "DockerRuntimePlan"
+        "title": "DockerExperimentEnvironmentPlan"
       },
       "DockerfileBinding": {
         "properties": {
@@ -10178,7 +9989,7 @@
             ],
             "title": "Status"
           },
-          "runtime_presence": {
+          "experiment_environment_presence": {
             "anyOf": [
               {
                 "type": "string",
@@ -10192,7 +10003,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Presence"
+            "title": "Experiment Environment Presence"
           }
         },
         "additionalProperties": false,
@@ -10419,7 +10230,7 @@
             ],
             "title": "Observed Output Digest"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -10428,7 +10239,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           }
         },
         "additionalProperties": false,
@@ -10512,6 +10323,336 @@
           "run_script_size"
         ],
         "title": "ExperimentDefinition"
+      },
+      "ExperimentEnvironmentComparison": {
+        "properties": {
+          "policy": {
+            "type": "string",
+            "const": "sbom-closure",
+            "title": "Policy",
+            "default": "sbom-closure"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "independent"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "identical",
+              "equivalent",
+              "different",
+              "inconclusive"
+            ],
+            "title": "Verdict"
+          },
+          "expected_artifact_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Artifact Digest"
+          },
+          "observed_artifact_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Artifact Digest"
+          },
+          "expected_sbom_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Sbom Digest"
+          },
+          "observed_sbom_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Sbom Digest"
+          },
+          "sbom_tool_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sbom Tool Version"
+          },
+          "expected_package_total": {
+            "type": "integer",
+            "title": "Expected Package Total",
+            "default": 0
+          },
+          "observed_package_total": {
+            "type": "integer",
+            "title": "Observed Package Total",
+            "default": 0
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched",
+            "default": 0
+          },
+          "missing_count": {
+            "type": "integer",
+            "title": "Missing Count",
+            "default": 0
+          },
+          "extra_count": {
+            "type": "integer",
+            "title": "Extra Count",
+            "default": 0
+          },
+          "version_mismatch_count": {
+            "type": "integer",
+            "title": "Version Mismatch Count",
+            "default": 0
+          },
+          "advisory_count": {
+            "type": "integer",
+            "title": "Advisory Count",
+            "default": 0
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/PackageDeltaRecord"
+            },
+            "type": "array",
+            "title": "Missing"
+          },
+          "extra": {
+            "items": {
+              "$ref": "#/components/schemas/PackageDeltaRecord"
+            },
+            "type": "array",
+            "title": "Extra"
+          },
+          "version_mismatches": {
+            "items": {
+              "$ref": "#/components/schemas/PackageDeltaRecord"
+            },
+            "type": "array",
+            "title": "Version Mismatches"
+          },
+          "advisory": {
+            "items": {
+              "$ref": "#/components/schemas/PackageDeltaRecord"
+            },
+            "type": "array",
+            "title": "Advisory"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "verdict"
+        ],
+        "title": "ExperimentEnvironmentComparison"
+      },
+      "ExperimentEnvironmentContractBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "experiment_environment_contract",
+            "title": "Kind",
+            "default": "experiment_environment_contract"
+          },
+          "contract": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DockerExperimentEnvironmentContract"
+              },
+              {
+                "$ref": "#/components/schemas/VenvExperimentEnvironmentContract"
+              }
+            ],
+            "title": "Contract",
+            "discriminator": {
+              "propertyName": "kind",
+              "mapping": {
+                "docker_archive": "#/components/schemas/DockerExperimentEnvironmentContract",
+                "venv_archive": "#/components/schemas/VenvExperimentEnvironmentContract"
+              }
+            }
+          },
+          "provenance": {
+            "type": "string",
+            "enum": [
+              "inspected_artifact",
+              "unchanged_generated_build"
+            ],
+            "title": "Provenance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "contract",
+          "provenance"
+        ],
+        "title": "ExperimentEnvironmentContractBinding",
+        "description": "A resolved, non-executable experiment environment contract plus how it was established.\n\n``inspected_artifact`` inspected the built artifact itself;\n``unchanged_generated_build`` reused the constants of a still-unedited\ninference-generated build script. Downstream renderers copy the contract's\nvalues as explicit literals."
+      },
+      "ExperimentEnvironmentContractObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "experiment_environment_contract",
+            "title": "Kind",
+            "default": "experiment_environment_contract"
+          },
+          "result": {
+            "type": "string",
+            "title": "Result"
+          },
+          "experiment_environment_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Environment Kind"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenance"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "result"
+        ],
+        "title": "ExperimentEnvironmentContractObservation"
+      },
+      "ExperimentEnvironmentDeclarationBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "experiment_environment_declaration",
+            "title": "Kind",
+            "default": "experiment_environment_declaration"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Digest"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "title": "ExperimentEnvironmentDeclarationBinding"
+      },
+      "ExperimentEnvironmentDefinition": {
+        "properties": {
+          "build_experiment_environment_script_path": {
+            "type": "string",
+            "title": "Build Experiment Environment Script Path",
+            "default": "ree-scripts/build_experiment_environment.sh"
+          },
+          "build_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Build Experiment Environment Script Digest"
+          },
+          "build_experiment_environment_script_size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Build Experiment Environment Script Size"
+          },
+          "artifact_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifact Path"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "build_experiment_environment_script_digest",
+          "build_experiment_environment_script_size"
+        ],
+        "title": "ExperimentEnvironmentDefinition"
+      },
+      "ExperimentEnvironmentPlanBinding": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "experiment_environment_plan",
+            "title": "Kind",
+            "default": "experiment_environment_plan"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/DockerExperimentEnvironmentPlan"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "plan"
+        ],
+        "title": "ExperimentEnvironmentPlanBinding"
       },
       "ExperimentGateObservation": {
         "properties": {
@@ -10874,13 +11015,13 @@
             "title": "Operation",
             "default": "generate_sbom"
           },
-          "runtime_path": {
+          "experiment_environment_path": {
             "type": "string",
-            "title": "Runtime Path"
+            "title": "Experiment Environment Path"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "type": "string",
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           },
           "sbom_path": {
             "anyOf": [
@@ -10916,8 +11057,8 @@
           "finished_at",
           "duration_ms",
           "recorded_at",
-          "runtime_path",
-          "runtime_digest",
+          "experiment_environment_path",
+          "experiment_environment_digest",
           "sbom_digest",
           "sbom_format",
           "tool_version"
@@ -11305,7 +11446,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ImageCommandBinding",
-        "description": "The runtime image's declared command (Entrypoint/Cmd), parsed once when\nthe artifact is inspected and carried forward so the command-candidate check\nneed not re-open the (possibly multi-hundred-MB) archive. Absent when the\ncontract came from an unchanged generated build (no artifact to inspect); the\nexec/shell forms are mutually exclusive, matching what inspection reports."
+        "description": "The experiment environment image's declared command (Entrypoint/Cmd), parsed once when\nthe artifact is inspected and carried forward so the command-candidate check\nneed not re-open the (possibly multi-hundred-MB) archive. Absent when the\ncontract came from an unchanged generated build (no artifact to inspect); the\nexec/shell forms are mutually exclusive, matching what inspection reports."
       },
       "InferenceEngineInfo": {
         "properties": {
@@ -12139,7 +12280,7 @@
           "hardware": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "runtime": {
+          "experiment_environment": {
             "$ref": "#/components/schemas/StepAudit"
           },
           "sbom": {
@@ -12166,7 +12307,7 @@
           "source",
           "evaluation",
           "hardware",
-          "runtime",
+          "experiment_environment",
           "sbom",
           "sbom_cross_check",
           "test_activation"
@@ -12305,10 +12446,10 @@
               }
             ]
           },
-          "build_runtime": {
+          "experiment_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/BuildRuntimeDefinition"
+                "$ref": "#/components/schemas/ExperimentEnvironmentDefinition"
               },
               {
                 "type": "null"
@@ -12378,10 +12519,10 @@
               }
             ]
           },
-          "build_runtime": {
+          "experiment_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/BuildRuntimeDefinition"
+                "$ref": "#/components/schemas/ExperimentEnvironmentDefinition"
               },
               {
                 "type": "null"
@@ -12437,7 +12578,7 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Definition Patch",
-            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"build_runtime\": {\"runtime_path\": \"runtime.tar\"}}` or, once its run script is written, `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
+            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"experiment_environment\": {\"artifact_path\": \"runtime.tar\"}}` or, once its run script is written, `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
           },
           "expected_version": {
             "anyOf": [
@@ -12718,10 +12859,10 @@
               }
             ]
           },
-          "build": {
+          "experiment_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/BuildRuntimeReceipt"
+                "$ref": "#/components/schemas/BuildExperimentEnvironmentReceipt"
               },
               {
                 "type": "null"
@@ -12807,10 +12948,10 @@
             "description": "Put the source snapshot in the sealed archive.",
             "default": false
           },
-          "include_runtime": {
+          "include_experiment_environment": {
             "type": "boolean",
-            "title": "Include Runtime",
-            "description": "Put the declared runtime artifact in the sealed archive.",
+            "title": "Include Experiment Environment",
+            "description": "Put the declared experiment environment artifact in the sealed archive.",
             "default": false
           },
           "include_results": {
@@ -13379,13 +13520,13 @@
             ],
             "title": "Verify Exit Code"
           },
-          "runtime_path": {
+          "experiment_environment_path": {
             "type": "string",
-            "title": "Runtime Path"
+            "title": "Experiment Environment Path"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "type": "string",
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           }
         },
         "additionalProperties": false,
@@ -13399,12 +13540,12 @@
           "status",
           "run_script_path",
           "run_script_digest",
-          "runtime_path",
-          "runtime_digest"
+          "experiment_environment_path",
+          "experiment_environment_digest"
         ],
         "title": "ReviewActivationReceipt"
       },
-      "ReviewBuildRuntimeReceipt": {
+      "ReviewBuildExperimentEnvironmentReceipt": {
         "properties": {
           "schema_version": {
             "type": "integer",
@@ -13443,11 +13584,11 @@
           },
           "operation": {
             "type": "string",
-            "const": "build_runtime",
+            "const": "build_experiment_environment",
             "title": "Operation",
-            "default": "build_runtime"
+            "default": "build_experiment_environment"
           },
-          "build_runtime_script_path": {
+          "build_experiment_environment_script_path": {
             "anyOf": [
               {
                 "type": "string"
@@ -13456,9 +13597,9 @@
                 "type": "null"
               }
             ],
-            "title": "Build Runtime Script Path"
+            "title": "Build Experiment Environment Script Path"
           },
-          "build_runtime_script_digest": {
+          "build_experiment_environment_script_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -13467,15 +13608,15 @@
                 "type": "null"
               }
             ],
-            "title": "Build Runtime Script Digest"
+            "title": "Build Experiment Environment Script Digest"
           },
-          "runtime_path": {
+          "artifact_path": {
             "type": "string",
-            "title": "Runtime Path"
+            "title": "Artifact Path"
           },
-          "produced_runtime_digest": {
+          "produced_artifact_digest": {
             "type": "string",
-            "title": "Produced Runtime Digest"
+            "title": "Produced Artifact Digest"
           }
         },
         "additionalProperties": false,
@@ -13487,10 +13628,10 @@
           "duration_ms",
           "recorded_at",
           "status",
-          "runtime_path",
-          "produced_runtime_digest"
+          "artifact_path",
+          "produced_artifact_digest"
         ],
-        "title": "ReviewBuildRuntimeReceipt"
+        "title": "ReviewBuildExperimentEnvironmentReceipt"
       },
       "ReviewExperimentReceipt": {
         "properties": {
@@ -13592,7 +13733,7 @@
             ],
             "title": "Verify Exit Code"
           },
-          "runtime_path": {
+          "experiment_environment_path": {
             "anyOf": [
               {
                 "type": "string"
@@ -13601,9 +13742,9 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Path"
+            "title": "Experiment Environment Path"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -13612,7 +13753,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           },
           "produced_output_digest": {
             "anyOf": [
@@ -13692,20 +13833,20 @@
               }
             ]
           },
-          "build_receipt": {
+          "experiment_environment_receipt": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ReviewBuildRuntimeReceipt"
+                "$ref": "#/components/schemas/ReviewBuildExperimentEnvironmentReceipt"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "build_comparison": {
+          "experiment_environment_comparison": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/BuildComparison"
+                "$ref": "#/components/schemas/ExperimentEnvironmentComparison"
               },
               {
                 "type": "null"
@@ -13788,7 +13929,7 @@
             "type": "string",
             "enum": [
               "source",
-              "build",
+              "build_experiment_environment",
               "activation",
               "experiments"
             ],
@@ -13878,7 +14019,7 @@
             "type": "string",
             "title": "Snapshot Digest"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -13887,7 +14028,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           },
           "run_script_digest": {
             "type": "string",
@@ -14131,7 +14272,7 @@
               "provision",
               "ree-load",
               "seal",
-              "build",
+              "build_experiment_environment",
               "sbom",
               "crosscheck",
               "hbom",
@@ -14227,147 +14368,6 @@
           "created_at"
         ],
         "title": "RunSummary"
-      },
-      "RuntimeContractBinding": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "runtime_contract",
-            "title": "Kind",
-            "default": "runtime_contract"
-          },
-          "contract": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/DockerRuntimeContract"
-              },
-              {
-                "$ref": "#/components/schemas/VenvRuntimeContract"
-              }
-            ],
-            "title": "Contract",
-            "discriminator": {
-              "propertyName": "kind",
-              "mapping": {
-                "docker_archive": "#/components/schemas/DockerRuntimeContract",
-                "venv_archive": "#/components/schemas/VenvRuntimeContract"
-              }
-            }
-          },
-          "provenance": {
-            "type": "string",
-            "enum": [
-              "inspected_artifact",
-              "unchanged_generated_build"
-            ],
-            "title": "Provenance"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "contract",
-          "provenance"
-        ],
-        "title": "RuntimeContractBinding",
-        "description": "A resolved, non-executable runtime contract plus how it was established.\n\n``inspected_artifact`` inspected the built artifact itself;\n``unchanged_generated_build`` reused the constants of a still-unedited\ninference-generated build script. Downstream renderers copy the contract's\nvalues as explicit literals."
-      },
-      "RuntimeContractObservation": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "runtime_contract",
-            "title": "Kind",
-            "default": "runtime_contract"
-          },
-          "result": {
-            "type": "string",
-            "title": "Result"
-          },
-          "runtime_kind": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Runtime Kind"
-          },
-          "provenance": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provenance"
-          },
-          "detail": {
-            "type": "string",
-            "title": "Detail",
-            "default": ""
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "result"
-        ],
-        "title": "RuntimeContractObservation"
-      },
-      "RuntimeDeclarationBinding": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "runtime_declaration",
-            "title": "Kind",
-            "default": "runtime_declaration"
-          },
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Digest"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path"
-        ],
-        "title": "RuntimeDeclarationBinding"
-      },
-      "RuntimePlanBinding": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "runtime_plan",
-            "title": "Kind",
-            "default": "runtime_plan"
-          },
-          "plan": {
-            "$ref": "#/components/schemas/DockerRuntimePlan"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "plan"
-        ],
-        "title": "RuntimePlanBinding"
       },
       "SbomCrossCheckSummary": {
         "properties": {
@@ -14515,7 +14515,7 @@
       },
       "ScriptDeclarations": {
         "properties": {
-          "runtime_path": {
+          "experiment_environment_path": {
             "anyOf": [
               {
                 "type": "string"
@@ -14524,7 +14524,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Path"
+            "title": "Experiment Environment Path"
           }
         },
         "additionalProperties": false,
@@ -14560,7 +14560,7 @@
           "kind": {
             "type": "string",
             "enum": [
-              "build",
+              "build_experiment_environment",
               "activation_run",
               "activation_verify",
               "experiment_run",
@@ -14598,7 +14598,7 @@
           "kind": {
             "type": "string",
             "enum": [
-              "build",
+              "build_experiment_environment",
               "activation_run",
               "activation_verify",
               "experiment_run",
@@ -14628,8 +14628,8 @@
       },
       "ScriptTemplateCatalog": {
         "properties": {
-          "build": {
-            "$ref": "#/components/schemas/BuildScriptTemplates"
+          "build_experiment_environment": {
+            "$ref": "#/components/schemas/BuildExperimentEnvironmentScriptTemplates"
           },
           "activation": {
             "$ref": "#/components/schemas/ActivationScriptTemplates"
@@ -14647,7 +14647,7 @@
         },
         "type": "object",
         "required": [
-          "build",
+          "build_experiment_environment",
           "activation",
           "experiment",
           "verify"
@@ -14738,7 +14738,7 @@
             ],
             "title": "Source Snapshot Digest"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -14747,7 +14747,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           },
           "matching_run_id": {
             "anyOf": [
@@ -15509,7 +15509,7 @@
             "type": "string",
             "title": "Snapshot Digest"
           },
-          "runtime_path": {
+          "experiment_environment_path": {
             "anyOf": [
               {
                 "type": "string"
@@ -15518,9 +15518,9 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Path"
+            "title": "Experiment Environment Path"
           },
-          "runtime_digest": {
+          "experiment_environment_digest": {
             "anyOf": [
               {
                 "type": "string"
@@ -15529,7 +15529,7 @@
                 "type": "null"
               }
             ],
-            "title": "Runtime Digest"
+            "title": "Experiment Environment Digest"
           },
           "run_script_digest": {
             "type": "string",
@@ -15829,7 +15829,7 @@
         ],
         "title": "UploadStoredResponse"
       },
-      "VenvRuntimeContract": {
+      "VenvExperimentEnvironmentContract": {
         "properties": {
           "kind": {
             "type": "string",
@@ -15857,8 +15857,8 @@
         "required": [
           "artifact_path"
         ],
-        "title": "VenvRuntimeContract",
-        "description": "A packed Python virtual environment as the runtime substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
+        "title": "VenvExperimentEnvironmentContract",
+        "description": "A packed Python virtual environment as the experiment environment substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
       },
       "WorkbenchCapabilities": {
         "properties": {

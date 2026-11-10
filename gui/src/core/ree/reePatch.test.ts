@@ -18,7 +18,7 @@ describe("toReePatchFromSlices", () => {
       },
       originUrl: "https://example.org/repo.git",
       sourceType: "git" as const,
-      runtime: "runtime.tar.gz",
+      experimentEnvironmentPath: "runtime.tar.gz",
       sbom: "artifacts/sbom.json",
       swhid: "swh:1:dir:test",
       experiments: [
@@ -48,7 +48,7 @@ describe("toReePatchFromSlices", () => {
       sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
     };
     const artifactStatus: ArtifactStatus = {
-      runtimeIncluded: true,
+      experimentEnvironmentIncluded: true,
       sealedAt: "2026-01-02T00:00:00Z",
       sealHash: "sha256:test",
     };
@@ -79,7 +79,7 @@ describe("toReePatchFromSlices", () => {
         contributors: [],
         corresponding_author_identifier: null,
       },
-      build_runtime: { runtime_path: "runtime.tar.gz" },
+      experiment_environment: { artifact_path: "runtime.tar.gz" },
       experiments: [
         {
           name: "benchmark",
@@ -107,7 +107,7 @@ describe("toReePatchFromSlices", () => {
       }),
     ).toMatchObject({
       name: "",
-      build_runtime: { runtime_path: null },
+      experiment_environment: { artifact_path: null },
     });
   });
 
@@ -126,14 +126,14 @@ describe("toReePatchFromSlices", () => {
 
   // Clearing the declared runtime path must clear the declaration — but never
   // at the cost of the build recipe, which carries the REE's own build script.
-  it("clears an undeclared runtime path without dropping the build recipe", () => {
+  it("clears an undeclared experiment environment path without dropping the build recipe", () => {
     const patch = toReePatchFromSlices({
-      reeSpec: { ...createEmptyReeSpec(), runtime: "" },
+      reeSpec: { ...createEmptyReeSpec(), experimentEnvironmentPath: "" },
       workspaceSourceState: {},
       artifactStatus: {},
       evaluationState: {},
     });
-    expect(patch.build_runtime).toEqual({ runtime_path: null });
+    expect(patch.experiment_environment).toEqual({ artifact_path: null });
   });
 
   it("sends the environment once declared, and never clears one by leaving it out", () => {

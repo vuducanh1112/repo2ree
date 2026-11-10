@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from system_client import BUILD_SCRIPT, RUNTIME, Api
+from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT_ENVIRONMENT, Api
 
 
 def standing(api: Api, ree_id: str) -> tuple[str, str, str]:
-    """The runtime, its SBOM, and the cross-check of that SBOM against the evaluation."""
+    """The experiment environment, its SBOM, and the cross-check of that SBOM against the evaluation."""
     audit = api.audit(ree_id)
-    runtime, sbom, cross_check = (str(audit[step]["evidence"]) for step in ("runtime", "sbom", "sbom_cross_check"))
-    return runtime, sbom, cross_check
+    experiment_environment, sbom, cross_check = (
+        str(audit[step]["evidence"]) for step in ("experiment_environment", "sbom", "sbom_cross_check")
+    )
+    return experiment_environment, sbom, cross_check
 
 
 def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Callable[..., str]) -> None:
@@ -19,17 +21,19 @@ def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Call
     api.author(ree_id)
     assert standing(api, ree_id) == ("current", "missing", "missing")
 
-    # The instant project's runtime is a packed venv, not an image.
+    # The instant project's experiment environment is a packed venv, not an image.
     api.succeed(ree_id, "generate-sbom")
     api.succeed(ree_id, "cross-check-sbom")
     assert standing(api, ree_id) == ("current", "current", "current")
 
-    # A changed build script outdates the runtime; the SBOM still describes the tarball that exists.
-    build_script = str(api.infer(ree_id, "build")["candidates"][0]["body"])
-    api.write(ree_id, BUILD_SCRIPT, build_script + "# touched\n")
+    # A changed build script outdates the experiment environment; the SBOM still describes the tarball that exists.
+    build_experiment_environment_script = str(
+        api.infer(ree_id, "build_experiment_environment")["candidates"][0]["body"]
+    )
+    api.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, build_experiment_environment_script + "# touched\n")
     assert standing(api, ree_id) == ("stale", "current", "current")
     # A new tarball outdates the SBOM; the cross-check still describes the SBOM that exists.
-    api.succeed(ree_id, "build-runtime")
+    api.succeed(ree_id, "build-experiment-environment")
     assert standing(api, ree_id) == ("current", "stale", "current")
     api.succeed(ree_id, "generate-sbom")
     assert standing(api, ree_id) == ("current", "current", "stale")
@@ -37,10 +41,15 @@ def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Call
     assert standing(api, ree_id) == ("current", "current", "current")
 
     # The build is undeclared through the definition, never by deleting its script.
-    api.request("DELETE", f"/api/v1/rees/{ree_id}/files/content", params={"path": BUILD_SCRIPT}, expect=400)
+    api.request(
+        "DELETE",
+        f"/api/v1/rees/{ree_id}/files/content",
+        params={"path": BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT},
+        expect=400,
+    )
     assert standing(api, ree_id) == ("current", "current", "current")
-    # Undeclaring the runtime orphans all three.
-    api.patch(ree_id, {"build_runtime": {"runtime_path": None}})
+    # Undeclaring the experiment environment orphans all three.
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": None}})
     assert standing(api, ree_id) == ("stale", "stale", "stale")
 
 
@@ -58,8 +67,8 @@ def test_removing_the_source_clears_the_sbom_and_its_cross_check(api: Api, new_r
     api.acquire(ree_id)
     assert standing(api, ree_id)[2] == "missing"
     api.succeed(ree_id, "evaluate")
-    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
-    api.succeed(ree_id, "build-runtime")
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
+    api.succeed(ree_id, "build-experiment-environment")
     api.succeed(ree_id, "generate-sbom")
     api.succeed(ree_id, "cross-check-sbom")
     assert standing(api, ree_id) == ("current", "current", "current")

@@ -9,7 +9,7 @@ image that violates the bench contract dies with a specific message here
 instead of hanging on its first build.
 
 Capability checks never fail the probe: a bench without docker or syft is a
-bench that can't build runtimes or generate SBOMs, which is for the control
+bench that can't build experiment environments or generate SBOMs, which is for the control
 plane (and the user who picked the image) to judge.
 """
 

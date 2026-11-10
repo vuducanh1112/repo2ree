@@ -16,12 +16,14 @@ ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ComparisonBasis = Literal["independent", "bundled"]
 ReviewBasis = Literal["auto", "independent", "bundled"]
 SourceVerdict = Literal["identical", "different", "inconclusive"]
-BuildVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
+ExperimentEnvironmentVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
 ExperimentVerdict = Literal["identical", "reproduced", "different", "inconclusive"]
 ReceiptSourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
 AcquirableSourceType = Literal["git", "tarball", "zip"]
 Evidence = Literal["missing", "current", "stale", "not_applicable"]
-ScriptKind = Literal["build", "activation_run", "activation_verify", "experiment_run", "experiment_verify"]
+ScriptKind = Literal[
+    "build_experiment_environment", "activation_run", "activation_verify", "experiment_run", "experiment_verify"
+]
 InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
 
 
@@ -31,7 +33,7 @@ class InferenceRule(StrEnum):
 
 
 class InferenceDag(StrEnum):
-    BUILD = "build-inference"
+    BUILD_EXPERIMENT_ENVIRONMENT = "build-experiment-environment-inference"
 
 
 class _Response(BaseModel):
@@ -52,9 +54,9 @@ class SourceComparison(_Response):
     verdict: SourceVerdict
 
 
-class BuildComparison(_Response):
+class ExperimentEnvironmentComparison(_Response):
     basis: ComparisonBasis
-    verdict: BuildVerdict
+    verdict: ExperimentEnvironmentVerdict
     missing_count: int
     extra_count: int
 
@@ -72,7 +74,7 @@ class Review(_Response):
     review_id: str
     status: ReviewStatus
     source_comparison: SourceComparison | None = None
-    build_comparison: BuildComparison | None = None
+    experiment_environment_comparison: ExperimentEnvironmentComparison | None = None
     experiment_comparisons: tuple[ExperimentComparison, ...] = ()
 
 
@@ -141,7 +143,7 @@ class StepAudit(_Response):
 class Audit(_Response):
     source: StepAudit
     evaluation: StepAudit
-    runtime: StepAudit
+    experiment_environment: StepAudit
     sbom: StepAudit
     sbom_cross_check: StepAudit
     test_activation: StepAudit
@@ -190,7 +192,7 @@ class SourceReviewRequest(_Payload):
     basis: ReviewBasis
 
 
-class BuildReviewRequest(_Payload):
+class BuildExperimentEnvironmentReviewRequest(_Payload):
     basis: ReviewBasis
 
 
@@ -227,7 +229,7 @@ class DefinitionPatch(_Payload):
 CONTRACT_SCHEMAS: dict[type[BaseModel], str] = {
     Run: "RunSummary",
     SourceComparison: "SourceComparison",
-    BuildComparison: "BuildComparison",
+    ExperimentEnvironmentComparison: "ExperimentEnvironmentComparison",
     ExperimentComparison: "ExperimentComparison",
     Review: "ReviewRecord",
     ReviewSet: "ReviewSet",
@@ -250,7 +252,7 @@ CONTRACT_SCHEMAS: dict[type[BaseModel], str] = {
     InferenceReport: "InferenceReport",
     SourceAcquire: "SourceAcquirePayload",
     SourceReviewRequest: "CreateSourceReviewPayload",
-    BuildReviewRequest: "CreateBuildReviewPayload",
+    BuildExperimentEnvironmentReviewRequest: "CreateBuildExperimentEnvironmentReviewPayload",
     ScriptTarget: "ScriptTargetSelectorPayload",
     GenerateScripts: "GenerateScriptCandidatesPayload",
     CatalogPatch: "ReeCatalogMetadata",

@@ -19,7 +19,7 @@ from repo2ree_core.evidence.review.store import write_review_experiment_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
-    CertifiedRuntime,
+    CertifiedExperimentEnvironment,
     ReviewRunnableStep,
     open_review_run,
 )
@@ -36,17 +36,17 @@ from repo2ree_ree.receipt import RunExperimentReceipt
 from repo2ree_ree.review import EvidenceBasis, ExperimentComparison, ReviewExperimentReceipt, ReviewRecord
 
 
-def _admit(record: ReviewRecord, _certified: CertifiedRuntime) -> str | None:
+def _admit(record: ReviewRecord, _certified: CertifiedExperimentEnvironment) -> str | None:
     """A completed activation is not enough — it has to have passed.
 
-    Activation completes with a ``failed`` verdict when the runtime would not
-    come up, and every experiment run inside such a runtime would report a
+    Activation completes with a ``failed`` verdict when the experiment environment would not
+    come up, and every experiment run inside such an experiment environment would report a
     result failure that is really the activation failure wearing a different
     hat. Recording a wall of ``different`` verdicts would bury the single fact
     that explains them all.
     """
     if record.activation_outcome is None or record.activation_outcome.verdict != "passed":
-        return "This attempt's runtime would not come up; its results cannot be reproduced in it"
+        return "This attempt's experiment environment would not come up; its results cannot be reproduced in it"
     return None
 
 
@@ -76,9 +76,9 @@ def _step(experiment_name: str) -> ReviewRunnableStep:
         noun="review experiment",
         subject="the experiment",
         requires="activation",
-        requires_message="Probe the runtime before reproducing results in it",
-        runtime_purpose="to run experiments in",
-        runtime_retry_purpose="to reproduce results",
+        requires_message="Probe the experiment environment before reproducing results in it",
+        experiment_environment_purpose="to run experiments in",
+        experiment_environment_retry_purpose="to reproduce results",
         admit=_admit,
         select=select,
         unresolvable="the author baseline cannot run this experiment",
@@ -118,7 +118,7 @@ def handle_review_run_experiment(
         run_exit_code=outcome.run_outputs.exit_code,
         observed_verify_exit_code=outcome.run_outputs.verify_exit_code,
         observed_output_digest=digest_output_paths(review_layout.workspace, list(experiment.output_paths)),
-        runtime_digest=certified.runtime_digest,
+        experiment_environment_digest=certified.experiment_environment_digest,
         # The criterion as it stood in the workspace it ran in. Certification
         # compares this with the author receipt before granting a verdict.
         verify_script_digest=verify_script_digest,
@@ -140,8 +140,12 @@ def handle_review_run_experiment(
         verify_script_path=ReePath(experiment.verify_script) if experiment.verify_script else None,
         verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        runtime_path=WorkspacePath(certified.runtime_path) if certified.runtime_path else None,
-        runtime_digest=Digest(certified.runtime_digest) if certified.runtime_digest else None,
+        experiment_environment_path=WorkspacePath(certified.experiment_environment_path)
+        if certified.experiment_environment_path
+        else None,
+        experiment_environment_digest=Digest(certified.experiment_environment_digest)
+        if certified.experiment_environment_digest
+        else None,
         produced_output_digest=Digest(comparison.observed_output_digest) if comparison.observed_output_digest else None,
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
@@ -155,7 +159,7 @@ def handle_review_run_experiment(
         timing,
         verdict=comparison.verdict,
         basis=certified.basis,
-        runtime_digest=certified.runtime_digest,
+        experiment_environment_digest=certified.experiment_environment_digest,
     )
 
     outputs = ReviewRunExperimentOutputs(
@@ -176,7 +180,7 @@ def _certify(
     run_exit_code: int | None,
     observed_verify_exit_code: int | None,
     observed_output_digest: str | None,
-    runtime_digest: str | None,
+    experiment_environment_digest: str | None,
     verify_script_digest: str | None,
 ) -> ExperimentComparison:
     """Compare the reviewer's run with the author's recorded run of the same name.
@@ -207,7 +211,7 @@ def _certify(
         run_exit_code=run_exit_code,
         expected_output_digest=expected_output_digest,
         observed_output_digest=observed_output_digest,
-        runtime_digest=runtime_digest,
+        experiment_environment_digest=experiment_environment_digest,
     )
 
 

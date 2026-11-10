@@ -28,7 +28,7 @@ describe("parseAuthorReceipts", () => {
   it("flattens inline receipts in pipeline order", () => {
     const views = parseAuthorReceipts({
       source: receipt("acquire_source"),
-      build: receipt("build_runtime"),
+      experiment_environment: receipt("build_experiment_environment"),
       experiments: {
         "figure-2": receipt("run_experiment", { experiment_name: "figure-2" }),
         "figure-1": receipt("run_experiment", { experiment_name: "figure-1" }),
@@ -37,7 +37,7 @@ describe("parseAuthorReceipts", () => {
 
     expect(views.map((view) => view.title)).toEqual([
       "Source acquired",
-      "Runtime built",
+      "Experiment environment built",
       "Experiment run · figure-1",
       "Experiment run · figure-2",
     ]);
@@ -46,16 +46,16 @@ describe("parseAuthorReceipts", () => {
 
   it("keeps operation payload fields and abbreviates digests", () => {
     const [view] = parseAuthorReceipts({
-      build: receipt("build_runtime", {
-        build_runtime_script_path: "scripts/build.sh",
-        produced_runtime_digest: "sha256:0123456789abcdef0123456789abcdef",
+      experiment_environment: receipt("build_experiment_environment", {
+        build_experiment_environment_script_path: "scripts/build.sh",
+        produced_artifact_digest: "sha256:0123456789abcdef0123456789abcdef",
         workspace_drift: { status: "modified", changed_path_count: 3 },
       }),
     });
 
     expect(view.fields.map((field) => field.key)).toEqual([
-      "build_runtime_script_path",
-      "produced_runtime_digest",
+      "build_experiment_environment_script_path",
+      "produced_artifact_digest",
       "workspace_drift",
     ]);
     expect(view.fields[1].value).toBe("sha256:012345678…");

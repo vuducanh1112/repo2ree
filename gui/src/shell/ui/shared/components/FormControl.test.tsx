@@ -77,7 +77,7 @@ describe("controls", () => {
 
   it("renders a select with its options addressable", () => {
     render(
-      <Select aria-label="Runtime">
+      <Select aria-label="Experiment environment">
         <option value="docker">Docker</option>
         <option value="nix">Nix</option>
       </Select>,

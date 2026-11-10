@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:c421f8255acc89d33fefe0334ccbde0dd5ad569b121a682d0ca7e7dd36c74afd",
+  "x-vocabulary": "sha256:dd154444b807232c7900746634f6e1813cf349990482c53c6222e25a7347ae2e",
   "type": "object",
   "properties": {
     "v": {
@@ -284,7 +284,7 @@
                 "lint_scripts",
                 "evaluate_dependency_score",
                 "generate_hbom",
-                "build_runtime",
+                "build_experiment_environment",
                 "generate_sbom",
                 "cross_check_sbom",
                 "activation_test",
@@ -293,7 +293,7 @@
                 "load_ree_bundle",
                 "materialize_workspace",
                 "review_acquire_source",
-                "review_build_runtime",
+                "review_build_experiment_environment",
                 "review_activation_test",
                 "review_run_experiment"
               ]
@@ -367,7 +367,7 @@
                       "lint_scripts",
                       "evaluate_dependency_score",
                       "generate_hbom",
-                      "build_runtime",
+                      "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
                       "activation_test",
@@ -376,7 +376,7 @@
                       "load_ree_bundle",
                       "materialize_workspace",
                       "review_acquire_source",
-                      "review_build_runtime",
+                      "review_build_experiment_environment",
                       "review_activation_test",
                       "review_run_experiment"
                     ]
@@ -451,7 +451,7 @@
                       "lint_scripts",
                       "evaluate_dependency_score",
                       "generate_hbom",
-                      "build_runtime",
+                      "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
                       "activation_test",
@@ -460,7 +460,7 @@
                       "load_ree_bundle",
                       "materialize_workspace",
                       "review_acquire_source",
-                      "review_build_runtime",
+                      "review_build_experiment_environment",
                       "review_activation_test",
                       "review_run_experiment"
                     ]
@@ -534,7 +534,7 @@
                       "lint_scripts",
                       "evaluate_dependency_score",
                       "generate_hbom",
-                      "build_runtime",
+                      "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
                       "activation_test",
@@ -543,7 +543,7 @@
                       "load_ree_bundle",
                       "materialize_workspace",
                       "review_acquire_source",
-                      "review_build_runtime",
+                      "review_build_experiment_environment",
                       "review_activation_test",
                       "review_run_experiment"
                     ]
@@ -646,7 +646,7 @@
                 "lint_scripts",
                 "evaluate_reproducibility",
                 "observe_hardware",
-                "build_runtime",
+                "build_experiment_environment",
                 "generate_sbom",
                 "cross_check_sbom",
                 "test_activation",
@@ -760,7 +760,7 @@
                       "lint_scripts",
                       "evaluate_reproducibility",
                       "observe_hardware",
-                      "build_runtime",
+                      "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
                       "test_activation",
@@ -1238,7 +1238,7 @@
                 "source",
                 "evaluation",
                 "hardware",
-                "runtime",
+                "experiment_environment",
                 "sbom",
                 "sbom_cross_check",
                 "test_activation",
@@ -1301,7 +1301,7 @@
                       "source",
                       "evaluation",
                       "hardware",
-                      "runtime",
+                      "experiment_environment",
                       "sbom",
                       "sbom_cross_check",
                       "test_activation",

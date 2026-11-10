@@ -42,10 +42,10 @@ def test_a_draft_is_graded_against_the_declarations_sent_with_it(client: TestCli
     # them here would mean asking the client to invent them.
     resp = client.post(
         "/api/v1/script-lints:draft",
-        json=_draft("docker run img main.py\n", declarations={"runtime_path": "runtime.tar"}),
+        json=_draft("docker run img main.py\n", declarations={"experiment_environment_path": "runtime.tar"}),
     )
     assert resp.status_code == 200, resp.text
-    assert "runtime_not_referenced" in {finding["code"] for finding in resp.json()["findings"]}
+    assert "experiment_environment_not_referenced" in {finding["code"] for finding in resp.json()["findings"]}
 
 
 def test_a_draft_rejects_declarations_it_does_not_read(client: TestClient) -> None:
@@ -53,7 +53,7 @@ def test_a_draft_rejects_declarations_it_does_not_read(client: TestClient) -> No
     # no rule consults is a mistake worth reporting rather than ignoring.
     resp = client.post(
         "/api/v1/script-lints:draft",
-        json=_draft("set -eu\n", declarations={"build_runtime_script_size": 0}),
+        json=_draft("set -eu\n", declarations={"build_experiment_environment_script_size": 0}),
     )
     assert resp.status_code == 422, resp.text
 
@@ -61,7 +61,7 @@ def test_a_draft_rejects_declarations_it_does_not_read(client: TestClient) -> No
 def test_a_draft_with_no_declarations_makes_no_claims_about_them(client: TestClient) -> None:
     resp = client.post("/api/v1/script-lints:draft", json=_draft("docker run img main.py\n"))
     assert resp.status_code == 200, resp.text
-    assert "runtime_not_referenced" not in {finding["code"] for finding in resp.json()["findings"]}
+    assert "experiment_environment_not_referenced" not in {finding["code"] for finding in resp.json()["findings"]}
 
 
 def test_lint_never_refuses_a_script_it_dislikes(client: TestClient) -> None:

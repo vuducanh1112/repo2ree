@@ -5,7 +5,7 @@ import type { ReeStepKey } from "@core/ree-steps/stepRunParams";
 import type { StepPageProps } from "@shell/ui/app-shell/pages/sharedStepUi";
 
 export const exampleWorkspaceFiles = [
-  { id: "runtime", name: "runtime.tar", type: "file" as const, size: 4096 },
+  { id: "experiment_environment", name: "runtime.tar", type: "file" as const, size: 4096 },
   { id: "docker", name: "Dockerfile", type: "file" as const, content: "FROM python:3.12" },
   { id: "requirements", name: "requirements.txt", type: "file" as const, content: "requests" },
   {
@@ -13,7 +13,12 @@ export const exampleWorkspaceFiles = [
     name: "overlay",
     type: "folder" as const,
     children: [
-      { id: "build", name: "build.sh", type: "file" as const, content: "#!/bin/sh\nexit 0" },
+      {
+        id: "build_experiment_environment",
+        name: "build.sh",
+        type: "file" as const,
+        content: "#!/bin/sh\nexit 0",
+      },
       { id: "activate", name: "activate.sh", type: "file" as const, content: "#!/bin/sh\nexit 0" },
       { id: "verify", name: "verify.sh", type: "file" as const, content: "#!/bin/sh\nexit 0" },
     ],
@@ -30,7 +35,7 @@ export const exampleEditorRee = {
       version: "1.0.0",
       description: "Prints hello world, reproducibly.",
     },
-    runtime: "runtime.tar",
+    experimentEnvironmentPath: "runtime.tar",
     sbom: "artifacts/sbom.json",
     activation: {
       ...createEmptyReeEditorViewModel().spec.activation,
@@ -39,7 +44,7 @@ export const exampleEditorRee = {
     },
   },
   source: { sourceAvailable: true, sourceIncluded: true },
-  artifact: { runtimeIncluded: true },
+  artifact: { experimentEnvironmentIncluded: true },
   // A REE that has run its way through the pipeline: every receipt it carries
   // still speaks for what it declares. The cross-check is deliberately absent —
   // it is the one step this fixture has not run, so tests have a step that is
@@ -48,7 +53,7 @@ export const exampleEditorRee = {
     source: "current" as const,
     evaluation: "current" as const,
     hardware: "current" as const,
-    runtime: "current" as const,
+    experiment_environment: "current" as const,
     sbom: "current" as const,
     test_activation: "current" as const,
   },
@@ -64,7 +69,7 @@ export function createStepPageProps(
     step,
     ree: exampleEditorRee,
     workspaceSourceState: { sourceAvailable: true, sourceIncluded: true },
-    artifactStatus: { runtimeIncluded: true },
+    artifactStatus: { experimentEnvironmentIncluded: true },
     evaluationState: { dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 },
     badges: {},
     workspaceFiles: exampleWorkspaceFiles,
@@ -97,7 +102,7 @@ export function createStepPageProps(
 }
 
 export const scriptTemplateCatalog = {
-  build: {
+  build_experiment_environment: {
     path: "overlay/build.sh",
     templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
   },

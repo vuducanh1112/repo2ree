@@ -66,7 +66,7 @@ def test_asking_for_no_tool_tiers_runs_neither(monkeypatch: pytest.MonkeyPatch) 
 
     monkeypatch.setattr(shell_tools, "_run", _fail)
     report = lint_script(
-        ScriptTarget(kind="build", path="ree-scripts/build_script.sh"),
+        ScriptTarget(kind="build_experiment_environment", path="ree-scripts/build_experiment_environment.sh"),
         "set -eu\n",
         tiers=frozenset({"contract"}),
     )
@@ -74,7 +74,7 @@ def test_asking_for_no_tool_tiers_runs_neither(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_a_full_run_records_every_tier_it_attempted() -> None:
-    report = lint_script(ScriptTarget(kind="build", path="b.sh"), "set -eu\necho hi\n")
+    report = lint_script(ScriptTarget(kind="build_experiment_environment", path="b.sh"), "set -eu\necho hi\n")
     assert {status.tier for status in report.tiers} == {"syntax", "shell", "contract"}
     # The contract rules need no tool, so that tier can never be unavailable.
     assert _tier(report, "contract").status == "ran"

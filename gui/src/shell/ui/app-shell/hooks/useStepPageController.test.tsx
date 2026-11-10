@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 import { PAGE } from "@core/app-shell/pages";
 import {
   createEmptyReeEditorViewModel,
@@ -12,7 +13,7 @@ import { useStepPageController } from "./useStepPageController";
 const runQueries = vi.hoisted(() => ({
   runs: [] as Array<{
     runId: string;
-    operation: "build";
+    operation: "build_experiment_environment";
     status: "queued" | "running" | "succeeded" | "failed" | "canceled";
     createdAt: string;
     startedAt?: string;
@@ -51,7 +52,13 @@ vi.mock("@shell/data/reeSteps/queries", () => ({
         requires: ["source"],
         actions: [],
       },
-      { key: "build", order: 5, label: "Build Runtime", requires: ["source"], actions: [] },
+      {
+        key: "build_experiment_environment",
+        order: 5,
+        label: "Build Experiment Environment",
+        requires: ["source"],
+        actions: [],
+      },
     ],
   }),
 }));
@@ -70,7 +77,7 @@ function controllerArgs(
   const args = {
     ree: patchReeEditorViewModel(createEmptyReeEditorViewModel(), overrides.ree ?? {}),
     stepRuns: { ...createInitialStepRunState(), ...overrides.stepRuns },
-    page: overrides.page ?? PAGE.BUILD,
+    page: overrides.page ?? PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
     commands: { setStepParams, setPage },
   } as unknown as ControllerArgs;
   return { args, setStepParams, setPage };
@@ -88,7 +95,7 @@ describe("useStepPageController", () => {
     runQueries.runs = [
       {
         runId: "build-1",
-        operation: "build",
+        operation: "build_experiment_environment",
         status: "succeeded",
         createdAt: "2026-01-01T00:00:00Z",
         finishedAt: "2026-01-01T00:00:08Z",
@@ -159,14 +166,14 @@ describe("useStepPageController", () => {
     runQueries.runs = [
       {
         runId: "run-1",
-        operation: "build",
+        operation: "build_experiment_environment",
         status: outcome,
         createdAt: "created",
         finishedAt: "finished",
       },
     ];
     const { args } = controllerArgs({
-      ree: earned ? { audit: { runtime: "current" } } : undefined,
+      ree: earned ? { audit: { experiment_environment: "current" } } : undefined,
     });
     const { result } = renderHook(() => useStepPageController(args));
 
@@ -189,7 +196,7 @@ describe("useStepPageController", () => {
     runQueries.runs = [
       {
         runId: "run-1",
-        operation: "build",
+        operation: "build_experiment_environment",
         status: "succeeded",
         createdAt: timestamps.createdAt,
         startedAt: "startedAt" in timestamps ? timestamps.startedAt : undefined,
@@ -202,8 +209,8 @@ describe("useStepPageController", () => {
     };
     const { args } = controllerArgs({
       stepRuns: {
-        activeRunIds: { build: "run-1" },
-        timestamps: { build: "fallback" },
+        activeRunIds: { build_experiment_environment: "run-1" },
+        timestamps: { build_experiment_environment: "fallback" },
       },
     });
 
@@ -217,13 +224,13 @@ describe("useStepPageController", () => {
     runQueries.runs = [
       {
         runId: "run-1",
-        operation: "build",
+        operation: "build_experiment_environment",
         status: "running",
         createdAt: "",
       },
     ];
     const { args } = controllerArgs({
-      stepRuns: { activeRunIds: { build: "run-1" } },
+      stepRuns: { activeRunIds: { build_experiment_environment: "run-1" } },
     });
     const before = Date.now();
     const log = renderHook(() => useStepPageController(args)).result.current?.log;

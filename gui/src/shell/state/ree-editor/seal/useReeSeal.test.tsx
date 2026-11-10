@@ -15,7 +15,7 @@ const sealedDocument = {
   },
   audit: {
     source: { evidence: "current", payload: "present" },
-    runtime: { evidence: "current", payload: "present" },
+    experiment_environment: { evidence: "current", payload: "present" },
   },
   workspace_files: [{ path: "README.md", kind: "source", content: "hello", size: 5 }],
   ree_files: [{ path: "artifacts/sbom.json", tag: "Artifact", content: "{}", size: 2 }],
@@ -75,7 +75,7 @@ describe("useReeSeal", () => {
     await act(() =>
       result.current.handleSealRee({
         includeSource: true,
-        includeRuntime: false,
+        includeExperimentEnvironment: false,
         includeResults: true,
       }),
     );
@@ -83,7 +83,7 @@ describe("useReeSeal", () => {
     expect(flushReeIntent).toHaveBeenCalledBefore(sealRee);
     expect(sealRee).toHaveBeenCalledWith("ree-1", {
       includeSource: true,
-      includeRuntime: false,
+      includeExperimentEnvironment: false,
       includeResults: true,
     });
     expect(hydrateWorkspace).toHaveBeenCalledWith(
@@ -116,7 +116,7 @@ describe("useReeSeal", () => {
     await act(() =>
       result.current.handleSealRee({
         includeSource: false,
-        includeRuntime: false,
+        includeExperimentEnvironment: false,
         includeResults: false,
       }),
     );

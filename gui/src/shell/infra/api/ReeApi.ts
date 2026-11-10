@@ -3,7 +3,7 @@ import type { ApiClient } from "./ApiClient";
 import type {
   ApiListResponse,
   BuildInfo,
-  CreateBuildReviewPayload,
+  CreateBuildExperimentEnvironmentReviewPayload,
   CreateSourceReviewPayload,
   DeleteReeResponse,
   FileMutationResponse,
@@ -187,10 +187,10 @@ export class ReeApi {
     });
   }
 
-  async startBuildReview(
+  async startBuildExperimentEnvironmentReview(
     reeId: ReeId | string,
     reviewId: string,
-    payload: CreateBuildReviewPayload,
+    payload: CreateBuildExperimentEnvironmentReviewPayload,
   ): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.reeBuildReview(reeId, reviewId), {
       method: "POST",
@@ -298,13 +298,17 @@ export class ReeApi {
 
   async sealRee(
     reeId: ReeId,
-    opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
+    opts: {
+      includeSource: boolean;
+      includeExperimentEnvironment: boolean;
+      includeResults: boolean;
+    },
   ): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.reeSeal(reeId), {
       method: "POST",
       body: JSON.stringify({
         include_source: opts.includeSource,
-        include_runtime: opts.includeRuntime,
+        include_experiment_environment: opts.includeExperimentEnvironment,
         include_results: opts.includeResults,
       }),
     });

@@ -13,15 +13,15 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT = digest_bytes(b"snapshot")
-_SCRIPT = b"#!/bin/sh\nprintf runtime > runtime.tar\n"
-_RUNTIME = b"runtime archive"
+_SCRIPT = b"#!/bin/sh\nprintf experiment environment > runtime.tar\n"
+_EXPERIMENT_ENVIRONMENT = b"experiment environment archive"
 _SBOM = b'{"bomFormat":"CycloneDX"}'
 
 
@@ -38,14 +38,14 @@ def _envelope(run_id: str) -> ReceiptEnvelopeFields:
 def _ree(
     *,
     with_build: bool = True,
-    runtime_path: str = "runtime.tar",
+    experiment_environment_path: str = "runtime.tar",
 ) -> Ree:
     definition = ReeDefinition(
-        build_runtime=BuildRuntimeDefinition(
-            build_runtime_script_digest=digest_bytes(_SCRIPT),
-            build_runtime_script_size=len(_SCRIPT),
-            runtime_path=WorkspacePath(
-                runtime_path,
+        experiment_environment=ExperimentEnvironmentDefinition(
+            build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
+            build_experiment_environment_script_size=len(_SCRIPT),
+            artifact_path=WorkspacePath(
+                experiment_environment_path,
             ),
         ),
     )
@@ -64,14 +64,14 @@ def _ree(
         return ree
     return commit_receipt(
         ree,
-        BuildRuntimeReceipt(
+        BuildExperimentEnvironmentReceipt(
             **_envelope("build-1"),
             snapshot_digest=_SNAPSHOT,
-            build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT),
-            build_runtime_script_digest=digest_bytes(_SCRIPT),
+            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
             workspace_drift=WorkspaceDrift(status="unknown"),
-            runtime_path=WorkspacePath(runtime_path),
-            produced_runtime_digest=digest_bytes(_RUNTIME),
+            artifact_path=WorkspacePath(experiment_environment_path),
+            produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
         ),
     )
 
@@ -84,13 +84,13 @@ def _workbench(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.workspace.write_bytes("runtime.tar", _RUNTIME)
+    store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.write_ree(ree or _ree())
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
 
 
-def _successful_scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOutcome:
+def _successful_scan(_experiment_environment: Path, output: Path, **_kwargs: object) -> ScanOutcome:
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_bytes(_SBOM)
     return ScanOutcome(returncode=0, tool_version="1.2.3")
@@ -109,7 +109,7 @@ def test_success_commits_inline_receipt_and_publishes_document(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout, store = _workbench(tmp_path, monkeypatch)
-    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", _successful_scan)
+    monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", _successful_scan)
 
     result = _run()
 
@@ -118,8 +118,8 @@ def test_success_commits_inline_receipt_and_publishes_document(
     assert layout.sbom.read_bytes() == _SBOM
     assert receipt is not None
     assert receipt.run_id == "sbom-1"
-    assert receipt.runtime_path == "runtime.tar"
-    assert receipt.runtime_digest == digest_bytes(_RUNTIME)
+    assert receipt.experiment_environment_path == "runtime.tar"
+    assert receipt.experiment_environment_digest == digest_bytes(_EXPERIMENT_ENVIRONMENT)
     assert receipt.sbom_path == "artifacts/sbom.json"
     assert receipt.sbom_digest == digest_bytes(_SBOM)
     assert receipt.sbom_format == "cyclonedx-json"
@@ -145,12 +145,12 @@ def test_invalid_scan_result_preserves_existing_document_and_commits_no_receipt(
     layout.sbom.parent.mkdir(parents=True, exist_ok=True)
     layout.sbom.write_bytes(b"old sbom")
 
-    def scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOutcome:
+    def scan(_experiment_environment: Path, output: Path, **_kwargs: object) -> ScanOutcome:
         if write_output:
             output.write_bytes(b"partial")
         return outcome
 
-    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
+    monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
 
     result = _run()
 
@@ -170,11 +170,11 @@ def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
     layout.sbom.parent.mkdir(parents=True, exist_ok=True)
     layout.sbom.write_bytes(b"old sbom")
 
-    def scan(_runtime: Path, output: Path, **_kwargs: object) -> ScanOutcome:
+    def scan(_experiment_environment: Path, output: Path, **_kwargs: object) -> ScanOutcome:
         output.write_bytes(b"partial")
         return ScanOutcome(returncode=-15, canceled=True)
 
-    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
+    monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
 
     result = _run()
 
@@ -185,24 +185,29 @@ def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
 
 
 @pytest.mark.parametrize(
-    ("ree", "runtime_bytes", "message", "category"),
+    ("ree", "experiment_environment_bytes", "message", "category"),
     [
-        (_ree(with_build=False), _RUNTIME, "runtime has not been built", "precondition"),
-        (_ree(runtime_path="runtime.img"), _RUNTIME, "tarballs only", "validation"),
+        (_ree(with_build=False), _EXPERIMENT_ENVIRONMENT, "experiment environment has not been built", "precondition"),
+        (
+            _ree(experiment_environment_path="runtime.img"),
+            _EXPERIMENT_ENVIRONMENT,
+            "tarballs only",
+            "validation",
+        ),
         (_ree(), b"changed", "does not match the selected build", "precondition"),
-        (record_seal(_ree(), sealed_at=_NOW), _RUNTIME, "sealed REE", "precondition"),
+        (record_seal(_ree(), sealed_at=_NOW), _EXPERIMENT_ENVIRONMENT, "sealed REE", "precondition"),
     ],
 )
-def test_preconditions_reject_invalid_runtime_evidence_before_scanning(
+def test_preconditions_reject_invalid_experiment_environment_evidence_before_scanning(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     ree: Ree,
-    runtime_bytes: bytes,
+    experiment_environment_bytes: bytes,
     message: str,
     category: str,
 ) -> None:
     layout, store = _workbench(tmp_path, monkeypatch, ree)
-    (layout.workspace / "runtime.tar").write_bytes(runtime_bytes)
+    (layout.workspace / "runtime.tar").write_bytes(experiment_environment_bytes)
     scanned = False
 
     def scan(*args: object, **kwargs: object) -> ScanOutcome:
@@ -210,7 +215,7 @@ def test_preconditions_reject_invalid_runtime_evidence_before_scanning(
         scanned = True
         return ScanOutcome(returncode=0, tool_version="1.2.3")
 
-    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", scan)
+    monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
 
     result = generate_sbom.handle_generate_sbom(
         run_id="sbom-rejected",
@@ -231,7 +236,7 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout, store = _workbench(tmp_path, monkeypatch)
-    monkeypatch.setattr(generate_sbom, "scan_runtime_archive", _successful_scan)
+    monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", _successful_scan)
 
     def conflict(*args: object, **kwargs: object) -> None:
         raise ReeRevisionConflictError("REE changed while the scan ran")

@@ -33,7 +33,7 @@ export const STATUS_LABEL: Record<ReviewStepStatus, string> = {
  * Two controls rather than one. Reading a verdict and dispatching a ten-minute
  * rebuild are different acts and should not share a hitbox: the face opens the
  * step's evidence, and the run key beside it starts the work. What the step
- * reproduces from — "SWHID", "runtime · SBOM diff" — rides on the face's
+ * reproduces from — "SWHID", "experiment environment · SBOM diff" — rides on the face's
  * accessible name, because the strip has room for the verdict or the subject
  * and the verdict is the reason to look.
  */

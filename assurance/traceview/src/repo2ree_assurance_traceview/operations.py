@@ -1,6 +1,6 @@
 """The behaviour trace of one REE: setup, the operations that produce evidence, and the authoring between them.
 
-An operation is an author attempt that belongs to a run (acquire_source, build_runtime, …): the run
+An operation is an author attempt that belongs to a run (acquire_source, build_experiment_environment, …): the run
 names its attempt, or, when it failed before it could (its workbench was lost), the attempt's dispatch
 names the run. Attempts without a run of their own (definition patches, file writes, lints) are
 authoring and are collapsed between operations. Every entry is grouped from the verification of the dossier (the

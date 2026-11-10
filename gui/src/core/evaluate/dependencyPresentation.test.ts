@@ -7,7 +7,7 @@ function dependency(overrides: Partial<EvaluatedDependency> = {}): EvaluatedDepe
     ecosystem: "pypi",
     name: "normalized",
     nameAsWritten: "WrittenName",
-    scope: "runtime",
+    scope: "experiment_environment",
     direct: true,
     declaredConstraint: ">=1",
     declaredIn: "requirements.txt",
@@ -16,7 +16,7 @@ function dependency(overrides: Partial<EvaluatedDependency> = {}): EvaluatedDepe
     lockedIn: null,
     observedVersion: null,
     status: "locked",
-    runtimePresence: null,
+    experimentEnvironmentPresence: null,
     ...overrides,
   };
 }
@@ -58,7 +58,7 @@ describe("dependency presentation", () => {
           version: null,
           status: "locked",
           scope: null,
-          runtimePresence: null,
+          experimentEnvironmentPresence: null,
           observedVersion: null,
         },
         {
@@ -66,7 +66,7 @@ describe("dependency presentation", () => {
           version: null,
           status: "pinned",
           scope: null,
-          runtimePresence: null,
+          experimentEnvironmentPresence: null,
           observedVersion: null,
         },
         {
@@ -74,7 +74,7 @@ describe("dependency presentation", () => {
           version: null,
           status: "ranged",
           scope: null,
-          runtimePresence: null,
+          experimentEnvironmentPresence: null,
           observedVersion: null,
         },
         {
@@ -82,7 +82,7 @@ describe("dependency presentation", () => {
           version: null,
           status: "unpinned",
           scope: null,
-          runtimePresence: null,
+          experimentEnvironmentPresence: null,
           observedVersion: null,
         },
         {
@@ -90,7 +90,7 @@ describe("dependency presentation", () => {
           version: null,
           status: "undeclared",
           scope: null,
-          runtimePresence: null,
+          experimentEnvironmentPresence: null,
           observedVersion: null,
         },
       ]),

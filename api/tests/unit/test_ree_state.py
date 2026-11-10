@@ -23,7 +23,9 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
             "ree": ree.model_dump(mode="json"),
             "status": "draft",
             "audit": audit(ree).model_dump(mode="json"),
-            "workspace_files": [{"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12}],
+            "workspace_files": [
+                {"path": "ree-scripts/build_experiment_environment.sh", "kind": "generated", "size": 12}
+            ],
             "ree_files": [{"path": "artifacts/sbom.json", "tag": "Artifact", "size": 34}],
         }
     )
@@ -39,7 +41,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     assert "executor_build" in state["workbench"]
     # Typed file entries serialize every field; content stays null — never inlined.
     assert state["workspace_files"] == [
-        {"path": "ree-scripts/build_script.sh", "kind": "generated", "size": 12, "content": None}
+        {"path": "ree-scripts/build_experiment_environment.sh", "kind": "generated", "size": 12, "content": None}
     ]
     # REE-owned evidence is part of the observation: produced files like the SBOM
     # live only under the REE root, never in the materialized workspace tree.

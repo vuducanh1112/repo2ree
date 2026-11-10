@@ -4,13 +4,13 @@ from pathlib import PurePosixPath
 
 RESERVED_SCRIPT_DIR = "ree-scripts"
 
-RESERVED_BUILD_SCRIPT = f"{RESERVED_SCRIPT_DIR}/build_script.sh"
+RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/build_experiment_environment.sh"
 RESERVED_ACTIVATION_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activation.sh"
 RESERVED_ACTIVATION_VERIFY_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activation.verify.sh"
 RESERVED_EXPERIMENT_SCRIPT_DIR = f"{RESERVED_SCRIPT_DIR}/experiments"
 
 RESERVED_OVERLAY_SCRIPTS = (
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_ACTIVATION_SCRIPT,
 )
 
@@ -30,7 +30,11 @@ def experiment_verify_script_path(name: str) -> str:
 def is_overlay_path(path: str) -> bool:
     """Whether ``path`` may be in an REE's overlay: one of its scripts, and nothing else."""
     normalized = PurePosixPath(path)
-    if str(normalized) in (RESERVED_BUILD_SCRIPT, RESERVED_ACTIVATION_SCRIPT, RESERVED_ACTIVATION_VERIFY_SCRIPT):
+    if str(normalized) in (
+        RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        RESERVED_ACTIVATION_SCRIPT,
+        RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    ):
         return True
     name = normalized.name
     return (
@@ -42,7 +46,7 @@ def is_overlay_path(path: str) -> bool:
 
 def is_run_script(path: str) -> bool:
     normalized = PurePosixPath(path)
-    if str(normalized) in (RESERVED_BUILD_SCRIPT, RESERVED_ACTIVATION_SCRIPT):
+    if str(normalized) in (RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, RESERVED_ACTIVATION_SCRIPT):
         return True
     return (
         str(normalized.parent) == RESERVED_EXPERIMENT_SCRIPT_DIR

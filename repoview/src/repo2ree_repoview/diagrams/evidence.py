@@ -38,7 +38,7 @@ SLOT_TO_STEP = {
     "source": "source",
     "evaluation": "evaluation",
     "hardware_observation": "hardware",
-    "build": "runtime",
+    "build_experiment_environment": "experiment_environment",
     "sbom": "sbom",
     "sbom_cross_check": "sbom_cross_check",
     "test_activation": "test_activation",
@@ -121,7 +121,7 @@ class AuditExtractor:
         chain = self._chain(node)
         if len(chain) >= 3 and chain[0] == "subject" and chain[1] in {"receipts", "definition"}:
             return Origin("receipt" if chain[1] == "receipts" else "definition", chain[2])
-        # `build.produced_runtime_digest` — a field read off a bound local
+        # `build.produced_artifact_digest` — a field read off a bound local
         if len(chain) >= 2 and chain[0] in bound:
             return bound[chain[0]]
         return None
@@ -213,7 +213,7 @@ class AuditExtractor:
     def _applicability_origins(self, expr: ast.expr, bound: dict[str, Origin]) -> list[Origin]:
         """What an applicability test reads, following the helpers it delegates to.
 
-        ``_runtime_is_declared(subject)`` stands for the declaration it reads,
+        ``_experiment_environment_is_declared(subject)`` stands for the declaration it reads,
         and it appears both alone and as one half of a conjunction — so the
         inlining happens per call node rather than only at the root. Its body is
         resolved against *its own* bindings: the name ``build`` means the
@@ -261,7 +261,7 @@ def blast_radius(edges: list[Edge]) -> dict[str, list[str]]:
 
     Only receipt-to-receipt edges: a declaration moving is an authoring act, not
     a re-run, and mixing the two would answer a question nobody asked. The
-    closure is transitive because staleness is — a rebuilt runtime restales the
+    closure is transitive because staleness is — a rebuilt experiment environment restales the
     SBOM, and the cross-check rests on the SBOM.
     """
     downstream: dict[str, set[str]] = {}
@@ -287,7 +287,7 @@ def tiers(edges: list[Edge]) -> dict[str, int]:
     """Each step's depth in the receipt DAG — how much evidence must precede it.
 
     Longest path rather than shortest: ``test_activation`` rests on both the
-    source and the runtime built from it, and placing it beside the runtime
+    source and the experiment environment built from it, and placing it beside the experiment environment
     (its shortest parent) would draw an edge that skips a rank and read as
     though the two were alternatives rather than a sequence.
     """

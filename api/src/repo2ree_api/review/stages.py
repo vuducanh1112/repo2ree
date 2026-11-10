@@ -21,8 +21,8 @@ from repo2ree_protocol.command import (
     ReviewActivationTestArgs,
     ReviewActivationTestCommand,
     ReviewBasis,
-    ReviewBuildRuntimeArgs,
-    ReviewBuildRuntimeCommand,
+    ReviewBuildExperimentEnvironmentArgs,
+    ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentArgs,
     ReviewRunExperimentCommand,
 )
@@ -41,11 +41,11 @@ class CreateSourceReviewPayload(CreateRunPayload):
     basis: ReviewBasis = "auto"
 
 
-class CreateBuildReviewPayload(CreateRunPayload):
-    """Reproduce the runtime build inside an existing review attempt."""
+class CreateBuildExperimentEnvironmentReviewPayload(CreateRunPayload):
+    """Reproduce the experiment environment build inside an existing review attempt."""
 
     # The rebuilt workspace is kept, because activation and the experiments run
-    # in it and the runtime exists nowhere else (see ReviewBuildRuntimeArgs).
+    # in it and the experiment environment exists nowhere else (see ReviewBuildExperimentEnvironmentArgs).
     # A reviewer who wants only a build verdict passes true to reclaim it.
     prune_workspace: bool = False
     basis: ReviewBasis = "auto"
@@ -78,20 +78,22 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
 
 
 @review_stages_router.post(
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/build:reproduce",
-    operation_id="startBuildReview",
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce",
+    operation_id="startBuildExperimentEnvironmentReview",
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPayload) -> RunSummary:
-    """Rebuild the runtime inside an attempt whose source was already reproduced.
+def start_build_review(
+    ree_id: str, review_id: str, payload: CreateBuildExperimentEnvironmentReviewPayload
+) -> RunSummary:
+    """Rebuild the experiment environment inside an attempt whose source was already reproduced.
 
     Addressed by review id rather than minting a new one: the build is only
     meaningful against the source *this* attempt fetched for itself, and the
     workbench rejects the command outright when that step has not settled.
     """
-    command = ReviewBuildRuntimeCommand(
-        args=ReviewBuildRuntimeArgs(
+    command = ReviewBuildExperimentEnvironmentCommand(
+        args=ReviewBuildExperimentEnvironmentArgs(
             review_id=review_id,
             prune_workspace=payload.prune_workspace,
             basis=payload.basis,
@@ -101,7 +103,7 @@ def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPa
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="build",
+                operation="build_experiment_environment",
                 action=None,
                 command=command,
                 run_id_prefix="review-build",
@@ -121,7 +123,7 @@ def start_build_review(ree_id: str, review_id: str, payload: CreateBuildReviewPa
     responses=ERROR_RESPONSES,
 )
 def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPayload) -> RunSummary:
-    """Probe whether the runtime this attempt certified is inhabitable.
+    """Probe whether the experiment environment this attempt certified is inhabitable.
 
     Takes no ``basis``, unlike the two steps before it: activation runs in the
     workspace the build left behind and inherits what that evidence is worth
@@ -157,7 +159,7 @@ def start_experiment_review(
     experiment_name: str,
     payload: CreateRunPayload,
 ) -> RunSummary:
-    """Reproduce one experiment's result inside an attempt whose runtime came up.
+    """Reproduce one experiment's result inside an attempt whose experiment environment came up.
 
     One experiment per call, addressed by name — the same shape as the author's
     ``experiments/{name}:run``. Reproducing every experiment is the client

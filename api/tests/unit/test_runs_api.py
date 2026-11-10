@@ -102,7 +102,7 @@ def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
 ) -> None:
     run = start_background_run(
         online_ree.ree_id,
-        "build",
+        "build_experiment_environment",
         {},
         "history",
         lambda *_: ActionResult(status="succeeded"),
@@ -110,7 +110,7 @@ def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
     assert _wait_for_run(client, online_ree.ree_id, run["run_id"]) == "succeeded"
     monkeypatch.setattr(ree_router, "route", lambda _rid: None)
 
-    response = client.post(f"/api/v1/rees/{online_ree.ree_id}/build-runtime", json={})
+    response = client.post(f"/api/v1/rees/{online_ree.ree_id}/build-experiment-environment", json={})
 
     assert response.status_code == 404
     # Historical state remains readable without a live workbench.
@@ -279,9 +279,9 @@ def test_cancel_of_active_run_signals_workbench(
     monkeypatch.setattr(command_dispatcher, "cancel_run", _cancel_run)
     run = start_background_run(
         ree_id=online_ree.ree_id,
-        operation="build",
+        operation="build_experiment_environment",
         request_payload={},
-        run_id_prefix="build",
+        run_id_prefix="build_experiment_environment",
         runner=_runner,
     )
 

@@ -1,4 +1,4 @@
-"""Upstream releases after the author sealed: a rebuild does not reproduce the result, the sealed runtime does."""
+"""Upstream releases after the seal: a rebuild does not reproduce the result, the sealed experiment environment does."""
 
 from __future__ import annotations
 
@@ -12,14 +12,14 @@ F = UNPINNED
 
 
 def reviewed(client: Client, reviewer: str, build: ReviewBasis) -> Review:
-    """One review attempt, end to end, with the runtime from ``build``."""
+    """One review attempt, end to end, with the experiment environment from ``build``."""
     before = {review.review_id for review in client.reviews(reviewer)}
     source = client.review_source(reviewer, "auto", watch=F.watch)
     assert source.status == "succeeded", client.logs(reviewer, source)
     [review_id] = [review.review_id for review in client.reviews(reviewer) if review.review_id not in before]
 
-    runtime = client.review_build(reviewer, review_id, build, watch=F.watch)
-    assert runtime.status == "succeeded", client.logs(reviewer, runtime)
+    experiment_environment = client.review_build_experiment_environment(reviewer, review_id, build, watch=F.watch)
+    assert experiment_environment.status == "succeeded", client.logs(reviewer, experiment_environment)
     activation = client.review_activation(reviewer, review_id, watch=F.watch)
     assert activation.status == "succeeded", client.logs(reviewer, activation)
     experiment = client.review_experiment(reviewer, review_id, F.experiment, watch=F.watch)
@@ -28,7 +28,7 @@ def reviewed(client: Client, reviewer: str, build: ReviewBasis) -> Review:
     return review
 
 
-def test_a_rebuild_after_an_upstream_release_is_different_and_the_sealed_runtime_reproduces(
+def test_a_rebuild_after_an_upstream_release_is_different_and_the_sealed_experiment_environment_reproduces(
     client: Client, new_ree: NewRee
 ) -> None:
     publish(F, "1.0")
@@ -43,15 +43,15 @@ def test_a_rebuild_after_an_upstream_release_is_different_and_the_sealed_runtime
     client.load(reviewer, archive.read_bytes())
 
     rebuilt = reviewed(client, reviewer, "auto")
-    assert rebuilt.build_comparison is not None
-    assert rebuilt.build_comparison.basis == "independent"
+    assert rebuilt.experiment_environment_comparison is not None
+    assert rebuilt.experiment_environment_comparison.basis == "independent"
     [comparison] = rebuilt.experiment_comparisons
     assert comparison.verdict == F.verdict
     assert comparison.observed_verify_exit_code not in (None, 0)
 
     sealed = reviewed(client, reviewer, "bundled")
-    assert sealed.build_comparison is not None
-    assert sealed.build_comparison.basis == "bundled"
+    assert sealed.experiment_environment_comparison is not None
+    assert sealed.experiment_environment_comparison.basis == "bundled"
     assert [(item.experiment_name, item.verdict) for item in sealed.experiment_comparisons] == [
         (F.experiment, "identical")
     ]

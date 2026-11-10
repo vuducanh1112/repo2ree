@@ -1,4 +1,8 @@
-export type ReviewStepKey = "source" | "build" | "activation" | "experiments";
+export type ReviewStepKey =
+  | "source"
+  | "build_experiment_environment"
+  | "activation"
+  | "experiments";
 
 /**
  * `uninhabitable` is a verdict, `failed` is a breakdown — activation is the one
@@ -34,8 +38,12 @@ interface ReviewStepDefinition {
  */
 export const REVIEW_STEPS: readonly ReviewStepDefinition[] = [
   { key: "source", label: "Source", dependencies: [] },
-  { key: "build", label: "Build", dependencies: ["source"] },
-  { key: "activation", label: "Activation", dependencies: ["build"] },
+  {
+    key: "build_experiment_environment",
+    label: "Build Experiment Environment",
+    dependencies: ["source"],
+  },
+  { key: "activation", label: "Activation", dependencies: ["build_experiment_environment"] },
   { key: "experiments", label: "Experiments", dependencies: ["activation"] },
 ];
 

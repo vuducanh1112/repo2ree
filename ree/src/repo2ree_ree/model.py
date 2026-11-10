@@ -9,7 +9,7 @@ from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.primitives import Digest, ReePath, SourceType, UtcInstant, WorkspacePath
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
-    BuildRuntimeReceipt,
+    BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
@@ -20,7 +20,7 @@ from repo2ree_ree.receipt import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
@@ -68,17 +68,19 @@ class SourceDefinition(_DomainModel):
         return self
 
 
-class BuildRuntimeDefinition(_DomainModel):
-    build_runtime_script_path: ReePath = ReePath(RESERVED_BUILD_SCRIPT)
-    build_runtime_script_digest: Digest
-    build_runtime_script_size: int = Field(ge=0)
-    runtime_path: WorkspacePath | None = None
+class ExperimentEnvironmentDefinition(_DomainModel):
+    build_experiment_environment_script_path: ReePath = ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
+    build_experiment_environment_script_digest: Digest
+    build_experiment_environment_script_size: int = Field(ge=0)
+    artifact_path: WorkspacePath | None = None
 
-    @field_validator("build_runtime_script_path")
+    @field_validator("build_experiment_environment_script_path")
     @classmethod
     def _fixed_path(cls, value: ReePath) -> ReePath:
-        if value != RESERVED_BUILD_SCRIPT:
-            raise ValueError(f"build runtime script path must be {RESERVED_BUILD_SCRIPT!r}")
+        if value != RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT:
+            raise ValueError(
+                f"build experiment environment script path must be {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT!r}"
+            )
         return value
 
 
@@ -132,7 +134,7 @@ class ReeDefinition(_DomainModel):
     name: str = ""
     catalog: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     source: SourceDefinition | None = None
-    build_runtime: BuildRuntimeDefinition | None = None
+    experiment_environment: ExperimentEnvironmentDefinition | None = None
     workbench_environment: WorkbenchEnvironment | None = None
     test_activation: TestActivationDefinition | None = None
     hardware: HardwareDefinition | None = None
@@ -153,7 +155,7 @@ class ReeReceipts(_DomainModel):
     source: AcquireSourceReceipt | None = None
     evaluation: EvaluateReproducibilityReceipt | None = None
     hardware_observation: ObserveHardwareReceipt | None = None
-    build: BuildRuntimeReceipt | None = None
+    experiment_environment: BuildExperimentEnvironmentReceipt | None = None
     sbom: GenerateSbomReceipt | None = None
     sbom_cross_check: CrossCheckSbomReceipt | None = None
     test_activation: TestActivationReceipt | None = None
@@ -257,11 +259,11 @@ def ree_status(ree: Ree) -> ReeStatus:
 
 __all__ = [
     "CURRENT_SCHEMA_VERSION",
-    "BuildRuntimeDefinition",
     "BundleContents",
     "BundleEntry",
     "Contributor",
     "ExperimentDefinition",
+    "ExperimentEnvironmentDefinition",
     "HardwareDefinition",
     "Ree",
     "ReeCatalogMetadata",

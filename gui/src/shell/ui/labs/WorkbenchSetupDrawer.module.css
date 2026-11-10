@@ -39,7 +39,7 @@
 
 .sectionIcon {
   display: flex;
-  color: var(--stage-build-line);
+  color: var(--stage-build_experiment_environment-line);
 }
 
 .sectionText {

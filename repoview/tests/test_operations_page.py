@@ -43,17 +43,23 @@ CATALOGUE = Operations.model_validate(
         "lanes": LANES,
         "operations": [
             {
-                "name": "build_runtime",
+                "name": "build_experiment_environment",
                 "outcome": "succeeded",
                 "kind": "operation",
                 "instances": [instance("v1"), instance("v2", duration=2.0)],
                 "representative": 0,
                 "lines": [
-                    {"lane": "api", "label": "build_runtime → requested", "provenance": "journal", "t": 0, "seen": 2},
+                    {
+                        "lane": "api",
+                        "label": "build_experiment_environment → requested",
+                        "provenance": "journal",
+                        "t": 0,
+                        "seen": 2,
+                    },
                     {
                         "lane": "supervisor",
                         "to": "workbench",
-                        "label": "exec_action · build_runtime",
+                        "label": "exec_action · build_experiment_environment",
                         "provenance": "journal",
                         "t": 0.1,
                         "seen": 2,
@@ -61,7 +67,13 @@ CATALOGUE = Operations.model_validate(
                     {"lane": "workbench", "label": "… without spans", "provenance": "gap", "t": 0.2, "seen": 1},
                 ],
                 "elsewhere": [
-                    {"lane": "api", "label": "build_runtime → canceling", "provenance": "journal", "t": 0.3, "seen": 1}
+                    {
+                        "lane": "api",
+                        "label": "build_experiment_environment → canceling",
+                        "provenance": "journal",
+                        "t": 0.3,
+                        "seen": 1,
+                    }
                 ],
                 "reach": {"api": "checked", "supervisor": "exchanged", "workbench": "exchanged"},
                 "rules": [{"rule": "api-success-is-recorded", "passed": 2}],
@@ -93,7 +105,7 @@ def test_each_operation_says_how_far_its_checked_evidence_reaches(tmp_path: Path
     page = page_operations(CATALOGUE, RECEIPT, Bundle(tmp_path / "overview", "a" * 40), Evidence())
     assert page.slug == "operations"
     assert page.teaser == "2 operations in 2 outcomes, across components"
-    assert 'href="#op-build_runtime-succeeded"' in page.body
+    assert 'href="#op-build_experiment_environment-succeeded"' in page.body
     assert 'title="API: checked"' in page.body
     assert 'title="Workbench: exchanged"' in page.body
     # Release has no sequence, so it claims no reach rather than none everywhere.
@@ -105,9 +117,9 @@ def test_a_sequence_marks_the_lines_only_some_runs_show(tmp_path: Path) -> None:
     body = page_operations(CATALOGUE, RECEIPT, Bundle(tmp_path / "overview", "a" * 40), Evidence()).body
     assert body.count('<svg class="seq"') == 1
     assert '<g class="p-gap partial">' in body
-    assert "exec_action · build_runtime" in body
+    assert "exec_action · build_experiment_environment" in body
     assert "Lines other runs show and this one does not (1)" in body
-    assert "build_runtime → canceling" in body
+    assert "build_experiment_environment → canceling" in body
 
 
 def test_what_was_not_drawn_is_said_with_its_reason(tmp_path: Path) -> None:

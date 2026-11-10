@@ -16,7 +16,7 @@ function halfAuthoredRee() {
   return patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
     spec: {
       name: "Reproducible experiment",
-      runtime: "artifacts/climate-runtime.tar",
+      experimentEnvironmentPath: "artifacts/climate-runtime.tar",
       swhid: "swh:1:dir:abc",
       sbom: "artifacts/sbom.json",
     },
@@ -54,7 +54,7 @@ describe("buildSealStepItems", () => {
 
   // The drift this file used to pin: a declared path is not a built runtime.
   it.each([
-    ["runtime", "artifacts/climate-runtime.tar"],
+    ["experiment_environment", "artifacts/climate-runtime.tar"],
     ["sbom", "artifacts/sbom.json"],
   ])("does not call %s done on a declaration with no receipt", (key, declaration) => {
     const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {

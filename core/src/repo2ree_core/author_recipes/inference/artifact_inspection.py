@@ -1,6 +1,6 @@
-"""Read-only inspection of a built runtime artifact.
+"""Read-only inspection of a built experiment environment artifact.
 
-Turns a runtime archive's bytes into a small typed fact: is it a Docker archive
+Turns an experiment environment archive's bytes into a small typed fact: is it a Docker archive
 (and what image references / config commands does it declare), a packed Python
 venv, or unrecognized. It reads only the manifest and config *members* — never
 loading the whole (possibly multi-hundred-MB) image into memory and never
@@ -66,8 +66,8 @@ class UnrecognizedArtifact(BaseModel):
 ArtifactInspection = DockerArchiveInspection | VenvArchiveInspection | UnrecognizedArtifact
 
 
-def inspect_runtime_artifact(stream: BinaryIO) -> ArtifactInspection:
-    """Classify a runtime archive from a seekable binary stream.
+def inspect_experiment_environment_artifact(stream: BinaryIO) -> ArtifactInspection:
+    """Classify an experiment environment archive from a seekable binary stream.
 
     Recognizes both ``docker save`` layouts — legacy (root ``manifest.json``) and
     OCI (root ``index.json`` + ``blobs/``) — and a gzipped venv tarball (contains a
@@ -85,7 +85,7 @@ def inspect_runtime_artifact(stream: BinaryIO) -> ArtifactInspection:
             cfg_name = next((name for name in names if _is_pyvenv_cfg(name)), None)
             if cfg_name is not None:
                 return VenvArchiveInspection(restore_dir=_venv_restore_dir(tar, cfg_name))
-            return UnrecognizedArtifact(reason="archive matches no known runtime kind")
+            return UnrecognizedArtifact(reason="archive matches no known experiment environment kind")
     except (tarfile.TarError, OSError, EOFError) as exc:
         return UnrecognizedArtifact(reason=f"not a readable archive: {type(exc).__name__}")
 

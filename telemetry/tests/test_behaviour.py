@@ -25,12 +25,19 @@ def kept_contract(journals: Path) -> subprocess.CompletedProcess[str]:
 
 def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None:
     open_journal(tmp_path, "api", hosts=("supervisor",))
-    events.author_api_action("a1", None, "requested", action="build_runtime", partition="ree-1", facts={"run_id": "r1"})
     events.author_api_action(
-        "a1", "requested", "failed", action="build_runtime", partition="ree-1", facts={"failure_category": "x"}
+        "a1", None, "requested", action="build_experiment_environment", partition="ree-1", facts={"run_id": "r1"}
+    )
+    events.author_api_action(
+        "a1",
+        "requested",
+        "failed",
+        action="build_experiment_environment",
+        partition="ree-1",
+        facts={"failure_category": "x"},
     )
     sent = events.start_run_sent(
-        "a1", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"}
+        "a1", partition="ree-1", facts={"operation": "build_experiment_environment", "run_id": "r1", "session": "s1"}
     )
     events.start_run_received("a1", "accepted", partition="ree-1")
     events.follow_run_sent("a1", partition="ree-1", facts={"run_id": "r1", "session": "s1"})
@@ -38,11 +45,11 @@ def test_every_typed_record_keeps_the_published_contract(tmp_path: Path) -> None
     events.follow_run_sent("a1", partition="ree-1", facts={"run_id": "r1", "session": "s2"})
     events.follow_run_received("a1", "settled", partition="ree-1", facts={"status": "succeeded", "commit": "c" * 40})
     events.start_run_sent(
-        "a2", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"}
+        "a2", partition="ree-1", facts={"operation": "build_experiment_environment", "run_id": "r1", "session": "s1"}
     )
     events.start_run_received("a2", "busy", partition="ree-1")
     events.start_run_sent(
-        "a3", partition="ree-1", facts={"operation": "build_runtime", "run_id": "r1", "session": "s1"}
+        "a3", partition="ree-1", facts={"operation": "build_experiment_environment", "run_id": "r1", "session": "s1"}
     )
     events.start_run_abandoned("a3", partition="ree-1", reason="closed_without_response")
     events.follow_run_sent("a4", partition="ree-1", facts={"run_id": "r4", "session": "s1"})
@@ -60,7 +67,7 @@ def test_a_workbench_journal_and_its_references_are_named_by_its_store(tmp_path:
         None,
         "started",
         partition="ree-1",
-        facts={"operation": "build_runtime", "run_id": "r1", "dispatched_by": "api-000001#4"},
+        facts={"operation": "build_experiment_environment", "run_id": "r1", "dispatched_by": "api-000001#4"},
     )
     events.execution(
         "a1", "started", "stopped", partition="ree-1", facts={"exit_code": 1, "cause": "cancel", "status": "canceled"}

@@ -24,7 +24,7 @@ function sealPage(overrides: Partial<Parameters<typeof SealContent>[0]> = {}) {
 const bundleableRee = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
   spec: {
     name: "Example",
-    runtime: "runtime.tar",
+    experimentEnvironmentPath: "runtime.tar",
     experiments: [
       {
         name: "experiment",
@@ -86,7 +86,7 @@ describe("SealContent", () => {
 
     expect(onSeal).toHaveBeenCalledWith({
       includeSource: true,
-      includeRuntime: false,
+      includeExperimentEnvironment: false,
       includeResults: true,
     });
   });
@@ -96,7 +96,7 @@ describe("SealContent", () => {
       sealPage({
         ree: patchReeEditorViewModel(bundleableRee, {
           source: { sourceAvailable: false },
-          spec: { runtime: "__skipped__", experiments: [] },
+          spec: { experimentEnvironmentPath: "__skipped__", experiments: [] },
         }),
       }),
     );

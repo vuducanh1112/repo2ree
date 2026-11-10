@@ -32,7 +32,7 @@ export function findSbomArtifact(reeFiles: ReeFile[], path: string): ReeFile | n
   return reeFiles.find((file) => file.name === path) ?? null;
 }
 
-export function isRuntimeTarballPath(path: string): boolean {
+export function isExperimentEnvironmentTarballPath(path: string): boolean {
   return /\.(tar|tar\.gz|tgz)$/i.test(path);
 }
 
@@ -80,11 +80,15 @@ function parseSbomJson(file: SbomFileLike | null): ParsedSbom | null {
 }
 
 export function sbomReadiness(input: {
-  hasRuntime: boolean;
-  runtimePathExists: boolean;
+  hasExperimentEnvironment: boolean;
+  experimentEnvironmentPathExists: boolean;
   hasSbom: boolean;
 }) {
-  const checks = [input.hasRuntime, input.runtimePathExists, input.hasSbom];
+  const checks = [
+    input.hasExperimentEnvironment,
+    input.experimentEnvironmentPathExists,
+    input.hasSbom,
+  ];
   const done = checks.filter(Boolean).length;
   return {
     ...input,

@@ -68,7 +68,7 @@ describe("appShellState", () => {
       toInitialSlices(
         patchReeEditorViewModel(buildRee(), {
           source: { sourceAvailable: true, sourceIncluded: true },
-          artifact: { runtimeIncluded: true },
+          artifact: { experimentEnvironmentIncluded: true },
         }),
       ),
     );

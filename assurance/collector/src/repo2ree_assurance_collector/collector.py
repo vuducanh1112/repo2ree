@@ -52,7 +52,7 @@ JOURNALS = "/api/v1/behaviour/journals"
 STATE = "/api/v1/behaviour/state"
 ARCHIVES = "/api/v1/behaviour/archives"
 STORES_LISTED = "/api/v1/stores"
-# An owner's journal epoch, as the runtime names it: ``<process>-<epoch>.ndjson``.
+# An owner's journal epoch, as the experiment environment names it: ``<process>-<epoch>.ndjson``.
 JOURNAL_FILE = re.compile(r"^[a-z][a-z0-9-]*-[0-9]{6}\.ndjson$")
 
 # What collecting one source can run into. Anything else is a bug in the collector, not a gap in
@@ -215,7 +215,7 @@ def extract(path: Path, destination: Path) -> None:
     link the archive itself created, or at one, is refused, since writing it would go wherever the
     link points.
 
-    LFS payloads stay out (a runtime image can be gigabytes, copied at every collection and every
+    LFS payloads stay out (an experiment environment image can be gigabytes, copied at every collection and every
     fetch of a run): the payload store is skipped, and each file the REE keeps in LFS is written
     as the pointer its history commits. What the checker reads, the history and the operation
     records, is complete without them; the payloads remain in the archive the test kept.

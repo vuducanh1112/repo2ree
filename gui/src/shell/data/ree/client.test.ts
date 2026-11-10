@@ -34,7 +34,7 @@ describe("createReeClient", () => {
     await client.updateReeIntent("ree-1", {
       name: "Renamed",
       catalog: {},
-      build_runtime: {},
+      experiment_environment: {},
       experiments: [],
       hardware: {},
     });
@@ -44,7 +44,7 @@ describe("createReeClient", () => {
     );
     await client.sealRee("ree-1", {
       includeSource: true,
-      includeRuntime: false,
+      includeExperimentEnvironment: false,
       includeResults: true,
     });
     await expect(client.getReeArchive("ree-1")).resolves.toMatchObject({ fileName: "ree.zip" });

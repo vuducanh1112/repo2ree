@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import type { ReviewAttempt } from "@core/reviews/Review";
 import { REVIEW_STEPS, type ReviewStepKey, type ReviewStepStatus } from "@core/reviews/reviewDag";
 import { type ReactNode, type Ref, useEffect, useRef } from "react";
@@ -8,7 +9,7 @@ import type { ReviewWorkflowModel } from "./useReviewWorkflowModel";
 
 const STEP_LABEL: Record<ReviewStepKey, string> = {
   source: "Source",
-  build: "Build",
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "Build Experiment Environment",
   activation: "Activation",
   experiments: "Experiments",
 };
@@ -61,10 +62,12 @@ export function ReviewEvidence({
       {attempt ? <BasisNotice attempt={attempt} /> : null}
 
       {REVIEW_STEPS.map(({ key }) => {
-        if (key === "build") {
+        if (key === "build_experiment_environment") {
           return section(
             key,
-            attempt?.buildComparison ? <BuildVerdictDetail attempt={attempt} /> : null,
+            attempt?.experimentEnvironmentComparison ? (
+              <ExperimentEnvironmentVerdictDetail attempt={attempt} />
+            ) : null,
           );
         }
         if (key === "activation") {
@@ -156,7 +159,8 @@ function EvidenceSection({
 function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
   const bundled: string[] = [];
   if (attempt.sourceComparison?.basis === "bundled") bundled.push("source");
-  if (attempt.buildComparison?.basis === "bundled") bundled.push("runtime");
+  if (attempt.experimentEnvironmentComparison?.basis === "bundled")
+    bundled.push("experiment environment");
   // Activation inherits its basis, so naming it separately would double-count
   // the same weakness the source or runtime line already reports.
   if (bundled.length === 0) return null;
@@ -184,7 +188,10 @@ function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
   return (
     <div className={styles.detail} data-tone={passed ? undefined : "fault"}>
       <span>
-        activation: {passed ? "the runtime is inhabitable" : "the runtime did not activate"}
+        activation:{" "}
+        {passed
+          ? "the experiment environment is inhabitable"
+          : "the experiment environment did not activate"}
       </span>
       {passed ? null : (
         <span>
@@ -201,17 +208,17 @@ function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
  * "equivalent" is a claim about the dependency closure and a reviewer should
  * see the counts it rests on without opening the run log.
  */
-function BuildVerdictDetail({ attempt }: { attempt: ReviewAttempt }) {
-  const comparison = attempt.buildComparison;
+function ExperimentEnvironmentVerdictDetail({ attempt }: { attempt: ReviewAttempt }) {
+  const comparison = attempt.experimentEnvironmentComparison;
   if (!comparison) return null;
   const digestsMatch =
-    !!comparison.expectedRuntimeDigest &&
-    comparison.expectedRuntimeDigest === comparison.observedRuntimeDigest;
+    !!comparison.expectedArtifactDigest &&
+    comparison.expectedArtifactDigest === comparison.observedArtifactDigest;
 
   return (
     <div className={styles.detail}>
       <span>
-        runtime digest: {digestsMatch ? "bit-identical" : "differs — closure decides the verdict"}
+        artifact digest: {digestsMatch ? "bit-identical" : "differs — closure decides the verdict"}
       </span>
       <span>
         closure: {comparison.matched} matched · {comparison.missingCount} missing ·{" "}

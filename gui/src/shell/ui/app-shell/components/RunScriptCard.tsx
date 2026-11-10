@@ -61,7 +61,7 @@ export function RunScriptCard({
   currentContent,
   onSave,
   label = "Run script",
-  helper = "This runnable owns its run script: it fully defines how it executes, including entering the runtime.",
+  helper = "This runnable owns its run script: it fully defines how it executes, including entering the experiment environment.",
   templates,
   disabled = false,
   externalEdit,

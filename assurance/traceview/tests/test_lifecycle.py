@@ -26,7 +26,7 @@ def requested(s: Scenario, t: float, key: str, action: str, state: str, **facts:
 
 def lost(s: Scenario) -> Scenario:
     """A build whose workbench was lost: its dispatch went unanswered, and the run failed naming no attempt."""
-    s.run("run-lost", [(30.0, "requested"), (30.1, "running")], action="build_runtime")
+    s.run("run-lost", [(30.0, "requested"), (30.1, "running")], action="build_experiment_environment")
     s.journal(
         30.2,
         kind="send",
@@ -34,12 +34,12 @@ def lost(s: Scenario) -> Scenario:
         subject="start_run",
         key="a-lost",
         message="start_run",
-        facts={"operation": "build_runtime", "run_id": "run-lost", "session": "session-1"},
+        facts={"operation": "build_experiment_environment", "run_id": "run-lost", "session": "session-1"},
     )
     s.requests["a-lost"] = f"api-000001#{s.seq}"
     s.journal(70.0, kind="receive", owner="supervisor", subject="start_run", key="a-lost", message="unavailable")
-    s.action(70.1, "run-lost", "running", "failed", action="build_runtime", failure_category="internal")
-    s.commit(5, "a-lost", "build_runtime", "run-lost", [], ("draft", "draft"))
+    s.action(70.1, "run-lost", "running", "failed", action="build_experiment_environment", failure_category="internal")
+    s.commit(5, "a-lost", "build_experiment_environment", "run-lost", [], ("draft", "draft"))
     return s
 
 
@@ -50,7 +50,7 @@ def test_the_lifecycle_joins_every_entry_in_journal_order() -> None:
     assert [(segment.kind, segment.label, segment.entry) for segment in lifecycle.segments] == [
         ("setup", "provision", 0),
         ("authoring", "authoring", 1),
-        ("operation", "build_runtime", 2),
+        ("operation", "build_experiment_environment", 2),
         ("operation", "generate_sbom", 3),
     ]
     # Segments follow one another, and each draws its own entry's lines.
@@ -78,7 +78,7 @@ def test_a_run_lost_with_its_workbench_is_an_operation_through_its_dispatch() ->
     build = trace.entries[-1]
     assert (build.kind, build.name, build.dispatch and build.dispatch.outcome) == (
         "operation",
-        "build_runtime",
+        "build_experiment_environment",
         "unavailable",
     )
     assert build.run is not None
@@ -100,7 +100,7 @@ def test_actions_no_entry_draws_are_placed_by_journal_position_and_reads_are_lef
     assert [(segment.kind, segment.label, segment.outcome) for segment in lifecycle.segments] == [
         ("setup", "provision", "succeeded"),
         ("authoring", "authoring", None),
-        ("operation", "build_runtime", "succeeded"),
+        ("operation", "build_experiment_environment", "succeeded"),
         ("operation", "generate_sbom", "succeeded"),
         ("action", "write_file", "failed"),
         ("operation", "test_activation", "succeeded"),
@@ -119,7 +119,7 @@ def test_lines_matched_by_time_are_left_to_the_operation_they_belong_to() -> Non
 
 def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> None:
     s = recorded()
-    s.run("run-killed", [(30.0, "requested"), (30.1, "running")], action="build_runtime")
+    s.run("run-killed", [(30.0, "requested"), (30.1, "running")], action="build_experiment_environment")
     s.journal(
         30.2,
         kind="send",
@@ -127,21 +127,23 @@ def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> No
         subject="start_run",
         key="a-killed",
         message="start_run",
-        facts={"operation": "build_runtime", "run_id": "run-killed", "session": "session-1"},
+        facts={"operation": "build_experiment_environment", "run_id": "run-killed", "session": "session-1"},
     )
     s.journal(50.0, kind="receive", owner="supervisor", subject="start_run", key="a-killed", message="unavailable")
-    s.action(50.1, "run-killed", "running", "failed", action="build_runtime", failure_category="internal")
+    s.action(
+        50.1, "run-killed", "running", "failed", action="build_experiment_environment", failure_category="internal"
+    )
     lifecycle = trace_of(s).lifecycle
     assert lifecycle is not None
     killed = lifecycle.segments[-1]
-    assert (killed.kind, killed.label, killed.outcome) == ("action", "build_runtime", "failed")
+    assert (killed.kind, killed.label, killed.outcome) == ("action", "build_experiment_environment", "failed")
     labels = [row.label for row in lifecycle.rows[killed.first : killed.last + 1]]
     assert labels == [
-        "build_runtime → requested",
-        "build_runtime → running",
-        "start_run · build_runtime",
+        "build_experiment_environment → requested",
+        "build_experiment_environment → running",
+        "start_run · build_experiment_environment",
         "unavailable",
-        "build_runtime → failed",
+        "build_experiment_environment → failed",
     ]
 
 

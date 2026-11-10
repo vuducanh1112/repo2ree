@@ -36,7 +36,7 @@ class FakeRun:
                 if seq > after
             ]
             return {"entries": entries, "next_cursor": str(entries[-1]["seq"]) if entries else None}
-        return {"run_id": "run-1", "operation": "build", "status": status}
+        return {"run_id": "run-1", "operation": "build_experiment_environment", "status": status}
 
 
 def test_a_run_that_settles_is_returned_with_its_log_tail() -> None:

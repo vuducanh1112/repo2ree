@@ -27,7 +27,7 @@ interface Props {
   // generation, so a page can act on it without an effect that re-runs on every
   // render. Whether to *use* it is the page's call — it knows its own
   // declaration; this control does not.
-  onRuntimePath?: (path: string) => void;
+  onExperimentEnvironmentPath?: (path: string) => void;
   disabled?: boolean;
 }
 
@@ -40,7 +40,7 @@ export function GenerateScriptControl({
   onLoad,
   noun,
   notInferredHint,
-  onRuntimePath,
+  onExperimentEnvironmentPath,
   disabled = false,
 }: Props) {
   const [status, setStatus] = useState<Status | null>(null);
@@ -70,7 +70,8 @@ export function GenerateScriptControl({
           return;
         }
         onLoad(generation.script.body);
-        if (generation.script.runtimePath) onRuntimePath?.(generation.script.runtimePath);
+        if (generation.script.experimentEnvironmentPath)
+          onExperimentEnvironmentPath?.(generation.script.experimentEnvironmentPath);
         const parts = [`Loaded a generated ${noun} (${generation.script.ruleId}).`];
         if (generation.script.alternativeCount > 1) {
           parts.push(
@@ -93,7 +94,7 @@ export function GenerateScriptControl({
         });
       },
     });
-  }, [generate, onLoad, noun, notInferredHint, onRuntimePath]);
+  }, [generate, onLoad, noun, notInferredHint, onExperimentEnvironmentPath]);
 
   return (
     <div className={styles.control}>
@@ -105,7 +106,7 @@ export function GenerateScriptControl({
           disabled={disabled || generate.isPending}
           busy={generate.isPending}
           icon={generate.isPending ? Ic.loader(14) : Ic.fileCode(14)}
-          title={`Infer a ${noun} from the built runtime. It loads into the editor below; nothing is saved until you save.`}
+          title={`Infer a ${noun} from the built experiment environment. It loads into the editor below; nothing is saved until you save.`}
         >
           {generate.isPending ? "Generating…" : "Generate from repository"}
         </Button>

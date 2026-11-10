@@ -16,7 +16,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import LintScriptsArgs, ScriptTargetSelectorArg
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 
 def _silent_log(*_: object) -> None:
@@ -58,13 +58,15 @@ def test_a_written_script_is_read_from_the_overlay_and_reported_on(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _store_at(tmp_path, monkeypatch)
-    _write_overlay(tmp_path, RESERVED_BUILD_SCRIPT, "#!/usr/bin/env sh\nset -eu\ndocker build .\n")
+    _write_overlay(
+        tmp_path, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "#!/usr/bin/env sh\nset -eu\ndocker build .\n"
+    )
 
-    result = _run(_args("build"))
+    result = _run(_args("build_experiment_environment"))
 
     assert result.status == "succeeded"
     (report,) = result.outputs["reports"]
-    assert report["target"]["path"] == RESERVED_BUILD_SCRIPT
+    assert report["target"]["path"] == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     assert result.outputs["missing_scripts"] == []
 
 
@@ -73,11 +75,11 @@ def test_an_unwritten_script_is_listed_rather_than_reported_on(tmp_path: Path, m
     # to tell an author, so an absent script never becomes an empty report.
     _store_at(tmp_path, monkeypatch)
 
-    result = _run(_args("build"))
+    result = _run(_args("build_experiment_environment"))
 
     assert result.status == "succeeded"
     assert result.outputs["reports"] == []
-    assert result.outputs["missing_scripts"] == [RESERVED_BUILD_SCRIPT]
+    assert result.outputs["missing_scripts"] == [RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT]
 
 
 def test_lint_needs_no_acquired_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -87,9 +89,9 @@ def test_lint_needs_no_acquired_source(tmp_path: Path, monkeypatch: pytest.Monke
     upstream = tmp_path / "upstream"
     if upstream.is_dir():
         upstream.rmdir()
-    _write_overlay(tmp_path, RESERVED_BUILD_SCRIPT, "set -eu\n")
+    _write_overlay(tmp_path, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "set -eu\n")
 
-    assert _run(_args("build")).status == "succeeded"
+    assert _run(_args("build_experiment_environment")).status == "succeeded"
 
 
 def test_an_experiment_target_without_a_name_is_a_validation_error(
@@ -102,6 +104,8 @@ def test_an_experiment_target_without_a_name_is_a_validation_error(
 
 def test_a_canceled_run_reports_canceled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
-    _write_overlay(tmp_path, RESERVED_BUILD_SCRIPT, "set -eu\n")
-    result = handler.handle_lint_scripts(_args("build"), log=_silent_log, is_canceled=lambda: True)
+    _write_overlay(tmp_path, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "set -eu\n")
+    result = handler.handle_lint_scripts(
+        _args("build_experiment_environment"), log=_silent_log, is_canceled=lambda: True
+    )
     assert result.status == "canceled"

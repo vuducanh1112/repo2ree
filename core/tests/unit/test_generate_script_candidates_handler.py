@@ -58,7 +58,9 @@ def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.Monk
 def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)  # ensure_dirs does not create upstream
     (tmp_path / "upstream").rmdir() if (tmp_path / "upstream").is_dir() else None
-    result = handler.handle_generate_script_candidates(_args("build"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_generate_script_candidates(
+        _args("build_experiment_environment"), log=_silent_log, is_canceled=_never_canceled
+    )
     assert result.status == "failed"
     assert result.failure is not None
     assert result.failure.category == "precondition"
@@ -67,13 +69,15 @@ def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.Mo
 def test_build_success_returns_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
     _seed_upstream(tmp_path, {"Dockerfile": "FROM x\n", "main.py": "y"})
-    result = handler.handle_generate_script_candidates(_args("build"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_generate_script_candidates(
+        _args("build_experiment_environment"), log=_silent_log, is_canceled=_never_canceled
+    )
     assert result.status == "succeeded"
     report = result.outputs
     assert report["schema_version"] == 1
     (target_result,) = report["results"]
     assert target_result["status"] == "complete"
-    assert target_result["candidates"][0]["target"]["path"] == "ree-scripts/build_script.sh"
+    assert target_result["candidates"][0]["target"]["path"] == "ree-scripts/build_experiment_environment.sh"
 
 
 def test_inference_ignores_overlay_generated_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -84,6 +88,8 @@ def test_inference_ignores_overlay_generated_output(tmp_path: Path, monkeypatch:
     overlay_dockerfile = tmp_path / "overlay" / "Dockerfile"
     overlay_dockerfile.parent.mkdir(parents=True, exist_ok=True)
     overlay_dockerfile.write_text("FROM x\n")
-    result = handler.handle_generate_script_candidates(_args("build"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_generate_script_candidates(
+        _args("build_experiment_environment"), log=_silent_log, is_canceled=_never_canceled
+    )
     assert result.status == "succeeded"
     assert result.outputs["results"][0]["status"] == "not_inferred"

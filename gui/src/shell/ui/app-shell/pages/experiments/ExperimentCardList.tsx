@@ -75,7 +75,7 @@ function ExperimentCard({
             </span>
           )}
           {runtimeEstimate && (
-            <span className={styles.fact} data-kind="runtime">
+            <span className={styles.fact} data-kind="experiment_environment">
               ~ {runtimeEstimate}
             </span>
           )}

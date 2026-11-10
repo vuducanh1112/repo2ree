@@ -3,7 +3,7 @@
 The API tiers get their tracer provider from the app's lifespan. This tier has
 no app — it drives the ``CommandDispatcher`` directly — so nothing would bootstrap
 tracing and the run would leave no span record at all. That is the gap this
-closes: the one suite that exercises a real ``build_runtime`` through a real
+closes: the one suite that exercises a real ``build_experiment_environment`` through a real
 workbench was also the one producing nothing to read afterwards.
 
 The trace file lands beside the ``workbench.log`` this tier already keeps, under

@@ -19,7 +19,7 @@ const reeDocument = {
   ree: { subject: { definition: { name: "Python hello world" } } },
   audit: {
     source: { evidence: "current", payload: "absent" },
-    runtime: { evidence: "current", payload: "absent" },
+    experiment_environment: { evidence: "current", payload: "absent" },
   },
   workspace_files: [],
   ree_files: [],
@@ -34,12 +34,12 @@ const authorReceipts = parseAuthorReceipts({
     duration_ms: 1000,
     recorded_at: "2026-01-01T00:00:01Z",
   },
-  build: {
-    operation: "build_runtime",
+  experiment_environment: {
+    operation: "build_experiment_environment",
     run_id: "run-build",
     duration_ms: 2400,
     recorded_at: "2026-01-01T00:01:00Z",
-    build_runtime_script_digest: "sha256:build-script",
+    build_experiment_environment_script_digest: "sha256:build-script",
   },
   experiments: {
     hello: {
@@ -57,7 +57,7 @@ const authorReceipts = parseAuthorReceipts({
 const liveBuildRun = {
   run_id: "build-live",
   ree_id: "ree-1",
-  operation: "build",
+  operation: "build_experiment_environment",
   status: "running",
   created_at: "2026-01-01T00:03:00Z",
   started_at: "2026-01-01T00:03:01Z",
@@ -75,12 +75,18 @@ function services() {
       listReeSteps: vi.fn().mockResolvedValue({
         steps: [
           { key: "source", order: 1, label: "Source", requires: [], actions: [] },
-          { key: "build", order: 2, label: "Build Runtime", requires: ["source"], actions: [] },
+          {
+            key: "build_experiment_environment",
+            order: 2,
+            label: "Build Experiment Environment",
+            requires: ["source"],
+            actions: [],
+          },
           {
             key: "crosscheck",
             order: 3,
             label: "Cross-check SBOM",
-            requires: ["build"],
+            requires: ["build_experiment_environment"],
             actions: [],
           },
         ],
@@ -114,7 +120,7 @@ describe("CanvasHub", () => {
           },
         }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
-        badges={{ build: true, sbom: "succeeded" }}
+        badges={{ build_experiment_environment: true, sbom: "succeeded" }}
         nextPage={PAGE.SBOM}
         provisioned
         onNavigate={onNavigate}
@@ -171,8 +177,8 @@ describe("CanvasHub", () => {
       { reeId: "ree-1", services: services() },
     );
 
-    await user.click(screen.getByRole("button", { name: "Build" }));
-    expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD, expect.anything());
+    await user.click(screen.getByRole("button", { name: "Build Experiment Environment" }));
+    expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, expect.anything());
 
     // The panel the authoring graph is sending you to is flagged, and says so
     // to a screen reader — but keeps its plain name, which is how the canvas
@@ -188,7 +194,7 @@ describe("CanvasHub", () => {
 
     // A run in flight is reported on its own panel, whoever started it — the
     // listing is the source, not what this tab happens to have kicked off.
-    const buildPanel = screen.getByRole("button", { name: "Build" });
+    const buildPanel = screen.getByRole("button", { name: "Build Experiment Environment" });
     await waitFor(() => expect(buildPanel).toHaveAttribute("data-running", "true"));
     expect(within(buildPanel).getByText("RUNNING")).toBeInTheDocument();
     expect(buildPanel).toHaveAccessibleDescription("Running");
@@ -233,7 +239,10 @@ describe("CanvasHub", () => {
     renderWithShell(
       <CanvasHub
         page={PAGE.CANVAS}
-        ree={{ ...exampleEditorRee, audit: { source: "current", runtime: "current" } }}
+        ree={{
+          ...exampleEditorRee,
+          audit: { source: "current", experiment_environment: "current" },
+        }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{}}
         provisioned
@@ -253,7 +262,10 @@ describe("CanvasHub", () => {
       { reeId: "ree-1", services: services() },
     );
 
-    expect(screen.getByRole("button", { name: "Build" })).toHaveAttribute("data-done", "true");
+    expect(screen.getByRole("button", { name: "Build Experiment Environment" })).toHaveAttribute(
+      "data-done",
+      "true",
+    );
     // The SBOM receipt is still on the aggregate but no longer speaks for what
     // the REE declares, so carrying a receipt is not doneness of its own.
     const sbom = screen.getByRole("button", { name: "SBOM" });

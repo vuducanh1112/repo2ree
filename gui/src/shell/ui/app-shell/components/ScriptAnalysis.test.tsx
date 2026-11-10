@@ -10,7 +10,10 @@ function report(overrides: Record<string, unknown> = {}) {
   return {
     schema_version: 1,
     engine_version: "1",
-    target: { kind: "build", path: "ree-scripts/build_script.sh" },
+    target: {
+      kind: "build_experiment_environment",
+      path: "ree-scripts/build_experiment_environment.sh",
+    },
     findings: [],
     tiers: [{ tier: "contract", status: "ran" }],
     ...overrides,
@@ -23,7 +26,7 @@ const FINDING = {
   severity: "warning",
   blocking: false,
   message: "The command is piped, so a failing run can be recorded as a pass.",
-  path: "ree-scripts/build_script.sh",
+  path: "ree-scripts/build_experiment_environment.sh",
   line: 4,
 };
 
@@ -33,10 +36,10 @@ function renderPanel(
 ) {
   return renderWithShell(
     <ScriptAnalysis
-      target={{ kind: "build" }}
+      target={{ kind: "build_experiment_environment" }}
       source="docker build .\n"
       dirty
-      runtimePath="runtime.tar"
+      experimentEnvironmentPath="runtime.tar"
       {...props}
     />,
     { reeId: "ree-1", services },

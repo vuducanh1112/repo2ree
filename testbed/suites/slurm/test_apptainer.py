@@ -1,4 +1,4 @@
-"""An REE whose runtime is a SIF, entered with Apptainer in a Slurm job, all by the author's scripts."""
+"""An REE whose experiment environment is a SIF, entered with Apptainer in a Slurm job, all by the author's scripts."""
 
 from __future__ import annotations
 
@@ -12,17 +12,19 @@ from typed_client import Client, NewRee
 
 from repo2ree_testbed.showcases import APPTAINER
 
-PLACED = r"ran in job \d+ container \S*runtime\.sif"
+PLACED = r"ran in job \d+ container \S*experiment environment\.sif"
 
 
 def built(api: Api, ree_id: str) -> None:
     api.acquire(ree_id, APPTAINER)
     api.succeed(ree_id, "evaluate")
-    run = api.build(ree_id, fixture=APPTAINER)
+    run = api.build_experiment_environment(ree_id, fixture=APPTAINER)
     assert run["status"] == "succeeded", api.logs(ree_id, run["run_id"])
 
 
-def test_a_sif_runtime_is_run_in_a_job_sealed_and_downloaded(api: Api, new_ree: Callable[..., str]) -> None:
+def test_a_sif_experiment_environment_is_run_in_a_job_sealed_and_downloaded(
+    api: Api, new_ree: Callable[..., str]
+) -> None:
     ree_id = new_ree()
     built(api, ree_id)
     activation = api.activate(ree_id, fixture=APPTAINER)
@@ -74,7 +76,7 @@ def test_declaring_a_container_engine_is_refused_where_only_apptainer_is_install
     api.acquire(ree_id, APPTAINER)
     api.patch(ree_id, {"workbench_environment": {"kind": "host", "needs_container_engine": True}})
 
-    run = api.build(ree_id, fixture=APPTAINER)
+    run = api.build_experiment_environment(ree_id, fixture=APPTAINER)
 
     assert run["status"] == "failed"
     assert "need a container engine" in api.logs(ree_id, run["run_id"])

@@ -13,22 +13,22 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import BuildRuntimeDefinition, ExperimentDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import ExperimentDefinition, ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
 from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT = digest_bytes(b"snapshot")
-_RUNTIME = b"runtime"
-_BUILD_SCRIPT = b"#!/bin/sh\nexit 0\n"
+_EXPERIMENT_ENVIRONMENT = b"experiment_environment"
+_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = b"#!/bin/sh\nexit 0\n"
 _ACTIVATION_SCRIPT = b"#!/bin/sh\nexit 0\n"
 _ACTIVATION_VERIFY = b"#!/bin/sh\nexit 0\n"
 _EXPERIMENT_SCRIPT = b"#!/bin/sh\nprintf result > outputs/result.txt\n"
@@ -49,19 +49,19 @@ def _source_receipt() -> AcquireSourceReceipt:
     )
 
 
-def _build_receipt() -> BuildRuntimeReceipt:
-    return BuildRuntimeReceipt(
+def _build_receipt() -> BuildExperimentEnvironmentReceipt:
+    return BuildExperimentEnvironmentReceipt(
         run_id=RunId("build-1"),
         started_at=_NOW,
         finished_at=_NOW,
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_SNAPSHOT,
-        build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT),
-        build_runtime_script_digest=digest_bytes(_BUILD_SCRIPT),
+        build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+        build_experiment_environment_script_digest=digest_bytes(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         workspace_drift=WorkspaceDrift(status="unknown"),
-        runtime_path=WorkspacePath("runtime.tar"),
-        produced_runtime_digest=digest_bytes(_RUNTIME),
+        artifact_path=WorkspacePath("runtime.tar"),
+        produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
     )
 
 
@@ -91,19 +91,19 @@ def _experiment_definition(*, verify: bool = True) -> ExperimentDefinition:
 def _ree(
     *,
     source: bool = True,
-    runtime: bool = True,
+    experiment_environment: bool = True,
     build: bool = True,
     activation: bool = True,
     experiments: bool = True,
 ) -> Ree:
     definition = ReeDefinition(
-        build_runtime=(
-            BuildRuntimeDefinition(
-                build_runtime_script_digest=digest_bytes(_BUILD_SCRIPT),
-                build_runtime_script_size=len(_BUILD_SCRIPT),
-                runtime_path=WorkspacePath("runtime.tar"),
+        experiment_environment=(
+            ExperimentEnvironmentDefinition(
+                build_experiment_environment_script_digest=digest_bytes(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+                build_experiment_environment_script_size=len(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+                artifact_path=WorkspacePath("runtime.tar"),
             )
-            if runtime
+            if experiment_environment
             else None
         ),
         test_activation=_activation_definition() if activation else None,
@@ -112,7 +112,7 @@ def _ree(
     ree = Ree(subject=ReeSubject(definition=definition))
     if source:
         ree = commit_receipt(ree, _source_receipt())
-    if runtime and build:
+    if experiment_environment and build:
         ree = commit_receipt(ree, _build_receipt())
     return ree
 
@@ -129,7 +129,7 @@ def _workbench(
     store.workspace.write_bytes(RESERVED_ACTIVATION_VERIFY_SCRIPT, _ACTIVATION_VERIFY)
     store.workspace.write_bytes(experiment_run_script_path(_EXPERIMENT_NAME), _EXPERIMENT_SCRIPT)
     store.workspace.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
-    store.workspace.write_bytes("runtime.tar", _RUNTIME)
+    store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.write_ree(ree or _ree())
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
@@ -168,19 +168,19 @@ def test_activation_success_commits_exact_input_receipt(
     assert receipt is not None
     assert receipt.run_id == "activation-1"
     assert receipt.snapshot_digest == _SNAPSHOT
-    assert receipt.runtime_path == "runtime.tar"
-    assert receipt.runtime_digest == digest_bytes(_RUNTIME)
+    assert receipt.experiment_environment_path == "runtime.tar"
+    assert receipt.experiment_environment_digest == digest_bytes(_EXPERIMENT_ENVIRONMENT)
     assert receipt.run_script_digest == digest_bytes(_ACTIVATION_SCRIPT)
     assert receipt.verify_script_digest == digest_bytes(_ACTIVATION_VERIFY)
     assert receipt.run_exit_code == 0
     assert receipt.verify_exit_code == 0
 
 
-def test_native_activation_has_no_runtime_binding(
+def test_native_activation_has_no_experiment_environment_binding(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _layout, store = _workbench(tmp_path, monkeypatch, _ree(runtime=False))
+    _layout, store = _workbench(tmp_path, monkeypatch, _ree(experiment_environment=False))
     monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome("succeeded"))
 
     result = activation_test.handle_activation_test(
@@ -192,8 +192,8 @@ def test_native_activation_has_no_runtime_binding(
     receipt = store.read_ree().subject.receipts.test_activation
     assert result.status == "succeeded"
     assert receipt is not None
-    assert receipt.runtime_path is None
-    assert receipt.runtime_digest is None
+    assert receipt.experiment_environment_path is None
+    assert receipt.experiment_environment_digest is None
 
 
 def test_experiment_success_captures_outputs_and_commits_named_receipt(
@@ -217,7 +217,7 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     assert result.status == "succeeded"
     assert receipt is not None
     assert receipt.run_id == "experiment-1"
-    assert receipt.runtime_digest == digest_bytes(_RUNTIME)
+    assert receipt.experiment_environment_digest == digest_bytes(_EXPERIMENT_ENVIRONMENT)
     assert receipt.run_script_digest == digest_bytes(_EXPERIMENT_SCRIPT)
     assert receipt.verify_script_digest == digest_bytes(_EXPERIMENT_VERIFY)
     assert receipt.workbench_environment is not None
@@ -252,7 +252,7 @@ def test_unsuccessful_attempt_commits_no_receipt(
     ("ree", "message"),
     [
         (_ree(source=False), "source has not been acquired"),
-        (_ree(build=False), "runtime has not been built"),
+        (_ree(build=False), "experiment environment has not been built"),
         (_ree(activation=False), "no activation test is defined"),
         (record_seal(_ree(), sealed_at=_NOW), "sealed REE"),
     ],

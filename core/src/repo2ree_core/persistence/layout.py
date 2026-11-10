@@ -13,7 +13,7 @@ Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
     upstream/             extracted snapshot, treated as read-only
     overlay/              user-added and tool-generated recipe files
     artifacts/            produced evidence (sbom.json, reproducibility-report.json,
-                          and a runtime restored from a loaded bundle)
+                          and an experiment environment restored from a loaded bundle)
     workspace/            materialized view (upstream + overlay) used at build time
     runs/                 per-action logs and immutable receipt history
     reviews/<review-id>/  isolated reviewer tree: its own upstream/, overlay/,
@@ -224,7 +224,7 @@ class ReeLayout:
 
     @property
     def sbom(self) -> Path:
-        """This REE's software bill of materials, scanned off its runtime.
+        """This REE's software bill of materials, scanned off its experiment environment.
 
         Sits in ``artifacts/`` rather than in ``workspace/``: the workspace is a
         materialized view of source + recipe that any run may rewrite, while
@@ -285,7 +285,7 @@ class ReeLayout:
         """A path relative to the REE root itself, e.g. ``artifacts/runtime.tar.gz``.
 
         The spelling a bundle's manifest uses once packaging has lifted the
-        runtime out of the workspace (see ``ReeDirectory.author_artifact``).
+        experiment environment out of the workspace (see ``ReeDirectory.author_artifact``).
         """
         return _resolve_under(self.root, rel)
 
@@ -321,7 +321,7 @@ class ReviewLayout(ReeLayout):
         The author's recipe files, copied in so the merge never mutates them.
 
     ``sbom``
-        The reviewer's own scan of the runtime *they* built, not a copy of the
+        The reviewer's own scan of the experiment environment *they* built, not a copy of the
         author's. In ``artifacts/`` for the reason the author's is: the
         workspace is disposable and pruned after a build, while this document is
         the evidence the build verdict rests on.

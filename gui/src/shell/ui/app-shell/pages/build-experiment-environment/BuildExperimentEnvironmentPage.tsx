@@ -4,11 +4,11 @@ import {
   buildFooterHint,
   buildRunStatusLabel,
   canRunBuild,
-  deriveRuntimeFileSize,
-  resolvedRuntimePath,
-} from "@core/ree-steps/buildRuntimeUiState";
+  deriveExperimentEnvironmentFileSize,
+  resolvedExperimentEnvironmentPath,
+} from "@core/ree-steps/buildExperimentEnvironmentUiState";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
-import { useGenerateBuildScript } from "@shell/data/scriptInference/mutations";
+import { useGenerateBuildExperimentEnvironmentScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
@@ -27,10 +27,14 @@ import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
 import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import type { StepPageProps } from "../sharedStepUi";
-import styles from "./BuildRuntimePage.module.css";
-import { ReservedBuildScriptCard, RuntimeArtifactCard, WorkbenchEnvironmentCard } from "./sections";
+import styles from "./BuildExperimentEnvironmentPage.module.css";
+import {
+  ExperimentEnvironmentArtifactCard,
+  ReservedBuildExperimentEnvironmentScriptCard,
+  WorkbenchEnvironmentCard,
+} from "./sections";
 
-const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD);
+const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
 
 function BuildRunControls({
   running,
@@ -77,7 +81,7 @@ function WorkbenchEnvironmentBadges({
   );
 }
 
-export function PageBuildRuntime({
+export function PageBuildExperimentEnvironment({
   step,
   ree,
   workspaceFiles,
@@ -100,7 +104,7 @@ export function PageBuildRuntime({
   // The reserved build-script path and template variants are backend-owned;
   // the file itself arrives seeded with the default template.
   const { data: templateCatalog } = useScriptTemplates();
-  const scriptPath = templateCatalog?.build.path ?? "";
+  const scriptPath = templateCatalog?.build_experiment_environment.path ?? "";
   const scriptFile = useMemo(
     () => (scriptPath ? findFileByWorkspacePath(files, scriptPath) : null),
     [files, scriptPath],
@@ -115,7 +119,7 @@ export function PageBuildRuntime({
     [onPersistWorkspaceFile],
   );
 
-  const handleSaveReservedBuildScript = useCallback(
+  const handleSaveReservedBuildExperimentEnvironmentScript = useCallback(
     (content: string) => {
       if (!scriptPath) return;
       handleSaveFile(undefined, scriptPath, content);
@@ -127,7 +131,7 @@ export function PageBuildRuntime({
   // and load it into the editor. It is never written here — the author reviews
   // it and clicks Save build script (exactly like editing by hand). The shared
   // GenerateScriptControl renders the button, status, and decision graph.
-  const generate = useGenerateBuildScript();
+  const generate = useGenerateBuildExperimentEnvironmentScript();
   const [externalEdit, setExternalEdit] = useState<
     { content: string; nonce: number } | undefined
   >();
@@ -136,16 +140,25 @@ export function PageBuildRuntime({
     [],
   );
 
-  const runtimePath = resolvedRuntimePath(ree.spec.runtime);
-  const runtimeFile = useMemo(
-    () => (runtimePath ? findFileByWorkspacePath(files, runtimePath) : null),
-    [files, runtimePath],
+  const experimentEnvironmentPath = resolvedExperimentEnvironmentPath(
+    ree.spec.experimentEnvironmentPath,
   );
-  const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
-  const runtimeSize = useMemo(() => deriveRuntimeFileSize(runtimeFile), [runtimeFile]);
+  const experimentEnvironmentFile = useMemo(
+    () =>
+      experimentEnvironmentPath ? findFileByWorkspacePath(files, experimentEnvironmentPath) : null,
+    [files, experimentEnvironmentPath],
+  );
+  const experimentEnvironmentPathExists = experimentEnvironmentPath
+    ? workspaceFileExists(files, experimentEnvironmentPath)
+    : false;
+  const experimentEnvironmentSize = useMemo(
+    () => deriveExperimentEnvironmentFileSize(experimentEnvironmentFile),
+    [experimentEnvironmentFile],
+  );
 
-  const handleRuntimeChange = useCallback(
-    (path: string) => onReeSpecChange?.((current) => ({ ...current, runtime: path })),
+  const handleExperimentEnvironmentPathChange = useCallback(
+    (path: string) =>
+      onReeSpecChange?.((current) => ({ ...current, experimentEnvironmentPath: path })),
     [onReeSpecChange],
   );
 
@@ -154,12 +167,12 @@ export function PageBuildRuntime({
   // an empty field here lands the script and the declaration it will be checked
   // against in one action. A path the author already typed always wins; the
   // backend does not distinguish the two cases, this guard does.
-  const handleGeneratedRuntimePath = useCallback(
+  const handleGeneratedExperimentEnvironmentPath = useCallback(
     (path: string) => {
-      if (runtimePath) return;
-      handleRuntimeChange(path);
+      if (experimentEnvironmentPath) return;
+      handleExperimentEnvironmentPathChange(path);
     },
-    [handleRuntimeChange, runtimePath],
+    [handleExperimentEnvironmentPathChange, experimentEnvironmentPath],
   );
 
   // The reserved build script arrives seeded with the starter template, so
@@ -169,17 +182,22 @@ export function PageBuildRuntime({
   const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, runFailed, hasScript });
   // The build now needs the path it is expected to produce: the backend refuses
-  // to start without a declared runtime_path, so the button says so here rather
+  // to start without a declared experiment_environment_path, so the button says so here rather
   // than letting the run fail its precondition.
-  const canRun = canRunBuild({ running, hasMissing, hasScript, hasRuntimePath: !!runtimePath });
+  const canRun = canRunBuild({
+    running,
+    hasMissing,
+    hasScript,
+    hasExperimentEnvironmentPath: !!experimentEnvironmentPath,
+  });
 
   return (
     <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.cpu(24)}
         tint={BUILD_PAGE_COLOR}
-        title="Build Runtime"
-        subtitle="Declare where the build writes its runtime, author the build recipe, then run it to give experiments a reusable run target."
+        title="Build Experiment Environment"
+        subtitle="Declare where the build writes its experiment environment, author the build recipe, then run it to give experiments a reusable run target."
         badges={
           <>
             {scriptPath && (
@@ -213,8 +231,8 @@ export function PageBuildRuntime({
           <GlassSectionHeader
             icon={Ic.archive(19)}
             tint={BUILD_PAGE_COLOR}
-            title="1. Declare the runtime the build produces"
-            subtitle="Name the path the build script writes its runtime to. The build refuses to run until it is declared, and fails if nothing lands there."
+            title="1. Declare the experiment environment the build produces"
+            subtitle="Name the path the build script writes its experiment environment to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
           <div className={styles.section}>
             <WorkbenchEnvironmentCard
@@ -223,11 +241,11 @@ export function PageBuildRuntime({
                 onReeSpecChange?.((current) => ({ ...current, workbenchEnvironment }))
               }
             />
-            <RuntimeArtifactCard
-              runtimePath={runtimePath}
-              runtimeSize={runtimeSize}
-              runtimePathExists={runtimePathExists}
-              onRuntimeChange={handleRuntimeChange}
+            <ExperimentEnvironmentArtifactCard
+              experimentEnvironmentPath={experimentEnvironmentPath}
+              experimentEnvironmentSize={experimentEnvironmentSize}
+              experimentEnvironmentPathExists={experimentEnvironmentPathExists}
+              onExperimentEnvironmentChange={handleExperimentEnvironmentPathChange}
             />
           </div>
         </GlassSubPanel>
@@ -245,28 +263,28 @@ export function PageBuildRuntime({
               onLoad={loadGenerated}
               noun="build script"
               notInferredHint="No clear Dockerfile or requirements.txt was found, or the layout is ambiguous."
-              onRuntimePath={handleGeneratedRuntimePath}
+              onExperimentEnvironmentPath={handleGeneratedExperimentEnvironmentPath}
               disabled={!scriptPath}
             />
-            <ReservedBuildScriptCard
+            <ReservedBuildExperimentEnvironmentScriptCard
               currentContent={scriptContent}
               // Disabled until the catalog delivers the reserved path: an
               // enabled editor without a save destination would let edits
               // race the fetch (and silently drop the save).
               disabled={!scriptPath}
-              templates={templateCatalog?.build.templates}
+              templates={templateCatalog?.build_experiment_environment.templates}
               externalEdit={externalEdit}
               renderAnalysis={(content, dirty, focusLine) => (
                 <ScriptAnalysis
-                  target={{ kind: "build" }}
+                  target={{ kind: "build_experiment_environment" }}
                   source={content}
                   dirty={dirty}
-                  runtimePath={runtimePath || null}
+                  experimentEnvironmentPath={experimentEnvironmentPath || null}
                   onFocusLine={focusLine}
                   disabled={!scriptPath}
                 />
               )}
-              onSave={handleSaveReservedBuildScript}
+              onSave={handleSaveReservedBuildExperimentEnvironmentScript}
             />
           </div>
         </GlassSubPanel>
@@ -276,7 +294,12 @@ export function PageBuildRuntime({
         </GlassSubPanel>
 
         <GlassPanelFooter bar>
-          {buildFooterHint({ runDone, runFailed, hasScript, hasRuntimePath: !!runtimePath })}
+          {buildFooterHint({
+            runDone,
+            runFailed,
+            hasScript,
+            hasExperimentEnvironmentPath: !!experimentEnvironmentPath,
+          })}
         </GlassPanelFooter>
       </div>
     </GlassPageShell>

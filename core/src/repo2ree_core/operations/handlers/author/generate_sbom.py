@@ -1,8 +1,12 @@
-"""Generate an SBOM for the selected built runtime and commit its receipt."""
+"""Generate an SBOM for the selected built experiment environment and commit its receipt."""
 
 from __future__ import annotations
 
-from repo2ree_core.analysis.sbom.scan import SBOM_FORMAT, is_runtime_archive, scan_runtime_archive
+from repo2ree_core.analysis.sbom.scan import (
+    SBOM_FORMAT,
+    is_experiment_environment_archive,
+    scan_experiment_environment_archive,
+)
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
@@ -35,7 +39,7 @@ def handle_generate_sbom(
 
     try:
         ree = load_ree(layout, store)
-        runtime_path = _check_preconditions(ree, layout)
+        experiment_environment_path = _check_preconditions(ree, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot generate SBOM: {exc}")
         return ActionResult.failed("precondition", f"cannot generate SBOM: {exc}")
@@ -46,15 +50,15 @@ def handle_generate_sbom(
         return failed_from_exception(exc, f"failed to load SBOM inputs: {exc}")
 
     before_revision = revision_of(ree)
-    runtime_abs = layout.workspace / str(runtime_path)
-    runtime_digest = digest_file(runtime_abs)
+    experiment_environment_abs = layout.workspace / str(experiment_environment_path)
+    experiment_environment_digest = digest_file(experiment_environment_abs)
     timer = OperationTimer.start()
     output_path = layout.sbom
     staged = staging_path(output_path)
-    log("system", "info", f"Runtime input: {runtime_path}")
+    log("system", "info", f"Experiment environment input: {experiment_environment_path}")
 
     try:
-        scan = scan_runtime_archive(runtime_abs, staged, log=log, is_canceled=is_canceled)
+        scan = scan_experiment_environment_archive(experiment_environment_abs, staged, log=log, is_canceled=is_canceled)
     except Exception as exc:
         staged.unlink(missing_ok=True)
         log("system", "error", f"SBOM scanner failed: {exc}")
@@ -87,8 +91,8 @@ def handle_generate_sbom(
     timing = timer.finish()
     receipt = GenerateSbomReceipt(
         **receipt_envelope(run_id, timing),
-        runtime_path=runtime_path,
-        runtime_digest=runtime_digest,
+        experiment_environment_path=experiment_environment_path,
+        experiment_environment_digest=experiment_environment_digest,
         sbom_path=ArtifactPath(SBOM_ARTIFACT_PATH),
         sbom_digest=sbom_digest,
         sbom_format=SBOM_FORMAT,
@@ -115,7 +119,7 @@ def handle_generate_sbom(
     )
     outputs = GenerateSbomOutputs(
         sbom_relative_path=SBOM_ARTIFACT_PATH,
-        runtime_relative_path=runtime_path,
+        experiment_environment_relative_path=experiment_environment_path,
         format=SBOM_FORMAT,
         receipt=receipt,
     )
@@ -130,7 +134,7 @@ def _check_preconditions(
     ree: Ree,
     layout: ReeLayout,
 ) -> WorkspacePath:
-    """Resolve the runtime to scan from the build recipe that produced it.
+    """Resolve the experiment environment to scan from the build recipe that produced it.
 
     The path is not a parameter of the scan. The author declared it before the
     build ran and the build receipt binds it, so a caller could only ever pass
@@ -140,22 +144,24 @@ def _check_preconditions(
     """
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot generate an SBOM")
-    runtime = ree.subject.definition.build_runtime
-    runtime_path = runtime.runtime_path if runtime else None
-    if runtime is None or runtime_path is None:
-        raise ReePreconditionError("no runtime artifact path is declared")
-    if not is_runtime_archive(str(runtime.runtime_path)):
-        raise ValueError("SBOM generation currently supports runtime tarballs only")
-    build = ree.subject.receipts.build
+    experiment_environment = ree.subject.definition.experiment_environment
+    experiment_environment_path = experiment_environment.artifact_path if experiment_environment else None
+    if experiment_environment is None or experiment_environment_path is None:
+        raise ReePreconditionError("no experiment environment artifact path is declared")
+    if not is_experiment_environment_archive(str(experiment_environment.artifact_path)):
+        raise ValueError("SBOM generation currently supports experiment environment tarballs only")
+    build = ree.subject.receipts.experiment_environment
     if build is None:
-        raise ReePreconditionError("runtime has not been built")
-    runtime_audit = audit(ree).runtime
-    if runtime_audit.evidence != "current":
-        detail = "; ".join(runtime_audit.reasons) or "build evidence is not current"
+        raise ReePreconditionError("experiment environment has not been built")
+    experiment_environment_audit = audit(ree).experiment_environment
+    if experiment_environment_audit.evidence != "current":
+        detail = "; ".join(experiment_environment_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
-    runtime_abs = layout.workspace / str(runtime.runtime_path)
-    if not runtime_abs.is_file():
-        raise ReePreconditionError(f"runtime artifact is missing: {runtime.runtime_path}")
-    if digest_file(runtime_abs) != build.produced_runtime_digest:
-        raise ReePreconditionError("runtime artifact does not match the selected build receipt")
-    return runtime_path
+    experiment_environment_abs = layout.workspace / str(experiment_environment.artifact_path)
+    if not experiment_environment_abs.is_file():
+        raise ReePreconditionError(
+            f"experiment environment artifact is missing: {experiment_environment.artifact_path}"
+        )
+    if digest_file(experiment_environment_abs) != build.produced_artifact_digest:
+        raise ReePreconditionError("experiment environment artifact does not match the selected build receipt")
+    return experiment_environment_path

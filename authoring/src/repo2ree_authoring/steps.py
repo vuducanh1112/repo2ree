@@ -17,11 +17,11 @@ REE_STEPS: tuple[ReeStep, ...] = (
     ReeStep(key="metadata", order=2, label="Provide Metadata"),
     ReeStep(key="hbom", order=3, label="Hardware BOM"),
     ReeStep(key="evaluate", order=4, label="Reproducibility Readiness", requires=["source"]),
-    ReeStep(key="build", order=5, label="Build Runtime", requires=["source"]),
-    ReeStep(key="sbom", order=6, label="Generate SBOM", requires=["build"]),
+    ReeStep(key="build_experiment_environment", order=5, label="Build Experiment Environment", requires=["source"]),
+    ReeStep(key="sbom", order=6, label="Generate SBOM", requires=["build_experiment_environment"]),
     ReeStep(key="crosscheck", order=7, label="Cross-check SBOM", requires=["sbom", "evaluate"]),
-    ReeStep(key="activation", order=8, label="Test Activation", requires=["build"]),
-    ReeStep(key="experiments", order=9, label="Experiments", requires=["build"]),
+    ReeStep(key="activation", order=8, label="Test Activation", requires=["build_experiment_environment"]),
+    ReeStep(key="experiments", order=9, label="Experiments", requires=["build_experiment_environment"]),
     ReeStep(key="seal", order=10, label="Seal", requires=[]),
 )
 

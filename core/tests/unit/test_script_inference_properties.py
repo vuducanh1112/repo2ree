@@ -26,13 +26,13 @@ from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.author_recipes.inference.artifact_inspection import (
     VenvArchiveInspection,
-    inspect_runtime_artifact,
+    inspect_experiment_environment_artifact,
 )
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_core.author_recipes.inference.models import StrategyOutcome
-from repo2ree_core.author_recipes.inference.renderers._common import runtime_image_ref
+from repo2ree_core.author_recipes.inference.renderers._common import experiment_environment_image_ref
 from repo2ree_core.author_recipes.inference.repository_facts import resolve_logical_root
 from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityResolver
-from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
@@ -50,15 +50,15 @@ _DOCKER_TAG_REF = re.compile(r"ree-runtime:[a-z0-9_][a-z0-9_.-]{0,127}")
 
 
 @given(st.text(max_size=300))
-def test_runtime_image_ref_is_always_a_valid_docker_reference(name: str) -> None:
-    ref = runtime_image_ref(name)
+def test_experiment_environment_image_ref_is_always_a_valid_docker_reference(name: str) -> None:
+    ref = experiment_environment_image_ref(name)
     assert _DOCKER_TAG_REF.fullmatch(ref), ref
 
 
 @given(st.text(alphabet="  \t\n.-_/", max_size=20))
 def test_pathological_names_fall_back_but_stay_valid(name: str) -> None:
     # Names that are all separators/whitespace still yield a usable tag.
-    ref = runtime_image_ref(name)
+    ref = experiment_environment_image_ref(name)
     assert _DOCKER_TAG_REF.fullmatch(ref), ref
 
 
@@ -182,7 +182,7 @@ def test_build_inference_is_deterministic_and_automatic_is_safe(has_docker: bool
         _make_build_tree(dir_a, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
         _make_build_tree(dir_b, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
         definition = ReeDefinition(name="Demo REE")
-        selectors = [ScriptTargetSelectorArg(kind="build")]
+        selectors = [ScriptTargetSelectorArg(kind="build_experiment_environment")]
         result_a = infer_scripts(dir_a, selectors, definition=definition).results[0]
         result_b = infer_scripts(dir_b, selectors, definition=definition).results[0]
 
@@ -224,17 +224,17 @@ _NASTY = [
 ]
 
 
-def _docker_activation_body(root: Path, runtime_path: str, image_tag: str) -> str:
+def _docker_activation_body(root: Path, experiment_environment_path: str, image_tag: str) -> str:
     definition = ReeDefinition(name="Demo")
-    inputs = RuntimeInputs(
-        declared_runtime_path=runtime_path,
-        accessor=MemoryAccessor({runtime_path: docker_archive([image_tag], cmd=["python", "main.py"])}),
+    inputs = ExperimentEnvironmentInputs(
+        declared_experiment_environment_path=experiment_environment_path,
+        accessor=MemoryAccessor({experiment_environment_path: docker_archive([image_tag], cmd=["python", "main.py"])}),
     )
     report = infer_scripts(
         root,
         [ScriptTargetSelectorArg(kind="activation_run")],
         definition=definition,
-        runtime_inputs=inputs,
+        experiment_environment_inputs=inputs,
     )
     body = report.results[0].candidates[0].body
     assert body is not None
@@ -256,24 +256,28 @@ def test_adversarial_image_tag_cannot_break_the_scaffold(tmp_path: Path, tag: st
 
 
 @pytest.mark.parametrize("suffix", _NASTY)
-def test_adversarial_runtime_path_cannot_break_the_scaffold(tmp_path: Path, suffix: str) -> None:
+def test_adversarial_experiment_environment_path_cannot_break_the_scaffold(tmp_path: Path, suffix: str) -> None:
     (tmp_path / "Dockerfile").write_text("FROM x\n")
-    runtime_path = f".repo2ree/{suffix}.tar"
-    body = _docker_activation_body(tmp_path, runtime_path, "ree-runtime:demo")
+    experiment_environment_path = f".repo2ree/{suffix}.tar"
+    body = _docker_activation_body(tmp_path, experiment_environment_path, "ree-runtime:demo")
     assert _sh_parses(body), body
 
 
 @pytest.mark.parametrize("suffix", _NASTY)
-def test_adversarial_declared_runtime_cannot_break_the_build_script(tmp_path: Path, suffix: str) -> None:
-    # The build script now interpolates the author's declared runtime path, so it
+def test_adversarial_declared_experiment_environment_cannot_break_the_build_experiment_environment_script(
+    tmp_path: Path, suffix: str
+) -> None:
+    # The build script now interpolates the author's declared experiment environment path, so it
     # carries the same injection surface the run scaffolds do.
     (tmp_path / "Dockerfile").write_text("FROM x\n")
-    runtime_path = f".repo2ree/{suffix}.tar"
+    experiment_environment_path = f".repo2ree/{suffix}.tar"
     report = infer_scripts(
         tmp_path,
-        [ScriptTargetSelectorArg(kind="build")],
+        [ScriptTargetSelectorArg(kind="build_experiment_environment")],
         definition=ReeDefinition(name="Demo"),
-        runtime_inputs=RuntimeInputs(declared_runtime_path=runtime_path),
+        experiment_environment_inputs=ExperimentEnvironmentInputs(
+            declared_experiment_environment_path=experiment_environment_path
+        ),
     )
     body = report.results[0].candidates[0].body
     assert body is not None
@@ -287,15 +291,19 @@ def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "expe
     try:
         (root / "Dockerfile").write_text("FROM x\n")
         (root / "requirements.txt").write_text("flask\n")
-        runtime = ".repo2ree/artifacts/runtime.tar" if docker else ".repo2ree/artifacts/runtime-venv.tar.gz"
+        experiment_environment = (
+            ".repo2ree/artifacts/runtime.tar" if docker else ".repo2ree/artifacts/runtime-venv.tar.gz"
+        )
         archive = docker_archive(["ree-runtime:demo"]) if docker else _venv_bytes()
         experiments = [_exp()] if kind == "experiment_run" else []
         definition = ReeDefinition(name="Demo", experiments=tuple(experiments))
-        inputs = RuntimeInputs(
-            declared_runtime_path=runtime, experiments=experiments, accessor=MemoryAccessor({runtime: archive})
+        inputs = ExperimentEnvironmentInputs(
+            declared_experiment_environment_path=experiment_environment,
+            experiments=experiments,
+            accessor=MemoryAccessor({experiment_environment: archive}),
         )
         selector = ScriptTargetSelectorArg(kind=kind, experiment_name="run" if experiments else None)
-        result = infer_scripts(root, [selector], definition=definition, runtime_inputs=inputs).results[0]
+        result = infer_scripts(root, [selector], definition=definition, experiment_environment_inputs=inputs).results[0]
         body = result.candidates[0].body
         assert body is not None
         # Fail-closed: an empty `set --`, a guard, and exit 64 when unconfigured.
@@ -325,7 +333,7 @@ def test_recovered_venv_restore_dir_is_absolute_and_reconciled(top_dir: str, tar
     # `tar -C <parent>` restore would not land there. Anything else -> None.
     prefix = "/" if absolute else ""
     command = f"/usr/bin/python3 -m venv {prefix}{target}"
-    inspection = inspect_runtime_artifact(io.BytesIO(venv_archive(top_dir=top_dir, command=command)))
+    inspection = inspect_experiment_environment_artifact(io.BytesIO(venv_archive(top_dir=top_dir, command=command)))
     assert isinstance(inspection, VenvArchiveInspection)
     if inspection.restore_dir is not None:
         assert inspection.restore_dir.startswith("/")

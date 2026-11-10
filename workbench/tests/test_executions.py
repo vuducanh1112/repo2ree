@@ -234,7 +234,7 @@ def launched(tmp_path: Path, runs: Executions, attempt_id: str, execute: str, re
     script.chmod(script.stat().st_mode | stat.S_IXUSR)
     process = subprocess.Popen([*_WRAPPER, str(script)], cwd=directory, start_new_session=True)
     identity = Identity(
-        attempt_id=attempt_id, ree_id=ree_id, run_id="run-1", operation="build_runtime", pid=process.pid
+        attempt_id=attempt_id, ree_id=ree_id, run_id="run-1", operation="build_experiment_environment", pid=process.pid
     )
     identity = identity.model_copy(update={"birth": _birth(process.pid)})
     (directory / "identity.json").write_text(identity.model_dump_json())

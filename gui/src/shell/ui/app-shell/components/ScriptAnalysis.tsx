@@ -18,7 +18,7 @@ interface ScriptAnalysisProps {
   target: LintTarget;
   source: string;
   dirty: boolean;
-  runtimePath: string | null;
+  experimentEnvironmentPath: string | null;
   onFocusLine?: (line: number) => void;
   disabled?: boolean;
 }
@@ -28,12 +28,12 @@ export function ScriptAnalysis({
   target,
   source,
   dirty,
-  runtimePath,
+  experimentEnvironmentPath,
   onFocusLine,
   disabled = false,
 }: ScriptAnalysisProps) {
   const settled = useDebouncedValue(source, SETTLE_MS);
-  const draft = useScriptDraftLint(target, settled, runtimePath, {
+  const draft = useScriptDraftLint(target, settled, experimentEnvironmentPath, {
     enabled: !disabled && dirty,
   });
   const saved = useSavedScriptLint(target, source, { enabled: !disabled && !dirty });

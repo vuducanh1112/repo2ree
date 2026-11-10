@@ -78,7 +78,7 @@ export function PageArchive({
   // cards below already render their placeholder in that state.
   const assignedId: string | undefined = undefined;
 
-  const buildDone = isAuditCurrent(ree.audit, "runtime");
+  const buildDone = isAuditCurrent(ree.audit, "experiment_environment");
   const sbomDone = isAuditCurrent(ree.audit, "sbom");
   const activationDone = isAuditCurrent(ree.audit, "test_activation");
   const capstoneReady = buildDone && sbomDone && activationDone;

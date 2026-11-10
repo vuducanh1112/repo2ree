@@ -115,15 +115,19 @@ describe("mapRawReeIntentToSlices", () => {
     ).toBeNull();
   });
 
-  it("reads source_included and runtime_included from session", () => {
+  it("reads source_included and experiment_environment_included from session", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {},
-      reeSession: { source_available: true, source_included: true, runtime_included: false },
+      reeSession: {
+        source_available: true,
+        source_included: true,
+        experiment_environment_included: false,
+      },
       fallbackName: "demo",
     });
 
     expect(mapped.workspaceSourceState.sourceIncluded).toBe(true);
-    expect(mapped.artifactStatus.runtimeIncluded).toBe(false);
+    expect(mapped.artifactStatus.experimentEnvironmentIncluded).toBe(false);
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);
   });
 
@@ -149,7 +153,7 @@ describe("mapRawReeIntentToSlices", () => {
         origin_url: "https://example.test/repo",
         source_type: "git",
         revision: "abc",
-        runtime: "runtime.tar",
+        experiment_environment_path: "runtime.tar",
         activation: {
           description: "activate",
           run_script: "run.sh",
@@ -170,7 +174,7 @@ describe("mapRawReeIntentToSlices", () => {
         uploaded_archive: "source.tar",
         source_snapshot_archive: "snapshot.tar",
         source_snapshot_captured_at: "now",
-        runtime_included: true,
+        experiment_environment_included: true,
         sealed_at: "sealed",
         seal_hash: "hash",
         dependency_level: 1,
@@ -187,7 +191,7 @@ describe("mapRawReeIntentToSlices", () => {
       originUrl: "https://example.test/repo",
       sourceType: "git",
       resolvedRevision: "abc",
-      runtime: "runtime.tar",
+      experimentEnvironmentPath: "runtime.tar",
       sbom: "sbom.json",
       swhid: "swh:1:dir:test",
       catalogMetadata: {
@@ -209,7 +213,7 @@ describe("mapRawReeIntentToSlices", () => {
       sourceSnapshotCapturedAt: "now",
     });
     expect(mapped.artifactStatus).toEqual({
-      runtimeIncluded: true,
+      experimentEnvironmentIncluded: true,
       sealedAt: "sealed",
       sealHash: "hash",
     });
@@ -225,12 +229,12 @@ describe("mapRawReeIntentToSlices", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {},
       audit: {
-        runtime: { evidence: "current", payload: "present", reasons: [] },
+        experiment_environment: { evidence: "current", payload: "present", reasons: [] },
         sbom: { evidence: "stale", payload: "not_applicable", reasons: ["source re-pointed"] },
       },
       fallbackName: "demo",
     });
-    expect(mapped.stepEvidence).toEqual({ runtime: "current", sbom: "stale" });
+    expect(mapped.stepEvidence).toEqual({ experiment_environment: "current", sbom: "stale" });
   });
 
   it("uses fallbacks and defaults for null or malformed slices", () => {
@@ -258,7 +262,7 @@ describe("mapRawReeIntentToSlices", () => {
       sourceSnapshotCapturedAt: undefined,
     });
     expect(mapped.artifactStatus).toEqual({
-      runtimeIncluded: false,
+      experimentEnvironmentIncluded: false,
       sealedAt: undefined,
       sealHash: undefined,
     });

@@ -11,7 +11,7 @@ import { observeReeRun, useReeRunLogsQuery, useReeRunQuery, useReeRunsQuery } fr
 const wireRun = (status: "running" | "succeeded" = "succeeded") => ({
   run_id: "run-1",
   ree_id: "ree-1",
-  operation: "build" as const,
+  operation: "build_experiment_environment" as const,
   status,
   created_at: "2026-01-01T00:00:00Z",
   started_at: "2026-01-01T00:00:01Z",

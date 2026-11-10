@@ -106,7 +106,7 @@ def _fetch_source_function(source_type: str, revision: str) -> str:
     """Render the one fetch implementation needed for this source type.
 
     For git, the pinned-vs-HEAD choice is settled here at generation time rather
-    than branched at runtime. ``revision`` is whatever ref is known at generation:
+    than branched at experiment environment. ``revision`` is whatever ref is known at generation:
     a user-supplied commit/branch/tag when authoring pins one, empty when it does
     not (then just clone HEAD and let Python record the commit it resolved to). At
     seal the recorded concrete commit is baked in so the bundled script re-fetches

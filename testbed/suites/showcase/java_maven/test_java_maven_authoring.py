@@ -18,9 +18,9 @@ def test_a_maven_project_is_built_run_sealed_and_released(client: Client, new_re
     client.upload_source(ree_id, F)
     assert client.evaluate(ree_id, watch=F.watch).status == "succeeded"
 
-    assert "docker build" in client.infer(ree_id, "build").body_of(InferenceRule.DOCKERFILE)
+    assert "docker build" in client.infer(ree_id, "build_experiment_environment").body_of(InferenceRule.DOCKERFILE)
 
-    run = client.build(ree_id, F)
+    run = client.build_experiment_environment(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 
     run = client.activate(ree_id, F)

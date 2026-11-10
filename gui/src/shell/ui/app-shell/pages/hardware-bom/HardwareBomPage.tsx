@@ -72,7 +72,7 @@ const CATEGORIES: CategoryDescriptor[] = [
     singular: "storage device",
     addLabel: "Add storage",
     icon: Ic.archive(15),
-    subtitle: "Disks, SSDs, and runtime capacity",
+    subtitle: "Disks, SSDs, and experiment environment capacity",
   },
   {
     key: "network",

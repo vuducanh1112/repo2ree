@@ -12,13 +12,13 @@ describe("stepActionEffects", () => {
     const showToast = vi.fn();
     const reeSpec = { ...createEmptyReeSpec(), name: "Hydrated" };
     const commands: StepCommand[] = [
-      { type: "setActionLoading", key: "build" },
-      { type: "setActiveRunId", key: "build", runId: "run-1" },
-      { type: "setStepRunLog", key: "build", lines: [], ts: "ignored" },
+      { type: "setActionLoading", key: "build_experiment_environment" },
+      { type: "setActiveRunId", key: "build_experiment_environment", runId: "run-1" },
+      { type: "setStepRunLog", key: "build_experiment_environment", lines: [], ts: "ignored" },
       {
         type: "completeStepRun",
         completion: {
-          key: "build",
+          key: "build_experiment_environment",
           runId: "run-1",
           stepRunLog: { lines: [], ts: "2026-01-01" },
           actionState: "done",
@@ -31,12 +31,12 @@ describe("stepActionEffects", () => {
         workspaceFiles: [],
         reeSpec,
         workspaceSourceState: { sourceAvailable: true },
-        artifactStatus: { runtimeIncluded: true },
+        artifactStatus: { experimentEnvironmentIncluded: true },
         evaluationState: { dependencyLevel: 2, environmentLevel: 1, machineLevel: 0 },
       },
       { type: "persistFile", path: "result.txt", content: "ok" },
       { type: "setReeSpec", reeSpec: { name: "Patched" } },
-      { type: "setArtifactStatus", artifactStatus: { runtimeIncluded: false } },
+      { type: "setArtifactStatus", artifactStatus: { experimentEnvironmentIncluded: false } },
       { type: "setEvaluationState", evaluationState: { dependencyLevel: 3 } },
       { type: "setLocked", locked: true },
       { type: "toast", message: "Done", toastType: "success" },
@@ -65,7 +65,7 @@ describe("stepActionEffects", () => {
         workspaceFiles: [],
         reeSpec: createEmptyReeSpec(),
         workspaceSourceState: { sourceAvailable: true },
-        artifactStatus: { runtimeIncluded: false },
+        artifactStatus: { experimentEnvironmentIncluded: false },
         evaluationState: { dependencyLevel: 1, environmentLevel: 2, machineLevel: 3 },
       },
       {

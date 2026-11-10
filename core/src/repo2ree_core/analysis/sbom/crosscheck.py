@@ -1,4 +1,4 @@
-"""Cross-check: which declared dependencies are actually in the runtime.
+"""Cross-check: which declared dependencies are actually in the experiment environment.
 
 Pure merge over the IR — fills the ``observed_*`` stage on the scanned
 inventory rows and adds SBOM-only rows for same-ecosystem undeclared
@@ -8,7 +8,7 @@ belong to the handler.
 Verdict semantics (deliberately asymmetric):
 
 * ``not-observed`` is surfaced, never penalized — dev- and build-only
-  dependencies legitimately never reach the runtime.
+  dependencies legitimately never reach the experiment environment.
 * Undeclared packages are only listed for ecosystems the declared inventory
   actually uses: an unexpected pypi package is the headline signal, the base
   image's OS packages are noise (they stay in ``observed_total``).
@@ -21,7 +21,12 @@ from dataclasses import dataclass
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage
 from repo2ree_core.analysis.sbom.versions import versions_match
 from repo2ree_ree.dependency import Dependency, Ecosystem
-from repo2ree_ree.reproducibility import EvaluatedDependency, RuntimePresence, SbomCrossCheckSummary, UndeclaredPackage
+from repo2ree_ree.reproducibility import (
+    EvaluatedDependency,
+    ExperimentEnvironmentPresence,
+    SbomCrossCheckSummary,
+    UndeclaredPackage,
+)
 
 # The listed undeclared packages are capped so a pathological image cannot
 # balloon the report; the count carries the truth.
@@ -40,7 +45,7 @@ def cross_check(
     dependencies: list[EvaluatedDependency],
     observed: list[ObservedPackage],
 ) -> CrossCheckResult:
-    """Merge the runtime's observed packages into the scanned inventory."""
+    """Merge the experiment environment's observed packages into the scanned inventory."""
 
     by_key: dict[tuple[Ecosystem, str], ObservedPackage] = {}
     for package in observed:
@@ -65,7 +70,7 @@ def cross_check(
             dep.model_copy(
                 update={
                     "observed_version": match.version if match else None,
-                    "runtime_presence": presence,
+                    "experiment_environment_presence": presence,
                 }
             )
         )
@@ -109,7 +114,7 @@ def cross_check(
     return CrossCheckResult(dependencies=merged, summary=summary)
 
 
-def _presence(dep: Dependency, package: ObservedPackage | None) -> RuntimePresence:
+def _presence(dep: Dependency, package: ObservedPackage | None) -> ExperimentEnvironmentPresence:
     if package is None:
         return "not-observed"
     expected = _expected_version(dep)

@@ -9,7 +9,7 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.capture import capture_command
 from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
 from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
-from repo2ree_core.operations.handlers.author.build_runtime import handle_build_runtime
+from repo2ree_core.operations.handlers.author.build_experiment_environment import handle_build_experiment_environment
 from repo2ree_core.operations.handlers.author.cross_check_sbom import handle_cross_check_sbom
 from repo2ree_core.operations.handlers.author.delete_file import handle_delete_file
 from repo2ree_core.operations.handlers.author.evaluate_dependency_score import (
@@ -32,13 +32,15 @@ from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
 from repo2ree_core.operations.handlers.author.write_file import handle_write_file
 from repo2ree_core.operations.handlers.review.acquire_source import handle_review_acquire_source
 from repo2ree_core.operations.handlers.review.activation_test import handle_review_activation_test
-from repo2ree_core.operations.handlers.review.build_runtime import handle_review_build_runtime
+from repo2ree_core.operations.handlers.review.build_experiment_environment import (
+    handle_review_build_experiment_environment,
+)
 from repo2ree_core.operations.handlers.review.run_experiment import handle_review_run_experiment
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
-    BuildRuntimeCommand,
+    BuildExperimentEnvironmentCommand,
     Command,
     CrossCheckSbomCommand,
     DeleteFileCommand,
@@ -53,7 +55,7 @@ from repo2ree_protocol.command import (
     RemoveSourceCommand,
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
-    ReviewBuildRuntimeCommand,
+    ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
     RunExperimentCommand,
     SealReeCommand,
@@ -161,8 +163,8 @@ def _dispatch(
 ) -> ActionResult:
     if isinstance(cmd, ReviewAcquireSourceCommand):
         return handle_review_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
-    if isinstance(cmd, ReviewBuildRuntimeCommand):
-        return handle_review_build_runtime(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, ReviewBuildExperimentEnvironmentCommand):
+        return handle_review_build_experiment_environment(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewActivationTestCommand):
         return handle_review_activation_test(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewRunExperimentCommand):
@@ -181,8 +183,8 @@ def _dispatch(
         return handle_acquire_source(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(log=log, is_canceled=cancel)
-    if isinstance(cmd, BuildRuntimeCommand):
-        return handle_build_runtime(run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, BuildExperimentEnvironmentCommand):
+        return handle_build_experiment_environment(run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, EvaluateDependencyScoreCommand):
         return handle_evaluate_dependency_score(cmd.args, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RunExperimentCommand):

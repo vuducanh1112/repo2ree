@@ -86,21 +86,21 @@ class ObserveHardwareReceipt(ReceiptEnvelope):
     observer_version: str = Field(min_length=1)
 
 
-class BuildRuntimeReceipt(ReceiptEnvelope):
-    operation: Literal["build_runtime"] = "build_runtime"
+class BuildExperimentEnvironmentReceipt(ReceiptEnvelope):
+    operation: Literal["build_experiment_environment"] = "build_experiment_environment"
     snapshot_digest: Digest
-    build_runtime_script_path: ReePath
-    build_runtime_script_digest: Digest
+    build_experiment_environment_script_path: ReePath
+    build_experiment_environment_script_digest: Digest
     workspace_drift: WorkspaceDrift
-    runtime_path: WorkspacePath
-    produced_runtime_digest: Digest
+    artifact_path: WorkspacePath
+    produced_artifact_digest: Digest
     workbench_environment: WorkbenchEnvironmentObservation | None = None
 
 
 class GenerateSbomReceipt(ReceiptEnvelope):
     operation: Literal["generate_sbom"] = "generate_sbom"
-    runtime_path: WorkspacePath
-    runtime_digest: Digest
+    experiment_environment_path: WorkspacePath
+    experiment_environment_digest: Digest
     sbom_path: ArtifactPath | None = None
     sbom_digest: Digest
     sbom_format: str = Field(min_length=1)
@@ -121,8 +121,8 @@ class CrossCheckSbomReceipt(ReceiptEnvelope):
 class TestActivationReceipt(ReceiptEnvelope):
     operation: Literal["test_activation"] = "test_activation"
     snapshot_digest: Digest
-    runtime_path: WorkspacePath | None = None
-    runtime_digest: Digest | None = None
+    experiment_environment_path: WorkspacePath | None = None
+    experiment_environment_digest: Digest | None = None
     run_script_digest: Digest
     verify_script_digest: Digest | None = None
     run_exit_code: Literal[0] = 0
@@ -139,7 +139,7 @@ class RunExperimentReceipt(ReceiptEnvelope):
     operation: Literal["run_experiment"] = "run_experiment"
     experiment_name: str = Field(min_length=1)
     snapshot_digest: Digest
-    runtime_digest: Digest | None = None
+    experiment_environment_digest: Digest | None = None
     run_script_digest: Digest
     verify_script_digest: Digest | None = None
     run_exit_code: Literal[0] = 0
@@ -157,7 +157,7 @@ RunReceipt = Annotated[
     AcquireSourceReceipt
     | EvaluateReproducibilityReceipt
     | ObserveHardwareReceipt
-    | BuildRuntimeReceipt
+    | BuildExperimentEnvironmentReceipt
     | GenerateSbomReceipt
     | CrossCheckSbomReceipt
     | TestActivationReceipt

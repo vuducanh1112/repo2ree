@@ -64,8 +64,10 @@ describe("buildCables", () => {
   });
 
   it("lights only cables whose step is done", () => {
-    const geo = buildCables(scene({ doneKeys: new Set([PAGE.SOURCE, PAGE.BUILD]) }));
+    const geo = buildCables(
+      scene({ doneKeys: new Set([PAGE.SOURCE, PAGE.BUILD_EXPERIMENT_ENVIRONMENT]) }),
+    );
     const connected = geo.cables.filter((cable) => cable.connected).map((cable) => cable.id);
-    expect(connected).toEqual([PAGE.SOURCE, PAGE.BUILD]);
+    expect(connected).toEqual([PAGE.SOURCE, PAGE.BUILD_EXPERIMENT_ENVIRONMENT]);
   });
 });

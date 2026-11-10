@@ -8,6 +8,6 @@
  */
 export interface InclusionOpts {
   includeSource: boolean;
-  includeRuntime: boolean;
+  includeExperimentEnvironment: boolean;
   includeResults: boolean;
 }

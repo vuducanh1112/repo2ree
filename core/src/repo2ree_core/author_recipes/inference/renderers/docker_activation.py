@@ -1,6 +1,6 @@
 """Fail-closed Docker activation scaffold.
 
-The Docker load/run wrapper is mechanical once the runtime contract is known; the
+The Docker load/run wrapper is mechanical once the experiment environment contract is known; the
 activation *command* is not, so it is never selected automatically in Phase 1.
 This renders the load/run plumbing around an empty ``set --`` the author fills,
 with any image-declared commands offered as commented examples.
@@ -19,22 +19,26 @@ from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import (
     CandidateDependency,
     CommandCandidatesBinding,
-    DockerRuntimeContract,
+    DockerExperimentEnvironmentContract,
+    ExperimentEnvironmentContractBinding,
     InferenceEvidence,
-    RuntimeContractBinding,
 )
 
 
-def _docker_contract(context: DecisionContext) -> tuple[DockerRuntimeContract, str]:
-    binding = context.binding("runtime_contract")
-    if not isinstance(binding, RuntimeContractBinding) or not isinstance(binding.contract, DockerRuntimeContract):
-        raise ValueError("docker_activation_v1 renderer reached without a docker runtime_contract binding")
+def _docker_contract(context: DecisionContext) -> tuple[DockerExperimentEnvironmentContract, str]:
+    binding = context.binding("experiment_environment_contract")
+    if not isinstance(binding, ExperimentEnvironmentContractBinding) or not isinstance(
+        binding.contract, DockerExperimentEnvironmentContract
+    ):
+        raise ValueError(
+            "docker_activation_v1 renderer reached without a docker experiment_environment_contract binding"
+        )
     return binding.contract, binding.provenance
 
 
 class DockerActivationRenderer:
     code = "docker_activation_v1"
-    requires: frozenset[BindingKind] = frozenset({"runtime_contract", "command_candidates"})
+    requires: frozenset[BindingKind] = frozenset({"experiment_environment_contract", "command_candidates"})
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         contract, provenance = _docker_contract(context)
@@ -50,17 +54,17 @@ class DockerActivationRenderer:
         )
         dependencies = [
             CandidateDependency(
-                kind="runtime_artifact",
+                kind="experiment_environment_artifact",
                 path=contract.artifact_path,
-                digest=context.runtime.accessor.stat(contract.artifact_path).digest or "",
-                role="runtime",
+                digest=context.experiment_environment.accessor.stat(contract.artifact_path).digest or "",
+                role="experiment_environment",
             )
         ]
         evidence = [
             InferenceEvidence(
-                code="docker_runtime_contract",
+                code="docker_experiment_environment_contract",
                 path=contract.artifact_path,
-                detail=f"Docker runtime {contract.image_ref} (provenance: {provenance}).",
+                detail=f"Docker experiment environment {contract.image_ref} (provenance: {provenance}).",
             )
         ]
         warnings = [make_warning("execution_not_validated"), make_warning("activation_command_missing")]
@@ -85,16 +89,16 @@ set -eu
 # The Docker invocation was inferred. The activation command was not.
 # Review and edit this script before running it.
 
-RUNTIME_ARTIFACT={sh_quote(artifact_path)}
+EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(artifact_path)}
 IMAGE_TAG={sh_quote(image_ref)}
 
-# REQUIRED: define a finite command that proves the runtime is usable.
+# REQUIRED: define a finite command that proves the experiment environment is usable.
 {examples}
 set --
 
 {guard}
 
-docker load --input "$RUNTIME_ARTIFACT"
+docker load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
 
 docker run --rm \\
     -v "$(pwd):{workspace_mount}" \\

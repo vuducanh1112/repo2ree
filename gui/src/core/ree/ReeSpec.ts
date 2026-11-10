@@ -144,7 +144,7 @@ export interface ReeSpec {
    *  acquisition *input* ref (the requested commit/branch/tag), which is a transient
    *  form field, not persisted intent. Empty for non-git/upload sources. */
   resolvedRevision: string;
-  runtime: string;
+  experimentEnvironmentPath: string;
   /** Null until the REE declares one; set when its workbench is set up. */
   workbenchEnvironment: WorkbenchEnvironment | null;
   activation: ReeActivation;
@@ -229,7 +229,7 @@ export function createEmptyReeSpec(): ReeSpec {
     originUrl: "",
     sourceType: "",
     resolvedRevision: "",
-    runtime: "",
+    experimentEnvironmentPath: "",
     workbenchEnvironment: null,
     activation: createEmptyReeActivation(),
     sbom: "",

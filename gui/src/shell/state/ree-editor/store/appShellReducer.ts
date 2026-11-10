@@ -37,7 +37,7 @@ export function createInitialState(
   const normalized = enforceSourceOriginRules({
     reeSpec: initialState.reeSpec ?? createEmptyReeSpec(),
     workspaceSourceState: initialState.workspaceSourceState ?? { sourceAvailable: false },
-    artifactStatus: initialState.artifactStatus ?? { runtimeIncluded: false },
+    artifactStatus: initialState.artifactStatus ?? { experimentEnvironmentIncluded: false },
     evaluationState: initialState.evaluationState ?? emptyEvaluationState(),
   });
   return {
@@ -141,7 +141,7 @@ function resetStepsAfterSourceChange(
   const reset = computeSourceChangeConsequences({
     reeSpec: state.reeIntent.reeSpec,
     workspaceSourceState: { sourceAvailable: false },
-    artifactStatus: { runtimeIncluded: false },
+    artifactStatus: { experimentEnvironmentIncluded: false },
     evaluationState: emptyEvaluationState(),
     actionStates: {},
     badges: {},

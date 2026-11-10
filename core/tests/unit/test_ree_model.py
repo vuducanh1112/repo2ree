@@ -16,10 +16,10 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import (
-    BuildRuntimeDefinition,
     BundleContents,
     BundleEntry,
     ExperimentDefinition,
+    ExperimentEnvironmentDefinition,
     Ree,
     ReeDefinition,
     ReeSubject,
@@ -27,7 +27,7 @@ from repo2ree_ree.model import (
     canonical_subject_digest,
 )
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildRuntimeReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 _DIGEST = digest_bytes(b"content")
@@ -89,28 +89,28 @@ def test_experiment_slug_collisions_are_rejected() -> None:
 def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> None:
     ree = Ree(subject=ReeSubject(definition=ReeDefinition()))
     before = canonical_subject_digest(ree.subject)
-    receipt = BuildRuntimeReceipt(
+    receipt = BuildExperimentEnvironmentReceipt(
         run_id=RunId("run-1"),
         started_at=_NOW,
         finished_at=_NOW,
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_DIGEST,
-        build_runtime_script_path=ReePath("ree-scripts/build_script.sh"),
-        build_runtime_script_digest=_DIGEST,
+        build_experiment_environment_script_path=ReePath("ree-scripts/build_experiment_environment.sh"),
+        build_experiment_environment_script_digest=_DIGEST,
         workspace_drift=WorkspaceDrift(status="clean"),
-        runtime_path=WorkspacePath("runtime.tar"),
-        produced_runtime_digest=_OTHER_DIGEST,
+        artifact_path=WorkspacePath("runtime.tar"),
+        produced_artifact_digest=_OTHER_DIGEST,
     )
 
     updated = commit_receipt(ree, receipt)
 
-    assert updated.subject.receipts.build == receipt
+    assert updated.subject.receipts.experiment_environment == receipt
     assert canonical_subject_digest(updated.subject) != before
     # The build definition is intentionally absent, so this receipt attests a
     # recipe the REE does not declare. Present and unbacked is stale, not
     # not_applicable — the latter would keep it out of the seal gate's reach.
-    assert audit(updated).runtime.evidence == "stale"
+    assert audit(updated).experiment_environment.evidence == "stale"
 
 
 def test_seal_binds_and_freezes_the_subject() -> None:
@@ -140,9 +140,9 @@ def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> N
         subject=ReeSubject(
             definition=ReeDefinition(
                 source=source,
-                build_runtime=BuildRuntimeDefinition(
-                    build_runtime_script_digest=_DIGEST,
-                    build_runtime_script_size=1,
+                experiment_environment=ExperimentEnvironmentDefinition(
+                    build_experiment_environment_script_digest=_DIGEST,
+                    build_experiment_environment_script_size=1,
                 ),
             ),
             contents=BundleContents(
@@ -158,7 +158,7 @@ def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> N
     cleared = clear_source(ree)
 
     assert cleared.subject.definition.source is None
-    assert cleared.subject.definition.build_runtime == ree.subject.definition.build_runtime
+    assert cleared.subject.definition.experiment_environment == ree.subject.definition.experiment_environment
     assert cleared.subject.receipts.source is None
     assert cleared.subject.contents.entries == ()
 

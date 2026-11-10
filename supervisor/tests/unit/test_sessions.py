@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from repo2ree_protocol.command import BuildRuntimeCommand
+from repo2ree_protocol.command import BuildExperimentEnvironmentCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
     AcceptedFrame,
@@ -157,7 +157,7 @@ def test_a_command_for_a_workbench_with_no_session_is_neither_journaled_nor_sent
     dispatcher = CommandDispatcher(WsWorkbenchClient(WorkbenchConnectionRegistry()), ReeLocks())
     handle = ReeRoute(ree_id="ree-1", workbench_id="wb-gone", store_id="lab-1")
     with pytest.raises(WorkbenchUnavailableError, match="not connected"):
-        dispatcher.dispatch_action(handle, BuildRuntimeCommand(), "run-1", lambda *_: None)
+        dispatcher.dispatch_action(handle, BuildExperimentEnvironmentCommand(), "run-1", lambda *_: None)
     rows = [json.loads(line) for path in journal_dir.glob("*.ndjson") for line in path.read_text().splitlines()]
     assert not [row for row in rows if row.get("subject") == "start_run"]
 
@@ -228,7 +228,7 @@ def test_a_cancel_of_a_command_in_flight_is_journaled_once_and_names_its_record(
     results: list[ActionResult] = []
     running = threading.Thread(
         target=lambda: results.append(
-            dispatcher.dispatch_action(HANDLE, BuildRuntimeCommand(), "run-1", lambda *_: None)
+            dispatcher.dispatch_action(HANDLE, BuildExperimentEnvironmentCommand(), "run-1", lambda *_: None)
         )
     )
     running.start()
@@ -259,7 +259,7 @@ def test_a_command_is_followed_across_sessions_from_the_line_it_had_reached(jour
 
     result = dispatcher.dispatch_action(
         HANDLE,
-        BuildRuntimeCommand(),
+        BuildExperimentEnvironmentCommand(),
         "run-1",
         lambda stream, level, message: lines.append(message),
         on_started=started.append,
@@ -282,7 +282,7 @@ def test_a_command_is_followed_across_sessions_from_the_line_it_had_reached(jour
 def test_a_busy_ree_refuses_the_command(journal_dir: Path) -> None:
     dispatcher = CommandDispatcher(_Bench(BusyFrame(detail="REE 'ree-1' has a run in progress")), ReeLocks())  # type: ignore[arg-type]
     with pytest.raises(ReeBusyError, match="in progress"):
-        dispatcher.dispatch_action(HANDLE, BuildRuntimeCommand(), "run-1", lambda *_: None)
+        dispatcher.dispatch_action(HANDLE, BuildExperimentEnvironmentCommand(), "run-1", lambda *_: None)
     starts = journaled(journal_dir, "start_run")
     assert [(row["kind"], row["message"]) for row in starts] == [("send", "start_run"), ("receive", "busy")]
 

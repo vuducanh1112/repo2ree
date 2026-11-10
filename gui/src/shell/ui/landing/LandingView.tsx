@@ -156,7 +156,7 @@ export function LandingView({ onLoad, onViewLabs, onViewReeIndex }: LandingViewP
                 <img
                   className={styles.screenshot}
                   src="/landing-workbench.jpg"
-                  alt="The repo2ree workbench canvas, with a central specimen pod connected to source, metadata, runtime, experiment, review, and archive stations."
+                  alt="The repo2ree workbench canvas, with a central specimen pod connected to source, metadata, experiment environment, experiment, review, and archive stations."
                 />
                 <div className={styles.previewNote}>
                   <span>The actual workbench</span>
@@ -189,7 +189,10 @@ export function LandingView({ onLoad, onViewLabs, onViewReeIndex }: LandingViewP
               <span className={styles.stepNumber}>02</span>
               <div>
                 <h3>Assemble the environment</h3>
-                <p>Bring in source, declare hardware and runtime, then define experiments.</p>
+                <p>
+                  Bring in source, declare hardware and experiment environment, then define
+                  experiments.
+                </p>
               </div>
             </article>
             <article className={styles.step}>

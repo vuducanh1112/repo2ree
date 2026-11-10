@@ -10,14 +10,17 @@ function run(operation: ReeRunOperation, status: ReeRunStatus): ReeRunSummary {
 
 describe("canvasActivity", () => {
   it("is empty when nothing is in flight", () => {
-    const activity = canvasActivity([run("build", "succeeded"), run("experiment", "failed")]);
+    const activity = canvasActivity([
+      run("build_experiment_environment", "succeeded"),
+      run("experiment", "failed"),
+    ]);
     expect(activity.nodeKeys.size).toBe(0);
     expect(activity.zones.size).toBe(0);
   });
 
-  it("lights the build panel and the inner shell while the runtime builds", () => {
-    const activity = canvasActivity([run("build", "running")]);
-    expect([...activity.nodeKeys]).toEqual([PAGE.BUILD]);
+  it("lights the build panel and the inner shell while the experiment environment builds", () => {
+    const activity = canvasActivity([run("build_experiment_environment", "running")]);
+    expect([...activity.nodeKeys]).toEqual([PAGE.BUILD_EXPERIMENT_ENVIRONMENT]);
     expect([...activity.zones]).toEqual(["inner"]);
   });
 
@@ -50,7 +53,7 @@ describe("canvasActivity", () => {
 
   it("reports every shell that has work in it", () => {
     const activity = canvasActivity([
-      run("build", "running"),
+      run("build_experiment_environment", "running"),
       run("experiment", "running"),
       run("source", "running"),
     ]);

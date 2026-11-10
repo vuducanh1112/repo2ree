@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 import { PAGE } from "@core/app-shell/pages";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { Badges } from "@core/ree/ReeTypes";
@@ -49,13 +50,19 @@ function services() {
       listReeSteps: vi.fn().mockResolvedValue({
         steps: [
           { key: "source", order: 1, label: "Source", requires: [], actions: [] },
-          { key: "build", order: 2, label: "Build Runtime", requires: ["source"], actions: [] },
+          {
+            key: "build_experiment_environment",
+            order: 2,
+            label: "Build Experiment Environment",
+            requires: ["source"],
+            actions: [],
+          },
           { key: "sbom", order: 3, label: "Generate SBOM", requires: ["evaluate"], actions: [] },
           {
             key: "crosscheck",
             order: 4,
             label: "Cross-check SBOM",
-            requires: ["build"],
+            requires: ["build_experiment_environment"],
             actions: [],
           },
         ],
@@ -74,12 +81,12 @@ describe("WorkspaceStatusBar", () => {
 
     renderWithShell(
       <StatusBarHarness
-        page={PAGE.BUILD}
+        page={PAGE.BUILD_EXPERIMENT_ENVIRONMENT}
         ree={{
           ...exampleEditorRee,
           source: { ...exampleEditorRee.source, sourceAvailable: true },
           // Source acquired and the runtime built; nothing downstream has run.
-          audit: { source: "current", runtime: "current" },
+          audit: { source: "current", experiment_environment: "current" },
         }}
         badges={{}}
         workspaceFiles={[

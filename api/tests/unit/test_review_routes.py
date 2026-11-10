@@ -10,7 +10,7 @@ from repo2ree_api.review import stages as review_routes
 from repo2ree_protocol.command import (
     ReviewAcquireSourceCommand,
     ReviewActivationTestCommand,
-    ReviewBuildRuntimeCommand,
+    ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
 )
 from repo2ree_ree.review import ReviewSet
@@ -101,7 +101,7 @@ def test_start_build_review_targets_the_named_attempt(
         return {
             "run_id": "review-build-run",
             "ree_id": ree_id,
-            "operation": "build",
+            "operation": "build_experiment_environment",
             "status": "queued",
             "created_at": "2026-07-24T10:00:00Z",
             "started_at": None,
@@ -113,18 +113,18 @@ def test_start_build_review_targets_the_named_attempt(
     monkeypatch.setattr(review_routes, "start_single_command_run", start)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build-experiment-environment:reproduce",
         json={},
     )
 
     assert response.status_code == 200
-    assert captured["operation"] == "build"
+    assert captured["operation"] == "build_experiment_environment"
     command = captured["command"]
-    assert isinstance(command, ReviewBuildRuntimeCommand)
+    assert isinstance(command, ReviewBuildExperimentEnvironmentCommand)
     # The build joins the attempt named in the path rather than opening a new one.
     assert command.args.review_id == "review-one"
     # The rebuilt workspace survives by default: activation runs in it, and on an
-    # independent basis the runtime it holds exists nowhere else.
+    # independent basis the experiment environment it holds exists nowhere else.
     assert command.args.prune_workspace is False
     assert command.args.basis == "auto"
 
@@ -253,13 +253,13 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
                         "status": "completed",
                         "steps": [
                             {
-                                "step": "build",
+                                "step": "build_experiment_environment",
                                 "status": "completed",
                                 "started_at": "2026-07-24T10:00:00Z",
                                 "updated_at": "2026-07-24T10:00:01Z",
                             }
                         ],
-                        "build_comparison": {"policy": "sbom-closure", "verdict": "equivalent"},
+                        "experiment_environment_comparison": {"policy": "sbom-closure", "verdict": "equivalent"},
                     }
                 ]
             }
@@ -268,7 +268,7 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
 
     found = client.get(f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one")
     assert found.status_code == 200
-    assert found.json()["build_comparison"]["verdict"] == "equivalent"
+    assert found.json()["experiment_environment_comparison"]["verdict"] == "equivalent"
 
     missing = client.get(f"/api/v1/rees/{online_ree.ree_id}/reviews/review-other")
     assert missing.status_code == 404
@@ -307,7 +307,7 @@ def test_a_requested_basis_reaches_the_workbench_command(
     assert captured["command"].args.basis == "bundled"
 
     build = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build-experiment-environment:reproduce",
         json={"basis": "bundled"},
     )
     assert build.status_code == 200

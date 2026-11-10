@@ -13,7 +13,9 @@ function buildRee() {
 function buildHandlers(): StepCommandPlannerMap {
   return {
     evaluate: () => [{ type: "toast", message: "Evaluate complete", toastType: "success" }],
-    build: () => [{ type: "toast", message: "Build complete", toastType: "success" }],
+    build_experiment_environment: () => [
+      { type: "toast", message: "Build complete", toastType: "success" },
+    ],
     hbom: () => [{ type: "toast", message: "HBOM complete", toastType: "success" }],
     sbom: () => [{ type: "toast", message: "SBOM complete", toastType: "success" }],
     activation: () => [{ type: "toast", message: "Activation complete", toastType: "success" }],
@@ -28,11 +30,11 @@ describe("executeStepRun", () => {
   it("runs a step, refreshes build outputs, and executes planned commands", async () => {
     const executeCommands = vi.fn();
     const refreshWorkspace = vi.fn(async () => ({
-      files: [{ id: "runtime", name: "runtime.tar.gz", type: "file" as const }],
+      files: [{ id: "experiment_environment", name: "runtime.tar.gz", type: "file" as const }],
     }));
 
     const result = await executeStepRun({
-      key: "build",
+      key: "build_experiment_environment",
       params: {},
       ree: buildRee(),
       workspaceFiles: [],
@@ -52,12 +54,12 @@ describe("executeStepRun", () => {
     expect(result.ts).toBe("2026-01-01T00:00:00Z");
     expect(refreshWorkspace).toHaveBeenCalled();
     expect(executedCommands(executeCommands)).toEqual([
-      { type: "setActionLoading", key: "build" },
-      { type: "setActiveRunId", key: "build", runId: "run-1" },
+      { type: "setActionLoading", key: "build_experiment_environment" },
+      { type: "setActiveRunId", key: "build_experiment_environment", runId: "run-1" },
       {
         type: "completeStepRun",
         completion: {
-          key: "build",
+          key: "build_experiment_environment",
           runId: "run-1",
           stepRunLog: { lines: [{ type: "ok", msg: "built" }], ts: "2026-01-01T00:00:00Z" },
           actionState: "done",
@@ -67,7 +69,7 @@ describe("executeStepRun", () => {
       },
       {
         type: "hydrateWorkspace",
-        workspaceFiles: [{ id: "runtime", name: "runtime.tar.gz", type: "file" }],
+        workspaceFiles: [{ id: "experiment_environment", name: "runtime.tar.gz", type: "file" }],
         reeArtifactFiles: [],
         reeSpec: undefined,
         workspaceSourceState: undefined,
@@ -83,7 +85,7 @@ describe("executeStepRun", () => {
     const refreshWorkspace = vi.fn();
 
     await executeStepRun({
-      key: "build",
+      key: "build_experiment_environment",
       params: {},
       ree: buildRee(),
       workspaceFiles: [],
@@ -103,7 +105,7 @@ describe("executeStepRun", () => {
     expect(refreshWorkspace).toHaveBeenCalled();
     expect(executedCommands(executeCommands)).toContainEqual({
       type: "toast",
-      message: "build failed",
+      message: "build_experiment_environment failed",
       toastType: "error",
     });
     expect(executedCommands(executeCommands)).not.toContainEqual({

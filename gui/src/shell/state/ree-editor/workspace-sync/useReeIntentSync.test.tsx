@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 const remoteRee = {
   reeSpec: createEmptyReeSpec(),
   workspaceSourceState: { sourceAvailable: false },
-  artifactStatus: { runtimeIncluded: false },
+  artifactStatus: { experimentEnvironmentIncluded: false },
   evaluationState: emptyEvaluationState(),
 };
 

@@ -1,6 +1,6 @@
 """The same lifecycle on a bench with its own Docker daemon: the product's default bench.
 
-The runtime is an image the bench's daemon builds FROM scratch, so the build runs real
+The experiment environment is an image the bench's daemon builds FROM scratch, so the build runs real
 BuildKit steps on the nested daemon while pulling and downloading nothing.
 """
 
@@ -10,7 +10,7 @@ import io
 import zipfile
 from collections.abc import Callable
 
-from system_client import BUILD_SCRIPT, RESULT, Api
+from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, RESULT, Api
 
 from repo2ree_testbed.showcases import INSTANT_DOCKER
 
@@ -29,7 +29,7 @@ COPY ld-musl-* /lib/
 RUN ["/bin/busybox", "sh", "-c", "echo step failing >&2; exit 3"]
 DOCKERFILE
 docker build -t failing-build "$CONTEXT"
-docker save failing-build -o {FIXTURE.runtime}
+docker save failing-build -o {FIXTURE.experiment_environment_path}
 """
 
 
@@ -38,7 +38,7 @@ def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[
     api.author(ree_id, FIXTURE)
 
     audit = api.audit(ree_id)
-    for step in ("source", "evaluation", "hardware", "runtime", "test_activation"):
+    for step in ("source", "evaluation", "hardware", "experiment_environment", "test_activation"):
         assert audit[step]["evidence"] == "current", (step, audit[step])
     assert [(item["name"], item["run"]["evidence"]) for item in audit["experiments"]] == [
         (FIXTURE.experiment, "current")
@@ -49,7 +49,7 @@ def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[
     assert archive is not None
     entries = zipfile.ZipFile(io.BytesIO(archive.read_bytes())).namelist()
     assert f"ree/results/{FIXTURE.experiment}/{RESULT}" in entries
-    assert any(entry.endswith(BUILD_SCRIPT) for entry in entries)
+    assert any(entry.endswith(BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT) for entry in entries)
 
 
 def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) -> None:
@@ -57,15 +57,15 @@ def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callab
     api.acquire(ree_id, FIXTURE)
     api.succeed(ree_id, "evaluate")
 
-    failed = api.build(ree_id, FAILING_DOCKER_BUILD, fixture=FIXTURE)
+    failed = api.build_experiment_environment(ree_id, FAILING_DOCKER_BUILD, fixture=FIXTURE)
     assert failed["status"] == "failed"
     assert "step failing" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["build"] is None
-    assert api.audit(ree_id)["runtime"]["evidence"] == "missing"
+    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
 
     # The author's own recipe then builds on the same bench.
-    assert api.build(ree_id, fixture=FIXTURE)["status"] == "succeeded"
-    assert api.audit(ree_id)["runtime"]["evidence"] == "current"
+    assert api.build_experiment_environment(ree_id, fixture=FIXTURE)["status"] == "succeeded"
+    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
 
 
 def test_reviewer_reproduces_a_sealed_docker_ree(api: Api, new_ree: Callable[..., str]) -> None:

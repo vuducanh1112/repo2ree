@@ -1,4 +1,4 @@
-"""The docker-less branch of the pipeline: a pip venv packed as the runtime, on a bench that is the environment."""
+"""The docker-less branch of the pipeline: a pip venv packed as the experiment environment on the bench."""
 
 from __future__ import annotations
 
@@ -18,13 +18,13 @@ def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, ne
     client.upload_source(ree_id, F)
     assert client.evaluate(ree_id, watch=F.watch).status == "succeeded"
 
-    build = client.infer(ree_id, "build")
-    assert build.decision.dag == InferenceDag.BUILD
+    build = client.infer(ree_id, "build_experiment_environment")
+    assert build.decision.dag == InferenceDag.BUILD_EXPERIMENT_ENVIRONMENT
     body = build.body_of(InferenceRule.PIP_REQUIREMENTS)
     assert "python -m venv" in body
     assert "docker build" not in body
 
-    run = client.build(ree_id, F)
+    run = client.build_experiment_environment(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 
     scaffold = client.infer(ree_id, "activation_run").first_body()

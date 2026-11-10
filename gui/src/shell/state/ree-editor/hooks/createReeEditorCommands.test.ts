@@ -29,7 +29,7 @@ describe("createReeEditorCommands", () => {
       ...delegates,
     });
 
-    commands.setPage(PAGE.BUILD);
+    commands.setPage(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     commands.setReeSpec((current) => ({ ...current, name: "Updated" }));
     commands.setRepoMode((current) => (current === "url" ? "upload" : "url"));
     commands.setFocusedField(() => "name");
@@ -37,15 +37,19 @@ describe("createReeEditorCommands", () => {
     commands.setFilesConsoleOpen(true);
     commands.setReceiptsConsoleOpen(true);
     commands.clearToast();
-    commands.onSeal({ includeSource: true, includeRuntime: false, includeResults: true });
+    commands.onSeal({
+      includeSource: true,
+      includeExperimentEnvironment: false,
+      includeResults: true,
+    });
     commands.onDownloadRee();
     await commands.onDownloadSourceFiles("git", "https://example.test/repo.git");
     commands.onWorkspaceUpload({ mode: "archive", archiveName: "source.tgz" });
     commands.onRemoveWorkspaceSource();
     await commands.onDownloadWorkspaceFile("README.md");
-    await commands.onRunAction("build", {});
-    await commands.onCancelAction("build");
-    await commands.onRunStep("build", {});
+    await commands.onRunAction("build_experiment_environment", {});
+    await commands.onCancelAction("build_experiment_environment");
+    await commands.onRunStep("build_experiment_environment", {});
     await commands.onPersistWorkspaceFile(undefined, "run.sh", "echo ok");
     await commands.flushReeIntent();
 
@@ -60,8 +64,8 @@ describe("createReeEditorCommands", () => {
       "clearToast",
     ]);
     expect(delegates.handleSealRee).toHaveBeenCalledOnce();
-    expect(delegates.runAction).toHaveBeenCalledWith("build", {});
-    expect(delegates.runStep).toHaveBeenCalledWith("build", {});
+    expect(delegates.runAction).toHaveBeenCalledWith("build_experiment_environment", {});
+    expect(delegates.runStep).toHaveBeenCalledWith("build_experiment_environment", {});
     expect(delegates.persistWorkspaceFile).toHaveBeenCalledWith(undefined, "run.sh", "echo ok");
   });
 
@@ -81,7 +85,7 @@ describe("createReeEditorCommands", () => {
 
     expect(state.reeIntent.reeSpec.name).toBe("first update");
     expect(state.reeIntent.reeSpec.catalogMetadata.version).toBe("2");
-    expect(state.stepRuns.stepParams.build).toEqual({});
+    expect(state.stepRuns.stepParams.build_experiment_environment).toEqual({});
   });
 
   it("uses the selected page as the single drawer target", () => {

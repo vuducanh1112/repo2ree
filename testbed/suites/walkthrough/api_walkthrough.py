@@ -24,7 +24,7 @@ explicitly, tears it down, and (with ``just demo-api``) records the terminal:
 Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,
 so it runs under a bare ``python3`` shebang regardless of what execs it. It is
 the pure-API mirror of the GUI golden path (``ree-pipeline.spec.ts``): the
-same journey — one workbench, one runtime build, every pipeline stage exercised
+same journey — one workbench, one experiment environment build, every pipeline stage exercised
 in order — driven only through the public surface:
 
     createRee -> observeRun (provision)
@@ -36,8 +36,8 @@ in order — driven only through the public surface:
       -> patchReeDefinition (metadata)
       -> startEvaluate -> observeRun -> getEvaluateReport
       -> generateScriptCandidates (build) -> writeReeFile (build script)
-         -> patchReeDefinition (declare the runtime the build recipe produces)
-         -> startBuild -> observeRun
+         -> patchReeDefinition (declare the experiment environment the build recipe produces)
+         -> startBuildExperimentEnvironment -> observeRun
       -> patchReeDefinition (hardware BOM)
       -> startSbomGeneration -> observeRun -> startSbomCrossCheck -> observeRun
       -> generateScriptCandidates (activation) -> writeReeFile (activation script) -> startActivationTest -> observeRun
@@ -50,7 +50,7 @@ The build, activation, and experiment recipe scripts are not hardcoded: each is
 inferred from the repository through ``generateScriptCandidates`` and its
 decision graph printed, then authored (the build script is complete; the
 fail-closed run scaffolds get their one ``set --`` command filled in). Those
-stages then drive a real cold Docker-in-Docker runtime build (pandas on
+stages then drive a real cold Docker-in-Docker experiment environment build (pandas on
 ``python:3.11-slim``) inside the workbench — the same work the GUI golden
 path does, so the recording shows the genuine cost of authoring a reproducible
 environment, not a stub.
@@ -175,11 +175,11 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
 # The project being authored, and the REE recipe scripts that turn it into a
 # reproducible environment. Kept byte-for-byte in step with the GUI golden
 # path's ``python_hello_world`` fixture so both e2e mirrors build the same
-# runtime and assert the same "Pandas Hello World" evidence.
+# experiment environment and assert the same "Pandas Hello World" evidence.
 # ------------------------------------------------------------------
 
 # The archive extracts under this top-level directory. Where the *build* writes
-# the runtime tarball, and the image tag it produces, are no longer hardcoded:
+# the experiment environment tarball, and the image tag it produces, are no longer hardcoded:
 # chapter 7 infers the build script and reads those back out of it — inference
 # owns those conventions now, exactly as an author reading the generated script
 # would.
@@ -189,7 +189,7 @@ PROJECT_DIR = "python_hello_world"
 # build and activation slots, and naming an experiment settles its own reserved
 # run-script path. Authoring a stage means writing its script to the reserved
 # path, then declaring it on the definition. The paths are *not* hardcoded here
-# — the session discovers them at runtime from listScriptTemplates (see chapter
+# — the session discovers them at experiment environment from listScriptTemplates (see chapter
 # 2), the way a workbench driving cold from the OpenAPI would. The experiment name
 # is kept deliberately slug-safe (no whitespace) so it substitutes directly into
 # the catalog's ``{slug}`` path pattern without needing core's slug rules.
@@ -199,7 +199,7 @@ EXPERIMENT_NAME = "python-hello"
 # is the verdict. Declared as the experiment's output so the baseline is sealed.
 EXPERIMENT_LOG = f"results/{EXPERIMENT_NAME}.log"
 
-# Where the REE keeps its SBOM. Unlike the runtime — which the author's own build
+# Where the REE keeps its SBOM. Unlike the experiment environment — which the author's own build
 # script writes into the workspace and packaging then lifts — the scan writes
 # REE-owned evidence, so it lands in ``artifacts/`` from the start and is
 # declared, listed, and bundled at that one path.
@@ -232,7 +232,7 @@ if __name__ == "__main__":
 # Phase 1 inference never selects a run command — it emits a fail-closed scaffold
 # with a guarded, empty ``set --``. Authoring an activation or experiment run
 # script is therefore: infer the scaffold, then fill in that one line. These are
-# the commands the author supplies — activation proves the runtime is inhabitable
+# the commands the author supplies — activation proves the experiment environment is inhabitable
 # (import the installed dep); the experiment runs the project.
 ACTIVATION_COMMAND = "python -c \"import pandas; print('activation ok')\""
 EXPERIMENT_COMMAND = f"python {PROJECT_DIR}/main.py"
@@ -344,7 +344,7 @@ def inferred_script(
 
 def shell_value(body: str, name: str) -> str:
     """Read a ``NAME=value`` assignment back out of a generated shell script — how
-    an author learns where the inferred build writes its runtime, or where the
+    an author learns where the inferred build writes its experiment environment, or where the
     experiment scaffold captures its log."""
     for line in body.splitlines():
         if line.startswith(f"{name}="):
@@ -400,24 +400,27 @@ def run() -> None:
     note("listReeSteps publishes the authoring steps, their order, and their prerequisites")
     steps_catalog = call("GET", "/api/v1/ree-steps")
     step_keys = [step["key"] for step in steps_catalog["steps"]]
-    check("build" in step_keys and "seal" in step_keys, "step catalog missing core steps")
+    check("build_experiment_environment" in step_keys and "seal" in step_keys, "step catalog missing core steps")
     # The catalog is the DAG as data: `requires` names each step's prerequisites,
     # `actions` the operationIds that advance it — enough to plan a traversal
     # without hardcoding the pipeline shape.
     sbom_step = next(step for step in steps_catalog["steps"] if step["key"] == "sbom")
-    check(sbom_step["requires"] == ["build"], "sbom should require build")
+    check(sbom_step["requires"] == ["build_experiment_environment"], "sbom should require build")
     ok(f"{len(step_keys)} authoring steps discovered: {' → '.join(step_keys)}")
 
     note("listScriptTemplates publishes where each REE-owned script belongs — no hardcoded paths")
     catalog = call("GET", "/api/v1/script-templates")
-    build_script_path = catalog["build"]["path"]
+    build_experiment_environment_script_path = catalog["build_experiment_environment"]["path"]
     activation_script_path = catalog["activation"]["run_script_path"]
     experiment_run_script_path = catalog["experiment"]["run_script_path_pattern"].replace("{slug}", EXPERIMENT_NAME)
     experiment_verify_script_path = catalog["experiment"]["verify_script_path_pattern"].replace(
         "{slug}", EXPERIMENT_NAME
     )
-    check(build_script_path and activation_script_path, "catalog did not resolve the reserved paths")
-    ok(f"reserved paths resolved (build → {build_script_path})")
+    check(
+        build_experiment_environment_script_path and activation_script_path,
+        "catalog did not resolve the reserved paths",
+    )
+    ok(f"reserved paths resolved (build → {build_experiment_environment_script_path})")
 
     chapter("3. Upload a source archive")
     archive = make_source_archive()
@@ -490,41 +493,61 @@ def run() -> None:
 
     chapter("7. Infer the build script, declare what it produces, and run it")
     note("generateScriptCandidates reads the immutable source and proposes the reserved build script — writing nothing")
-    build_report = generate_scripts(ree_id, [{"kind": "build"}])
-    summarize_decision(build_report, "build")
+    build_report = generate_scripts(ree_id, [{"kind": "build_experiment_environment"}])
+    summarize_decision(build_report, "build_experiment_environment")
     # The repo carries both a Dockerfile and a requirements.txt, so inference
-    # offers two runtime strategies (a decision, not a default). This REE is a
+    # offers two experiment environment strategies (a decision, not a default). This REE is a
     # container build — take the Dockerfile candidate.
-    build_script = inferred_script(build_report, "build", rule="single-project-root-dockerfile-v1")
-    check(build_script, "docker build strategy was not inferred")
+    build_experiment_environment_script = inferred_script(
+        build_report, "build_experiment_environment", rule="single-project-root-dockerfile-v1"
+    )
+    check(build_experiment_environment_script, "docker build strategy was not inferred")
     # The generated script owns the runtime-artifact convention; read it back out
     # rather than hardcoding where the build writes.
-    runtime_artifact = shell_value(build_script, "RUNTIME_ARTIFACT")
-    check(runtime_artifact, "generated build script declares no RUNTIME_ARTIFACT")
-    note(f"the inferred build tags its image and saves the runtime tarball to {runtime_artifact}")
-    put_file(ree_id, build_script_path, build_script)
+    experiment_environment_artifact = shell_value(
+        build_experiment_environment_script, "EXPERIMENT_ENVIRONMENT_ARTIFACT"
+    )
+    check(experiment_environment_artifact, "generated build script declares no EXPERIMENT_ENVIRONMENT_ARTIFACT")
+    note(
+        "the inferred build tags its image and saves the experiment environment tarball "
+        f"to {experiment_environment_artifact}"
+    )
+    put_file(ree_id, build_experiment_environment_script_path, build_experiment_environment_script)
     note("read the reserved script back (readReeFile returns octet-stream, not JSON)")
-    rc, out, err = _run_curl([f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path=workspace/{build_script_path}"])
-    check(rc == 0 and out.decode() == build_script, f"build script did not round-trip: {_curl_detail(rc, err)}")
+    rc, out, err = _run_curl(
+        [f"{BASE_URL}/api/v1/rees/{ree_id}/files/raw?path=workspace/{build_experiment_environment_script_path}"]
+    )
+    check(
+        rc == 0 and out.decode() == build_experiment_environment_script,
+        f"build script did not round-trip: {_curl_detail(rc, err)}",
+    )
     # Declared *before* the build, not after it: the build receipt binds this
     # path to the digest it finds there, so a build with nowhere to look attests
     # to nothing and the handler refuses it. The path is not invented here — it
     # is the convention the inferred script already carries, read back out above.
-    note("declare where the build will leave its runtime — the build refuses without it")
+    note("declare where the build will leave its experiment environment — the build refuses without it")
     declared = call(
         "PATCH",
         f"/api/v1/rees/{ree_id}/definition",
-        {"definition_patch": {"build_runtime": {"runtime_path": runtime_artifact}}},
+        {"definition_patch": {"experiment_environment": {"artifact_path": experiment_environment_artifact}}},
     )
-    runtime = declared["ree"]["subject"]["definition"]["build_runtime"]
-    check(runtime["runtime_path"] == runtime_artifact, "runtime artifact not declared")
-    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/build-runtime", {}, what="build")
+    experiment_environment = declared["ree"]["subject"]["definition"]["build_experiment_environment"]
+    check(
+        experiment_environment["experiment_environment_path"] == experiment_environment_artifact,
+        "experiment environment artifact not declared",
+    )
+    run_stage(
+        ree_id, "POST", f"/api/v1/rees/{ree_id}/build-experiment-environment", {}, what="build_experiment_environment"
+    )
     built = call("GET", f"/api/v1/rees/{ree_id}/state")
-    check(runtime_artifact in {f["path"] for f in built.get("workspace_files", [])}, "runtime tarball not produced")
-    ok(f"runtime image built and saved to {runtime_artifact}")
+    check(
+        experiment_environment_artifact in {f["path"] for f in built.get("workspace_files", [])},
+        "experiment environment tarball not produced",
+    )
+    ok(f"experiment environment image built and saved to {experiment_environment_artifact}")
 
     chapter("8. Record the hardware BOM")
-    note("the machine the runtime was built on — an observation about the build that just happened")
+    note("the machine the experiment environment was built on — an observation about the build that just happened")
     declared = call(
         "PATCH",
         f"/api/v1/rees/{ree_id}/definition",
@@ -540,13 +563,13 @@ def run() -> None:
         "hardware BOM entry not recorded",
     )
     check(
-        definition["build_runtime"]["runtime_path"] == runtime_artifact,
-        "the declared runtime did not survive the patch",
+        definition["experiment_environment"]["artifact_path"] == experiment_environment_artifact,
+        "the declared experiment environment did not survive the patch",
     )
     ok("hardware BOM recorded")
 
     chapter("9. Generate and cross-check the SBOM")
-    note("scan the runtime tarball the build recipe declares — the step names no artifact of its own")
+    note("scan the experiment environment tarball the build recipe declares — the step names no artifact of its own")
     run_stage(
         ree_id,
         "POST",
@@ -571,12 +594,15 @@ def run() -> None:
         "the SBOM leaked into the materialized workspace",
     )
     ok(f"SBOM written to {SBOM_ARTIFACT_PATH} — REE evidence, outside the workspace")
-    note("join the SBOM against the evaluate report — do the declared deps appear in the runtime?")
+    note("join the SBOM against the evaluate report — do the declared deps appear in the experiment environment?")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/cross-check-sbom", {}, what="SBOM cross-check")
     ok("SBOM generated and cross-checked against the scanned dependencies")
 
     chapter("10. Infer the activation scaffold, then author its command")
-    note("with the runtime built and declared, inference resolves the runtime contract and emits a scaffold")
+    note(
+        "with the experiment environment built and declared, "
+        "inference resolves the experiment environment contract and emits a scaffold"
+    )
     activation_report = generate_scripts(ree_id, [{"kind": "activation_run"}])
     summarize_decision(activation_report, "activation_run")
     activation_scaffold = inferred_script(activation_report, "activation_run")
@@ -585,7 +611,7 @@ def run() -> None:
     activation_script = author_command(activation_scaffold, ACTIVATION_COMMAND)
     put_file(ree_id, activation_script_path, activation_script)
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/activation-test", {}, what="activation")
-    ok("runtime activates: pandas imports inside the sealed image")
+    ok("experiment environment activates: pandas imports inside the sealed image")
 
     chapter("11. Infer the experiment scaffold, then run it")
     note("declare a named experiment; naming it settles its run-script path, and its declared output is sealed")
@@ -639,7 +665,7 @@ def run() -> None:
     note("getReeState carries the aggregate audit for each authoring step")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
     ree_audit = state["audit"]
-    for step_key in ("source", "evaluation", "runtime", "sbom", "sbom_cross_check", "test_activation"):
+    for step_key in ("source", "evaluation", "experiment_environment", "sbom", "sbom_cross_check", "test_activation"):
         check(ree_audit[step_key]["evidence"] == "current", f"step {step_key} is not current")
     check(ree_audit["experiments"][0]["run"]["evidence"] == "current", "experiment is not current")
     ok("every authored receipt is current — nothing has moved under one")

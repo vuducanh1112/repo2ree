@@ -14,7 +14,7 @@ export const PAGE = {
   ARCHIVE: "archive",
   // Step pages — keys match the runs API's operation keys.
   EVALUATE: "evaluate",
-  BUILD: "build",
+  BUILD_EXPERIMENT_ENVIRONMENT: "build_experiment_environment",
   SBOM: "sbom",
   ACTIVATION: "activation",
 } as const;
@@ -55,7 +55,7 @@ const FIELD_TO_PAGE: Partial<Record<EditorField, AppShellPage>> = {
   sourceAvailable: PAGE.SOURCE,
   sourceAcquiredBy: PAGE.SOURCE,
   hardwareDescription: PAGE.HBOM,
-  runtime: PAGE.BUILD,
+  experimentEnvironmentPath: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
   activation: PAGE.ACTIVATION,
   sbom: PAGE.SBOM,
   swhid: PAGE.ARCHIVE,

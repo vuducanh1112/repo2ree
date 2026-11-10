@@ -14,11 +14,11 @@ def test_layout_selection_and_declared_root_artifact(tmp_path):
     initialize_ree(layout, name="test")
     store = ReeDirectory(layout)
     ree = store.read_ree()
-    assert ree.subject.definition.build_runtime is not None
-    build = ree.subject.definition.build_runtime.model_copy(update={"runtime_path": "custom-runtime.tar"})
-    definition = ree.subject.definition.model_copy(update={"build_runtime": build})
+    assert ree.subject.definition.experiment_environment is not None
+    build = ree.subject.definition.experiment_environment.model_copy(update={"artifact_path": "custom-runtime.tar"})
+    definition = ree.subject.definition.model_copy(update={"experiment_environment": build})
     store.write_ree(ree.model_copy(update={"subject": ree.subject.model_copy(update={"definition": definition})}))
-    (layout.root / "custom-runtime.tar").write_bytes(b"runtime")
+    (layout.root / "custom-runtime.tar").write_bytes(b"experiment_environment")
     (layout.root / "unknown").write_bytes(b"ignored")
     for tree in layout.history_trees:
         tree.mkdir(exist_ok=True)

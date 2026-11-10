@@ -2,7 +2,7 @@
 
 ``dispatch`` accepts one command from the wire vocabulary and routes it to the
 handler that owns it, exhaustively — the union is closed, so a new command that
-nobody handles is a type error rather than a runtime surprise. Handlers
+nobody handles is a type error rather than an experiment environment surprise. Handlers
 coordinate the capabilities below them (``ree``, ``evidence``, ``bundle``,
 ``execution``, ``analysis``); nothing below imports back into here.
 

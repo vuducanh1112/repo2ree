@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import { isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
@@ -28,10 +29,12 @@ const PageRepoAnalysis = lazy(() =>
     default: Page,
   })),
 );
-const PageBuildRuntime = lazy(() =>
-  import("../build-runtime/BuildRuntimePage").then(({ PageBuildRuntime: Page }) => ({
-    default: Page,
-  })),
+const PageBuildExperimentEnvironment = lazy(() =>
+  import("../build-experiment-environment/BuildExperimentEnvironmentPage").then(
+    ({ PageBuildExperimentEnvironment: Page }) => ({
+      default: Page,
+    }),
+  ),
 );
 const PageGenerateSbom = lazy(() =>
   import("../generate-sbom/GenerateSbomPage").then(({ PageGenerateSbom: Page }) => ({
@@ -46,7 +49,7 @@ const PageTestActivation = lazy(() =>
 
 const STEP_PAGE_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<StepPageProps>>> = {
   evaluate: PageRepoAnalysis,
-  build: PageBuildRuntime,
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: PageBuildExperimentEnvironment,
   sbom: PageGenerateSbom,
   activation: PageTestActivation,
 };

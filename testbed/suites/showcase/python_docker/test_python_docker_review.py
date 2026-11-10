@@ -11,7 +11,7 @@ F = PYTHON_DOCKER
 BUNDLE = ROOT / "examples/rees/ree-hello-world.zip"
 
 
-def test_a_reviewer_reproduces_another_authors_source_runtime_activation_and_result(
+def test_a_reviewer_reproduces_another_authors_source_experiment_environment_activation_and_result(
     client: Client, new_ree: NewRee
 ) -> None:
     reviewer = new_ree("reviewer", image=F.image)
@@ -28,12 +28,12 @@ def test_a_reviewer_reproduces_another_authors_source_runtime_activation_and_res
     ] == [("bundled", "identical")]
     review_id = settled[0].review_id
 
-    build = client.review_build(reviewer, review_id, "auto", watch=F.watch)
+    build = client.review_build_experiment_environment(reviewer, review_id, "auto", watch=F.watch)
     assert build.status == "succeeded", client.logs(reviewer, build)
-    comparison = client.review(reviewer, review_id).build_comparison
+    comparison = client.review(reviewer, review_id).experiment_environment_comparison
     assert comparison is not None
     assert comparison.verdict in {"identical", "equivalent", "different"}
-    assert comparison.basis == "independent", "the bundle ships no runtime: only a rebuild can answer"
+    assert comparison.basis == "independent", "the bundle ships no experiment environment: only a rebuild can answer"
     assert (comparison.missing_count, comparison.extra_count) == (0, 0)
 
     activation = client.review_activation(reviewer, review_id, watch=F.watch)

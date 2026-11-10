@@ -1,11 +1,11 @@
 """Concrete authored-state inputs for script inference, over ``ReeLayout``.
 
 The pure inference engine sees only the ``ArtifactAccessor`` protocol; this is
-the workbench-side implementation that reads the built runtime artifact (in the
+the workbench-side implementation that reads the built experiment environment artifact (in the
 workspace) and the written reserved scripts (in the overlay). It resolves a
 workspace-relative path against the workspace first, then the overlay, so both
 namespaces are reachable through one accessor. Digests are streamed in chunks
-and cached so a large runtime image is hashed at most once per request.
+and cached so a large experiment environment image is hashed at most once per request.
 """
 
 from __future__ import annotations
@@ -14,7 +14,10 @@ import hashlib
 from pathlib import Path
 from typing import BinaryIO
 
-from repo2ree_core.author_recipes.inference.runtime_inputs import ArtifactFile, RuntimeInputs
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import (
+    ArtifactFile,
+    ExperimentEnvironmentInputs,
+)
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import ReeDefinition
 
@@ -87,21 +90,23 @@ class LayoutArtifactAccessor:
         return digest
 
 
-def _declared_runtime_path(definition: ReeDefinition | None) -> str | None:
-    """Where the author says the build leaves its runtime, if they have said yet.
+def _declared_experiment_environment_path(definition: ReeDefinition | None) -> str | None:
+    """Where the author says the build leaves its experiment environment, if they have said yet.
 
     Absent on a fresh REE: the build script is seeded before there is a source,
     so inference runs against a recipe whose destination is still unchosen and
-    warns about exactly that (``runtime_declaration_missing``).
+    warns about exactly that (``experiment_environment_declaration_missing``).
     """
-    build = definition.build_runtime if definition else None
-    return str(build.runtime_path) if build and build.runtime_path else None
+    build = definition.experiment_environment if definition else None
+    return str(build.artifact_path) if build and build.artifact_path else None
 
 
-def build_runtime_inputs(layout: ReeLayout, definition: ReeDefinition | None) -> RuntimeInputs:
+def build_experiment_environment_inputs(
+    layout: ReeLayout, definition: ReeDefinition | None
+) -> ExperimentEnvironmentInputs:
     """Assemble the authored-state inputs for one inference request."""
-    return RuntimeInputs(
-        declared_runtime_path=_declared_runtime_path(definition),
+    return ExperimentEnvironmentInputs(
+        declared_experiment_environment_path=_declared_experiment_environment_path(definition),
         experiments=list(definition.experiments) if definition else [],
         accessor=LayoutArtifactAccessor(layout),
     )

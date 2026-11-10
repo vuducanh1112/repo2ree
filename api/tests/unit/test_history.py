@@ -20,7 +20,7 @@ def test_history_endpoint_includes_failed_and_pending_attempts(client, online_re
         {
             "attempt_id": "two",
             "run_id": "review",
-            "command": {"operation": "review_build_runtime"},
+            "command": {"operation": "review_build_experiment_environment"},
             "scope": "reviews/r",
             "operation_status": "unknown",
             "capture_status": "pending",

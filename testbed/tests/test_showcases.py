@@ -42,7 +42,7 @@ def test_a_showcase_has_an_api_test_of_each_workflow(name: ShowcaseName, workflo
 def test_a_project_is_a_source_tree_beside_its_recipe(project: Project) -> None:
     assert any(project.source.iterdir())
     for script in get_args(RecipeScript):
-        if script != "build_script.sh" or not project.infer_build:
+        if script != "build_experiment_environment.sh" or not project.infer_build:
             assert project.recipe(script)
 
 

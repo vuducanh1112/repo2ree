@@ -1,9 +1,9 @@
 """The shared runtime-contract + command-fork subgraph.
 
 Activation-run and experiment-run inference are identical below their target
-gate: resolve the declared runtime into a typed contract (inspecting the built
+gate: resolve the declared experiment environment into a typed contract (inspecting the built
 artifact, or matching an unchanged generated build), then fork into one command
-strategy per runtime kind (docker / venv), join through the score-free resolver,
+strategy per experiment environment kind (docker / venv), join through the score-free resolver,
 and land on a result. Only the leaf rules/renderers differ (activation vs
 experiment), so both DAGs embed the identical versioned nodes built here — the
 published graph stays the exact executable control flow.
@@ -25,7 +25,7 @@ NEEDS_INPUT = "run-needs-input"
 NOT_INFERRED = "run-not-inferred"
 
 
-def runtime_contract_and_command_nodes(
+def experiment_environment_contract_and_command_nodes(
     *,
     docker_rule: str,
     docker_render: str,
@@ -41,17 +41,17 @@ def runtime_contract_and_command_nodes(
         # --- runtime-contract prefix ---
         CheckNode(
             id=ENTRY,
-            check="declared_runtime_path",
+            check="declared_experiment_environment_path",
             branches={"absent": NOT_INFERRED, "outside_root": NOT_INFERRED, "valid": "artifact-state"},
         ),
         CheckNode(
             id="artifact-state",
-            check="runtime_artifact_state",
+            check="experiment_environment_artifact_state",
             branches={"regular_file": "inspect-artifact", "missing": "unchanged-build"},
         ),
         CheckNode(
             id="inspect-artifact",
-            check="inspect_runtime_artifact",
+            check="inspect_experiment_environment_artifact",
             branches={
                 "docker_single_ref": FORK,
                 "venv": FORK,
@@ -65,12 +65,12 @@ def runtime_contract_and_command_nodes(
             check="unchanged_generated_build",
             branches={"matched": FORK, "unmatched": NOT_INFERRED},
         ),
-        # --- command fork: one strategy per runtime kind ---
+        # --- command fork: one strategy per experiment environment kind ---
         ForkNode(id=FORK, branches={"docker": "docker-kind", "venv": "venv-kind"}, join=RESOLVE),
         # docker strategy branch
         CheckNode(
             id="docker-kind",
-            check="runtime_contract_kind",
+            check="experiment_environment_contract_kind",
             branches={"docker": "docker-config", "venv": "docker-not-applicable"},
         ),
         CheckNode(
@@ -82,7 +82,7 @@ def runtime_contract_and_command_nodes(
             id="docker-command",
             strategy="docker",
             # No explicit activation/experiment command source exists in Phase 1,
-            # so a resolved docker runtime is always a confirmation-required
+            # so a resolved docker experiment environment is always a confirmation-required
             # candidate, never an automatic complete.
             outcome="candidate",
             rule=docker_rule,
@@ -94,7 +94,7 @@ def runtime_contract_and_command_nodes(
         # venv strategy branch
         CheckNode(
             id="venv-kind",
-            check="runtime_contract_kind",
+            check="experiment_environment_contract_kind",
             branches={"venv": "venv-command", "docker": "venv-not-applicable"},
         ),
         StrategyLeafNode(

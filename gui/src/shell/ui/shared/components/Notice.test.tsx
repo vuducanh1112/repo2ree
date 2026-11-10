@@ -9,7 +9,7 @@ describe("Notice", () => {
   });
 
   it("leaves informational notices silent, so nothing interrupts for a caveat", () => {
-    render(<Notice>Runs against the built runtime.</Notice>);
+    render(<Notice>Runs against the built experiment environment.</Notice>);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 

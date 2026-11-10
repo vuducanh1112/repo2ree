@@ -46,7 +46,7 @@ AuthorApiActionName = Literal[
     # evidence
     "evaluate_reproducibility",
     "observe_hardware",
-    "build_runtime",
+    "build_experiment_environment",
     "generate_sbom",
     "cross_check_sbom",
     "test_activation",

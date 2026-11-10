@@ -70,7 +70,7 @@ function renderDetail(
       index={1}
       otherNames={overrides.otherNames ?? []}
       locked={overrides.locked ?? false}
-      runtimePath={null}
+      experimentEnvironmentPath={null}
       scriptContent="echo run"
       verifyScriptContent="echo verify"
       onUpdate={onUpdate}

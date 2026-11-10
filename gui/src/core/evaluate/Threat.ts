@@ -51,8 +51,12 @@ export type DependencyStatus = (typeof DEPENDENCY_STATUSES)[number];
 
 // Verdict of the runtime-SBOM cross-check for a declared row; null until a
 // cross-check ran. "not-observed" is informational, not a defect.
-export const RUNTIME_PRESENCES = ["observed", "version-mismatch", "not-observed"] as const;
-export type RuntimePresence = (typeof RUNTIME_PRESENCES)[number];
+export const EXPERIMENT_ENVIRONMENT_PRESENCES = [
+  "observed",
+  "version-mismatch",
+  "not-observed",
+] as const;
+export type ExperimentEnvironmentPresence = (typeof EXPERIMENT_ENVIRONMENT_PRESENCES)[number];
 
 /** A normalized row emitted by the backend manifest scan. */
 export interface EvaluatedDependency {
@@ -68,7 +72,7 @@ export interface EvaluatedDependency {
   lockedIn: string | null;
   observedVersion: string | null;
   status: DependencyStatus;
-  runtimePresence: RuntimePresence | null;
+  experimentEnvironmentPresence: ExperimentEnvironmentPresence | null;
 }
 
 export interface UndeclaredPackage {
@@ -169,8 +173,10 @@ function parseDependency(value: unknown): EvaluatedDependency | null {
     lockedIn: typeof raw.locked_in === "string" ? raw.locked_in : null,
     observedVersion: typeof raw.observed_version === "string" ? raw.observed_version : null,
     status: raw.status as DependencyStatus,
-    runtimePresence: RUNTIME_PRESENCES.includes(raw.runtime_presence as RuntimePresence)
-      ? (raw.runtime_presence as RuntimePresence)
+    experimentEnvironmentPresence: EXPERIMENT_ENVIRONMENT_PRESENCES.includes(
+      raw.experiment_environment_presence as ExperimentEnvironmentPresence,
+    )
+      ? (raw.experiment_environment_presence as ExperimentEnvironmentPresence)
       : null,
   };
 }

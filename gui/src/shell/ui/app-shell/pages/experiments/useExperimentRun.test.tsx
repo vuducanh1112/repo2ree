@@ -86,7 +86,7 @@ describe("useExperimentRun", () => {
         exit_code: 0,
         verify_exit_code: 0,
         verdict: "pass",
-        runtime_path: "runtime.tar",
+        experiment_environment_path: "runtime.tar",
       },
     };
     runtime.logs = { lines: [{ type: "info", msg: "done" }] };
@@ -98,7 +98,7 @@ describe("useExperimentRun", () => {
         exitCode: 0,
         verifyExitCode: 0,
         verdict: "pass",
-        runtimePath: "runtime.tar",
+        experimentEnvironmentPath: "runtime.tar",
       },
       logLines: [{ type: "info", msg: "done" }],
     });

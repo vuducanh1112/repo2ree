@@ -118,10 +118,10 @@ class Recorder:
         self.events.append(Event(source=source, position=self.positions[source], partition=REE, **fields))
 
     def run(self, key: str, *path: str, source: str = "api-000001", **facts: Any) -> None:
-        """An author action through ``path``: build_runtime unless ``action`` names another."""
+        """An author action through ``path``: build_experiment_environment unless ``action`` names another."""
         for current, target in pairwise([None, *path]):
             assert target is not None
-            step = {"action": facts.get("action", "build_runtime")}
+            step = {"action": facts.get("action", "build_experiment_environment")}
             if target in {"succeeded", "failed", "canceled"}:
                 step |= {"attempt_id": facts.get("attempt_id"), "failure_category": None}
             self._add(
@@ -144,7 +144,7 @@ class Recorder:
             key=key,
             source_state=current,
             target_state=target,
-            facts={"action": "build_runtime", "attempt_id": attempt_id, "failure_category": None},
+            facts={"action": "build_experiment_environment", "attempt_id": attempt_id, "failure_category": None},
         )
 
     def attempt(
@@ -156,7 +156,7 @@ class Recorder:
         completed: bool = True,
         changed: bool = True,
         dispatched_by: str | None = None,
-        operation: str = "build_runtime",
+        operation: str = "build_experiment_environment",
         failed_record: str | None = None,
     ) -> None:
         """An attempt's phases; with ``failed_record``, its capture failed and that is its record's digest."""
@@ -191,7 +191,7 @@ class Recorder:
             subject="start_run",
             key=key,
             message="start_run",
-            facts={"operation": "build_runtime", "run_id": "run-1", "session": "s1"},
+            facts={"operation": "build_experiment_environment", "run_id": "run-1", "session": "s1"},
         )
         request = f"{source}#{self.positions[source]}"
         for kind, message in outcomes:
@@ -231,7 +231,9 @@ class Recorder:
         """An executor the workbench journals from ``start`` through ``path``."""
         for current, target in pairwise([start, *path]):
             assert target is not None
-            facts: dict[str, Any] = {"operation": "build_runtime", "run_id": "run-1"} if current is None else {}
+            facts: dict[str, Any] = (
+                {"operation": "build_experiment_environment", "run_id": "run-1"} if current is None else {}
+            )
             if target in {"exited", "stopped"}:
                 facts |= {"exit_code": 0, "status": "succeeded"}
             if target == "stopped":
@@ -294,7 +296,13 @@ class Recorder:
             key=f"{REE}/{step}",
             source_state=current,
             target_state=target,
-            facts={"step": step, "kind": step, "cause": cause, "operation": "build_runtime", "attempt_id": attempt_id},
+            facts={
+                "step": step,
+                "kind": step,
+                "cause": cause,
+                "operation": "build_experiment_environment",
+                "attempt_id": attempt_id,
+            },
         )
 
 
@@ -346,7 +354,7 @@ def test_a_discontinuous_history_is_violated_only_when_the_source_is_complete() 
         key="run-1",
         source_state="running",
         target_state="canceling",
-        facts={"action": "build_runtime"},
+        facts={"action": "build_experiment_environment"},
     )
     assert findings(recorder, "machine:AuthorApiAction")[0].startswith(
         "violated: recorded running -> canceling after requested"
@@ -375,7 +383,7 @@ def test_an_event_from_a_component_that_does_not_own_the_entity_is_violated() ->
         key="run-1",
         source_state=None,
         target_state="requested",
-        facts={"operation": "build"},
+        facts={"operation": "build_experiment_environment"},
     )
     assert "violated: recorded by supervisor, but api owns AuthorApiAction" in findings(
         recorder, "machine:AuthorApiAction"
@@ -655,25 +663,25 @@ def test_an_attempt_without_a_dispatch_is_violated() -> None:
 
 def test_evidence_from_a_successful_attempt_passes() -> None:
     recorder = Recorder()
-    recorder.receipt("runtime", None, "missing", attempt_id=None, cause="baseline")
+    recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
     recorder.attempt("a1")
-    recorder.receipt("runtime", "missing", "current", attempt_id="a1")
+    recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"
 
 
 def test_evidence_from_a_failed_attempt_is_violated() -> None:
     recorder = Recorder()
-    recorder.receipt("runtime", None, "missing", attempt_id=None, cause="baseline")
+    recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
     recorder.attempt("a1", outcome="failed")
-    recorder.receipt("runtime", "missing", "current", attempt_id="a1")
+    recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "violated"
 
 
 def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> None:
     recorder = Recorder()
-    recorder.receipt("runtime", None, "missing", attempt_id=None, cause="baseline")
+    recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
     recorder.attempt("a1", operation="write_file")
-    recorder.receipt("runtime", "missing", "current", attempt_id="a1")
+    recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
     assert findings(recorder, "receipts-come-from-their-producers") == [
         "violated: Attempt a1 reached captured with {'outcome': 'succeeded', 'operation': 'write_file'}"
     ]
@@ -682,7 +690,7 @@ def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> No
 def test_evidence_restored_by_a_bundle_load_passes_for_every_kind() -> None:
     recorder = Recorder()
     recorder.attempt("a1", operation="load_ree_bundle")
-    for step in ("source", "runtime", "test_activation"):
+    for step in ("source", "experiment_environment", "test_activation"):
         recorder.receipt(step, None, "missing", attempt_id=None, cause="baseline")
         recorder.receipt(step, "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"
@@ -690,18 +698,18 @@ def test_evidence_restored_by_a_bundle_load_passes_for_every_kind() -> None:
 
 def test_evidence_going_stale_and_current_again_is_not_appearing() -> None:
     recorder = Recorder()
-    recorder.receipt("runtime", None, "current", attempt_id=None, cause="baseline")
+    recorder.receipt("experiment_environment", None, "current", attempt_id=None, cause="baseline")
     recorder.attempt("a1", outcome="failed")
-    recorder.receipt("runtime", "current", "stale", attempt_id="a1")
-    recorder.receipt("runtime", "stale", "current", attempt_id="a1")
+    recorder.receipt("experiment_environment", "current", "stale", attempt_id="a1")
+    recorder.receipt("experiment_environment", "stale", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "not_triggered"
 
 
 def test_an_entity_without_a_machine_still_has_its_records_checked_but_covers_nothing() -> None:
     recorder = Recorder()
-    recorder.receipt("runtime", None, "stale", attempt_id=None, cause="baseline")
-    recorder.receipt("runtime", "stale", "not_applicable", attempt_id=None, cause="external")
-    recorder.receipt("runtime", "missing", "current", attempt_id=None, cause="external")
+    recorder.receipt("experiment_environment", None, "stale", attempt_id=None, cause="baseline")
+    recorder.receipt("experiment_environment", "stale", "not_applicable", attempt_id=None, cause="external")
+    recorder.receipt("experiment_environment", "missing", "current", attempt_id=None, cause="external")
     assert findings(recorder, "machine:Receipt") == ["violated: recorded missing -> current after not_applicable"]
     result = check(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
     assert result.coverage.transitions["Receipt"] == {}
@@ -735,7 +743,7 @@ def test_what_owners_record_beyond_the_vocabulary_is_reported_and_never_judged()
         key="run-2",
         source_state=None,
         target_state="requested",
-        facts={"action": "build_runtime", "queue": "fast"},
+        facts={"action": "build_experiment_environment", "queue": "fast"},
     )
     recorder.settle("run-2", "requested", "failed", None)
     result = check(SPEC, Evidence(sources=(journal(), bench(), git(REE)), events=tuple(recorder.events)))

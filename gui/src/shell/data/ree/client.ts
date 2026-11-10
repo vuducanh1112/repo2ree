@@ -26,7 +26,11 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   getReeFileBytes(id: ReeId | string, path: string): Promise<ArrayBuffer>;
   sealRee(
     id: ReeId | string,
-    opts: { includeSource: boolean; includeRuntime: boolean; includeResults: boolean },
+    opts: {
+      includeSource: boolean;
+      includeExperimentEnvironment: boolean;
+      includeResults: boolean;
+    },
   ): Promise<RunSummary>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;

@@ -56,10 +56,10 @@ vi.mock("./components/WorkspaceStatusBar", () => ({
     onOpenReviewStep: (step: string) => void;
   }) => (
     <div>
-      <button type="button" onClick={() => props.onNavigate(PAGE.BUILD)}>
+      <button type="button" onClick={() => props.onNavigate(PAGE.BUILD_EXPERIMENT_ENVIRONMENT)}>
         Status build
       </button>
-      <button type="button" onClick={() => props.onOpenReviewStep("build")}>
+      <button type="button" onClick={() => props.onOpenReviewStep("build_experiment_environment")}>
         Status review build
       </button>
       <button type="button" onClick={() => props.onFilesOpenChange(true)}>
@@ -117,7 +117,10 @@ vi.mock("./canvas/CanvasHub", () => ({
       <button type="button" onClick={() => props.onNavigate(PAGE.METADATA)}>
         Navigate plain
       </button>
-      <button type="button" onClick={() => props.onNavigate(PAGE.BUILD, new DOMRect(1, 2, 3, 4))}>
+      <button
+        type="button"
+        onClick={() => props.onNavigate(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, new DOMRect(1, 2, 3, 4))}
+      >
         Navigate from node
       </button>
       <button type="button" onClick={() => props.onFilesConsoleOpenChange(true)}>
@@ -253,7 +256,7 @@ describe("AppShellView", () => {
     }
 
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.METADATA);
-    expect(commands.setPage).toHaveBeenCalledWith(PAGE.BUILD);
+    expect(commands.setPage).toHaveBeenCalledWith(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(commands.setFilesConsoleOpen).toHaveBeenCalledWith(true);
     expect(commands.setReceiptsConsoleOpen).toHaveBeenCalledWith(true);
     // The bar above opens the canvas's top consoles, the bar below its bottom ones.
@@ -263,7 +266,7 @@ describe("AppShellView", () => {
 
   it.each([
     PAGE.METADATA,
-    PAGE.BUILD,
+    PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
     PAGE.SOURCE,
     PAGE.SEAL,
   ] as const)("closes the %s drawer back to the canvas", (page) => {

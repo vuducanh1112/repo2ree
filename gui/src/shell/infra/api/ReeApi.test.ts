@@ -68,12 +68,14 @@ describe("ReeApi", () => {
     await api.removeSource(reeId);
     await api.putFileContent(reeId, { path: "run.sh", content: "echo ok" });
     await api.deleteFileContent(reeId, "dir/a b.txt");
-    await api.generateScriptCandidates(reeId, [{ kind: "build" }]);
-    await api.lintReeScripts(reeId, [{ kind: "build" }]);
-    await api.checkScriptDraft({ kind: "build" }, "set -eu\n", { runtime_path: "runtime.tar" });
+    await api.generateScriptCandidates(reeId, [{ kind: "build_experiment_environment" }]);
+    await api.lintReeScripts(reeId, [{ kind: "build_experiment_environment" }]);
+    await api.checkScriptDraft({ kind: "build_experiment_environment" }, "set -eu\n", {
+      experiment_environment_path: "runtime.tar",
+    });
     await api.sealRee(reeId, {
       includeSource: true,
-      includeRuntime: false,
+      includeExperimentEnvironment: false,
       includeResults: true,
     });
     await api.deleteRee(reeId);
@@ -97,10 +99,10 @@ describe("ReeApi", () => {
     // The draft carries only the declarations lint reads — no digest, no
     // size: an editor holds neither, and the route no longer asks.
     expect(client.request.mock.calls[10]?.[1].body).toBe(
-      '{"target":{"kind":"build"},"source":"set -eu\\n","declarations":{"runtime_path":"runtime.tar"}}',
+      '{"target":{"kind":"build_experiment_environment"},"source":"set -eu\\n","declarations":{"experiment_environment_path":"runtime.tar"}}',
     );
     expect(client.request.mock.calls[11]?.[1].body).toBe(
-      '{"include_source":true,"include_runtime":false,"include_results":true}',
+      '{"include_source":true,"include_experiment_environment":false,"include_results":true}',
     );
   });
 
@@ -132,7 +134,10 @@ describe("ReeApi", () => {
     await api.getEvaluateReport(reeId);
     await api.listReviews(reeId);
     await api.startSourceReview(reeId, { basis: "auto" });
-    await api.startBuildReview(reeId, "review/1", { basis: "auto", prune_workspace: false });
+    await api.startBuildExperimentEnvironmentReview(reeId, "review/1", {
+      basis: "auto",
+      prune_workspace: false,
+    });
     await api.startActivationReview(reeId, "review/1");
     await api.startExperimentReview(reeId, "review/1", "hello world");
 
@@ -140,7 +145,7 @@ describe("ReeApi", () => {
       "/api/v1/rees/ree-1/evaluate/report",
       "/api/v1/rees/ree-1/reviews",
       "/api/v1/rees/ree-1/reviews/source:reproduce",
-      "/api/v1/rees/ree-1/reviews/review%2F1/build:reproduce",
+      "/api/v1/rees/ree-1/reviews/review%2F1/build-experiment-environment:reproduce",
       "/api/v1/rees/ree-1/reviews/review%2F1/activation:reproduce",
       "/api/v1/rees/ree-1/reviews/review%2F1/experiments/hello%20world:reproduce",
     ]);

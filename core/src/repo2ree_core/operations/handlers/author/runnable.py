@@ -48,7 +48,7 @@ def handle_runnable_operation(
     try:
         ree = load_ree(layout, store)
         definition = _select_definition(ree, kind, experiment_name)
-        runtime_path, runtime_digest = _check_preconditions(ree, definition, layout)
+        experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot {kind}: {exc}")
         return ActionResult.failed("precondition", f"cannot {kind}: {exc}")
@@ -67,7 +67,7 @@ def handle_runnable_operation(
         log=log,
         is_canceled=is_canceled,
     )
-    outputs = _outputs(outcome, runtime_path)
+    outputs = _outputs(outcome, experiment_environment_path)
     if outcome.status == "canceled":
         log("system", "warn", f"{kind} canceled")
         return ActionResult(status="canceled", outputs=outputs.model_dump(mode="json", exclude_none=True))
@@ -99,8 +99,8 @@ def handle_runnable_operation(
         run_id=run_id,
         timing=timing,
         snapshot_digest=_source_snapshot(ree),
-        runtime_path=runtime_path,
-        runtime_digest=runtime_digest,
+        experiment_environment_path=experiment_environment_path,
+        experiment_environment_digest=experiment_environment_digest,
         produced_output_digest=produced_output_digest,
         workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
     )
@@ -168,23 +168,25 @@ def _check_preconditions(
             label="verification script",
         )
 
-    runtime = ree.subject.definition.build_runtime
-    if runtime is None or runtime.runtime_path is None:
+    experiment_environment = ree.subject.definition.experiment_environment
+    if experiment_environment is None or experiment_environment.artifact_path is None:
         return None, None
-    build = ree.subject.receipts.build
+    build = ree.subject.receipts.experiment_environment
     if build is None:
-        raise ReePreconditionError("runtime has not been built")
-    runtime_audit = audit(ree).runtime
-    if runtime_audit.evidence != "current":
-        detail = "; ".join(runtime_audit.reasons) or "build evidence is not current"
+        raise ReePreconditionError("experiment environment has not been built")
+    experiment_environment_audit = audit(ree).experiment_environment
+    if experiment_environment_audit.evidence != "current":
+        detail = "; ".join(experiment_environment_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
-    runtime_file = layout.workspace / str(runtime.runtime_path)
-    if not runtime_file.is_file():
-        raise ReePreconditionError(f"runtime artifact is missing: {runtime.runtime_path}")
-    runtime_digest = digest_file(runtime_file)
-    if runtime_digest != build.produced_runtime_digest:
-        raise ReePreconditionError("runtime artifact does not match the selected build receipt")
-    return runtime.runtime_path, runtime_digest
+    experiment_environment_file = layout.workspace / str(experiment_environment.artifact_path)
+    if not experiment_environment_file.is_file():
+        raise ReePreconditionError(
+            f"experiment environment artifact is missing: {experiment_environment.artifact_path}"
+        )
+    experiment_environment_digest = digest_file(experiment_environment_file)
+    if experiment_environment_digest != build.produced_artifact_digest:
+        raise ReePreconditionError("experiment environment artifact does not match the selected build receipt")
+    return experiment_environment.artifact_path, experiment_environment_digest
 
 
 def _check_script(path: Path, expected_digest: Digest, expected_size: int, *, label: str) -> None:
@@ -204,10 +206,12 @@ def _as_runnable(definition: RunnableDefinition) -> RunnableSpec:
     )
 
 
-def _outputs(outcome: ExperimentRunOutcome, runtime_path: WorkspacePath | None) -> RunnableOperationOutputs:
+def _outputs(
+    outcome: ExperimentRunOutcome, experiment_environment_path: WorkspacePath | None
+) -> RunnableOperationOutputs:
     return RunnableOperationOutputs(
         **outcome.run_outputs.model_dump(),
-        runtime_path=str(runtime_path or ""),
+        experiment_environment_path=str(experiment_environment_path or ""),
     )
 
 
@@ -224,8 +228,8 @@ def _successful_receipt(
     run_id: str,
     timing: OperationTiming,
     snapshot_digest: Digest,
-    runtime_path: WorkspacePath | None,
-    runtime_digest: Digest | None,
+    experiment_environment_path: WorkspacePath | None,
+    experiment_environment_digest: Digest | None,
     produced_output_digest: Digest | None,
     workbench_environment: WorkbenchEnvironmentObservation,
 ) -> TestActivationReceipt | RunExperimentReceipt:
@@ -234,8 +238,8 @@ def _successful_receipt(
         return TestActivationReceipt(
             **envelope,
             snapshot_digest=snapshot_digest,
-            runtime_path=runtime_path,
-            runtime_digest=runtime_digest,
+            experiment_environment_path=experiment_environment_path,
+            experiment_environment_digest=experiment_environment_digest,
             run_script_digest=definition.run_script_digest,
             verify_script_digest=definition.verify_script_digest,
             run_exit_code=0,
@@ -246,7 +250,7 @@ def _successful_receipt(
         **envelope,
         experiment_name=definition.name,
         snapshot_digest=snapshot_digest,
-        runtime_digest=runtime_digest,
+        experiment_environment_digest=experiment_environment_digest,
         run_script_digest=definition.run_script_digest,
         verify_script_digest=definition.verify_script_digest,
         run_exit_code=0,

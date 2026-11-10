@@ -11,15 +11,15 @@ from __future__ import annotations
 from repo2ree_core.author_recipes.inference.build_wiring import BUILD_CHECKS, BUILD_RENDERERS, BUILD_RESOLVERS
 from repo2ree_core.author_recipes.inference.checks.docker_config import DockerConfigCommandsCheck
 from repo2ree_core.author_recipes.inference.checks.experiment import RequestedExperimentCheck
-from repo2ree_core.author_recipes.inference.checks.runtime_contract import (
-    DeclaredRuntimePathCheck,
-    RuntimeArtifactInspectionCheck,
-    RuntimeArtifactStateCheck,
-    RuntimeContractKindCheck,
+from repo2ree_core.author_recipes.inference.checks.experiment_environment_contract import (
+    DeclaredExperimentEnvironmentPathCheck,
+    ExperimentEnvironmentArtifactInspectionCheck,
+    ExperimentEnvironmentArtifactStateCheck,
+    ExperimentEnvironmentContractKindCheck,
     UnchangedGeneratedBuildCheck,
 )
 from repo2ree_core.author_recipes.inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
-from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_INFERENCE_DAG
+from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.author_recipes.inference.engine import validate_dag
 from repo2ree_core.author_recipes.inference.models import Check, Renderer, Resolver
@@ -36,11 +36,11 @@ CHECKS: dict[str, Check] = {
     **{
         check.code: check
         for check in (
-            DeclaredRuntimePathCheck(),
-            RuntimeArtifactStateCheck(),
-            RuntimeArtifactInspectionCheck(),
+            DeclaredExperimentEnvironmentPathCheck(),
+            ExperimentEnvironmentArtifactStateCheck(),
+            ExperimentEnvironmentArtifactInspectionCheck(),
             UnchangedGeneratedBuildCheck(),
-            RuntimeContractKindCheck(),
+            ExperimentEnvironmentContractKindCheck(),
             DockerConfigCommandsCheck(),
             RequestedExperimentCheck(),
         )
@@ -63,7 +63,7 @@ RENDERERS: dict[str, Renderer] = {
 }
 
 DECISION_DAGS: dict[str, DecisionDag] = {
-    BUILD_INFERENCE_DAG.key: BUILD_INFERENCE_DAG,
+    BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key: BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG,
     ACTIVATION_RUN_DAG.key: ACTIVATION_RUN_DAG,
     EXPERIMENT_RUN_DAG.key: EXPERIMENT_RUN_DAG,
 }
@@ -72,7 +72,7 @@ DECISION_DAGS: dict[str, DecisionDag] = {
 # explicit author verification claim that has no field on ReeDefinition yet), so
 # they stay unregistered and return a well-formed not_inferred result.
 DAG_FOR_TARGET_KIND: dict[str, str] = {
-    "build": BUILD_INFERENCE_DAG.key,
+    "build_experiment_environment": BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key,
     "activation_run": ACTIVATION_RUN_DAG.key,
     "experiment_run": EXPERIMENT_RUN_DAG.key,
 }
@@ -83,5 +83,5 @@ def validate_all() -> None:
         validate_dag(dag, checks=CHECKS, resolvers=RESOLVERS, renderers=RENDERERS)
 
 
-# Fail fast at import: a broken DAG is a deployment defect, not a runtime error.
+# Fail fast at import: a broken DAG is a deployment defect, not an experiment environment error.
 validate_all()

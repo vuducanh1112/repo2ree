@@ -7,9 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from repo2ree_ree.primitives import Digest, ReePath, RunId, SourceType, Swhid, UtcInstant, WorkspacePath
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
-ReviewStepKey = Literal["source", "build", "activation", "experiments"]
+ReviewStepKey = Literal["source", "build_experiment_environment", "activation", "experiments"]
 ComparisonVerdict = Literal["identical", "different", "inconclusive"]
-BuildVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
+ExperimentEnvironmentVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
 ActivationVerdict = Literal["passed", "failed"]
 ExperimentVerdict = Literal["identical", "reproduced", "different", "inconclusive"]
 
@@ -42,12 +42,12 @@ class ReviewAcquireSourceReceipt(ReviewReceiptEnvelope):
     observed_swhid: Swhid | None = None
 
 
-class ReviewBuildRuntimeReceipt(ReviewReceiptEnvelope):
-    operation: Literal["build_runtime"] = "build_runtime"
-    build_runtime_script_path: ReePath | None = None
-    build_runtime_script_digest: Digest | None = None
-    runtime_path: WorkspacePath
-    produced_runtime_digest: Digest
+class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
+    operation: Literal["build_experiment_environment"] = "build_experiment_environment"
+    build_experiment_environment_script_path: ReePath | None = None
+    build_experiment_environment_script_digest: Digest | None = None
+    artifact_path: WorkspacePath
+    produced_artifact_digest: Digest
 
 
 class ReviewActivationReceipt(ReviewReceiptEnvelope):
@@ -58,8 +58,8 @@ class ReviewActivationReceipt(ReviewReceiptEnvelope):
     verify_script_digest: Digest | None = None
     run_exit_code: int | None = None
     verify_exit_code: int | None = None
-    runtime_path: WorkspacePath
-    runtime_digest: Digest
+    experiment_environment_path: WorkspacePath
+    experiment_environment_digest: Digest
 
 
 class ReviewExperimentReceipt(ReviewReceiptEnvelope):
@@ -71,8 +71,8 @@ class ReviewExperimentReceipt(ReviewReceiptEnvelope):
     verify_script_digest: Digest | None = None
     run_exit_code: int | None = None
     verify_exit_code: int | None = None
-    runtime_path: WorkspacePath | None = None
-    runtime_digest: Digest | None = None
+    experiment_environment_path: WorkspacePath | None = None
+    experiment_environment_digest: Digest | None = None
     produced_output_digest: Digest | None = None
 
 
@@ -91,12 +91,12 @@ class PackageDeltaRecord(_ReviewModel):
     observed_version: str | None = None
 
 
-class BuildComparison(_ReviewModel):
+class ExperimentEnvironmentComparison(_ReviewModel):
     policy: Literal["sbom-closure"] = "sbom-closure"
     basis: EvidenceBasis = "independent"
-    verdict: BuildVerdict
-    expected_runtime_digest: str | None = None
-    observed_runtime_digest: str | None = None
+    verdict: ExperimentEnvironmentVerdict
+    expected_artifact_digest: str | None = None
+    observed_artifact_digest: str | None = None
     expected_sbom_digest: str | None = None
     observed_sbom_digest: str | None = None
     sbom_tool_version: str | None = None
@@ -117,7 +117,7 @@ class ActivationOutcome(_ReviewModel):
     policy: Literal["activation-probe"] = "activation-probe"
     basis: EvidenceBasis
     verdict: ActivationVerdict
-    runtime_digest: str | None = None
+    experiment_environment_digest: str | None = None
     run_exit_code: int | None = None
     verify_exit_code: int | None = None
 
@@ -135,7 +135,7 @@ class ExperimentComparison(_ReviewModel):
     run_exit_code: int | None = None
     expected_output_digest: str | None = None
     observed_output_digest: str | None = None
-    runtime_digest: str | None = None
+    experiment_environment_digest: str | None = None
 
 
 class ReviewStepState(_ReviewModel):
@@ -154,8 +154,8 @@ class ReviewRecord(_ReviewModel):
     steps: list[ReviewStepState] = Field(default_factory=list)
     source_receipt: ReviewAcquireSourceReceipt | None = None
     source_comparison: SourceComparison | None = None
-    build_receipt: ReviewBuildRuntimeReceipt | None = None
-    build_comparison: BuildComparison | None = None
+    experiment_environment_receipt: ReviewBuildExperimentEnvironmentReceipt | None = None
+    experiment_environment_comparison: ExperimentEnvironmentComparison | None = None
     activation_receipt: ReviewActivationReceipt | None = None
     activation_outcome: ActivationOutcome | None = None
     experiment_receipts: list[ReviewExperimentReceipt] = Field(default_factory=list)

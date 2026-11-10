@@ -20,20 +20,22 @@ from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import (
     CandidateDependency,
     CommandCandidatesBinding,
-    DockerRuntimeContract,
+    DockerExperimentEnvironmentContract,
     ExperimentBinding,
+    ExperimentEnvironmentContractBinding,
     InferenceEvidence,
-    RuntimeContractBinding,
 )
 
 
-def _bindings(context: DecisionContext) -> tuple[DockerRuntimeContract, str, ExperimentBinding]:
-    contract_binding = context.binding("runtime_contract")
+def _bindings(context: DecisionContext) -> tuple[DockerExperimentEnvironmentContract, str, ExperimentBinding]:
+    contract_binding = context.binding("experiment_environment_contract")
     experiment = context.binding("experiment")
-    if not isinstance(contract_binding, RuntimeContractBinding) or not isinstance(
-        contract_binding.contract, DockerRuntimeContract
+    if not isinstance(contract_binding, ExperimentEnvironmentContractBinding) or not isinstance(
+        contract_binding.contract, DockerExperimentEnvironmentContract
     ):
-        raise ValueError("docker_experiment_v1 renderer reached without a docker runtime_contract binding")
+        raise ValueError(
+            "docker_experiment_v1 renderer reached without a docker experiment_environment_contract binding"
+        )
     if not isinstance(experiment, ExperimentBinding):
         raise ValueError("docker_experiment_v1 renderer reached without an experiment binding")
     return contract_binding.contract, contract_binding.provenance, experiment
@@ -41,7 +43,9 @@ def _bindings(context: DecisionContext) -> tuple[DockerRuntimeContract, str, Exp
 
 class DockerExperimentRenderer:
     code = "docker_experiment_v1"
-    requires: frozenset[BindingKind] = frozenset({"runtime_contract", "command_candidates", "experiment"})
+    requires: frozenset[BindingKind] = frozenset(
+        {"experiment_environment_contract", "command_candidates", "experiment"}
+    )
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         contract, provenance, experiment = _bindings(context)
@@ -59,10 +63,10 @@ class DockerExperimentRenderer:
         )
         dependencies = [
             CandidateDependency(
-                kind="runtime_artifact",
+                kind="experiment_environment_artifact",
                 path=contract.artifact_path,
-                digest=context.runtime.accessor.stat(contract.artifact_path).digest or "",
-                role="runtime",
+                digest=context.experiment_environment.accessor.stat(contract.artifact_path).digest or "",
+                role="experiment_environment",
             ),
             CandidateDependency(
                 kind="experiment_declaration",
@@ -73,9 +77,9 @@ class DockerExperimentRenderer:
         ]
         evidence = [
             InferenceEvidence(
-                code="docker_runtime_contract",
+                code="docker_experiment_environment_contract",
                 path=contract.artifact_path,
-                detail=f"Docker runtime {contract.image_ref} (provenance: {provenance}).",
+                detail=f"Docker experiment environment {contract.image_ref} (provenance: {provenance}).",
             )
         ]
         warnings = [make_warning("execution_not_validated"), make_warning("experiment_command_missing")]
@@ -103,7 +107,7 @@ set -eu
 # The Docker/runtime plumbing was inferred.
 # The scientific experiment command was not selected automatically.
 
-RUNTIME_ARTIFACT={sh_quote(artifact_path)}
+EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(artifact_path)}
 IMAGE_TAG={sh_quote(image_ref)}
 RUN_LOG={sh_quote(run_log)}
 
@@ -113,7 +117,7 @@ set --
 
 {guard}
 
-docker load --input "$RUNTIME_ARTIFACT"
+docker load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
 
 mkdir -p "$(dirname "$RUN_LOG")"
 

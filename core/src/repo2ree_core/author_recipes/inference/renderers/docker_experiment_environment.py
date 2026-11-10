@@ -3,7 +3,7 @@
 Detection/planning (checks) and rendering are separate so ecosystem branches do
 not each duplicate the shell wrapper. This renderer turns the resolved
 ``project_root`` + ``dockerfile`` bindings into the complete Docker build
-script, copying every runtime constant it derives as an explicit literal — no
+script, copying every experiment environment constant it derives as an explicit literal — no
 downstream consumer greps this shell for values.
 
 The image reference is ``ree-runtime:<ree-name>`` — readable and stable for a
@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.renderers._common import (
-    DOCKER_RUNTIME_ARTIFACT_SUFFIX,
-    build_runtime_artifact_path,
-    runtime_image_ref,
+    DOCKER_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX,
+    build_experiment_environment_artifact_path,
+    experiment_environment_image_ref,
     sh_comment,
     sh_quote,
 )
@@ -42,14 +42,16 @@ class DockerBuildRenderer:
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         root, dockerfile = _bindings(context)
-        declared_runtime = context.runtime.declared_runtime_path
-        runtime_artifact = build_runtime_artifact_path(declared_runtime, root.path, DOCKER_RUNTIME_ARTIFACT_SUFFIX)
-        image_tag = runtime_image_ref(context.ree_name)
+        declared_experiment_environment = context.experiment_environment.declared_experiment_environment_path
+        experiment_environment_artifact = build_experiment_environment_artifact_path(
+            declared_experiment_environment, root.path, DOCKER_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX
+        )
+        image_tag = experiment_environment_image_ref(context.ree_name)
         body = _render_body(
             dockerfile_path=dockerfile.path,
             build_context=dockerfile.build_context,
             image_tag=image_tag,
-            runtime_artifact=runtime_artifact,
+            experiment_environment_artifact=experiment_environment_artifact,
             digest=dockerfile.digest,
             logical_root=root.path,
         )
@@ -64,13 +66,13 @@ class DockerBuildRenderer:
         ]
         dependencies.append(
             CandidateDependency(
-                kind="runtime_declaration",
-                path=runtime_artifact,
+                kind="experiment_environment_declaration",
+                path=experiment_environment_artifact,
                 digest="",
                 # The path these bytes write to, declared or defaulted. It is part
                 # of what justifies them either way: move the declaration and
                 # regeneration produces different bytes, so the candidate is stale.
-                role="runtime",
+                role="experiment_environment",
             )
         )
         evidence = [
@@ -95,7 +97,7 @@ def _render_body(
     dockerfile_path: str,
     build_context: str,
     image_tag: str,
-    runtime_artifact: str,
+    experiment_environment_artifact: str,
     digest: str,
     logical_root: str,
 ) -> str:
@@ -116,15 +118,15 @@ set -eu
 DOCKERFILE={sh_quote(dockerfile_path)}
 BUILD_CONTEXT={sh_quote(build_context)}
 IMAGE_TAG={sh_quote(image_tag)}
-RUNTIME_ARTIFACT={sh_quote(runtime_artifact)}
+EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(experiment_environment_artifact)}
 
 docker build \\
     --file "$DOCKERFILE" \\
     --tag "$IMAGE_TAG" \\
     "$BUILD_CONTEXT"
 
-mkdir -p "$(dirname "$RUNTIME_ARTIFACT")"
+mkdir -p "$(dirname "$EXPERIMENT_ENVIRONMENT_ARTIFACT")"
 docker save \\
     "$IMAGE_TAG" \\
-    --output "$RUNTIME_ARTIFACT"
+    --output "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
 """

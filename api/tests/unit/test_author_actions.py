@@ -80,11 +80,11 @@ def test_a_run_moves_its_action_along_and_names_the_attempt_it_recorded(tmp_path
         {
             "run_id": "build-1",
             "ree_id": "ree-1",
-            "operation": "build",
+            "operation": "build_experiment_environment",
             "status": "queued",
             "created_at": "2026-01-01T00:00:00Z",
             "request": {},
-            "action": "build_runtime",
+            "action": "build_experiment_environment",
             "action_id": "act-1",
         }
     )
@@ -96,7 +96,7 @@ def test_a_run_moves_its_action_along_and_names_the_attempt_it_recorded(tmp_path
         "ree-1", "build-1", status="succeeded", outputs={}, failure=None, context=context, history=recorded.history
     )
 
-    named = {"action": "build_runtime", "run_id": "build-1"}
+    named = {"action": "build_experiment_environment", "run_id": "build-1"}
     assert actions() == [
         ("act-1", None, "requested", named),
         ("act-1", "requested", "running", named),

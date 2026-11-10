@@ -128,7 +128,7 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
         command=SealReeCommand(
             args=SealReeArgs(
                 source_included=payload.include_source,
-                runtime_included=payload.include_runtime,
+                experiment_environment_included=payload.include_experiment_environment,
                 results_included=payload.include_results,
             )
         ),

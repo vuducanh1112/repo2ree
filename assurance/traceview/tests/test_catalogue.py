@@ -16,7 +16,7 @@ def test_operations_come_once_each_in_the_order_they_usually_take() -> None:
     catalogue = build_catalogue([("a", trace_of(recorded(), build_spans())), ("b", trace_of(recorded()))])
     assert [(op.kind, op.name) for op in catalogue.operations] == [
         ("setup", "provision"),
-        ("operation", "build_runtime"),
+        ("operation", "build_experiment_environment"),
         ("operation", "generate_sbom"),
     ]
     build = catalogue.operations[1]
@@ -26,13 +26,15 @@ def test_operations_come_once_each_in_the_order_they_usually_take() -> None:
 def test_a_failure_path_is_drawn_apart_from_the_success_it_diverges_from() -> None:
     trace = trace_of(recorded())
     entries = tuple(
-        entry.model_copy(update={"outcome": "failed"}) if entry.name == "build_runtime" else entry
+        entry.model_copy(update={"outcome": "failed"}) if entry.name == "build_experiment_environment" else entry
         for entry in trace.entries
     )
     failed = trace.model_copy(update={"entries": entries})
     catalogue = build_catalogue([("a", trace), ("b", trace), ("c", failed)])
     builds = [
-        (op.outcome, [i.source for i in op.instances]) for op in catalogue.operations if op.name == "build_runtime"
+        (op.outcome, [i.source for i in op.instances])
+        for op in catalogue.operations
+        if op.name == "build_experiment_environment"
     ]
     assert builds == [("succeeded", ["a", "b"]), ("failed", ["c"])]
 
@@ -41,9 +43,9 @@ def test_each_line_counts_the_instances_that_show_it() -> None:
     build = build_catalogue([("a", trace_of(recorded(), build_spans())), ("b", trace_of(recorded()))]).operations[1]
     everything = {(line.provenance, line.label): line.seen for line in (*build.lines, *build.elsewhere)}
     # Both instances journal the dispatch and capture it in Git; only one recorded spans.
-    assert everything[("journal", "start_run · build_runtime")] == 2
+    assert everything[("journal", "start_run · build_experiment_environment")] == 2
     assert everything[("git", "commit …")] == 2
-    assert everything[("span", "POST /rees/{id}/build-runtime")] == 1
+    assert everything[("span", "POST /rees/{id}/build-experiment-environment")] == 1
     assert all(line.seen < 2 for line in build.elsewhere)
 
 
@@ -52,7 +54,7 @@ def test_requests_matched_only_by_time_are_not_part_of_the_operation() -> None:
     earlier = Row(t=0.0, lane="client", to="api", label="PUT /rees/{id}/files/content", provenance="time")
 
     def with_earlier(entry: Entry) -> Entry:
-        if entry.name != "build_runtime" or entry.sequence is None:
+        if entry.name != "build_experiment_environment" or entry.sequence is None:
             return entry
         rows = (earlier, *entry.sequence.rows)
         return entry.model_copy(update={"sequence": entry.sequence.model_copy(update={"rows": rows})})
@@ -92,7 +94,7 @@ def test_what_cannot_be_drawn_is_listed_with_its_reason() -> None:
         ("commit c2000000", "commit …"),
         ("350 ms without spans", "… without spans"),
         ("3x · 0.54 s · 1 failed", "… · … · 1 failed"),
-        ("start_run · build_runtime", "start_run · build_runtime"),
+        ("start_run · build_experiment_environment", "start_run · build_experiment_environment"),
     ],
 )
 def test_labels_are_alike_once_ids_durations_and_counts_are_masked(label: str, shape: str) -> None:

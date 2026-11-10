@@ -97,7 +97,9 @@ test.describe("Review source", () => {
     // Nothing reproduced yet: source is the only runnable step, and its
     // evidence section says so rather than standing empty.
     await expect(review.getByText("Not reproduced yet.").first()).toBeVisible();
-    await expect(review.getByRole("button", { name: "Reproduce Build" })).toBeDisabled();
+    await expect(
+      review.getByRole("button", { name: "Reproduce Build Experiment Environment" }),
+    ).toBeDisabled();
 
     expect(await reproduceSource(page)).toBe("IDENTICAL");
 
@@ -110,7 +112,9 @@ test.describe("Review source", () => {
     // A settled source unlocks build and nothing beyond it: each later step
     // waits on the one before, so a certified runtime is still owed before
     // anything can be run inside it.
-    await expect(review.getByRole("button", { name: "Reproduce Build" })).toBeEnabled();
+    await expect(
+      review.getByRole("button", { name: "Reproduce Build Experiment Environment" }),
+    ).toBeEnabled();
     await expect(review.getByRole("button", { name: "Reproduce Test Activation" })).toBeDisabled();
     await expect(review.getByRole("button", { name: "Reproduce Experiments" })).toBeDisabled();
   });

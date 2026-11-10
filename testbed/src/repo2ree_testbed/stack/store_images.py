@@ -6,7 +6,7 @@ test reads the same ref whichever compute the stack runs.
 
 from __future__ import annotations
 
-# Python on its own: the base image is the runtime environment.
+# Python on its own: the base image is the experiment environment environment.
 PYTHON_SLIM_IMAGE = (
     "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534"
 )

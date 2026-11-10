@@ -79,12 +79,12 @@ class DependencySummary(BaseModel):
 
 DependencyStatus = Literal["locked", "pinned", "ranged", "unpinned", "undeclared"]
 
-RuntimePresence = Literal["observed", "version-mismatch", "not-observed"]
+ExperimentEnvironmentPresence = Literal["observed", "version-mismatch", "not-observed"]
 
 
 class EvaluatedDependency(Dependency):
     status: DependencyStatus
-    runtime_presence: RuntimePresence | None = None
+    experiment_environment_presence: ExperimentEnvironmentPresence | None = None
 
 
 class UndeclaredPackage(BaseModel):

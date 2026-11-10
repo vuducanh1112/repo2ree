@@ -47,7 +47,7 @@ class ReeAudit(_AuditModel):
     source: StepAudit
     evaluation: StepAudit
     hardware: StepAudit
-    runtime: StepAudit
+    experiment_environment: StepAudit
     sbom: StepAudit
     sbom_cross_check: StepAudit
     test_activation: StepAudit

@@ -58,12 +58,14 @@ describe("Button", () => {
 
   it("carries a domain tint as a custom property, not as a colour", () => {
     render(
-      <Button variant="accent" tint="var(--stage-build-line)">
+      <Button variant="accent" tint="var(--stage-build_experiment_environment-line)">
         Build
       </Button>,
     );
     const button = screen.getByRole("button", { name: "Build" });
-    expect(button.style.getPropertyValue("--control-line")).toBe("var(--stage-build-line)");
+    expect(button.style.getPropertyValue("--control-line")).toBe(
+      "var(--stage-build_experiment_environment-line)",
+    );
     expect(button).toHaveAttribute("data-tinted", "true");
   });
 

@@ -10,8 +10,8 @@ from repo2ree_protocol.tools import find_tool
 
 
 def test_pointer_matches_git_lfs_and_verifies_payload(tmp_path):
-    source = tmp_path / "runtime"
-    source.write_bytes(b"runtime\0" * 4096)
+    source = tmp_path / "experiment_environment"
+    source.write_bytes(b"experiment environment\0" * 4096)
     git_dir = tmp_path / ".git"
     pointer = store_payload(source, git_dir)
     assert pointer.oid == hashlib.sha256(source.read_bytes()).hexdigest()
@@ -29,7 +29,7 @@ def test_pointer_matches_git_lfs_and_verifies_payload(tmp_path):
 
 
 def test_interrupted_payload_never_publishes_object(tmp_path):
-    source = tmp_path / "runtime"
+    source = tmp_path / "experiment_environment"
     source.write_bytes(b"x" * (2 * 1024 * 1024))
 
     def interrupt(_size):

@@ -103,11 +103,11 @@ describe("Button interaction states", () => {
     await expect.poll(() => getComputedStyle(button).backgroundColor).toBe("rgb(254, 242, 242)");
 
     rerender(
-      <Button variant="accent" tint="var(--stage-build-line)">
+      <Button variant="accent" tint="var(--stage-build_experiment_environment-line)">
         Go
       </Button>,
     );
-    // --stage-build-line resolves through tones.css to --palette-cyan-600.
+    // --stage-build_experiment_environment-line resolves through tones.css to --palette-cyan-600.
     await expect.poll(() => getComputedStyle(button).backgroundColor).toBe("rgb(8, 145, 178)");
   });
 });

@@ -6,7 +6,7 @@ function run(
   patch: Partial<ReeRunSummary> & Pick<ReeRunSummary, "runId" | "status">,
 ): ReeRunSummary {
   return {
-    operation: "build",
+    operation: "build_experiment_environment",
     createdAt: "2026-01-01T00:00:00Z",
     ...patch,
   };
@@ -23,14 +23,15 @@ describe("projectStepRuns", () => {
       }),
     ]);
 
-    expect(projection.actionStates.build).toBe("loading");
-    expect(projection.activeRunIds.build).toBe("active");
-    expect(projection.badges.build).toBe("failed");
+    expect(projection.actionStates.build_experiment_environment).toBe("loading");
+    expect(projection.activeRunIds.build_experiment_environment).toBe("active");
+    expect(projection.badges.build_experiment_environment).toBe("failed");
   });
 
   it("does not turn a failed backend run into a successful badge", () => {
-    expect(projectStepRuns([run({ runId: "failed", status: "failed" })]).badges.build).toBe(
-      "failed",
-    );
+    expect(
+      projectStepRuns([run({ runId: "failed", status: "failed" })]).badges
+        .build_experiment_environment,
+    ).toBe("failed");
   });
 });

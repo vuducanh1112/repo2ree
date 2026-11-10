@@ -11,7 +11,7 @@ describe("reeEditorViewModel", () => {
         name: "demo",
         originUrl: "https://example.org/repo.git",
         sourceType: "git",
-        runtime: "runtime.tar.gz",
+        experimentEnvironmentPath: "runtime.tar.gz",
         sbom: "sbom.spdx.json",
         swhid: "swh:1:dir:abc",
       },
@@ -21,7 +21,7 @@ describe("reeEditorViewModel", () => {
         sourceAcquiredBy: "download",
       },
       artifactStatus: {
-        runtimeIncluded: true,
+        experimentEnvironmentIncluded: true,
         sealedAt: "2026-01-01T00:00:00Z",
       },
       evaluationState: {
@@ -33,7 +33,7 @@ describe("reeEditorViewModel", () => {
 
     expect(viewModel.spec.name).toBe("demo");
     expect(viewModel.source.sourceAvailable).toBe(true);
-    expect(viewModel.artifact.runtimeIncluded).toBe(true);
+    expect(viewModel.artifact.experimentEnvironmentIncluded).toBe(true);
     expect(viewModel.evaluation.dependencyLevel).toBe(3);
   });
 
@@ -42,7 +42,7 @@ describe("reeEditorViewModel", () => {
 
     expect(viewModel.spec.name).toBe("");
     expect(viewModel.source.sourceAvailable).toBe(false);
-    expect(viewModel.artifact.runtimeIncluded).toBe(false);
+    expect(viewModel.artifact.experimentEnvironmentIncluded).toBe(false);
     expect(viewModel.evaluation.dependencyLevel).toBe(0);
   });
 });

@@ -66,7 +66,7 @@ REPORT = {
             "aggregate": "Ree",
             "instances": 2,
             "moves": [
-                moves("receipt", "runtime", "missing", "current", "build_runtime"),
+                moves("receipt", "experiment_environment", "missing", "current", "build_experiment_environment"),
                 moves("field", "definition.catalog.version", "unset", "set", "run_experiment", allowed=False),
             ],
             "findings": [{"verdict": "violated", "subject": "Ree r definition.catalog.version", "reason": "x"}],
@@ -77,7 +77,7 @@ REPORT = {
 
 def test_each_part_is_drawn_with_the_operations_that_moved_it(tmp_path: Path) -> None:
     drawn = drawings(spec(), run_with(tmp_path, REPORT), {}, Evidence())
-    assert "build_runtime 3" in drawn[part_drawing("Ree", "runtime")]
+    assert "build_experiment_environment 3" in drawn[part_drawing("Ree", "experiment_environment")]
     assert "run_experiment 3 ✗" in drawn[part_drawing("Ree", "definition.catalog.version")]
     assert part_drawing("Ree", "definition.experiments[*]") == "spec/aggregates/Ree/definition.experiments.svg"
 
@@ -86,19 +86,19 @@ def test_the_page_shows_each_part_as_drawn_and_lists_what_nothing_took(
     tmp_path: Path, bundle: Bundle, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(figures, "DIAGRAMS", tmp_path / "diagrams")
-    drawn = tmp_path / "diagrams" / part_drawing("Ree", "runtime")
+    drawn = tmp_path / "diagrams" / part_drawing("Ree", "experiment_environment")
     drawn.parent.mkdir(parents=True)
     drawn.write_text('<?xml version="1.0"?>\n<svg viewBox="0 0 1 1"><g id="runtime-part"/></svg>\n')
     tally = AggregateMoves.over(run_with(tmp_path, REPORT), "Ree")
     page = page_aggregate(spec().aggregates["Ree"], tally, bundle).body
     assert '<svg viewBox="0 0 1 1"><g id="runtime-part"/></svg>' in page
-    assert (bundle.root / "diagrams" / part_drawing("Ree", "runtime")).is_file()
+    assert (bundle.root / "diagrams" / part_drawing("Ree", "experiment_environment")).is_file()
     # A part not drawn yet says how to draw it.
     assert "Missing: run <code>just generate-spec-diagrams</code>" in page
     assert "Ree r definition.catalog.version: x" in page
     # Never taken, and listed; what only whole-document loading allows is not, unless named outright.
-    assert "missing → current by build_runtime" not in page
-    assert "stale → current by build_runtime" in page
+    assert "missing → current by build_experiment_environment" not in page
+    assert "stale → current by build_experiment_environment" in page
     assert "missing → stale by load_ree_bundle" not in page
     assert "draft → sealed by load_ree_bundle" in page
 

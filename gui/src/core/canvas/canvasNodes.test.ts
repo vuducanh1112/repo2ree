@@ -54,7 +54,7 @@ describe("CANVAS_NODES", () => {
       PAGE.METADATA,
       PAGE.HBOM,
       PAGE.EVALUATE,
-      PAGE.BUILD,
+      PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
       PAGE.SBOM,
       PAGE.ACTIVATION,
       PAGE.EXPERIMENTS,
@@ -204,18 +204,18 @@ describe("node state", () => {
   // badge is set here, which is exactly the state a reloaded tab starts in.
   it("reads an executed node as done from the REE's own audit", () => {
     const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-      audit: { runtime: "current" },
+      audit: { experiment_environment: "current" },
     });
-    expect(isNodeDone(nodeFor(PAGE.BUILD), ree, {})).toBe(true);
-    expect(isNodeStale(nodeFor(PAGE.BUILD), ree)).toBe(false);
+    expect(isNodeDone(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree, {})).toBe(true);
+    expect(isNodeStale(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree)).toBe(false);
   });
 
   it("reads a stale node as not done, and names it stale", () => {
     const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-      audit: { runtime: "stale" },
+      audit: { experiment_environment: "stale" },
     });
-    expect(isNodeDone(nodeFor(PAGE.BUILD), ree, {})).toBe(false);
-    expect(isNodeStale(nodeFor(PAGE.BUILD), ree)).toBe(true);
+    expect(isNodeDone(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree, {})).toBe(false);
+    expect(isNodeStale(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree)).toBe(true);
   });
 
   it("has no staleness to report for a node with no receipt behind it", () => {
@@ -288,10 +288,18 @@ describe("nodeSummary", () => {
     expect(summaryOf(PAGE.EXPERIMENTS, { spec: { experiments } })["Run scripts"]).toBe("1 defined");
   });
 
-  it("treats a skipped runtime as no runtime", () => {
+  it("treats a skipped experiment environment as no experiment environment", () => {
     // "__skipped__" is a real recorded choice, not a built image.
-    expect(summaryOf(PAGE.BUILD, { spec: { runtime: "__skipped__" } }).Runtime).toBeNull();
-    expect(summaryOf(PAGE.BUILD, { spec: { runtime: "runtime.tar" } }).Runtime).toBe("image ready");
+    expect(
+      summaryOf(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, {
+        spec: { experimentEnvironmentPath: "__skipped__" },
+      })["Experiment environment"],
+    ).toBeNull();
+    expect(
+      summaryOf(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, {
+        spec: { experimentEnvironmentPath: "runtime.tar" },
+      })["Experiment environment"],
+    ).toBe("image ready");
   });
 
   it("reports the seal as the draft/sealed distinction", () => {
@@ -325,7 +333,7 @@ describe("nodeOverview", () => {
       type: "folder" as const,
       children: [
         {
-          id: "build",
+          id: "build_experiment_environment",
           name: "build.sh",
           type: "file" as const,
           content: "#!/bin/sh\nset -eu\ndocker build .\necho done",
@@ -342,19 +350,24 @@ describe("nodeOverview", () => {
 
   it("previews the saved build script and its receipt evidence", () => {
     const [receipt] = parseAuthorReceipts({
-      build: {
-        operation: "build_runtime",
+      experiment_environment: {
+        operation: "build_experiment_environment",
         run_id: "run-build",
         duration_ms: 12_400,
         recorded_at: "2026-08-26T10:00:00Z",
-        build_runtime_script_digest: "sha256:0123456789abcdef0123456789abcdef",
+        build_experiment_environment_script_digest: "sha256:0123456789abcdef0123456789abcdef",
       },
     });
-    const overview = nodeOverview(nodeFor(PAGE.BUILD), createEmptyReeEditorViewModel(), undefined, {
-      workspaceFiles: files,
-      receipts: [receipt],
-      buildScriptPath: "overlay/build.sh",
-    });
+    const overview = nodeOverview(
+      nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT),
+      createEmptyReeEditorViewModel(),
+      undefined,
+      {
+        workspaceFiles: files,
+        receipts: [receipt],
+        buildExperimentEnvironmentScriptPath: "overlay/build.sh",
+      },
+    );
 
     expect(overview.scripts[0]).toMatchObject({
       label: "BUILD SCRIPT",

@@ -9,7 +9,7 @@ import {
 } from "@core/reviews/reviewStatuses";
 import {
   useStartActivationReviewMutation,
-  useStartBuildReviewMutation,
+  useStartBuildExperimentEnvironmentReviewMutation,
   useStartExperimentReviewMutation,
   useStartSourceReviewMutation,
 } from "@shell/data/reviews/mutations";
@@ -56,7 +56,7 @@ export function useReviewWorkflowModel({
   const [basis, setBasis] = useState<ReviewBasisRequest>("auto");
   const reviews = useReviewsQuery({ enabled: active });
   const startSourceReview = useStartSourceReviewMutation();
-  const startBuildReview = useStartBuildReviewMutation();
+  const startBuildExperimentEnvironmentReview = useStartBuildExperimentEnvironmentReviewMutation();
   const startActivationReview = useStartActivationReviewMutation();
   const startExperimentReview = useStartExperimentReviewMutation();
   // The names a "run all" sweep still has to get through, and the one it has
@@ -74,8 +74,8 @@ export function useReviewWorkflowModel({
 
   const pendingStep: ReviewStepKey | undefined = startSourceReview.isPending
     ? "source"
-    : startBuildReview.isPending
-      ? "build"
+    : startBuildExperimentEnvironmentReview.isPending
+      ? "build_experiment_environment"
       : startActivationReview.isPending
         ? "activation"
         : startExperimentReview.isPending
@@ -139,7 +139,8 @@ export function useReviewWorkflowModel({
     if (step === "source") startSourceReview.mutate(basis);
     // Build joins the attempt source opened; without one there is nothing to
     // build against, which is also why the DAG leaves it disabled until then.
-    if (step === "build" && attempt) startBuildReview.mutate({ reviewId: attempt.reviewId, basis });
+    if (step === "build_experiment_environment" && attempt)
+      startBuildExperimentEnvironmentReview.mutate({ reviewId: attempt.reviewId, basis });
     // Activation takes no basis: it probes whatever runtime the build left in
     // the attempt's workspace and inherits what that evidence is worth.
     if (step === "activation" && attempt)
@@ -151,7 +152,7 @@ export function useReviewWorkflowModel({
 
   const error =
     startSourceReview.error ??
-    startBuildReview.error ??
+    startBuildExperimentEnvironmentReview.error ??
     startActivationReview.error ??
     startExperimentReview.error ??
     reviews.error;

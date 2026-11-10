@@ -252,46 +252,57 @@ class Scenario:
 def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scenario:
     s = scenario or Scenario()
     s.provision("run-provision", 0.0, PROVISION)
-    # The author declares where the runtime goes, then builds it.
+    # The author declares where the experiment environment goes, then builds it.
     s.dispatch("a-patch", "patch_ree_definition", "patch-definition", 8.0, 8.2)
-    s.run("run-build", [(10.0, "requested")], REQUEST, action="build_runtime")
-    s.action(10.1, "run-build", "requested", "running", WORKER, action="build_runtime")
-    s.dispatch("a-build", "build_runtime", "run-build", 10.2, 12.0, WORKER)
-    s.action(12.1, "run-build", "running", "succeeded", WORKER, action="build_runtime", attempt_id="a-build")
+    s.run("run-build", [(10.0, "requested")], REQUEST, action="build_experiment_environment")
+    s.action(10.1, "run-build", "requested", "running", WORKER, action="build_experiment_environment")
+    s.dispatch("a-build", "build_experiment_environment", "run-build", 10.2, 12.0, WORKER)
+    s.action(
+        12.1, "run-build", "running", "succeeded", WORKER, action="build_experiment_environment", attempt_id="a-build"
+    )
     s.run("run-sbom", [(20.0, "requested"), (20.1, "running")], action="generate_sbom")
     s.dispatch("a-sbom", "generate_sbom", "run-sbom", 20.2, 21.0)
     s.action(21.1, "run-sbom", "running", "succeeded", action="generate_sbom", attempt_id="a-sbom")
     if sealed:
-        # An edit stales the runtime; rebuilding refreshes it and stales the SBOM; a rescan; then the seal.
+        # An edit stales the experiment environment; rebuilding refreshes it and stales the SBOM; a rescan; then the
+        # seal.
         s.dispatch("a-edit", "patch_ree_definition", "patch-definition", 30.0, 30.2)
-        s.operation("run-rebuild", "build_runtime", "a-rebuild", "build_runtime", 40.0)
+        s.operation("run-rebuild", "build_experiment_environment", "a-rebuild", "build_experiment_environment", 40.0)
         s.operation("run-rescan", "generate_sbom", "a-rescan", "generate_sbom", 45.0)
         s.operation("run-seal", "seal_ree", "a-seal", "seal_ree", 50.0)
 
-    # A new REE declares its activation, and no runtime yet: as core's first audit finds it.
+    # A new REE declares its activation, and no experiment environment yet: as core's first audit finds it.
     created = [
-        ("runtime", None, "not_applicable", "baseline"),
+        ("experiment_environment", None, "not_applicable", "baseline"),
         ("sbom", None, "not_applicable", "baseline"),
         ("test_activation", None, "missing", "baseline"),
     ]
     s.commit(1, None, "initialize_ree", "", created, (None, "draft"))
     declared = [
-        ("runtime", "not_applicable", "missing", "operation"),
+        ("experiment_environment", "not_applicable", "missing", "operation"),
         ("sbom", "not_applicable", "missing", "operation"),
     ]
     s.commit(2, "a-patch", "patch_ree_definition", "patch-definition", declared, ("draft", "draft"))
     s.commit(
-        3, "a-build", "build_runtime", "run-build", [("runtime", "missing", "current", "operation")], ("draft", "draft")
+        3,
+        "a-build",
+        "build_experiment_environment",
+        "run-build",
+        [("experiment_environment", "missing", "current", "operation")],
+        ("draft", "draft"),
     )
     s.commit(
         4, "a-sbom", "generate_sbom", "run-sbom", [("sbom", "missing", "current", "operation")], ("draft", "draft")
     )
     if sealed:
-        edited = [("runtime", "current", "stale", "operation")]
-        rebuilt = [("runtime", "stale", "current", "operation"), ("sbom", "current", "stale", "operation")]
+        edited = [("experiment_environment", "current", "stale", "operation")]
+        rebuilt = [
+            ("experiment_environment", "stale", "current", "operation"),
+            ("sbom", "current", "stale", "operation"),
+        ]
         rescanned = [("sbom", "stale", "current", "operation")]
         s.commit(5, "a-edit", "patch_ree_definition", "patch-definition", edited, ("draft", "draft"))
-        s.commit(6, "a-rebuild", "build_runtime", "run-rebuild", rebuilt, ("draft", "draft"))
+        s.commit(6, "a-rebuild", "build_experiment_environment", "run-rebuild", rebuilt, ("draft", "draft"))
         s.commit(7, "a-rescan", "generate_sbom", "run-rescan", rescanned, ("draft", "draft"))
         s.commit(8, "a-seal", "seal_ree", "run-seal", [], ("draft", "sealed"))
     return s
@@ -318,12 +329,12 @@ def build_spans() -> list[Span]:
             "r1",
             REQUEST,
             None,
-            "POST /api/v1/rees/{ree_id}/build-runtime",
+            "POST /api/v1/rees/{ree_id}/build-experiment-environment",
             "api",
             9.99,
             10.05,
             kind="SERVER",
-            attributes={"http.target": f"/api/v1/rees/{REE}/build-runtime"},
+            attributes={"http.target": f"/api/v1/rees/{REE}/build-experiment-environment"},
         ),
         span("r2", REQUEST, "r1", "POST http send", "api", 10.04, 10.04, attributes={"http.status_code": 202}),
         span("w1", WORKER, None, "run.build", "api", 10.1, 12.1),
@@ -342,7 +353,7 @@ def build_spans() -> list[Span]:
             "w4",
             WORKER,
             "w3",
-            "executor.build_runtime",
+            "executor.build_experiment_environment",
             "exec",
             10.6,
             11.9,
@@ -358,7 +369,7 @@ def build_spans() -> list[Span]:
             "w5",
             WORKER,
             "w4",
-            "command.build_runtime",
+            "command.build_experiment_environment",
             "exec",
             10.6,
             11.9,

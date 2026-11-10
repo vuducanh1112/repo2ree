@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:4d62210faeba8488e4d0915ae212d4ea59a1128c755d111755fd1c2884588042",
+    "ree_digest": "sha256:46c3c2cd2e694d89b05dde66fe657adb378c5540a977c85b869b62fa3f9c0851",
     "sealed_at": "2026-10-29T19:59:49.052140Z"
   },
   "subject": {
@@ -60,7 +60,7 @@
         },
         {
           "digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
-          "path": "overlay/ree-scripts/build_script.sh",
+          "path": "overlay/ree-scripts/build_experiment_environment.sh",
           "size": 338
         },
         {
@@ -91,18 +91,18 @@
       ]
     },
     "definition": {
-      "build_runtime": {
-        "build_runtime_script_digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
-        "build_runtime_script_path": "ree-scripts/build_script.sh",
-        "build_runtime_script_size": 338,
-        "runtime_path": "python_hello_world/runtime.tar"
-      },
       "catalog": {
         "contributors": [],
         "description": "A reusable execution environment for the Python hello world archive.",
         "keywords": [],
         "version": "1.0.0",
         "website": ""
+      },
+      "experiment_environment": {
+        "artifact_path": "python_hello_world/runtime.tar",
+        "build_experiment_environment_script_digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
+        "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
+        "build_experiment_environment_script_size": 338
       },
       "experiments": [
         {
@@ -146,25 +146,6 @@
       }
     },
     "receipts": {
-      "build": {
-        "build_runtime_script_digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
-        "build_runtime_script_path": "ree-scripts/build_script.sh",
-        "duration_ms": 19187,
-        "finished_at": "2026-08-31T10:11:36.665378Z",
-        "operation": "build_runtime",
-        "produced_runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
-        "recorded_at": "2026-08-31T10:11:36.665378Z",
-        "run_id": "build-27d8640efe5248f4a769d7363625fe1c",
-        "runtime_path": "python_hello_world/runtime.tar",
-        "schema_version": 1,
-        "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
-        "started_at": "2026-08-31T10:11:17.477642Z",
-        "workspace_drift": {
-          "changed_path_count": 0,
-          "changed_paths": [],
-          "status": "clean"
-        }
-      },
       "evaluation": {
         "analyzer_version": "1",
         "dependency_count": 1,
@@ -185,9 +166,29 @@
         "started_at": "2026-08-31T10:10:53.613492Z",
         "strict": false
       },
+      "experiment_environment": {
+        "artifact_path": "python_hello_world/runtime.tar",
+        "build_experiment_environment_script_digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
+        "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
+        "duration_ms": 19187,
+        "finished_at": "2026-08-31T10:11:36.665378Z",
+        "operation": "build_experiment_environment",
+        "produced_artifact_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+        "recorded_at": "2026-08-31T10:11:36.665378Z",
+        "run_id": "build-27d8640efe5248f4a769d7363625fe1c",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
+        "started_at": "2026-08-31T10:11:17.477642Z",
+        "workspace_drift": {
+          "changed_path_count": 0,
+          "changed_paths": [],
+          "status": "clean"
+        }
+      },
       "experiments": {
         "python-hello": {
           "duration_ms": 712,
+          "experiment_environment_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
           "experiment_name": "python-hello",
           "finished_at": "2026-08-31T10:12:46.835830Z",
           "operation": "run_experiment",
@@ -196,7 +197,6 @@
           "run_exit_code": 0,
           "run_id": "experiment-91945998ff924b439f810dea1f412592",
           "run_script_digest": "sha256:e63d4aa9b560be489698b757c2034c9de57fd797a5a01b1a6b004cf332eddc0d",
-          "runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
           "schema_version": 1,
           "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
           "started_at": "2026-08-31T10:12:46.122870Z",
@@ -206,12 +206,12 @@
       },
       "sbom": {
         "duration_ms": 1221,
+        "experiment_environment_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+        "experiment_environment_path": "python_hello_world/runtime.tar",
         "finished_at": "2026-08-31T10:11:45.434075Z",
         "operation": "generate_sbom",
         "recorded_at": "2026-08-31T10:11:45.434075Z",
         "run_id": "sbom-384f0df285864ba1bc9e18f952a26c19",
-        "runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
-        "runtime_path": "python_hello_world/runtime.tar",
         "sbom_digest": "sha256:b2d07a7248c66d2711ef139db350d1e02738449b5f04c3873fd2a2b0e6ac95de",
         "sbom_format": "cyclonedx-json",
         "sbom_path": "artifacts/sbom.json",
@@ -249,14 +249,14 @@
       },
       "test_activation": {
         "duration_ms": 305,
+        "experiment_environment_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
+        "experiment_environment_path": "python_hello_world/runtime.tar",
         "finished_at": "2026-08-31T10:12:13.044751Z",
         "operation": "test_activation",
         "recorded_at": "2026-08-31T10:12:13.044751Z",
         "run_exit_code": 0,
         "run_id": "activation-10778839f2094ad4ac7d71d26ace4a92",
         "run_script_digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
-        "runtime_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
-        "runtime_path": "python_hello_world/runtime.tar",
         "schema_version": 1,
         "snapshot_digest": "sha256:ea32e97889dea3b8f75ef8d17bf1d99e0bf071c7cac1fad111e24fd15c98e86b",
         "started_at": "2026-08-31T10:12:12.739603Z"

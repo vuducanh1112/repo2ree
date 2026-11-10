@@ -22,7 +22,7 @@ def _run(
         {
             "run_id": run_id,
             "ree_id": "ree-1",
-            "operation": "build",
+            "operation": "build_experiment_environment",
             "status": status,
             "created_at": "2026-01-01T00:00:00Z",
             "request": {"script": "build.sh"},

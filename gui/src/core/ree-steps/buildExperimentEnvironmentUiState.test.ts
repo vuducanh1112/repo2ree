@@ -5,11 +5,11 @@ import {
   buildRunStatusLabel,
   buildSummaryStatusLabel,
   canRunBuild,
-  deriveRuntimeFileSize,
-  runtimeArtifactStatus,
-  runtimeArtifactStatusLabel,
-  runtimeSummaryStatusLabel,
-} from "./buildRuntimeUiState";
+  deriveExperimentEnvironmentFileSize,
+  experimentEnvironmentArtifactStatus,
+  experimentEnvironmentArtifactStatusLabel,
+  experimentEnvironmentSummaryStatusLabel,
+} from "./buildExperimentEnvironmentUiState";
 
 describe("buildRunStatusLabel", () => {
   const idle = { running: false, runFailed: false };
@@ -34,33 +34,42 @@ describe("buildRunStatusLabel", () => {
   });
 });
 
-describe("runtimeArtifactStatus", () => {
-  const base = { hasRuntime: true, runtimePathExists: true };
-  it("undeclared when no runtime path is authored", () => {
-    expect(runtimeArtifactStatus({ ...base, hasRuntime: false })).toBe("undeclared");
+describe("experimentEnvironmentArtifactStatus", () => {
+  const base = { hasExperimentEnvironment: true, experimentEnvironmentPathExists: true };
+  it("undeclared when no experiment environment path is authored", () => {
+    expect(experimentEnvironmentArtifactStatus({ ...base, hasExperimentEnvironment: false })).toBe(
+      "undeclared",
+    );
   });
   it("declared — not missing — when the build has not produced it yet", () => {
-    expect(runtimeArtifactStatus({ ...base, runtimePathExists: false })).toBe("declared");
+    expect(
+      experimentEnvironmentArtifactStatus({ ...base, experimentEnvironmentPathExists: false }),
+    ).toBe("declared");
   });
   it("produced when present in workspace", () => {
-    expect(runtimeArtifactStatus(base)).toBe("produced");
+    expect(experimentEnvironmentArtifactStatus(base)).toBe("produced");
   });
   it("has UI labels", () => {
-    expect(runtimeArtifactStatusLabel("undeclared")).toBe("Not declared");
-    expect(runtimeArtifactStatusLabel("declared")).toBe("Awaiting build");
-    expect(runtimeArtifactStatusLabel("produced")).toBe("Built");
-    expect(runtimeSummaryStatusLabel("produced")).toBe("In workspace");
-    expect(runtimeSummaryStatusLabel("declared")).toBe("Declared, not built");
+    expect(experimentEnvironmentArtifactStatusLabel("undeclared")).toBe("Not declared");
+    expect(experimentEnvironmentArtifactStatusLabel("declared")).toBe("Awaiting build");
+    expect(experimentEnvironmentArtifactStatusLabel("produced")).toBe("Built");
+    expect(experimentEnvironmentSummaryStatusLabel("produced")).toBe("In workspace");
+    expect(experimentEnvironmentSummaryStatusLabel("declared")).toBe("Declared, not built");
   });
 });
 
 describe("canRunBuild", () => {
-  const ready = { running: false, hasMissing: false, hasScript: true, hasRuntimePath: true };
-  it("runs when the script and the declared runtime path are both there", () => {
+  const ready = {
+    running: false,
+    hasMissing: false,
+    hasScript: true,
+    hasExperimentEnvironmentPath: true,
+  };
+  it("runs when the script and the declared experiment environment path are both there", () => {
     expect(canRunBuild(ready)).toBe(true);
   });
-  it("refuses without a declared runtime path", () => {
-    expect(canRunBuild({ ...ready, hasRuntimePath: false })).toBe(false);
+  it("refuses without a declared experiment environment path", () => {
+    expect(canRunBuild({ ...ready, hasExperimentEnvironmentPath: false })).toBe(false);
   });
   it("refuses while running, missing inputs, or without a script", () => {
     expect(canRunBuild({ ...ready, running: true })).toBe(false);
@@ -70,7 +79,7 @@ describe("canRunBuild", () => {
 });
 
 describe("buildFooterHint / summary", () => {
-  const declared = { hasRuntimePath: true };
+  const declared = { hasExperimentEnvironmentPath: true };
   it("does not expose an add-script state", () => {
     expect(
       buildFooterHint({ ...declared, runDone: false, runFailed: false, hasScript: false }),
@@ -81,10 +90,15 @@ describe("buildFooterHint / summary", () => {
       buildFooterHint({ ...declared, runDone: false, runFailed: false, hasScript: true }),
     ).toContain("Script ready");
   });
-  it("asks for the runtime path before the run", () => {
+  it("asks for the experiment environment path before the run", () => {
     expect(
-      buildFooterHint({ runDone: false, runFailed: false, hasScript: true, hasRuntimePath: false }),
-    ).toContain("Declare where the build writes the runtime");
+      buildFooterHint({
+        runDone: false,
+        runFailed: false,
+        hasScript: true,
+        hasExperimentEnvironmentPath: false,
+      }),
+    ).toContain("Declare where the build writes the experiment environment");
   });
   it("invites sbom after build", () => {
     expect(
@@ -93,7 +107,12 @@ describe("buildFooterHint / summary", () => {
   });
   it("points at the log after a failed build", () => {
     expect(
-      buildFooterHint({ runDone: true, runFailed: true, hasScript: true, hasRuntimePath: false }),
+      buildFooterHint({
+        runDone: true,
+        runFailed: true,
+        hasScript: true,
+        hasExperimentEnvironmentPath: false,
+      }),
     ).toContain("Build failed");
   });
   it("summary label tracks state", () => {
@@ -107,53 +126,53 @@ describe("buildReadiness", () => {
   it("empty state is 0%", () => {
     const r = buildReadiness({
       hasScript: false,
-      hasRuntime: false,
-      runtimePathExists: false,
+      hasExperimentEnvironment: false,
+      experimentEnvironmentPathExists: false,
       runDone: false,
     });
-    expect(r).toMatchObject({ done: 0, total: 3, percent: 0, runtimeReady: false });
+    expect(r).toMatchObject({ done: 0, total: 3, percent: 0, experimentEnvironmentReady: false });
   });
   it("script only is 33%", () => {
     const r = buildReadiness({
       hasScript: true,
-      hasRuntime: false,
-      runtimePathExists: false,
+      hasExperimentEnvironment: false,
+      experimentEnvironmentPathExists: false,
       runDone: false,
     });
     expect(r.percent).toBe(33);
   });
-  it("runtime path missing does not count", () => {
+  it("experiment environment path missing does not count", () => {
     const r = buildReadiness({
       hasScript: true,
-      hasRuntime: true,
-      runtimePathExists: false,
+      hasExperimentEnvironment: true,
+      experimentEnvironmentPathExists: false,
       runDone: false,
     });
-    expect(r.runtimeReady).toBe(false);
+    expect(r.experimentEnvironmentReady).toBe(false);
     expect(r.done).toBe(1);
   });
   it("everything done is 100%", () => {
     const r = buildReadiness({
       hasScript: true,
-      hasRuntime: true,
-      runtimePathExists: true,
+      hasExperimentEnvironment: true,
+      experimentEnvironmentPathExists: true,
       runDone: true,
     });
-    expect(r).toMatchObject({ done: 3, percent: 100, runtimeReady: true });
+    expect(r).toMatchObject({ done: 3, percent: 100, experimentEnvironmentReady: true });
   });
 });
 
-describe("deriveRuntimeFileSize", () => {
+describe("deriveExperimentEnvironmentFileSize", () => {
   it("returns null for missing file", () => {
-    expect(deriveRuntimeFileSize(null)).toBeNull();
+    expect(deriveExperimentEnvironmentFileSize(null)).toBeNull();
   });
   it("uses explicit size when positive", () => {
-    expect(deriveRuntimeFileSize({ size: 2048 })).toBe("2.0 KB");
+    expect(deriveExperimentEnvironmentFileSize({ size: 2048 })).toBe("2.0 KB");
   });
   it("falls back to size match in content", () => {
-    expect(deriveRuntimeFileSize({ content: "Size: ~3.5 MB" })).toBe("~3.5 MB");
+    expect(deriveExperimentEnvironmentFileSize({ content: "Size: ~3.5 MB" })).toBe("~3.5 MB");
   });
   it("computes byte length when no other hint", () => {
-    expect(deriveRuntimeFileSize({ content: "hi" })).toBe("2 B");
+    expect(deriveExperimentEnvironmentFileSize({ content: "hi" })).toBe("2 B");
   });
 });

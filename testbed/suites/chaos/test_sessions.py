@@ -21,12 +21,12 @@ import httpx
 import pytest
 from system_client import (
     ACTIVATION_SCRIPT,
-    BUILD_SCRIPT,
+    BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     EXPERIMENT,
+    EXPERIMENT_ENVIRONMENT,
     EXPERIMENT_SCRIPT,
     EXPERIMENT_VERIFY,
     RESULT,
-    RUNTIME,
     Api,
     fault,
     project_archive,
@@ -48,7 +48,7 @@ STEPS = int(os.environ.get("CHAOS_STEPS", "12"))
 FAILING_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'resolving dependencies'\nexit 3\n"
 SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 60\n"
 # The order an author works in; a session favours the next stage, so faults land in deep authoring too.
-PIPELINE = ("source", "evaluate", "hbom", "build", "activate", "experiment", "seal")
+PIPELINE = ("source", "evaluate", "hbom", "build_experiment_environment", "activate", "experiment", "seal")
 
 
 class ServerError(AssertionError):
@@ -111,15 +111,15 @@ class Session:
         done = {"upload_token": ticket["upload_token"], "archive_name": name}
         return self.stage("source:upload-complete", done)
 
-    def build(self, script: str) -> str:
-        self.patch({"build_runtime": {"runtime_path": RUNTIME}})
-        self.write(BUILD_SCRIPT, script)
-        return self.stage("build-runtime")
+    def build_experiment_environment(self, script: str) -> str:
+        self.patch({"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
+        self.write(BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
+        return self.stage("build-experiment-environment")
 
     def canceled_build(self) -> str:
-        self.patch({"build_runtime": {"runtime_path": RUNTIME}})
-        self.write(BUILD_SCRIPT, SLOW_BUILD)
-        started = self.call("POST", self.ree("build-runtime"), json={})
+        self.patch({"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
+        self.write(BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, SLOW_BUILD)
+        started = self.call("POST", self.ree("build-experiment-environment"), json={})
         if started.status_code != 200:
             return f"refused {started.status_code}"
         run = started.json()
@@ -139,7 +139,9 @@ class Session:
         return self.stage(f"experiments/{EXPERIMENT}:run")
 
     def seal(self) -> str:
-        return self.stage("ree:seal", {"include_source": True, "include_runtime": True, "include_results": True})
+        return self.stage(
+            "ree:seal", {"include_source": True, "include_experiment_environment": True, "include_results": True}
+        )
 
     def download(self) -> str:
         return "kept" if self.api.keep_archive(self.ree_id, f"chaos-{len(self.steps)}") else "refused"
@@ -184,8 +186,11 @@ class Session:
             "source": (3, self.source),
             "evaluate": (3, lambda: self.stage("evaluate")),
             "hbom": (2, lambda: self.stage("generate-hbom")),
-            "build": (3, lambda: self.build(recipe("build_script.sh"))),
-            "failing build": (1, lambda: self.build(FAILING_BUILD)),
+            "build_experiment_environment": (
+                3,
+                lambda: self.build_experiment_environment(recipe("build_experiment_environment.sh")),
+            ),
+            "failing build": (1, lambda: self.build_experiment_environment(FAILING_BUILD)),
             "canceled build": (1, self.canceled_build),
             "activate": (2, self.activate),
             "experiment": (2, self.experiment),

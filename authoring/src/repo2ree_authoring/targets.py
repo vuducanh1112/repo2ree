@@ -6,7 +6,7 @@ from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -25,7 +25,7 @@ def resolve_target(selector: ScriptTargetSelectorArg) -> ScriptTarget:
     if name:
         raise ValueError(f"{kind} must not carry an experiment_name")
     path = {
-        "build": RESERVED_BUILD_SCRIPT,
+        "build_experiment_environment": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
         "activation_run": RESERVED_ACTIVATION_SCRIPT,
         "activation_verify": RESERVED_ACTIVATION_VERIFY_SCRIPT,
     }[kind]

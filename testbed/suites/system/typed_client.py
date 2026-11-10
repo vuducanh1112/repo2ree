@@ -12,7 +12,7 @@ from system_client import Api
 from repo2ree_testbed.api_models import (
     AcquirableSourceType,
     Audit,
-    BuildReviewRequest,
+    BuildExperimentEnvironmentReviewRequest,
     CatalogPatch,
     Cpu,
     DefinitionPatch,
@@ -113,8 +113,8 @@ class Client:
         [result] = InferenceReport.model_validate(response).results
         return result
 
-    def build(self, ree_id: str, fixture: Project) -> Run:
-        return Run.model_validate(self.api.build(ree_id, fixture=fixture))
+    def build_experiment_environment(self, ree_id: str, fixture: Project) -> Run:
+        return Run.model_validate(self.api.build_experiment_environment(ree_id, fixture=fixture))
 
     def generate_sbom(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._stage(ree_id, "generate-sbom", watch=watch)
@@ -155,9 +155,13 @@ class Client:
     def review(self, ree_id: str, review_id: str) -> Review:
         return Review.model_validate(self.api.get(f"/api/v1/rees/{ree_id}/reviews/{review_id}"))
 
-    def review_build(self, ree_id: str, review_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        request = BuildReviewRequest(basis=basis)
-        run = self.api.stage(ree_id, f"reviews/{review_id}/build:reproduce", request.model_dump(), watch=watch)
+    def review_build_experiment_environment(
+        self, ree_id: str, review_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN
+    ) -> Run:
+        request = BuildExperimentEnvironmentReviewRequest(basis=basis)
+        run = self.api.stage(
+            ree_id, f"reviews/{review_id}/build-experiment-environment:reproduce", request.model_dump(), watch=watch
+        )
         return Run.model_validate(run)
 
     def review_activation(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
@@ -181,7 +185,7 @@ class Client:
         assert source.status == "succeeded", self.logs(reviewer, source)
         review_id = self.reviews(reviewer)[0].review_id
 
-        build = self.review_build(reviewer, review_id, "auto", watch=fixture.watch)
+        build = self.review_build_experiment_environment(reviewer, review_id, "auto", watch=fixture.watch)
         assert build.status == "succeeded", self.logs(reviewer, build)
         activation = self.review_activation(reviewer, review_id, watch=fixture.watch)
         assert activation.status == "succeeded", self.logs(reviewer, activation)

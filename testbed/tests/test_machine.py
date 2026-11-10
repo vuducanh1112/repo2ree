@@ -178,7 +178,7 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert show.startswith("cd repo2ree || exit 1; tail -n +1 -f test-artifacts/machine-job/log & shown=$!")
     assert "while ! test -f test-artifacts/machine-job/exit && " in show
     # What it wrote since it started, its run, the receipt, and its timings alike, comes straight from the clone on the
-    # host into this checkout, leaving runtime tarballs and archives there; then the job is fetched.
+    # host into this checkout, leaving experiment environment tarballs and archives there; then the job is fetched.
     [(fetch, unpack)] = runner.piped
     assert _on_host(fetch) == (
         "cd repo2ree && { find test-artifacts .receipts logs -type f -cnewer test-artifacts/machine-job/command"

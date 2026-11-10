@@ -1,7 +1,7 @@
-"""Rebuild and certify a runtime inside an isolated review attempt.
+"""Rebuild and certify an experiment environment inside an isolated review attempt.
 
-The reviewer-side counterpart of the author's ``build_runtime`` step. The
-runtime is certified in two tiers — the produced tarball's digest, else the SBOM
+The reviewer-side counterpart of the author's ``build_experiment_environment`` step. The
+experiment environment is certified in two tiers — the produced tarball's digest, else the SBOM
 dependency closure — over one of two bases: ``independent`` (rebuilt here) or
 ``bundled`` (the artifact the REE ships, an integrity check rather than a
 reproduction).
@@ -17,9 +17,9 @@ import shutil
 from pathlib import Path
 
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
-from repo2ree_core.analysis.sbom.scan import is_runtime_archive, scan_runtime_archive
+from repo2ree_core.analysis.sbom.scan import is_experiment_environment_archive, scan_experiment_environment_archive
 from repo2ree_core.digests import digest_file_if_exists
-from repo2ree_core.evidence.review.comparison import compare_build_runtimes
+from repo2ree_core.evidence.review.comparison import compare_build_experiment_environments
 from repo2ree_core.evidence.review.records import resolve_basis, review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_build_evidence
 from repo2ree_core.execution.process import (
@@ -33,27 +33,27 @@ from repo2ree_core.operations.steps.review import (
     require_completed_step,
     require_ree_baseline,
     require_review_record,
-    workspace_runtime,
-    workspace_runtime_candidates,
+    workspace_experiment_environment,
+    workspace_experiment_environment_candidates,
 )
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.time_utils import OperationTimer
-from repo2ree_protocol.command import ReviewBasis, ReviewBuildRuntimeArgs
+from repo2ree_protocol.command import ReviewBasis, ReviewBuildExperimentEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
-from repo2ree_protocol.outputs import ReviewBuildRuntimeOutputs
+from repo2ree_protocol.outputs import ReviewBuildExperimentEnvironmentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import ReePath, WorkspacePath
-from repo2ree_ree.receipt import BuildRuntimeReceipt, GenerateSbomReceipt
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
-from repo2ree_ree.review import BuildComparison, EvidenceBasis, ReviewBuildRuntimeReceipt
+from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt, GenerateSbomReceipt
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+from repo2ree_ree.review import EvidenceBasis, ExperimentEnvironmentComparison, ReviewBuildExperimentEnvironmentReceipt
 
 
-def handle_review_build_runtime(
-    args: ReviewBuildRuntimeArgs,
+def handle_review_build_experiment_environment(
+    args: ReviewBuildExperimentEnvironmentArgs,
     *,
     run_id: str,
     log: LogSink,
@@ -74,7 +74,7 @@ def handle_review_build_runtime(
     step = begin_review_step(
         review_layout,
         record,
-        "build",
+        "build_experiment_environment",
         review_id=args.review_id,
         timer=timer,
         log=log,
@@ -89,21 +89,23 @@ def handle_review_build_runtime(
         started,
         "source",
         stop=stop,
-        message="Reproduce the source before certifying the runtime",
+        message="Reproduce the source before certifying the experiment environment",
     )
     if halted is not None:
         return halted
 
     store = ReeDirectory(ree_layout)
-    runtime_definition = ree.subject.definition.build_runtime
-    if runtime_definition is None or runtime_definition.runtime_path is None:
-        return stop("failed", "The author baseline declares no runtime artifact to certify")
-    runtime_path = str(runtime_definition.runtime_path)
+    experiment_environment_definition = ree.subject.definition.experiment_environment
+    if experiment_environment_definition is None or experiment_environment_definition.artifact_path is None:
+        return stop("failed", "The author baseline declares no experiment environment artifact to certify")
+    experiment_environment_path = str(experiment_environment_definition.artifact_path)
 
-    bundled_runtime = store.author_artifact(runtime_path)
+    bundled_experiment_environment = store.author_artifact(experiment_environment_path)
     basis = resolve_basis(
         args.basis,
-        available=_available_bases(ree_layout, review_layout, has_bundled_runtime=bundled_runtime is not None),
+        available=_available_bases(
+            ree_layout, review_layout, has_bundled_experiment_environment=bundled_experiment_environment is not None
+        ),
     )
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
@@ -126,20 +128,27 @@ def handle_review_build_runtime(
     if materialized.returncode != 0:
         return stop("failed", f"materialize script exited {materialized.returncode}")
 
-    # 2. Put a runtime in that workspace: build one, or stage the shipped one.
-    if basis == "bundled" and bundled_runtime is not None:
-        log("system", "info", f"review {args.review_id}: staging the runtime the REE ships at {runtime_path}")
+    # 2. Put an experiment environment in that workspace: build one, or stage the shipped one.
+    if basis == "bundled" and bundled_experiment_environment is not None:
+        log(
+            "system",
+            "info",
+            f"review {args.review_id}: staging the experiment environment "
+            f"the REE ships at {experiment_environment_path}",
+        )
         try:
-            runtime_abs = _stage_bundled_runtime(review_layout, bundled_runtime, runtime_path)
+            experiment_environment_abs = _stage_bundled_experiment_environment(
+                review_layout, bundled_experiment_environment, experiment_environment_path
+            )
         except OSError as exc:
-            return stop("failed", f"could not stage the bundled runtime: {exc}")
-        build_script_digest = None
+            return stop("failed", f"could not stage the bundled experiment environment: {exc}")
+        build_experiment_environment_script_digest = None
     else:
         # The author's build script, run from that workspace, unmodified.
-        log("system", "info", f"Build script: {RESERVED_BUILD_SCRIPT}")
+        log("system", "info", f"Build script: {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}")
         outcome = run_workspace_script(
             review_layout.workspace.resolve(),
-            RESERVED_BUILD_SCRIPT,
+            RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             log=log,
             is_canceled=is_canceled,
         )
@@ -147,21 +156,23 @@ def handle_review_build_runtime(
             return stop("canceled", "build canceled")
         if outcome.status != "succeeded":
             return stop("failed", f"build script exited {outcome.exit_code}")
-        runtime_abs = workspace_runtime(review_layout, runtime_path)
-        build_script_digest = digest_file_if_exists(review_layout.workspace / RESERVED_BUILD_SCRIPT)
+        experiment_environment_abs = workspace_experiment_environment(review_layout, experiment_environment_path)
+        build_experiment_environment_script_digest = digest_file_if_exists(
+            review_layout.workspace / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+        )
 
-    # 3. Certify the runtime, however it got there.
-    observed_runtime_digest = digest_file_if_exists(runtime_abs)
-    if observed_runtime_digest is None:
-        return stop("failed", f"the build produced no runtime artifact at {runtime_path}")
+    # 3. Certify the experiment environment, however it got there.
+    observed_artifact_digest = digest_file_if_exists(experiment_environment_abs)
+    if observed_artifact_digest is None:
+        return stop("failed", f"the build produced no experiment environment artifact at {experiment_environment_path}")
 
     comparison = _certify(
         ree,
         ree_layout,
         review_layout,
-        runtime_abs=runtime_abs,
-        runtime_path=runtime_path,
-        observed_runtime_digest=observed_runtime_digest,
+        experiment_environment_abs=experiment_environment_abs,
+        experiment_environment_path=experiment_environment_path,
+        observed_artifact_digest=observed_artifact_digest,
         basis=basis,
         log=log,
         is_canceled=is_canceled,
@@ -175,29 +186,33 @@ def handle_review_build_runtime(
     # No snapshot digest and no drift verdict: both describe an author's
     # workspace drifting away from what it was materialized from, and a review
     # namespace is materialized fresh from its own acquisition every time.
-    receipt = ReviewBuildRuntimeReceipt(
+    receipt = ReviewBuildExperimentEnvironmentReceipt(
         **review_receipt_envelope(run_id, timing, "succeeded"),
         # A bundled certification ran no build script, so it names none: the
         # input slice of this receipt must describe what actually happened.
-        build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT) if basis == "independent" else None,
-        build_runtime_script_digest=build_script_digest,
-        runtime_path=WorkspacePath(runtime_path),
-        produced_runtime_digest=observed_runtime_digest,
+        build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
+        if basis == "independent"
+        else None,
+        build_experiment_environment_script_digest=build_experiment_environment_script_digest,
+        artifact_path=WorkspacePath(experiment_environment_path),
+        produced_artifact_digest=observed_artifact_digest,
     )
     write_review_build_evidence(review_layout, receipt, comparison)
     _log_verdict(comparison, log=log)
     step.settle(
-        started.model_copy(update={"build_receipt": receipt, "build_comparison": comparison}),
+        started.model_copy(
+            update={"experiment_environment_receipt": receipt, "experiment_environment_comparison": comparison}
+        ),
         timing,
         verdict=comparison.verdict,
         basis=comparison.basis,
-        runtime_digest=observed_runtime_digest,
+        experiment_environment_digest=observed_artifact_digest,
     )
 
     if args.prune_workspace:
         _prune_rebuilt_tree(review_layout, log=log)
 
-    outputs = ReviewBuildRuntimeOutputs(
+    outputs = ReviewBuildExperimentEnvironmentOutputs(
         review_id=args.review_id,
         receipt=receipt,
         comparison=comparison,
@@ -227,14 +242,14 @@ def _certify(
     ree_layout: ReeLayout,
     review_layout: ReviewLayout,
     *,
-    runtime_abs: Path,
-    runtime_path: str,
-    observed_runtime_digest: str,
+    experiment_environment_abs: Path,
+    experiment_environment_path: str,
+    observed_artifact_digest: str,
     basis: EvidenceBasis,
     log: LogSink,
     is_canceled: CancelCheck,
-) -> BuildComparison | None:
-    """Scan the runtime in hand and compare it with the author's recorded build.
+) -> ExperimentEnvironmentComparison | None:
+    """Scan the experiment environment in hand and compare it with the author's recorded build.
 
     A scan that cannot run — unsupported artifact shape, missing scanner, absent
     author SBOM — yields an empty closure on one side, which the comparison
@@ -243,23 +258,29 @@ def _certify(
     Returns ``None`` when the scan was *canceled*, which is deliberately not one
     of those cases: the caller halts the step instead of settling a verdict.
     """
-    author_build = ree.subject.receipts.build
+    author_build = ree.subject.receipts.experiment_environment
     author_sbom_receipt = ree.subject.receipts.sbom
 
-    expected_runtime_digest = _author_runtime_digest(author_build, runtime_path)
+    expected_artifact_digest = _author_experiment_environment_digest(author_build, experiment_environment_path)
     expected_sbom_digest = (
         author_sbom_receipt.sbom_digest if isinstance(author_sbom_receipt, GenerateSbomReceipt) else None
     )
 
     observed_packages: list[ObservedPackage] = []
     tool_version: str | None = None
-    if not is_runtime_archive(runtime_path):
-        log("system", "warn", f"cannot scan {runtime_path}: SBOM comparison supports runtime tarballs only")
+    if not is_experiment_environment_archive(experiment_environment_path):
+        log(
+            "system",
+            "warn",
+            f"cannot scan {experiment_environment_path}: SBOM comparison supports experiment environment tarballs only",
+        )
     else:
         review_layout.artifacts.mkdir(parents=True, exist_ok=True)
         review_layout.sbom.unlink(missing_ok=True)
         try:
-            scan = scan_runtime_archive(runtime_abs, review_layout.sbom, log=log, is_canceled=is_canceled)
+            scan = scan_experiment_environment_archive(
+                experiment_environment_abs, review_layout.sbom, log=log, is_canceled=is_canceled
+            )
         except OSError as exc:
             log("system", "warn", f"could not start syft ({exc}); the closure comparison is inconclusive")
         else:
@@ -277,9 +298,9 @@ def _certify(
 
     expected_packages = _author_packages(ree_layout, log=log)
 
-    return compare_build_runtimes(
-        expected_runtime_digest=expected_runtime_digest,
-        observed_runtime_digest=observed_runtime_digest,
+    return compare_build_experiment_environments(
+        expected_artifact_digest=expected_artifact_digest,
+        observed_artifact_digest=observed_artifact_digest,
         expected_packages=expected_packages,
         observed_packages=observed_packages,
         expected_sbom_digest=expected_sbom_digest,
@@ -289,18 +310,18 @@ def _certify(
     )
 
 
-def _author_runtime_digest(
-    author_build: BuildRuntimeReceipt | None,
-    runtime_path: str,
+def _author_experiment_environment_digest(
+    author_build: BuildExperimentEnvironmentReceipt | None,
+    experiment_environment_path: str,
 ) -> str | None:
-    """The digest the author recorded for the runtime this REE declares.
+    """The digest the author recorded for the experiment environment this REE declares.
 
-    Current build receipts always bind the declared runtime path to the digest
+    Current build receipts always bind the declared experiment environment path to the digest
     they produced. A missing receipt or a changed path leaves no author build
     baseline to compare against.
     """
-    if author_build is not None and author_build.runtime_path == runtime_path:
-        return author_build.produced_runtime_digest
+    if author_build is not None and author_build.artifact_path == experiment_environment_path:
+        return author_build.produced_artifact_digest
     return None
 
 
@@ -319,8 +340,10 @@ def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPac
     return parse_cyclonedx(document.read_text(encoding="utf-8"))
 
 
-def _stage_bundled_runtime(review_layout: ReviewLayout, shipped: Path, runtime_path: str) -> Path:
-    """Copy the shipped runtime into the workspace, where a rebuild would leave it.
+def _stage_bundled_experiment_environment(
+    review_layout: ReviewLayout, shipped: Path, experiment_environment_path: str
+) -> Path:
+    """Copy the shipped experiment environment into the workspace, where a rebuild would leave it.
 
     The author's activation and experiment scripts reach for it at the path
     their own build wrote — the last candidate when the declared path has been
@@ -329,7 +352,7 @@ def _stage_bundled_runtime(review_layout: ReviewLayout, shipped: Path, runtime_p
     Copied rather than linked: the workspace is the reviewer's to run scripts in,
     and a hard link would let one of them write through to author evidence.
     """
-    target = workspace_runtime_candidates(review_layout, runtime_path)[-1]
+    target = workspace_experiment_environment_candidates(review_layout, experiment_environment_path)[-1]
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(shipped, target)
     return target
@@ -342,8 +365,8 @@ def _has_build_recipe(ree_layout: ReeLayout, review_layout: ReviewLayout) -> boo
     author's overlay (where the reserved script normally lives) and the source
     tree this attempt acquired for itself.
     """
-    return (ree_layout.overlay / RESERVED_BUILD_SCRIPT).is_file() or (
-        review_layout.upstream / RESERVED_BUILD_SCRIPT
+    return (ree_layout.overlay / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).is_file() or (
+        review_layout.upstream / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     ).is_file()
 
 
@@ -351,9 +374,9 @@ def _available_bases(
     ree_layout: ReeLayout,
     review_layout: ReviewLayout,
     *,
-    has_bundled_runtime: bool,
+    has_bundled_experiment_environment: bool,
 ) -> set[EvidenceBasis]:
-    """Which bases this baseline can actually offer a runtime certification.
+    """Which bases this baseline can actually offer an experiment environment certification.
 
     A build recipe makes ``independent`` possible; the shipped artifact is the
     fallback ``auto`` reaches for when there is no script to run.
@@ -361,21 +384,27 @@ def _available_bases(
     available: set[EvidenceBasis] = set()
     if _has_build_recipe(ree_layout, review_layout):
         available.add("independent")
-    if has_bundled_runtime:
+    if has_bundled_experiment_environment:
         available.add("bundled")
     return available
 
 
 def _basis_refusal(requested: ReviewBasis) -> str:
     if requested == "independent":
-        return f"The author baseline carries no {RESERVED_BUILD_SCRIPT} to rebuild the runtime with"
+        return (
+            f"The author baseline carries no {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT} "
+            "to rebuild the experiment environment with"
+        )
     if requested == "bundled":
-        return "This REE ships no runtime artifact to certify"
+        return "This REE ships no experiment environment artifact to certify"
     # auto only refuses when it had nothing at all to choose between.
-    return f"The author baseline has neither a {RESERVED_BUILD_SCRIPT} nor a bundled runtime artifact"
+    return (
+        f"The author baseline has neither a {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT} "
+        "nor a bundled experiment environment artifact"
+    )
 
 
-def _log_verdict(comparison: BuildComparison, *, log: LogSink) -> None:
+def _log_verdict(comparison: ExperimentEnvironmentComparison, *, log: LogSink) -> None:
     level = "info" if comparison.verdict in {"identical", "equivalent"} else "warn"
     log(
         "system",
@@ -388,14 +417,14 @@ def _log_verdict(comparison: BuildComparison, *, log: LogSink) -> None:
     log(
         "system",
         "info",
-        f"runtime digest: author {comparison.expected_runtime_digest or 'none'}, "
-        f"reviewer {comparison.observed_runtime_digest or 'none'}",
+        f"experiment environment digest: author {comparison.expected_artifact_digest or 'none'}, "
+        f"reviewer {comparison.observed_artifact_digest or 'none'}",
     )
     if comparison.basis == "bundled":
         log(
             "system",
             "warn",
-            "this verdict certifies the runtime the REE ships against the author's own record — "
+            "this verdict certifies the experiment environment the REE ships against the author's own record — "
             "nothing was rebuilt, so it is an integrity check rather than an independent reproduction",
         )
 

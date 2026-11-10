@@ -73,7 +73,7 @@ def test_a_script_with_nothing_to_say_yields_nothing(source: str) -> None:
 
 
 def test_mentions_finds_a_path_written_into_an_assignment() -> None:
-    words = tokenize('RUNTIME_ARTIFACT="runtime.tar"\n')
+    words = tokenize('EXPERIMENT_ENVIRONMENT_ARTIFACT="runtime.tar"\n')
     assert words.mentions("runtime.tar") is not None
     assert words.mentions("other.tar") is None
 

@@ -95,7 +95,7 @@ def test_observed_fills_version_and_presence() -> None:
     result = cross_check([_dep("requests", locked="2.31.0", status="locked")], [_obs("requests", "2.31.0")])
     (row,) = result.dependencies
     assert row.observed_version == "2.31.0"
-    assert row.runtime_presence == "observed"
+    assert row.experiment_environment_presence == "observed"
     assert result.summary.declared_direct_total == 1
     assert result.summary.observed_matched == 1
 
@@ -103,28 +103,35 @@ def test_observed_fills_version_and_presence() -> None:
 def test_locked_version_disagreement_is_a_mismatch() -> None:
     result = cross_check([_dep("requests", locked="2.31.0", status="locked")], [_obs("requests", "2.32.0")])
     (row,) = result.dependencies
-    assert row.runtime_presence == "version-mismatch"
+    assert row.experiment_environment_presence == "version-mismatch"
     assert result.summary.observed_matched == 0
     assert result.summary.version_mismatches == 1
 
 
 def test_range_constraints_have_nothing_to_mismatch() -> None:
     result = cross_check([_dep("requests", constraint=">=2.0", status="ranged")], [_obs("requests", "2.32.0")])
-    assert result.dependencies[0].runtime_presence == "observed"
+    assert result.dependencies[0].experiment_environment_presence == "observed"
 
 
 def test_exact_pin_is_compared_with_light_normalization() -> None:
     deps = [_dep("requests", constraint="==2.31.0", status="pinned")]
-    assert cross_check(deps, [_obs("requests", "v2.31.0")]).dependencies[0].runtime_presence == "observed"
+    assert (
+        cross_check(deps, [_obs("requests", "v2.31.0")]).dependencies[0].experiment_environment_presence == "observed"
+    )
     # deb/conda epochs are packaging metadata, not identity.
-    assert cross_check(deps, [_obs("requests", "1:2.31.0")]).dependencies[0].runtime_presence == "observed"
-    assert cross_check(deps, [_obs("requests", "2.30.0")]).dependencies[0].runtime_presence == "version-mismatch"
+    assert (
+        cross_check(deps, [_obs("requests", "1:2.31.0")]).dependencies[0].experiment_environment_presence == "observed"
+    )
+    assert (
+        cross_check(deps, [_obs("requests", "2.30.0")]).dependencies[0].experiment_environment_presence
+        == "version-mismatch"
+    )
 
 
 def test_absent_dependency_is_not_observed_not_a_defect_bucket() -> None:
     result = cross_check([_dep("pytest", constraint="==8.0.0", status="pinned")], [])
     (row,) = result.dependencies
-    assert row.runtime_presence == "not-observed"
+    assert row.experiment_environment_presence == "not-observed"
     assert row.observed_version is None
     # Not observed does not count as matched, but is not a mismatch either.
     assert result.summary.version_mismatches == 0
@@ -166,13 +173,13 @@ def test_oci_rows_pass_through_untouched() -> None:
         {"ecosystem": "oci", "name": "python", "declared_constraint": "3.12-slim", "status": "pinned"}
     )
     result = cross_check([oci], [_obs("python", "3.12")])
-    assert result.dependencies[0].runtime_presence is None
+    assert result.dependencies[0].experiment_environment_presence is None
     assert result.summary.declared_direct_total == 0
 
 
 def test_transitive_rows_are_enriched_but_not_in_the_direct_aggregate() -> None:
     closure = _dep("urllib3", locked="2.2.0", direct=False, status="locked")
     result = cross_check([closure], [_obs("urllib3", "2.2.0")])
-    assert result.dependencies[0].runtime_presence == "observed"
+    assert result.dependencies[0].experiment_environment_presence == "observed"
     assert result.summary.declared_direct_total == 0
     assert result.summary.observed_matched == 0

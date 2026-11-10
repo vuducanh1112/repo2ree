@@ -8,9 +8,15 @@ import { GlassSubPanel } from "./GlassSubPanel";
 describe("GlassPageHeader", () => {
   it("titles the page as a heading, not as styled text", () => {
     render(
-      <GlassPageHeader icon={<svg aria-hidden />} title="Build Runtime" subtitle="Build it." />,
+      <GlassPageHeader
+        icon={<svg aria-hidden />}
+        title="Build Experiment Environment"
+        subtitle="Build it."
+      />,
     );
-    expect(screen.getByRole("heading", { level: 1, name: "Build Runtime" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Build Experiment Environment" }),
+    ).toBeInTheDocument();
   });
 
   it("carries the page's tone as one custom property, not three colours", () => {
@@ -19,13 +25,15 @@ describe("GlassPageHeader", () => {
     const { container } = render(
       <GlassPageHeader
         icon={<svg aria-hidden />}
-        tint="var(--stage-build-line)"
-        title="Build Runtime"
+        tint="var(--stage-build_experiment_environment-line)"
+        title="Build Experiment Environment"
         subtitle="Build it."
       />,
     );
     const icon = container.querySelector("[data-tinted]") as HTMLElement;
-    expect(icon.style.getPropertyValue("--page-tint")).toBe("var(--stage-build-line)");
+    expect(icon.style.getPropertyValue("--page-tint")).toBe(
+      "var(--stage-build_experiment_environment-line)",
+    );
   });
 
   it("falls back to the default chrome when a page has no stage of its own", () => {

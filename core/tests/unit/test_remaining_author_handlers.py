@@ -16,22 +16,26 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import DeleteFileArgs, PatchReeDefinitionArgs, WriteFileArgs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM, CPUDefinition
-from repo2ree_ree.model import BuildRuntimeDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
 from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ArtifactPath, ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
-    BuildRuntimeReceipt,
+    BuildExperimentEnvironmentReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
     WorkspaceDrift,
 )
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT, experiment_run_script_path
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATION_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    experiment_run_script_path,
+)
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _BUILD = b"#!/bin/sh\nexit 0\n"
 _ACTIVATION = b"#!/bin/sh\nexit 0\n"
-_RUNTIME = b"runtime"
+_EXPERIMENT_ENVIRONMENT = b"experiment_environment"
 _SNAPSHOT = digest_bytes(b"snapshot")
 _REPORT = {
     "dependency_level": 3,
@@ -72,9 +76,9 @@ def _ree() -> Ree:
         subject=ReeSubject(
             definition=ReeDefinition(
                 name="demo",
-                build_runtime=BuildRuntimeDefinition(
-                    build_runtime_script_digest=digest_bytes(_BUILD),
-                    build_runtime_script_size=len(_BUILD),
+                experiment_environment=ExperimentEnvironmentDefinition(
+                    build_experiment_environment_script_digest=digest_bytes(_BUILD),
+                    build_experiment_environment_script_size=len(_BUILD),
                 ),
                 test_activation=ActivationDefinition(
                     run_script_digest=digest_bytes(_ACTIVATION),
@@ -93,8 +97,8 @@ def _workbench(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.overlay.write_bytes(RESERVED_BUILD_SCRIPT, _BUILD)
-    store.workspace.write_bytes(RESERVED_BUILD_SCRIPT, _BUILD)
+    store.overlay.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
+    store.workspace.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
     store.overlay.write_bytes(RESERVED_ACTIVATION_SCRIPT, _ACTIVATION)
     store.workspace.write_bytes(RESERVED_ACTIVATION_SCRIPT, _ACTIVATION)
     store.write_ree(ree or _ree())
@@ -115,7 +119,7 @@ def test_definition_patch_hydrates_experiment_script_identity(
     result = handle_patch_ree_definition(
         PatchReeDefinitionArgs(
             patch={
-                "build_runtime": {"runtime_path": "runtime.tar"},
+                "experiment_environment": {"artifact_path": "runtime.tar"},
                 "experiments": [{"name": "analysis", "output_paths": ["result.txt"]}],
             },
             expected_version=str(revision_of(store.read_ree())),
@@ -126,8 +130,8 @@ def test_definition_patch_hydrates_experiment_script_identity(
 
     definition = store.read_ree().subject.definition
     assert result.status == "succeeded"
-    assert definition.build_runtime is not None
-    assert definition.build_runtime.runtime_path == WorkspacePath("runtime.tar")
+    assert definition.experiment_environment is not None
+    assert definition.experiment_environment.artifact_path == WorkspacePath("runtime.tar")
     experiment = definition.experiments[0]
     assert experiment.run_script_path == script_path
     assert experiment.run_script_digest == digest_bytes(script)
@@ -187,24 +191,24 @@ def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
     changed = "#!/bin/sh\nprintf changed\n"
 
     write_result = handle_write_file(
-        WriteFileArgs(path=RESERVED_BUILD_SCRIPT, content=changed),
+        WriteFileArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, content=changed),
         log=lambda *args: None,
         is_canceled=lambda: False,
     )
-    updated = store.read_ree().subject.definition.build_runtime
+    updated = store.read_ree().subject.definition.experiment_environment
 
     assert write_result.status == "succeeded"
     assert updated is not None
-    assert updated.build_runtime_script_digest == digest_bytes(changed.encode())
-    assert updated.build_runtime_script_size == len(changed.encode())
+    assert updated.build_experiment_environment_script_digest == digest_bytes(changed.encode())
+    assert updated.build_experiment_environment_script_size == len(changed.encode())
 
     delete_result = handle_delete_file(
-        DeleteFileArgs(path=RESERVED_BUILD_SCRIPT),
+        DeleteFileArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         log=lambda *args: None,
         is_canceled=lambda: False,
     )
     assert delete_result.status == "failed"
-    assert store.read_ree().subject.definition.build_runtime == updated
+    assert store.read_ree().subject.definition.experiment_environment == updated
 
 
 def test_hardware_observation_commits_receipt_without_rewriting_declaration(
@@ -268,10 +272,10 @@ def _cross_check_ree(
     definition = ReeDefinition(
         name="demo",
         source=SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
-        build_runtime=BuildRuntimeDefinition(
-            build_runtime_script_digest=digest_bytes(_BUILD),
-            build_runtime_script_size=len(_BUILD),
-            runtime_path=WorkspacePath("runtime.tar"),
+        experiment_environment=ExperimentEnvironmentDefinition(
+            build_experiment_environment_script_digest=digest_bytes(_BUILD),
+            build_experiment_environment_script_size=len(_BUILD),
+            artifact_path=WorkspacePath("runtime.tar"),
         ),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
@@ -286,14 +290,14 @@ def _cross_check_ree(
     )
     ree = commit_receipt(
         ree,
-        BuildRuntimeReceipt(
+        BuildExperimentEnvironmentReceipt(
             **_envelope("build-1"),
             snapshot_digest=_SNAPSHOT,
-            build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT),
-            build_runtime_script_digest=digest_bytes(_BUILD),
+            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_digest=digest_bytes(_BUILD),
             workspace_drift=WorkspaceDrift(status="unknown"),
-            runtime_path=WorkspacePath("runtime.tar"),
-            produced_runtime_digest=digest_bytes(_RUNTIME),
+            artifact_path=WorkspacePath("runtime.tar"),
+            produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
         ),
     )
     ree = commit_receipt(
@@ -317,8 +321,8 @@ def _cross_check_ree(
         ree,
         GenerateSbomReceipt(
             **_envelope("sbom-1"),
-            runtime_path=WorkspacePath("runtime.tar"),
-            runtime_digest=digest_bytes(_RUNTIME),
+            experiment_environment_path=WorkspacePath("runtime.tar"),
+            experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
             sbom_path=ArtifactPath("artifacts/sbom.json"),
             sbom_digest=sbom_digest,
             sbom_format="cyclonedx-json",

@@ -40,7 +40,7 @@ def _sealed(tmp_path, monkeypatch):
         SealReeCommand(
             args=SealReeArgs(
                 source_included=False,
-                runtime_included=False,
+                experiment_environment_included=False,
                 results_included=True,
             )
         ),
@@ -146,13 +146,13 @@ def test_import_ignores_uploaded_git_configuration(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("source_included", [False, True])
-@pytest.mark.parametrize("runtime_included", [False, True])
+@pytest.mark.parametrize("experiment_environment_included", [False, True])
 @pytest.mark.parametrize("results_included", [False, True])
 def test_seal_toggles_are_the_only_optional_payload_selection(
     tmp_path,
     monkeypatch,
     source_included,
-    runtime_included,
+    experiment_environment_included,
     results_included,
 ):
     layout = ReeLayout(root=tmp_path / "author")
@@ -161,26 +161,28 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
     store = ReeDirectory(layout)
     ree = store.read_ree()
     definition = ree.subject.definition
-    assert definition.build_runtime is not None
-    runtime = definition.build_runtime.model_copy(update={"runtime_path": "runtime.tar"})
+    assert definition.experiment_environment is not None
+    experiment_environment = definition.experiment_environment.model_copy(update={"artifact_path": "runtime.tar"})
     store.write_ree(
         ree.model_copy(
             update={
                 "subject": ree.subject.model_copy(
-                    update={"definition": definition.model_copy(update={"build_runtime": runtime})}
+                    update={
+                        "definition": definition.model_copy(update={"experiment_environment": experiment_environment})
+                    }
                 )
             }
         )
     )
     layout.snapshot_archive.write_bytes(b"source")
-    (layout.workspace / "runtime.tar").write_bytes(b"runtime")
+    (layout.workspace / "runtime.tar").write_bytes(b"experiment_environment")
     layout.results.mkdir(exist_ok=True)
     (layout.results / "data").write_bytes(b"result")
     result = run_command(
         SealReeCommand(
             args=SealReeArgs(
                 source_included=source_included,
-                runtime_included=runtime_included,
+                experiment_environment_included=experiment_environment_included,
                 results_included=results_included,
             )
         ),
@@ -190,7 +192,7 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
     with materialized_ree_download(layout) as archive, zipfile.ZipFile(archive) as zipped:
         paths = set(zipped.namelist())
         assert ("ree/snapshot.tar.gz" in paths) == source_included
-        assert ("ree/artifacts/runtime.tar" in paths) == runtime_included
+        assert ("ree/artifacts/runtime.tar" in paths) == experiment_environment_included
         assert ("ree/results/data" in paths) == results_included
         assert not any(path.startswith("ree/workspace/") for path in paths)
 

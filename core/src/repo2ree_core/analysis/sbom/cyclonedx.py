@@ -27,7 +27,7 @@ _PURL_ECOSYSTEMS: dict[str, Ecosystem] = {
 
 @dataclass(frozen=True)
 class ObservedPackage:
-    """One package present in the built runtime."""
+    """One package present in the built experiment environment."""
 
     ecosystem: Ecosystem
     name: str  # normalized for its ecosystem — the join key

@@ -18,7 +18,9 @@ from repo2ree_protocol.result import Failure
 from repo2ree_telemetry.behaviour import close_journal, open_journal
 
 
-def _run(operation: str = "build", action: str | None = "build_runtime") -> StoredRun:
+def _run(
+    operation: str = "build_experiment_environment", action: str | None = "build_experiment_environment"
+) -> StoredRun:
     return StoredRun.model_validate(
         {
             "run_id": "build-1",
@@ -68,7 +70,7 @@ def test_each_persisted_status_change_moves_the_action_once(tmp_path: Path, tran
     store.request_cancel("ree-1", "build-1")  # Already canceling: no change, no record.
     store.finalize("ree-1", "build-1", status="canceled", outputs={}, failure=None)
 
-    named = {"action": "build_runtime", "run_id": "build-1"}
+    named = {"action": "build_experiment_environment", "run_id": "build-1"}
     assert transitions() == [
         (None, "requested", named),
         ("requested", "running", named),
@@ -102,7 +104,7 @@ def test_a_failure_records_its_category(tmp_path: Path, transitions) -> None:
     )
     assert transitions()[-1][1:] == (
         "failed",
-        {"action": "build_runtime", "run_id": "build-1", "failure_category": "timeout"},
+        {"action": "build_experiment_environment", "run_id": "build-1", "failure_category": "timeout"},
     )
 
 
@@ -141,13 +143,13 @@ def test_a_run_whose_command_runs_on_is_resumed_by_the_next_process(tmp_path: Pa
     restarted = JsonRunStore(tmp_path / "runs")
     assert restarted.interrupt_incomplete() == []
     (resumable,) = restarted.resumable_incomplete()
-    author_actions.resume(run.action_id, "build_runtime", "ree-1", resumable.status)
+    author_actions.resume(run.action_id, "build_experiment_environment", "ree-1", resumable.status)
     restarted.finalize("ree-1", "build-1", status="succeeded", outputs={}, failure=None)
 
-    named = {"action": "build_runtime", "run_id": "build-1"}
+    named = {"action": "build_experiment_environment", "run_id": "build-1"}
     assert transitions()[1:] == [
         ("requested", "running", named),
-        ("running", "resumed", {"action": "build_runtime"}),
+        ("running", "resumed", {"action": "build_experiment_environment"}),
         ("resumed", "succeeded", named),
     ]
 

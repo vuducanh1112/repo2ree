@@ -8,7 +8,7 @@ import { MissingInputsBanner } from "./MissingInputsBanner";
 // stepPolicies declares for the build and SBOM steps, not invented names.
 const missing: ReeStepRequirement[] = [
   { field: "sourceAvailable", label: "Source available" },
-  { field: "runtime", label: "Runtime" },
+  { field: "experimentEnvironmentPath", label: "Experiment environment" },
 ];
 
 describe("MissingInputsBanner", () => {
@@ -20,7 +20,7 @@ describe("MissingInputsBanner", () => {
   it("names every missing input", () => {
     render(<MissingInputsBanner missing={missing} />);
     expect(screen.getByText("Source available")).toBeInTheDocument();
-    expect(screen.getByText("Runtime")).toBeInTheDocument();
+    expect(screen.getByText("Experiment environment")).toBeInTheDocument();
   });
 
   it("offers no jump-back button when the caller cannot handle one", () => {

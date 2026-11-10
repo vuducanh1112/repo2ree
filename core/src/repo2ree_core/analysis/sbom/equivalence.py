@@ -1,8 +1,8 @@
-"""SBOM closure equivalence: does a reproduced runtime carry the same packages?
+"""SBOM closure equivalence: does a reproduced experiment environment carry the same packages?
 
 The observed-vs-observed counterpart of :mod:`repo2ree_core.analysis.sbom.crosscheck`.
-The cross-check asks whether the runtime honours what the author *declared*;
-this module asks whether a reviewer's freshly built runtime carries the same
+The cross-check asks whether the experiment environment honours what the author *declared*;
+this module asks whether a reviewer's freshly built experiment environment carries the same
 dependency closure as the author's — the certifiable property when a container
 build is not bit-reproducible, which is the ordinary case.
 
@@ -83,7 +83,7 @@ def compare_sbom_closures(
     expected: list[ObservedPackage],
     observed: list[ObservedPackage],
 ) -> ClosureDelta:
-    """Diff the author's runtime closure against a reviewer's rebuilt one.
+    """Diff the author's experiment environment closure against a reviewer's rebuilt one.
 
     Packages are joined on ``(ecosystem, name)`` — the identity the CycloneDX
     adapter already normalizes both sides to — and versions are compared with

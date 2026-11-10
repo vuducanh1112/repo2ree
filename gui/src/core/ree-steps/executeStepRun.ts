@@ -45,7 +45,7 @@ interface ReeRunRunner {
 interface ExecuteStepRunArgs {
   key: string;
   params: GenericReeStepParams;
-  ree: Pick<ReeSpec, "runtime">;
+  ree: Pick<ReeSpec, "experimentEnvironmentPath">;
   workspaceFiles: FileTreeNode[];
   executionRunner: ReeRunRunner;
   stepCommandPlanners: StepCommandPlannerMap;
@@ -179,8 +179,10 @@ function getStepCommands(
   if (key === "hbom") {
     return planners.hbom(params as ReeStepRunParamsByKey["hbom"]);
   }
-  if (key === "build") {
-    return planners.build(params as ReeStepRunParamsByKey["build"]);
+  if (key === "build_experiment_environment") {
+    return planners.build_experiment_environment(
+      params as ReeStepRunParamsByKey["build_experiment_environment"],
+    );
   }
   if (key === "sbom") {
     return planners.sbom(params as ReeStepRunParamsByKey["sbom"]);

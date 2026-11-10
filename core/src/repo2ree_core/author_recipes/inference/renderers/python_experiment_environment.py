@@ -1,8 +1,8 @@
 """Shell renderer for the pip-requirements build strategy.
 
-The runtime for a plain requirements.txt repository is a Python virtual
+The experiment environment for a plain requirements.txt repository is a Python virtual
 environment, not a container: the build script creates a venv, installs
-requirements.txt into it with pip, and packs the venv as the runtime artifact.
+requirements.txt into it with pip, and packs the venv as the experiment environment artifact.
 It introduces no technology the repository did not already declare — no
 Dockerfile, no base image, no second file. This mirrors the docker-less flow the
 e2e suite exercises (``ree-pip-pipeline``), where the workbench base image *is*
@@ -21,8 +21,8 @@ from __future__ import annotations
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
 from repo2ree_core.author_recipes.inference.naming import venv_build_dir
 from repo2ree_core.author_recipes.inference.renderers._common import (
-    VENV_RUNTIME_ARTIFACT_SUFFIX,
-    build_runtime_artifact_path,
+    VENV_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX,
+    build_experiment_environment_artifact_path,
     sh_comment,
     sh_quote,
 )
@@ -50,12 +50,14 @@ class PipVenvBuildRenderer:
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         root, requirements = _bindings(context)
-        declared_runtime = context.runtime.declared_runtime_path
-        runtime_artifact = build_runtime_artifact_path(declared_runtime, root.path, VENV_RUNTIME_ARTIFACT_SUFFIX)
+        declared_experiment_environment = context.experiment_environment.declared_experiment_environment_path
+        experiment_environment_artifact = build_experiment_environment_artifact_path(
+            declared_experiment_environment, root.path, VENV_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX
+        )
 
         body = _render_body(
             requirements_path=requirements.requirements_path,
-            runtime_artifact=runtime_artifact,
+            experiment_environment_artifact=experiment_environment_artifact,
             digest=requirements.digest,
             # Outside the workspace (see module docstring), and the REE's own: REEs built side
             # by side on one machine must not share it. The run scaffolds restore it to the same
@@ -73,13 +75,13 @@ class PipVenvBuildRenderer:
         ]
         dependencies.append(
             CandidateDependency(
-                kind="runtime_declaration",
-                path=runtime_artifact,
+                kind="experiment_environment_declaration",
+                path=experiment_environment_artifact,
                 digest="",
                 # The path these bytes write to, declared or defaulted. It is part
                 # of what justifies them either way: move the declaration and
                 # regeneration produces different bytes, so the candidate is stale.
-                role="runtime",
+                role="experiment_environment",
             )
         )
         evidence = [
@@ -102,7 +104,7 @@ class PipVenvBuildRenderer:
 def _render_body(
     *,
     requirements_path: str,
-    runtime_artifact: str,
+    experiment_environment_artifact: str,
     digest: str,
     venv_dir: str,
 ) -> str:
@@ -116,19 +118,19 @@ set -eu
 #   requirements.txt {sh_comment(digest)}
 #
 # Builds the environment with pip alone — no container — and packs the virtual
-# environment as the runtime artifact. The venv is built outside the workspace
+# environment as the experiment environment artifact. The venv is built outside the workspace
 # (it is snapshot-hashed on every change) and bakes absolute paths, so runnables
 # restore it to the same location.
 #
 # This script has been inferred but not yet validated by execution.
 
 REQUIREMENTS={sh_quote(requirements_path)}
-RUNTIME_ARTIFACT={sh_quote(runtime_artifact)}
+EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(experiment_environment_artifact)}
 VENV_DIR={sh_quote(venv_dir)}
 
 python -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --no-cache-dir --requirement "$REQUIREMENTS"
 
-mkdir -p "$(dirname "$RUNTIME_ARTIFACT")"
-tar -czf "$RUNTIME_ARTIFACT" -C "$(dirname "$VENV_DIR")" "$(basename "$VENV_DIR")"
+mkdir -p "$(dirname "$EXPERIMENT_ENVIRONMENT_ARTIFACT")"
+tar -czf "$EXPERIMENT_ENVIRONMENT_ARTIFACT" -C "$(dirname "$VENV_DIR")" "$(basename "$VENV_DIR")"
 """

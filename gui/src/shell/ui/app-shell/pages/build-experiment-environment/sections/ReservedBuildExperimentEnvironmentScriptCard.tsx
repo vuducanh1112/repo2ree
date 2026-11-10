@@ -5,7 +5,7 @@ import {
 } from "@shell/ui/app-shell/components/RunScriptCard";
 import { Ic } from "@shell/ui/shared/components/Icon";
 
-interface ReservedBuildScriptCardProps {
+interface ReservedBuildExperimentEnvironmentScriptCardProps {
   currentContent: string;
   disabled?: boolean;
   // Backend-owned build-script template variants; the picker inserts into the
@@ -21,14 +21,14 @@ interface ReservedBuildScriptCardProps {
 
 // The REE-owned build script editor — a thin specialization of RunScriptCard
 // that speaks in build terms.
-export function ReservedBuildScriptCard({
+export function ReservedBuildExperimentEnvironmentScriptCard({
   currentContent,
   disabled = false,
   templates,
   externalEdit,
   renderAnalysis,
   onSave,
-}: ReservedBuildScriptCardProps) {
+}: ReservedBuildExperimentEnvironmentScriptCardProps) {
   return (
     <RunScriptCard
       currentContent={currentContent}
@@ -38,7 +38,7 @@ export function ReservedBuildScriptCard({
       renderAnalysis={renderAnalysis}
       onSave={onSave}
       icon={Ic.file(15)}
-      label="Build script"
+      label="Build experiment environment script"
       helper="REE owns this overlay build script. Call project-owned scripts from here when you have them."
       saveButtonContent={<>{Ic.check(13)} Save build script</>}
       savedLabel="Saved as the reserved build script"

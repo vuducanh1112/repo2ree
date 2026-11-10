@@ -2,7 +2,7 @@
 
 Each runnable (an experiment or the REE's activation) owns its run script: a
 workspace-relative shell script that fully defines how it executes — including
-entering its runtime (e.g. its own ``docker run …``). The runner executes that
+entering its experiment environment (e.g. its own ``docker run …``). The runner executes that
 script from the workspace root and captures stdout/stderr.
 
 Verification is a second author-owned script, not a matcher engine and with no

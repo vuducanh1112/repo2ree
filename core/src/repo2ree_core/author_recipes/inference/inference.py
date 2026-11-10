@@ -13,6 +13,7 @@ from pathlib import Path
 
 from repo2ree_authoring.targets import resolve_target
 from repo2ree_core.author_recipes.inference.engine import evaluate_target
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy, default_policy
 from repo2ree_core.author_recipes.inference.registry import (
@@ -23,7 +24,6 @@ from repo2ree_core.author_recipes.inference.registry import (
     RESOLVERS,
 )
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
-from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
 from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
 from repo2ree_protocol.inference import (
     DecisionDag,
@@ -43,7 +43,7 @@ def infer_scripts(
     *,
     definition: ReeDefinition | None = None,
     policy: InferencePolicy | None = None,
-    runtime_inputs: RuntimeInputs | None = None,
+    experiment_environment_inputs: ExperimentEnvironmentInputs | None = None,
     source_snapshot_digest: str | None = None,
 ) -> InferenceReport:
     facts = scan_repository(upstream_path)
@@ -52,7 +52,7 @@ def infer_scripts(
         facts=facts,
         policy=active_policy,
         ree_name=definition.name if definition else "",
-        runtime=runtime_inputs or RuntimeInputs(),
+        experiment_environment=experiment_environment_inputs or ExperimentEnvironmentInputs(),
     )
 
     results: list[TargetInferenceResult] = []

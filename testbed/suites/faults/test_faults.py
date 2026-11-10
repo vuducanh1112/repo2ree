@@ -10,7 +10,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from system_client import BUILD_SCRIPT, RUNTIME, Api, fault
+from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT_ENVIRONMENT, Api, fault
 
 from repo2ree_testbed.faults import (
     CrashApi,
@@ -31,20 +31,22 @@ ACTIVATION_VERIFY = "ree-scripts/activation.verify.sh"
 def build_taking(api: Api, ree_id: str, seconds: int) -> dict[str, Any]:
     """A build that works, and takes ``seconds`` before it does; running once this returns."""
     api.acquire(ree_id)
-    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
-    inferred = str(api.infer(ree_id, "build")["candidates"][0]["body"])
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
+    inferred = str(api.infer(ree_id, "build_experiment_environment")["candidates"][0]["body"])
     shebang, _, body = inferred.partition("\n")
-    api.write(ree_id, BUILD_SCRIPT, f"{shebang}\necho 'building slowly'\nsleep {seconds}\n{body}")
-    run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
+    api.write(
+        ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, f"{shebang}\necho 'building slowly'\nsleep {seconds}\n{body}"
+    )
+    run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-experiment-environment")
     api.wait_for_status(ree_id, run["run_id"], "running")
     return run
 
 
 def built(api: Api, ree_id: str, run: dict[str, Any]) -> None:
-    """The build ran to its end through the fault: it succeeded, and its runtime is the REE's evidence."""
+    """The build ran to its end through the fault: it succeeded, and what it built is the REE's evidence."""
     settled = api.wait(ree_id, run, timeout=300)
     assert settled["status"] == "succeeded", settled
-    assert api.audit(ree_id)["runtime"]["evidence"] == "current"
+    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
 
 
 def serving(api: Api, ree_id: str) -> str:
@@ -152,12 +154,12 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
 ) -> None:
     ree_id = new_ree()
     api.acquire(ree_id)
-    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
-    inferred = str(api.infer(ree_id, "build")["candidates"][0]["body"])
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
+    inferred = str(api.infer(ree_id, "build_experiment_environment")["candidates"][0]["body"])
     shebang, _, body = inferred.partition("\n")
     # A build that works, slowly enough for the history to be locked while it runs.
-    api.write(ree_id, BUILD_SCRIPT, f"{shebang}\nsleep 20\n{body}")
-    run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-runtime")
+    api.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, f"{shebang}\nsleep 20\n{body}")
+    run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-experiment-environment")
     api.wait_for_status(ree_id, run["run_id"], "running")
 
     fault(LockHistory(ree_id=ree_id))
@@ -168,10 +170,10 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
     finally:
         fault(UnlockHistory(ree_id=ree_id))
 
-    # The author is told the build failed, and the REE shows nothing of it: no runtime evidence.
+    # The author is told the build failed, and the REE shows nothing of it: no experiment environment evidence.
     assert settled["status"] == "failed", settled
-    assert api.audit(ree_id)["runtime"]["evidence"] == "missing"
+    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
     assert refused.status_code >= 400, refused.text
     unwritten = api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": ACTIVATION_VERIFY}, expect=None)
     assert unwritten.status_code == 404, unwritten.text
-    assert api.stage(ree_id, "build-runtime")["status"] == "succeeded"
+    assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"

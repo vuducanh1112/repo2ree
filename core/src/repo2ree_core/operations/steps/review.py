@@ -32,11 +32,11 @@ from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, ReeDefinition
 from repo2ree_ree.review import (
     ActivationVerdict,
-    BuildVerdict,
     ComparisonVerdict,
     EvidenceBasis,
+    ExperimentEnvironmentVerdict,
     ExperimentVerdict,
-    ReviewBuildRuntimeReceipt,
+    ReviewBuildExperimentEnvironmentReceipt,
     ReviewRecord,
     ReviewStatus,
     ReviewStepKey,
@@ -49,7 +49,7 @@ ReviewHalt = Callable[[ReviewStatus, str], ActionResult]
 # What a completed step settled. The four vocabularies are disjoint apart from
 # ``identical``; the union is what the shared exit accepts, so a step cannot
 # report a verdict from a lifecycle it does not belong to.
-ReviewVerdict = ComparisonVerdict | BuildVerdict | ActivationVerdict | ExperimentVerdict
+ReviewVerdict = ComparisonVerdict | ExperimentEnvironmentVerdict | ActivationVerdict | ExperimentVerdict
 
 
 class ReviewSettle(Protocol):
@@ -67,7 +67,7 @@ class ReviewSettle(Protocol):
         *,
         verdict: ReviewVerdict | None = None,
         basis: EvidenceBasis | None = None,
-        runtime_digest: str | None = None,
+        experiment_environment_digest: str | None = None,
     ) -> None: ...
 
 
@@ -221,7 +221,7 @@ def _review_step_settle(
         *,
         verdict: ReviewVerdict | None = None,
         basis: EvidenceBasis | None = None,
-        runtime_digest: str | None = None,
+        experiment_environment_digest: str | None = None,
     ) -> None:
         write_review_record(
             review_layout,
@@ -232,7 +232,7 @@ def _review_step_settle(
             status="completed",
             verdict=verdict,
             basis=basis,
-            runtime_digest=runtime_digest,
+            experiment_environment_digest=experiment_environment_digest,
         ).apply_current()
         log(
             "system",
@@ -263,43 +263,43 @@ def require_completed_step(
 
 
 @dataclass(frozen=True)
-class CertifiedRuntime:
-    """The runtime a review attempt certified, confirmed still to be that one.
+class CertifiedExperimentEnvironment:
+    """The experiment environment a review attempt certified, confirmed still to be that one.
 
-    ``runtime_path`` is empty for a baseline that declares no runtime artifact (a
-    native experiment), in which case ``runtime_digest`` is None. Reports what
+    ``experiment_environment_path`` is empty for a baseline that declares no experiment environment artifact (a
+    native experiment), in which case ``experiment_environment_digest`` is None. Reports what
     the attempt has, not what a caller needs — steps that cannot run without a
-    runtime say so themselves.
+    experiment environment say so themselves.
     """
 
     basis: EvidenceBasis
-    build_receipt: ReviewBuildRuntimeReceipt
-    runtime_path: str
-    runtime_digest: str | None
+    experiment_environment_receipt: ReviewBuildExperimentEnvironmentReceipt
+    experiment_environment_path: str
+    experiment_environment_digest: str | None
 
 
-def require_certified_runtime(
+def require_certified_experiment_environment(
     record: ReviewRecord,
     review_layout: ReviewLayout,
     *,
     stop: ReviewHalt,
     purpose: str,
     retry_purpose: str,
-) -> CertifiedRuntime | ActionResult:
+) -> CertifiedExperimentEnvironment | ActionResult:
     """The apparatus every post-build review step runs against, or the halt.
 
     Checks the three things that must hold before a step runs *inside* what the
     build left behind: the attempt settled a basis and a build receipt, its
-    workspace is still there, and the runtime in that workspace is byte-for-byte
+    workspace is still there, and the experiment environment in that workspace is byte-for-byte
     the one the build certified.
 
-    ``purpose`` completes "This attempt has recorded no runtime …" and
+    ``purpose`` completes "This attempt has recorded no experiment environment …" and
     ``retry_purpose`` completes "… re-run the build review …", so each step says
     what *it* was trying to do.
     """
     basis = attempt_basis(record)
-    if basis is None or record.build_receipt is None:
-        return stop("failed", f"This attempt has recorded no runtime {purpose}")
+    if basis is None or record.experiment_environment_receipt is None:
+        return stop("failed", f"This attempt has recorded no experiment environment {purpose}")
 
     # Reclaiming the workspace is a supported choice at build time, so hitting
     # this is the reviewer's own doing: say how to undo it rather than reporting
@@ -310,30 +310,44 @@ def require_certified_runtime(
             f"This attempt's workspace was reclaimed after the build; re-run the build review {retry_purpose}",
         )
 
-    runtime_path = (record.build_receipt.runtime_path or "").strip()
-    runtime = workspace_runtime(review_layout, runtime_path) if runtime_path else None
-    runtime_digest = digest_file_if_exists(runtime) if runtime else None
-    if runtime_path and runtime_digest is None:
-        return stop("failed", f"the certified runtime is no longer in this attempt's workspace at {runtime_path}")
-    if runtime_path and runtime_digest != record.build_receipt.produced_runtime_digest:
+    experiment_environment_path = (record.experiment_environment_receipt.artifact_path or "").strip()
+    experiment_environment = (
+        workspace_experiment_environment(review_layout, experiment_environment_path)
+        if experiment_environment_path
+        else None
+    )
+    experiment_environment_digest = digest_file_if_exists(experiment_environment) if experiment_environment else None
+    if experiment_environment_path and experiment_environment_digest is None:
         return stop(
             "failed",
-            f"the runtime at {runtime_path} is not the one this attempt certified; re-run the build review",
+            "the certified experiment environment is no longer in this attempt's workspace "
+            f"at {experiment_environment_path}",
+        )
+    if (
+        experiment_environment_path
+        and experiment_environment_digest != record.experiment_environment_receipt.produced_artifact_digest
+    ):
+        return stop(
+            "failed",
+            f"the experiment environment at {experiment_environment_path} is not the one "
+            "this attempt certified; re-run the build review",
         )
 
-    return CertifiedRuntime(
+    return CertifiedExperimentEnvironment(
         basis=basis,
-        build_receipt=record.build_receipt,
-        runtime_path=runtime_path,
-        runtime_digest=runtime_digest,
+        experiment_environment_receipt=record.experiment_environment_receipt,
+        experiment_environment_path=experiment_environment_path,
+        experiment_environment_digest=experiment_environment_digest,
     )
 
 
-def workspace_runtime_candidates(layout: ReeLayout, runtime_path: str) -> tuple[Path, ...]:
-    """Where a runtime can sit in a materialized workspace, declared path first.
+def workspace_experiment_environment_candidates(
+    layout: ReeLayout, experiment_environment_path: str
+) -> tuple[Path, ...]:
+    """Where an experiment environment can sit in a materialized workspace, declared path first.
 
     Normally there is one answer. The exception is a baseline loaded from a
-    bundle: packaging lifted the runtime into ``artifacts/`` and rewrote the
+    bundle: packaging lifted the experiment environment into ``artifacts/`` and rewrote the
     declared path to ``artifacts/<basename>``, discarding the workspace path the
     build script writes to. The remap keeps the basename, so undoing it is a
     lookup rather than a guess.
@@ -342,21 +356,21 @@ def workspace_runtime_candidates(layout: ReeLayout, runtime_path: str) -> tuple[
     reviewer's, and an author's workspace loaded from a bundle carries the same
     remap.
     """
-    declared = layout.workspace / runtime_path
-    parts = PurePosixPath(runtime_path).parts
+    declared = layout.workspace / experiment_environment_path
+    parts = PurePosixPath(experiment_environment_path).parts
     if len(parts) == 2 and parts[0] == ARTIFACTS_DIRNAME:
         return (declared, layout.workspace / parts[1])
     return (declared,)
 
 
-def workspace_runtime(layout: ReeLayout, runtime_path: str) -> Path:
-    """The runtime in a materialized workspace, wherever it legitimately landed.
+def workspace_experiment_environment(layout: ReeLayout, experiment_environment_path: str) -> Path:
+    """The experiment environment in a materialized workspace, wherever it legitimately landed.
 
     Falls back to the declared path when none of the candidates exist, so a miss
     is reported against the path the author declared rather than against a
     fallback the author never named.
     """
-    candidates = workspace_runtime_candidates(layout, runtime_path)
+    candidates = workspace_experiment_environment_candidates(layout, experiment_environment_path)
     return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
 
 
@@ -366,8 +380,8 @@ def workspace_runtime(layout: ReeLayout, runtime_path: str) -> Path:
 
 
 #: An extra precondition a step has that the others do not, checked once the
-#: certified runtime is in hand. Returns the refusal message, or None to admit.
-ReviewAdmission = Callable[[ReviewRecord, CertifiedRuntime], str | None]
+#: certified experiment environment is in hand. Returns the refusal message, or None to admit.
+ReviewAdmission = Callable[[ReviewRecord, CertifiedExperimentEnvironment], str | None]
 
 
 @dataclass(frozen=True)
@@ -379,7 +393,7 @@ class ReviewRunnableStep:
     ``docs/engineering/explanation/step-lifecycle.md``.
 
     ``admit`` is the one genuinely per-step precondition — activation needs a
-    runtime artifact to probe, an experiment needs an activation that passed. It
+    experiment environment artifact to probe, an experiment needs an activation that passed. It
     runs after certification, so both steps report the apparatus being absent
     before reporting what they wanted it for.
     """
@@ -391,8 +405,8 @@ class ReviewRunnableStep:
     subject: str
     requires: ReviewStepKey
     requires_message: str
-    runtime_purpose: str
-    runtime_retry_purpose: str
+    experiment_environment_purpose: str
+    experiment_environment_retry_purpose: str
     admit: ReviewAdmission
     #: Resolve the runnable this step runs, and the label it runs under. Raises
     #: ``ValueError`` when the baseline cannot produce it.
@@ -408,7 +422,7 @@ class ReviewRun:
     """One of the author's runnables, resolved and run inside a review attempt.
 
     Everything a handler needs to judge what just happened and settle it: the
-    trees to read and write, the step's two exits, the runtime the run is bound
+    trees to read and write, the step's two exits, the experiment environment the run is bound
     to, and the run's own outcome. The handler owns everything from here on.
     """
 
@@ -416,7 +430,7 @@ class ReviewRun:
     review_layout: ReviewLayout
     step: ReviewStep
     timer: OperationTimer
-    certified: CertifiedRuntime
+    certified: CertifiedExperimentEnvironment
     runnable: RunnableSpec
     label: str
     outcome: ExperimentRunOutcome
@@ -465,12 +479,12 @@ def open_review_run(
     if halted is not None:
         return halted
 
-    certified = require_certified_runtime(
+    certified = require_certified_experiment_environment(
         started.record,
         review_layout,
         stop=started.stop,
-        purpose=step.runtime_purpose,
-        retry_purpose=step.runtime_retry_purpose,
+        purpose=step.experiment_environment_purpose,
+        retry_purpose=step.experiment_environment_retry_purpose,
     )
     if isinstance(certified, ActionResult):
         return certified

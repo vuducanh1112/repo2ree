@@ -12,7 +12,7 @@ import {
   exampleWorkspaceFiles,
   scriptTemplateCatalog,
 } from "../../../../../tests/support/stepPageFixture";
-import { PageBuildRuntime } from "./build-runtime/BuildRuntimePage";
+import { PageBuildExperimentEnvironment } from "./build-experiment-environment/BuildExperimentEnvironmentPage";
 import { PageExperiments } from "./experiments/ExperimentsPage";
 import { PageGenerateSbom } from "./generate-sbom/GenerateSbomPage";
 import { PageHardwareBom } from "./hardware-bom/HardwareBomPage";
@@ -32,8 +32,12 @@ describe("major step page workflows", () => {
     const onPersistWorkspaceFile = vi.fn().mockResolvedValue(undefined);
     const onReeSpecChange = vi.fn();
     renderWithShell(
-      <PageBuildRuntime
-        {...createStepPageProps("build", { onRun, onPersistWorkspaceFile, onReeSpecChange })}
+      <PageBuildExperimentEnvironment
+        {...createStepPageProps("build_experiment_environment", {
+          onRun,
+          onPersistWorkspaceFile,
+          onReeSpecChange,
+        })}
       />,
       { reeId: "ree-1", services: catalogServices() },
     );
@@ -41,15 +45,15 @@ describe("major step page workflows", () => {
     const run = await screen.findByRole("button", { name: "Run build" });
     await waitFor(() => expect(run).toBeEnabled());
     await user.click(run);
-    expect(onRun).toHaveBeenCalledWith("build", {});
+    expect(onRun).toHaveBeenCalledWith("build_experiment_environment", {});
 
-    fireEvent.change(screen.getByLabelText("Runtime output path"), {
+    fireEvent.change(screen.getByLabelText("Experiment environment output path"), {
       target: { value: "new-runtime.tar" },
     });
     const updater = onReeSpecChange.mock.calls[0][0];
-    expect(updater(createEmptyReeSpec()).runtime).toBe("new-runtime.tar");
+    expect(updater(createEmptyReeSpec()).experimentEnvironmentPath).toBe("new-runtime.tar");
 
-    const editor = screen.getByLabelText("Build script");
+    const editor = screen.getByLabelText("Build experiment environment script");
     await user.clear(editor);
     await user.type(editor, "#!/bin/sh\necho rebuilt");
     await user.click(screen.getByRole("button", { name: /Save build script/ }));
@@ -82,8 +86,8 @@ describe("major step page workflows", () => {
     ["says when nothing is declared", null, ["No workbench environment declared"], []],
   ] as const)("the build header %s", async (_name, workbenchEnvironment, shown, hidden) => {
     renderWithShell(
-      <PageBuildRuntime
-        {...createStepPageProps("build", {
+      <PageBuildExperimentEnvironment
+        {...createStepPageProps("build_experiment_environment", {
           ree: {
             ...exampleEditorRee,
             spec: {
@@ -113,8 +117,8 @@ describe("major step page workflows", () => {
       needsContainerEngine: false,
     };
     renderWithShell(
-      <PageBuildRuntime
-        {...createStepPageProps("build", {
+      <PageBuildExperimentEnvironment
+        {...createStepPageProps("build_experiment_environment", {
           ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, workbenchEnvironment } },
           onReeSpecChange,
         })}
@@ -147,15 +151,15 @@ describe("major step page workflows", () => {
   // of the one-click flow; overwriting a declared one would be the drift the
   // whole arrangement exists to prevent.
   it.each([
-    ["fills an empty runtime declaration from the generated script", "", 1],
-    ["never overwrites a runtime path the author declared", "runtime.tar", 0],
+    ["fills an empty experiment environment declaration from the generated script", "", 1],
+    ["never overwrites an experiment environment path the author declared", "runtime.tar", 0],
   ] as const)("%s", async (_name, declared, expectedCalls) => {
     const user = userEvent.setup();
     const onReeSpecChange = vi.fn();
     const generateScriptCandidates = vi.fn().mockResolvedValue({
       results: [
         {
-          target: { kind: "build" },
+          target: { kind: "build_experiment_environment" },
           candidates: [
             {
               body: "#!/usr/bin/env sh\n",
@@ -163,10 +167,10 @@ describe("major step page workflows", () => {
               application: "automatic_allowed",
               dependencies: [
                 {
-                  kind: "runtime_declaration",
+                  kind: "experiment_environment_declaration",
                   path: ".repo2ree/artifacts/runtime.tar",
                   digest: "",
-                  role: "runtime",
+                  role: "experiment_environment",
                 },
               ],
             },
@@ -177,11 +181,11 @@ describe("major step page workflows", () => {
     });
 
     renderWithShell(
-      <PageBuildRuntime
-        {...createStepPageProps("build", {
+      <PageBuildExperimentEnvironment
+        {...createStepPageProps("build_experiment_environment", {
           ree: {
             ...exampleEditorRee,
-            spec: { ...exampleEditorRee.spec, runtime: declared },
+            spec: { ...exampleEditorRee.spec, experimentEnvironmentPath: declared },
           },
           onReeSpecChange,
         })}
@@ -202,7 +206,9 @@ describe("major step page workflows", () => {
     await waitFor(() => expect(onReeSpecChange).toHaveBeenCalledTimes(expectedCalls));
     if (expectedCalls > 0) {
       const updater = onReeSpecChange.mock.calls[0][0];
-      expect(updater(createEmptyReeSpec()).runtime).toBe(".repo2ree/artifacts/runtime.tar");
+      expect(updater(createEmptyReeSpec()).experimentEnvironmentPath).toBe(
+        ".repo2ree/artifacts/runtime.tar",
+      );
     }
   });
 
@@ -224,7 +230,7 @@ describe("major step page workflows", () => {
     expect(screen.getByText(/Run Evaluate first/)).toBeInTheDocument();
   });
 
-  it("saves activation scripts and runs against the built runtime", async () => {
+  it("saves activation scripts and runs against the built experiment environment", async () => {
     const user = userEvent.setup();
     const onRun = vi.fn();
     const onPersistWorkspaceFile = vi.fn().mockResolvedValue(undefined);
@@ -259,7 +265,7 @@ describe("major step page workflows", () => {
             ...exampleEditorRee,
             spec: {
               ...exampleEditorRee.spec,
-              runtime: "",
+              experimentEnvironmentPath: "",
               activation: createEmptyReeSpec().activation,
             },
           },
@@ -270,7 +276,7 @@ describe("major step page workflows", () => {
           runFailed: true,
           badge: { step: "activation", label: "failed" },
           ts: "2026-01-01T00:00:00Z",
-          missing: [{ field: "runtime", label: "Runtime" }],
+          missing: [{ field: "experimentEnvironmentPath", label: "Experiment environment" }],
           onCancel,
         })}
       />,
@@ -278,7 +284,7 @@ describe("major step page workflows", () => {
     );
 
     expect(await screen.findByText("Activation pending")).toBeInTheDocument();
-    expect(screen.getByText("Runtime")).toBeInTheDocument();
+    expect(screen.getByText("Experiment environment")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Cancel/ }));
     expect(onCancel).toHaveBeenCalledWith("activation");
   });

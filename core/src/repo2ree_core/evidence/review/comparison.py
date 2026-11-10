@@ -1,7 +1,7 @@
 """How a reviewer's step reaches its verdict.
 
 What settles a verdict differs per step, because the certifiable property does:
-source by SWHID identity, build by runtime digest then SBOM closure, experiments
+source by SWHID identity, build by experiment environment digest then SBOM closure, experiments
 by the author's own verify script. Activation has no comparison at all — the
 reviewer's probe is the whole claim, recorded as an ``ActivationOutcome`` rather
 than a comparison to keep that visible in the type.
@@ -21,11 +21,11 @@ from repo2ree_core.analysis.sbom.equivalence import (
     compare_sbom_closures,
 )
 from repo2ree_ree.review import (
-    BuildComparison,
-    BuildVerdict,
     ComparisonVerdict,
     EvidenceBasis,
     ExperimentComparison,
+    ExperimentEnvironmentComparison,
+    ExperimentEnvironmentVerdict,
     ExperimentVerdict,
     PackageDeltaRecord,
     SourceComparison,
@@ -61,20 +61,20 @@ def compare_source_swhids(
     )
 
 
-def compare_build_runtimes(
+def compare_build_experiment_environments(
     *,
-    expected_runtime_digest: str | None,
-    observed_runtime_digest: str | None,
+    expected_artifact_digest: str | None,
+    observed_artifact_digest: str | None,
     expected_packages: list[ObservedPackage],
     observed_packages: list[ObservedPackage],
     expected_sbom_digest: str | None = None,
     observed_sbom_digest: str | None = None,
     sbom_tool_version: str | None = None,
     basis: EvidenceBasis = "independent",
-) -> BuildComparison:
-    """Certify a runtime against the author's record, digests first.
+) -> ExperimentEnvironmentComparison:
+    """Certify an experiment environment against the author's record, digests first.
 
-    The ladder, strongest first: equal runtime digests mean the build is bit
+    The ladder, strongest first: equal experiment environment digests mean the build is bit
     reproducible (``identical``); otherwise the dependency closures decide
     (``equivalent`` / ``different``); a closure that cannot be compared at all is
     ``inconclusive`` rather than a pass, because an absent baseline is not
@@ -84,15 +84,15 @@ def compare_build_runtimes(
     by ``basis``, not by the verdict.
     """
     delta = compare_sbom_closures(expected_packages, observed_packages)
-    if expected_runtime_digest and expected_runtime_digest == observed_runtime_digest:
-        verdict: BuildVerdict = "identical"
+    if expected_artifact_digest and expected_artifact_digest == observed_artifact_digest:
+        verdict: ExperimentEnvironmentVerdict = "identical"
     else:
         verdict = closure_verdict(delta)
-    return BuildComparison(
+    return ExperimentEnvironmentComparison(
         basis=basis,
         verdict=verdict,
-        expected_runtime_digest=expected_runtime_digest,
-        observed_runtime_digest=observed_runtime_digest,
+        expected_artifact_digest=expected_artifact_digest,
+        observed_artifact_digest=observed_artifact_digest,
         expected_sbom_digest=expected_sbom_digest,
         observed_sbom_digest=observed_sbom_digest,
         sbom_tool_version=sbom_tool_version,
@@ -122,7 +122,7 @@ def compare_experiment_results(
     run_exit_code: int | None,
     expected_output_digest: str | None = None,
     observed_output_digest: str | None = None,
-    runtime_digest: str | None = None,
+    experiment_environment_digest: str | None = None,
 ) -> ExperimentComparison:
     """Settle whether one experiment reproduced, by the author's own criterion.
 
@@ -170,7 +170,7 @@ def compare_experiment_results(
         run_exit_code=run_exit_code,
         expected_output_digest=expected_output_digest,
         observed_output_digest=observed_output_digest,
-        runtime_digest=runtime_digest,
+        experiment_environment_digest=experiment_environment_digest,
     )
 
 

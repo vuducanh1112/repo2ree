@@ -23,7 +23,7 @@ interface CreateReeEditorStateInput {
 export function createReeEditorState(input: CreateReeEditorStateInput = {}): ReeEditorState {
   const reeSpec = input.reeSpec ?? createEmptyReeSpec();
   const workspaceSourceState = input.workspaceSourceState ?? { sourceAvailable: false };
-  const artifactStatus = input.artifactStatus ?? { runtimeIncluded: false };
+  const artifactStatus = input.artifactStatus ?? { experimentEnvironmentIncluded: false };
 
   return {
     reeSpec,

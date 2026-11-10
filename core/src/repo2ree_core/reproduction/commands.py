@@ -1,7 +1,7 @@
 """The reproduction commands shared by the executor CLI and the bundle run.sh.
 
 These are the phases of reproducing an REE — acquire the source, assemble a
-clean workspace, build the runtime, test activation, run experiments. They are
+clean workspace, build the experiment environment, test activation, run experiments. They are
 the single source of truth for the run vocabulary so ``repo2ree-exec --help`` and
 ``sh run.sh --help`` expose the same verbs and one-line summaries and cannot
 drift.
@@ -42,13 +42,13 @@ MATERIALIZE_WORKSPACE = ReproductionCommand(
     "materialize-workspace",
     "Assemble a clean workspace from the source and the REE overlay",
 )
-BUILD_RUNTIME = ReproductionCommand(
-    "build-runtime",
-    "Build the runtime from the REE build script",
+BUILD_EXPERIMENT_ENVIRONMENT = ReproductionCommand(
+    "build-experiment-environment",
+    "Build the experiment environment from the REE build script",
 )
 TEST_ACTIVATION = ReproductionCommand(
     "test-activation",
-    "Run activation to prove the runtime is inhabitable",
+    "Run activation to prove the experiment environment is inhabitable",
 )
 EXPERIMENT = ReproductionCommand(
     "experiment",
@@ -58,7 +58,7 @@ EXPERIMENT = ReproductionCommand(
 REPRODUCTION_COMMANDS: tuple[ReproductionCommand, ...] = (
     ACQUIRE_SOURCE,
     MATERIALIZE_WORKSPACE,
-    BUILD_RUNTIME,
+    BUILD_EXPERIMENT_ENVIRONMENT,
     TEST_ACTIVATION,
     EXPERIMENT,
 )

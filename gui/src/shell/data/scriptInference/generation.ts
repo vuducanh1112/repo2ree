@@ -23,7 +23,7 @@ export interface GeneratedScript {
   // Whether that is the REE's own declaration or the renderer's fallback is not
   // recorded — a page that wants to fill an empty declaration compares it
   // against the one it already holds. Only build candidates carry it.
-  runtimePath?: string;
+  experimentEnvironmentPath?: string;
 }
 
 export type ScriptGeneration =

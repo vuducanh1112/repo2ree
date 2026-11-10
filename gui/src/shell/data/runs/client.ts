@@ -77,8 +77,8 @@ export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
       const reeId = requireReeId(runtime, id);
       let run: RunSummary;
       switch (scriptKey) {
-        case "build":
-          run = await runtime.runsApi.createBuildRuntimeRun(reeId, {
+        case "build_experiment_environment":
+          run = await runtime.runsApi.createBuildExperimentEnvironmentRun(reeId, {
             idempotency_key:
               params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });

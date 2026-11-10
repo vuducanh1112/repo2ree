@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { NodeCard } from "./NodeCard";
 
 function buildNode(): CanvasNode {
-  const found = CANVAS_NODES.find((entry) => entry.key === PAGE.BUILD);
+  const found = CANVAS_NODES.find((entry) => entry.key === PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
   if (!found) throw new Error("no build node");
   return found;
 }
@@ -14,7 +14,7 @@ function buildNode(): CanvasNode {
 const node = buildNode();
 
 const overview: CanvasNodeOverview = {
-  facts: [{ label: "Runtime", value: "image ready" }],
+  facts: [{ label: "Experiment environment", value: "image ready" }],
   scripts: [],
   evidenceExpected: false,
   receipt: null,
@@ -85,7 +85,7 @@ describe("NodeCard dragging", () => {
   it("opens the page on a click that did not travel", () => {
     const { card, onNavigate, onMove } = renderCard();
     dragBy(card, 0, 0);
-    expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD, expect.anything());
+    expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, expect.anything());
     expect(onMove).not.toHaveBeenCalled();
   });
 
@@ -104,7 +104,7 @@ describe("NodeCard dragging", () => {
     expect(onNavigate).not.toHaveBeenCalled();
     expect(onMove).toHaveBeenCalledTimes(1);
     const [key, offset] = onMove.mock.calls[0] as [string, NodeOffset];
-    expect(key).toBe(PAGE.BUILD);
+    expect(key).toBe(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(offset.dx).toBeGreaterThan(0);
   });
 
@@ -120,8 +120,8 @@ describe("NodeCard dragging", () => {
   it("announces the drag so the canvas can keep the cables measured", () => {
     const { card, onDraggingChange } = renderCard();
     dragBy(card, 60, 30);
-    expect(onDraggingChange).toHaveBeenNthCalledWith(1, PAGE.BUILD, true);
-    expect(onDraggingChange).toHaveBeenLastCalledWith(PAGE.BUILD, false);
+    expect(onDraggingChange).toHaveBeenNthCalledWith(1, PAGE.BUILD_EXPERIMENT_ENVIRONMENT, true);
+    expect(onDraggingChange).toHaveBeenLastCalledWith(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, false);
   });
 
   it("commits nothing when the gesture is cancelled mid-drag", () => {
@@ -171,7 +171,7 @@ describe("NodeCard keyboard placement", () => {
     const { card, onMove } = renderCard();
     fireEvent.keyDown(card, { key: "ArrowRight" });
     const [key, offset] = onMove.mock.calls[0] as [string, NodeOffset];
-    expect(key).toBe(PAGE.BUILD);
+    expect(key).toBe(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(offset.dx).toBeGreaterThan(0);
   });
 

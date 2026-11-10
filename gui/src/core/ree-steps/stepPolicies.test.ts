@@ -15,7 +15,7 @@ function buildRee() {
 
 describe("stepPolicies", () => {
   it("keeps step prerequisites separate from catalog metadata", () => {
-    expect(getReeStepRequirements("build")).toEqual([
+    expect(getReeStepRequirements("build_experiment_environment")).toEqual([
       { field: "sourceAvailable", label: "Source available" },
     ]);
   });
@@ -26,21 +26,24 @@ describe("stepPolicies", () => {
       sourceAvailable: true,
     };
 
-    expect(missingReeStepRequirements("build", ree)).toEqual([]);
+    expect(missingReeStepRequirements("build_experiment_environment", ree)).toEqual([]);
   });
 
-  it("requires only runtime for activation", () => {
-    const reeNoRuntime = buildRee();
-    expect(missingReeStepRequirements("activation", reeNoRuntime)).toEqual([
-      { field: "runtime", label: "Runtime" },
+  it("requires only experiment environment for activation", () => {
+    const reeNoExperimentEnvironment = buildRee();
+    expect(missingReeStepRequirements("activation", reeNoExperimentEnvironment)).toEqual([
+      { field: "experimentEnvironmentPath", label: "Experiment environment" },
     ]);
 
-    const reeWithRuntime = { ...buildRee(), runtime: "runtime.tar.gz" };
-    expect(missingReeStepRequirements("activation", reeWithRuntime)).toEqual([]);
+    const reeWithExperimentEnvironment = {
+      ...buildRee(),
+      experimentEnvironmentPath: "runtime.tar.gz",
+    };
+    expect(missingReeStepRequirements("activation", reeWithExperimentEnvironment)).toEqual([]);
   });
 
   it("marks only file-producing steps for workspace refresh", () => {
-    expect(shouldRefreshWorkspaceAfterStep("build")).toBe(true);
+    expect(shouldRefreshWorkspaceAfterStep("build_experiment_environment")).toBe(true);
     expect(shouldRefreshWorkspaceAfterStep("activation")).toBe(false);
   });
 });

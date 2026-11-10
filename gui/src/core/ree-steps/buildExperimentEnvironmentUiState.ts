@@ -1,6 +1,6 @@
 const SKIPPED_SENTINEL = "__skipped__";
 
-export function resolvedRuntimePath(raw: string | null | undefined): string {
+export function resolvedExperimentEnvironmentPath(raw: string | null | undefined): string {
   return raw && raw !== SKIPPED_SENTINEL ? raw : "";
 }
 
@@ -23,18 +23,20 @@ export function buildRunStatusLabel(input: {
 // the build refuses to run without it and fails if nothing lands there. So an
 // undeclared path is the author's missing input, while a declared path with no
 // file yet is simply a build that has not run.
-type RuntimeArtifactStatus = "undeclared" | "declared" | "produced";
+type ExperimentEnvironmentArtifactStatus = "undeclared" | "declared" | "produced";
 
-export function runtimeArtifactStatus(input: {
-  hasRuntime: boolean;
-  runtimePathExists: boolean;
-}): RuntimeArtifactStatus {
-  if (!input.hasRuntime) return "undeclared";
-  if (!input.runtimePathExists) return "declared";
+export function experimentEnvironmentArtifactStatus(input: {
+  hasExperimentEnvironment: boolean;
+  experimentEnvironmentPathExists: boolean;
+}): ExperimentEnvironmentArtifactStatus {
+  if (!input.hasExperimentEnvironment) return "undeclared";
+  if (!input.experimentEnvironmentPathExists) return "declared";
   return "produced";
 }
 
-export function runtimeArtifactStatusLabel(status: RuntimeArtifactStatus): string {
+export function experimentEnvironmentArtifactStatusLabel(
+  status: ExperimentEnvironmentArtifactStatus,
+): string {
   switch (status) {
     case "undeclared":
       return "Not declared";
@@ -45,7 +47,9 @@ export function runtimeArtifactStatusLabel(status: RuntimeArtifactStatus): strin
   }
 }
 
-export function runtimeSummaryStatusLabel(status: RuntimeArtifactStatus): string {
+export function experimentEnvironmentSummaryStatusLabel(
+  status: ExperimentEnvironmentArtifactStatus,
+): string {
   switch (status) {
     case "undeclared":
       return "—";
@@ -60,21 +64,23 @@ export function canRunBuild(input: {
   running: boolean;
   hasMissing: boolean;
   hasScript: boolean;
-  hasRuntimePath: boolean;
+  hasExperimentEnvironmentPath: boolean;
 }): boolean {
-  return !input.running && !input.hasMissing && input.hasScript && input.hasRuntimePath;
+  return (
+    !input.running && !input.hasMissing && input.hasScript && input.hasExperimentEnvironmentPath
+  );
 }
 
 export function buildFooterHint(input: {
   runDone: boolean;
   runFailed: boolean;
   hasScript: boolean;
-  hasRuntimePath: boolean;
+  hasExperimentEnvironmentPath: boolean;
 }): string {
   if (input.runFailed) return "Build failed — check the log, then re-run.";
   if (input.runDone) return "Build complete — continue to SBOM.";
-  if (!input.hasRuntimePath) {
-    return "Declare where the build writes the runtime, then run build.";
+  if (!input.hasExperimentEnvironmentPath) {
+    return "Declare where the build writes the experiment environment, then run build.";
   }
   return "Script ready. Run build when prerequisites are met.";
 }
@@ -86,7 +92,7 @@ export function buildSummaryStatusLabel(input: { runDone: boolean; hasScript: bo
 
 interface BuildReadiness {
   hasScript: boolean;
-  runtimeReady: boolean;
+  experimentEnvironmentReady: boolean;
   runDone: boolean;
   done: number;
   total: number;
@@ -95,16 +101,17 @@ interface BuildReadiness {
 
 export function buildReadiness(input: {
   hasScript: boolean;
-  hasRuntime: boolean;
-  runtimePathExists: boolean;
+  hasExperimentEnvironment: boolean;
+  experimentEnvironmentPathExists: boolean;
   runDone: boolean;
 }): BuildReadiness {
-  const runtimeReady = input.hasRuntime && input.runtimePathExists;
-  const checks = [input.hasScript, runtimeReady, input.runDone];
+  const experimentEnvironmentReady =
+    input.hasExperimentEnvironment && input.experimentEnvironmentPathExists;
+  const checks = [input.hasScript, experimentEnvironmentReady, input.runDone];
   const done = checks.filter(Boolean).length;
   return {
     hasScript: input.hasScript,
-    runtimeReady,
+    experimentEnvironmentReady,
     runDone: input.runDone,
     done,
     total: checks.length,
@@ -118,17 +125,19 @@ function formatByteSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
-export function deriveRuntimeFileSize(
-  runtimeFile: { size?: number; content?: string } | null,
+export function deriveExperimentEnvironmentFileSize(
+  experimentEnvironmentFile: { size?: number; content?: string } | null,
 ): string | null {
-  if (!runtimeFile) return null;
-  if (typeof runtimeFile.size === "number" && runtimeFile.size > 0) {
-    return formatByteSize(runtimeFile.size);
+  if (!experimentEnvironmentFile) return null;
+  if (typeof experimentEnvironmentFile.size === "number" && experimentEnvironmentFile.size > 0) {
+    return formatByteSize(experimentEnvironmentFile.size);
   }
-  const sizeMatch = (runtimeFile.content || "").match(/Size:\s*(~?[\d.]+ ?[KMGT]?B)/i);
+  const sizeMatch = (experimentEnvironmentFile.content || "").match(
+    /Size:\s*(~?[\d.]+ ?[KMGT]?B)/i,
+  );
   if (sizeMatch) {
     return sizeMatch[1];
   }
-  const bytes = new TextEncoder().encode(runtimeFile.content || "").length;
+  const bytes = new TextEncoder().encode(experimentEnvironmentFile.content || "").length;
   return formatByteSize(bytes);
 }

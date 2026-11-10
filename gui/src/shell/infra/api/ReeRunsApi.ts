@@ -1,7 +1,7 @@
 import type { ApiClient } from "./ApiClient";
 import type {
   CreateActivationTestRunPayload,
-  CreateBuildRuntimeRunPayload,
+  CreateBuildExperimentEnvironmentRunPayload,
   CreateCrossCheckSbomRunPayload,
   CreateEvaluateRunPayload,
   CreateExperimentRunPayload,
@@ -24,11 +24,11 @@ interface ListRunLogsQuery {
 export class ReeRunsApi {
   constructor(private readonly client: ApiClient) {}
 
-  async createBuildRuntimeRun(
+  async createBuildExperimentEnvironmentRun(
     reeId: string,
-    payload: CreateBuildRuntimeRunPayload,
+    payload: CreateBuildExperimentEnvironmentRunPayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeBuildRuntime(reeId), {
+    return this.client.request<RunSummary>(endpoints.reeBuildExperimentEnvironment(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });

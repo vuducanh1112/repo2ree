@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "../helpers/fixtures";
 import {
-  buildRuntime,
+  buildExperimentEnvironment,
   generateScript,
-  INSTANT_RUNTIME_PATH,
+  INSTANT_EXPERIMENT_ENVIRONMENT_PATH,
   instantHelloWorld,
   instantRecipe,
   keepReeArchive,
@@ -42,17 +42,25 @@ test.describe("Instant authoring", () => {
     });
 
     await test.step("inference proposes a venv build", async () => {
-      await openPort(page, "Build");
+      await openPort(page, "Build Experiment Environment");
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);
       expect(graph).toContain("root-pip-requirements-v1");
-      await expect(page.getByLabel("Build script")).toContainText(/python -m venv/);
+      await expect(page.getByLabel("Build experiment environment script")).toContainText(
+        /python -m venv/,
+      );
       // The script, not the page: the Environment card names docker build as what an engine is for.
-      await expect(page.getByLabel("Build script")).not.toContainText(/docker build/);
+      await expect(page.getByLabel("Build experiment environment script")).not.toContainText(
+        /docker build/,
+      );
     });
 
-    await test.step("build the runtime", async () => {
-      await buildRuntime(page, instantRecipe("build_script.sh"), INSTANT_RUNTIME_PATH);
+    await test.step("build the experiment environment", async () => {
+      await buildExperimentEnvironment(
+        page,
+        instantRecipe("build_experiment_environment.sh"),
+        INSTANT_EXPERIMENT_ENVIRONMENT_PATH,
+      );
     });
 
     await test.step("test activation", async () => {

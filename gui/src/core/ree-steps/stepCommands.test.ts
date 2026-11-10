@@ -18,11 +18,11 @@ describe("serviceRunCommands", () => {
 
   it("adapts every executable step plan into editor commands", () => {
     const planners = createStepCommandPlanners({
-      ree: { runtime: "runtime.tar" },
+      ree: { experimentEnvironmentPath: "runtime.tar" },
       clock: { nowIso: () => "2026-01-01T00:00:00Z", nowMillis: () => 42 },
     });
     const commands = [
-      ...planners.build({} as never),
+      ...planners.build_experiment_environment({} as never),
       ...planners.hbom({} as never),
       ...planners.sbom({} as never),
       ...planners.activation({} as never),

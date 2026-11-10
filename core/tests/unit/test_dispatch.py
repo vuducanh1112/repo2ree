@@ -20,7 +20,7 @@ from repo2ree_core.operations import dispatch as rc
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
-    BuildRuntimeCommand,
+    BuildExperimentEnvironmentCommand,
     Command,
     CrossCheckSbomCommand,
     DeleteFileCommand,
@@ -31,7 +31,7 @@ from repo2ree_protocol.command import (
     PatchReeDefinitionCommand,
     RemoveSourceCommand,
     ReviewAcquireSourceCommand,
-    ReviewBuildRuntimeCommand,
+    ReviewBuildExperimentEnvironmentCommand,
     RunExperimentCommand,
     SealReeCommand,
     WriteFileCommand,
@@ -44,13 +44,13 @@ from repo2ree_ree.primitives import RunId
 _ROUTES: list[tuple[type[BaseModel], str]] = [
     (AcquireSourceCommand, "handle_acquire_source"),
     (ReviewAcquireSourceCommand, "handle_review_acquire_source"),
-    (ReviewBuildRuntimeCommand, "handle_review_build_runtime"),
+    (ReviewBuildExperimentEnvironmentCommand, "handle_review_build_experiment_environment"),
     (MaterializeWorkspaceCommand, "handle_materialize_workspace"),
     (WriteFileCommand, "handle_write_file"),
     (DeleteFileCommand, "handle_delete_file"),
     (PatchReeDefinitionCommand, "handle_patch_ree_definition"),
     (RemoveSourceCommand, "handle_remove_source"),
-    (BuildRuntimeCommand, "handle_build_runtime"),
+    (BuildExperimentEnvironmentCommand, "handle_build_experiment_environment"),
     (EvaluateDependencyScoreCommand, "handle_evaluate_dependency_score"),
     (RunExperimentCommand, "handle_run_experiment"),
     (GenerateHbomCommand, "handle_generate_hbom"),
@@ -139,7 +139,7 @@ def _run_id_seen_by_handler(monkeypatch: pytest.MonkeyPatch, run_id: str | None)
     for name in _ALL_HANDLERS:
         monkeypatch.setattr(rc, name, _recorder)
 
-    cmd = BuildRuntimeCommand.model_construct(operation="build_runtime", args=object())
+    cmd = BuildExperimentEnvironmentCommand.model_construct(operation="build_experiment_environment", args=object())
     rc.run_command(cast(Command, cmd), log=_null_log(), run_id=run_id)
     return seen[0]
 

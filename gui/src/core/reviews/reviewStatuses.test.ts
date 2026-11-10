@@ -33,7 +33,7 @@ describe("reviewStepStatuses", () => {
     const statuses = reviewStepStatuses(undefined);
 
     expect(statuses.source).toBe("ready");
-    expect(statuses.build).toBe("unavailable");
+    expect(statuses.build_experiment_environment).toBe("unavailable");
     expect(runnableReviewSteps(statuses)).toEqual(new Set(["source"]));
   });
 
@@ -56,24 +56,26 @@ describe("reviewStepStatuses", () => {
       }),
     );
 
-    expect(statuses.build).toBe("ready");
-    expect(runnableReviewSteps(statuses)).toEqual(new Set(["source", "build"]));
+    expect(statuses.build_experiment_environment).toBe("ready");
+    expect(runnableReviewSteps(statuses)).toEqual(
+      new Set(["source", "build_experiment_environment"]),
+    );
   });
 
   it("keeps build locked when source failed — there is nothing to build against", () => {
     const statuses = reviewStepStatuses(attempt({ steps: [step("source", "failed")] }));
 
     expect(statuses.source).toBe("failed");
-    expect(statuses.build).toBe("unavailable");
+    expect(statuses.build_experiment_environment).toBe("unavailable");
     expect(runnableReviewSteps(statuses)).toEqual(new Set(["source"]));
   });
 
   it("reports an equivalent rebuild as the build verdict", () => {
     const statuses = reviewStepStatuses(
       attempt({
-        steps: [step("source"), step("build")],
+        steps: [step("source"), step("build_experiment_environment")],
         sourceComparison: { basis: "independent", verdict: "identical" },
-        buildComparison: {
+        experimentEnvironmentComparison: {
           basis: "independent",
           verdict: "equivalent",
           matched: 42,
@@ -88,7 +90,7 @@ describe("reviewStepStatuses", () => {
       }),
     );
 
-    expect(statuses.build).toBe("equivalent");
+    expect(statuses.build_experiment_environment).toBe("equivalent");
   });
 
   it("nothing is runnable while a step is in flight", () => {
@@ -99,18 +101,18 @@ describe("reviewStepStatuses", () => {
     expect(runnableReviewSteps(running)).toEqual(new Set());
 
     const queued = reviewStepStatuses(attempt({ steps: [step("source")] }), {
-      pendingStep: "build",
+      pendingStep: "build_experiment_environment",
     });
-    expect(queued.build).toBe("queued");
+    expect(queued.build_experiment_environment).toBe("queued");
     expect(runnableReviewSteps(queued)).toEqual(new Set());
   });
 
   it("leaves the steps with no reviewer path yet unavailable", () => {
     const statuses = reviewStepStatuses(
       attempt({
-        steps: [step("source"), step("build")],
+        steps: [step("source"), step("build_experiment_environment")],
         sourceComparison: { basis: "independent", verdict: "identical" },
-        buildComparison: {
+        experimentEnvironmentComparison: {
           basis: "independent",
           verdict: "identical",
           matched: 1,
@@ -125,19 +127,21 @@ describe("reviewStepStatuses", () => {
       }),
     );
 
-    // Experiments depend on activation, not on the build: a certified runtime
+    // Experiments depend on activation, not on the build_experiment_environment: a certified runtime
     // that has not been shown to come up is nothing to run results in yet.
     expect(statuses.activation).toBe("ready");
     expect(statuses.experiments).toBe("unavailable");
-    expect(runnableReviewSteps(statuses)).toEqual(new Set(["source", "build", "activation"]));
+    expect(runnableReviewSteps(statuses)).toEqual(
+      new Set(["source", "build_experiment_environment", "activation"]),
+    );
   });
 });
 
 describe("activation", () => {
   const settledBuild = attempt({
-    steps: [step("source"), step("build"), step("activation")],
+    steps: [step("source"), step("build_experiment_environment"), step("activation")],
     sourceComparison: { basis: "independent", verdict: "identical" },
-    buildComparison: {
+    experimentEnvironmentComparison: {
       basis: "independent",
       verdict: "equivalent",
       matched: 1,
@@ -160,7 +164,7 @@ describe("activation", () => {
     expect(statuses.activation).toBe("succeeded");
   });
 
-  it("distinguishes a runtime that did not come up from a step that broke", () => {
+  it("distinguishes an experiment environment that did not come up from a step that broke", () => {
     // The step completed — the reviewer's machine did its job and found
     // something. Rendering that as "failed" would report the review as broken.
     const statuses = reviewStepStatuses({
@@ -172,7 +176,7 @@ describe("activation", () => {
     expect(statuses.activation).not.toBe("failed");
   });
 
-  it("does not offer experiments inside a runtime that would not come up", () => {
+  it("does not offer experiments inside an experiment environment that would not come up", () => {
     const statuses = reviewStepStatuses({
       ...settledBuild,
       activationOutcome: { basis: "independent", verdict: "failed", runExitCode: 7 },
@@ -187,9 +191,9 @@ describe("activation", () => {
 
 describe("experiments", () => {
   const inhabitable = attempt({
-    steps: [step("source"), step("build"), step("activation")],
+    steps: [step("source"), step("build_experiment_environment"), step("activation")],
     sourceComparison: { basis: "independent", verdict: "identical" },
-    buildComparison: {
+    experimentEnvironmentComparison: {
       basis: "independent",
       verdict: "equivalent",
       matched: 1,
@@ -218,7 +222,7 @@ describe("experiments", () => {
     };
   }
 
-  it("offers experiments once the runtime is known to come up", () => {
+  it("offers experiments once the experiment environment is known to come up", () => {
     const statuses = reviewStepStatuses(inhabitable);
 
     expect(statuses.experiments).toBe("ready");
@@ -270,7 +274,7 @@ describe("experiments", () => {
     expect(experimentReviewStatus(settled, "b", statuses)).toBe("ready");
   });
 
-  it("locks every experiment while the runtime is unproven", () => {
+  it("locks every experiment while the experiment environment is unproven", () => {
     const statuses = reviewStepStatuses(attempt({ steps: [step("source")] }));
 
     expect(experimentReviewStatus(undefined, "a", statuses)).toBe("unavailable");
@@ -317,12 +321,15 @@ describe("evidence basis", () => {
     );
 
     expect(statuses.source).toBe("identical");
-    expect(statuses.build).toBe("ready");
+    expect(statuses.build_experiment_environment).toBe("ready");
   });
 });
 
 describe("selectReviewAttempt", () => {
-  const previous = attempt({ reviewId: "review-old", steps: [step("source"), step("build")] });
+  const previous = attempt({
+    reviewId: "review-old",
+    steps: [step("source"), step("build_experiment_environment")],
+  });
   const opened = attempt({ reviewId: "review-new", steps: [step("source")] });
 
   it("takes the newest listed attempt before this console has opened one", () => {

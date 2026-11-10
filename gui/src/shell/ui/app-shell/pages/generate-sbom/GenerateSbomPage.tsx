@@ -1,8 +1,8 @@
 import { PAGE } from "@core/app-shell/pages";
-import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
+import { resolvedExperimentEnvironmentPath } from "@core/ree-steps/buildExperimentEnvironmentUiState";
 import {
   findSbomArtifact,
-  isRuntimeTarballPath,
+  isExperimentEnvironmentTarballPath,
   resolvedSbomPath,
   summarizeSbom,
 } from "@core/ree-steps/sbomUiState";
@@ -20,7 +20,7 @@ import { RunActionButton } from "../../components/RunActionButton";
 import { stepIcon } from "../../stepIcons";
 import type { StepPageProps } from "../sharedStepUi";
 import styles from "./GenerateSbomPage.module.css";
-import { CrossCheckCard, RuntimeScanTargetCard, SbomOutputCard } from "./sections";
+import { CrossCheckCard, ExperimentEnvironmentScanTargetCard, SbomOutputCard } from "./sections";
 
 const SBOM_PAGE_COLOR = stageTone(PAGE.SBOM);
 
@@ -42,9 +42,14 @@ export function PageGenerateSbom({
 }: StepPageProps) {
   const files = workspaceFiles || [];
 
-  const runtimePath = resolvedRuntimePath(ree.spec.runtime);
-  const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
-  const runtimeIsTarball = !!runtimePath && isRuntimeTarballPath(runtimePath);
+  const experimentEnvironmentPath = resolvedExperimentEnvironmentPath(
+    ree.spec.experimentEnvironmentPath,
+  );
+  const experimentEnvironmentPathExists = experimentEnvironmentPath
+    ? workspaceFileExists(files, experimentEnvironmentPath)
+    : false;
+  const experimentEnvironmentIsTarball =
+    !!experimentEnvironmentPath && isExperimentEnvironmentTarballPath(experimentEnvironmentPath);
 
   // The runtime is scanned where the build left it, in the workspace; the SBOM
   // that comes back is REE evidence and lives in artifacts/, so it is found
@@ -55,7 +60,7 @@ export function PageGenerateSbom({
   const sbomReady = !!sbomPath && !!sbomNode;
 
   const IC = stepIcon(step.iconKey);
-  const disabled = running || missing.length > 0 || !runtimePathExists;
+  const disabled = running || missing.length > 0 || !experimentEnvironmentPathExists;
 
   return (
     <GlassPageShell variant="docked">
@@ -86,10 +91,10 @@ export function PageGenerateSbom({
       <div className={styles.stack}>
         <MissingInputsBanner missing={missing} onGoFields={onGoFields} />
 
-        <RuntimeScanTargetCard
-          runtimePath={runtimePath}
-          runtimePathExists={runtimePathExists}
-          runtimeIsTarball={runtimeIsTarball}
+        <ExperimentEnvironmentScanTargetCard
+          experimentEnvironmentPath={experimentEnvironmentPath}
+          experimentEnvironmentPathExists={experimentEnvironmentPathExists}
+          experimentEnvironmentIsTarball={experimentEnvironmentIsTarball}
           color={SBOM_PAGE_COLOR}
         />
 

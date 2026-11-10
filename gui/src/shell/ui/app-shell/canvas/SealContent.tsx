@@ -45,12 +45,16 @@ export function SealContent({
   onSeal,
 }: SealContentProps) {
   const sourceAvailable = !!ree.source.sourceAvailable;
-  const runtimeAvailable = !!ree.spec.runtime?.trim() && ree.spec.runtime !== "__skipped__";
+  const experimentEnvironmentAvailable =
+    !!ree.spec.experimentEnvironmentPath?.trim() &&
+    ree.spec.experimentEnvironmentPath !== "__skipped__";
   // Results are available to seal once any experiment declares an output — those
   // are what a successful run captures into the produced-results store.
   const resultsAvailable = (ree.spec.experiments ?? []).some((e) => e.outputPaths.length > 0);
   const [includeSource, setIncludeSource] = React.useState(sourceAvailable);
-  const [includeRuntime, setIncludeRuntime] = React.useState(runtimeAvailable);
+  const [includeExperimentEnvironment, setIncludeExperimentEnvironment] = React.useState(
+    experimentEnvironmentAvailable,
+  );
   const [includeResults, setIncludeResults] = React.useState(resultsAvailable);
 
   // Default the seal-time choices to whatever is available; the user can opt out
@@ -58,9 +62,9 @@ export function SealContent({
   // defaults in step with what the workspace actually has.
   React.useEffect(() => {
     setIncludeSource(sourceAvailable);
-    setIncludeRuntime(runtimeAvailable);
+    setIncludeExperimentEnvironment(experimentEnvironmentAvailable);
     setIncludeResults(resultsAvailable);
-  }, [sourceAvailable, runtimeAvailable, resultsAvailable]);
+  }, [sourceAvailable, experimentEnvironmentAvailable, resultsAvailable]);
 
   const sealed = locked && !!ree.artifact.sealedAt;
   const stepItems = buildSealStepItems(ree, badges);
@@ -98,7 +102,8 @@ export function SealContent({
               onRun={() =>
                 onSeal({
                   includeSource: sourceAvailable && includeSource,
-                  includeRuntime: runtimeAvailable && includeRuntime,
+                  includeExperimentEnvironment:
+                    experimentEnvironmentAvailable && includeExperimentEnvironment,
                   includeResults: resultsAvailable && includeResults,
                 })
               }
@@ -144,13 +149,13 @@ export function SealContent({
               />
               <SealBundleContents
                 sourceAvailable={sourceAvailable}
-                runtimeAvailable={runtimeAvailable}
+                experimentEnvironmentAvailable={experimentEnvironmentAvailable}
                 resultsAvailable={resultsAvailable}
                 includeSource={includeSource}
-                includeRuntime={includeRuntime}
+                includeExperimentEnvironment={includeExperimentEnvironment}
                 includeResults={includeResults}
                 onToggleSource={() => setIncludeSource((v) => !v)}
-                onToggleRuntime={() => setIncludeRuntime((v) => !v)}
+                onToggleExperimentEnvironment={() => setIncludeExperimentEnvironment((v) => !v)}
                 onToggleResults={() => setIncludeResults((v) => !v)}
               />
             </GlassSubPanel>

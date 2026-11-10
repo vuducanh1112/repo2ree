@@ -10,8 +10,20 @@ import { PAGE } from "./pages";
 
 const steps: AuthoringStep[] = [
   { key: "source", order: 1, label: "Source", requires: [], actions: [] },
-  { key: "build", order: 2, label: "Build", requires: ["source"], actions: [] },
-  { key: "crosscheck", order: 3, label: "Cross-check", requires: ["build"], actions: [] },
+  {
+    key: "build_experiment_environment",
+    order: 2,
+    label: "Build",
+    requires: ["source"],
+    actions: [],
+  },
+  {
+    key: "crosscheck",
+    order: 3,
+    label: "Cross-check",
+    requires: ["build_experiment_environment"],
+    actions: [],
+  },
 ];
 
 describe("authoring DAG", () => {
@@ -25,7 +37,7 @@ describe("authoring DAG", () => {
     };
     expect(authoringStepStatuses(steps, withoutSource, {})).toEqual({
       source: "ready",
-      build: "blocked",
+      [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "blocked",
       crosscheck: "blocked",
     });
 
@@ -33,7 +45,7 @@ describe("authoring DAG", () => {
     // same statuses a mid-session one does.
     expect(authoringStepStatuses(steps, exampleEditorRee, {})).toEqual({
       source: "complete",
-      build: "complete",
+      [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "complete",
       crosscheck: "ready",
     });
   });
@@ -42,7 +54,13 @@ describe("authoring DAG", () => {
     // Two branches open at once: build (2) and a parallel step ordered after it.
     const branched: AuthoringStep[] = [
       { key: "crosscheck", order: 3, label: "Cross-check", requires: ["source"], actions: [] },
-      { key: "build", order: 2, label: "Build", requires: ["source"], actions: [] },
+      {
+        key: "build_experiment_environment",
+        order: 2,
+        label: "Build",
+        requires: ["source"],
+        actions: [],
+      },
       { key: "source", order: 1, label: "Source", requires: [], actions: [] },
     ];
     const statuses = authoringStepStatuses(
@@ -50,12 +68,19 @@ describe("authoring DAG", () => {
       { ...exampleEditorRee, audit: { source: "current" as const } },
       {},
     );
-    expect(statuses).toMatchObject({ build: "ready", crosscheck: "ready" });
-    expect(nextAuthoringStep(branched, statuses)?.key).toBe("build");
+    expect(statuses).toMatchObject({
+      [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "ready",
+      crosscheck: "ready",
+    });
+    expect(nextAuthoringStep(branched, statuses)?.key).toBe("build_experiment_environment");
 
     // Nothing ready — everything is either done or waiting on a requirement.
     expect(
-      nextAuthoringStep(steps, { source: "complete", build: "blocked", crosscheck: "blocked" }),
+      nextAuthoringStep(steps, {
+        source: "complete",
+        [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "blocked",
+        crosscheck: "blocked",
+      }),
     ).toBeUndefined();
   });
 

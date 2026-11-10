@@ -4,12 +4,12 @@ import { Ic } from "../../shared/components/Icon";
 import { Notice } from "../../shared/components/Notice";
 import { Surface } from "../../shared/components/Surface";
 import { cssVars } from "../../theme/styleVars";
-import styles from "./RuntimeTargetCard.module.css";
+import styles from "./ExperimentEnvironmentTargetCard.module.css";
 
-interface RuntimeTargetCardProps {
+interface ExperimentEnvironmentTargetCardProps {
   /** Workspace-relative path of the declared runtime, or "" if none yet. */
-  runtimePath: string;
-  runtimePathExists: boolean;
+  experimentEnvironmentPath: string;
+  experimentEnvironmentPathExists: boolean;
   icon: ReactNode;
   /** The page's tone, as a `var(--…)` reference. */
   tint: string;
@@ -18,19 +18,19 @@ interface RuntimeTargetCardProps {
 }
 
 /**
- * "Here is the runtime this step acts on" — the readout SBOM generation and
+ * "Here is the experiment environment this step acts on" — the readout SBOM generation and
  * activation testing both open with. It was written twice, once per page, and
  * the two copies had already drifted apart in their icon sizing and their
  * missing-file wording.
  */
-export function RuntimeTargetCard({
-  runtimePath,
-  runtimePathExists,
+export function ExperimentEnvironmentTargetCard({
+  experimentEnvironmentPath,
+  experimentEnvironmentPathExists,
   icon,
   tint,
   children,
-}: RuntimeTargetCardProps) {
-  const ready = !!runtimePath && runtimePathExists;
+}: ExperimentEnvironmentTargetCardProps) {
+  const ready = !!experimentEnvironmentPath && experimentEnvironmentPathExists;
 
   return (
     <Surface spacing="flush">
@@ -40,15 +40,20 @@ export function RuntimeTargetCard({
             {icon}
           </div>
           <div className={styles.body}>
-            <div className={styles.kind}>ree.spec.runtime</div>
-            <div className={styles.path} data-declared={runtimePath ? true : undefined}>
-              {runtimePath || "No runtime selected yet"}
+            <div className={styles.kind}>ree.spec.experimentEnvironmentPath</div>
+            <div
+              className={styles.path}
+              data-declared={experimentEnvironmentPath ? true : undefined}
+            >
+              {experimentEnvironmentPath || "No experiment environment selected yet"}
             </div>
           </div>
-          <Badge tone={ready ? "success" : "warning"}>{ready ? "Ready" : "Needs runtime"}</Badge>
+          <Badge tone={ready ? "success" : "warning"}>
+            {ready ? "Ready" : "Needs experiment environment"}
+          </Badge>
         </div>
 
-        {runtimePath && !runtimePathExists && (
+        {experimentEnvironmentPath && !experimentEnvironmentPathExists && (
           <Notice tone="danger" icon={Ic.info(13)}>
             Selected runtime is not present in the current workspace files.
           </Notice>

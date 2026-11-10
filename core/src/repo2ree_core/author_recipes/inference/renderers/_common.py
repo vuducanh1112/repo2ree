@@ -1,14 +1,14 @@
 """Shared shell-rendering helpers.
 
-Runtime constants (the image reference, the runtime-artifact path) are derived
+Experiment environment constants (the image reference, the runtime-artifact path) are derived
 the same way for every build strategy so downstream scripts stay consistent and
 the bytes stay deterministic — no timestamps, no per-call entropy.
 
-A generated build writes to the runtime path the REE declares. Build refuses to
+A generated build writes to the experiment environment path the REE declares. Build refuses to
 start without one and fails when nothing lands there, so a recipe that wrote
 anywhere else would be a build that cannot pass. The per-strategy
 ``.repo2ree/`` defaults below apply only before a declaration exists — a freshly
-seeded script on an REE whose runtime is not yet declared.
+seeded script on an REE whose experiment environment is not yet declared.
 """
 
 from __future__ import annotations
@@ -19,11 +19,11 @@ from pathlib import PurePosixPath
 from repo2ree_core.author_recipes.inference.naming import ree_name_slug
 
 # Per-strategy fallback artifact names, used only when the REE declares no
-# runtime path. Both live beneath the reserved control directory under the
+# experiment environment path. Both live beneath the reserved control directory under the
 # logical project root. Docker packs an image tar; pip packs the virtual
 # environment as a gzipped tarball.
-DOCKER_RUNTIME_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime.tar"
-VENV_RUNTIME_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime-venv.tar.gz"
+DOCKER_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime.tar"
+VENV_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime-venv.tar.gz"
 
 
 def sh_quote(value: str) -> str:
@@ -47,21 +47,21 @@ def sh_comment(value: str) -> str:
     return " ".join(value.splitlines()) if value else value
 
 
-def runtime_artifact_path(project_root: str, suffix: str) -> str:
+def experiment_environment_artifact_path(project_root: str, suffix: str) -> str:
     """The runtime-artifact path beneath the logical project root."""
     if project_root == ".":
         return suffix
     return str(PurePosixPath(project_root) / suffix)
 
 
-def build_runtime_artifact_path(
-    declared_runtime_path: str | None,
+def build_experiment_environment_artifact_path(
+    declared_experiment_environment_path: str | None,
     project_root: str,
     default_suffix: str,
 ) -> str:
-    """Where a generated build script writes its runtime.
+    """Where a generated build script writes its experiment environment.
 
-    The declaration wins: ``BuildRuntimeDefinition.runtime_path`` is where the
+    The declaration wins: ``ExperimentEnvironmentDefinition.experiment_environment_path`` is where the
     build is expected to leave its artifact, and the build fails its
     post-condition when nothing lands there. ``default_suffix`` is the
     per-strategy fallback for an REE that has not declared one yet.
@@ -70,11 +70,11 @@ def build_runtime_artifact_path(
     and forces every caller to supply both inputs — the single reason the
     renderers and ``build_regeneration`` cannot drift on this path.
     """
-    declared = (declared_runtime_path or "").strip()
-    return declared or runtime_artifact_path(project_root, default_suffix)
+    declared = (declared_experiment_environment_path or "").strip()
+    return declared or experiment_environment_artifact_path(project_root, default_suffix)
 
 
-def runtime_image_ref(ree_name: str) -> str:
+def experiment_environment_image_ref(ree_name: str) -> str:
     """The Docker image reference a build tags and downstream scripts load.
 
     ``ree-runtime:<ree-name-slug>`` — readable and stable for a given REE. The

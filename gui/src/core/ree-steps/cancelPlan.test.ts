@@ -15,12 +15,14 @@ describe("cancelPlan", () => {
   });
 
   it("builds a user-facing failure message from an error", () => {
-    expect(cancelFailureMessage("build", new Error("network down"))).toBe(
-      "Failed to cancel build: network down",
+    expect(cancelFailureMessage("build_experiment_environment", new Error("network down"))).toBe(
+      "Failed to cancel build_experiment_environment: network down",
     );
   });
 
   it("falls back to a generic failure message for non-errors", () => {
-    expect(cancelFailureMessage("build", "boom")).toBe("Failed to cancel build");
+    expect(cancelFailureMessage("build_experiment_environment", "boom")).toBe(
+      "Failed to cancel build_experiment_environment",
+    );
   });
 });

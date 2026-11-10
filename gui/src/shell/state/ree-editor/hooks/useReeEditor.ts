@@ -76,7 +76,7 @@ export function useReeEditor({ reeIntent, stepRuns, dispatch }: UseReeEditorArgs
       createReeEditorViewModel({
         reeSpec: reeIntent.reeSpec,
         workspaceSourceState,
-        artifactStatus: remoteRee?.artifactStatus ?? { runtimeIncluded: false },
+        artifactStatus: remoteRee?.artifactStatus ?? { experimentEnvironmentIncluded: false },
         evaluationState: remoteRee?.evaluationState ?? emptyEvaluationState(),
         stepEvidence: remoteRee?.stepEvidence ?? {},
         audit: remoteRee?.audit,
@@ -240,7 +240,7 @@ function createWorkspaceRemoteState(args: {
     workspaceFiles: args.workspaceFiles,
     reeArtifactFiles: args.reeArtifactFiles,
     workspaceSourceState: args.workspaceSourceState,
-    artifactStatus: args.remoteRee?.artifactStatus ?? { runtimeIncluded: false },
+    artifactStatus: args.remoteRee?.artifactStatus ?? { experimentEnvironmentIncluded: false },
     sourceRepo: args.sourceRepo,
   };
 }

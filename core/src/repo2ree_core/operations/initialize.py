@@ -12,14 +12,14 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import (
-    BuildRuntimeDefinition,
     CapturePolicy,
+    ExperimentEnvironmentDefinition,
     Ree,
     ReeDefinition,
     ReeSubject,
     TestActivationDefinition,
 )
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
 
@@ -44,7 +44,7 @@ def initialize_ree(
         if not existing:
             store.ensure_dirs()
             store.ensure_reserved_overlay_scripts(workbench_environment)
-            build = store.overlay.absolute(RESERVED_BUILD_SCRIPT)
+            build = store.overlay.absolute(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
             activation = store.overlay.absolute(RESERVED_ACTIVATION_SCRIPT)
             store.write_ree(
                 Ree(
@@ -52,9 +52,9 @@ def initialize_ree(
                         capture=CapturePolicy(),
                         definition=ReeDefinition(
                             name=name,
-                            build_runtime=BuildRuntimeDefinition(
-                                build_runtime_script_digest=digest_file(build),
-                                build_runtime_script_size=build.stat().st_size,
+                            experiment_environment=ExperimentEnvironmentDefinition(
+                                build_experiment_environment_script_digest=digest_file(build),
+                                build_experiment_environment_script_size=build.stat().st_size,
                             ),
                             test_activation=TestActivationDefinition(
                                 run_script_digest=digest_file(activation),

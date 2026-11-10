@@ -78,7 +78,7 @@ class _Subject:
 # comparison produces this one: there is nothing left to compare it against,
 # which is exactly the point. Phrased for the subject rather than the step,
 # because the declaration that went away is often another step's — dropping the
-# runtime recipe orphans the SBOM scanned off it, and the SBOM step never had a
+# experiment environment recipe orphans the SBOM scanned off it, and the SBOM step never had a
 # declaration of its own to lose.
 _ORPHANED_RECEIPT_REASON = "the REE no longer declares what this evidence is about"
 
@@ -88,9 +88,9 @@ def _evidence_standing(*, applicable: bool, has_receipt: bool, complaints: bool)
 
     ``applicable`` is whether the REE declares anything for this step's evidence
     to be *about*, which is not always the step's own declaration. Source,
-    hardware, runtime and activation each answer for themselves. Evaluation,
+    hardware, experiment environment and activation each answer for themselves. Evaluation,
     SBOM and cross-check declare nothing of their own and answer for what they
-    describe: a source to evaluate, a runtime to scan, both to reconcile. So a
+    describe: a source to evaluate, an experiment environment to scan, both to reconcile. So a
     step can stop being applicable without its own definition changing at all.
 
     ``complaints`` is whether any comparison the step made — against that
@@ -198,26 +198,26 @@ def _audit_hardware_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_runtime_step(subject: _Subject) -> StepAudit:
-    build, receipt = subject.definition.build_runtime, subject.receipts.build
+def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
+    build, receipt = subject.definition.experiment_environment, subject.receipts.experiment_environment
     reasons: list[str] = []
     if receipt:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
             reasons.append("source snapshot changed")
         if build is None:
-            reasons.append("runtime build definition was removed")
+            reasons.append("experiment environment build definition was removed")
         else:
-            if receipt.build_runtime_script_digest != build.build_runtime_script_digest:
-                reasons.append("runtime build script changed")
-            if receipt.runtime_path != build.runtime_path:
-                reasons.append("runtime path changed")
+            if receipt.build_experiment_environment_script_digest != build.build_experiment_environment_script_digest:
+                reasons.append("build experiment environment script changed")
+            if receipt.artifact_path != build.artifact_path:
+                reasons.append("experiment environment artifact path changed")
         if _workbench_environment_changed(subject, receipt.workbench_environment):
             reasons.append("workbench environment changed")
     return _step(
         receipt.run_id if receipt else None,
-        reasons or (() if receipt else ("runtime has not been built",)),
-        applicable=_runtime_is_declared(subject),
-        payload=subject.payload(receipt.produced_runtime_digest if receipt else None),
+        reasons or (() if receipt else ("experiment environment has not been built",)),
+        applicable=_experiment_environment_is_declared(subject),
+        payload=subject.payload(receipt.produced_artifact_digest if receipt else None),
     )
 
 
@@ -226,32 +226,32 @@ def _workbench_environment_changed(subject: _Subject, observed: WorkbenchEnviron
     return (observed.declared if observed else None) != subject.definition.workbench_environment
 
 
-def _runtime_is_declared(subject: _Subject) -> bool:
-    """Whether this REE says a runtime should exist and how to produce one.
+def _experiment_environment_is_declared(subject: _Subject) -> bool:
+    """Whether this REE says an experiment environment should exist and how to produce one.
 
     One question, asked in one place, because more than one step turns on it —
     the build itself and the SBOM scanned off what it produced. It used to be
-    spelled ``runtime is not None and build_runtime is not None`` at each site,
+    spelled ``experiment environment is not None and build_experiment_environment is not None`` at each site,
     a conjunction no other step needed, because the two halves of one recipe
     were two optional fields. They are one now, so the remaining check is what
     it always meant: a recipe that has been told where to leave its artifact.
     """
-    build = subject.definition.build_runtime
-    return build is not None and build.runtime_path is not None
+    build = subject.definition.experiment_environment
+    return build is not None and build.artifact_path is not None
 
 
 def _audit_sbom_step(subject: _Subject) -> StepAudit:
-    receipt, build = subject.receipts.sbom, subject.receipts.build
+    receipt, build = subject.receipts.sbom, subject.receipts.experiment_environment
     reasons: list[str] = []
-    if receipt and build and receipt.runtime_digest != build.produced_runtime_digest:
-        reasons.append("runtime changed")
+    if receipt and build and receipt.experiment_environment_digest != build.produced_artifact_digest:
+        reasons.append("experiment environment changed")
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("SBOM has not been generated",)),
-        # An SBOM describes a built runtime, so it is applicable on exactly the
-        # terms the runtime step is: a declared runtime with no recipe to build
+        # An SBOM describes a built experiment environment, so it is applicable on exactly the
+        # terms the experiment environment step is: a declared experiment environment with no recipe to build
         # it is nothing for a scanner to read.
-        applicable=_runtime_is_declared(subject),
+        applicable=_experiment_environment_is_declared(subject),
         payload=subject.payload(receipt.sbom_digest if receipt else None),
     )
 
@@ -259,9 +259,9 @@ def _audit_sbom_step(subject: _Subject) -> StepAudit:
 def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
     """The cross-check rests on two documents, and both can move under it.
 
-    Reconciling a runtime SBOM against the source's declared dependencies is a
+    Reconciling an experiment environment SBOM against the source's declared dependencies is a
     statement about one *pair* of documents. Regenerate either — a rebuilt
-    runtime rescanned, a re-run evaluation — and the counts this receipt
+    experiment environment rescanned, a re-run evaluation — and the counts this receipt
     carries describe a comparison nobody made.
     """
     receipt = subject.receipts.sbom_cross_check
@@ -276,8 +276,8 @@ def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("SBOM has not been cross-checked",)),
         # It needs both sides: a declared-dependency report (which needs a
-        # source) and a runtime SBOM to reconcile against.
-        applicable=subject.definition.source is not None and _runtime_is_declared(subject),
+        # source) and an experiment environment SBOM to reconcile against.
+        applicable=subject.definition.source is not None and _experiment_environment_is_declared(subject),
     )
 
 
@@ -296,8 +296,12 @@ def _audit_test_activation_step(subject: _Subject) -> StepAudit:
                 reasons.append("activation verification script changed")
         if _workbench_environment_changed(subject, receipt.workbench_environment):
             reasons.append("workbench environment changed")
-        if subject.receipts.build and receipt.runtime_digest != subject.receipts.build.produced_runtime_digest:
-            reasons.append("runtime changed")
+        if (
+            subject.receipts.experiment_environment
+            and receipt.experiment_environment_digest
+            != subject.receipts.experiment_environment.produced_artifact_digest
+        ):
+            reasons.append("experiment environment changed")
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("activation has not been tested",)),
@@ -319,8 +323,12 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
                 reasons.append("experiment verification script changed")
             if _workbench_environment_changed(subject, receipt.workbench_environment):
                 reasons.append("workbench environment changed")
-            if subject.receipts.build and receipt.runtime_digest != subject.receipts.build.produced_runtime_digest:
-                reasons.append("runtime changed")
+            if (
+                subject.receipts.experiment_environment
+                and receipt.experiment_environment_digest
+                != subject.receipts.experiment_environment.produced_artifact_digest
+            ):
+                reasons.append("experiment environment changed")
         audits.append(
             ExperimentAudit(
                 name=experiment.name,
@@ -345,7 +353,7 @@ def audit(ree: Ree) -> ReeAudit:
     source_audit = _audit_source_step(subject)
     evaluation_audit = _audit_evaluation_step(subject)
     hardware_audit = _audit_hardware_step(subject)
-    runtime_audit = _audit_runtime_step(subject)
+    experiment_environment_audit = _audit_experiment_environment_step(subject)
     sbom_audit = _audit_sbom_step(subject)
     sbom_cross_check_audit = _audit_sbom_cross_check_step(subject)
     test_activation_audit = _audit_test_activation_step(subject)
@@ -355,7 +363,7 @@ def audit(ree: Ree) -> ReeAudit:
         source=source_audit,
         evaluation=evaluation_audit,
         hardware=hardware_audit,
-        runtime=runtime_audit,
+        experiment_environment=experiment_environment_audit,
         sbom=sbom_audit,
         sbom_cross_check=sbom_cross_check_audit,
         test_activation=test_activation_audit,

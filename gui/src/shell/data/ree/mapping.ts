@@ -22,7 +22,7 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       origin_url: source?.origin_url,
       source_type: source?.source_type,
       revision: sourceReceipt?.resolved_revision ?? source?.requested_ref,
-      runtime: definition?.build_runtime?.runtime_path,
+      experiment_environment_path: definition?.experiment_environment?.artifact_path,
       workbench_environment: definition?.workbench_environment,
       activation: activation
         ? {
@@ -47,7 +47,8 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       // evidence: `current` means the REE still declares the source it acquired.
       source_available: ree.audit.source.evidence === "current",
       source_included: ree.status === "sealed" && ree.audit.source.payload === "present",
-      runtime_included: ree.status === "sealed" && ree.audit.runtime.payload === "present",
+      experiment_environment_included:
+        ree.status === "sealed" && ree.audit.experiment_environment.payload === "present",
       sealed_at: ree.ree.seal?.sealed_at,
       seal_hash: ree.ree.seal?.ree_digest,
       dependency_level: evaluation?.dependency_level ?? 0,

@@ -161,7 +161,7 @@ class ReeDirectory:
     def author_artifact(self, declared: str | None) -> Path | None:
         """Resolve an author-declared artifact path to the file it names.
 
-        For the runtime, which an author's own build script writes: the declared
+        For the experiment environment, which an author's own build script writes: the declared
         path is workspace-relative while authoring, but bundling lifts the file
         into the bundle's ``artifacts/`` and rewrites the manifest to match — so
         an REE loaded from a bundle declares ``artifacts/<name>``, which is
@@ -199,11 +199,11 @@ class ReeDirectory:
         self.layout.runs.mkdir(parents=True, exist_ok=True)
 
     def history_artifacts(self) -> tuple[Path, ...]:
-        """Keep declared runtime artifacts even with the root-relative fallback."""
+        """Keep declared experiment environment artifacts even with the root-relative fallback."""
         if not self.manifest_exists():
             return ()
-        build = self.read_ree().subject.definition.build_runtime
-        artifact = self.author_artifact(str(build.runtime_path)) if build and build.runtime_path else None
+        build = self.read_ree().subject.definition.experiment_environment
+        artifact = self.author_artifact(str(build.artifact_path)) if build and build.artifact_path else None
         return (artifact,) if artifact is not None else ()
 
     def ensure_reserved_overlay_scripts(self, workbench_environment: WorkbenchEnvironmentKind = "image") -> None:

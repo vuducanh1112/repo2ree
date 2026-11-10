@@ -59,7 +59,7 @@ class ReeDefinitionPatchPayload(StrictRequestModel):
         default_factory=dict,
         description="Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, "
         "and sizes are derived from the files, so a patch names only what the author decides, such as "
-        '`{"build_runtime": {"runtime_path": "runtime.tar"}}` or, once its run script is written, '
+        '`{"experiment_environment": {"artifact_path": "runtime.tar"}}` or, once its run script is written, '
         '`{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.',
     )
     expected_version: str | None = None
@@ -109,5 +109,7 @@ class WorkspaceFileContentPayload(StrictRequestModel):
 
 class ReeSealPayload(StrictRequestModel):
     include_source: bool = Field(default=False, description="Put the source snapshot in the sealed archive.")
-    include_runtime: bool = Field(default=False, description="Put the declared runtime artifact in the sealed archive.")
+    include_experiment_environment: bool = Field(
+        default=False, description="Put the declared experiment environment artifact in the sealed archive."
+    )
     include_results: bool = Field(default=False, description="Put everything under results/ in the sealed archive.")

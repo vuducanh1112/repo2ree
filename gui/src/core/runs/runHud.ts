@@ -24,7 +24,12 @@ export const RUN_HUD_TABS = [
     operations: ["provision", "ree-load"],
   },
   { key: "source", abbrev: "SRC", label: "Source", operations: ["source"] },
-  { key: "build", abbrev: "BLD", label: "Build", operations: ["build"] },
+  {
+    key: "build_experiment_environment",
+    abbrev: "BLD",
+    label: "Build Experiment Environment",
+    operations: ["build_experiment_environment"],
+  },
   { key: "sbom", abbrev: "SBOM", label: "SBOM", operations: ["sbom"] },
   { key: "activation", abbrev: "ACT", label: "Activation", operations: ["activation"] },
   { key: "evaluate", abbrev: "EVAL", label: "Evaluate", operations: ["evaluate"] },

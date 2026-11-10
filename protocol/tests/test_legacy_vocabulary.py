@@ -36,7 +36,7 @@ TEXT_SUFFIXES = {".css", ".json", ".mjs", ".nix", ".py", ".sh", ".toml", ".ts", 
 RETIRED = "ag" + "ent"
 VOCABULARY = re.compile(rf"(?i)\b{RETIRED}s?\b|{RETIRED}_|repo2ree_{RETIRED}")
 
-# No retired runtime vocabulary is allowed in active code or tests.
+# No retired experiment environment vocabulary is allowed in active code or tests.
 ALLOWED_MATCHES: Counter[tuple[str, str]] = Counter()
 
 
@@ -60,4 +60,4 @@ def test_active_surfaces_use_workbench_vocabulary() -> None:
                 found[(relative, normalized)] += 1
                 details.append(f"{relative}:{line_number}: {line.strip()}")
 
-    assert found == ALLOWED_MATCHES, "legacy runtime vocabulary changed:\n" + "\n".join(details)
+    assert found == ALLOWED_MATCHES, "legacy experiment environment vocabulary changed:\n" + "\n".join(details)

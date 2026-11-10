@@ -463,7 +463,7 @@ class CommandDispatcher:
         return ReviewSet.model_validate(self._query_json(handle, GET_REVIEWS))
 
     def read_ree_file_bytes(self, handle: ReeRoute, path: str) -> bytes:
-        # REE files can include large runtime and result artifacts.
+        # REE files can include large experiment environment and result artifacts.
         return self.dispatch_query(handle, READ_REE_FILE, READ_REE_FILE_PATH, path, timeout=120)
 
     def build_archive(self, handle: ReeRoute) -> ReceivedFile:

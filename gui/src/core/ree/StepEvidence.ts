@@ -11,7 +11,7 @@ export type EvidenceStep =
   | "source"
   | "evaluation"
   | "hardware"
-  | "runtime"
+  | "experiment_environment"
   | "sbom"
   | "sbom_cross_check"
   | "test_activation";
@@ -39,7 +39,7 @@ export interface ReeAudit {
   source?: StepAudit | EvidenceStatus;
   evaluation?: StepAudit | EvidenceStatus;
   hardware?: StepAudit | EvidenceStatus;
-  runtime?: StepAudit | EvidenceStatus;
+  experiment_environment?: StepAudit | EvidenceStatus;
   sbom?: StepAudit | EvidenceStatus;
   sbom_cross_check?: StepAudit | EvidenceStatus;
   test_activation?: StepAudit | EvidenceStatus;
@@ -50,7 +50,7 @@ const EVIDENCE_STEPS: readonly EvidenceStep[] = [
   "source",
   "evaluation",
   "hardware",
-  "runtime",
+  "experiment_environment",
   "sbom",
   "sbom_cross_check",
   "test_activation",

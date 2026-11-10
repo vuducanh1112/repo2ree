@@ -53,7 +53,7 @@ export type ReeRunOperation =
   | "ree-load"
   | "seal"
   | "source"
-  | "build"
+  | "build_experiment_environment"
   | "sbom"
   | "crosscheck"
   | "hbom"
@@ -69,7 +69,7 @@ const RECEIPT_OPERATIONS: ReadonlySet<ReeRunOperation> = new Set([
   "source",
   "evaluate",
   "hbom",
-  "build",
+  "build_experiment_environment",
   "sbom",
   "crosscheck",
   "activation",

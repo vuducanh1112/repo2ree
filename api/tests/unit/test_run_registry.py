@@ -205,17 +205,17 @@ def test_idempotency_key_returns_original_run_without_duplicate_work():
 
     first = registry.start_background(
         KNOWN_REE,
-        "build",
-        {"script": "ree-scripts/build_script.sh"},
-        "build",
+        "build_experiment_environment",
+        {"script": "ree-scripts/build_experiment_environment.sh"},
+        "build_experiment_environment",
         _runner,
         idempotency_key="request-1",
     )
     second = registry.start_background(
         KNOWN_REE,
-        "build",
-        {"script": "ree-scripts/build_script.sh"},
-        "build",
+        "build_experiment_environment",
+        {"script": "ree-scripts/build_experiment_environment.sh"},
+        "build_experiment_environment",
         _runner,
         idempotency_key="request-1",
     )
@@ -269,7 +269,9 @@ def test_run_starts_queued_then_running_with_started_at_stamped():
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run_state = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     # Created queued with no start time; the worker stamps both when it begins.
     assert run_state["created_at"] is not None
 
@@ -327,7 +329,9 @@ def test_runner_http_exception_finalizes_as_failed_with_detail_logged():
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise HTTPException(status_code=409, detail="seal in progress")
 
-    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run_state = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
     assert final["failure"]["origin"] == "api"
@@ -348,11 +352,13 @@ def test_structured_http_detail_survives_as_a_typed_failure():
             detail={
                 "code": "version_conflict",
                 "message": "The file changed since you read it",
-                "details": {"path": "ree-scripts/build_script.sh", "expected_version": "etag-1"},
+                "details": {"path": "ree-scripts/build_experiment_environment.sh", "expected_version": "etag-1"},
             },
         )
 
-    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run_state = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
 
     failure = final["failure"]
@@ -362,7 +368,7 @@ def test_structured_http_detail_survives_as_a_typed_failure():
     assert failure["message"] == "The file changed since you read it"
     # Everything else on the envelope stays readable by the client.
     assert failure["details"]["code"] == "version_conflict"
-    assert failure["details"]["details"]["path"] == "ree-scripts/build_script.sh"
+    assert failure["details"]["details"]["path"] == "ree-scripts/build_experiment_environment.sh"
     assert failure["details"]["http_status"] == 409
     assert final["logs"][0]["message"] == "The file changed since you read it"
 
@@ -373,7 +379,9 @@ def test_an_unreachable_dependency_reported_over_http_is_retryable():
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise HTTPException(status_code=503, detail="Workbench unavailable for this REE")
 
-    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run_state = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     failure = _wait_for(registry, run_state["run_id"], TERMINAL)["failure"]
 
     assert failure["category"] == "unavailable"
@@ -386,7 +394,9 @@ def test_a_server_side_http_status_without_a_mapping_stays_internal():
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise HTTPException(status_code=500, detail="something gave way")
 
-    run_state = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run_state = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     failure = _wait_for(registry, run_state["run_id"], TERMINAL)["failure"]
 
     assert failure["category"] == "internal"
@@ -491,7 +501,9 @@ def test_observe_returns_only_logs_after_sequence_cursor():
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     _wait_for(registry, run["run_id"], frozenset({"running"}))
     registry.append_log(KNOWN_REE, run["run_id"], "stdout", "info", "one")
     registry.append_log(KNOWN_REE, run["run_id"], "stdout", "info", "two")
@@ -517,9 +529,9 @@ def test_observe_timeout_returns_unchanged_active_run():
     release = Event()
     run = registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {},
-        "build",
+        "build_experiment_environment",
         lambda e, r: (
             ActionResult(status="succeeded")
             if release.wait(timeout=5.0)
@@ -555,9 +567,9 @@ def test_get_run_state_returns_an_independent_snapshot():
     registry = _registry()
     run = registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {},
-        "build",
+        "build_experiment_environment",
         lambda e, r: ActionResult(status="succeeded", outputs={"artifact": "runtime.tar"}),
     )
     final = _wait_for(registry, run["run_id"], TERMINAL)
@@ -574,9 +586,9 @@ def test_idempotency_replay_survives_registry_restart(tmp_path: Path):
     first_registry = _registry(root=tmp_path)
     first = first_registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {"script": "build.sh"},
-        "build",
+        "build_experiment_environment",
         lambda e, r: ActionResult(status="succeeded"),
         idempotency_key="request-1",
     )
@@ -592,9 +604,9 @@ def test_idempotency_replay_survives_registry_restart(tmp_path: Path):
     second_registry = _registry(root=tmp_path)
     replay = second_registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {"script": "build.sh"},
-        "build",
+        "build_experiment_environment",
         _unexpected_runner,
         idempotency_key="request-1",
     )
@@ -613,9 +625,13 @@ def test_bounded_executor_leaves_excess_work_queued():
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    first = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    first = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     _wait_for(registry, first["run_id"], frozenset({"running"}))
-    second = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    second = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
 
     assert registry.get_run_state(KNOWN_REE, second["run_id"])["status"] == "queued"
     release.set()
@@ -627,9 +643,9 @@ def test_completed_future_is_removed_from_process_control_state():
     registry = _registry()
     run = registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {},
-        "build",
+        "build_experiment_environment",
         lambda e, r: ActionResult(status="succeeded"),
     )
     _wait_for(registry, run["run_id"], TERMINAL)
@@ -645,9 +661,9 @@ def test_submit_after_executor_shutdown_settles_run_instead_of_stranding_it():
 
     run = registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {},
-        "build",
+        "build_experiment_environment",
         lambda e, r: ActionResult(status="succeeded"),
     )
 
@@ -664,10 +680,16 @@ def test_submit_after_executor_shutdown_settles_run_instead_of_stranding_it():
 
 def test_settled_run_counts_once_and_records_its_duration(instruments: _Instruments):
     registry = _registry()
-    run = registry.start_background(KNOWN_REE, "build", {}, "build", lambda e, r: ActionResult(status="succeeded"))
+    run = registry.start_background(
+        KNOWN_REE,
+        "build_experiment_environment",
+        {},
+        "build_experiment_environment",
+        lambda e, r: ActionResult(status="succeeded"),
+    )
     _wait_for(registry, run["run_id"], TERMINAL)
 
-    terminal_attrs = {"repo2ree.operation": "build", "repo2ree.status": "succeeded"}
+    terminal_attrs = {"repo2ree.operation": "build_experiment_environment", "repo2ree.status": "succeeded"}
     assert instruments.runs.calls == [(1, terminal_attrs)]
     assert instruments.duration.attributes == [terminal_attrs]
     # One sample, of a real elapsed span rather than a placeholder zero.
@@ -696,13 +718,17 @@ def test_run_is_metered_with_the_settled_status_not_the_proposed_one(instruments
         release.wait(timeout=5.0)
         return ActionResult(status="canceled")
 
-    run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     _wait_for(registry, run["run_id"], frozenset({"running"}))
     registry.mark_cancel_requested(KNOWN_REE, run["run_id"])
     release.set()
 
     final = _wait_for(registry, run["run_id"], TERMINAL)
-    assert instruments.runs.attributes == [{"repo2ree.operation": "build", "repo2ree.status": final["status"]}]
+    assert instruments.runs.attributes == [
+        {"repo2ree.operation": "build_experiment_environment", "repo2ree.status": final["status"]}
+    ]
 
 
 def test_active_gauge_rises_while_running_and_returns_to_zero(instruments: _Instruments):
@@ -713,7 +739,9 @@ def test_active_gauge_rises_while_running_and_returns_to_zero(instruments: _Inst
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    run = registry.start_background(KNOWN_REE, "build", {}, "build", _runner)
+    run = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", _runner
+    )
     _wait_for(registry, run["run_id"], frozenset({"running"}))
     assert instruments.active.total == 1
 
@@ -722,7 +750,7 @@ def test_active_gauge_rises_while_running_and_returns_to_zero(instruments: _Inst
     # The gauge is balanced by the finally, and carries no status: an in-flight
     # run has no terminal status to slice by.
     assert instruments.active.total == 0
-    assert instruments.active.attributes == [{"repo2ree.operation": "build"}] * 2
+    assert instruments.active.attributes == [{"repo2ree.operation": "build_experiment_environment"}] * 2
 
 
 def test_a_crashed_runner_still_balances_the_active_gauge(instruments: _Instruments):
@@ -748,9 +776,9 @@ def test_post_finalization_metric_failure_does_not_rewrite_success(
     registry = _registry()
     run = registry.start_background(
         KNOWN_REE,
-        "build",
+        "build_experiment_environment",
         {},
-        "build",
+        "build_experiment_environment",
         lambda e, r: ActionResult(status="succeeded"),
     )
     _wait_for(registry, run["run_id"], TERMINAL)
@@ -769,11 +797,25 @@ def test_idempotent_replay_is_metered_and_the_run_counted_once(instruments: _Ins
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    payload = {"script": "ree-scripts/build_script.sh"}
-    first = registry.start_background(KNOWN_REE, "build", payload, "build", _runner, idempotency_key="request-1")
-    registry.start_background(KNOWN_REE, "build", payload, "build", _runner, idempotency_key="request-1")
+    payload = {"script": "ree-scripts/build_experiment_environment.sh"}
+    first = registry.start_background(
+        KNOWN_REE,
+        "build_experiment_environment",
+        payload,
+        "build_experiment_environment",
+        _runner,
+        idempotency_key="request-1",
+    )
+    registry.start_background(
+        KNOWN_REE,
+        "build_experiment_environment",
+        payload,
+        "build_experiment_environment",
+        _runner,
+        idempotency_key="request-1",
+    )
 
-    assert instruments.replay.calls == [(1, {"repo2ree.operation": "build"})]
+    assert instruments.replay.calls == [(1, {"repo2ree.operation": "build_experiment_environment"})]
     release.set()
     _wait_for(registry, first["run_id"], TERMINAL)
     # The replayed request started no second run, so exactly one settled.
@@ -821,7 +863,12 @@ def test_a_run_following_its_command_takes_no_worker_from_the_pool():
 
     blocking = registry.start_background(KNOWN_REE, "source", {}, "slow", slow)
     following = registry.start_background(
-        KNOWN_REE, "build", {}, "build", lambda e, r: ActionResult(status="succeeded"), resumable=True
+        KNOWN_REE,
+        "build_experiment_environment",
+        {},
+        "build_experiment_environment",
+        lambda e, r: ActionResult(status="succeeded"),
+        resumable=True,
     )
     assert _wait_for(registry, following["run_id"], TERMINAL)["status"] == "succeeded"
     release.set()
@@ -838,7 +885,9 @@ def test_a_run_that_stops_following_is_left_for_the_next_process(tmp_path):
         registry.stopping.wait(5)
         raise FollowStoppedError("stopping")
 
-    run = registry.start_background(KNOWN_REE, "build", {}, "build", runner, resumable=True)
+    run = registry.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", runner, resumable=True
+    )
     _wait_for(registry, run["run_id"], frozenset({"running"}))
     registry.stop()
     registry.shutdown()
@@ -859,8 +908,10 @@ def test_startup_follows_on_the_runs_whose_commands_run_on_and_fails_the_rest(tm
         raise FollowStoppedError("stopping")
 
     context = ExecutionContext.new(ree_id=KNOWN_REE)
-    followed = first.start_background(KNOWN_REE, "build", {}, "build", stuck, resumable=True)
-    unstarted = first.start_background(KNOWN_REE, "build", {}, "other", stuck, resumable=True)
+    followed = first.start_background(
+        KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", stuck, resumable=True
+    )
+    unstarted = first.start_background(KNOWN_REE, "build_experiment_environment", {}, "other", stuck, resumable=True)
     plain = first.start_background(KNOWN_REE, "source", {}, "src", stuck)
     started.wait(5)
     _wait_for(first, followed["run_id"], frozenset({"running"}))

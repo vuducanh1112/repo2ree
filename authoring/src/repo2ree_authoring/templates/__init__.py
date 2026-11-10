@@ -54,7 +54,7 @@ def reserved_script_template(reserved_path: str, workbench_environment: Workbenc
     under renames of the reserved directory itself.
     """
     catalogs = {
-        "build_script.sh": build_templates,
+        "build_experiment_environment.sh": build_templates,
         "activation.sh": activation_templates,
     }
     templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
@@ -67,34 +67,45 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
         ScriptTemplate(
             key="docker",
             label="Docker image",
-            description="Build the project's Dockerfile into an image and save it as the runtime tarball.",
-            body=_template("build_script_docker.sh"),
+            description=(
+                "Build the project's Dockerfile into an image and save it as the experiment environment tarball."
+            ),
+            body=_template("build_experiment_environment_docker.sh"),
             workbench_environment="image",
         ),
         ScriptTemplate(
             key="venv",
             label="Python virtual environment",
-            description="Install requirements.txt into a virtual environment on the host and pack it as the runtime.",
-            body=_template("build_script_venv.sh"),
+            description=(
+                "Install requirements.txt into a virtual environment on the host "
+                "and pack it as the experiment environment."
+            ),
+            body=_template("build_experiment_environment_venv.sh"),
             workbench_environment="host",
         ),
     )
 
 
 def activation_templates() -> tuple[ScriptTemplate, ...]:
-    """The activation run-script templates, one per runtime strategy."""
+    """The activation run-script templates, one per experiment environment strategy."""
     return (
         ScriptTemplate(
             key="docker",
-            label="Docker runtime",
-            description="Load the saved runtime image and run a command inside it to prove the runtime works.",
+            label="Docker experiment environment",
+            description=(
+                "Load the saved experiment environment image and run a command inside it "
+                "to prove the experiment environment works."
+            ),
             body=_template("activation_docker.sh"),
             workbench_environment="image",
         ),
         ScriptTemplate(
             key="venv",
             label="Python virtual environment",
-            description="Restore the packed virtual environment and run a command with it to prove the runtime works.",
+            description=(
+                "Restore the packed virtual environment and run a command with it "
+                "to prove the experiment environment works."
+            ),
             body=_template("activation_venv.sh"),
             workbench_environment="host",
         ),
@@ -102,12 +113,12 @@ def activation_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
-    """The per-experiment run-script templates, one per runtime strategy."""
+    """The per-experiment run-script templates, one per experiment environment strategy."""
     return (
         ScriptTemplate(
             key="docker",
-            label="Docker runtime",
-            description="Load the saved runtime image and run the experiment inside it, "
+            label="Docker experiment environment",
+            description="Load the saved experiment environment image and run the experiment inside it, "
             "teeing stdout to a workspace log the verify script can read.",
             body=_template("experiment_run_docker.sh"),
             workbench_environment="image",

@@ -45,12 +45,16 @@ interface StepServiceEffectPlan {
   successMessage: string;
 }
 
-export function planBuildEffect(args: { ree: Pick<ReeSpec, "runtime"> }): BuildEffectPlan {
-  const runtimeTarget =
-    args.ree.runtime && args.ree.runtime !== "__skipped__" ? args.ree.runtime : null;
+export function planBuildEffect(args: {
+  ree: Pick<ReeSpec, "experimentEnvironmentPath">;
+}): BuildEffectPlan {
+  const experimentEnvironmentTarget =
+    args.ree.experimentEnvironmentPath && args.ree.experimentEnvironmentPath !== "__skipped__"
+      ? args.ree.experimentEnvironmentPath
+      : null;
 
   return {
-    successMessage: `Build complete${runtimeTarget ? `; selected runtime remains ${runtimeTarget}` : ""}`,
+    successMessage: `Build complete${experimentEnvironmentTarget ? `; selected experiment environment remains ${experimentEnvironmentTarget}` : ""}`,
   };
 }
 
@@ -83,11 +87,11 @@ export function planActivationEffect(): ActivationEffectPlan {
 export function planStepServiceEffect(args: {
   key: ReeStepKey;
   params: GenericReeStepParams;
-  ree: Pick<ReeSpec, "runtime">;
+  ree: Pick<ReeSpec, "experimentEnvironmentPath">;
   timestamp: string;
   namespaceSuffix: string;
 }): StepServiceEffectPlan {
-  if (args.key === "build") {
+  if (args.key === "build_experiment_environment") {
     return planBuildEffect({ ree: args.ree });
   }
 

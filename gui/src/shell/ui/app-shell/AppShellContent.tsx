@@ -75,7 +75,7 @@ function activePageContent(page: AppShellPage, props: Omit<AppShellContentProps,
         />
       );
     case PAGE.EVALUATE:
-    case PAGE.BUILD:
+    case PAGE.BUILD_EXPERIMENT_ENVIRONMENT:
     case PAGE.SBOM:
     case PAGE.ACTIVATION:
       return (

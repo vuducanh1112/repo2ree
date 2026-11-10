@@ -3,7 +3,7 @@
 Locational, like the dockerfile branch: ``requirements_at_project_root`` reads
 *where* a requirements.txt is, never its contents — installing it is mechanical.
 
-Building a venv from requirements.txt and packing it as the runtime artifact is
+Building a venv from requirements.txt and packing it as the experiment environment artifact is
 a repo2ree strategy (it settles conventions like where the venv lives), so the
 strategy leaf is a confirmation-required ``candidate`` rather than an automatic
 ``complete``.

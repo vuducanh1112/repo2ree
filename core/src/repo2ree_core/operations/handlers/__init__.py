@@ -9,6 +9,6 @@ evidence be produced by the code under review. Both compose
 holds the two apart.
 
 Modules are named for their command, so the package supplies the half of the
-name the lifecycle already says: ``handlers.review.build_runtime`` is the
-reviewer's build, ``handlers.author.build_runtime`` the author's.
+name the lifecycle already says: ``handlers.review.build_experiment_environment`` is the
+reviewer's build, ``handlers.author.build_experiment_environment`` the author's.
 """

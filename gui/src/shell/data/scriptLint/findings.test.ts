@@ -9,7 +9,7 @@ function finding(overrides: Partial<LintFinding> = {}): LintFinding {
     severity: "warning",
     blocking: false,
     message: "A placeholder is still in place.",
-    path: "ree-scripts/build_script.sh",
+    path: "ree-scripts/build_experiment_environment.sh",
     ...overrides,
   } as LintFinding;
 }
@@ -18,7 +18,10 @@ function report(overrides: Partial<LintReport> = {}): LintReport {
   return {
     schema_version: 1,
     engine_version: "1",
-    target: { kind: "build", path: "ree-scripts/build_script.sh" },
+    target: {
+      kind: "build_experiment_environment",
+      path: "ree-scripts/build_experiment_environment.sh",
+    },
     findings: [],
     tiers: [{ tier: "contract", status: "ran" }],
     ...overrides,

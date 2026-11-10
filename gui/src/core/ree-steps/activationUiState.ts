@@ -7,20 +7,20 @@ export function activationRunLabel(input: { running: boolean; runDone: boolean }
 export function canRunActivation(input: {
   running: boolean;
   hasMissing: boolean;
-  runtimePathExists: boolean;
+  experimentEnvironmentPathExists: boolean;
 }): boolean {
-  return !input.running && !input.hasMissing && input.runtimePathExists;
+  return !input.running && !input.hasMissing && input.experimentEnvironmentPathExists;
 }
 
 export function activationFooterHint(input: { runDone: boolean; runFailed: boolean }): string {
   if (input.runFailed) return "Activation failed — check the log, then re-run.";
-  if (input.runDone) return "Activation passed for the current runtime artifact.";
-  return "Run the smoke test after the runtime artifact and activation script are ready.";
+  if (input.runDone) return "Activation passed for the current experiment environment artifact.";
+  return "Run the smoke test after the experiment environment artifact and activation script are ready.";
 }
 
 interface ActivationReadiness {
-  hasRuntime: boolean;
-  runtimePathExists: boolean;
+  hasExperimentEnvironment: boolean;
+  experimentEnvironmentPathExists: boolean;
   runDone: boolean;
   done: number;
   total: number;
@@ -28,11 +28,15 @@ interface ActivationReadiness {
 }
 
 export function activationReadiness(input: {
-  hasRuntime: boolean;
-  runtimePathExists: boolean;
+  hasExperimentEnvironment: boolean;
+  experimentEnvironmentPathExists: boolean;
   runDone: boolean;
 }): ActivationReadiness {
-  const checks = [input.hasRuntime, input.runtimePathExists, input.runDone];
+  const checks = [
+    input.hasExperimentEnvironment,
+    input.experimentEnvironmentPathExists,
+    input.runDone,
+  ];
   const done = checks.filter(Boolean).length;
   return {
     ...input,

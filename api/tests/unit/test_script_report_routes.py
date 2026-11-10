@@ -26,7 +26,9 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
         return result
 
     monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch)
-    response = client.post(f"/api/v1/rees/{online_ree.ree_id}/{endpoint}", json={"targets": [{"kind": "build"}]})
+    response = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/{endpoint}", json={"targets": [{"kind": "build_experiment_environment"}]}
+    )
 
     assert response.status_code == 200, response.text
     assert "history" not in outputs

@@ -28,9 +28,9 @@ def span(end: str, *, status: str = "ERROR", canceled: bool = False, argv: str =
 
 
 def test_the_summary_keeps_the_first_failure_line_and_the_last() -> None:
-    summary = FailedCommand("sh ree-scripts/build_script.sh", 1, PIP_TAIL).summary()
+    summary = FailedCommand("sh ree-scripts/build_experiment_environment.sh", 1, PIP_TAIL).summary()
 
-    assert summary.startswith("`sh ree-scripts/build_script.sh` exited 1: ")
+    assert summary.startswith("`sh ree-scripts/build_experiment_environment.sh` exited 1: ")
     assert "Temporary failure in name resolution" in summary
     assert summary.endswith("did not complete successfully: exit code: 1")
     assert "No matching distribution" not in summary

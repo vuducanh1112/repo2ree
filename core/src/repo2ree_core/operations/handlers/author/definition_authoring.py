@@ -11,7 +11,7 @@ from repo2ree_ree.model import ReeDefinition, SourceDefinition
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -43,19 +43,21 @@ def rehydrate_after_file_mutation(definition: ReeDefinition, layout: ReeLayout) 
 
 def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> ReeDefinition:
     hydrated = dict(payload)
-    build = hydrated.get("build_runtime")
+    build = hydrated.get("experiment_environment")
     if build is not None:
         recipe = build if isinstance(build, dict) else {}
-        script = _required_overlay_file(layout, RESERVED_BUILD_SCRIPT, "runtime build script")
-        hydrated["build_runtime"] = {
-            "build_runtime_script_path": RESERVED_BUILD_SCRIPT,
-            "build_runtime_script_digest": digest_file(script),
-            "build_runtime_script_size": script.stat().st_size,
+        script = _required_overlay_file(
+            layout, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "build experiment environment script"
+        )
+        hydrated["experiment_environment"] = {
+            "build_experiment_environment_script_path": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+            "build_experiment_environment_script_digest": digest_file(script),
+            "build_experiment_environment_script_size": script.stat().st_size,
             # Carried through rather than derived. A script's identity is read
             # off the authored file and never taken from the client, but where
-            # the build leaves its runtime is the author's own declaration —
+            # the build leaves its experiment environment is the author's own declaration —
             # the same split the experiment branch makes for ``output_paths``.
-            "runtime_path": recipe.get("runtime_path"),
+            "artifact_path": recipe.get("artifact_path"),
         }
 
     activation = hydrated.get("test_activation")

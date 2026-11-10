@@ -30,7 +30,7 @@ def exported(span_id: str, parent: str | None, start: str, end: str, **extra: ob
         "start_time": start,
         "end_time": end,
         "status": {"status_code": "UNSET"},
-        "attributes": {"repo2ree.operation": "build"},
+        "attributes": {"repo2ree.operation": "build_experiment_environment"},
         "events": [{"name": "repo2ree.result", "timestamp": end, "attributes": {"repo2ree.boundary": "api.finalized"}}],
         "resource": {"attributes": {"service.name": "repo2ree-api"}},
         **extra,
@@ -74,7 +74,7 @@ def test_a_rendered_page_carries_its_trace_and_cannot_be_broken_out_of() -> None
         sealed=False,
         duration=1.0,
         sources=(),
-        entries=(Entry(kind="operation", name="build_runtime", start=0.0, end=1.0),),
+        entries=(Entry(kind="operation", name="build_experiment_environment", start=0.0, end=1.0),),
         steps=(),
     )
     page = render_html(trace, template())

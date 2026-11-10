@@ -1,6 +1,6 @@
 """Fail-closed venv activation scaffold.
 
-For a packed-venv runtime the environment is a restored virtualenv rather than a
+For a packed-venv experiment environment the environment is a restored virtualenv rather than a
 container: unpack the venv tarball to the absolute directory it was built at
 (a venv bakes absolute paths), put its ``bin`` on ``PATH``, and run the
 author-supplied command. Like the Docker scaffold the command itself is never
@@ -19,22 +19,24 @@ from repo2ree_core.author_recipes.inference.warnings import make_warning
 from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import (
     CandidateDependency,
+    ExperimentEnvironmentContractBinding,
     InferenceEvidence,
-    RuntimeContractBinding,
-    VenvRuntimeContract,
+    VenvExperimentEnvironmentContract,
 )
 
 
-def _venv_contract(context: DecisionContext) -> tuple[VenvRuntimeContract, str]:
-    binding = context.binding("runtime_contract")
-    if not isinstance(binding, RuntimeContractBinding) or not isinstance(binding.contract, VenvRuntimeContract):
-        raise ValueError("venv_activation_v1 renderer reached without a venv runtime_contract binding")
+def _venv_contract(context: DecisionContext) -> tuple[VenvExperimentEnvironmentContract, str]:
+    binding = context.binding("experiment_environment_contract")
+    if not isinstance(binding, ExperimentEnvironmentContractBinding) or not isinstance(
+        binding.contract, VenvExperimentEnvironmentContract
+    ):
+        raise ValueError("venv_activation_v1 renderer reached without a venv experiment_environment_contract binding")
     return binding.contract, binding.provenance
 
 
 class VenvActivationRenderer:
     code = "venv_activation_v1"
-    requires: frozenset[BindingKind] = frozenset({"runtime_contract"})
+    requires: frozenset[BindingKind] = frozenset({"experiment_environment_contract"})
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         contract, provenance = _venv_contract(context)
@@ -45,17 +47,17 @@ class VenvActivationRenderer:
         )
         dependencies = [
             CandidateDependency(
-                kind="runtime_artifact",
+                kind="experiment_environment_artifact",
                 path=contract.artifact_path,
-                digest=context.runtime.accessor.stat(contract.artifact_path).digest or "",
-                role="runtime",
+                digest=context.experiment_environment.accessor.stat(contract.artifact_path).digest or "",
+                role="experiment_environment",
             )
         ]
         evidence = [
             InferenceEvidence(
-                code="venv_runtime_contract",
+                code="venv_experiment_environment_contract",
                 path=contract.artifact_path,
-                detail=f"Packed venv runtime (provenance: {provenance}).",
+                detail=f"Packed venv experiment environment (provenance: {provenance}).",
             )
         ]
         warnings = [make_warning("execution_not_validated"), make_warning("activation_command_missing")]
@@ -73,10 +75,10 @@ set -eu
 # The venv restore/run wrapper was inferred. The activation command was not.
 # Review and edit this script before running it.
 
-RUNTIME_ARTIFACT={sh_quote(artifact_path)}
+EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(artifact_path)}
 VENV_DIR={sh_quote(venv_restore_dir)}
 
-# REQUIRED: define a finite command that proves the runtime is usable.
+# REQUIRED: define a finite command that proves the experiment environment is usable.
 {examples}
 set --
 
@@ -85,7 +87,7 @@ set --
 # Restore the packed virtual environment to the absolute path it was built at.
 rm -rf "$VENV_DIR"
 mkdir -p "$(dirname "$VENV_DIR")"
-tar -xzf "$RUNTIME_ARTIFACT" -C "$(dirname "$VENV_DIR")"
+tar -xzf "$EXPERIMENT_ENVIRONMENT_ARTIFACT" -C "$(dirname "$VENV_DIR")"
 
 PATH="$VENV_DIR/bin:$PATH"
 export PATH

@@ -33,7 +33,7 @@ test("semantic text roles", async ({ page }, testInfo) => {
         "hbom",
         "experiments",
         "evaluate",
-        "build",
+        "build_experiment_environment",
         "sbom",
         "activation",
         "archive",

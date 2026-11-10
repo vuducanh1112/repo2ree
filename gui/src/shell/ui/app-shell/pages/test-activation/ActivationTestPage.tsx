@@ -5,7 +5,7 @@ import {
   activationRunLabel,
   canRunActivation,
 } from "@core/ree-steps/activationUiState";
-import { resolvedRuntimePath } from "@core/ree-steps/buildRuntimeUiState";
+import { resolvedExperimentEnvironmentPath } from "@core/ree-steps/buildExperimentEnvironmentUiState";
 import { findSbomArtifact, resolvedSbomPath } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
@@ -103,8 +103,12 @@ export function PageTestActivation({
   const activationVerifyScriptContent =
     findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
 
-  const runtimePath = resolvedRuntimePath(ree.spec.runtime);
-  const runtimePathExists = runtimePath ? workspaceFileExists(files, runtimePath) : false;
+  const experimentEnvironmentPath = resolvedExperimentEnvironmentPath(
+    ree.spec.experimentEnvironmentPath,
+  );
+  const experimentEnvironmentPathExists = experimentEnvironmentPath
+    ? workspaceFileExists(files, experimentEnvironmentPath)
+    : false;
   const sbomPath = resolvedSbomPath(ree.spec.sbom);
   const sbomPathExists = !!findSbomArtifact(reeFiles, sbomPath);
 
@@ -113,7 +117,7 @@ export function PageTestActivation({
   const canRun = canRunActivation({
     running,
     hasMissing: missing.length > 0,
-    runtimePathExists,
+    experimentEnvironmentPathExists,
   });
   const activationReady = runDone && !runFailed && canRun;
 
@@ -155,7 +159,7 @@ export function PageTestActivation({
         icon={Ic.shield(24)}
         tint={ACTIVATION_PAGE_COLOR}
         title="Test Activation"
-        subtitle="Verify the packaged runtime actually starts and activates."
+        subtitle="Verify the packaged experiment environment actually starts and activates."
         badges={
           <>
             {commandLabel && (
@@ -191,7 +195,7 @@ export function PageTestActivation({
             icon={Ic.shield(19)}
             tint={ACTIVATION_PAGE_COLOR}
             title="Activation Run Script"
-            subtitle="Activation owns its run script: it fully defines how the runtime is entered and probed for liveness."
+            subtitle="Activation owns its run script: it fully defines how the experiment environment is entered and probed for liveness."
           />
 
           <div className={styles.section}>
@@ -221,7 +225,7 @@ export function PageTestActivation({
                   target={{ kind: "activation_run" }}
                   source={content}
                   dirty={dirty}
-                  runtimePath={runtimePath || null}
+                  experimentEnvironmentPath={experimentEnvironmentPath || null}
                   onFocusLine={focusLine}
                   disabled={!activationScriptPath}
                 />
@@ -246,7 +250,7 @@ export function PageTestActivation({
                   target={{ kind: "activation_verify" }}
                   source={content}
                   dirty={dirty}
-                  runtimePath={runtimePath || null}
+                  experimentEnvironmentPath={experimentEnvironmentPath || null}
                   onFocusLine={focusLine}
                   disabled={!activationVerifyScriptPath}
                 />
@@ -260,13 +264,13 @@ export function PageTestActivation({
           <GlassSectionHeader
             icon={Ic.cpu(19)}
             tint={ACTIVATION_PAGE_COLOR}
-            title="Runtime Under Test"
-            subtitle="Activation reuses the runtime artifact from Build Runtime and the inventory context from Generate SBOM."
+            title="Experiment Environment Under Test"
+            subtitle="Activation reuses the experiment environment artifact from Build Experiment environment and the inventory context from Generate SBOM."
           />
 
           <ActivationTargetCard
-            runtimePath={runtimePath}
-            runtimePathExists={runtimePathExists}
+            experimentEnvironmentPath={experimentEnvironmentPath}
+            experimentEnvironmentPathExists={experimentEnvironmentPathExists}
             sbomPath={sbomPath}
             sbomPathExists={sbomPathExists}
           />

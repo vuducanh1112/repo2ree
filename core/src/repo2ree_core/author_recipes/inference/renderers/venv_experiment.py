@@ -20,19 +20,19 @@ from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import (
     CandidateDependency,
     ExperimentBinding,
+    ExperimentEnvironmentContractBinding,
     InferenceEvidence,
-    RuntimeContractBinding,
-    VenvRuntimeContract,
+    VenvExperimentEnvironmentContract,
 )
 
 
-def _bindings(context: DecisionContext) -> tuple[VenvRuntimeContract, str, ExperimentBinding]:
-    contract_binding = context.binding("runtime_contract")
+def _bindings(context: DecisionContext) -> tuple[VenvExperimentEnvironmentContract, str, ExperimentBinding]:
+    contract_binding = context.binding("experiment_environment_contract")
     experiment = context.binding("experiment")
-    if not isinstance(contract_binding, RuntimeContractBinding) or not isinstance(
-        contract_binding.contract, VenvRuntimeContract
+    if not isinstance(contract_binding, ExperimentEnvironmentContractBinding) or not isinstance(
+        contract_binding.contract, VenvExperimentEnvironmentContract
     ):
-        raise ValueError("venv_experiment_v1 renderer reached without a venv runtime_contract binding")
+        raise ValueError("venv_experiment_v1 renderer reached without a venv experiment_environment_contract binding")
     if not isinstance(experiment, ExperimentBinding):
         raise ValueError("venv_experiment_v1 renderer reached without an experiment binding")
     return contract_binding.contract, contract_binding.provenance, experiment
@@ -40,7 +40,7 @@ def _bindings(context: DecisionContext) -> tuple[VenvRuntimeContract, str, Exper
 
 class VenvExperimentRenderer:
     code = "venv_experiment_v1"
-    requires: frozenset[BindingKind] = frozenset({"runtime_contract", "experiment"})
+    requires: frozenset[BindingKind] = frozenset({"experiment_environment_contract", "experiment"})
 
     def render(self, context: DecisionContext, target: ScriptTarget) -> RenderedScript:
         contract, provenance, experiment = _bindings(context)
@@ -53,10 +53,10 @@ class VenvExperimentRenderer:
         )
         dependencies = [
             CandidateDependency(
-                kind="runtime_artifact",
+                kind="experiment_environment_artifact",
                 path=contract.artifact_path,
-                digest=context.runtime.accessor.stat(contract.artifact_path).digest or "",
-                role="runtime",
+                digest=context.experiment_environment.accessor.stat(contract.artifact_path).digest or "",
+                role="experiment_environment",
             ),
             CandidateDependency(
                 kind="experiment_declaration",
@@ -67,9 +67,9 @@ class VenvExperimentRenderer:
         ]
         evidence = [
             InferenceEvidence(
-                code="venv_runtime_contract",
+                code="venv_experiment_environment_contract",
                 path=contract.artifact_path,
-                detail=f"Packed venv runtime (provenance: {provenance}).",
+                detail=f"Packed venv experiment environment (provenance: {provenance}).",
             )
         ]
         warnings = [make_warning("execution_not_validated"), make_warning("experiment_command_missing")]
@@ -89,7 +89,7 @@ set -eu
 # The venv restore/run wrapper was inferred.
 # The scientific experiment command was not selected automatically.
 
-RUNTIME_ARTIFACT={sh_quote(artifact_path)}
+EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(artifact_path)}
 VENV_DIR={sh_quote(venv_restore_dir)}
 RUN_LOG={sh_quote(run_log)}
 
@@ -102,7 +102,7 @@ set --
 # Restore the packed virtual environment to the absolute path it was built at.
 rm -rf "$VENV_DIR"
 mkdir -p "$(dirname "$VENV_DIR")"
-tar -xzf "$RUNTIME_ARTIFACT" -C "$(dirname "$VENV_DIR")"
+tar -xzf "$EXPERIMENT_ENVIRONMENT_ARTIFACT" -C "$(dirname "$VENV_DIR")"
 
 PATH="$VENV_DIR/bin:$PATH"
 export PATH

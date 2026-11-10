@@ -189,7 +189,8 @@ export const CanvasHub = memo(function CanvasHub({
                 const overview = nodeOverview(node, ree, sourceRepo, {
                   workspaceFiles: [...workspaceFiles, ...reeFiles],
                   receipts: authorReceipts,
-                  buildScriptPath: scriptTemplates?.build.path,
+                  buildExperimentEnvironmentScriptPath:
+                    scriptTemplates?.build_experiment_environment.path,
                   crossCheck: latestCrossCheckSummary(runs ?? []),
                 });
                 return (

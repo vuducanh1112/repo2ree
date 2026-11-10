@@ -49,8 +49,8 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
     _patch("after")
     review = layout.review("review-1")
     with open_history(review) as history:
-        review.overlay_file("ree-scripts/build_script.sh").parent.mkdir(parents=True)
-        review.overlay_file("ree-scripts/build_script.sh").write_text("evidence")
+        review.overlay_file("ree-scripts/build_experiment_environment.sh").parent.mkdir(parents=True)
+        review.overlay_file("ree-scripts/build_experiment_environment.sh").write_text("evidence")
         review_head = history.capture(operation="review")
     with materialized_ree_download(layout) as download:
         payload = download.read_bytes()
@@ -71,7 +71,7 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
                 "--git-dir",
                 str(exported / "reviews/review-1/.git"),
                 "show",
-                f"{review_head}:overlay/ree-scripts/build_script.sh",
+                f"{review_head}:overlay/ree-scripts/build_experiment_environment.sh",
             ]
         )
         == b"evidence"
@@ -92,7 +92,7 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
         assert history.initial_snapshot() == destination_initial
     assert read_operation_history(destination).operations[0].command["args"]["patch"] == {"name": "after"}
     with materialized_ree_download(destination) as reexport, zipfile.ZipFile(reexport) as archive:
-        assert archive.read("ree/reviews/review-1/overlay/ree-scripts/build_script.sh") == b"evidence"
+        assert archive.read("ree/reviews/review-1/overlay/ree-scripts/build_experiment_environment.sh") == b"evidence"
 
 
 def test_export_holds_lock_only_while_staging(tmp_path):

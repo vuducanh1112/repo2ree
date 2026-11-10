@@ -12,8 +12,8 @@ F = CONDA
 def test_a_reviewer_rebuilds_the_environment_and_reproduces_the_result(client: Client, new_ree: NewRee) -> None:
     review = client.reproduced(new_ree, F).review
 
-    assert review.build_comparison is not None
-    assert review.build_comparison.basis == "independent"
+    assert review.experiment_environment_comparison is not None
+    assert review.experiment_environment_comparison.basis == "independent"
     assert [(item.experiment_name, item.verdict) for item in review.experiment_comparisons] == [
         (F.experiment, F.verdict)
     ]

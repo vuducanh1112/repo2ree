@@ -9,7 +9,7 @@ import { useUpdateReeIntentMutation } from "./ree/mutations";
 import { useReeQuery } from "./ree/queries";
 import { useReeIndex } from "./ree-index/reeIndex";
 import { useReviewsQuery } from "./reviews/queries";
-import { useGenerateBuildScript } from "./scriptInference/mutations";
+import { useGenerateBuildExperimentEnvironmentScript } from "./scriptInference/mutations";
 import { useScriptTemplates } from "./scriptTemplates/catalog";
 
 describe("shell data hooks", () => {
@@ -29,7 +29,7 @@ describe("shell data hooks", () => {
       ],
     });
     const listScriptTemplates = vi.fn().mockResolvedValue({
-      build: { path: "overlay/build.sh", templates: [] },
+      build_experiment_environment: { path: "overlay/build.sh", templates: [] },
       activation: {
         run_script_path: "overlay/activate.sh",
         verify_script_path: "overlay/verify.sh",
@@ -69,7 +69,7 @@ describe("shell data hooks", () => {
       status: "draft",
       audit: {
         source: { evidence: "not_applicable", payload: "absent" },
-        runtime: { evidence: "not_applicable", payload: "absent" },
+        experiment_environment: { evidence: "not_applicable", payload: "absent" },
       },
       workspace_files: [],
       ree_files: [],
@@ -133,7 +133,7 @@ describe("shell data hooks", () => {
     const generateScriptCandidates = vi.fn().mockResolvedValue({
       results: [
         {
-          target: { kind: "build" },
+          target: { kind: "build_experiment_environment" },
           candidates: [
             {
               body: "#!/bin/sh",
@@ -150,14 +150,17 @@ describe("shell data hooks", () => {
       services: fakeApiServices({ ree: { patchReeDefinition, generateScriptCandidates } }),
     });
     const { result } = renderHook(
-      () => ({ update: useUpdateReeIntentMutation(), generate: useGenerateBuildScript() }),
+      () => ({
+        update: useUpdateReeIntentMutation(),
+        generate: useGenerateBuildExperimentEnvironmentScript(),
+      }),
       { wrapper: Wrapper },
     );
     await act(() =>
       result.current.update.mutateAsync({
         name: "Demo",
         catalog: {},
-        build_runtime: {},
+        experiment_environment: {},
         experiments: [],
         hardware: {},
       }),
@@ -167,7 +170,9 @@ describe("shell data hooks", () => {
     expect(patchReeDefinition).toHaveBeenCalledWith("ree-1", {
       definition_patch: expect.objectContaining({ name: "Demo" }),
     });
-    expect(generateScriptCandidates).toHaveBeenCalledWith("ree-1", [{ kind: "build" }]);
+    expect(generateScriptCandidates).toHaveBeenCalledWith("ree-1", [
+      { kind: "build_experiment_environment" },
+    ]);
     expect(result.current.generate.data?.generation).toMatchObject({
       status: "generated",
       script: { body: "#!/bin/sh" },

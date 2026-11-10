@@ -15,13 +15,13 @@ interface InclusionRow {
 
 interface SealBundleContentsProps {
   sourceAvailable: boolean;
-  runtimeAvailable: boolean;
+  experimentEnvironmentAvailable: boolean;
   resultsAvailable: boolean;
   includeSource: boolean;
-  includeRuntime: boolean;
+  includeExperimentEnvironment: boolean;
   includeResults: boolean;
   onToggleSource: () => void;
-  onToggleRuntime: () => void;
+  onToggleExperimentEnvironment: () => void;
   onToggleResults: () => void;
 }
 
@@ -59,13 +59,13 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
  *  produced the content, so the choice reads back to where it came from. */
 export function SealBundleContents({
   sourceAvailable,
-  runtimeAvailable,
+  experimentEnvironmentAvailable,
   resultsAvailable,
   includeSource,
-  includeRuntime,
+  includeExperimentEnvironment,
   includeResults,
   onToggleSource,
-  onToggleRuntime,
+  onToggleExperimentEnvironment,
   onToggleResults,
 }: SealBundleContentsProps) {
   return (
@@ -79,12 +79,12 @@ export function SealBundleContents({
         onToggle={onToggleSource}
       />
       <Row
-        label="Runtime"
-        available={runtimeAvailable}
-        included={includeRuntime}
-        tintLine={stageTone(PAGE.BUILD)}
-        tintInk={stageTone(PAGE.BUILD, "ink")}
-        onToggle={onToggleRuntime}
+        label="Experiment environment"
+        available={experimentEnvironmentAvailable}
+        included={includeExperimentEnvironment}
+        tintLine={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT)}
+        tintInk={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, "ink")}
+        onToggle={onToggleExperimentEnvironment}
       />
       <Row
         label="Results"

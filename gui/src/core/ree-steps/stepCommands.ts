@@ -14,7 +14,7 @@ interface Clock {
 }
 
 interface CreateStepCommandPlannersArgs {
-  ree: Pick<ReeSpec, "runtime">;
+  ree: Pick<ReeSpec, "experimentEnvironmentPath">;
   clock: Clock;
 }
 
@@ -60,10 +60,10 @@ export function createStepCommandPlanners({
   clock,
 }: CreateStepCommandPlannersArgs): StepCommandPlannerMap {
   return {
-    build: (runParams) =>
+    build_experiment_environment: (runParams) =>
       stepEffectPlanToCommands(
         planStepServiceEffect({
-          key: "build",
+          key: "build_experiment_environment",
           params: runParams as GenericReeStepParams,
           ree,
           timestamp: clock.nowIso(),

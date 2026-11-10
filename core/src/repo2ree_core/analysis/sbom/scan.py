@@ -1,8 +1,8 @@
-"""Running the SBOM scanner over a built runtime archive.
+"""Running the SBOM scanner over a built experiment environment archive.
 
 Shared by the author-side ``generate_sbom`` handler and the reviewer-side build
 reproduction. Both sides must mean exactly the same thing by "observed in the
-runtime" — otherwise an SBOM comparison measures the scanner, not the build —
+experiment environment" — otherwise an SBOM comparison measures the scanner, not the build —
 so the tool, its scope, and the output format are pinned here once rather than
 spelled at each call site.
 
@@ -10,7 +10,7 @@ Shell module: it runs a subprocess and writes the scanner's output file. The
 parsing of that output into the IR stays in :mod:`repo2ree_core.analysis.sbom.cyclonedx`.
 
 The scan runs through the shared process runner rather than a blocking
-``subprocess.run``. Scanning a multi-gigabyte runtime tarball is the longest
+``subprocess.run``. Scanning a multi-gigabyte experiment environment tarball is the longest
 non-script operation in the system, and going through the runner is what makes
 it behave like one: progress reaches the run log while it happens, a cancel
 signals the whole process group instead of being noticed once the tool has
@@ -35,7 +35,7 @@ SBOM_FORMAT = "cyclonedx-json"
 # Scanning consumes a tarball, never a live image. Which kind of tarball is the
 # scanner's to detect: an image archive (docker or OCI) is read as an image, and
 # anything else is unpacked and read as a filesystem.
-RUNTIME_ARCHIVE_SUFFIXES = (".tar", ".tar.gz", ".tgz")
+EXPERIMENT_ENVIRONMENT_ARCHIVE_SUFFIXES = (".tar", ".tar.gz", ".tgz")
 
 # The catalogers syft uses for images, pinned for every source: a filesystem
 # would otherwise also be read for manifests and lockfiles, which declare
@@ -53,35 +53,35 @@ class ScanOutcome:
 
     ``canceled`` is its own field rather than a distinguished exit code: a
     scanner killed by a cancel exits nonzero the same way a scanner that choked
-    on the archive does, and only one of those is news about the runtime.
+    on the archive does, and only one of those is news about the experiment environment.
     """
 
     returncode: int | None
     tool_version: str | None = None
     canceled: bool = False
-    # What the scanner took the runtime for: CycloneDX's ``container`` or ``file``.
+    # What the scanner took the experiment environment for: CycloneDX's ``container`` or ``file``.
     source_kind: str | None = None
 
 
-def is_runtime_archive(path: str) -> bool:
-    """Whether a declared runtime path is a tarball the scanner can consume."""
-    return path.lower().endswith(RUNTIME_ARCHIVE_SUFFIXES)
+def is_experiment_environment_archive(path: str) -> bool:
+    """Whether a declared experiment environment path is a tarball the scanner can consume."""
+    return path.lower().endswith(EXPERIMENT_ENVIRONMENT_ARCHIVE_SUFFIXES)
 
 
-def scan_runtime_archive(
-    runtime_abs: Path,
+def scan_experiment_environment_archive(
+    experiment_environment_abs: Path,
     output_path: Path,
     *,
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
 ) -> ScanOutcome:
-    """Scan a runtime tarball into a CycloneDX document at ``output_path``.
+    """Scan an experiment environment tarball into a CycloneDX document at ``output_path``.
 
     The scanner detects an image archive itself and falls back to unpacking any
-    other tarball; the runtime path says nothing about what a build script
+    other tarball; the experiment environment path says nothing about what a build script
     packed. ``--scope
     squashed`` and the catalogers are pinned explicitly: "observed in the
-    runtime" must mean the installed packages of the squashed filesystem, and
+    experiment environment" must mean the installed packages of the squashed filesystem, and
     scanner defaults must not drift underneath the recorded evidence. Neither a
     non-zero return code nor a cancel is raised — both are reported, and the
     caller decides whether a scan that did not finish is fatal or merely leaves
@@ -94,7 +94,7 @@ def scan_runtime_archive(
     syft = resolve_tool("syft")
     argv = [
         syft,
-        str(runtime_abs),
+        str(experiment_environment_abs),
         *(arg for source in SOURCES for arg in ("--from", source)),
         "--scope",
         "squashed",
@@ -112,12 +112,12 @@ def scan_runtime_archive(
     if result.returncode != 0:
         return ScanOutcome(returncode=result.returncode)
     source_kind = read_source_kind(output_path)
-    log("system", "info", f"Scanned the runtime as: {source_kind or 'unknown'}")
+    log("system", "info", f"Scanned the experiment environment as: {source_kind or 'unknown'}")
     return ScanOutcome(returncode=0, tool_version=read_tool_version(output_path), source_kind=source_kind)
 
 
 def read_source_kind(sbom_path: Path) -> str | None:
-    """What the scanner took the runtime for, out of a written CycloneDX document."""
+    """What the scanner took the experiment environment for, out of a written CycloneDX document."""
     metadata = _metadata(sbom_path)
     component = metadata.get("component") if metadata else None
     kind = component.get("type") if isinstance(component, dict) else None

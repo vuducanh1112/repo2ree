@@ -1,6 +1,6 @@
 """Shared fixtures for activation/experiment script-inference tests.
 
-An in-memory ``ArtifactAccessor`` plus builders for the two runtime archive
+An in-memory ``ArtifactAccessor`` plus builders for the two experiment environment archive
 shapes inference inspects: a Docker ``docker save`` tar (manifest.json +
 config) and a packed-venv gzip tarball (pyvenv.cfg).
 """
@@ -12,7 +12,7 @@ import io
 import json
 import tarfile
 
-from repo2ree_core.author_recipes.inference.runtime_inputs import ArtifactFile
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ArtifactFile
 
 
 def docker_archive(repo_tags: list[str], *, entrypoint: object = None, cmd: object = None) -> bytes:

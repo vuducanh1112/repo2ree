@@ -70,15 +70,20 @@ describe("layout offsets", () => {
     // Placement runs on every render; an untouched node must not churn its
     // identity and invalidate everything memoised downstream of it.
     const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL, { dx: 10, dy: 10 });
-    const build = nodeFor(PAGE.BUILD);
+    const build = nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(placedNode(build, layout)).toBe(build);
   });
 
   it("treats moving a node back to zero as no longer being moved", () => {
-    const moved = withNodeMoved(DEFAULT_LAYOUT, PAGE.BUILD, { dx: 40, dy: 0 });
+    const moved = withNodeMoved(DEFAULT_LAYOUT, PAGE.BUILD_EXPERIMENT_ENVIRONMENT, {
+      dx: 40,
+      dy: 0,
+    });
     expect(isDefaultLayout(moved)).toBe(false);
-    expect(isDefaultLayout(withNodeMoved(moved, PAGE.BUILD, { dx: 0, dy: 0 }))).toBe(true);
-    expect(isDefaultLayout(withNodeReset(moved, PAGE.BUILD))).toBe(true);
+    expect(
+      isDefaultLayout(withNodeMoved(moved, PAGE.BUILD_EXPERIMENT_ENVIRONMENT, { dx: 0, dy: 0 })),
+    ).toBe(true);
+    expect(isDefaultLayout(withNodeReset(moved, PAGE.BUILD_EXPERIMENT_ENVIRONMENT))).toBe(true);
   });
 
   it("places the whole bench in one pass", () => {
@@ -104,7 +109,7 @@ describe("dragging", () => {
   });
 
   it("accumulates from the offset the panel already carries", () => {
-    const node = nodeFor(PAGE.BUILD);
+    const node = nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     const first = nodeOffsetAfterDrag(node, { dx: 0, dy: 0 }, { dx: 40, dy: 0 });
     const second = nodeOffsetAfterDrag(node, first, { dx: 40, dy: 0 });
     const inOneGo = nodeOffsetAfterDrag(node, { dx: 0, dy: 0 }, { dx: 80, dy: 0 });
@@ -148,13 +153,15 @@ describe("stored layouts", () => {
     const raw = JSON.stringify({
       version: LAYOUT_VERSION,
       offsets: {
-        [PAGE.BUILD]: { dx: 20, dy: 5 },
+        [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: { dx: 20, dy: 5 },
         gone: { dx: 10, dy: 10 },
         [PAGE.SBOM]: { dx: "12", dy: 4 },
         [PAGE.SEAL]: { dx: Number.NaN, dy: 0 },
       },
     });
-    expect(parseStoredLayout(raw)).toEqual({ [PAGE.BUILD]: { dx: 20, dy: 5 } });
+    expect(parseStoredLayout(raw)).toEqual({
+      [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: { dx: 20, dy: 5 },
+    });
   });
 });
 

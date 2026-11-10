@@ -1,6 +1,6 @@
 import { expect, test } from "../helpers/fixtures";
 import {
-  buildRuntime,
+  buildExperimentEnvironment,
   EXPERIMENT_OUTPUT_FILE,
   generateScript,
   LIGHTWEIGHT_WORKBENCH_IMAGE,
@@ -37,8 +37,8 @@ import {
 const PROJECT_DIR = "source";
 // Packed inside the project dir, not at the workspace root: the declared runtime
 // must live within the logical project root, or script inference refuses to
-// resolve a runtime contract for it (runtime_outside_project_root).
-const RUNTIME_PATH = `${PROJECT_DIR}/runtime-venv.tar.gz`;
+// resolve a runtime contract for it (experiment_environment_outside_project_root).
+const EXPERIMENT_ENVIRONMENT_PATH = `${PROJECT_DIR}/runtime-venv.tar.gz`;
 
 // Where the live venv lives inside the bench. Deliberately OUTSIDE the
 // workspace: the workspace is snapshot-hashed on every intent PATCH, and a
@@ -50,21 +50,21 @@ const VENV_DIR = "/tmp/ree-venv";
 
 // Build: create the environment with pip alone and pack it as the runtime
 // artifact (a single workspace file the Build page's artifact picker selects).
-const buildScript = `#!/usr/bin/env sh
+const buildExperimentEnvironmentScript = `#!/usr/bin/env sh
 set -eu
 
-RUNTIME_FILE=${JSON.stringify(RUNTIME_PATH)}
+EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(EXPERIMENT_ENVIRONMENT_PATH)}
 VENV_DIR=${JSON.stringify(VENV_DIR)}
 
 python -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --no-cache-dir -r ${PROJECT_DIR}/requirements.txt
-tar -czf "$RUNTIME_FILE" -C "$(dirname "$VENV_DIR")" "$(basename "$VENV_DIR")"
+tar -czf "$EXPERIMENT_ENVIRONMENT_FILE" -C "$(dirname "$VENV_DIR")" "$(basename "$VENV_DIR")"
 `;
 
 /**
  * A self-contained run script for the pip flow. Mirrors the docker variant's
  * contract — restore the runtime artifact if it isn't already in place, then
- * run the command inside it — but "load the runtime" here means unpacking the
+ * run the command inside it — but "load the experiment environment" here means unpacking the
  * venv (outside the workspace, see VENV_DIR) rather than `docker load`-ing an
  * image.
  */
@@ -73,11 +73,11 @@ function venvRunScript(command: string, outputFile?: string): string {
   return `#!/usr/bin/env sh
 set -eu
 
-RUNTIME_FILE=${JSON.stringify(RUNTIME_PATH)}
+EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(EXPERIMENT_ENVIRONMENT_PATH)}
 VENV_DIR=${JSON.stringify(VENV_DIR)}
 
 if [ ! -x "$VENV_DIR/bin/python" ]; then
-  tar -xzf "$RUNTIME_FILE" -C "$(dirname "$VENV_DIR")"
+  tar -xzf "$EXPERIMENT_ENVIRONMENT_FILE" -C "$(dirname "$VENV_DIR")"
 fi
 
 "$VENV_DIR/bin/"${command}${capture}
@@ -85,7 +85,9 @@ fi
 }
 
 test.describe("REE pip pipeline", () => {
-  test("docker-less workbench: pip venv as the runtime artifact", async ({ page }) => {
+  test("docker-less workbench: pip venv as the experiment environment artifact", async ({
+    page,
+  }) => {
     await test.step("provision a python:slim workbench", async () => {
       await startReeCreation(page);
       await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
@@ -105,23 +107,31 @@ test.describe("REE pip pipeline", () => {
     await test.step("generate a build script from the repository", async () => {
       // The docker-less inference branch: no Dockerfile, so the only viable
       // strategy is pip-into-a-venv packed as the runtime artifact.
-      await openPort(page, "Build");
+      await openPort(page, "Build Experiment Environment");
       await expect(
-        main(page).getByRole("heading", { name: "Build Runtime", exact: true }),
+        main(page).getByRole("heading", { name: "Build Experiment Environment", exact: true }),
       ).toBeVisible();
 
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);
-      expect(graph).toContain("build-inference");
+      expect(graph).toContain("build-experiment-environment-inference");
       expect(graph).toContain("root-pip-requirements-v1");
 
       // A venv build, not a container one — the pip renderer, not the docker one.
-      await expect(page.getByLabel("Build script")).toContainText(/python -m venv/);
-      await expect(page.getByLabel("Build script")).not.toContainText(/docker build/);
+      await expect(page.getByLabel("Build experiment environment script")).toContainText(
+        /python -m venv/,
+      );
+      await expect(page.getByLabel("Build experiment environment script")).not.toContainText(
+        /docker build/,
+      );
     });
 
-    await test.step("build runtime via pip", async () => {
-      await buildRuntime(page, buildScript, RUNTIME_PATH);
+    await test.step("build experiment environment via pip", async () => {
+      await buildExperimentEnvironment(
+        page,
+        buildExperimentEnvironmentScript,
+        EXPERIMENT_ENVIRONMENT_PATH,
+      );
     });
 
     await test.step("generate an activation script from the packed venv", async () => {

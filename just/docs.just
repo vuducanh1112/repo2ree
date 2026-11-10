@@ -83,7 +83,7 @@ publish-doc-demo-assets:
     copy_step provide-hbom-entry 02-hardware.png
     copy_step evaluate-ree 03-evaluate.png
     copy_step generate-a-build-script-from-the-repository 04-infer-build.png
-    copy_step build-runtime 05-build.png
+    copy_step build-experiment-environment 05-build.png
     copy_step cross-check-sbom-against-declared-dependencies 06-sbom.png
     copy_step test-activation 07-activation.png
     copy_step run-experiment 08-experiment.png

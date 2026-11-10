@@ -15,7 +15,7 @@ function services(runs: unknown[] = []) {
         ree: { subject: { definition: { name: "demo" } } },
         audit: {
           source: { evidence: "current", payload: "absent" },
-          runtime: { evidence: "current", payload: "absent" },
+          experiment_environment: { evidence: "current", payload: "absent" },
         },
         workspace_files: [],
         ree_files: [],
@@ -51,7 +51,7 @@ describe("WorkspaceFooterBar", () => {
       {
         run_id: "build-1",
         ree_id: "ree-1",
-        operation: "build",
+        operation: "build_experiment_environment",
         status: "succeeded",
         created_at: "2026-01-01T10:00:00Z",
         started_at: "2026-01-01T10:00:01Z",
@@ -63,7 +63,7 @@ describe("WorkspaceFooterBar", () => {
 
     expect(screen.getByRole("region", { name: "Workbench status" })).toBeVisible();
     expect(await screen.findByText("lab-1")).toBeVisible();
-    expect(await screen.findByText("Build · succeeded")).toBeVisible();
+    expect(await screen.findByText("Build Experiment Environment · succeeded")).toBeVisible();
 
     // Each cell shows whether the console it owns is open.
     expect(screen.getByRole("button", { name: /Workbench/ })).toHaveAttribute(

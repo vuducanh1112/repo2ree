@@ -1,7 +1,7 @@
 """Generic streaming subprocess runner and the workspace-script execution path.
 
 Containers are the author's concern, not this module's: each runnable owns an
-overlay script that enters its runtime itself (e.g. its own ``docker run``),
+overlay script that enters its experiment environment itself (e.g. its own ``docker run``),
 and this module just executes such scripts as plain subprocesses with streamed
 logs and cooperative cancellation.
 """

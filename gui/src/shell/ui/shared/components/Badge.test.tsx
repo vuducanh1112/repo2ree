@@ -29,9 +29,9 @@ describe("Badge", () => {
     render(
       <Badge
         tint={{
-          ink: "var(--stage-build-ink)",
-          line: "var(--stage-build-line)",
-          wash: "var(--stage-build-wash)",
+          ink: "var(--stage-build_experiment_environment-ink)",
+          line: "var(--stage-build_experiment_environment-line)",
+          wash: "var(--stage-build_experiment_environment-wash)",
         }}
       >
         Built
@@ -41,9 +41,15 @@ describe("Badge", () => {
     expect(badge).not.toHaveAttribute("data-tone");
     // Ink and line are published separately: the words take the deep shade, the
     // edge is derived from the mid one.
-    expect(badge.style.getPropertyValue("--badge-ink")).toBe("var(--stage-build-ink)");
-    expect(badge.style.getPropertyValue("--badge-line")).toBe("var(--stage-build-line)");
-    expect(badge.style.getPropertyValue("--badge-wash")).toBe("var(--stage-build-wash)");
+    expect(badge.style.getPropertyValue("--badge-ink")).toBe(
+      "var(--stage-build_experiment_environment-ink)",
+    );
+    expect(badge.style.getPropertyValue("--badge-line")).toBe(
+      "var(--stage-build_experiment_environment-line)",
+    );
+    expect(badge.style.getPropertyValue("--badge-wash")).toBe(
+      "var(--stage-build_experiment_environment-wash)",
+    );
   });
 
   it("keeps its icon out of the accessible name", () => {

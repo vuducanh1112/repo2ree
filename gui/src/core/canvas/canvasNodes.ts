@@ -292,8 +292,8 @@ const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
   // first, and SBOM + Activation follow it, since they consume the artifact
   // Build emits.
   {
-    key: PAGE.BUILD,
-    label: "Build",
+    key: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
+    label: "Build Experiment Environment",
     zone: "inner",
     angle: 32.8,
     standHeight: 104,
@@ -408,7 +408,7 @@ interface CanvasNodeOverviewContext {
   workspaceFiles?: FileTreeNode[];
   receipts?: ReceiptView[];
   /** Backend-owned reserved path published by the script-template catalog. */
-  buildScriptPath?: string;
+  buildExperimentEnvironmentScriptPath?: string;
   crossCheck?: SbomCrossCheckSummary | null;
 }
 
@@ -532,11 +532,15 @@ export function nodeSummary(
           value: ree.evaluation.detectedDependencies || null,
         },
       ];
-    case PAGE.BUILD:
+    case PAGE.BUILD_EXPERIMENT_ENVIRONMENT:
       return [
         {
-          label: "Runtime",
-          value: ree.spec.runtime && ree.spec.runtime !== "__skipped__" ? "image ready" : null,
+          label: "Experiment environment",
+          value:
+            ree.spec.experimentEnvironmentPath &&
+            ree.spec.experimentEnvironmentPath !== "__skipped__"
+              ? "image ready"
+              : null,
         },
       ];
     case PAGE.SBOM: {
@@ -588,7 +592,7 @@ const RECEIPT_OPERATIONS_BY_PAGE: Readonly<Partial<Record<AppShellPage, readonly
   [PAGE.SOURCE]: ["acquire_source"],
   [PAGE.HBOM]: ["observe_hardware"],
   [PAGE.EVALUATE]: ["evaluate_reproducibility"],
-  [PAGE.BUILD]: ["build_runtime"],
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: ["build_experiment_environment"],
   [PAGE.SBOM]: ["generate_sbom", "cross_check_sbom"],
   // Keep the old spelling readable for REEs written before the contract name settled.
   [PAGE.ACTIVATION]: ["test_activation", "activation_test"],
@@ -600,7 +604,8 @@ function receiptField(receipt: ReceiptView, key: string): string {
 }
 
 function scriptDigest(node: CanvasNode, receipt: ReceiptView): string {
-  if (node.key === PAGE.BUILD) return receiptField(receipt, "build_runtime_script_digest");
+  if (node.key === PAGE.BUILD_EXPERIMENT_ENVIRONMENT)
+    return receiptField(receipt, "build_experiment_environment_script_digest");
   if (node.key === PAGE.ACTIVATION || node.key === PAGE.EXPERIMENTS) {
     return receiptField(receipt, "run_script_digest");
   }
@@ -670,8 +675,16 @@ export function nodeOverview(
   const experiments = ree.spec.experiments ?? [];
   let scripts: CanvasScriptPreview[] = [];
 
-  if (node.key === PAGE.BUILD) {
-    scripts = [scriptPreview(files, "build", "BUILD SCRIPT", context.buildScriptPath, 3)];
+  if (node.key === PAGE.BUILD_EXPERIMENT_ENVIRONMENT) {
+    scripts = [
+      scriptPreview(
+        files,
+        "build_experiment_environment",
+        "BUILD SCRIPT",
+        context.buildExperimentEnvironmentScriptPath,
+        3,
+      ),
+    ];
   } else if (node.key === PAGE.ACTIVATION) {
     scripts = [
       scriptPreview(files, "activation-run", "RUN SCRIPT", ree.spec.activation.runScript, 2),

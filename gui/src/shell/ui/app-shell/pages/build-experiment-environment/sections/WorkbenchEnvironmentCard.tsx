@@ -3,7 +3,7 @@ import { Caption } from "@shell/ui/shared/components/Caption";
 import { Input } from "@shell/ui/shared/components/FormControl";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { Surface } from "@shell/ui/shared/components/Surface";
-import styles from "../BuildRuntimePage.module.css";
+import styles from "../BuildExperimentEnvironmentPage.module.css";
 
 interface WorkbenchEnvironmentCardProps {
   workbenchEnvironment: WorkbenchEnvironment | null;

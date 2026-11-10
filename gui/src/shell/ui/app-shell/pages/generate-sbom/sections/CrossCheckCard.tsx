@@ -39,7 +39,7 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
     <Surface spacing="flush">
       <div className={styles.crossCheck}>
         <div className={styles.crossCheckHead}>
-          <span className={styles.crossCheckKind}>Runtime cross-check</span>
+          <span className={styles.crossCheckKind}>Experiment environment cross-check</span>
           <Badge tone={summary ? "success" : "warning"}>
             {summary ? "Cross-checked" : "Not cross-checked"}
           </Badge>
@@ -75,7 +75,7 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
 }
 
 /**
- * Aggregates of the cross-check. "Not in runtime" is evidence, not a defect —
+ * Aggregates of the cross-check. "Not in experiment environment" is evidence, not a defect —
  * dev/build-only deps legitimately never reach the runtime — so only the
  * undeclared packages get an itemized list.
  */
@@ -86,7 +86,8 @@ function CrossCheckResults({ summary }: { summary: SbomCrossCheckSummary }) {
         <Badge
           tone={summary.observedMatched === summary.declaredDirectTotal ? "success" : "warning"}
         >
-          {summary.observedMatched}/{summary.declaredDirectTotal} declared deps in runtime
+          {summary.observedMatched}/{summary.declaredDirectTotal} declared deps in experiment
+          environment
         </Badge>
         <Badge tone={summary.versionMismatches === 0 ? "success" : "warning"}>
           Version mismatches: {summary.versionMismatches}

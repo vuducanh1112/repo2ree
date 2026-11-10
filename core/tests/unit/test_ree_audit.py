@@ -12,10 +12,10 @@ from repo2ree_protocol.audit import _STEP_FIELDS, ReeAudit
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.model import (
-    BuildRuntimeDefinition,
     BundleContents,
     BundleEntry,
     ExperimentDefinition,
+    ExperimentEnvironmentDefinition,
     Ree,
     ReeDefinition,
     ReeSubject,
@@ -24,7 +24,7 @@ from repo2ree_ree.model import (
 from repo2ree_ree.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
-    BuildRuntimeReceipt,
+    BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
@@ -32,17 +32,17 @@ from repo2ree_ree.receipt import (
     RunExperimentReceipt,
     WorkspaceDrift,
 )
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT, experiment_run_script_path
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
 from repo2ree_ree.workbench_environment import HostFingerprint, WorkbenchEnvironment, WorkbenchEnvironmentObservation
 
 _DIGEST = digest_bytes(b"content")
 _OTHER_DIGEST = digest_bytes(b"other")
-_RUNTIME_DIGEST = digest_bytes(b"runtime")
+_EXPERIMENT_ENVIRONMENT_DIGEST = digest_bytes(b"experiment_environment")
 _SBOM_DIGEST = digest_bytes(b"sbom")
 _REPORT_DIGEST = digest_bytes(b"report")
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SOURCE = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
-_RUNTIME_PATH = WorkspacePath("runtime.tar")
+_EXPERIMENT_ENVIRONMENT_PATH = WorkspacePath("runtime.tar")
 _EXPERIMENT_NAME = "demo"
 
 
@@ -59,19 +59,19 @@ def _source_receipt(snapshot_digest: Digest = _DIGEST) -> AcquireSourceReceipt:
     )
 
 
-def _build_receipt(script_digest: Digest = _DIGEST) -> BuildRuntimeReceipt:
-    return BuildRuntimeReceipt(
+def _build_receipt(script_digest: Digest = _DIGEST) -> BuildExperimentEnvironmentReceipt:
+    return BuildExperimentEnvironmentReceipt(
         run_id=RunId("build-1"),
         started_at=_NOW,
         finished_at=_NOW,
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_DIGEST,
-        build_runtime_script_path=ReePath(RESERVED_BUILD_SCRIPT),
-        build_runtime_script_digest=script_digest,
+        build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+        build_experiment_environment_script_digest=script_digest,
         workspace_drift=WorkspaceDrift(status="clean"),
-        runtime_path=_RUNTIME_PATH,
-        produced_runtime_digest=_RUNTIME_DIGEST,
+        artifact_path=_EXPERIMENT_ENVIRONMENT_PATH,
+        produced_artifact_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
     )
 
 
@@ -93,55 +93,57 @@ def _experiment_receipt(name: str = _EXPERIMENT_NAME) -> RunExperimentReceipt:
         recorded_at=_NOW,
         experiment_name=name,
         snapshot_digest=_DIGEST,
-        runtime_digest=_RUNTIME_DIGEST,
+        experiment_environment_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
         run_script_digest=_DIGEST,
     )
 
 
-def _built_ree(*, build_script_digest: Digest = _DIGEST) -> Ree:
+def _built_ree(*, build_experiment_environment_script_digest: Digest = _DIGEST) -> Ree:
     ree = Ree(
         subject=ReeSubject(
             definition=ReeDefinition(
                 source=_SOURCE,
-                build_runtime=BuildRuntimeDefinition(
-                    build_runtime_script_digest=build_script_digest,
-                    build_runtime_script_size=1,
-                    runtime_path=_RUNTIME_PATH,
+                experiment_environment=ExperimentEnvironmentDefinition(
+                    build_experiment_environment_script_digest=build_experiment_environment_script_digest,
+                    build_experiment_environment_script_size=1,
+                    artifact_path=_EXPERIMENT_ENVIRONMENT_PATH,
                 ),
             )
         )
     )
-    return commit_receipt(commit_receipt(ree, _source_receipt()), _build_receipt(build_script_digest))
+    return commit_receipt(
+        commit_receipt(ree, _source_receipt()), _build_receipt(build_experiment_environment_script_digest)
+    )
 
 
 def test_a_receipt_matching_what_the_ree_declares_is_current() -> None:
     result = audit(_built_ree())
 
     assert result.source.evidence == "current"
-    assert result.runtime.evidence == "current"
+    assert result.experiment_environment.evidence == "current"
     assert result.stale_steps() == ()
 
 
-def test_editing_the_build_script_leaves_the_build_receipt_stale_and_says_why() -> None:
+def test_editing_the_build_experiment_environment_script_leaves_the_build_receipt_stale_and_says_why() -> None:
     ree = _built_ree()
     edited = replace_definition(
         ree,
         ree.subject.definition.model_copy(
             update={
-                "build_runtime": BuildRuntimeDefinition(
-                    build_runtime_script_digest=_OTHER_DIGEST,
-                    build_runtime_script_size=2,
-                    runtime_path=WorkspacePath("runtime.tar"),
+                "experiment_environment": ExperimentEnvironmentDefinition(
+                    build_experiment_environment_script_digest=_OTHER_DIGEST,
+                    build_experiment_environment_script_size=2,
+                    artifact_path=WorkspacePath("runtime.tar"),
                 )
             }
         ),
     )
 
-    runtime = audit(edited).runtime
-    assert runtime.evidence == "stale"
-    assert runtime.reasons == ("runtime build script changed",)
+    experiment_environment = audit(edited).experiment_environment
+    assert experiment_environment.evidence == "stale"
+    assert experiment_environment.reasons == ("build experiment environment script changed",)
     # The receipt is kept, not deleted: it is still what that run recorded.
-    assert runtime.receipt_run_id == RunId("build-1")
+    assert experiment_environment.receipt_run_id == RunId("build-1")
 
 
 _PYTHON = WorkbenchEnvironment(kind="image", image="python:3.12-slim")
@@ -174,7 +176,7 @@ def test_changing_the_environment_leaves_what_ran_in_it_stale_and_changing_it_ba
 
     moved = _with_environment(ree, WorkbenchEnvironment(kind="image", image="python:3.13-slim"))
     result = audit(moved)
-    assert result.runtime.reasons == ("workbench environment changed",)
+    assert result.experiment_environment.reasons == ("workbench environment changed",)
     assert result.experiments[0].run.reasons == ("workbench environment changed",)
 
     assert audit(_with_environment(moved, _PYTHON)).stale_steps() == ()
@@ -182,11 +184,11 @@ def test_changing_the_environment_leaves_what_ran_in_it_stale_and_changing_it_ba
 
 def test_a_receipt_from_before_environments_stays_current_until_one_is_declared() -> None:
     ree = _built_ree()
-    assert ree.subject.receipts.build is not None
-    assert ree.subject.receipts.build.workbench_environment is None
-    assert audit(ree).runtime.evidence == "current"
+    assert ree.subject.receipts.experiment_environment is not None
+    assert ree.subject.receipts.experiment_environment.workbench_environment is None
+    assert audit(ree).experiment_environment.evidence == "current"
 
-    assert audit(_with_environment(ree, _PYTHON)).runtime.reasons == ("workbench environment changed",)
+    assert audit(_with_environment(ree, _PYTHON)).experiment_environment.reasons == ("workbench environment changed",)
 
 
 def test_repointing_the_source_leaves_the_source_receipt_stale() -> None:
@@ -217,10 +219,10 @@ def test_stale_steps_names_every_stale_step_including_experiments() -> None:
         ree,
         definition.model_copy(
             update={
-                "build_runtime": BuildRuntimeDefinition(
-                    build_runtime_script_digest=_OTHER_DIGEST,
-                    build_runtime_script_size=2,
-                    runtime_path=WorkspacePath("runtime.tar"),
+                "experiment_environment": ExperimentEnvironmentDefinition(
+                    build_experiment_environment_script_digest=_OTHER_DIGEST,
+                    build_experiment_environment_script_size=2,
+                    artifact_path=WorkspacePath("runtime.tar"),
                 ),
                 "experiments": (_experiment(run_script_digest=_OTHER_DIGEST),),
             }
@@ -229,9 +231,9 @@ def test_stale_steps_names_every_stale_step_including_experiments() -> None:
 
     stale = audit(edited).stale_steps()
 
-    assert [name for name, _ in stale] == ["runtime", f"experiment '{_EXPERIMENT_NAME}'"]
+    assert [name for name, _ in stale] == ["experiment_environment", f"experiment '{_EXPERIMENT_NAME}'"]
     assert [step.reasons for _, step in stale] == [
-        ("runtime build script changed",),
+        ("build experiment environment script changed",),
         ("experiment run script changed",),
     ]
 
@@ -276,8 +278,8 @@ def _cross_checked_ree(
             finished_at=_NOW,
             duration_ms=0,
             recorded_at=_NOW,
-            runtime_path=_RUNTIME_PATH,
-            runtime_digest=_RUNTIME_DIGEST,
+            experiment_environment_path=_EXPERIMENT_ENVIRONMENT_PATH,
+            experiment_environment_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
             sbom_digest=_SBOM_DIGEST,
             sbom_format="cyclonedx",
             tool_version="1",
@@ -347,15 +349,15 @@ def test_removing_the_build_declaration_leaves_its_receipt_stale_rather_than_hid
     """
     orphaned = replace_definition(
         _built_ree(),
-        _built_ree().subject.definition.model_copy(update={"build_runtime": None}),
+        _built_ree().subject.definition.model_copy(update={"experiment_environment": None}),
     )
 
     result = audit(orphaned)
 
-    assert result.runtime.evidence == "stale"
-    assert result.runtime.receipt_run_id == RunId("build-1")
-    assert result.runtime.reasons == ("runtime build definition was removed",)
-    assert [name for name, _ in result.stale_steps()] == ["runtime"]
+    assert result.experiment_environment.evidence == "stale"
+    assert result.experiment_environment.receipt_run_id == RunId("build-1")
+    assert result.experiment_environment.reasons == ("experiment environment build definition was removed",)
+    assert [name for name, _ in result.stale_steps()] == ["experiment_environment"]
 
 
 def test_removing_the_source_declaration_leaves_its_receipt_stale() -> None:
@@ -377,8 +379,8 @@ def test_a_step_with_neither_declaration_nor_receipt_stays_not_applicable() -> N
 
     result = audit(bare)
 
-    assert result.runtime.evidence == "not_applicable"
-    assert result.runtime.reasons == ()
+    assert result.experiment_environment.evidence == "not_applicable"
+    assert result.experiment_environment.reasons == ()
     assert result.stale_steps() == ()
 
 

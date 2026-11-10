@@ -31,7 +31,7 @@ def ree_name_slug(name: str) -> str:
 
 
 def venv_build_dir(ree_name: str) -> str:
-    """Where a venv runtime is built and restored, for the REE called ``ree_name``.
+    """Where a venv experiment environment is built and restored, for the REE called ``ree_name``.
 
     Under /tmp, which any machine that reproduces the REE can write: a venv keeps the
     absolute path it was built at, so it is restored to the same one.

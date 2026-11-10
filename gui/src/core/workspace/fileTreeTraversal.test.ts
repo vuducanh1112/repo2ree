@@ -12,7 +12,7 @@ const files: FileTreeNode[] = [
     name: "src",
     type: "folder",
     children: [
-      { id: "runtime", name: "runtime.tar.gz", type: "file", size: 42 },
+      { id: "experiment_environment", name: "runtime.tar.gz", type: "file", size: 42 },
       {
         id: "nested",
         name: "nested",

@@ -150,7 +150,7 @@ def resolve_basis(requested: ReviewBasis, *, available: Collection[EvidenceBasis
 
     Only *what is on offer* differs between steps (an acquirable origin and a
     snapshot for source; a runnable recipe and a shipped artifact for the
-    runtime), which is why that is the parameter and the rule above is not.
+    experiment environment), which is why that is the parameter and the rule above is not.
     """
     if requested != "auto":
         return requested if requested in available else None
@@ -166,14 +166,16 @@ def attempt_basis(record: ReviewRecord) -> EvidenceBasis | None:
     the author's script in a workspace it did not assemble — has no basis of its
     own to report. It inherits this one, and inheriting the *weakest* settled
     basis is the only safe rule: an attempt that fetched the origin but then
-    certified the runtime the bundle ships has not independently reproduced
-    anything downstream of that runtime, whatever the source verdict says.
+    certified the experiment environment the bundle ships has not independently reproduced
+    anything downstream of that experiment environment, whatever the source verdict says.
 
     ``None`` when nothing has settled yet, which is a precondition failure for
     any step that would have to inherit it rather than a basis to assume.
     """
     settled = [
-        comparison.basis for comparison in (record.source_comparison, record.build_comparison) if comparison is not None
+        comparison.basis
+        for comparison in (record.source_comparison, record.experiment_environment_comparison)
+        if comparison is not None
     ]
     if not settled:
         return None
@@ -207,5 +209,5 @@ def _latest_failure(steps: list[ReviewStepState]) -> str | None:
 
 def _step_order(state: ReviewStepState) -> int:
     """Lifecycle order, so a persisted record always reads front to back."""
-    order: list[ReviewStepKey] = ["source", "build", "activation", "experiments"]
+    order: list[ReviewStepKey] = ["source", "build_experiment_environment", "activation", "experiments"]
     return order.index(state.step)

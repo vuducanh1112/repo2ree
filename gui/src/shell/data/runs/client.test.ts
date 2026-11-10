@@ -8,7 +8,7 @@ function wireRun(overrides: Partial<RunSummary> = {}): RunSummary {
   return {
     run_id: "run-1",
     ree_id: "ree-1",
-    operation: "build",
+    operation: "build_experiment_environment",
     status: "succeeded",
     created_at: "2026-01-01T00:00:00Z",
     started_at: null,
@@ -33,7 +33,7 @@ function harness() {
     loadReeBundle: vi.fn().mockResolvedValue(wireRun()),
   };
   const runsApi = {
-    createBuildRuntimeRun: vi.fn().mockResolvedValue(wireRun()),
+    createBuildExperimentEnvironmentRun: vi.fn().mockResolvedValue(wireRun()),
     createGenerateHbomRun: vi.fn().mockResolvedValue(wireRun()),
     createGenerateSbomRun: vi.fn().mockResolvedValue(wireRun()),
     createCrossCheckSbomRun: vi.fn().mockResolvedValue(wireRun()),
@@ -97,14 +97,14 @@ describe("createReeRunsClient", () => {
 
   it("maps every named execution operation", async () => {
     const { client, runsApi } = harness();
-    await client.startReeRun("ree-1", "build", { idempotencyKey: "b-1" });
+    await client.startReeRun("ree-1", "build_experiment_environment", { idempotencyKey: "b-1" });
     await client.startReeRun("ree-1", "hbom", { idempotencyKey: "h-1" });
     await client.startReeRun("ree-1", "sbom");
     await client.startReeRun("ree-1", "crosscheck");
     await client.startReeRun("ree-1", "activation");
     await client.startReeRun("ree-1", "evaluate", { strict: true });
 
-    expect(runsApi.createBuildRuntimeRun).toHaveBeenCalledWith("ree-1", {
+    expect(runsApi.createBuildExperimentEnvironmentRun).toHaveBeenCalledWith("ree-1", {
       idempotency_key: "b-1",
     });
     expect(runsApi.createGenerateHbomRun).toHaveBeenCalledWith("ree-1", {
@@ -178,7 +178,7 @@ describe("createReeRunsClient", () => {
       run: { runId: "run-1" },
     });
     await expect(client.listReeRuns("ree-1")).resolves.toEqual([
-      expect.objectContaining({ operation: "build" }),
+      expect.objectContaining({ operation: "build_experiment_environment" }),
     ]);
     await expect(client.getReeRun("ree-1", "run-1")).resolves.toMatchObject({
       status: "failed",

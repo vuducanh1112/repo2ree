@@ -18,8 +18,8 @@ describe("runExecutionLifecycle", () => {
     const result = await runExecutionLifecycle({
       startReeRun: vi.fn(async () => ({ runId: "run-1" })),
       request: {
-        key: "build",
-        scriptKey: "build",
+        key: "build_experiment_environment",
+        scriptKey: "build_experiment_environment",
         params: {},
       },
       pollRun,
@@ -28,9 +28,9 @@ describe("runExecutionLifecycle", () => {
       onUpdateLogs,
     });
 
-    expect(onRunStarted).toHaveBeenCalledWith("build", "run-1");
+    expect(onRunStarted).toHaveBeenCalledWith("build_experiment_environment", "run-1");
     expect(onUpdateLogs).toHaveBeenCalled();
-    expect(onRunFinished).toHaveBeenCalledWith("build", "run-1");
+    expect(onRunFinished).toHaveBeenCalledWith("build_experiment_environment", "run-1");
     expect(result.runId).toBe("run-1");
     expect(result.status).toBe("succeeded");
   });

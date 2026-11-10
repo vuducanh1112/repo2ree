@@ -13,7 +13,7 @@ from __future__ import annotations
 from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
-from repo2ree_core.operations.handlers.author._script_inference_inputs import build_runtime_inputs
+from repo2ree_core.operations.handlers.author._script_inference_inputs import build_experiment_environment_inputs
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
@@ -43,7 +43,7 @@ def handle_generate_script_candidates(
     # from the aggregate loaded above rather than re-reading the manifest.
     source_receipt = ree.subject.receipts.source if ree else None
     snapshot_digest = str(source_receipt.snapshot_digest) if source_receipt else None
-    runtime_inputs = build_runtime_inputs(layout, definition)
+    experiment_environment_inputs = build_experiment_environment_inputs(layout, definition)
 
     selectors = [
         ScriptTargetSelectorArg(kind=target.kind, experiment_name=target.experiment_name) for target in args.targets
@@ -54,7 +54,7 @@ def handle_generate_script_candidates(
             upstream,
             selectors,
             definition=definition,
-            runtime_inputs=runtime_inputs,
+            experiment_environment_inputs=experiment_environment_inputs,
             source_snapshot_digest=snapshot_digest,
         )
     except ValueError as exc:

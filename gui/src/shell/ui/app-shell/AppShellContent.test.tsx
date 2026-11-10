@@ -44,12 +44,12 @@ function contentProps(page: AppShellPage): AppShellContentProps {
   const reeSpec = {
     ...createEmptyReeSpec(),
     name: "Example REE",
-    runtime: "runtime.tar",
+    experimentEnvironmentPath: "runtime.tar",
   };
   const state = createInitialState({
     reeSpec,
     workspaceSourceState: { sourceAvailable: true, sourceIncluded: true },
-    artifactStatus: { runtimeIncluded: true },
+    artifactStatus: { experimentEnvironmentIncluded: true },
   });
   const commands = {
     setReeSpec: vi.fn(),
@@ -78,7 +78,7 @@ function contentProps(page: AppShellPage): AppShellContentProps {
       workspaceFiles: exampleWorkspaceFiles,
       reeArtifactFiles: [],
       workspaceSourceState: { sourceAvailable: true, sourceIncluded: true },
-      artifactStatus: { runtimeIncluded: true },
+      artifactStatus: { experimentEnvironmentIncluded: true },
       sourceSnapshotArchiveName: "",
       sourceSnapshotFiles: [],
       sourceRepo: undefined,
@@ -111,7 +111,7 @@ describe("AppShellContent", () => {
     [PAGE.EXPERIMENTS, "Experiments"],
     [PAGE.HBOM, "Hardware BOM"],
     [PAGE.EVALUATE, "Reproducibility Readiness"],
-    [PAGE.BUILD, "Build Runtime"],
+    [PAGE.BUILD_EXPERIMENT_ENVIRONMENT, "Build Experiment Environment"],
     [PAGE.SBOM, "Generate SBOM"],
     [PAGE.ACTIVATION, "Test Activation"],
     [PAGE.ARCHIVE, "Deposit & Share"],
@@ -127,13 +127,17 @@ describe("AppShellContent", () => {
   });
 
   it("renders the window-owned step rather than the globally focused step", async () => {
-    const props = contentProps(PAGE.BUILD);
+    const props = contentProps(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     props.uiChrome.page = PAGE.SBOM;
 
     renderWithShell(<AppShellContent {...props} />, { reeId: "ree-1", services });
 
     expect(
-      await screen.findByText("Build Runtime", { exact: true }, { timeout: LAZY_PAGE_TIMEOUT_MS }),
+      await screen.findByText(
+        "Build Experiment Environment",
+        { exact: true },
+        { timeout: LAZY_PAGE_TIMEOUT_MS },
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Generate SBOM", { exact: true })).not.toBeInTheDocument();
   });

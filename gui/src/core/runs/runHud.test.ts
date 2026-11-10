@@ -14,7 +14,7 @@ import {
 
 function run(overrides: Partial<ReeRunSummary> & { runId: string }): ReeRunSummary {
   return {
-    operation: "build",
+    operation: "build_experiment_environment",
     status: "succeeded",
     createdAt: "2026-01-01T10:00:00Z",
     ...overrides,
@@ -26,7 +26,7 @@ const OPERATIONS: ReeRunOperation[] = [
   "ree-load",
   "seal",
   "source",
-  "build",
+  "build_experiment_environment",
   "sbom",
   "crosscheck",
   "hbom",
@@ -56,11 +56,22 @@ describe("runHudTabForOperation", () => {
 describe("runsForHudTab", () => {
   it("filters to the tab's operations and sorts newest first", () => {
     const runs = [
-      run({ runId: "b-old", operation: "build", createdAt: "2026-01-01T09:00:00Z" }),
+      run({
+        runId: "b-old",
+        operation: "build_experiment_environment",
+        createdAt: "2026-01-01T09:00:00Z",
+      }),
       run({ runId: "s-1", operation: "sbom", createdAt: "2026-01-01T09:30:00Z" }),
-      run({ runId: "b-new", operation: "build", createdAt: "2026-01-01T11:00:00Z" }),
+      run({
+        runId: "b-new",
+        operation: "build_experiment_environment",
+        createdAt: "2026-01-01T11:00:00Z",
+      }),
     ];
-    expect(runsForHudTab(runs, "build").map((r) => r.runId)).toEqual(["b-new", "b-old"]);
+    expect(runsForHudTab(runs, "build_experiment_environment").map((r) => r.runId)).toEqual([
+      "b-new",
+      "b-old",
+    ]);
     expect(runsForHudTab(runs, "sbom").map((r) => r.runId)).toEqual(["s-1"]);
     expect(runsForHudTab(runs, "evaluate")).toEqual([]);
   });
@@ -99,7 +110,10 @@ describe("activity selectors", () => {
 describe("hudTabActivity", () => {
   it("lights the active flag while a tab run is in flight", () => {
     const runs = [run({ runId: "r", status: "running" })];
-    expect(hudTabActivity(runs, "build")).toEqual({ active: true, failed: false });
+    expect(hudTabActivity(runs, "build_experiment_environment")).toEqual({
+      active: true,
+      failed: false,
+    });
   });
 
   it("flags a failure only when the tab's newest run failed or was canceled", () => {
@@ -107,13 +121,13 @@ describe("hudTabActivity", () => {
       run({ runId: "old-fail", status: "failed", createdAt: "2026-01-01T09:00:00Z" }),
       run({ runId: "new-ok", status: "succeeded", createdAt: "2026-01-01T10:00:00Z" }),
     ];
-    expect(hudTabActivity(failedThenFixed, "build").failed).toBe(false);
+    expect(hudTabActivity(failedThenFixed, "build_experiment_environment").failed).toBe(false);
 
     const newestFailed = [run({ runId: "f", status: "failed" })];
-    expect(hudTabActivity(newestFailed, "build").failed).toBe(true);
+    expect(hudTabActivity(newestFailed, "build_experiment_environment").failed).toBe(true);
 
     const newestCanceled = [run({ runId: "c", status: "canceled" })];
-    expect(hudTabActivity(newestCanceled, "build").failed).toBe(true);
+    expect(hudTabActivity(newestCanceled, "build_experiment_environment").failed).toBe(true);
   });
 
   it("suppresses the failure flag while a retry is running", () => {
@@ -121,7 +135,10 @@ describe("hudTabActivity", () => {
       run({ runId: "f", status: "failed", createdAt: "2026-01-01T09:00:00Z" }),
       run({ runId: "retry", status: "running", createdAt: "2026-01-01T10:00:00Z" }),
     ];
-    expect(hudTabActivity(retrying, "build")).toEqual({ active: true, failed: false });
+    expect(hudTabActivity(retrying, "build_experiment_environment")).toEqual({
+      active: true,
+      failed: false,
+    });
   });
 });
 
@@ -178,18 +195,18 @@ describe("runTicker", () => {
     const ticker = runTicker([
       run({
         runId: "live",
-        operation: "build",
+        operation: "build_experiment_environment",
         status: "running",
         createdAt: "2026-01-01T10:00:00Z",
       }),
       run({ runId: "done", operation: "sbom", createdAt: "2026-01-01T11:00:00Z" }),
     ]);
-    expect(ticker).toEqual({ detail: "Build · running", tone: "active" });
+    expect(ticker).toEqual({ detail: "Build Experiment Environment · running", tone: "active" });
   });
 
   it("counts concurrent runs instead of naming one of them", () => {
     const ticker = runTicker([
-      run({ runId: "a", operation: "build", status: "running" }),
+      run({ runId: "a", operation: "build_experiment_environment", status: "running" }),
       run({ runId: "b", operation: "sbom", status: "queued" }),
     ]);
     expect(ticker).toEqual({ detail: "2 runs active", tone: "active" });

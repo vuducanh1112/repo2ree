@@ -25,7 +25,7 @@ describe("execution run vocabulary types", () => {
 
 describe("filesReceipt", () => {
   it("is true for the evidence steps and false for lifecycle runs", () => {
-    expect(filesReceipt("build")).toBe(true);
+    expect(filesReceipt("build_experiment_environment")).toBe(true);
     expect(filesReceipt("experiment")).toBe(true);
     expect(filesReceipt("seal")).toBe(false);
     expect(filesReceipt("ree-load")).toBe(false);

@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:b932614b51b093eb38a2dfd458dd24336c9528cfc2da111143230fddaad6e982",
+    "ree_digest": "sha256:4982cbd3a141cd64b3bb30e175c4782fc405a874475ffdf761a16f6ad6091b23",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -19,7 +19,7 @@
       "entries": [
         {
           "digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
-          "path": "ree/ree-scripts/build_script.sh",
+          "path": "ree/ree-scripts/build_experiment_environment.sh",
           "size": 128
         },
         {
@@ -30,12 +30,6 @@
       ]
     },
     "definition": {
-      "build_runtime": {
-        "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
-        "build_runtime_script_path": "ree-scripts/build_script.sh",
-        "build_runtime_script_size": 128,
-        "runtime_path": "runtime"
-      },
       "catalog": {
         "contributors": [
           {
@@ -53,6 +47,12 @@
         ],
         "version": "1.2.3",
         "website": "https://example.org/maximal"
+      },
+      "experiment_environment": {
+        "artifact_path": "runtime",
+        "build_experiment_environment_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
+        "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
+        "build_experiment_environment_script_size": 128
       },
       "experiments": [
         {
@@ -160,16 +160,36 @@
       }
     },
     "receipts": {
-      "build": {
-        "build_runtime_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
-        "build_runtime_script_path": "ree-scripts/build_script.sh",
+      "evaluation": {
+        "analyzer_version": "1.4.0",
+        "dependency_count": 42,
+        "dependency_level": 3,
+        "duration_ms": 2000,
+        "environment_level": 2,
+        "finished_at": "2026-10-01T08:01:02.000000Z",
+        "machine_level": 1,
+        "manifest_count": 2,
+        "operation": "evaluate_reproducibility",
+        "overlay_digest": "sha256:b4b33d2441645d4dd0a0694b5989a0a14a5cc22fe9865e6b7b7eae966e0de36c",
+        "recorded_at": "2026-10-01T08:01:02.000000Z",
+        "report_digest": "sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
+        "report_path": "artifacts/reproducibility-report.json",
+        "run_id": "run-evaluate",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:01:00.000000Z",
+        "strict": true
+      },
+      "experiment_environment": {
+        "artifact_path": "runtime",
+        "build_experiment_environment_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
+        "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
         "duration_ms": 600000,
         "finished_at": "2026-10-01T08:13:00.000000Z",
-        "operation": "build_runtime",
-        "produced_runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "operation": "build_experiment_environment",
+        "produced_artifact_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
         "recorded_at": "2026-10-01T08:13:00.000000Z",
         "run_id": "run-build",
-        "runtime_path": "runtime",
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "started_at": "2026-10-01T08:03:00.000000Z",
@@ -197,29 +217,10 @@
           "status": "modified"
         }
       },
-      "evaluation": {
-        "analyzer_version": "1.4.0",
-        "dependency_count": 42,
-        "dependency_level": 3,
-        "duration_ms": 2000,
-        "environment_level": 2,
-        "finished_at": "2026-10-01T08:01:02.000000Z",
-        "machine_level": 1,
-        "manifest_count": 2,
-        "operation": "evaluate_reproducibility",
-        "overlay_digest": "sha256:b4b33d2441645d4dd0a0694b5989a0a14a5cc22fe9865e6b7b7eae966e0de36c",
-        "recorded_at": "2026-10-01T08:01:02.000000Z",
-        "report_digest": "sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917",
-        "report_path": "artifacts/reproducibility-report.json",
-        "run_id": "run-evaluate",
-        "schema_version": 1,
-        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:01:00.000000Z",
-        "strict": true
-      },
       "experiments": {
         "train model": {
           "duration_ms": 3600000,
+          "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
           "experiment_name": "train model",
           "finished_at": "2026-10-01T09:17:00.000000Z",
           "operation": "run_experiment",
@@ -228,7 +229,6 @@
           "run_exit_code": 0,
           "run_id": "run-experiment",
           "run_script_digest": "sha256:a530c507fd893f520b973f7410ca587b02d26954cba99c2857cb9446a9c900d3",
-          "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
           "schema_version": 1,
           "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
           "started_at": "2026-10-01T08:17:00.000000Z",
@@ -334,12 +334,12 @@
       },
       "sbom": {
         "duration_ms": 30000,
+        "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "experiment_environment_path": "runtime",
         "finished_at": "2026-10-01T08:14:30.000000Z",
         "operation": "generate_sbom",
         "recorded_at": "2026-10-01T08:14:30.000000Z",
         "run_id": "run-sbom",
-        "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-        "runtime_path": "runtime",
         "sbom_digest": "sha256:98f3ae1ef67113d8140d4f6cb8d2830070e21ea48f091be519659846c771a374",
         "sbom_format": "spdx-json",
         "sbom_path": "artifacts/sbom.spdx.json",
@@ -380,14 +380,14 @@
       },
       "test_activation": {
         "duration_ms": 5000,
+        "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "experiment_environment_path": "runtime",
         "finished_at": "2026-10-01T08:16:05.000000Z",
         "operation": "test_activation",
         "recorded_at": "2026-10-01T08:16:05.000000Z",
         "run_exit_code": 0,
         "run_id": "run-activation",
         "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
-        "runtime_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-        "runtime_path": "runtime",
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "started_at": "2026-10-01T08:16:00.000000Z",

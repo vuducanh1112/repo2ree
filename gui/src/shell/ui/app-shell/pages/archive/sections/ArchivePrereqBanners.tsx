@@ -34,7 +34,7 @@ export function ArchivePrereqBanners({
               reproduced. Complete these steps first:
             </div>
             <div className={styles.prereqs}>
-              {!buildDone && <PrereqChip label="Build Runtime not run" />}
+              {!buildDone && <PrereqChip label="Build Experiment Environment not run" />}
               {!sbomDone && <PrereqChip label="SBOM not generated" />}
               {!activationDone && <PrereqChip label="Activation test not run" />}
             </div>

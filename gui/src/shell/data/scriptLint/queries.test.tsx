@@ -8,7 +8,7 @@ import { createShellWrapper } from "../../../../tests/support/renderApp";
 import { selectReport, useSavedScriptLint, useScriptDraftLint } from "./queries";
 
 function report(
-  kind: ScriptTargetSelector["kind"] = "build",
+  kind: ScriptTargetSelector["kind"] = "build_experiment_environment",
   experimentName: string | null = null,
 ): LintReport {
   return {
@@ -22,7 +22,10 @@ function report(
 
 describe("selectReport", () => {
   it("finds the report for the requested target", () => {
-    const response = { reports: [report("build"), report("activation_run")], missing_scripts: [] };
+    const response = {
+      reports: [report("build_experiment_environment"), report("activation_run")],
+      missing_scripts: [],
+    };
     expect(selectReport(response, { kind: "activation_run" })?.target.kind).toBe("activation_run");
   });
 
@@ -36,12 +39,15 @@ describe("selectReport", () => {
   });
 
   it("returns nothing for a script that is not written yet", () => {
-    const response = { reports: [], missing_scripts: ["ree-scripts/build_script.sh"] };
-    expect(selectReport(response, { kind: "build" })).toBeUndefined();
+    const response = {
+      reports: [],
+      missing_scripts: ["ree-scripts/build_experiment_environment.sh"],
+    };
+    expect(selectReport(response, { kind: "build_experiment_environment" })).toBeUndefined();
   });
 
   it("returns nothing when the call itself produced nothing", () => {
-    expect(selectReport(undefined, { kind: "build" })).toBeUndefined();
+    expect(selectReport(undefined, { kind: "build_experiment_environment" })).toBeUndefined();
   });
 });
 
@@ -54,14 +60,23 @@ describe("useScriptDraftLint", () => {
 
     const { result } = renderHook(
       () =>
-        useScriptDraftLint({ kind: "build" }, "docker build .\n", "runtime.tar", { enabled: true }),
+        useScriptDraftLint(
+          { kind: "build_experiment_environment" },
+          "docker build .\n",
+          "runtime.tar",
+          { enabled: true },
+        ),
       { wrapper: Wrapper },
     );
 
     await waitFor(() => expect(result.current.data).toBeDefined());
-    expect(checkScriptDraft).toHaveBeenCalledWith({ kind: "build" }, "docker build .\n", {
-      runtime_path: "runtime.tar",
-    });
+    expect(checkScriptDraft).toHaveBeenCalledWith(
+      { kind: "build_experiment_environment" },
+      "docker build .\n",
+      {
+        experiment_environment_path: "runtime.tar",
+      },
+    );
   });
 
   it("asks nothing of an empty editor", async () => {
@@ -70,9 +85,15 @@ describe("useScriptDraftLint", () => {
       services: fakeApiServices({ ree: { checkScriptDraft } }),
     });
 
-    renderHook(() => useScriptDraftLint({ kind: "build" }, "   \n", null, { enabled: true }), {
-      wrapper: Wrapper,
-    });
+    renderHook(
+      () =>
+        useScriptDraftLint({ kind: "build_experiment_environment" }, "   \n", null, {
+          enabled: true,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(checkScriptDraft).not.toHaveBeenCalled();
@@ -84,9 +105,15 @@ describe("useScriptDraftLint", () => {
       services: fakeApiServices({ ree: { checkScriptDraft } }),
     });
 
-    renderHook(() => useScriptDraftLint({ kind: "build" }, "set -eu\n", null, { enabled: false }), {
-      wrapper: Wrapper,
-    });
+    renderHook(
+      () =>
+        useScriptDraftLint({ kind: "build_experiment_environment" }, "set -eu\n", null, {
+          enabled: false,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(checkScriptDraft).not.toHaveBeenCalled();
@@ -95,21 +122,25 @@ describe("useScriptDraftLint", () => {
 
 describe("useSavedScriptLint", () => {
   it("reduces the workbench response to this target's report", async () => {
-    const lintReeScripts = vi
-      .fn()
-      .mockResolvedValue({ reports: [report("build")], missing_scripts: [] });
+    const lintReeScripts = vi.fn().mockResolvedValue({
+      reports: [report("build_experiment_environment")],
+      missing_scripts: [],
+    });
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
       services: fakeApiServices({ ree: { lintReeScripts } }),
     });
 
     const { result } = renderHook(
-      () => useSavedScriptLint({ kind: "build" }, "docker build .\n", { enabled: true }),
+      () =>
+        useSavedScriptLint({ kind: "build_experiment_environment" }, "docker build .\n", {
+          enabled: true,
+        }),
       { wrapper: Wrapper },
     );
 
     await waitFor(() => expect(result.current.data).toBeDefined());
-    expect(result.current.data?.target.kind).toBe("build");
+    expect(result.current.data?.target.kind).toBe("build_experiment_environment");
   });
 
   it("asks nothing while the editor is dirty", async () => {
@@ -119,9 +150,12 @@ describe("useSavedScriptLint", () => {
       services: fakeApiServices({ ree: { lintReeScripts } }),
     });
 
-    renderHook(() => useSavedScriptLint({ kind: "build" }, "x\n", { enabled: false }), {
-      wrapper: Wrapper,
-    });
+    renderHook(
+      () => useSavedScriptLint({ kind: "build_experiment_environment" }, "x\n", { enabled: false }),
+      {
+        wrapper: Wrapper,
+      },
+    );
 
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(lintReeScripts).not.toHaveBeenCalled();

@@ -120,7 +120,7 @@ are synchronous. A REE is authored end to end in this order:
    read file bytes via `readReeFile`. Its `audit` says what is still missing and why.
 5. Build: `generateScriptCandidates` proposes a build script from the project.
    `writeReeFile` writes it, `patchReeDefinition` declares its
-   `build_runtime.runtime_path`, then `startBuild`.
+   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.
 6. `generateScriptCandidates` also scaffolds the activation script, then
    `startActivationTest`. The scaffolds refuse to run until you fill in the command.
 7. For each experiment, in this order: `generateScriptCandidates` with its name
@@ -142,7 +142,7 @@ in the new one as in step 3.
    `loadReeBundle` with the archive; await the load run.
 2. `startSourceReview` opens the review and its run reproduces the source;
    `listReviews` gives its `review_id`.
-3. `startBuildReview`, `startActivationReview`, and `startExperimentReview` for each
+3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each
    experiment; await each run. A review's `status` is about the runs so far, so run
    every step you want checked.
 4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`

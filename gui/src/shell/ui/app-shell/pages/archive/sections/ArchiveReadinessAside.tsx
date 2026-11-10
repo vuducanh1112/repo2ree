@@ -57,7 +57,7 @@ export function ArchiveReadinessAside({
           </div>
 
           <div className={styles.checks}>
-            <CheckRow label="Runtime built" done={buildDone} />
+            <CheckRow label="Experiment environment built" done={buildDone} />
             <CheckRow label="SBOM generated" done={sbomDone} />
             <CheckRow label="Activation tested" done={activationDone} />
           </div>

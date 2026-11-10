@@ -294,7 +294,7 @@ class ReviewStepAttrs(_SpanFactCarrier):
     basis: str | None = None
     status: str | None = None
     verdict: str | None = None
-    runtime_digest: str | None = None
+    experiment_environment_digest: str | None = None
 
     def _facts(self) -> Mapping[str, object]:
         return {
@@ -303,7 +303,7 @@ class ReviewStepAttrs(_SpanFactCarrier):
             "basis": self.basis,
             "status": self.status,
             "verdict": self.verdict,
-            "runtime_digest": self.runtime_digest,
+            "experiment_environment_digest": self.experiment_environment_digest,
         }
 
 

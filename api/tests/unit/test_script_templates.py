@@ -16,7 +16,7 @@ from repo2ree_authoring.templates import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
 
@@ -45,9 +45,9 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
 
     # Build and activation carry the seeded reserved paths and their named
     # template variants (docker first, as the default a fresh REE is seeded with).
-    assert body["build"]["path"] == RESERVED_BUILD_SCRIPT
-    _assert_entries_match(body["build"]["templates"], [t.key for t in build_templates()])
-    assert body["build"]["templates"][0]["key"] == "docker"
+    assert body["build_experiment_environment"]["path"] == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+    _assert_entries_match(body["build_experiment_environment"]["templates"], [t.key for t in build_templates()])
+    assert body["build_experiment_environment"]["templates"][0]["key"] == "docker"
     assert body["activation"]["run_script_path"] == RESERVED_ACTIVATION_SCRIPT
     assert body["activation"]["verify_script_path"] == RESERVED_ACTIVATION_VERIFY_SCRIPT
     _assert_entries_match(body["activation"]["templates"], [t.key for t in activation_templates()])
@@ -67,7 +67,7 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
 def test_a_host_environment_has_templates_that_need_no_container_engine(client: TestClient) -> None:
     body = client.get("/api/v1/script-templates").json()
 
-    for section in (body["build"], body["activation"], body["experiment"]):
+    for section in (body["build_experiment_environment"], body["activation"], body["experiment"]):
         [host] = [entry for entry in section["templates"] if entry["workbench_environment"] == "host"]
         assert host["is_default"]
         assert "docker" not in host["body"]
@@ -89,5 +89,5 @@ def test_the_steps_and_the_overview_name_operations_there_are(client: TestClient
 def test_script_inference_is_how_a_step_gets_its_script(client: TestClient) -> None:
     actions = {step["key"]: step["actions"] for step in client.get("/api/v1/ree-steps").json()["steps"]}
 
-    for step in ("build", "activation", "experiments"):
+    for step in ("build_experiment_environment", "activation", "experiments"):
         assert "generateScriptCandidates" in actions[step]

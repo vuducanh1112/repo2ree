@@ -34,7 +34,7 @@ const depGroups: DependencyGroup[] = [
         version: "2",
         status: "pinned",
         scope: null,
-        runtimePresence: null,
+        experimentEnvironmentPresence: null,
         observedVersion: null,
       },
     ],

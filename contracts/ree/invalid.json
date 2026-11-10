@@ -13,7 +13,7 @@
       "error": "REE seal digest does not match its subject"
     },
     {
-      "name": "a build script outside its reserved path",
+      "name": "a build experiment environment script outside its reserved path",
       "patch": [
         {
           "op": "remove",
@@ -21,11 +21,11 @@
         },
         {
           "op": "replace",
-          "path": "/subject/definition/build_runtime/build_runtime_script_path",
+          "path": "/subject/definition/experiment_environment/build_experiment_environment_script_path",
           "value": "ree-scripts/other.sh"
         }
       ],
-      "error": "build runtime script path must be"
+      "error": "build experiment environment script path must be"
     },
     {
       "name": "two experiments with one slug",
@@ -136,7 +136,7 @@
         },
         {
           "op": "replace",
-          "path": "/subject/receipts/build/finished_at",
+          "path": "/subject/receipts/experiment_environment/finished_at",
           "value": "2026-10-01T08:02:00Z"
         }
       ],
@@ -166,7 +166,7 @@
         },
         {
           "op": "replace",
-          "path": "/subject/receipts/build/produced_runtime_digest",
+          "path": "/subject/receipts/experiment_environment/produced_artifact_digest",
           "value": "md5:0123"
         }
       ],
@@ -181,7 +181,7 @@
         },
         {
           "op": "replace",
-          "path": "/subject/definition/build_runtime/runtime_path",
+          "path": "/subject/definition/experiment_environment/artifact_path",
           "value": "../runtime"
         }
       ],

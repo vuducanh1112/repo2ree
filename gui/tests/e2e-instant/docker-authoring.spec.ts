@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "../helpers/fixtures";
 import {
-  buildRuntime,
+  buildExperimentEnvironment,
   declareContainerEngine,
   generateScript,
-  INSTANT_DOCKER_RUNTIME_PATH,
+  INSTANT_DOCKER_EXPERIMENT_ENVIRONMENT_PATH,
   instantDockerHelloWorld,
   instantRecipe,
   keepReeArchive,
@@ -47,11 +47,13 @@ test.describe("Instant Docker authoring", () => {
     });
 
     await test.step("inference proposes a docker build", async () => {
-      await openPort(page, "Build");
+      await openPort(page, "Build Experiment Environment");
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);
       expect(graph).toContain("single-project-root-dockerfile-v1");
-      await expect(page.getByLabel("Build script")).toContainText(/docker build/);
+      await expect(page.getByLabel("Build experiment environment script")).toContainText(
+        /docker build/,
+      );
     });
 
     await test.step("build the image on the bench's own daemon", async () => {
@@ -59,12 +61,14 @@ test.describe("Instant Docker authoring", () => {
       await declareContainerEngine(page);
       // The recipe adds the bench's busybox to the build context, which an
       // image FROM scratch needs and inference cannot know.
-      await buildRuntime(
+      await buildExperimentEnvironment(
         page,
-        instantRecipe("build_script.sh", PROJECT),
-        INSTANT_DOCKER_RUNTIME_PATH,
+        instantRecipe("build_experiment_environment.sh", PROJECT),
+        INSTANT_DOCKER_EXPERIMENT_ENVIRONMENT_PATH,
       );
-      await expect(page.getByLabel("Build script")).toContainText(/docker build/);
+      await expect(page.getByLabel("Build experiment environment script")).toContainText(
+        /docker build/,
+      );
     });
 
     await test.step("test activation", async () => {

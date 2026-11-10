@@ -14,8 +14,17 @@ def test_the_sealed_scenario_conforms() -> None:
 def test_the_history_shows_evidence_going_stale_and_current_again() -> None:
     history = trace_of(recorded(sealed=True)).history
     assert history is not None
-    runtime = [step.states.get("runtime") for step in history.steps]
-    assert runtime == ["not_applicable", "missing", "current", "current", "stale", "current", "current", "current"]
+    experiment_environment = [step.states.get("experiment_environment") for step in history.steps]
+    assert experiment_environment == [
+        "not_applicable",
+        "missing",
+        "current",
+        "current",
+        "stale",
+        "current",
+        "current",
+        "current",
+    ]
     assert [step.operation for step in history.steps][-1] == "seal_ree"
     assert [step.states["lifecycle"] for step in history.steps][-2:] == ["draft", "sealed"]
 
@@ -36,10 +45,13 @@ def test_each_step_is_traced_to_the_operation_that_last_produced_it() -> None:
     provenance = build_provenance(trace_of(recorded(sealed=True)))
     assert provenance is not None
     origins = {origin.step: origin for origin in provenance.steps}
-    assert provenance.standing == {"runtime": "current", "sbom": "current", "test_activation": "missing"}
-    # Runtime went stale and was rebuilt: its receipt is the first build's, refreshed in place.
-    assert origins["runtime"].produced_by == "build_runtime"
-    assert origins["runtime"].later == ("current → stale by authoring", "stale → current by build_runtime")
+    assert provenance.standing == {"experiment_environment": "current", "sbom": "current", "test_activation": "missing"}
+    # Experiment environment went stale and was rebuilt: its receipt is the first build's, refreshed in place.
+    assert origins["experiment_environment"].produced_by == "build_experiment_environment"
+    assert origins["experiment_environment"].later == (
+        "current → stale by authoring",
+        "stale → current by build_experiment_environment",
+    )
     assert origins["test_activation"].change is None
     # Declared from the start, and never run.
     assert origins["test_activation"].history == ("missing",)
@@ -49,15 +61,15 @@ def test_each_step_is_traced_to_the_operation_that_last_produced_it() -> None:
 def test_every_link_carries_the_rules_its_own_events_triggered() -> None:
     provenance = build_provenance(trace_of(recorded(sealed=True), build_spans()))
     assert provenance is not None
-    runtime = next(origin for origin in provenance.steps if origin.step == "runtime")
+    experiment_environment = next(origin for origin in provenance.steps if origin.step == "experiment_environment")
     # Which rules a subject triggers is the specification's to say; each link holds only its own subject's.
-    assert {rule.rule for rule in runtime.rules} <= triggered_by("Receipt")
-    links = {link.label.split(" ", 1)[0]: link for link in runtime.chain}
+    assert {rule.rule for rule in experiment_environment.rules} <= triggered_by("Receipt")
+    links = {link.label.split(" ", 1)[0]: link for link in experiment_environment.chain}
     assert {rule.rule for rule in links["attempt"].rules} <= triggered_by("Attempt")
     assert {rule.rule for rule in links["command"].rules} == {"follow-success-is-captured", "accepted-runs-started"}
     assert "api-success-is-recorded" in {rule.rule for rule in links["action"].rules}
     assert {rule.rule for rule in links["action"].rules} <= triggered_by("AuthorApiAction")
-    assert runtime.chain[-1].label == "POST /rees/{id}/build-runtime → 202 at +10 s"
+    assert experiment_environment.chain[-1].label == "POST /rees/{id}/build-experiment-environment → 202 at +10 s"
     assert {rule.rule for rule in provenance.seal_rules} >= {"sealed-without-stale-evidence"}
 
 

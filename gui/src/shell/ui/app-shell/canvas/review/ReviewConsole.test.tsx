@@ -66,7 +66,7 @@ describe("ReviewWorkflowPanel", () => {
       status: "succeeded",
       steps: [
         { step: "source", status: "succeeded", failure: null },
-        { step: "build", status: "succeeded", failure: null },
+        { step: "build_experiment_environment", status: "succeeded", failure: null },
         { step: "activation", status: "succeeded", failure: null },
         { step: "experiments", status: "succeeded", failure: null },
       ],
@@ -76,11 +76,11 @@ describe("ReviewWorkflowPanel", () => {
         expected_swhid: "swh:expected",
         observed_swhid: "swh:observed",
       },
-      build_comparison: {
+      experiment_environment_comparison: {
         basis: "independent",
         verdict: "different",
-        expected_runtime_digest: "sha256:a",
-        observed_runtime_digest: "sha256:b",
+        expected_artifact_digest: "sha256:a",
+        observed_artifact_digest: "sha256:b",
         matched: 2,
         missing_count: 1,
         extra_count: 0,
@@ -95,7 +95,7 @@ describe("ReviewWorkflowPanel", () => {
       activation_outcome: {
         basis: "independent",
         verdict: "passed",
-        runtime_digest: "sha256:b",
+        experiment_environment_digest: "sha256:b",
         run_exit_code: 0,
         verify_exit_code: 0,
       },
@@ -112,7 +112,7 @@ describe("ReviewWorkflowPanel", () => {
           run_exit_code: 0,
           expected_output_digest: "out",
           observed_output_digest: "out",
-          runtime_digest: "sha256:b",
+          experiment_environment_digest: "sha256:b",
         },
       ],
       failure: null,
@@ -139,7 +139,7 @@ describe("ReviewWorkflowPanel", () => {
       await screen.findByText(/source verified from the REE's own artifacts/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/1 missing/)).toBeInTheDocument();
-    expect(screen.getByText(/runtime is inhabitable/i)).toBeInTheDocument();
+    expect(screen.getByText(/experiment environment is inhabitable/i)).toBeInTheDocument();
     expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
@@ -151,7 +151,7 @@ describe("ReviewWorkflowPanel", () => {
       status: "failed",
       steps: [
         { step: "source", status: "succeeded", failure: null },
-        { step: "build", status: "succeeded", failure: null },
+        { step: "build_experiment_environment", status: "succeeded", failure: null },
         { step: "activation", status: "failed", failure: "activation failed" },
       ],
       source_comparison: {
@@ -160,11 +160,11 @@ describe("ReviewWorkflowPanel", () => {
         expected_swhid: null,
         observed_swhid: null,
       },
-      build_comparison: {
+      experiment_environment_comparison: {
         basis: "bundled",
         verdict: "equivalent",
-        expected_runtime_digest: "sha256:same",
-        observed_runtime_digest: "sha256:same",
+        expected_artifact_digest: "sha256:same",
+        observed_artifact_digest: "sha256:same",
         matched: 3,
         missing_count: 0,
         extra_count: 0,
@@ -177,7 +177,7 @@ describe("ReviewWorkflowPanel", () => {
       activation_outcome: {
         basis: "bundled",
         verdict: "failed",
-        runtime_digest: "sha256:same",
+        experiment_environment_digest: "sha256:same",
         run_exit_code: 1,
         verify_exit_code: null,
       },
@@ -190,10 +190,12 @@ describe("ReviewWorkflowPanel", () => {
         ree: { listReviews: vi.fn().mockResolvedValue({ reviews: [review] }) },
       }),
     });
-    expect(await screen.findByText(/source and runtime verified from/)).toBeInTheDocument();
-    expect(screen.getByText(/runtime digest: bit-identical/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/source and experiment environment verified from/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/artifact digest: bit-identical/)).toBeInTheDocument();
     expect(screen.getByText(/2 advisory/)).toBeInTheDocument();
-    expect(screen.getByText(/runtime did not activate/)).toBeInTheDocument();
+    expect(screen.getByText(/experiment environment did not activate/)).toBeInTheDocument();
     expect(screen.getByText(/verify not run/)).toBeInTheDocument();
   });
 
@@ -205,15 +207,15 @@ describe("ReviewWorkflowPanel", () => {
       status: "failed",
       steps: [
         { step: "source", status: "succeeded", failure: null },
-        { step: "build", status: "succeeded", failure: null },
+        { step: "build_experiment_environment", status: "succeeded", failure: null },
         { step: "activation", status: "failed", failure: "verify failed" },
       ],
       source_comparison: { basis: "independent", verdict: "identical" },
-      build_comparison: null,
+      experiment_environment_comparison: null,
       activation_outcome: {
         basis: "independent",
         verdict: "failed",
-        runtime_digest: null,
+        experiment_environment_digest: null,
         run_exit_code: 0,
         verify_exit_code: 2,
       },

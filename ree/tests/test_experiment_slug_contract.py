@@ -41,7 +41,7 @@ def test_reserved_script_paths_are_built_from_the_slug(case: dict[str, str]) -> 
 @pytest.mark.parametrize(
     ("path", "allowed"),
     [
-        ("ree-scripts/build_script.sh", True),
+        ("ree-scripts/build_experiment_environment.sh", True),
         ("ree-scripts/activation.sh", True),
         ("ree-scripts/activation.verify.sh", True),
         ("ree-scripts/experiments/train-model.sh", True),

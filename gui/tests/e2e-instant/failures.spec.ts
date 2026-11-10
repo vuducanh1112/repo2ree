@@ -1,7 +1,7 @@
 import { expect, test } from "../helpers/fixtures";
 import {
-  buildRuntime,
-  INSTANT_RUNTIME_PATH,
+  buildExperimentEnvironment,
+  INSTANT_EXPERIMENT_ENVIRONMENT_PATH,
   instantHelloWorld,
   instantRecipe,
   keepReeArchive,
@@ -39,16 +39,21 @@ test.describe("Instant failures", () => {
 
     await test.step("a build script that exits 3", async () => {
       await stepShot(page, "failing-build", "before");
-      await runBuild(page, FAILING_BUILD, INSTANT_RUNTIME_PATH);
+      await runBuild(page, FAILING_BUILD, INSTANT_EXPERIMENT_ENVIRONMENT_PATH);
       await expect(main(page).getByRole("status", { name: "Built" })).toHaveCount(0);
       await expect(main(page).getByText("resolving dependencies").first()).toBeVisible();
       await stepShot(page, "failing-build", "after");
     });
 
     await test.step("the fixed script builds", async () => {
-      await buildRuntime(page, instantRecipe("build_script.sh"), INSTANT_RUNTIME_PATH, {
-        rebuild: true,
-      });
+      await buildExperimentEnvironment(
+        page,
+        instantRecipe("build_experiment_environment.sh"),
+        INSTANT_EXPERIMENT_ENVIRONMENT_PATH,
+        {
+          rebuild: true,
+        },
+      );
     });
 
     await test.step("keep the REE and release", async () => {

@@ -8,21 +8,26 @@ import pytest
 
 from repo2ree_core.evidence.review.records import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record, write_review_record
-from repo2ree_core.operations.handlers.review import acquire_source, activation_test, build_runtime, run_experiment
+from repo2ree_core.operations.handlers.review import (
+    acquire_source,
+    activation_test,
+    build_experiment_environment,
+    run_experiment,
+)
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
     ReviewActivationTestArgs,
-    ReviewBuildRuntimeArgs,
+    ReviewBuildExperimentEnvironmentArgs,
     ReviewRunExperimentArgs,
 )
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.instant import parse_utc_instant
 from repo2ree_ree.model import (
-    BuildRuntimeDefinition,
     ExperimentDefinition,
+    ExperimentEnvironmentDefinition,
     Ree,
     ReeDefinition,
     ReeReceipts,
@@ -38,26 +43,30 @@ from repo2ree_ree.reserved_paths import (
     experiment_run_script_path,
     experiment_verify_script_path,
 )
-from repo2ree_ree.review import BuildComparison, ReviewBuildRuntimeReceipt, SourceComparison
+from repo2ree_ree.review import (
+    ExperimentEnvironmentComparison,
+    ReviewBuildExperimentEnvironmentReceipt,
+    SourceComparison,
+)
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _REVIEW_ID = "review-one"
-_RUNTIME_PATH = "runtime.tar"
-_RUNTIME = b"runtime bytes\n"
+_EXPERIMENT_ENVIRONMENT_PATH = "runtime.tar"
+_EXPERIMENT_ENVIRONMENT = b"experiment environment bytes\n"
 _ACTIVATION = b"#!/bin/sh\ntest -f runtime.tar\n"
 
 
-def _build_recipe(runtime_path: WorkspacePath) -> BuildRuntimeDefinition:
-    """The author baseline's build recipe, named by where it left its runtime.
+def _build_recipe(experiment_environment_path: WorkspacePath) -> ExperimentEnvironmentDefinition:
+    """The author baseline's build recipe, named by where it left its experiment environment.
 
-    A reviewer reproduces from what the author declared, and the runtime path is
+    A reviewer reproduces from what the author declared, and the experiment environment path is
     the only part of that these tests turn on — the script digest and size are
     the recipe's identity, not its subject, so they are fixed placeholders.
     """
-    return BuildRuntimeDefinition(
-        build_runtime_script_digest=digest_bytes(b"build"),
-        build_runtime_script_size=5,
-        runtime_path=runtime_path,
+    return ExperimentEnvironmentDefinition(
+        build_experiment_environment_script_digest=digest_bytes(b"build_experiment_environment"),
+        build_experiment_environment_script_size=5,
+        artifact_path=experiment_environment_path,
     )
 
 
@@ -86,7 +95,7 @@ def _author_ree() -> Ree:
         recorded_at=_NOW,
         experiment_name=_EXPERIMENT_NAME,
         snapshot_digest=digest_bytes(b"snapshot"),
-        runtime_digest=digest_bytes(_RUNTIME),
+        experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
         run_script_digest=digest_bytes(_EXPERIMENT),
         verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY),
         verify_exit_code=0,
@@ -94,7 +103,7 @@ def _author_ree() -> Ree:
     return Ree(
         subject=ReeSubject(
             definition=ReeDefinition(
-                build_runtime=_build_recipe(WorkspacePath(_RUNTIME_PATH)),
+                experiment_environment=_build_recipe(WorkspacePath(_EXPERIMENT_ENVIRONMENT_PATH)),
                 test_activation=ActivationDefinition(
                     run_script_digest=digest_bytes(_ACTIVATION),
                     run_script_size=len(_ACTIVATION),
@@ -119,7 +128,7 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activation: b
     review = layout.review(_REVIEW_ID)
     review.workspace.mkdir(parents=True)
     files = {
-        _RUNTIME_PATH: _RUNTIME,
+        _EXPERIMENT_ENVIRONMENT_PATH: _EXPERIMENT_ENVIRONMENT,
         RESERVED_ACTIVATION_SCRIPT: activation,
         RESERVED_ACTIVATION_VERIFY_SCRIPT: _ACTIVATION_VERIFY,
         experiment_run_script_path(_EXPERIMENT_NAME): _EXPERIMENT,
@@ -132,20 +141,22 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activation: b
 
     record = new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z")
     record = with_step(record, "source", status="completed", at="2026-08-03T00:00:01Z")
-    record = with_step(record, "build", status="completed", at="2026-08-03T00:00:02Z")
+    record = with_step(record, "build_experiment_environment", status="completed", at="2026-08-03T00:00:02Z")
     record = record.model_copy(
         update={
             "source_comparison": SourceComparison(basis="independent", verdict="identical"),
-            "build_comparison": BuildComparison(basis="independent", verdict="identical"),
-            "build_receipt": ReviewBuildRuntimeReceipt(
+            "experiment_environment_comparison": ExperimentEnvironmentComparison(
+                basis="independent", verdict="identical"
+            ),
+            "experiment_environment_receipt": ReviewBuildExperimentEnvironmentReceipt(
                 run_id=RunId("review-build"),
                 started_at=_NOW,
                 finished_at=_NOW,
                 duration_ms=0,
                 recorded_at=_NOW,
                 status="succeeded",
-                runtime_path=WorkspacePath(_RUNTIME_PATH),
-                produced_runtime_digest=digest_bytes(_RUNTIME),
+                artifact_path=WorkspacePath(_EXPERIMENT_ENVIRONMENT_PATH),
+                produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
             ),
         }
     )
@@ -224,18 +235,18 @@ def test_source_review_reads_definition_and_author_receipt(
     assert (layout.review(_REVIEW_ID).upstream / "source.txt").read_text() == "source\n"
 
 
-def test_bundled_runtime_review_records_only_the_input_it_used(
+def test_bundled_experiment_environment_review_records_only_the_input_it_used(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.artifacts.write_bytes("runtime.tar", _RUNTIME)
+    store.artifacts.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.write_ree(
         Ree(
             subject=ReeSubject(
-                definition=ReeDefinition(build_runtime=_build_recipe(WorkspacePath("artifacts/runtime.tar")))
+                definition=ReeDefinition(experiment_environment=_build_recipe(WorkspacePath("artifacts/runtime.tar")))
             )
         )
     )
@@ -250,17 +261,17 @@ def test_bundled_runtime_review_records_only_the_input_it_used(
     ).model_copy(update={"source_comparison": SourceComparison(basis="bundled", verdict="identical")})
     write_review_record(review, record)
 
-    result = build_runtime.handle_review_build_runtime(
-        ReviewBuildRuntimeArgs(review_id=_REVIEW_ID, basis="bundled", prune_workspace=False),
+    result = build_experiment_environment.handle_review_build_experiment_environment(
+        ReviewBuildExperimentEnvironmentArgs(review_id=_REVIEW_ID, basis="bundled", prune_workspace=False),
         run_id="review-build",
         log=lambda *_: None,
         is_canceled=lambda: False,
     )
 
     assert result.status == "succeeded"
-    assert result.outputs["receipt"]["build_runtime_script_path"] is None
-    assert result.outputs["receipt"]["build_runtime_script_digest"] is None
-    assert result.outputs["receipt"]["produced_runtime_digest"] == digest_bytes(_RUNTIME)
+    assert result.outputs["receipt"]["build_experiment_environment_script_path"] is None
+    assert result.outputs["receipt"]["build_experiment_environment_script_digest"] is None
+    assert result.outputs["receipt"]["produced_artifact_digest"] == digest_bytes(_EXPERIMENT_ENVIRONMENT)
     assert len(load_reviews(layout).reviews) == 1
 
 

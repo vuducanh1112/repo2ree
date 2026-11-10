@@ -25,7 +25,7 @@ export type ReviewRecordWire = Schema<"ReviewRecord">;
 export type ReviewStepStateWire = Schema<"ReviewStepState">;
 
 /** SBOM-closure certification of a reviewer's rebuilt runtime. */
-export type BuildComparisonWire = Schema<"BuildComparison">;
+export type ExperimentEnvironmentComparisonWire = Schema<"ExperimentEnvironmentComparison">;
 
 export type PackageDeltaWire = Schema<"PackageDeltaRecord">;
 
@@ -39,7 +39,8 @@ export type ReviewSetWire = Schema<"ReviewSet">;
 
 export type CreateSourceReviewPayload = Schema<"CreateSourceReviewPayload">;
 
-export type CreateBuildReviewPayload = Schema<"CreateBuildReviewPayload">;
+export type CreateBuildExperimentEnvironmentReviewPayload =
+  Schema<"CreateBuildExperimentEnvironmentReviewPayload">;
 
 export type ReeDocument = Schema<"ReeDocument">;
 export type ReeState = Schema<"ReeState">;
@@ -100,7 +101,8 @@ export type CreateExperimentRunPayload = Schema<"CreateExperimentRunPayload">;
 
 export type RunStatus = Schema<"RunSummary">["status"];
 
-export type CreateBuildRuntimeRunPayload = Schema<"CreateBuildRuntimeRunPayload">;
+export type CreateBuildExperimentEnvironmentRunPayload =
+  Schema<"CreateBuildExperimentEnvironmentRunPayload">;
 
 export type CreateGenerateSbomRunPayload = Schema<"CreateGenerateSbomRunPayload">;
 

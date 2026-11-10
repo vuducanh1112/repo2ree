@@ -25,7 +25,11 @@ const SEAL_STEPS: readonly SealStepSpec[] = [
   { key: PAGE.METADATA, label: "Metadata", page: PAGE.METADATA },
   { key: PAGE.HBOM, label: "HBOM", page: PAGE.HBOM },
   { key: PAGE.SOURCE, label: "Source", page: PAGE.SOURCE },
-  { key: "runtime", label: "Runtime", page: PAGE.BUILD },
+  {
+    key: "experiment_environment",
+    label: "Experiment environment",
+    page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
+  },
   // "Source identity", not "Software Heritage": the SWHID is computed locally
   // from the acquired tree and asserts nothing about any archive holding it.
   // The one entry that is not a step — there is no run, so no receipt to read.

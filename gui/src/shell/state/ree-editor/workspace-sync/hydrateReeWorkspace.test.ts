@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 import { mapRawReeIntentToSlices } from "@core/ree/mapRawReeIntent";
 import { describe, expect, it, vi } from "vitest";
 import { createHydrateReeWorkspace } from "./hydrateReeWorkspace";
@@ -8,12 +9,10 @@ describe("createHydrateReeWorkspace", () => {
     const ree = mapRawReeIntentToSlices({
       reeIntent: { name: "Hydrated REE" },
       reeSession: {
-        // biome-ignore lint/style/useNamingConvention: backend wire field
         sealed_at: "2026-01-01T00:00:00Z",
-        // biome-ignore lint/style/useNamingConvention: backend wire field
         seal_hash: "sha256:abc",
       },
-      audit: { runtime: { evidence: "current", payload: "present" } },
+      audit: { experiment_environment: { evidence: "current", payload: "present" } },
       fallbackName: "Fallback",
     });
 

@@ -84,7 +84,9 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
       // The strip carries the graph; its evidence opens in the drawer beside
       // the canvas, so the shot needs both surfaces.
       await expect(page.getByRole("navigation", { name: "Review workflow" })).toBeVisible();
-      await page.getByRole("button", { name: /^Open Build review evidence/ }).click();
+      await page
+        .getByRole("button", { name: /^Open Build Experiment Environment review evidence/ })
+        .click();
       await expect(page.getByText("RESULTS · 1/1 REPRODUCED")).toBeVisible();
       await settleVisualPage(page);
     },
@@ -112,9 +114,16 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
       await expect(page.getByText("Base image tag is mutable")).toBeVisible();
     },
   ),
-  workspaceScenario("build runtime", "build-runtime.png", "Build", async (page) => {
-    await expect(page.getByRole("heading", { name: "Build Runtime" })).toBeVisible();
-  }),
+  workspaceScenario(
+    "build experiment environment",
+    "build-experiment-environment.png",
+    "Build Experiment Environment",
+    async (page) => {
+      await expect(
+        page.getByRole("heading", { name: "Build Experiment Environment" }),
+      ).toBeVisible();
+    },
+  ),
   workspaceScenario("software bill of materials", "sbom.png", "SBOM", async (page) => {
     await expect(page.getByRole("heading", { name: "Generate SBOM" })).toBeVisible();
   }),

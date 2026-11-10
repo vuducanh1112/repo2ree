@@ -18,7 +18,7 @@ describe("fmtBytes", () => {
     expect(fmtBytes(5 * 1024 * 1024 + 512 * 1024)).toBe("5.50 MB");
   });
 
-  it("has no ceiling — a runtime tarball reads in MB, not GB", () => {
+  it("has no ceiling — an experiment environment tarball reads in MB, not GB", () => {
     // The 327 MB runtime the examples README describes is the realistic top end.
     expect(fmtBytes(327 * 1024 * 1024)).toBe("327.00 MB");
   });

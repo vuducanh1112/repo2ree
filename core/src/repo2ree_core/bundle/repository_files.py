@@ -13,7 +13,7 @@ from repo2ree_ree.model import Ree
 def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:
     definition = ree.subject.definition
     source = definition.source
-    runtime = definition.build_runtime
+    experiment_environment = definition.experiment_environment
     activation = definition.test_activation
     for name, content in reproducer_entries(
         activation_script=str(activation.run_script_path) if activation else "",
@@ -21,9 +21,11 @@ def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:
         experiments=[
             (exp.name, str(exp.run_script_path), str(exp.verify_script_path or "")) for exp in definition.experiments
         ],
-        runtime_workspace_path=str(runtime.runtime_path) if runtime and runtime.runtime_path else "",
-        runtime_artifact_basename=PurePosixPath(str(runtime.runtime_path)).name
-        if runtime and runtime.runtime_path
+        experiment_environment_workspace_path=str(experiment_environment.artifact_path)
+        if experiment_environment and experiment_environment.artifact_path
+        else "",
+        experiment_environment_artifact_basename=PurePosixPath(str(experiment_environment.artifact_path)).name
+        if experiment_environment and experiment_environment.artifact_path
         else "",
         origin_url=source.origin_url or "" if source else "",
         source_type=source.source_type if source else "",

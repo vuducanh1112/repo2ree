@@ -12,7 +12,7 @@ const reeDocument = {
   ree: { subject: { definition: { name: "demo" } } },
   audit: {
     source: { evidence: "current", payload: "absent" },
-    runtime: { evidence: "current", payload: "absent" },
+    experiment_environment: { evidence: "current", payload: "absent" },
   },
   workspace_files: [],
   ree_files: [],

@@ -36,7 +36,13 @@ describe("appearance", () => {
   });
 
   it("resolves the wash of every stage that shows an earned-outcome chip", () => {
-    for (const stage of [PAGE.EVALUATE, PAGE.BUILD, PAGE.HBOM, PAGE.SBOM, PAGE.ACTIVATION]) {
+    for (const stage of [
+      PAGE.EVALUATE,
+      PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
+      PAGE.HBOM,
+      PAGE.SBOM,
+      PAGE.ACTIVATION,
+    ]) {
       expect(declared(stageTone(stage, "wash")), `${stage} wash`).toBe(true);
     }
   });

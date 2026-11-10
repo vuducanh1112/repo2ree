@@ -184,10 +184,13 @@ def producers(docs: Documents) -> dict[str, Any]:
             r"action names values its declaration does not list",
         ),
         (lambda docs: producers(docs)["in"].pop("experiment"), r"missing \['experiment'\]"),
-        (lambda docs: producers(docs)["in"].update(painting=["build_runtime"]), r"unlisted \['painting'\]"),
         (
-            lambda docs: producers(docs)["in"]["runtime"].append("build_runtim"),
-            r"operation for kind runtime names values its declaration does not list",
+            lambda docs: producers(docs)["in"].update(painting=["build_experiment_environment"]),
+            r"unlisted \['painting'\]",
+        ),
+        (
+            lambda docs: producers(docs)["in"]["experiment_environment"].append("build_runtim"),
+            r"operation for kind experiment_environment names values its declaration does not list",
         ),
         (lambda docs: producers(docs).update(per="outcome"), "'per' names 'outcome', which is not a trigger fact"),
     ],
@@ -312,7 +315,7 @@ def test_citations_link_a_message_and_a_record_keyed_like_the_exchange(citation:
 
 
 def test_conditions_never_match_absent_facts() -> None:
-    assert matches({"operation": {"not": "provision"}}, {"operation": "build"})
+    assert matches({"operation": {"not": "provision"}}, {"operation": "build_experiment_environment"})
     assert not matches({"operation": {"not": "provision"}}, {})
     assert matches({"status": {"in": ["a", "b"]}}, {"status": "b"})
     assert not matches({"status": "a"}, {"status": "b"})

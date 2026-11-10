@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PAGE } from "../app-shell/pages";
 import { reviewLifecycleOrder, reviewStep, settledReviewStepCount } from "./reviewDag";
 
 describe("reviewDag", () => {
@@ -17,7 +18,7 @@ describe("reviewDag", () => {
     expect(
       settledReviewStepCount({
         source: "succeeded",
-        build: "running",
+        [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "running",
         activation: "failed",
         experiments: "different",
       }),

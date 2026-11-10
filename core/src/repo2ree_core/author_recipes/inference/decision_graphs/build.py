@@ -1,6 +1,6 @@
-"""The Phase 1 build-inference decision DAG.
+"""The Phase 1 build-experiment-environment-inference decision DAG.
 
-A shared project-root prefix, a fork into one branch per runtime strategy
+A shared project-root prefix, a fork into one branch per experiment environment strategy
 (``dockerfile`` and ``pip`` in Phase 1), and an explicit score-free resolver
 join. This is deployment-static, versioned data — the sibling of
 ``ree_step_catalog`` — and it is the *only* control-flow authority: the generic
@@ -21,13 +21,13 @@ from repo2ree_protocol.inference import CheckNode, DecisionDag, ForkNode, Resolv
 
 # The build-strategy rule ids the leaves below emit. They are the authority:
 # ``build_regeneration`` imports these to map a regenerated build candidate back
-# to the runtime it produces, so the rule name lives in exactly one place and the
+# to the experiment environment it produces, so the rule name lives in exactly one place and the
 # two cannot drift apart behind a string literal.
 DOCKER_BUILD_RULE = "single-project-root-dockerfile-v1"
 PIP_BUILD_RULE = "root-pip-requirements-v1"
 
-BUILD_INFERENCE_DAG = DecisionDag(
-    key="build-inference",
+BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG = DecisionDag(
+    key="build-experiment-environment-inference",
     version=1,
     root="project-root",
     nodes=[

@@ -31,8 +31,8 @@ DependencyKind = Literal[
     "source",
     "dependency_inventory",
     "script",
-    "runtime_artifact",
-    "runtime_declaration",
+    "experiment_environment_artifact",
+    "experiment_environment_declaration",
     "experiment_declaration",
     "baseline_result",
 ]
@@ -91,16 +91,16 @@ class ScriptValidation(BaseModel):
     status: Literal["not_run", "not_runnable", "succeeded", "failed", "stale"]
     script_digest: str | None = None
     source_snapshot_digest: str | None = None
-    runtime_digest: str | None = None
+    experiment_environment_digest: str | None = None
     matching_run_id: str | None = None
 
 
 # ================================================
-# Runtime plans / contracts (rendering evidence, not executable state)
+# Experiment environment plans / contracts (rendering evidence, not executable state)
 # ================================================
 
 
-class DockerRuntimePlan(BaseModel):
+class DockerExperimentEnvironmentPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["docker_archive"] = "docker_archive"
@@ -112,10 +112,10 @@ class DockerRuntimePlan(BaseModel):
 
 # Phase 1 has one plan type; later phases widen this to a kind-discriminated
 # union of explicit plan models.
-RuntimePlan = DockerRuntimePlan
+ExperimentEnvironmentPlan = DockerExperimentEnvironmentPlan
 
 
-class DockerRuntimeContract(BaseModel):
+class DockerExperimentEnvironmentContract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["docker_archive"] = "docker_archive"
@@ -133,8 +133,8 @@ class DockerRuntimeContract(BaseModel):
 DEFAULT_VENV_RESTORE_DIR = "/tmp/ree-venv"  # noqa: S108
 
 
-class VenvRuntimeContract(BaseModel):
-    """A packed Python virtual environment as the runtime substrate.
+class VenvExperimentEnvironmentContract(BaseModel):
+    """A packed Python virtual environment as the experiment environment substrate.
 
     The build packs the venv as a gzipped tarball at ``artifact_path``; a
     runnable restores it to ``venv_restore_dir`` (an absolute path, because a
@@ -153,8 +153,8 @@ class VenvRuntimeContract(BaseModel):
     interpreter: str = "python"
 
 
-RuntimeContract = Annotated[
-    DockerRuntimeContract | VenvRuntimeContract,
+ExperimentEnvironmentContract = Annotated[
+    DockerExperimentEnvironmentContract | VenvExperimentEnvironmentContract,
     Field(discriminator="kind"),
 ]
 
@@ -229,26 +229,26 @@ class RequirementsProjectBinding(BaseModel):
     digest: str
 
 
-class RuntimePlanBinding(BaseModel):
+class ExperimentEnvironmentPlanBinding(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["runtime_plan"] = "runtime_plan"
-    plan: RuntimePlan
+    kind: Literal["experiment_environment_plan"] = "experiment_environment_plan"
+    plan: ExperimentEnvironmentPlan
 
 
-class RuntimeDeclarationBinding(BaseModel):
+class ExperimentEnvironmentDeclarationBinding(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["runtime_declaration"] = "runtime_declaration"
+    kind: Literal["experiment_environment_declaration"] = "experiment_environment_declaration"
     path: str
     digest: str | None = None
 
 
-RuntimeContractProvenance = Literal["inspected_artifact", "unchanged_generated_build"]
+ExperimentEnvironmentContractProvenance = Literal["inspected_artifact", "unchanged_generated_build"]
 
 
-class RuntimeContractBinding(BaseModel):
-    """A resolved, non-executable runtime contract plus how it was established.
+class ExperimentEnvironmentContractBinding(BaseModel):
+    """A resolved, non-executable experiment environment contract plus how it was established.
 
     ``inspected_artifact`` inspected the built artifact itself;
     ``unchanged_generated_build`` reused the constants of a still-unedited
@@ -258,13 +258,13 @@ class RuntimeContractBinding(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["runtime_contract"] = "runtime_contract"
-    contract: RuntimeContract
-    provenance: RuntimeContractProvenance
+    kind: Literal["experiment_environment_contract"] = "experiment_environment_contract"
+    contract: ExperimentEnvironmentContract
+    provenance: ExperimentEnvironmentContractProvenance
 
 
 class ImageCommandBinding(BaseModel):
-    """The runtime image's declared command (Entrypoint/Cmd), parsed once when
+    """The experiment environment image's declared command (Entrypoint/Cmd), parsed once when
     the artifact is inspected and carried forward so the command-candidate check
     need not re-open the (possibly multi-hundred-MB) archive. Absent when the
     contract came from an unchanged generated build (no artifact to inspect); the
@@ -298,9 +298,9 @@ DecisionBinding = Annotated[
     ProjectRootBinding
     | DockerfileBinding
     | RequirementsProjectBinding
-    | RuntimePlanBinding
-    | RuntimeDeclarationBinding
-    | RuntimeContractBinding
+    | ExperimentEnvironmentPlanBinding
+    | ExperimentEnvironmentDeclarationBinding
+    | ExperimentEnvironmentContractBinding
     | ImageCommandBinding
     | ExperimentBinding
     | CommandCandidatesBinding,
@@ -344,13 +344,13 @@ class StrategyOutcomesObservation(BaseModel):
     outcomes: list[StrategyOutcomeObservation]
 
 
-class RuntimeContractObservation(BaseModel):
+class ExperimentEnvironmentContractObservation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["runtime_contract"] = "runtime_contract"
+    kind: Literal["experiment_environment_contract"] = "experiment_environment_contract"
     # The check's outcome branch (e.g. "docker_single_ref", "missing", "valid").
     result: str
-    runtime_kind: str | None = None
+    experiment_environment_kind: str | None = None
     provenance: str | None = None
     detail: str = ""
 
@@ -381,7 +381,7 @@ DecisionObservation = Annotated[
     LogicalRootObservation
     | PathMatchesObservation
     | StrategyOutcomesObservation
-    | RuntimeContractObservation
+    | ExperimentEnvironmentContractObservation
     | CommandCandidatesObservation
     | ExperimentGateObservation,
     Field(discriminator="kind"),

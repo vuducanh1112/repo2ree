@@ -24,7 +24,7 @@ class BuildInfo(BaseModel):
 
 
 def current_build(distribution: str) -> BuildInfo:
-    """Return build identity without consulting git at runtime."""
+    """Return build identity without consulting git at experiment environment."""
 
     try:
         version = metadata.version(distribution)

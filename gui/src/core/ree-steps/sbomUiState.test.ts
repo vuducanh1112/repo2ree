@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ReeFile } from "../ree/ReeTypes";
 import {
   findSbomArtifact,
-  isRuntimeTarballPath,
+  isExperimentEnvironmentTarballPath,
   SBOM_ARTIFACT_PATH,
   sbomReadiness,
   summarizeSbom,
@@ -25,13 +25,13 @@ describe("findSbomArtifact", () => {
   });
 });
 
-describe("isRuntimeTarballPath", () => {
+describe("isExperimentEnvironmentTarballPath", () => {
   it("matches tar, tar.gz, tgz regardless of case", () => {
-    expect(isRuntimeTarballPath("runtime.tar")).toBe(true);
-    expect(isRuntimeTarballPath("runtime.tar.gz")).toBe(true);
-    expect(isRuntimeTarballPath("runtime.TGZ")).toBe(true);
-    expect(isRuntimeTarballPath("runtime.zip")).toBe(false);
-    expect(isRuntimeTarballPath("")).toBe(false);
+    expect(isExperimentEnvironmentTarballPath("runtime.tar")).toBe(true);
+    expect(isExperimentEnvironmentTarballPath("runtime.tar.gz")).toBe(true);
+    expect(isExperimentEnvironmentTarballPath("runtime.TGZ")).toBe(true);
+    expect(isExperimentEnvironmentTarballPath("runtime.zip")).toBe(false);
+    expect(isExperimentEnvironmentTarballPath("")).toBe(false);
   });
 });
 
@@ -75,8 +75,8 @@ describe("summarizeSbom", () => {
 describe("sbomReadiness", () => {
   it("computes percent and counts", () => {
     const r = sbomReadiness({
-      hasRuntime: true,
-      runtimePathExists: true,
+      hasExperimentEnvironment: true,
+      experimentEnvironmentPathExists: true,
       hasSbom: false,
     });
     expect(r.done).toBe(2);

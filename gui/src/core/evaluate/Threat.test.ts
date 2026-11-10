@@ -95,7 +95,7 @@ describe("parseReproducibilityReport", () => {
           locked_version: "2.31.0",
           observed_version: "2.31.0",
           status: "locked",
-          runtime_presence: "observed",
+          experiment_environment_presence: "observed",
         },
         {
           ecosystem: "pypi",
@@ -104,7 +104,7 @@ describe("parseReproducibilityReport", () => {
           observed_version: "2024.2.2",
           status: "undeclared",
           // An unknown presence value degrades to null, not a dropped row.
-          runtime_presence: "shiny",
+          experiment_environment_presence: "shiny",
         },
       ],
       sbom_cross_check: {
@@ -124,9 +124,13 @@ describe("parseReproducibilityReport", () => {
       expect.objectContaining({
         name: "requests",
         observedVersion: "2.31.0",
-        runtimePresence: "observed",
+        experimentEnvironmentPresence: "observed",
       }),
-      expect.objectContaining({ name: "certifi", status: "undeclared", runtimePresence: null }),
+      expect.objectContaining({
+        name: "certifi",
+        status: "undeclared",
+        experimentEnvironmentPresence: null,
+      }),
     ]);
     expect(report?.sbomCrossCheck).toEqual(
       expect.objectContaining({

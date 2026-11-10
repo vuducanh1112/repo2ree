@@ -12,7 +12,7 @@ Two responsibilities live here:
 2. ``scan_repository`` — builds ``RepositoryFacts`` from the immutable acquired
    ``upstream`` tree. Scanning *upstream* (never the materialized workspace) is
    the load-bearing scoping rule that keeps inference from discovering its own
-   output — reserved scripts, generated recipes, runtime artifacts — as
+   output — reserved scripts, generated recipes, experiment environment artifacts — as
    evidence, and it needs no digest to hold.
 
 Facts are deliberately richer than the aggregate reproducibility report:

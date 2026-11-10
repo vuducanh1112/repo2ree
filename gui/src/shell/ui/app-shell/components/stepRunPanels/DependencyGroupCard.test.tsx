@@ -11,8 +11,8 @@ const group: DependencyGroup = {
       name: "locked-package",
       version: "1.0",
       status: "locked",
-      scope: "runtime",
-      runtimePresence: "observed",
+      scope: "experiment_environment",
+      experimentEnvironmentPresence: "observed",
       observedVersion: "1.0",
     },
     {
@@ -20,7 +20,7 @@ const group: DependencyGroup = {
       version: "^2",
       status: "pinned",
       scope: null,
-      runtimePresence: "version-mismatch",
+      experimentEnvironmentPresence: "version-mismatch",
       observedVersion: "3.0",
     },
     {
@@ -28,7 +28,7 @@ const group: DependencyGroup = {
       version: null,
       status: "unpinned",
       scope: null,
-      runtimePresence: "not-observed",
+      experimentEnvironmentPresence: "not-observed",
       observedVersion: null,
     },
   ],
@@ -41,10 +41,13 @@ describe("DependencyGroupCard", () => {
 
     expect(screen.getByText("2✓")).toBeInTheDocument();
     expect(screen.getByText("1✗")).toBeInTheDocument();
-    expect(screen.getByText("runtime")).toBeInTheDocument();
+    expect(screen.getByText("experiment_environment")).toBeInTheDocument();
     expect(screen.getByText("—")).toBeInTheDocument();
-    expect(screen.getByText("version mismatch")).toHaveAttribute("title", "runtime has 3.0");
-    expect(screen.getByText("not in runtime")).not.toHaveAttribute("title");
+    expect(screen.getByText("version mismatch")).toHaveAttribute(
+      "title",
+      "experiment environment has 3.0",
+    );
+    expect(screen.getByText("not in experiment environment")).not.toHaveAttribute("title");
     fireEvent.click(screen.getByRole("button"));
     expect(onToggle).toHaveBeenCalledOnce();
   });

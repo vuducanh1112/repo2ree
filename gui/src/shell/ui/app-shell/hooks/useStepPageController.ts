@@ -1,5 +1,5 @@
 import { authoringStepStatuses } from "@core/app-shell/authoringDag";
-import { type AppShellPage, appShellPageForField } from "@core/app-shell/pages";
+import { type AppShellPage, appShellPageForField, PAGE } from "@core/app-shell/pages";
 import { EVIDENCE_STEP_BY_PAGE } from "@core/app-shell/processSteps";
 import { auditReceiptRunId, isAuditCurrent } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -50,7 +50,7 @@ export function useStepPageController({
     const statuses = authoringStepStatuses(authoringSteps, ree, badges);
     const navigationFieldByStep = {
       source: "sourceAvailable",
-      build: "runtime",
+      [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experimentEnvironmentPath",
       sbom: "sbom",
       evaluate: "sourceAvailable",
     } as const;

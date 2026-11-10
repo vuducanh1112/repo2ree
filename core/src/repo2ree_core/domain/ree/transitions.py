@@ -14,7 +14,7 @@ from repo2ree_ree.model import (
 from repo2ree_ree.primitives import Digest, UtcInstant
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
-    BuildRuntimeReceipt,
+    BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
@@ -65,8 +65,8 @@ def commit_receipt(ree: Ree, receipt: RunReceipt) -> Ree:
         updates = {"evaluation": receipt}
     elif isinstance(receipt, ObserveHardwareReceipt):
         updates = {"hardware_observation": receipt}
-    elif isinstance(receipt, BuildRuntimeReceipt):
-        updates = {"build": receipt}
+    elif isinstance(receipt, BuildExperimentEnvironmentReceipt):
+        updates = {"experiment_environment": receipt}
     elif isinstance(receipt, GenerateSbomReceipt):
         updates = {"sbom": receipt}
     elif isinstance(receipt, CrossCheckSbomReceipt):

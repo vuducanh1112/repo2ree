@@ -20,17 +20,17 @@ describe("stepRunPlanning", () => {
     const ree = buildRee();
 
     expect(buildStepRunParams("activation", {}, ree)).toEqual({});
-    expect(buildStepRunParams("build", {}, ree)).toEqual({});
+    expect(buildStepRunParams("build_experiment_environment", {}, ree)).toEqual({});
   });
 
   it("marks only build-ish runs for workspace refresh", () => {
-    expect(shouldRefreshWorkspaceAfterStep("build")).toBe(true);
+    expect(shouldRefreshWorkspaceAfterStep("build_experiment_environment")).toBe(true);
     expect(shouldRefreshWorkspaceAfterStep("hbom")).toBe(true);
     expect(shouldRefreshWorkspaceAfterStep("evaluate")).toBe(false);
   });
 
   it("plans generic step run completion state", () => {
-    expect(planStepRunCompletion("build", "2026-01-01T00:00:00Z")).toEqual({
+    expect(planStepRunCompletion("build_experiment_environment", "2026-01-01T00:00:00Z")).toEqual({
       actionState: "done",
       badge: "succeeded",
       timestamp: "2026-01-01T00:00:00Z",
@@ -39,12 +39,14 @@ describe("stepRunPlanning", () => {
   });
 
   it("plans terminal failures", () => {
-    expect(planTerminalReeRunFailure("build", "failed", "2026-01-01T00:00:00Z")).toEqual({
+    expect(
+      planTerminalReeRunFailure("build_experiment_environment", "failed", "2026-01-01T00:00:00Z"),
+    ).toEqual({
       actionState: "done",
       badge: "failed",
       timestamp: "2026-01-01T00:00:00Z",
       shouldRefreshWorkspace: true,
-      errorMessage: "build failed",
+      errorMessage: "build_experiment_environment failed",
     });
   });
 

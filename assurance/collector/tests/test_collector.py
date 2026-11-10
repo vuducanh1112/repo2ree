@@ -45,7 +45,7 @@ JOURNAL = record(
     key="build-1",
     partition="ree-1",
     to="queued",
-    facts={"operation": "build"},
+    facts={"operation": "build_experiment_environment"},
 )
 
 
@@ -239,7 +239,7 @@ def test_a_link_in_an_archive_is_kept_but_never_written_through(tmp_path: Path) 
 def test_lfs_payloads_stay_out_of_the_dossier_and_their_pointers_stand_in(tmp_path: Path) -> None:
     directory = tmp_path / "dossier"
     start(directory)
-    payload = "a runtime image, gigabytes in a real REE"
+    payload = "an experiment environment image, gigabytes in a real REE"
     pointer = (
         "version https://git-lfs.github.com/spec/v1\n"
         f"oid sha256:{hashlib.sha256(payload.encode()).hexdigest()}\nsize {len(payload)}\n"

@@ -48,7 +48,7 @@ class ShowcaseName(StrEnum):
 
 Workflow = Literal["authoring", "review"]
 ExpectedVerdict = Literal["identical", "reproduced", "different"]
-RecipeScript = Literal["build_script.sh", "activation.sh", "experiment.sh", "experiment.verify.sh"]
+RecipeScript = Literal["build_experiment_environment.sh", "activation.sh", "experiment.sh", "experiment.verify.sh"]
 
 PROJECTS = ROOT / "examples/projects"
 API_SUITE = ROOT / "testbed/suites/showcase"
@@ -65,7 +65,7 @@ class Project:
     name: ProjectName
     # The bench image its REEs declare, on a machine that runs scripts in containers; None runs them on the machine.
     image: str | None
-    runtime: str
+    experiment_environment_path: str
     experiment: str
     # Whether the build script is the one script inference proposes, or the recipe's.
     infer_build: bool
@@ -112,14 +112,14 @@ class Project:
 INSTANT = Project(
     name=ProjectName.INSTANT,
     image=PYTHON_SLIM_IMAGE,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-hello",
     infer_build=True,
 )
 INSTANT_DOCKER = Project(
     name=ProjectName.INSTANT_DOCKER,
     image=DOCKER_IMAGE,
-    runtime=f"{SOURCE}/runtime-image.tar",
+    experiment_environment_path=f"{SOURCE}/runtime-image.tar",
     experiment="instant-docker-hello",
     # Inference proposes `docker build` of the project as it stands; the recipe also
     # brings the bench's busybox into the build context, which a FROM scratch image needs.
@@ -128,14 +128,14 @@ INSTANT_DOCKER = Project(
 APPTAINER = Project(
     name=ProjectName.APPTAINER,
     image=None,
-    runtime=f"{SOURCE}/runtime.sif",
+    experiment_environment_path=f"{SOURCE}/runtime.sif",
     experiment="instant-apptainer-hello",
     infer_build=False,
 )
 PYTHON_DOCKER = Project(
     name=ProjectName.PYTHON_DOCKER,
     image=DOCKER_IMAGE,
-    runtime=f"{SOURCE}/runtime.tar",
+    experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="python-hello",
     infer_build=False,
     network=True,
@@ -143,7 +143,7 @@ PYTHON_DOCKER = Project(
 PYTHON_VENV = Project(
     name=ProjectName.PYTHON_VENV,
     image=None,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="python-pip-hello",
     infer_build=False,
     network=True,
@@ -151,7 +151,7 @@ PYTHON_VENV = Project(
 JAVA_MAVEN = Project(
     name=ProjectName.JAVA_MAVEN,
     image=DOCKER_IMAGE,
-    runtime=f"{SOURCE}/runtime.tar",
+    experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="java-hello",
     infer_build=False,
     network=True,
@@ -159,14 +159,14 @@ JAVA_MAVEN = Project(
 SLURM = Project(
     name=ProjectName.SLURM,
     image=None,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-slurm-hello",
     infer_build=True,
 )
 STOCHASTIC = Project(
     name=ProjectName.STOCHASTIC,
     image=None,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-stochastic-pi",
     infer_build=True,
     verdict="reproduced",
@@ -174,7 +174,7 @@ STOCHASTIC = Project(
 CONDA = Project(
     name=ProjectName.CONDA,
     image=None,
-    runtime=f"{SOURCE}/runtime-conda.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-conda.tar.gz",
     experiment="conda-numpy",
     infer_build=False,
     network=True,
@@ -182,7 +182,7 @@ CONDA = Project(
 NOTEBOOK = Project(
     name=ProjectName.NOTEBOOK,
     image=None,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="notebook-decay-rate",
     infer_build=True,
     # The executed notebook records when each of its cells ran, so no rerun repeats its bytes.
@@ -193,7 +193,7 @@ NOTEBOOK = Project(
 PLOTTING = Project(
     name=ProjectName.PLOTTING,
     image=None,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="plotting-linear-fit",
     infer_build=True,
     network=True,
@@ -202,7 +202,7 @@ PLOTTING = Project(
 UNPINNED = Project(
     name=ProjectName.UNPINNED,
     image=None,
-    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="unpinned-mean-kelvin",
     infer_build=False,
     verdict="different",

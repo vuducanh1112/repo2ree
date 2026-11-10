@@ -160,7 +160,7 @@ export function mapRawReeIntentToSlices({
       originUrl: String(intent.origin_url ?? fallbackOriginUrl ?? ""),
       sourceType: (intent.source_type as ReeSpec["sourceType"]) || "",
       resolvedRevision: String(intent.revision ?? ""),
-      runtime: String(intent.runtime ?? ""),
+      experimentEnvironmentPath: String(intent.experiment_environment_path ?? ""),
       workbenchEnvironment: mapRawWorkbenchEnvironment(intent.workbench_environment),
       activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
@@ -182,7 +182,7 @@ export function mapRawReeIntentToSlices({
         : undefined,
     },
     artifactStatus: {
-      runtimeIncluded: Boolean(session.runtime_included),
+      experimentEnvironmentIncluded: Boolean(session.experiment_environment_included),
       sealedAt: session.sealed_at ? String(session.sealed_at) : undefined,
       sealHash: session.seal_hash ? String(session.seal_hash) : undefined,
     },

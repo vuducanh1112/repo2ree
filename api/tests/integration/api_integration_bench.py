@@ -165,7 +165,7 @@ class ReeFilmstrip:
     would make the capture larger than the thing it describes.
 
     Labels are the caller's, because the interesting frames are named by intent
-    ("build", "declare experiment") rather than by endpoint.
+    ("build_experiment_environment", "declare experiment") rather than by endpoint.
     """
 
     def __init__(self, client: httpx.Client, path: Path) -> None:

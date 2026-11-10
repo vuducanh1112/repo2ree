@@ -64,7 +64,12 @@ export function runnableReviewSteps(
 }
 
 /** Steps with a reviewer-side path today; the rest stay disabled in the DAG. */
-const IMPLEMENTED_STEPS = new Set<ReviewStepKey>(["source", "build", "activation", "experiments"]);
+const IMPLEMENTED_STEPS = new Set<ReviewStepKey>([
+  "source",
+  "build_experiment_environment",
+  "activation",
+  "experiments",
+]);
 
 /**
  * The status of one experiment within an attempt.
@@ -166,7 +171,8 @@ function stepStatus(
 
 function verdict(attempt: ReviewAttempt, key: ReviewStepKey): ReviewStepStatus | undefined {
   if (key === "source") return attempt.sourceComparison?.verdict;
-  if (key === "build") return attempt.buildComparison?.verdict;
+  if (key === "build_experiment_environment")
+    return attempt.experimentEnvironmentComparison?.verdict;
   if (key === "activation") {
     const outcome = attempt.activationOutcome;
     if (!outcome) return undefined;

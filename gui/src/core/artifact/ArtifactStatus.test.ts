@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import { type ArtifactStatus, isSealed, preserveSeal } from "./ArtifactStatus";
 
 const sealed: ArtifactStatus = {
-  runtimeIncluded: true,
+  experimentEnvironmentIncluded: true,
   sealedAt: "2026-06-06T00:00:00Z",
   sealHash: "sha256:abc",
 };
-const unsealed: ArtifactStatus = { runtimeIncluded: false };
+const unsealed: ArtifactStatus = { experimentEnvironmentIncluded: false };
 
 describe("isSealed", () => {
   it("requires both a seal time and a seal hash", () => {
@@ -28,7 +28,7 @@ describe("preserveSeal", () => {
   });
 
   it("accepts the incoming state while still unsealed", () => {
-    const next: ArtifactStatus = { runtimeIncluded: true };
+    const next: ArtifactStatus = { experimentEnvironmentIncluded: true };
     expect(preserveSeal(unsealed, next)).toBe(next);
   });
 

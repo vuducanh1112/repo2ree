@@ -21,7 +21,7 @@ from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATION_SCRIPT,
     RESERVED_ACTIVATION_VERIFY_SCRIPT,
-    RESERVED_BUILD_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -55,10 +55,10 @@ def test_invalid_path_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
 @pytest.mark.parametrize(
     "path",
     [
-        RESERVED_BUILD_SCRIPT,
+        RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
         RESERVED_ACTIVATION_SCRIPT,
         experiment_run_script_path("hello"),
-        f"./{RESERVED_BUILD_SCRIPT}",
+        f"./{RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}",
     ],
 )
 def test_a_run_script_is_never_deleted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, path: str) -> None:

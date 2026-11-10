@@ -80,17 +80,17 @@ set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
 clear = ["patch_ree_definition"]
 
-[fields."definition.build_runtime"]
-group = "runtime"
+[fields."definition.experiment_environment"]
+group = "experiment_environment"
 initial = "set"
 set = ["patch_ree_definition"]
-# The build script is never deleted (only a verify script is), so only writing it changes the build.
+# The build experiment environment script is never deleted (only a verify script is), so only writing it changes the build.
 change = ["patch_ree_definition", "write_file"]
 clear = ["patch_ree_definition"]
-files = ["ree-scripts/build_script.sh"]
+files = ["ree-scripts/build_experiment_environment.sh"]
 
-[fields."definition.build_runtime.runtime_path"]
-group = "runtime"
+[fields."definition.experiment_environment.artifact_path"]
+group = "experiment_environment"
 initial = "unset"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
@@ -98,7 +98,7 @@ clear = ["patch_ree_definition"]
 
 # The workbench environment the author's scripts run in: the build, activation and experiments.
 [fields."definition.workbench_environment"]
-group = "runtime"
+group = "workbench_environment"
 initial = "unset"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
@@ -147,21 +147,21 @@ about = ["definition.hardware"]
 applies_without_declaration = true
 produced_by = "generate_hbom"
 
-[receipts.runtime]
-about = ["definition.build_runtime.runtime_path"]
-rests_on = ["definition.build_runtime", "definition.workbench_environment"]
+[receipts.experiment_environment]
+about = ["definition.experiment_environment.artifact_path"]
+rests_on = ["definition.experiment_environment", "definition.workbench_environment"]
 made_from = ["source"]
-produced_by = "build_runtime"
+produced_by = "build_experiment_environment"
 cleared_by = ["remove_source"]
 
 [receipts.sbom]
-about = ["definition.build_runtime.runtime_path"]
-made_from = ["runtime"]
+about = ["definition.experiment_environment.artifact_path"]
+made_from = ["experiment_environment"]
 produced_by = "generate_sbom"
 cleared_by = ["remove_source"]
 
 [receipts.sbom_cross_check]
-about = ["definition.source", "definition.build_runtime.runtime_path"]
+about = ["definition.source", "definition.experiment_environment.artifact_path"]
 made_from = ["sbom", "evaluation"]
 produced_by = "cross_check_sbom"
 cleared_by = ["remove_source"]
@@ -169,7 +169,7 @@ cleared_by = ["remove_source"]
 [receipts.test_activation]
 about = ["definition.test_activation"]
 rests_on = ["definition.test_activation", "definition.workbench_environment"]
-made_from = ["source", "runtime"]
+made_from = ["source", "experiment_environment"]
 produced_by = "activation_test"
 cleared_by = ["remove_source"]
 
@@ -177,6 +177,6 @@ cleared_by = ["remove_source"]
 keyed = true
 about = ["definition.experiments[*]"]
 rests_on = ["definition.experiments[*]", "definition.workbench_environment"]
-made_from = ["source", "runtime"]
+made_from = ["source", "experiment_environment"]
 produced_by = "run_experiment"
 cleared_by = ["remove_source"]

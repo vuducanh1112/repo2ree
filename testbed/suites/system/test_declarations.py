@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from system_client import EXPERIMENT, RESULT, RUNTIME, Api
+from system_client import EXPERIMENT, EXPERIMENT_ENVIRONMENT, RESULT, Api
 
 
 def contributor(identifier: str, name: str) -> dict[str, str]:
@@ -66,7 +66,7 @@ def test_the_catalog_is_set_changed_and_cleared_but_the_source_is_not_patched(
     api.request("PUT", f"/api/v1/rees/{ree_id}/definition", json={"definition": definition(api, ree_id)})
 
 
-def test_declared_hardware_runtime_activation_and_experiments_come_and_go(
+def test_declared_hardware_experiment_environment_activation_and_experiments_come_and_go(
     api: Api, new_ree: Callable[..., str]
 ) -> None:
     ree_id = new_ree()
@@ -80,10 +80,10 @@ def test_declared_hardware_runtime_activation_and_experiments_come_and_go(
     assert api.audit(ree_id)["hardware"]["evidence"] == "current"
 
     # Undeclaring what a receipt is about orphans the receipt; declaring it again asks for it anew.
-    api.patch(ree_id, {"build_runtime": {"runtime_path": None}})
-    assert api.audit(ree_id)["runtime"]["evidence"] == "stale"
-    api.patch(ree_id, {"build_runtime": {"runtime_path": f"{RUNTIME}.renamed"}})
-    api.patch(ree_id, {"build_runtime": {"runtime_path": RUNTIME}})
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": None}})
+    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "stale"
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": f"{EXPERIMENT_ENVIRONMENT}.renamed"}})
+    api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
     api.patch(ree_id, {"test_activation": None})
     assert api.audit(ree_id)["test_activation"]["evidence"] == "stale"
     api.patch(ree_id, {"test_activation": {}})

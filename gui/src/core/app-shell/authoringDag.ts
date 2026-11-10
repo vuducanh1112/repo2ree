@@ -19,7 +19,7 @@ const PAGE_BY_STEP: Readonly<Record<string, AppShellPage>> = {
   metadata: PAGE.METADATA,
   hbom: PAGE.HBOM,
   evaluate: PAGE.EVALUATE,
-  build: PAGE.BUILD,
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
   sbom: PAGE.SBOM,
   // The cross-check is the second operation on the SBOM page.
   crosscheck: PAGE.SBOM,

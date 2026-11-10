@@ -1,7 +1,7 @@
 """The single wiring of the build DAG's checks, resolver, and renderers.
 
 Both the registry (the deployment surface) and ``build_regeneration`` (which
-re-runs the build DAG to establish a runtime contract before the artifact
+re-runs the build DAG to establish an experiment environment contract before the artifact
 exists) need the exact set of checks/resolver/renderers the build graph walks.
 Keeping that set in one place means the two callers can never drift: adding a
 build strategy here updates both at once, so ``unchanged_generated_build`` can
@@ -21,8 +21,8 @@ from repo2ree_core.author_recipes.inference.checks.dockerfile import (
 from repo2ree_core.author_recipes.inference.checks.project_root import LogicalProjectRootCheck
 from repo2ree_core.author_recipes.inference.checks.python import RequirementsAtProjectRootCheck
 from repo2ree_core.author_recipes.inference.models import Check, Renderer, Resolver
-from repo2ree_core.author_recipes.inference.renderers.docker_runtime import DockerBuildRenderer
-from repo2ree_core.author_recipes.inference.renderers.python_runtime import PipVenvBuildRenderer
+from repo2ree_core.author_recipes.inference.renderers.docker_experiment_environment import DockerBuildRenderer
+from repo2ree_core.author_recipes.inference.renderers.python_experiment_environment import PipVenvBuildRenderer
 from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityResolver
 
 BUILD_CHECKS: dict[str, Check] = {

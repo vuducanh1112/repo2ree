@@ -7,15 +7,15 @@ from pathlib import Path
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
-from repo2ree_core.author_recipes.inference.runtime_inputs import RuntimeInputs
+from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.reserved_paths import experiment_run_script_path
 
-_DOCKER_RUNTIME = ".repo2ree/artifacts/runtime.tar"
-_VENV_RUNTIME = ".repo2ree/artifacts/runtime-venv.tar.gz"
+_DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
+_VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -30,17 +30,21 @@ def _experiment(
     root: Path,
     *,
     name: str,
-    runtime: str,
+    experiment_environment: str,
     files: dict[str, bytes],
     experiments: list[ExperimentDefinition],
 ) -> TargetInferenceResult:
     definition = ReeDefinition(name="Demo", experiments=tuple(experiments))
-    inputs = RuntimeInputs(declared_runtime_path=runtime, experiments=experiments, accessor=MemoryAccessor(files))
+    inputs = ExperimentEnvironmentInputs(
+        declared_experiment_environment_path=experiment_environment,
+        experiments=experiments,
+        accessor=MemoryAccessor(files),
+    )
     report = infer_scripts(
         root,
         [ScriptTargetSelectorArg(kind="experiment_run", experiment_name=name)],
         definition=definition,
-        runtime_inputs=inputs,
+        experiment_environment_inputs=inputs,
     )
     return report.results[0]
 
@@ -49,14 +53,14 @@ def _codes(result: TargetInferenceResult) -> set[str]:
     return {w.code for w in result.warnings}
 
 
-def test_declared_experiment_with_docker_runtime_captures_log(tmp_path: Path) -> None:
+def test_declared_experiment_with_docker_experiment_environment_captures_log(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     exp = _definition("exp one", ["results/exp-one.log"])
     result = _experiment(
         tmp_path,
         name="exp one",
-        runtime=_DOCKER_RUNTIME,
-        files={_DOCKER_RUNTIME: docker_archive(["ree-runtime:demo"])},
+        experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        files={_DOCKER_EXPERIMENT_ENVIRONMENT: docker_archive(["ree-runtime:demo"])},
         experiments=[exp],
     )
     assert result.status == "needs_input"
@@ -76,8 +80,8 @@ def test_undeclared_output_path_warns(tmp_path: Path) -> None:
     result = _experiment(
         tmp_path,
         name="exp one",
-        runtime=_DOCKER_RUNTIME,
-        files={_DOCKER_RUNTIME: docker_archive(["ree-runtime:demo"])},
+        experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        files={_DOCKER_EXPERIMENT_ENVIRONMENT: docker_archive(["ree-runtime:demo"])},
         experiments=[exp],
     )
     assert "experiment_output_declaration_missing" in _codes(result)
@@ -88,8 +92,8 @@ def test_an_undeclared_experiment_gets_the_script_that_declaring_it_needs(tmp_pa
     result = _experiment(
         tmp_path,
         name="ghost",
-        runtime=_DOCKER_RUNTIME,
-        files={_DOCKER_RUNTIME: docker_archive(["ree-runtime:demo"])},
+        experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        files={_DOCKER_EXPERIMENT_ENVIRONMENT: docker_archive(["ree-runtime:demo"])},
         experiments=[_definition("real", [])],
     )
     assert result.status == "needs_input"
@@ -97,14 +101,14 @@ def test_an_undeclared_experiment_gets_the_script_that_declaring_it_needs(tmp_pa
     assert {"experiment_not_declared", "experiment_output_declaration_missing"} <= _codes(result)
 
 
-def test_venv_runtime_experiment(tmp_path: Path) -> None:
+def test_venv_experiment_environment_experiment(tmp_path: Path) -> None:
     _tree(tmp_path, {"requirements.txt": "flask\n"})
     exp = _definition("run", ["results/run.log"])
     result = _experiment(
         tmp_path,
         name="run",
-        runtime=_VENV_RUNTIME,
-        files={_VENV_RUNTIME: venv_archive()},
+        experiment_environment=_VENV_EXPERIMENT_ENVIRONMENT,
+        files={_VENV_EXPERIMENT_ENVIRONMENT: venv_archive()},
         experiments=[exp],
     )
     assert result.status == "needs_input"
@@ -113,17 +117,17 @@ def test_venv_runtime_experiment(tmp_path: Path) -> None:
     assert '"$@" >"$RUN_LOG"' in body
 
 
-def test_missing_runtime_blocks_even_for_declared_experiment(tmp_path: Path) -> None:
+def test_missing_experiment_environment_blocks_even_for_declared_experiment(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     result = _experiment(
         tmp_path,
         name="run",
-        runtime=_DOCKER_RUNTIME,
+        experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
         files={},
         experiments=[_definition("run", [])],
     )
     assert result.status == "not_inferred"
-    assert "runtime_artifact_missing" in _codes(result)
+    assert "experiment_environment_artifact_missing" in _codes(result)
 
 
 def _definition(name: str, output_paths: list[str]) -> ExperimentDefinition:

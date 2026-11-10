@@ -17,11 +17,11 @@ describe("mapReviewRecord", () => {
         expected_swhid: "swh:expected",
         observed_swhid: "swh:observed",
       },
-      build_comparison: {
+      experiment_environment_comparison: {
         basis: null,
         verdict: "mismatch",
-        expected_runtime_digest: "expected",
-        observed_runtime_digest: "observed",
+        expected_artifact_digest: "expected",
+        observed_artifact_digest: "observed",
         matched: 2,
         missing_count: 1,
         extra_count: 1,
@@ -40,7 +40,7 @@ describe("mapReviewRecord", () => {
       activation_outcome: {
         basis: "independent",
         verdict: "pass",
-        runtime_digest: "digest",
+        experiment_environment_digest: "digest",
         run_exit_code: 0,
         verify_exit_code: 0,
       },
@@ -57,7 +57,7 @@ describe("mapReviewRecord", () => {
           run_exit_code: 0,
           expected_output_digest: "a",
           observed_output_digest: "a",
-          runtime_digest: "runtime",
+          experiment_environment_digest: "experiment_environment",
         },
       ],
       failure: null,
@@ -65,8 +65,11 @@ describe("mapReviewRecord", () => {
     const mapped = mapReviewRecord(wire);
 
     expect(mapped.sourceComparison?.basis).toBe("independent");
-    expect(mapped.buildComparison).toMatchObject({ missingCount: 1, extraCount: 1 });
-    expect(mapped.buildComparison?.missing[0]).toEqual({
+    expect(mapped.experimentEnvironmentComparison).toMatchObject({
+      missingCount: 1,
+      extraCount: 1,
+    });
+    expect(mapped.experimentEnvironmentComparison?.missing[0]).toEqual({
       ecosystem: "pypi",
       name: "missing",
       expectedVersion: "1",
@@ -87,7 +90,7 @@ describe("mapReviewRecord", () => {
       status: "queued",
       steps: null,
       source_comparison: null,
-      build_comparison: null,
+      experiment_environment_comparison: null,
       activation_outcome: null,
       experiment_comparisons: null,
       failure: null,
@@ -100,7 +103,7 @@ describe("mapReviewRecord", () => {
       status: "queued",
       steps: [],
       sourceComparison: undefined,
-      buildComparison: undefined,
+      experimentEnvironmentComparison: undefined,
       activationOutcome: undefined,
       experimentComparisons: [],
       failure: undefined,
@@ -113,13 +116,13 @@ describe("mapReviewRecord", () => {
       created_at: "created",
       updated_at: "updated",
       status: "failed",
-      steps: [{ step: "build", status: "failed", failure: "build failed" }],
+      steps: [{ step: "build_experiment_environment", status: "failed", failure: "build failed" }],
       source_comparison: { basis: "receipt", verdict: "match" },
-      build_comparison: { basis: "receipt", verdict: "unknown" },
+      experiment_environment_comparison: { basis: "receipt", verdict: "unknown" },
       activation_outcome: {
         basis: "receipt",
         verdict: "unknown",
-        runtime_digest: null,
+        experiment_environment_digest: null,
         run_exit_code: null,
         verify_exit_code: null,
       },
@@ -141,7 +144,7 @@ describe("mapReviewRecord", () => {
       observedSwhid: undefined,
       verdict: "match",
     });
-    expect(mapped.buildComparison).toMatchObject({
+    expect(mapped.experimentEnvironmentComparison).toMatchObject({
       basis: "receipt",
       matched: 0,
       missingCount: 0,
@@ -153,7 +156,7 @@ describe("mapReviewRecord", () => {
       versionMismatches: [],
     });
     expect(mapped.activationOutcome).toMatchObject({
-      runtimeDigest: undefined,
+      experimentEnvironmentDigest: undefined,
       runExitCode: undefined,
       verifyExitCode: undefined,
     });
@@ -166,7 +169,7 @@ describe("mapReviewRecord", () => {
       runExitCode: undefined,
       expectedOutputDigest: undefined,
       observedOutputDigest: undefined,
-      runtimeDigest: undefined,
+      experimentEnvironmentDigest: undefined,
     });
     expect(mapped.failure).toBe("review failed");
   });

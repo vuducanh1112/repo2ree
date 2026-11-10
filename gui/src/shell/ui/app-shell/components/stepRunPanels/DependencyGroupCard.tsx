@@ -83,17 +83,18 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
                   <span className={styles.verdict} data-status={pkg.status}>
                     {statusLabel}
                   </span>
-                  {pkg.runtimePresence && (
+                  {pkg.experimentEnvironmentPresence && (
                     <span
                       title={
-                        pkg.runtimePresence === "version-mismatch" && pkg.observedVersion
-                          ? `runtime has ${pkg.observedVersion}`
+                        pkg.experimentEnvironmentPresence === "version-mismatch" &&
+                        pkg.observedVersion
+                          ? `experiment environment has ${pkg.observedVersion}`
                           : undefined
                       }
                       className={styles.verdict}
-                      data-presence={pkg.runtimePresence}
+                      data-presence={pkg.experimentEnvironmentPresence}
                     >
-                      {PRESENCE_LABEL[pkg.runtimePresence]}
+                      {PRESENCE_LABEL[pkg.experimentEnvironmentPresence]}
                     </span>
                   )}
                 </span>

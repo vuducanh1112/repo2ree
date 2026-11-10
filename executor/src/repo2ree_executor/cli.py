@@ -24,7 +24,7 @@ from repo2ree_core.persistence.history import HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.reproduction.commands import (
-    BUILD_RUNTIME,
+    BUILD_EXPERIMENT_ENVIRONMENT,
     EXPERIMENT,
     MATERIALIZE_WORKSPACE,
     TEST_ACTIVATION,
@@ -33,7 +33,7 @@ from repo2ree_protocol.build import current_build
 from repo2ree_protocol.command import (
     ActivationTestArgs,
     ActivationTestCommand,
-    BuildRuntimeCommand,
+    BuildExperimentEnvironmentCommand,
     MaterializeWorkspaceCommand,
     RunExperimentArgs,
     RunExperimentCommand,
@@ -204,7 +204,7 @@ def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContex
     """Run a validated Command envelope, streaming NDJSON and emitting the result.
 
     Shared by ``execute`` (the machine path, host → workbench) and the
-    first-class reproduction subcommands (``build-runtime``, ``test-activation``,
+    first-class reproduction subcommands (``build-experiment-environment``, ``test-activation``,
     ``experiment``, ``materialize-workspace``) so they all log, persist, and
     signal failure identically. Exits non-zero on failure or cancellation.
     """
@@ -360,10 +360,10 @@ def materialize_workspace_cmd(run_id: str | None) -> None:
     _run_command_envelope(MaterializeWorkspaceCommand(), run_id)
 
 
-@cli.command(BUILD_RUNTIME.name, help=BUILD_RUNTIME.summary)
+@cli.command(BUILD_EXPERIMENT_ENVIRONMENT.name, help=BUILD_EXPERIMENT_ENVIRONMENT.summary)
 @click.option("--run-id", default=None, help="If set, append NDJSON events to /ree/runs/<run-id>.ndjson.")
-def build_runtime_cmd(run_id: str | None) -> None:
-    _run_command_envelope(BuildRuntimeCommand(), run_id)
+def build_experiment_environment_cmd(run_id: str | None) -> None:
+    _run_command_envelope(BuildExperimentEnvironmentCommand(), run_id)
 
 
 @cli.command(TEST_ACTIVATION.name, help=TEST_ACTIVATION.summary)

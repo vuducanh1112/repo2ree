@@ -36,7 +36,7 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
     reeSpec: {
       ...input.reeSpec,
       ...clearedSourceIdentityReeSpec(),
-      runtime: "",
+      experimentEnvironmentPath: "",
       activation: createEmptyReeActivation(),
       sbom: "",
       swhid: "",
@@ -51,7 +51,7 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
     },
     artifactStatus: {
       ...input.artifactStatus,
-      runtimeIncluded: false,
+      experimentEnvironmentIncluded: false,
     },
     evaluationState: emptyEvaluationState(),
     badges: {},

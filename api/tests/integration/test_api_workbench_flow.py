@@ -115,11 +115,13 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     # --- write a file over HTTP, read the raw bytes back ----------------
     resp = client.put(
         f"/api/v1/rees/{ree_id}/files/content",
-        json={"path": "ree-scripts/build_script.sh", "content": "echo build\n"},
+        json={"path": "ree-scripts/build_experiment_environment.sh", "content": "echo build\n"},
     )
     assert resp.status_code == 200, resp.text
 
-    resp = client.get(f"/api/v1/rees/{ree_id}/files/raw", params={"path": "workspace/ree-scripts/build_script.sh"})
+    resp = client.get(
+        f"/api/v1/rees/{ree_id}/files/raw", params={"path": "workspace/ree-scripts/build_experiment_environment.sh"}
+    )
     assert resp.status_code == 200
     assert resp.content == b"echo build\n"
 

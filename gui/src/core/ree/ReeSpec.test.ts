@@ -5,7 +5,7 @@ function buildReeDraft() {
     name: "demo",
     originUrl: "https://example.org/repo.git",
     sourceType: "git",
-    runtime: "runtime.tar.gz",
+    experimentEnvironmentPath: "runtime.tar.gz",
     activation_script: "activate_runtime.sh",
     sbom: "artifacts/sbom.json",
     swhid: "swh:1:dir:test",
@@ -24,7 +24,7 @@ function buildReeDraft() {
     uploadedArchive: "repo.tar.gz",
     sourceSnapshotArchive: "repo-original.tar.gz",
     sourceSnapshotCapturedAt: "2026-01-01T00:00:00Z",
-    runtimeIncluded: true,
+    experimentEnvironmentIncluded: true,
     sealedAt: "2026-01-02T00:00:00Z",
     sealHash: "sha256:test",
     dependencyLevel: 3,
@@ -36,7 +36,7 @@ describe("Ree draft shape", () => {
     const ree = buildReeDraft();
     expect(ree.name).toBe("demo");
     expect(ree.sourceAvailable).toBe(true);
-    expect(ree.runtimeIncluded).toBe(true);
+    expect(ree.experimentEnvironmentIncluded).toBe(true);
     expect(ree.dependencyLevel).toBe(3);
   });
 });

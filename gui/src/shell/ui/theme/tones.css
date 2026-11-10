@@ -44,9 +44,9 @@
   --stage-evaluate-line: var(--palette-violet-600);
   --stage-evaluate-ink: var(--palette-violet-950);
   --stage-evaluate-wash: var(--palette-violet-050);
-  --stage-build-line: var(--palette-cyan-600);
-  --stage-build-ink: var(--palette-cyan-900);
-  --stage-build-wash: var(--palette-cyan-050);
+  --stage-build_experiment_environment-line: var(--palette-cyan-600);
+  --stage-build_experiment_environment-ink: var(--palette-cyan-900);
+  --stage-build_experiment_environment-wash: var(--palette-cyan-050);
   --stage-sbom-line: var(--palette-green-600);
   --stage-sbom-ink: var(--palette-green-900);
   --stage-sbom-wash: var(--palette-green-050);

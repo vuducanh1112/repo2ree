@@ -17,7 +17,7 @@ from repo2ree_core.operations.read_models.files import list_ree_files, list_work
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.tools import find_tool
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 
 def git(layout: ReeLayout, *args: str) -> bytes:
@@ -38,7 +38,7 @@ def test_initial_snapshot_contains_the_actual_ree_and_scripts(tmp_path):
     assert git(layout, "show", f"{result.snapshot_id}:ree.json") == layout.manifest.read_bytes()
     assert json.loads(layout.manifest.read_bytes())["subject"]["definition"]["name"] == "demo"
     for tree in ("overlay",):
-        path = f"{tree}/{RESERVED_BUILD_SCRIPT}"
+        path = f"{tree}/{RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}"
         assert git(layout, "show", f"{result.snapshot_id}:{path}") == (layout.root / path).read_bytes()
     assert git(layout, "log", "-1", "--format=%s").strip() == b"initialize_ree"
     assert git(layout, "rev-list", "--count", "HEAD").strip() == b"1"
@@ -49,14 +49,19 @@ def test_initial_snapshot_contains_the_actual_ree_and_scripts(tmp_path):
 def test_repeat_preserves_authored_files_and_returns_original_snapshot(tmp_path):
     layout = ReeLayout.for_ree(tmp_path, "ree")
     first = initialize_ree(layout, name="demo")
-    original = layout.overlay_file(RESERVED_BUILD_SCRIPT).read_bytes()
-    layout.overlay_file(RESERVED_BUILD_SCRIPT).write_bytes(b"changed after initialization")
+    original = layout.overlay_file(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).read_bytes()
+    layout.overlay_file(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).write_bytes(b"changed after initialization")
     second = initialize_ree(layout, name="different name")
     assert second.status == "already_initialised"
     assert second.snapshot_id == first.snapshot_id
     assert json.loads(layout.manifest.read_bytes())["subject"]["definition"]["name"] == "demo"
-    assert layout.overlay_file(RESERVED_BUILD_SCRIPT).read_bytes() == b"changed after initialization"
-    assert git(layout, "show", f"{first.snapshot_id}:overlay/{RESERVED_BUILD_SCRIPT}") == original
+    assert (
+        layout.overlay_file(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).read_bytes()
+        == b"changed after initialization"
+    )
+    assert (
+        git(layout, "show", f"{first.snapshot_id}:overlay/{RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}") == original
+    )
     assert git(layout, "rev-list", "--count", "HEAD").strip() == b"1"
 
 

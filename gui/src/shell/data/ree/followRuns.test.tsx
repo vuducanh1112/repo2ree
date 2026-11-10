@@ -18,14 +18,18 @@ const run = (operation: string, status: "running" | "succeeded") => ({
   failure: null,
 });
 
-const document = (runtimeReceiptRunId?: string) => ({
+const document = (experimentEnvironmentReceiptRunId?: string) => ({
   ree_id: "ree-1",
   status: "draft" as const,
   ree: { subject: { definition: { name: "hello" } } },
   audit: {
     source: { evidence: "current", payload: "present", receipt_run_id: "source-1" },
-    runtime: runtimeReceiptRunId
-      ? { evidence: "current", payload: "present", receipt_run_id: runtimeReceiptRunId }
+    experiment_environment: experimentEnvironmentReceiptRunId
+      ? {
+          evidence: "current",
+          payload: "present",
+          receipt_run_id: experimentEnvironmentReceiptRunId,
+        }
       : { evidence: "missing", payload: "missing" },
   },
   workspace_files: [],
@@ -65,20 +69,22 @@ function follow(operation: string, reads: ReturnType<typeof document>[]) {
 describe("useReeDocumentFollowsRuns", () => {
   it("keeps reading the document after a build until it shows the build's receipt", async () => {
     // The run reports success before a read of the document shows its receipt.
-    const { awaiting, getRee, settle } = follow("build", [
+    const { awaiting, getRee, settle } = follow("build_experiment_environment", [
       document(),
       document(),
-      document("build-1"),
+      document("build_experiment_environment-1"),
     ]);
     await settle();
 
-    await waitFor(() => expect(awaiting().has("build-1")).toBe(true));
+    await waitFor(() => expect(awaiting().has("build_experiment_environment-1")).toBe(true));
     await waitFor(() => expect(awaiting().size).toBe(0), { timeout: 5000 });
     expect(getRee).toHaveBeenCalledTimes(4);
   });
 
   it("reads the document once when it already shows the receipt", async () => {
-    const { awaiting, getRee, settle } = follow("build", [document("build-1")]);
+    const { awaiting, getRee, settle } = follow("build_experiment_environment", [
+      document("build_experiment_environment-1"),
+    ]);
     await settle();
 
     await waitFor(() => expect(getRee).toHaveBeenCalledTimes(2));

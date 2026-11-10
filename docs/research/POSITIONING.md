@@ -313,7 +313,7 @@ three layers:
 
 - **Environment.** Researchers keep using Docker, Nix, Bazel, conda, or
   none of the above. The
-  [BuildRuntime page](../../gui/src/shell/ui/app-shell/pages/build-runtime/BuildRuntimePage.tsx)
+  [BuildRuntime page](../../gui/src/shell/ui/app-shell/pages/build-experiment-environment/BuildExperimentEnvironmentPage.tsx)
   is script-centric: the user picks, writes, or generates a build
   script that invokes whatever build system the repo brought.
 - **Experiment.** Researchers keep using MLflow, Weights & Biases,
