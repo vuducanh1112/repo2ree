@@ -30,6 +30,7 @@ describe("shell data hooks", () => {
     });
     const listScriptTemplates = vi.fn().mockResolvedValue({
       build_experiment_environment: { path: "overlay/build.sh", templates: [] },
+      activate_experiment_environment: { path: "overlay/activate.sh", templates: [] },
       activation: {
         run_script_path: "overlay/activate.sh",
         verify_script_path: "overlay/verify.sh",

@@ -6,7 +6,11 @@ import { dagForTrace, findResult, type InferenceResult, traceForResult } from ".
 // engine infers them — the reduction from report to loadable script is
 // identical, so it lives here once. Build used to have its own copy of this
 // file and fell behind when the build DAG started emitting blocking warnings.
-export type ScriptTargetKind = "build_experiment_environment" | "activation_run" | "experiment_run";
+export type ScriptTargetKind =
+  | "build_experiment_environment"
+  | "activate_experiment_environment"
+  | "activation_run"
+  | "experiment_run";
 
 function matches(kind: ScriptTargetKind, experimentName?: string) {
   return (result: InferenceResult): boolean => {

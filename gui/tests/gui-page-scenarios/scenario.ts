@@ -51,7 +51,7 @@ const visualRee = {
           run_script_path: "overlay/activate.sh",
           run_script_digest: "sha256:activation-script",
           run_script_size: 312,
-          verify_script_path: "overlay/verify-activation.sh",
+          verify_script_path: "overlay/verify-test_activation.sh",
           verify_script_digest: "sha256:verify-activation",
           verify_script_size: 94,
         },
@@ -232,7 +232,7 @@ const visualRee = {
       content: "#!/bin/sh\nset -eu\npython -m climate_model\n",
     },
     {
-      path: "overlay/verify-activation.sh",
+      path: "overlay/verify-test_activation.sh",
       kind: "ree",
       tag: "Overlay",
       size: 94,
@@ -479,9 +479,10 @@ const reviews = {
 
 const scriptTemplates = {
   build_experiment_environment: { path: "overlay/build.sh", templates: [] },
+  activate_experiment_environment: { path: "overlay/activate.sh", templates: [] },
   activation: {
     run_script_path: "overlay/activate.sh",
-    verify_script_path: "overlay/verify-activation.sh",
+    verify_script_path: "overlay/verify-test_activation.sh",
     templates: [],
   },
   experiment: {

@@ -8,16 +8,18 @@ from typing import Any
 from fastapi.testclient import TestClient
 
 from repo2ree_authoring.templates import (
+    activate_experiment_environment_templates,
     activation_templates,
     build_templates,
     experiment_run_templates,
     verify_templates,
 )
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
 )
 
 
@@ -48,17 +50,23 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
     assert body["build_experiment_environment"]["path"] == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     _assert_entries_match(body["build_experiment_environment"]["templates"], [t.key for t in build_templates()])
     assert body["build_experiment_environment"]["templates"][0]["key"] == "docker"
-    assert body["activation"]["run_script_path"] == RESERVED_ACTIVATION_SCRIPT
-    assert body["activation"]["verify_script_path"] == RESERVED_ACTIVATION_VERIFY_SCRIPT
+    assert body["activate_experiment_environment"]["path"] == RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
+    _assert_entries_match(
+        body["activate_experiment_environment"]["templates"],
+        [t.key for t in activate_experiment_environment_templates()],
+    )
+    assert body["activate_experiment_environment"]["templates"][0]["key"] == "docker"
+    assert body["activation"]["run_script_path"] == RESERVED_TEST_ACTIVATION_SCRIPT
+    assert body["activation"]["verify_script_path"] == RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT
     _assert_entries_match(body["activation"]["templates"], [t.key for t in activation_templates()])
-    assert body["activation"]["templates"][0]["key"] == "docker"
+    assert body["activation"]["templates"][0]["key"] == "command"
 
     # Experiment templates state the path convention and the run variants.
     experiment = body["experiment"]
     assert experiment["run_script_path_pattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
     assert experiment["verify_script_path_pattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
     _assert_entries_match(experiment["templates"], [t.key for t in experiment_run_templates()])
-    assert experiment["templates"][0]["key"] == "docker"
+    assert experiment["templates"][0]["key"] == "command"
 
     # The verify templates mirror the packaged registry, default first.
     _assert_entries_match(body["verify"], [t.key for t in verify_templates()])
@@ -67,7 +75,7 @@ def test_list_script_templates_returns_catalog(client: TestClient) -> None:
 def test_a_host_environment_has_templates_that_need_no_container_engine(client: TestClient) -> None:
     body = client.get("/api/v1/script-templates").json()
 
-    for section in (body["build_experiment_environment"], body["activation"], body["experiment"]):
+    for section in (body["build_experiment_environment"], body["activate_experiment_environment"]):
         [host] = [entry for entry in section["templates"] if entry["workbench_environment"] == "host"]
         assert host["is_default"]
         assert "docker" not in host["body"]

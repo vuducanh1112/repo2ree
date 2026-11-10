@@ -13,14 +13,22 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentDefinition, ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
+    ExperimentDefinition,
+    ExperimentEnvironmentDefinition,
+    Ree,
+    ReeDefinition,
+    ReeSubject,
+)
 from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -29,6 +37,7 @@ _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT = digest_bytes(b"snapshot")
 _EXPERIMENT_ENVIRONMENT = b"experiment_environment"
 _BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = b"#!/bin/sh\nexit 0\n"
+_ACTIVATE_SCRIPT = b'#!/bin/sh\nexec "$@"\n'
 _ACTIVATION_SCRIPT = b"#!/bin/sh\nexit 0\n"
 _ACTIVATION_VERIFY = b"#!/bin/sh\nexit 0\n"
 _EXPERIMENT_SCRIPT = b"#!/bin/sh\nprintf result > outputs/result.txt\n"
@@ -69,7 +78,7 @@ def _activation_definition(*, verify: bool = True) -> ActivationDefinition:
     return ActivationDefinition(
         run_script_digest=digest_bytes(_ACTIVATION_SCRIPT),
         run_script_size=len(_ACTIVATION_SCRIPT),
-        verify_script_path=ReePath(RESERVED_ACTIVATION_VERIFY_SCRIPT) if verify else None,
+        verify_script_path=ReePath(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT) if verify else None,
         verify_script_digest=digest_bytes(_ACTIVATION_VERIFY) if verify else None,
         verify_script_size=len(_ACTIVATION_VERIFY) if verify else None,
     )
@@ -106,6 +115,10 @@ def _ree(
             if experiment_environment
             else None
         ),
+        activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+            activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE_SCRIPT),
+            activate_experiment_environment_script_size=len(_ACTIVATE_SCRIPT),
+        ),
         test_activation=_activation_definition() if activation else None,
         experiments=(_experiment_definition(),) if experiments else (),
     )
@@ -125,8 +138,9 @@ def _workbench(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.workspace.write_bytes(RESERVED_ACTIVATION_SCRIPT, _ACTIVATION_SCRIPT)
-    store.workspace.write_bytes(RESERVED_ACTIVATION_VERIFY_SCRIPT, _ACTIVATION_VERIFY)
+    store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE_SCRIPT)
+    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, _ACTIVATION_SCRIPT)
+    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT, _ACTIVATION_VERIFY)
     store.workspace.write_bytes(experiment_run_script_path(_EXPERIMENT_NAME), _EXPERIMENT_SCRIPT)
     store.workspace.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
     store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
@@ -218,6 +232,7 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     assert receipt is not None
     assert receipt.run_id == "experiment-1"
     assert receipt.experiment_environment_digest == digest_bytes(_EXPERIMENT_ENVIRONMENT)
+    assert receipt.activate_experiment_environment_script_digest == digest_bytes(_ACTIVATE_SCRIPT)
     assert receipt.run_script_digest == digest_bytes(_EXPERIMENT_SCRIPT)
     assert receipt.verify_script_digest == digest_bytes(_EXPERIMENT_VERIFY)
     assert receipt.workbench_environment is not None
@@ -292,7 +307,7 @@ def test_changed_script_is_rejected_before_execution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _layout, store = _workbench(tmp_path, monkeypatch)
-    store.workspace.write_bytes(RESERVED_ACTIVATION_SCRIPT, b"changed")
+    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, b"changed")
     executed = False
 
     def execute(**kwargs: object) -> ExperimentRunOutcome:

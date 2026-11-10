@@ -28,16 +28,18 @@ from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_authoring.steps import ree_step_catalog
 from repo2ree_authoring.templates import (
     ScriptTemplate,
+    activate_experiment_environment_templates,
     activation_templates,
     build_templates,
     experiment_run_templates,
     verify_templates,
 )
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
 )
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
@@ -145,6 +147,13 @@ class BuildExperimentEnvironmentScriptTemplates(BaseModel):
     templates: list[ScriptTemplateEntry]
 
 
+class ActivateExperimentEnvironmentScriptTemplates(BaseModel):
+    """The activate experiment environment templates and the reserved path they all belong at."""
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
 class ActivationScriptTemplates(BaseModel):
     """The activation run-script templates and both reserved activation paths.
 
@@ -176,6 +185,7 @@ class ExperimentScriptTemplates(BaseModel):
 
 class ScriptTemplateCatalog(BaseModel):
     build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
+    activate_experiment_environment: ActivateExperimentEnvironmentScriptTemplates
     activation: ActivationScriptTemplates
     experiment: ExperimentScriptTemplates
     # Verify scripts share one contract across runnables (activation and
@@ -221,9 +231,13 @@ def list_script_templates() -> ScriptTemplateCatalog:
             path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             templates=_entries(build_templates()),
         ),
+        activate_experiment_environment=ActivateExperimentEnvironmentScriptTemplates(
+            path=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+            templates=_entries(activate_experiment_environment_templates()),
+        ),
         activation=ActivationScriptTemplates(
-            run_script_path=RESERVED_ACTIVATION_SCRIPT,
-            verify_script_path=RESERVED_ACTIVATION_VERIFY_SCRIPT,
+            run_script_path=RESERVED_TEST_ACTIVATION_SCRIPT,
+            verify_script_path=RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
             templates=_entries(activation_templates()),
         ),
         experiment=ExperimentScriptTemplates(

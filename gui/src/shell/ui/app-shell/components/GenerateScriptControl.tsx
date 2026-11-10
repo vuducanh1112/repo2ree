@@ -29,6 +29,7 @@ interface Props {
   // declaration; this control does not.
   onExperimentEnvironmentPath?: (path: string) => void;
   disabled?: boolean;
+  label?: string;
 }
 
 // A "Generate from repository" affordance: it infers a script from the
@@ -42,6 +43,7 @@ export function GenerateScriptControl({
   notInferredHint,
   onExperimentEnvironmentPath,
   disabled = false,
+  label = "Generate from repository",
 }: Props) {
   const [status, setStatus] = useState<Status | null>(null);
   const [traceText, setTraceText] = useState<string | null>(null);
@@ -108,7 +110,7 @@ export function GenerateScriptControl({
           icon={generate.isPending ? Ic.loader(14) : Ic.fileCode(14)}
           title={`Infer a ${noun} from the built experiment environment. It loads into the editor below; nothing is saved until you save.`}
         >
-          {generate.isPending ? "Generating…" : "Generate from repository"}
+          {generate.isPending ? "Generating…" : label}
         </Button>
         {status && (
           <span className={styles.status} data-tone={status.tone}>

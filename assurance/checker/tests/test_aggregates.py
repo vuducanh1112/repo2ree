@@ -78,6 +78,13 @@ def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
     }
 
 
+def test_what_runs_through_the_activation_rests_on_it_and_the_build_does_not() -> None:
+    for name in ("test_activation", "experiment"):
+        assert "definition.activate_experiment_environment" in ree().receipts[name].rests_on
+    assert "definition.activate_experiment_environment" not in ree().receipts["experiment_environment"].rests_on
+    assert "write_file" in allowed("receipt", "experiment", "current", "stale")
+
+
 def test_what_runs_in_the_workbench_environment_rests_on_it() -> None:
     # The author's scripts run in the declared workbench environment: changing it changes what their receipts prove.
     for name in ("experiment_environment", "test_activation", "experiment"):
@@ -349,6 +356,7 @@ def authored() -> Evidence:
                     "capture",
                     "definition.name",
                     "definition.experiment_environment",
+                    "definition.activate_experiment_environment",
                     "definition.test_activation",
                 )
             ),
@@ -455,7 +463,7 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     ("path", "claim"),
     [
         ("ree-scripts/build_experiment_environment.sh", ("definition.experiment_environment", "")),
-        ("ree-scripts/activation.verify.sh", ("definition.test_activation", "")),
+        ("ree-scripts/test_activation.verify.sh", ("definition.test_activation", "")),
         ("ree-scripts/experiments/train-model.sh", ("definition.experiments[*]", "train-model")),
         ("ree-scripts/experiments/train-model.verify.sh", ("definition.experiments[*]", "train-model")),
         ("ree-scripts/experiments/nested/train.sh", None),

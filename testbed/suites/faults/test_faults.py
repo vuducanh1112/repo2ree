@@ -25,7 +25,7 @@ from repo2ree_testbed.faults import (
     UnlockHistory,
 )
 
-ACTIVATION_VERIFY = "ree-scripts/activation.verify.sh"
+ACTIVATION_VERIFY = "ree-scripts/test_activation.verify.sh"
 
 
 def build_taking(api: Api, ree_id: str, seconds: int) -> dict[str, Any]:

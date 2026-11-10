@@ -8,8 +8,12 @@ import {
   resolvedExperimentEnvironmentPath,
 } from "@core/ree-steps/buildExperimentEnvironmentUiState";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
-import { useGenerateBuildExperimentEnvironmentScript } from "@shell/data/scriptInference/mutations";
+import {
+  useGenerateActivateExperimentEnvironmentScript,
+  useGenerateBuildExperimentEnvironmentScript,
+} from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
+import { RunScriptCard } from "@shell/ui/app-shell/components/RunScriptCard";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
@@ -110,6 +114,12 @@ export function PageBuildExperimentEnvironment({
     [files, scriptPath],
   );
   const scriptContent = scriptFile?.content || "";
+  const activatePath = templateCatalog?.activate_experiment_environment.path ?? "";
+  const activateFile = useMemo(
+    () => (activatePath ? findFileByWorkspacePath(files, activatePath) : null),
+    [files, activatePath],
+  );
+  const activateContent = activateFile?.content || "";
 
   // Save a file to the overlay — does not change the selected build script.
   const handleSaveFile = useCallback(
@@ -132,6 +142,21 @@ export function PageBuildExperimentEnvironment({
   // it and clicks Save build script (exactly like editing by hand). The shared
   // GenerateScriptControl renders the button, status, and decision graph.
   const generate = useGenerateBuildExperimentEnvironmentScript();
+  const generateActivate = useGenerateActivateExperimentEnvironmentScript();
+  const [activateEdit, setActivateEdit] = useState<
+    { content: string; nonce: number } | undefined
+  >();
+  const loadGeneratedActivate = useCallback(
+    (body: string) => setActivateEdit((prev) => ({ content: body, nonce: (prev?.nonce ?? 0) + 1 })),
+    [],
+  );
+  const handleSaveActivateScript = useCallback(
+    (content: string) => {
+      if (!activatePath) return;
+      handleSaveFile(undefined, activatePath, content);
+    },
+    [handleSaveFile, activatePath],
+  );
   const [externalEdit, setExternalEdit] = useState<
     { content: string; nonce: number } | undefined
   >();
@@ -285,6 +310,48 @@ export function PageBuildExperimentEnvironment({
                 />
               )}
               onSave={handleSaveReservedBuildExperimentEnvironmentScript}
+            />
+          </div>
+        </GlassSubPanel>
+
+        <GlassSubPanel>
+          <GlassSectionHeader
+            icon={Ic.file(19)}
+            tint={BUILD_PAGE_COLOR}
+            title="Activation recipe"
+            subtitle="The one way into the experiment environment: the test activation and every experiment run as `sh activate_experiment_environment.sh <command>`."
+          />
+          <div className={styles.scriptSection}>
+            <GenerateScriptControl
+              generate={generateActivate}
+              onLoad={loadGeneratedActivate}
+              noun="activate experiment environment script"
+              label="Generate from experiment environment"
+              notInferredHint="Build and declare the experiment environment first, so its kind can be read."
+              disabled={!activatePath}
+            />
+            <RunScriptCard
+              currentContent={activateContent}
+              disabled={!activatePath}
+              templates={templateCatalog?.activate_experiment_environment.templates}
+              externalEdit={activateEdit}
+              renderAnalysis={(content, dirty, focusLine) => (
+                <ScriptAnalysis
+                  target={{ kind: "activate_experiment_environment" }}
+                  source={content}
+                  dirty={dirty}
+                  experimentEnvironmentPath={experimentEnvironmentPath || null}
+                  onFocusLine={focusLine}
+                  disabled={!activatePath}
+                />
+              )}
+              onSave={handleSaveActivateScript}
+              icon={Ic.file(15)}
+              label="Activate experiment environment script"
+              helper="Runs the command it is given inside the experiment environment, from the workspace root."
+              saveButtonContent={<>{Ic.check(13)} Save activate script</>}
+              savedLabel="Saved as the activate experiment environment script"
+              unsavedLabel="Unsaved activate script"
             />
           </div>
         </GlassSubPanel>

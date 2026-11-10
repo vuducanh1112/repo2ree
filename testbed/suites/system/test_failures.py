@@ -62,7 +62,7 @@ def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api
     prepared(api, ree_id)
     assert api.build_experiment_environment(ree_id)["status"] == "succeeded"
 
-    broken = recipe("activation.sh").replace("print('activation ok')", "raise SystemExit(7)")
+    broken = recipe("test_activation.sh").replace("print('activation ok')", "raise SystemExit(7)")
     assert api.activate(ree_id, broken)["status"] == "failed"
     assert api.ree(ree_id)["subject"]["receipts"]["test_activation"] is None
 
@@ -143,7 +143,7 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     busy = api.request(
         "PUT",
         f"/api/v1/rees/{ree_id}/files/content",
-        json={"path": "ree-scripts/activation.verify.sh", "content": "#!/bin/sh\n"},
+        json={"path": "ree-scripts/test_activation.verify.sh", "content": "#!/bin/sh\n"},
         expect=None,
         timeout=120.0,
     )
@@ -152,4 +152,4 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     assert api.wait(ree_id, run, timeout=60)["status"] == "canceled"
     assert busy.status_code == 409, busy.text
     assert busy.json()["error"]["code"] == "ree_busy"
-    api.write(ree_id, "ree-scripts/activation.verify.sh", "#!/bin/sh\n")
+    api.write(ree_id, "ree-scripts/test_activation.verify.sh", "#!/bin/sh\n")

@@ -18,8 +18,8 @@ from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -42,15 +42,15 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     experiment_run_path = experiment_run_script_path(name)
     experiment_verify_path = experiment_verify_script_path(name)
 
-    store.workspace.write_bytes(RESERVED_ACTIVATION_SCRIPT, activation_run)
-    store.workspace.write_bytes(RESERVED_ACTIVATION_VERIFY_SCRIPT, activation_verify)
+    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, activation_run)
+    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT, activation_verify)
     store.workspace.write_bytes(experiment_run_path, experiment_run)
     store.workspace.write_bytes(experiment_verify_path, experiment_verify)
     definition = ReeDefinition(
         test_activation=ActivationDefinition(
             run_script_digest=digest_bytes(activation_run),
             run_script_size=len(activation_run),
-            verify_script_path=ReePath(RESERVED_ACTIVATION_VERIFY_SCRIPT),
+            verify_script_path=ReePath(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT),
             verify_script_digest=digest_bytes(activation_verify),
             verify_script_size=len(activation_verify),
         ),

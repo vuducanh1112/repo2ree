@@ -27,6 +27,10 @@ export function useGenerateBuildExperimentEnvironmentScript(reeId?: string) {
   return useGenerateScriptForTarget("build_experiment_environment", undefined, reeId);
 }
 
+export function useGenerateActivateExperimentEnvironmentScript(reeId?: string) {
+  return useGenerateScriptForTarget("activate_experiment_environment", undefined, reeId);
+}
+
 /**
  * Run read-only inference for the activation-run scaffold and reduce it to the
  * script the build page loads plus its decision trace. Persists nothing.

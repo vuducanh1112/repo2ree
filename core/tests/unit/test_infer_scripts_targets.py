@@ -16,9 +16,9 @@ from repo2ree_authoring.targets import resolve_target
 from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -29,8 +29,10 @@ def test_resolve_target_reserved_paths() -> None:
         resolve_target(ScriptTargetSelectorArg(kind="build_experiment_environment")).path
         == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     )
-    assert resolve_target(ScriptTargetSelectorArg(kind="activation_run")).path == RESERVED_ACTIVATION_SCRIPT
-    assert resolve_target(ScriptTargetSelectorArg(kind="activation_verify")).path == RESERVED_ACTIVATION_VERIFY_SCRIPT
+    assert resolve_target(ScriptTargetSelectorArg(kind="activation_run")).path == RESERVED_TEST_ACTIVATION_SCRIPT
+    assert (
+        resolve_target(ScriptTargetSelectorArg(kind="activation_verify")).path == RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT
+    )
 
 
 def test_resolve_target_experiment_paths_use_the_slug() -> None:

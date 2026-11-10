@@ -102,6 +102,10 @@ export function createStepPageProps(
 }
 
 export const scriptTemplateCatalog = {
+  activate_experiment_environment: {
+    path: "overlay/activate.sh",
+    templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
+  },
   build_experiment_environment: {
     path: "overlay/build.sh",
     templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],

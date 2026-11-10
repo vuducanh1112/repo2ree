@@ -26,6 +26,7 @@ from repo2ree_protocol.command import (
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.instant import parse_utc_instant
 from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
     ExperimentDefinition,
     ExperimentEnvironmentDefinition,
     Ree,
@@ -38,8 +39,9 @@ from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ReePath, RunId, Swhid, WorkspacePath
 from repo2ree_ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -53,6 +55,7 @@ _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _REVIEW_ID = "review-one"
 _EXPERIMENT_ENVIRONMENT_PATH = "runtime.tar"
 _EXPERIMENT_ENVIRONMENT = b"experiment environment bytes\n"
+_ACTIVATE = b'#!/bin/sh\nexec "$@"\n'
 _ACTIVATION = b"#!/bin/sh\ntest -f runtime.tar\n"
 
 
@@ -96,6 +99,7 @@ def _author_ree() -> Ree:
         experiment_name=_EXPERIMENT_NAME,
         snapshot_digest=digest_bytes(b"snapshot"),
         experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
+        activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE),
         run_script_digest=digest_bytes(_EXPERIMENT),
         verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY),
         verify_exit_code=0,
@@ -104,10 +108,14 @@ def _author_ree() -> Ree:
         subject=ReeSubject(
             definition=ReeDefinition(
                 experiment_environment=_build_recipe(WorkspacePath(_EXPERIMENT_ENVIRONMENT_PATH)),
+                activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+                    activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE),
+                    activate_experiment_environment_script_size=len(_ACTIVATE),
+                ),
                 test_activation=ActivationDefinition(
                     run_script_digest=digest_bytes(_ACTIVATION),
                     run_script_size=len(_ACTIVATION),
-                    verify_script_path=ReePath(RESERVED_ACTIVATION_VERIFY_SCRIPT),
+                    verify_script_path=ReePath(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT),
                     verify_script_digest=digest_bytes(_ACTIVATION_VERIFY),
                     verify_script_size=len(_ACTIVATION_VERIFY),
                 ),
@@ -129,8 +137,9 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activation: b
     review.workspace.mkdir(parents=True)
     files = {
         _EXPERIMENT_ENVIRONMENT_PATH: _EXPERIMENT_ENVIRONMENT,
-        RESERVED_ACTIVATION_SCRIPT: activation,
-        RESERVED_ACTIVATION_VERIFY_SCRIPT: _ACTIVATION_VERIFY,
+        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT: _ACTIVATE,
+        RESERVED_TEST_ACTIVATION_SCRIPT: activation,
+        RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT: _ACTIVATION_VERIFY,
         experiment_run_script_path(_EXPERIMENT_NAME): _EXPERIMENT,
         experiment_verify_script_path(_EXPERIMENT_NAME): _EXPERIMENT_VERIFY,
     }
@@ -313,3 +322,25 @@ def test_experiment_uses_definition_and_author_receipt_baseline(
     record = read_review_record(layout.review(_REVIEW_ID))
     assert record is not None
     assert [receipt.experiment_name for receipt in record.experiment_receipts] == [_EXPERIMENT_NAME]
+
+
+def test_an_experiment_run_through_another_activate_script_is_inconclusive(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout = _workbench(tmp_path, monkeypatch)
+    assert _activate().outputs["outcome"]["verdict"] == "passed"
+    (layout.review(_REVIEW_ID).workspace / RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT).write_bytes(
+        b'#!/bin/sh\necho elsewhere\nexec "$@"\n'
+    )
+
+    result = run_experiment.handle_review_run_experiment(
+        ReviewRunExperimentArgs(review_id=_REVIEW_ID, experiment_name=_EXPERIMENT_NAME),
+        run_id="review-experiment",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+
+    comparison = result.outputs["comparison"]
+    assert comparison["verdict"] == "inconclusive"
+    assert comparison["expected_activate_experiment_environment_script_digest"] == digest_bytes(_ACTIVATE)

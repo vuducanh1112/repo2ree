@@ -9,9 +9,10 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import ReeDefinition, SourceDefinition
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -60,15 +61,25 @@ def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> Re
             "artifact_path": recipe.get("artifact_path"),
         }
 
+    if hydrated.get("activate_experiment_environment") is not None:
+        activate = _required_overlay_file(
+            layout, RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "activate experiment environment script"
+        )
+        hydrated["activate_experiment_environment"] = {
+            "activate_experiment_environment_script_path": RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+            "activate_experiment_environment_script_digest": digest_file(activate),
+            "activate_experiment_environment_script_size": activate.stat().st_size,
+        }
+
     activation = hydrated.get("test_activation")
     if activation is not None:
-        run_script = _required_overlay_file(layout, RESERVED_ACTIVATION_SCRIPT, "activation script")
-        verify_script = layout.overlay_file(RESERVED_ACTIVATION_VERIFY_SCRIPT)
+        run_script = _required_overlay_file(layout, RESERVED_TEST_ACTIVATION_SCRIPT, "test activation script")
+        verify_script = layout.overlay_file(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT)
         hydrated["test_activation"] = {
-            "run_script_path": RESERVED_ACTIVATION_SCRIPT,
+            "run_script_path": RESERVED_TEST_ACTIVATION_SCRIPT,
             "run_script_digest": digest_file(run_script),
             "run_script_size": run_script.stat().st_size,
-            "verify_script_path": RESERVED_ACTIVATION_VERIFY_SCRIPT if verify_script.is_file() else None,
+            "verify_script_path": RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT if verify_script.is_file() else None,
             "verify_script_digest": digest_file(verify_script) if verify_script.is_file() else None,
             "verify_script_size": verify_script.stat().st_size if verify_script.is_file() else None,
         }

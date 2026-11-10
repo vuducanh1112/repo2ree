@@ -2,7 +2,7 @@
 
 Each template is a dedicated ``.sh`` file shipped inside this package — the
 single source of truth for the starter content authors (human or workbench) work
-from. The build and activation templates are seeded into the overlay at REE
+from. The build, activate and test activation templates are seeded into the overlay at REE
 creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the per-experiment run
 and verify templates cannot be seeded (their paths only exist once an
 experiment is named), so the API serves them for clients to prefill from.
@@ -55,10 +55,13 @@ def reserved_script_template(reserved_path: str, workbench_environment: Workbenc
     """
     catalogs = {
         "build_experiment_environment.sh": build_templates,
-        "activation.sh": activation_templates,
+        "activate_experiment_environment.sh": activate_experiment_environment_templates,
+        "test_activation.sh": activation_templates,
     }
     templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
-    return next(template.body for template in templates if template.workbench_environment == workbench_environment)
+    return next(
+        template.body for template in templates if template.workbench_environment in (workbench_environment, None)
+    )
 
 
 def build_templates() -> tuple[ScriptTemplate, ...]:
@@ -86,50 +89,48 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
     )
 
 
-def activation_templates() -> tuple[ScriptTemplate, ...]:
-    """The activation run-script templates, one per experiment environment strategy."""
+def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
+    """The activate experiment environment templates, one per experiment environment strategy."""
     return (
         ScriptTemplate(
             key="docker",
             label="Docker experiment environment",
-            description=(
-                "Load the saved experiment environment image and run a command inside it "
-                "to prove the experiment environment works."
-            ),
-            body=_template("activation_docker.sh"),
+            description="Load the saved image and run the given command in a container from it, "
+            "with the workspace mounted at its own path.",
+            body=_template("activate_experiment_environment_docker.sh"),
             workbench_environment="image",
         ),
         ScriptTemplate(
             key="venv",
             label="Python virtual environment",
-            description=(
-                "Restore the packed virtual environment and run a command with it "
-                "to prove the experiment environment works."
-            ),
-            body=_template("activation_venv.sh"),
+            description="Restore the packed virtual environment and run the given command with it on the path.",
+            body=_template("activate_experiment_environment_venv.sh"),
             workbench_environment="host",
         ),
     )
 
 
-def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
-    """The per-experiment run-script templates, one per experiment environment strategy."""
+def activation_templates() -> tuple[ScriptTemplate, ...]:
+    """The test activation templates: a command run inside the activated experiment environment."""
     return (
         ScriptTemplate(
-            key="docker",
-            label="Docker experiment environment",
-            description="Load the saved experiment environment image and run the experiment inside it, "
-            "teeing stdout to a workspace log the verify script can read.",
-            body=_template("experiment_run_docker.sh"),
-            workbench_environment="image",
+            key="command",
+            label="Command",
+            description="Run a command inside the activated experiment environment that shows it works.",
+            body=_template("test_activation.sh"),
         ),
+    )
+
+
+def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
+    """The experiment run templates: the experiment's command, run inside the activated experiment environment."""
+    return (
         ScriptTemplate(
-            key="venv",
-            label="Python virtual environment",
-            description="Restore the packed virtual environment and run the experiment with it, "
+            key="command",
+            label="Command",
+            description="Run the experiment inside the activated experiment environment, "
             "writing stdout to a workspace log the verify script can read.",
-            body=_template("experiment_run_venv.sh"),
-            workbench_environment="host",
+            body=_template("experiment_run.sh"),
         ),
     )
 

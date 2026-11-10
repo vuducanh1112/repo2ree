@@ -122,7 +122,7 @@ def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..
     # again.
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
-    assert api.activate(ree_id, recipe("activation.sh"))["status"] == "succeeded"
+    assert api.activate(ree_id, recipe("test_activation.sh"))["status"] == "succeeded"
     assert api.experiment(ree_id)["status"] == "succeeded"
     assert api.seal(ree_id)["status"] == "succeeded"
 

@@ -12,6 +12,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
     CapturePolicy,
     ExperimentEnvironmentDefinition,
     Ree,
@@ -19,7 +20,11 @@ from repo2ree_ree.model import (
     ReeSubject,
     TestActivationDefinition,
 )
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+)
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
 
@@ -45,7 +50,8 @@ def initialize_ree(
             store.ensure_dirs()
             store.ensure_reserved_overlay_scripts(workbench_environment)
             build = store.overlay.absolute(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
-            activation = store.overlay.absolute(RESERVED_ACTIVATION_SCRIPT)
+            activate = store.overlay.absolute(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
+            activation = store.overlay.absolute(RESERVED_TEST_ACTIVATION_SCRIPT)
             store.write_ree(
                 Ree(
                     subject=ReeSubject(
@@ -55,6 +61,10 @@ def initialize_ree(
                             experiment_environment=ExperimentEnvironmentDefinition(
                                 build_experiment_environment_script_digest=digest_file(build),
                                 build_experiment_environment_script_size=build.stat().st_size,
+                            ),
+                            activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+                                activate_experiment_environment_script_digest=digest_file(activate),
+                                activate_experiment_environment_script_size=activate.stat().st_size,
                             ),
                             test_activation=TestActivationDefinition(
                                 run_script_digest=digest_file(activation),

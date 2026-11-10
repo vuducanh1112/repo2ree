@@ -15,7 +15,11 @@ def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:
     source = definition.source
     experiment_environment = definition.experiment_environment
     activation = definition.test_activation
+    activate = definition.activate_experiment_environment
     for name, content in reproducer_entries(
+        activate_experiment_environment_script=str(activate.activate_experiment_environment_script_path)
+        if activate
+        else "",
         activation_script=str(activation.run_script_path) if activation else "",
         activation_verify_script=str(activation.verify_script_path or "") if activation else "",
         experiments=[

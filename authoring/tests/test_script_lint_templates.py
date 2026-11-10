@@ -18,7 +18,11 @@ from repo2ree_authoring.lint.lint import CONTRACT_ONLY
 from repo2ree_authoring.templates import reserved_script_template
 from repo2ree_protocol.command import ScriptTarget, TargetKind
 from repo2ree_protocol.lint import ScriptDeclarations
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+)
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "authoring/src/repo2ree_authoring/templates"
 
@@ -44,11 +48,11 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
     ("name", "kind"),
     [
         ("build_experiment_environment_docker.sh", "build_experiment_environment"),
-        ("activation_docker.sh", "activation_run"),
-        ("experiment_run_docker.sh", "experiment_run"),
+        ("activate_experiment_environment_docker.sh", "activate_experiment_environment"),
         ("build_experiment_environment_venv.sh", "build_experiment_environment"),
-        ("activation_venv.sh", "activation_run"),
-        ("experiment_run_venv.sh", "experiment_run"),
+        ("activate_experiment_environment_venv.sh", "activate_experiment_environment"),
+        ("test_activation.sh", "activation_run"),
+        ("experiment_run.sh", "experiment_run"),
     ],
 )
 def test_a_run_or_build_template_lints_clean(name: str, kind: TargetKind) -> None:
@@ -74,18 +78,20 @@ def test_a_verify_template_says_only_that_it_is_unedited(name: str) -> None:
 def test_a_fresh_ree_starts_with_scripts_that_suit_its_environment() -> None:
     assert "docker build" in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "image")
     assert "docker" not in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
-    assert "docker" not in reserved_script_template(RESERVED_ACTIVATION_SCRIPT, "host")
+    assert "docker run" in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "image")
+    assert "docker" not in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
+    assert "docker" not in reserved_script_template(RESERVED_TEST_ACTIVATION_SCRIPT, "host")
 
 
 def test_every_template_is_covered_by_a_case_above() -> None:
     # A new template that nobody linted would quietly escape this file.
     covered = {
         "build_experiment_environment_docker.sh",
-        "activation_docker.sh",
-        "experiment_run_docker.sh",
+        "activate_experiment_environment_docker.sh",
         "build_experiment_environment_venv.sh",
-        "activation_venv.sh",
-        "experiment_run_venv.sh",
+        "activate_experiment_environment_venv.sh",
+        "test_activation.sh",
+        "experiment_run.sh",
         "verify_stdout_contains.sh",
         "verify_stdout_regex.sh",
         "verify_numeric_tolerance.sh",

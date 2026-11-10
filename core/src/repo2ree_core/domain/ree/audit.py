@@ -291,9 +291,10 @@ def _audit_test_activation_step(subject: _Subject) -> StepAudit:
             reasons.append("activation definition was removed")
         else:
             if receipt.run_script_digest != declared.run_script_digest:
-                reasons.append("activation script changed")
+                reasons.append("test activation script changed")
             if receipt.verify_script_digest != declared.verify_script_digest:
-                reasons.append("activation verification script changed")
+                reasons.append("test activation verification script changed")
+        reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
         if _workbench_environment_changed(subject, receipt.workbench_environment):
             reasons.append("workbench environment changed")
         if (
@@ -309,6 +310,15 @@ def _audit_test_activation_step(subject: _Subject) -> StepAudit:
     )
 
 
+def _activation_reasons(subject: _Subject, ran_with: Digest) -> tuple[str, ...]:
+    declared = subject.definition.activate_experiment_environment
+    if declared is None:
+        return ("activate experiment environment definition was removed",)
+    if ran_with != declared.activate_experiment_environment_script_digest:
+        return ("activate experiment environment script changed",)
+    return ()
+
+
 def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
     audits: list[ExperimentAudit] = []
     for experiment in subject.definition.experiments:
@@ -321,6 +331,7 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
                 reasons.append("experiment run script changed")
             if receipt.verify_script_digest != experiment.verify_script_digest:
                 reasons.append("experiment verification script changed")
+            reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
             if _workbench_environment_changed(subject, receipt.workbench_environment):
                 reasons.append("workbench environment changed")
             if (

@@ -19,9 +19,9 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import DeleteFileArgs
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -56,7 +56,7 @@ def test_invalid_path_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     "path",
     [
         RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        RESERVED_ACTIVATION_SCRIPT,
+        RESERVED_TEST_ACTIVATION_SCRIPT,
         experiment_run_script_path("hello"),
         f"./{RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}",
     ],
@@ -74,7 +74,7 @@ def test_a_run_script_is_never_deleted(tmp_path: Path, monkeypatch: pytest.Monke
     assert store.workspace.is_file(path)
 
 
-@pytest.mark.parametrize("path", [RESERVED_ACTIVATION_VERIFY_SCRIPT, experiment_verify_script_path("hello")])
+@pytest.mark.parametrize("path", [RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT, experiment_verify_script_path("hello")])
 def test_a_verify_script_can_be_deleted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, path: str) -> None:
     """A verify script is optional: deleting it is how its step stops being verified."""
     store = _store_at(tmp_path, monkeypatch)

@@ -52,6 +52,7 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
 
 class ReviewActivationReceipt(ReviewReceiptEnvelope):
     operation: Literal["test_activation"] = "test_activation"
+    activate_experiment_environment_script_digest: Digest
     run_script_path: ReePath
     run_script_digest: Digest
     verify_script_path: ReePath | None = None
@@ -65,6 +66,7 @@ class ReviewActivationReceipt(ReviewReceiptEnvelope):
 class ReviewExperimentReceipt(ReviewReceiptEnvelope):
     operation: Literal["run_experiment"] = "run_experiment"
     experiment_name: str = Field(min_length=1)
+    activate_experiment_environment_script_digest: Digest
     run_script_path: ReePath
     run_script_digest: Digest
     verify_script_path: ReePath | None = None
@@ -130,6 +132,8 @@ class ExperimentComparison(_ReviewModel):
     verify_script_path: str = ""
     expected_verify_script_digest: str | None = None
     verify_script_digest: str | None = None
+    expected_activate_experiment_environment_script_digest: str | None = None
+    activate_experiment_environment_script_digest: str | None = None
     expected_verify_exit_code: int | None = None
     observed_verify_exit_code: int | None = None
     run_exit_code: int | None = None

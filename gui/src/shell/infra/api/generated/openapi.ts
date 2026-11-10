@@ -1140,6 +1140,28 @@ export interface components {
             context?: components["schemas"]["ExecutionContext"] | null;
             history?: components["schemas"]["HistoryReference"] | null;
         };
+        /** ActivateExperimentEnvironmentDefinition */
+        ActivateExperimentEnvironmentDefinition: {
+            /**
+             * Activate Experiment Environment Script Path
+             * @default ree-scripts/activate_experiment_environment.sh
+             */
+            activate_experiment_environment_script_path: string;
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest: string;
+            /** Activate Experiment Environment Script Size */
+            activate_experiment_environment_script_size: number;
+        };
+        /**
+         * ActivateExperimentEnvironmentScriptTemplates
+         * @description The activate experiment environment templates and the reserved path they all belong at.
+         */
+        ActivateExperimentEnvironmentScriptTemplates: {
+            /** Path */
+            path: string;
+            /** Templates */
+            templates: components["schemas"]["ScriptTemplateEntry"][];
+        };
         /** ActivationOutcome */
         ActivationOutcome: {
             /**
@@ -2056,6 +2078,10 @@ export interface components {
             expected_verify_script_digest?: string | null;
             /** Verify Script Digest */
             verify_script_digest?: string | null;
+            /** Expected Activate Experiment Environment Script Digest */
+            expected_activate_experiment_environment_script_digest?: string | null;
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest?: string | null;
             /** Expected Verify Exit Code */
             expected_verify_exit_code?: number | null;
             /** Observed Verify Exit Code */
@@ -3007,6 +3033,7 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
+            activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
@@ -3026,6 +3053,7 @@ export interface components {
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
+            activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
             test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
@@ -3395,6 +3423,8 @@ export interface components {
              * @constant
              */
             operation: "test_activation";
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest: string;
             /** Run Script Path */
             run_script_path: string;
             /** Run Script Digest */
@@ -3481,6 +3511,8 @@ export interface components {
             operation: "run_experiment";
             /** Experiment Name */
             experiment_name: string;
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest: string;
             /** Run Script Path */
             run_script_path: string;
             /** Run Script Digest */
@@ -3582,6 +3614,8 @@ export interface components {
             snapshot_digest: string;
             /** Experiment Environment Digest */
             experiment_environment_digest?: string | null;
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest: string;
             /** Run Script Digest */
             run_script_digest: string;
             /** Verify Script Digest */
@@ -3774,7 +3808,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
             /** Experiment Name */
             experiment_name?: string | null;
             /** Path */
@@ -3793,13 +3827,14 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
             /** Experiment Name */
             experiment_name?: string | null;
         };
         /** ScriptTemplateCatalog */
         ScriptTemplateCatalog: {
             build_experiment_environment: components["schemas"]["BuildExperimentEnvironmentScriptTemplates"];
+            activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentScriptTemplates"];
             activation: components["schemas"]["ActivationScriptTemplates"];
             experiment: components["schemas"]["ExperimentScriptTemplates"];
             /** Verify */
@@ -4111,7 +4146,7 @@ export interface components {
         TestActivationDefinition: {
             /**
              * Run Script Path
-             * @default ree-scripts/activation.sh
+             * @default ree-scripts/test_activation.sh
              */
             run_script_path: string;
             /** Run Script Digest */
@@ -4155,6 +4190,8 @@ export interface components {
             experiment_environment_path?: string | null;
             /** Experiment Environment Digest */
             experiment_environment_digest?: string | null;
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest: string;
             /** Run Script Digest */
             run_script_digest: string;
             /** Verify Script Digest */

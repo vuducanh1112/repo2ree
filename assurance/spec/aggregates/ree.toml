@@ -96,6 +96,15 @@ set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
 clear = ["patch_ree_definition"]
 
+# The one way into the experiment environment: the test activation and every experiment run through it.
+[fields."definition.activate_experiment_environment"]
+group = "activate_experiment_environment"
+initial = "set"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition", "write_file"]
+clear = ["patch_ree_definition"]
+files = ["ree-scripts/activate_experiment_environment.sh"]
+
 # The workbench environment the author's scripts run in: the build, activation and experiments.
 [fields."definition.workbench_environment"]
 group = "workbench_environment"
@@ -110,7 +119,7 @@ initial = "set"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition", "write_file", "delete_file"]
 clear = ["patch_ree_definition"]
-files = ["ree-scripts/activation.sh", "ree-scripts/activation.verify.sh"]
+files = ["ree-scripts/test_activation.sh", "ree-scripts/test_activation.verify.sh"]
 
 [fields."definition.experiments[*]"]
 group = "experiment"
@@ -168,7 +177,7 @@ cleared_by = ["remove_source"]
 
 [receipts.test_activation]
 about = ["definition.test_activation"]
-rests_on = ["definition.test_activation", "definition.workbench_environment"]
+rests_on = ["definition.test_activation", "definition.activate_experiment_environment", "definition.workbench_environment"]
 made_from = ["source", "experiment_environment"]
 produced_by = "activation_test"
 cleared_by = ["remove_source"]
@@ -176,7 +185,7 @@ cleared_by = ["remove_source"]
 [receipts.experiment]
 keyed = true
 about = ["definition.experiments[*]"]
-rests_on = ["definition.experiments[*]", "definition.workbench_environment"]
+rests_on = ["definition.experiments[*]", "definition.activate_experiment_environment", "definition.workbench_environment"]
 made_from = ["source", "experiment_environment"]
 produced_by = "run_experiment"
 cleared_by = ["remove_source"]

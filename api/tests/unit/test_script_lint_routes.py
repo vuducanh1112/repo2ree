@@ -42,7 +42,11 @@ def test_a_draft_is_graded_against_the_declarations_sent_with_it(client: TestCli
     # them here would mean asking the client to invent them.
     resp = client.post(
         "/api/v1/script-lints:draft",
-        json=_draft("docker run img main.py\n", declarations={"experiment_environment_path": "runtime.tar"}),
+        json=_draft(
+            "docker run img main.py\n",
+            target={"kind": "activate_experiment_environment"},
+            declarations={"experiment_environment_path": "runtime.tar"},
+        ),
     )
     assert resp.status_code == 200, resp.text
     assert "experiment_environment_not_referenced" in {finding["code"] for finding in resp.json()["findings"]}

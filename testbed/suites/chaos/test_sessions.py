@@ -20,6 +20,7 @@ from typing import Any
 import httpx
 import pytest
 from system_client import (
+    ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     ACTIVATION_SCRIPT,
     BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     EXPERIMENT,
@@ -114,6 +115,7 @@ class Session:
     def build_experiment_environment(self, script: str) -> str:
         self.patch({"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
         self.write(BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
+        self.write(ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, recipe("activate_experiment_environment.sh"))
         return self.stage("build-experiment-environment")
 
     def canceled_build(self) -> str:
@@ -128,7 +130,7 @@ class Session:
         return str(self.api.wait(self.ree_id, run)["status"])
 
     def activate(self) -> str:
-        self.write(ACTIVATION_SCRIPT, recipe("activation.sh"))
+        self.write(ACTIVATION_SCRIPT, recipe("test_activation.sh"))
         self.patch({"test_activation": {}})
         return self.stage("activation-test")
 

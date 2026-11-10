@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, oci_archive, venv_archive
@@ -25,7 +26,12 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 
 
 def _activation(
-    root: Path, *, experiment_environment: str | None, files: dict[str, bytes], name: str = "Demo"
+    root: Path,
+    *,
+    experiment_environment: str | None,
+    files: dict[str, bytes],
+    name: str = "Demo",
+    kind: Literal["activation_run", "activate_experiment_environment"] = "activation_run",
 ) -> TargetInferenceResult:
     definition = ReeDefinition(name=name)
     inputs = ExperimentEnvironmentInputs(
@@ -33,7 +39,7 @@ def _activation(
     )
     report = infer_scripts(
         root,
-        [ScriptTargetSelectorArg(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind=kind)],
         definition=definition,
         experiment_environment_inputs=inputs,
     )
@@ -56,13 +62,21 @@ def test_docker_experiment_environment_yields_confirmation_required_scaffold(tmp
     candidate = result.candidates[0]
     assert candidate.inference_rule == "docker-runtime-activation-v1"
     body = candidate.body or ""
-    # The docker plumbing is present, the command is fail-closed, and the
-    # detected CMD is offered only as a commented example.
-    assert "docker load --input" in body
+    assert "docker load" not in body
     assert "set --\n" in body
     assert "exit 64" in body
     assert "#   set -- python main.py" in body
     assert "activation_command_missing" in _codes(result)
+    activate = _activation(
+        tmp_path,
+        experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        files={_DOCKER_EXPERIMENT_ENVIRONMENT: docker_archive(["ree-runtime:demo"], cmd=["python", "main.py"])},
+        kind="activate_experiment_environment",
+    ).candidates[0]
+    assert activate.inference_rule == "docker-activate-experiment-environment-v1"
+    assert "docker load --input" in (activate.body or "")
+    assert 'exec docker run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"' in (activate.body or "")
+    assert "exit 64" not in (activate.body or "")
 
 
 def test_oci_experiment_environment_resolves_like_a_legacy_docker_archive(tmp_path: Path) -> None:
@@ -79,10 +93,14 @@ def test_oci_experiment_environment_resolves_like_a_legacy_docker_archive(tmp_pa
     candidate = result.candidates[0]
     assert candidate.inference_rule == "docker-runtime-activation-v1"
     body = candidate.body or ""
-    assert "IMAGE_TAG=ree-runtime:demo" in body
-    # The OCI image's declared command surfaces as a commented example, exactly
-    # like the legacy path.
     assert "#   set -- python main.py" in body
+    activate = _activation(
+        tmp_path,
+        experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        files={_DOCKER_EXPERIMENT_ENVIRONMENT: oci_archive("ree-runtime:demo", cmd=["python", "main.py"])},
+        kind="activate_experiment_environment",
+    )
+    assert "IMAGE_TAG=ree-runtime:demo" in (activate.candidates[0].body or "")
 
 
 def test_venv_experiment_environment_yields_venv_scaffold(tmp_path: Path) -> None:
@@ -91,11 +109,13 @@ def test_venv_experiment_environment_yields_venv_scaffold(tmp_path: Path) -> Non
         tmp_path,
         experiment_environment=_VENV_EXPERIMENT_ENVIRONMENT,
         files={_VENV_EXPERIMENT_ENVIRONMENT: venv_archive()},
+        kind="activate_experiment_environment",
     )
     assert result.status == "needs_input"
     candidate = result.candidates[0]
-    assert candidate.inference_rule == "venv-runtime-activation-v1"
+    assert candidate.inference_rule == "venv-activate-experiment-environment-v1"
     body = candidate.body or ""
+    assert 'exec "$@"' in body
     assert "tar -xzf" in body
     assert 'PATH="$VENV_DIR/bin:$PATH"' in body
     # No ``command`` in the archive -> restore to the repo2ree default location,
@@ -111,7 +131,10 @@ def test_venv_scaffold_restores_to_the_recovered_build_dir(tmp_path: Path) -> No
     # no "assumed" warning is raised because the location came from the metadata.
     archive = venv_archive(top_dir="ree-venv", command="/usr/bin/python3 -m venv /opt/envs/ree-venv")
     result = _activation(
-        tmp_path, experiment_environment=_VENV_EXPERIMENT_ENVIRONMENT, files={_VENV_EXPERIMENT_ENVIRONMENT: archive}
+        tmp_path,
+        experiment_environment=_VENV_EXPERIMENT_ENVIRONMENT,
+        files={_VENV_EXPERIMENT_ENVIRONMENT: archive},
+        kind="activate_experiment_environment",
     )
     body = result.candidates[0].body or ""
     assert "VENV_DIR=/opt/envs/ree-venv" in body

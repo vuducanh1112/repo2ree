@@ -109,47 +109,61 @@ export function packedProject(project: ExampleProject): string {
 
 /** One of the scripts that run an instant project (`examples/projects/<project>/recipe/`). */
 export function instantRecipe(
-  name: "build_experiment_environment.sh" | "activation.sh" | "experiment.sh",
+  name:
+    | "build_experiment_environment.sh"
+    | "activate_experiment_environment.sh"
+    | "test_activation.sh"
+    | "experiment.sh",
   project: "instant" | "instant_docker" = "instant",
 ): string {
   return readFileSync(path.join(EXAMPLES_DIR, "projects", project, "recipe", name), "utf8");
 }
 
 /**
- * A self-contained run script for a runnable (activation or experiment). In the
- * new model each runnable owns its full execution: load the built runtime image
- * if it isn't already present, then enter it with its own `docker run`,
- * bind-mounting the workspace so declared file outputs surface on the host.
- *
- * When `outputFile` is given the run's stdout is materialized to that
- * workspace-relative file with a redirect so a verify script can read it back.
- * The script prints the file afterwards without masking the command's status.
+ * The activate experiment environment script for a Docker experiment environment: load the
+ * saved image unless the daemon has it, and run the given command in a container from it with
+ * the workspace mounted at its own path.
  */
-export function dockerRunScript(
-  command: string,
+export function dockerActivateScript(
   experimentEnvironmentPath: string,
-  outputFile?: string,
   imageName = "pandas-hello",
 ): string {
+  return `#!/usr/bin/env sh
+set -eu
+
+IMAGE=${JSON.stringify(`${imageName}:latest`)}
+EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(experimentEnvironmentPath)}
+
+docker image inspect "$IMAGE" >/dev/null 2>&1 || docker load < "$EXPERIMENT_ENVIRONMENT_FILE"
+exec docker run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE" "$@"
+`;
+}
+
+/**
+ * A run script for a runnable (test activation or experiment): the command alone, run inside the
+ * activated experiment environment. With `outputFile`, stdout is kept in that workspace file so a
+ * verify script can read it back.
+ */
+export function commandScript(command: string, outputFile?: string): string {
   const capture = outputFile ? ` > ${JSON.stringify(outputFile)}` : "";
   const replay = outputFile ? `\ncat ${JSON.stringify(outputFile)}` : "";
   return `#!/usr/bin/env sh
 set -eu
 
-IMAGE_NAME=${JSON.stringify(imageName)}
-TAG="latest"
-EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(experimentEnvironmentPath)}
-
-if ! docker image inspect "$IMAGE_NAME:$TAG" >/dev/null 2>&1; then
-  docker load < "$EXPERIMENT_ENVIRONMENT_FILE"
-fi
-
-docker run --rm \\
-  -v "$(pwd):/workspace" \\
-  -w /workspace \\
-  "$IMAGE_NAME:$TAG" \\
-  ${command}${capture}${replay}
+${command}${capture}${replay}
 `;
+}
+
+/**
+ * Save the activate experiment environment script on the Build page, where it sits beside the
+ * build script it belongs with.
+ */
+export async function saveActivateScript(page: Page, script: string) {
+  await openPort(page, "Build Experiment Environment");
+  await page.getByLabel("Activate experiment environment script").fill(script);
+  const saved = waitForFileWrite(page);
+  await main(page).getByRole("button", { name: "Save activate script" }).click();
+  await saved;
 }
 
 /**
@@ -182,9 +196,14 @@ const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation fai
  */
 export async function generateScript(
   page: Page,
+  button: RegExp = /Generate from repository/,
 ): Promise<{ message: string; graph: string; script: string }> {
   await stepShot(page, "generate-script", "before");
   const content = main(page);
+  const trigger = content.getByRole("button", { name: button }).first();
+  // Status and decision graph belong to the control whose button was pressed: a page can hold
+  // several (the build page generates its build and its activate script).
+  const control = trigger.locator("xpath=../..");
   // The generated body is read from the response rather than the editor. The
   // editor is a fixed-height CodeMirror viewport that virtualizes past what it
   // can show, so the tail of a scaffold — the `exit 64` that makes it
@@ -197,27 +216,24 @@ export async function generateScript(
         candidate.request().method() === "POST",
       { timeout: 30000 },
     ),
-    content
-      .getByRole("button", { name: /Generate from repository/ })
-      .first()
-      .click(),
+    trigger.click(),
   ]);
   const report = (await response.json()) as {
     results?: { candidates?: { body?: string | null }[] }[];
   };
   const script = report.results?.[0]?.candidates?.[0]?.body ?? "";
 
-  const status = content.getByText(GENERATE_STATUS).first();
+  const status = control.getByText(GENERATE_STATUS).first();
   // A real backend round-trip: rescan + DAG walk (and, before the artifact
   // exists, a build-script regeneration), so allow well past the default.
   await expect(status).toBeVisible({ timeout: 30000 });
   const message = (await status.textContent()) ?? "";
 
   // The decision graph is collapsed by default — open it and read it back.
-  const summary = content.getByText("Decision graph", { exact: true }).first();
+  const summary = control.getByText("Decision graph", { exact: true }).first();
   await expect(summary).toBeVisible();
   await summary.click();
-  const graphBlock = content
+  const graphBlock = control
     .locator("details")
     .filter({ hasText: "Decision graph" })
     .locator("pre")
@@ -714,8 +730,8 @@ export async function crossCheckSbom(page: Page) {
 
 /**
  * Author and run the activation. Navigates to the Activation canvas node (a
- * standalone page) and authors the given self-contained run script (e.g.
- * {@link dockerRunScript}) that proves the built runtime starts.
+ * standalone page) and authors the given run script (e.g. {@link commandScript}), which runs
+ * inside the activated experiment environment and proves it starts.
  */
 export async function testActivation(page: Page, runScript: string) {
   await stepShot(page, "test-activation", "before");
@@ -740,9 +756,9 @@ export async function testActivation(page: Page, runScript: string) {
 
 /**
  * Define a single experiment, author its run and verify scripts, run it, and
- * wait for it to pass. Like activation, the experiment owns its full run via
- * the given script, which must tee its stdout to {@link EXPERIMENT_OUTPUT_FILE}
- * (e.g. `dockerRunScript(cmd, runtime, EXPERIMENT_OUTPUT_FILE)`). The verify
+ * wait for it to pass. The run script runs inside the activated experiment environment
+ * and must keep its stdout in {@link EXPERIMENT_OUTPUT_FILE}
+ * (e.g. `commandScript(cmd, EXPERIMENT_OUTPUT_FILE)`). The verify
  * script owns the claim, reading that file back — its exit code is the verdict.
  */
 export async function runExperiment(

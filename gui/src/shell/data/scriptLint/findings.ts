@@ -6,6 +6,7 @@ export type { LintFinding } from "@shell/infra/api/apiTypes";
 
 export type LintTargetKind =
   | "build_experiment_environment"
+  | "activate_experiment_environment"
   | "activation_run"
   | "activation_verify"
   | "experiment_run"

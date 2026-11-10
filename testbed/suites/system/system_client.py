@@ -27,7 +27,8 @@ from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 
 ROOT = Path(__file__).resolve().parents[3]
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
-ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
+ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/activate_experiment_environment.sh"
+ACTIVATION_SCRIPT = "ree-scripts/test_activation.sh"
 
 # A bench without a Docker daemon: the base image is the experiment environment environment.
 # Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
@@ -245,10 +246,11 @@ class Api:
             result = self.infer(ree_id, "build_experiment_environment")
             script = str(result["candidates"][0]["body"])
         self.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
+        self.write(ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, fixture.recipe("activate_experiment_environment.sh"))
         return self.stage(ree_id, "build-experiment-environment", watch=fixture.watch)
 
     def activate(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
-        self.write(ree_id, ACTIVATION_SCRIPT, script or fixture.recipe("activation.sh"))
+        self.write(ree_id, ACTIVATION_SCRIPT, script or fixture.recipe("test_activation.sh"))
         self.patch(ree_id, {"test_activation": {}})
         return self.stage(ree_id, "activation-test", watch=fixture.watch)
 

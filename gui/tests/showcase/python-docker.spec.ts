@@ -3,10 +3,10 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "../helpers/fixtures";
 import {
   buildExperimentEnvironment,
+  commandScript,
   crossCheckSbom,
   declareContainerEngine,
   dockerBuildExperimentEnvironmentScript,
-  dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
   generateSbom,
   generateScript,
@@ -22,6 +22,7 @@ import {
   runEvaluate,
   runExperiment,
   SBOM_ARTIFACT_PATH,
+  saveActivateScript,
   sealRee,
   startReeCreation,
   testActivation,
@@ -211,37 +212,36 @@ test.describe("REE pipeline", () => {
       );
     });
 
-    await test.step("generate an activation script from the built experiment environment", async () => {
-      // The runtime artifact now exists and is declared, so inference inspects
-      // it directly: the docker plumbing is inferred from the image it finds,
-      // while the activation command is deliberately left fail-closed.
+    await test.step("generate the activate experiment environment script from the built image", async () => {
+      // The image now exists and is declared, so inference reads its kind and writes the whole
+      // way in: load the saved image and run the given command in a container from it.
+      await openPort(page, "Build Experiment Environment");
+      const { graph, script } = await generateScript(page, /Generate from experiment environment/);
+      expect(graph).toContain("activate-experiment-environment-inference");
+      expect(script).toMatch(/docker load --input/);
+      expect(script).toMatch(/exec docker run --rm -v "\$PWD:\$PWD" -w "\$PWD"/);
+      expect(script).not.toMatch(/exit 64/);
+      await saveActivateScript(page, script);
+    });
+
+    await test.step("generate a test activation script", async () => {
+      // The test activation runs inside the activated experiment environment: its scaffold is
+      // the command alone, left fail-closed for the author.
       await openPort(page, "Activation");
       await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
 
       const { message, graph, script } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated activation script/);
-      // Phase 1 never auto-selects a run command; the blocking warning says so.
       expect(message).toMatch(/No activation command was selected/);
       expect(graph).toContain("activation-run-inference");
-
-      // The scaffold: real docker plumbing around an empty `set --` guarded by
-      // exit 64, so it cannot silently run an unconfigured activation.
-      expect(script).toMatch(/docker load --input/);
       expect(script).toMatch(/exit 64/);
-      // And it landed in the editor. Only the opening lines are asserted here:
-      // what was generated is checked above, against the response itself.
-      await expect(
-        main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
-      ).toContainText("docker load");
+      expect(script).not.toMatch(/docker load/);
     });
 
     await test.step("test activation", async () => {
       await testActivation(
         page,
-        dockerRunScript(
-          "python -c \"import pandas; print('activation ok')\"",
-          EXPERIMENT_ENVIRONMENT_PATH,
-        ),
+        commandScript("python -c \"import pandas; print('activation ok')\""),
       );
       await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
       await narrate(page, main(page), "Activation proves the experiment environment comes up");
@@ -251,11 +251,7 @@ test.describe("REE pipeline", () => {
       // Asserts the run reaches "pass" and renders the verify script check row.
       await runExperiment(page, {
         name: "python-hello",
-        runScript: dockerRunScript(
-          `python ${PROJECT_DIR}/main.py`,
-          EXPERIMENT_ENVIRONMENT_PATH,
-          EXPERIMENT_OUTPUT_FILE,
-        ),
+        runScript: commandScript(`python ${PROJECT_DIR}/main.py`, EXPERIMENT_OUTPUT_FILE),
         expectedStdout: "Pandas Hello World",
         // Exercises experiment inference once the experiment is declared: the
         // scaffold is generated and asserted, then authored over.

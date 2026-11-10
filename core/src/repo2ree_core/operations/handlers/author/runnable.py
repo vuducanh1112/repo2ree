@@ -23,7 +23,12 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
-from repo2ree_ree.model import ExperimentDefinition, Ree, TestActivationDefinition
+from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
+    ExperimentDefinition,
+    Ree,
+    TestActivationDefinition,
+)
 from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.receipt import RunExperimentReceipt, TestActivationReceipt
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
@@ -49,6 +54,7 @@ def handle_runnable_operation(
         ree = load_ree(layout, store)
         definition = _select_definition(ree, kind, experiment_name)
         experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition, layout)
+        activation = _check_activation(ree, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot {kind}: {exc}")
         return ActionResult.failed("precondition", f"cannot {kind}: {exc}")
@@ -56,7 +62,7 @@ def handle_runnable_operation(
         return failed_from_exception(exc, f"failed to load {kind} inputs: {exc}")
 
     before_revision = revision_of(ree)
-    runnable = _as_runnable(definition)
+    runnable = _as_runnable(definition, activation)
     label = definition.name if isinstance(definition, ExperimentDefinition) else "activation"
     timer = OperationTimer.start()
     outcome = run_runnable(
@@ -102,6 +108,7 @@ def handle_runnable_operation(
         experiment_environment_path=experiment_environment_path,
         experiment_environment_digest=experiment_environment_digest,
         produced_output_digest=produced_output_digest,
+        activate_experiment_environment_script_digest=activation.activate_experiment_environment_script_digest,
         workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
     )
     try:
@@ -196,9 +203,23 @@ def _check_script(path: Path, expected_digest: Digest, expected_size: int, *, la
         raise ReePreconditionError(f"the {label} does not match its definition")
 
 
-def _as_runnable(definition: RunnableDefinition) -> RunnableSpec:
+def _check_activation(ree: Ree, layout: ReeLayout) -> ActivateExperimentEnvironmentDefinition:
+    activation = ree.subject.definition.activate_experiment_environment
+    if activation is None:
+        raise ReePreconditionError("no activate experiment environment script is defined")
+    _check_script(
+        layout.workspace / str(activation.activate_experiment_environment_script_path),
+        activation.activate_experiment_environment_script_digest,
+        activation.activate_experiment_environment_script_size,
+        label="activate experiment environment script",
+    )
+    return activation
+
+
+def _as_runnable(definition: RunnableDefinition, activation: ActivateExperimentEnvironmentDefinition) -> RunnableSpec:
     return RunnableSpec(
         run_script=str(definition.run_script_path),
+        activate_script=str(activation.activate_experiment_environment_script_path),
         verify_script=str(definition.verify_script_path or ""),
         output_paths=(
             tuple(str(path) for path in definition.output_paths) if isinstance(definition, ExperimentDefinition) else ()
@@ -231,6 +252,7 @@ def _successful_receipt(
     experiment_environment_path: WorkspacePath | None,
     experiment_environment_digest: Digest | None,
     produced_output_digest: Digest | None,
+    activate_experiment_environment_script_digest: Digest,
     workbench_environment: WorkbenchEnvironmentObservation,
 ) -> TestActivationReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
@@ -240,6 +262,7 @@ def _successful_receipt(
             snapshot_digest=snapshot_digest,
             experiment_environment_path=experiment_environment_path,
             experiment_environment_digest=experiment_environment_digest,
+            activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
             run_script_digest=definition.run_script_digest,
             verify_script_digest=definition.verify_script_digest,
             run_exit_code=0,
@@ -251,6 +274,7 @@ def _successful_receipt(
         experiment_name=definition.name,
         snapshot_digest=snapshot_digest,
         experiment_environment_digest=experiment_environment_digest,
+        activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
         run_script_digest=definition.run_script_digest,
         verify_script_digest=definition.verify_script_digest,
         run_exit_code=0,

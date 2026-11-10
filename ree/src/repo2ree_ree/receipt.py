@@ -123,6 +123,7 @@ class TestActivationReceipt(ReceiptEnvelope):
     snapshot_digest: Digest
     experiment_environment_path: WorkspacePath | None = None
     experiment_environment_digest: Digest | None = None
+    activate_experiment_environment_script_digest: Digest
     run_script_digest: Digest
     verify_script_digest: Digest | None = None
     run_exit_code: Literal[0] = 0
@@ -140,6 +141,7 @@ class RunExperimentReceipt(ReceiptEnvelope):
     experiment_name: str = Field(min_length=1)
     snapshot_digest: Digest
     experiment_environment_digest: Digest | None = None
+    activate_experiment_environment_script_digest: Digest
     run_script_digest: Digest
     verify_script_digest: Digest | None = None
     run_exit_code: Literal[0] = 0

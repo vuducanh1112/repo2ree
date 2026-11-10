@@ -138,6 +138,7 @@ def test_a_verify_script_may_pipe_freely() -> None:
 def test_a_script_that_never_names_the_declared_experiment_environment_is_reported() -> None:
     report = _lint(
         "docker run img python main.py\n",
+        kind="build_experiment_environment",
         declarations=ScriptDeclarations(experiment_environment_path="runtime.tar"),
     )
     findings = [f for f in report.findings if f.code == "experiment_environment_not_referenced"]
@@ -170,3 +171,9 @@ def test_a_verify_script_is_not_expected_to_touch_the_experiment_environment() -
         declarations=ScriptDeclarations(experiment_environment_path="runtime.tar"),
     )
     assert "experiment_environment_not_referenced" not in _codes(report)
+
+
+def test_a_command_run_inside_the_activation_need_not_name_the_experiment_environment() -> None:
+    report = _lint("python main.py\n", declarations=ScriptDeclarations(experiment_environment_path="runtime.tar"))
+
+    assert "experiment_environment_not_referenced" not in {f.code for f in report.findings}

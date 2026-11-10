@@ -12,6 +12,7 @@ from repo2ree_protocol.audit import _STEP_FIELDS, ReeAudit
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
     BundleContents,
     BundleEntry,
     ExperimentDefinition,
@@ -94,6 +95,7 @@ def _experiment_receipt(name: str = _EXPERIMENT_NAME) -> RunExperimentReceipt:
         experiment_name=name,
         snapshot_digest=_DIGEST,
         experiment_environment_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
+        activate_experiment_environment_script_digest=_DIGEST,
         run_script_digest=_DIGEST,
     )
 
@@ -107,6 +109,10 @@ def _built_ree(*, build_experiment_environment_script_digest: Digest = _DIGEST) 
                     build_experiment_environment_script_digest=build_experiment_environment_script_digest,
                     build_experiment_environment_script_size=1,
                     artifact_path=_EXPERIMENT_ENVIRONMENT_PATH,
+                ),
+                activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+                    activate_experiment_environment_script_digest=_DIGEST,
+                    activate_experiment_environment_script_size=1,
                 ),
             )
         )
@@ -458,3 +464,29 @@ def test_an_experiments_outputs_are_present_when_they_travel_in_the_archive(
 ) -> None:
     subject = _Subject.of(_sealed_with(*paths))
     assert replace(subject, bundle_settled=True).experiment_payload(_EXPERIMENT_NAME, applicable=True) == expected
+
+
+def test_editing_the_activate_script_leaves_what_ran_through_it_stale_but_not_the_build() -> None:
+    ree = commit_receipt(
+        replace_definition(
+            _built_ree(),
+            _built_ree().subject.definition.model_copy(update={"experiments": (_experiment(),)}),
+        ),
+        _experiment_receipt(),
+    )
+    edited = replace_definition(
+        ree,
+        ree.subject.definition.model_copy(
+            update={
+                "activate_experiment_environment": ActivateExperimentEnvironmentDefinition(
+                    activate_experiment_environment_script_digest=_OTHER_DIGEST,
+                    activate_experiment_environment_script_size=2,
+                )
+            }
+        ),
+    )
+
+    result = audit(edited)
+
+    assert result.experiment_environment.evidence == "current"
+    assert result.experiments[0].run.reasons == ("activate experiment environment script changed",)

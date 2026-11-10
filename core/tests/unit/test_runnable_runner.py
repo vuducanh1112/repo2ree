@@ -1,7 +1,7 @@
 """Tests for the runnable runner (experiment/run.py).
 
-Each runnable owns a run script that fully defines how it executes; the runner
-runs it from the workspace root and captures stdout/stderr. When the runnable
+Each runnable owns a run script; the runner runs it from the workspace root
+through the activate experiment environment script and captures stdout/stderr. When the runnable
 declares a verify script, the runner executes it afterwards — a plain script run
 from the workspace root with nothing injected into its environment, exactly like
 the run script — and its exit code is the verdict. A verify script that wants to
@@ -46,8 +46,10 @@ def _experiment(
     verify_script = ""
     if verify_body is not None:
         verify_script = _write_script(workspace, verify_rel, verify_body)
+    activate = _write_script(workspace, "ree-scripts/activate_experiment_environment.sh", 'exec "$@"\n')
     return RunnableSpec(
         run_script=script_rel,
+        activate_script=activate,
         verify_script=verify_script,
     )
 
@@ -80,7 +82,9 @@ def test_script_runs_and_succeeds(tmp_path):
 
 
 def test_missing_script_fails(tmp_path):
-    exp = RunnableSpec(run_script="ree-scripts/experiments/nope.sh")
+    exp = RunnableSpec(
+        run_script="ree-scripts/experiments/nope.sh", activate_script="ree-scripts/activate_experiment_environment.sh"
+    )
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
 
@@ -192,3 +196,27 @@ def test_verify_runs_even_when_run_fails(tmp_path):
     # a failed run can never verify to pass.
     assert outcome.run_outputs.verify_exit_code == 0
     assert marker.exists()
+
+
+def test_the_run_script_runs_inside_the_activation_and_the_verify_script_outside_it(tmp_path: Path) -> None:
+    exp = _experiment(
+        'echo "$ACTIVATED" > run.txt',
+        workspace=tmp_path,
+        verify_body='grep -qx inside run.txt && [ -z "${ACTIVATED:-}" ]',
+    )
+    _write_script(tmp_path, exp.activate_script, 'ACTIVATED=inside\nexport ACTIVATED\nexec "$@"\n')
+
+    outcome, _ = _run(tmp_path, exp)
+
+    assert outcome.status == "succeeded"
+    assert outcome.run_outputs.verdict == "pass"
+
+
+def test_a_missing_activate_script_fails_the_run_before_it_starts(tmp_path: Path) -> None:
+    exp = _experiment("touch ran.txt", workspace=tmp_path)
+    (tmp_path / exp.activate_script).unlink()
+
+    outcome, _ = _run(tmp_path, exp)
+
+    assert outcome.status == "failed"
+    assert not (tmp_path / "ran.txt").exists()

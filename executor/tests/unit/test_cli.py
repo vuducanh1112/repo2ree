@@ -321,7 +321,7 @@ def test_read_ree_file_rejects_escape(initialized_ree: Path) -> None:
 
 
 def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/activation.sh", content="print('hi')\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/test_activation.sh", content="print('hi')\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
     result = runner.invoke(cli, ["get-ree-document"])
@@ -330,11 +330,11 @@ def test_get_ree_document_reflects_workspace_files(initialized_ree: Path) -> Non
     # No control-plane handle: the workbench knows only its own volume, so the
     # document carries what the tree holds and nothing about where it is.
     assert "ree_id" not in workspace
-    assert any(f.get("path") == "ree-scripts/activation.sh" for f in workspace["workspace_files"])
+    assert any(f.get("path") == "ree-scripts/test_activation.sh" for f in workspace["workspace_files"])
 
 
 def test_get_ree_document_summary_omits_inline_file_content(initialized_ree: Path) -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/activation.sh", content="print('hi')\n"))
+    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/test_activation.sh", content="print('hi')\n"))
     assert runner.invoke(cli, ["execute", "--action", "-"], input=cmd.model_dump_json()).exit_code == 0
 
     result = runner.invoke(cli, ["get-ree-document", "--summary"])

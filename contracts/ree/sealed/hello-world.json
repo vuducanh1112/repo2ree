@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:46c3c2cd2e694d89b05dde66fe657adb378c5540a977c85b869b62fa3f9c0851",
+    "ree_digest": "sha256:0054cfca96f2044a804018d5b052f04f7e5056c64162c770ee6980432933c0dc",
     "sealed_at": "2026-10-29T19:59:49.052140Z"
   },
   "subject": {
@@ -54,9 +54,9 @@
           "size": 1161
         },
         {
-          "digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
-          "path": "overlay/ree-scripts/activation.sh",
-          "size": 340
+          "digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
+          "path": "overlay/ree-scripts/activate_experiment_environment.sh",
+          "size": 37
         },
         {
           "digest": "sha256:36d9b99cf89568e0e1ac80877e1f012ea85ee8f76ba605050da0ca2bb207c755",
@@ -72,6 +72,11 @@
           "digest": "sha256:fec9ba1071e73fb662045a1f0225a1d298b9548db3c8edf1b78154b9933400b1",
           "path": "overlay/ree-scripts/experiments/python-hello.verify.sh",
           "size": 170
+        },
+        {
+          "digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
+          "path": "overlay/ree-scripts/test_activation.sh",
+          "size": 340
         },
         {
           "digest": "sha256:eb350ba0bd51631d3dd35c6a78db5984b24dd6c59bbb896d673bab666f0943c5",
@@ -91,6 +96,11 @@
       ]
     },
     "definition": {
+      "activate_experiment_environment": {
+        "activate_experiment_environment_script_digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
+        "activate_experiment_environment_script_path": "ree-scripts/activate_experiment_environment.sh",
+        "activate_experiment_environment_script_size": 37
+      },
       "catalog": {
         "contributors": [],
         "description": "A reusable execution environment for the Python hello world archive.",
@@ -141,7 +151,7 @@
       },
       "test_activation": {
         "run_script_digest": "sha256:886591272876dfb3d2019886d7ec5bcb1c54f09a8d632c0c6d225c96e334ea5d",
-        "run_script_path": "ree-scripts/activation.sh",
+        "run_script_path": "ree-scripts/test_activation.sh",
         "run_script_size": 340
       }
     },
@@ -187,6 +197,7 @@
       },
       "experiments": {
         "python-hello": {
+          "activate_experiment_environment_script_digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
           "duration_ms": 712,
           "experiment_environment_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
           "experiment_name": "python-hello",
@@ -248,6 +259,7 @@
         "started_at": "2026-08-31T10:10:22.377344Z"
       },
       "test_activation": {
+        "activate_experiment_environment_script_digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
         "duration_ms": 305,
         "experiment_environment_digest": "sha256:0ca3996df3011074fb51d01391911b691f7497a393e0173ac16d02950dafd9f2",
         "experiment_environment_path": "python_hello_world/runtime.tar",

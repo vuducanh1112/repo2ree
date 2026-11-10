@@ -62,7 +62,11 @@ from repo2ree_core.reproduction.commands import (
 )
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+)
 from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
 # ================================================
@@ -128,6 +132,7 @@ def _replace_layout_tokens(text: str) -> str:
 def build_reproducer_sh(
     *,
     build_experiment_environment_script: str,
+    activate_experiment_environment_script: str,
     activation_script: str,
     activation_verify_script: str = "",
     experiments: Sequence[tuple[str, str, str]],
@@ -154,6 +159,7 @@ def build_reproducer_sh(
     header = "\n".join(
         (
             f"BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(build_experiment_environment_script)}",
+            f"ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(activate_experiment_environment_script)}",
             f"ACTIVATION_SCRIPT={shell_single_quote(activation_script)}",
             f"ACTIVATION_VERIFY_SCRIPT={shell_single_quote(activation_verify_script)}",
             f"EXPERIMENT_ENVIRONMENT_WS_PATH={shell_single_quote(experiment_environment_workspace_path or '')}",
@@ -174,7 +180,8 @@ def build_reproducer_sh(
 def reproducer_entries(
     *,
     build_experiment_environment_script: str = RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    activation_script: str = RESERVED_ACTIVATION_SCRIPT,
+    activate_experiment_environment_script: str = RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    activation_script: str = RESERVED_TEST_ACTIVATION_SCRIPT,
     activation_verify_script: str = "",
     experiments: Sequence[tuple[str, str, str]] = (),
     experiment_environment_workspace_path: str | None = None,
@@ -196,7 +203,9 @@ def reproducer_entries(
     run_sh = build_reproducer_sh(
         build_experiment_environment_script=build_experiment_environment_script
         or RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        activation_script=activation_script or RESERVED_ACTIVATION_SCRIPT,
+        activate_experiment_environment_script=activate_experiment_environment_script
+        or RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        activation_script=activation_script or RESERVED_TEST_ACTIVATION_SCRIPT,
         activation_verify_script=activation_verify_script,
         experiments=experiments,
         experiment_environment_workspace_path=experiment_environment_workspace_path,
@@ -342,12 +351,20 @@ _RUN_SH_TEMPLATE = shell_text("""
       fi
     }
 
-    # Run a run script, then its verify script (when declared). An author who
-    # wants to check stdout has the run script materialize it to a workspace
-    # file (e.g. `| tee results/run.log`) that the verify script reads back.
+    run_activated() {
+      script=$1
+      [ -f "$WS/$script" ] || die "script not found in workspace: $script"
+      [ -f "$WS/$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" ] \\
+        || die "script not found in workspace: $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT"
+      say "\\$ sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT sh $script"
+      ( cd "$WS" && sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" sh "$script" )
+    }
+
+    # Run a run script inside the activated experiment environment, then its verify
+    # script (when declared) outside it.
     run_verified() {
       script=$1; verify=${2:-}
-      run_in_workspace "$script"
+      run_activated "$script"
       [ -z "$verify" ] && return 0
       run_verify_only "$verify"
     }
@@ -464,8 +481,9 @@ _REPRODUCING_MD = shell_text("""
 
     - A POSIX shell and `tar` (present on macOS/Linux; on Windows use WSL or Git
       Bash).
-    - Whatever experiment environment the author's scripts call into — commonly **Docker**. Each
-      run script fully owns how it executes (for example its own `docker run …`), so
+    - Whatever experiment environment the author's scripts call into — commonly **Docker**. The
+      test activation and every experiment run inside
+      `ree-scripts/activate_experiment_environment.sh` (for example its `docker run …`), so
       read `ree/@@OVERLAY_DIRNAME@@/` if you want to see exactly what will run.
     - Only if the source was **not** bundled: the fetch tool for its type (`git`,
       `curl`, `unzip`) and, optionally, the `swh` CLI to verify source identity
@@ -515,8 +533,8 @@ _REPRODUCING_MD = shell_text("""
 
     An experiment may ship a *verify script* beside its run script (listed by
     `sh run.sh list`). After the run script finishes, `run.sh` executes the
-    verify script from the workspace root — a plain `sh` script with nothing
-    injected into its environment, just like the run script — and reports
+    verify script from the workspace root, outside the experiment environment — a plain
+    `sh` script with nothing injected into its environment — and reports
     `VERIFIED: pass` or `VERIFIED: fail`. Its exit code is the verdict
     (0 = pass), so the claimed result is checked on your machine, not just
     re-run. The verify script reads whatever it checks straight from the

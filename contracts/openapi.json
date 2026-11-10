@@ -8125,6 +8125,53 @@
         ],
         "title": "ActionResult"
       },
+      "ActivateExperimentEnvironmentDefinition": {
+        "properties": {
+          "activate_experiment_environment_script_path": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Path",
+            "default": "ree-scripts/activate_experiment_environment.sh"
+          },
+          "activate_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Digest"
+          },
+          "activate_experiment_environment_script_size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Activate Experiment Environment Script Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "activate_experiment_environment_script_digest",
+          "activate_experiment_environment_script_size"
+        ],
+        "title": "ActivateExperimentEnvironmentDefinition"
+      },
+      "ActivateExperimentEnvironmentScriptTemplates": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "templates"
+        ],
+        "title": "ActivateExperimentEnvironmentScriptTemplates",
+        "description": "The activate experiment environment templates and the reserved path they all belong at."
+      },
       "ActivationOutcome": {
         "properties": {
           "policy": {
@@ -10174,6 +10221,28 @@
               }
             ],
             "title": "Verify Script Digest"
+          },
+          "expected_activate_experiment_environment_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Activate Experiment Environment Script Digest"
+          },
+          "activate_experiment_environment_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activate Experiment Environment Script Digest"
           },
           "expected_verify_exit_code": {
             "anyOf": [
@@ -12456,6 +12525,16 @@
               }
             ]
           },
+          "activate_experiment_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivateExperimentEnvironmentDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "workbench_environment": {
             "anyOf": [
               {
@@ -12523,6 +12602,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ExperimentEnvironmentDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activate_experiment_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivateExperimentEnvironmentDefinition"
               },
               {
                 "type": "null"
@@ -13468,6 +13557,10 @@
             "title": "Operation",
             "default": "test_activation"
           },
+          "activate_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Digest"
+          },
           "run_script_path": {
             "type": "string",
             "title": "Run Script Path"
@@ -13538,6 +13631,7 @@
           "duration_ms",
           "recorded_at",
           "status",
+          "activate_experiment_environment_script_digest",
           "run_script_path",
           "run_script_digest",
           "experiment_environment_path",
@@ -13681,6 +13775,10 @@
             "minLength": 1,
             "title": "Experiment Name"
           },
+          "activate_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Digest"
+          },
           "run_script_path": {
             "type": "string",
             "title": "Run Script Path"
@@ -13777,6 +13875,7 @@
           "recorded_at",
           "status",
           "experiment_name",
+          "activate_experiment_environment_script_digest",
           "run_script_path",
           "run_script_digest"
         ],
@@ -14030,6 +14129,10 @@
             ],
             "title": "Experiment Environment Digest"
           },
+          "activate_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Digest"
+          },
           "run_script_digest": {
             "type": "string",
             "title": "Run Script Digest"
@@ -14095,6 +14198,7 @@
           "recorded_at",
           "experiment_name",
           "snapshot_digest",
+          "activate_experiment_environment_script_digest",
           "run_script_digest"
         ],
         "title": "RunExperimentReceipt"
@@ -14561,6 +14665,7 @@
             "type": "string",
             "enum": [
               "build_experiment_environment",
+              "activate_experiment_environment",
               "activation_run",
               "activation_verify",
               "experiment_run",
@@ -14599,6 +14704,7 @@
             "type": "string",
             "enum": [
               "build_experiment_environment",
+              "activate_experiment_environment",
               "activation_run",
               "activation_verify",
               "experiment_run",
@@ -14631,6 +14737,9 @@
           "build_experiment_environment": {
             "$ref": "#/components/schemas/BuildExperimentEnvironmentScriptTemplates"
           },
+          "activate_experiment_environment": {
+            "$ref": "#/components/schemas/ActivateExperimentEnvironmentScriptTemplates"
+          },
           "activation": {
             "$ref": "#/components/schemas/ActivationScriptTemplates"
           },
@@ -14648,6 +14757,7 @@
         "type": "object",
         "required": [
           "build_experiment_environment",
+          "activate_experiment_environment",
           "activation",
           "experiment",
           "verify"
@@ -15416,7 +15526,7 @@
           "run_script_path": {
             "type": "string",
             "title": "Run Script Path",
-            "default": "ree-scripts/activation.sh"
+            "default": "ree-scripts/test_activation.sh"
           },
           "run_script_digest": {
             "type": "string",
@@ -15531,6 +15641,10 @@
             ],
             "title": "Experiment Environment Digest"
           },
+          "activate_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Digest"
+          },
           "run_script_digest": {
             "type": "string",
             "title": "Run Script Digest"
@@ -15584,6 +15698,7 @@
           "duration_ms",
           "recorded_at",
           "snapshot_digest",
+          "activate_experiment_environment_script_digest",
           "run_script_digest"
         ],
         "title": "TestActivationReceipt"

@@ -52,9 +52,12 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
     assert sbom.sbom_path == SBOM
     assert client.cross_check_sbom(ree_id, watch=F.watch).status == "succeeded"
 
+    activate = client.infer(ree_id, "activate_experiment_environment").first_body()
+    assert "docker load --input" in activate
+    assert 'exec docker run --rm -v "$PWD:$PWD" -w "$PWD"' in activate
     scaffold = client.infer(ree_id, "activation_run").first_body()
-    assert "docker load --input" in scaffold
     assert "exit 64" in scaffold
+    assert "docker load" not in scaffold
     run = client.activate(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 

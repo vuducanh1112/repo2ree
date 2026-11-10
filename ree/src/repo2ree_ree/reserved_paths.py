@@ -5,13 +5,15 @@ from pathlib import PurePosixPath
 RESERVED_SCRIPT_DIR = "ree-scripts"
 
 RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/build_experiment_environment.sh"
-RESERVED_ACTIVATION_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activation.sh"
-RESERVED_ACTIVATION_VERIFY_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activation.verify.sh"
+RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activate_experiment_environment.sh"
+RESERVED_TEST_ACTIVATION_SCRIPT = f"{RESERVED_SCRIPT_DIR}/test_activation.sh"
+RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT = f"{RESERVED_SCRIPT_DIR}/test_activation.verify.sh"
 RESERVED_EXPERIMENT_SCRIPT_DIR = f"{RESERVED_SCRIPT_DIR}/experiments"
 
 RESERVED_OVERLAY_SCRIPTS = (
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_ACTIVATION_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
 )
 
 
@@ -32,8 +34,9 @@ def is_overlay_path(path: str) -> bool:
     normalized = PurePosixPath(path)
     if str(normalized) in (
         RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        RESERVED_ACTIVATION_SCRIPT,
-        RESERVED_ACTIVATION_VERIFY_SCRIPT,
+        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        RESERVED_TEST_ACTIVATION_SCRIPT,
+        RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     ):
         return True
     name = normalized.name
@@ -46,7 +49,11 @@ def is_overlay_path(path: str) -> bool:
 
 def is_run_script(path: str) -> bool:
     normalized = PurePosixPath(path)
-    if str(normalized) in (RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, RESERVED_ACTIVATION_SCRIPT):
+    if str(normalized) in (
+        RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        RESERVED_TEST_ACTIVATION_SCRIPT,
+    ):
         return True
     return (
         str(normalized.parent) == RESERVED_EXPERIMENT_SCRIPT_DIR

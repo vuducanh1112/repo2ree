@@ -22,7 +22,12 @@ ReceiptSourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zi
 AcquirableSourceType = Literal["git", "tarball", "zip"]
 Evidence = Literal["missing", "current", "stale", "not_applicable"]
 ScriptKind = Literal[
-    "build_experiment_environment", "activation_run", "activation_verify", "experiment_run", "experiment_verify"
+    "build_experiment_environment",
+    "activate_experiment_environment",
+    "activation_run",
+    "activation_verify",
+    "experiment_run",
+    "experiment_verify",
 ]
 InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
 

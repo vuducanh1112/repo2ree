@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from system_client import ACTIVATION_SCRIPT, EXPERIMENT, EXPERIMENT_SCRIPT, EXPERIMENT_VERIFY, Api, recipe
 
-ACTIVATION_VERIFY = "ree-scripts/activation.verify.sh"
+ACTIVATION_VERIFY = "ree-scripts/test_activation.verify.sh"
 PASSING_VERIFY = "#!/usr/bin/env sh\nset -eu\nexit 0\n"
 
 
@@ -23,7 +23,7 @@ def test_rewriting_or_deleting_a_script_makes_what_it_ran_stale(api: Api, new_re
     api.write(ree_id, ACTIVATION_VERIFY, PASSING_VERIFY)
     api.succeed(ree_id, "activation-test")
 
-    api.write(ree_id, ACTIVATION_SCRIPT, recipe("activation.sh") + "# touched\n")
+    api.write(ree_id, ACTIVATION_SCRIPT, recipe("test_activation.sh") + "# touched\n")
     api.write(ree_id, EXPERIMENT_SCRIPT, recipe("experiment.sh") + "# touched\n")
     edited = standing(api, ree_id)
     assert (edited["test_activation"], edited[f"experiment:{EXPERIMENT}"]) == ("stale", "stale")

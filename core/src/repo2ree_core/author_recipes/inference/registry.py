@@ -18,11 +18,18 @@ from repo2ree_core.author_recipes.inference.checks.experiment_environment_contra
     ExperimentEnvironmentContractKindCheck,
     UnchangedGeneratedBuildCheck,
 )
+from repo2ree_core.author_recipes.inference.decision_graphs.activate_experiment_environment import (
+    ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG,
+)
 from repo2ree_core.author_recipes.inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.author_recipes.inference.engine import validate_dag
 from repo2ree_core.author_recipes.inference.models import Check, Renderer, Resolver
+from repo2ree_core.author_recipes.inference.renderers.activate_experiment_environment import (
+    DockerActivateExperimentEnvironmentRenderer,
+    VenvActivateExperimentEnvironmentRenderer,
+)
 from repo2ree_core.author_recipes.inference.renderers.docker_activation import DockerActivationRenderer
 from repo2ree_core.author_recipes.inference.renderers.docker_experiment import DockerExperimentRenderer
 from repo2ree_core.author_recipes.inference.renderers.venv_activation import VenvActivationRenderer
@@ -54,6 +61,8 @@ RENDERERS: dict[str, Renderer] = {
     **{
         renderer.code: renderer
         for renderer in (
+            DockerActivateExperimentEnvironmentRenderer(),
+            VenvActivateExperimentEnvironmentRenderer(),
             DockerActivationRenderer(),
             VenvActivationRenderer(),
             DockerExperimentRenderer(),
@@ -64,6 +73,7 @@ RENDERERS: dict[str, Renderer] = {
 
 DECISION_DAGS: dict[str, DecisionDag] = {
     BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key: BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG,
+    ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG.key: ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG,
     ACTIVATION_RUN_DAG.key: ACTIVATION_RUN_DAG,
     EXPERIMENT_RUN_DAG.key: EXPERIMENT_RUN_DAG,
 }
@@ -73,6 +83,7 @@ DECISION_DAGS: dict[str, DecisionDag] = {
 # they stay unregistered and return a well-formed not_inferred result.
 DAG_FOR_TARGET_KIND: dict[str, str] = {
     "build_experiment_environment": BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key,
+    "activate_experiment_environment": ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG.key,
     "activation_run": ACTIVATION_RUN_DAG.key,
     "experiment_run": EXPERIMENT_RUN_DAG.key,
 }

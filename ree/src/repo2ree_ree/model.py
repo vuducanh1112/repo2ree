@@ -18,9 +18,10 @@ from repo2ree_ree.receipt import (
     TestActivationReceipt,
 )
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
-    RESERVED_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
@@ -84,8 +85,22 @@ class ExperimentEnvironmentDefinition(_DomainModel):
         return value
 
 
+class ActivateExperimentEnvironmentDefinition(_DomainModel):
+    activate_experiment_environment_script_path: ReePath = ReePath(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
+    activate_experiment_environment_script_digest: Digest
+    activate_experiment_environment_script_size: int = Field(ge=0)
+
+    @field_validator("activate_experiment_environment_script_path")
+    @classmethod
+    def _fixed_path(cls, value: ReePath) -> ReePath:
+        if value != RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT:
+            expected = RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
+            raise ValueError(f"activate experiment environment script path must be {expected!r}")
+        return value
+
+
 class TestActivationDefinition(_DomainModel):
-    run_script_path: ReePath = ReePath(RESERVED_ACTIVATION_SCRIPT)
+    run_script_path: ReePath = ReePath(RESERVED_TEST_ACTIVATION_SCRIPT)
     run_script_digest: Digest
     run_script_size: int = Field(ge=0)
     verify_script_path: ReePath | None = None
@@ -94,12 +109,12 @@ class TestActivationDefinition(_DomainModel):
 
     @model_validator(mode="after")
     def _complete_scripts(self) -> TestActivationDefinition:
-        if self.run_script_path != RESERVED_ACTIVATION_SCRIPT:
-            raise ValueError(f"activation script path must be {RESERVED_ACTIVATION_SCRIPT!r}")
+        if self.run_script_path != RESERVED_TEST_ACTIVATION_SCRIPT:
+            raise ValueError(f"activation script path must be {RESERVED_TEST_ACTIVATION_SCRIPT!r}")
         if not _all_or_none(self.verify_script_path, self.verify_script_digest, self.verify_script_size):
             raise ValueError("activation verification path, digest, and size must be present together")
-        if self.verify_script_path is not None and self.verify_script_path != RESERVED_ACTIVATION_VERIFY_SCRIPT:
-            raise ValueError(f"activation verification path must be {RESERVED_ACTIVATION_VERIFY_SCRIPT!r}")
+        if self.verify_script_path is not None and self.verify_script_path != RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT:
+            raise ValueError(f"activation verification path must be {RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT!r}")
         return self
 
 
@@ -135,6 +150,7 @@ class ReeDefinition(_DomainModel):
     catalog: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     source: SourceDefinition | None = None
     experiment_environment: ExperimentEnvironmentDefinition | None = None
+    activate_experiment_environment: ActivateExperimentEnvironmentDefinition | None = None
     workbench_environment: WorkbenchEnvironment | None = None
     test_activation: TestActivationDefinition | None = None
     hardware: HardwareDefinition | None = None
@@ -259,6 +275,7 @@ def ree_status(ree: Ree) -> ReeStatus:
 
 __all__ = [
     "CURRENT_SCHEMA_VERSION",
+    "ActivateExperimentEnvironmentDefinition",
     "BundleContents",
     "BundleEntry",
     "Contributor",

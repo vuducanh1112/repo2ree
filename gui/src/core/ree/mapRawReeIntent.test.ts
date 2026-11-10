@@ -73,12 +73,12 @@ describe("mapRawReeIntentToSlices", () => {
   it("maps the activation run script from persisted intent", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {
-        activation: { run_script: "ree/custom-activation.sh" },
+        activation: { run_script: "ree/custom-test_activation.sh" },
       },
       fallbackName: "demo",
     });
 
-    expect(mapped.reeSpec.activation.runScript).toBe("ree/custom-activation.sh");
+    expect(mapped.reeSpec.activation.runScript).toBe("ree/custom-test_activation.sh");
   });
 
   it("keeps the activation run script empty when not present in intent", () => {

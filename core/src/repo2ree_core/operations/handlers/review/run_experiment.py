@@ -62,9 +62,13 @@ def _step(experiment_name: str) -> ReviewRunnableStep:
         experiment = next((item for item in definition.experiments if item.name == experiment_name), None)
         if experiment is None:
             raise ValueError(f"no experiment named {experiment_name!r} is declared")
+        activation_script = definition.activate_experiment_environment
+        if activation_script is None:
+            raise ValueError("no activate experiment environment script is declared")
         return (
             RunnableSpec(
                 run_script=str(experiment.run_script_path),
+                activate_script=str(activation_script.activate_experiment_environment_script_path),
                 verify_script=str(experiment.verify_script_path or ""),
                 output_paths=tuple(str(path) for path in experiment.output_paths),
             ),
@@ -109,6 +113,7 @@ def handle_review_run_experiment(
     verify_script_digest = (
         digest_file_if_exists(review_layout.workspace / experiment.verify_script) if experiment.verify_script else None
     )
+    activate_script_digest = digest_file_if_exists(review_layout.workspace / experiment.activate_script)
 
     comparison = _certify(
         opened.ree_layout,
@@ -122,11 +127,14 @@ def handle_review_run_experiment(
         # The criterion as it stood in the workspace it ran in. Certification
         # compares this with the author receipt before granting a verdict.
         verify_script_digest=verify_script_digest,
+        activate_experiment_environment_script_digest=activate_script_digest,
     )
 
     timing = opened.timer.finish()
     if run_script_digest is None:
         return opened.step.stop("failed", "the experiment run script disappeared after it ran")
+    if activate_script_digest is None:
+        return opened.step.stop("failed", "the activate experiment environment script disappeared after it ran")
     receipt = ReviewExperimentReceipt(
         **review_receipt_envelope(
             run_id,
@@ -134,6 +142,7 @@ def handle_review_run_experiment(
             "succeeded" if outcome.status == "succeeded" else "failed",
         ),
         experiment_name=opened.label,
+        activate_experiment_environment_script_digest=activate_script_digest,
         run_script_path=ReePath(experiment.run_script),
         run_script_digest=run_script_digest,
         run_exit_code=outcome.run_outputs.exit_code,
@@ -182,6 +191,7 @@ def _certify(
     observed_output_digest: str | None,
     experiment_environment_digest: str | None,
     verify_script_digest: str | None,
+    activate_experiment_environment_script_digest: str | None,
 ) -> ExperimentComparison:
     """Compare the reviewer's run with the author's recorded run of the same name.
 
@@ -195,7 +205,9 @@ def _certify(
     expected_verify_exit_code = None
     expected_verify_script_digest = None
     expected_output_digest = None
+    expected_activate_digest = None
     if isinstance(author, RunExperimentReceipt):
+        expected_activate_digest = author.activate_experiment_environment_script_digest
         expected_verify_exit_code = _author_verify_exit_code(author)
         expected_verify_script_digest = author.verify_script_digest
         expected_output_digest = author.produced_output_digest
@@ -206,6 +218,8 @@ def _certify(
         verify_script_path=runnable.verify_script,
         expected_verify_script_digest=expected_verify_script_digest,
         verify_script_digest=verify_script_digest,
+        expected_activate_experiment_environment_script_digest=expected_activate_digest,
+        activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
         expected_verify_exit_code=expected_verify_exit_code,
         observed_verify_exit_code=observed_verify_exit_code,
         run_exit_code=run_exit_code,
@@ -255,6 +269,17 @@ def _log_verdict(comparison: ExperimentComparison, *, log: LogSink) -> None:
             "warn",
             "the verify script changed since the author's run: "
             f"expected {comparison.expected_verify_script_digest}, ran {comparison.verify_script_digest}",
+        )
+    elif (
+        comparison.expected_activate_experiment_environment_script_digest
+        != comparison.activate_experiment_environment_script_digest
+    ):
+        log(
+            "system",
+            "warn",
+            "the activate experiment environment script differs from the author's run: "
+            f"expected {comparison.expected_activate_experiment_environment_script_digest}, "
+            f"ran {comparison.activate_experiment_environment_script_digest}",
         )
     elif comparison.expected_verify_exit_code != 0:
         log(

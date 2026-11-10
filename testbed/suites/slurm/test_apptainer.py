@@ -12,7 +12,7 @@ from typed_client import Client, NewRee
 
 from repo2ree_testbed.showcases import APPTAINER
 
-PLACED = r"ran in job \d+ container \S*experiment environment\.sif"
+PLACED = r"ran in job \d+ container \S*runtime\.sif"
 
 
 def built(api: Api, ree_id: str) -> None:

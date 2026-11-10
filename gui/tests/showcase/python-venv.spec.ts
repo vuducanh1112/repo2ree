@@ -1,6 +1,7 @@
 import { expect, test } from "../helpers/fixtures";
 import {
   buildExperimentEnvironment,
+  commandScript,
   EXPERIMENT_OUTPUT_FILE,
   generateScript,
   LIGHTWEIGHT_WORKBENCH_IMAGE,
@@ -11,6 +12,7 @@ import {
   releaseWorkbench,
   runEvaluate,
   runExperiment,
+  saveActivateScript,
   sealRee,
   startReeCreation,
   testActivation,
@@ -68,22 +70,6 @@ tar -czf "$EXPERIMENT_ENVIRONMENT_FILE" -C "$(dirname "$VENV_DIR")" "$(basename 
  * venv (outside the workspace, see VENV_DIR) rather than `docker load`-ing an
  * image.
  */
-function venvRunScript(command: string, outputFile?: string): string {
-  const capture = outputFile ? ` | tee ${JSON.stringify(outputFile)}` : "";
-  return `#!/usr/bin/env sh
-set -eu
-
-EXPERIMENT_ENVIRONMENT_FILE=${JSON.stringify(EXPERIMENT_ENVIRONMENT_PATH)}
-VENV_DIR=${JSON.stringify(VENV_DIR)}
-
-if [ ! -x "$VENV_DIR/bin/python" ]; then
-  tar -xzf "$EXPERIMENT_ENVIRONMENT_FILE" -C "$(dirname "$VENV_DIR")"
-fi
-
-"$VENV_DIR/bin/"${command}${capture}
-`;
-}
-
 test.describe("REE pip pipeline", () => {
   test("docker-less workbench: pip venv as the experiment environment artifact", async ({
     page,
@@ -134,39 +120,30 @@ test.describe("REE pip pipeline", () => {
       );
     });
 
-    await test.step("generate an activation script from the packed venv", async () => {
-      // The declared artifact is a real packed venv, so inspection classifies it
-      // as a venv runtime and the venv scaffold renders — restore-and-run rather
-      // than docker load. The venv records its own build directory, so the
-      // restore path is recovered rather than assumed.
-      await openPort(page, "Activation");
-      await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
-
-      const { message, graph, script } = await generateScript(page);
-      expect(message).toMatch(/Loaded a generated activation script/);
-      expect(graph).toContain("activation-run-inference");
-
+    await test.step("generate the activate experiment environment script from the packed venv", async () => {
+      // The declared artifact is a real packed venv, so inspection classifies it as a venv
+      // experiment environment: restore it and run the given command with it on the path. The
+      // venv records its own build directory, so the restore path is recovered, not assumed.
+      await openPort(page, "Build Experiment Environment");
+      const { graph, script } = await generateScript(page, /Generate from experiment environment/);
+      expect(graph).toContain("activate-experiment-environment-inference");
       expect(script).toMatch(/tar -xzf/);
       expect(script).toMatch(new RegExp(`VENV_DIR=${VENV_DIR}`));
-      // Fail-closed like every Phase 1 run scaffold.
-      expect(script).toMatch(/exit 64/);
-      // And it landed in the editor; the generated body is asserted above.
-      await expect(
-        main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
-      ).toContainText("tar -xzf");
+      expect(script).toMatch(/exec "\$@"/);
+      await saveActivateScript(page, script);
     });
 
     await test.step("test activation", async () => {
       await testActivation(
         page,
-        venvRunScript("python -c \"import pandas; print('activation ok')\""),
+        commandScript("python -c \"import pandas; print('activation ok')\""),
       );
     });
 
     await test.step("run experiment", async () => {
       await runExperiment(page, {
         name: "python-pip-hello",
-        runScript: venvRunScript(`python ${PROJECT_DIR}/main.py`, EXPERIMENT_OUTPUT_FILE),
+        runScript: commandScript(`python ${PROJECT_DIR}/main.py`, EXPERIMENT_OUTPUT_FILE),
         expectedStdout: "Pandas Hello World",
       });
     });

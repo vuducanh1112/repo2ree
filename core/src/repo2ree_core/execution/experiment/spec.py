@@ -10,11 +10,13 @@ from repo2ree_ree.paths import validate_relative_path
 @dataclass(frozen=True)
 class RunnableSpec:
     run_script: str
+    activate_script: str
     verify_script: str = ""
     output_paths: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         validate_relative_path(self.run_script)
+        validate_relative_path(self.activate_script)
         if self.verify_script:
             validate_relative_path(self.verify_script)
         for path in self.output_paths:

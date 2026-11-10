@@ -36,7 +36,7 @@ from httpx import Client as TestClient
 from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
 
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
-ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
+ACTIVATION_SCRIPT = "ree-scripts/test_activation.sh"
 EXPERIMENT_NAME = "demo"
 EXPERIMENT_SCRIPT = f"ree-scripts/experiments/{EXPERIMENT_NAME}.sh"
 EXPERIMENT_ENVIRONMENT_ARTIFACT = "runtime.tar"

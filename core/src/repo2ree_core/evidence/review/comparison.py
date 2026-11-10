@@ -117,6 +117,8 @@ def compare_experiment_results(
     verify_script_path: str,
     expected_verify_script_digest: str | None,
     verify_script_digest: str | None,
+    expected_activate_experiment_environment_script_digest: str | None,
+    activate_experiment_environment_script_digest: str | None,
     expected_verify_exit_code: int | None,
     observed_verify_exit_code: int | None,
     run_exit_code: int | None,
@@ -132,6 +134,8 @@ def compare_experiment_results(
       ``inconclusive``. An absent baseline is not agreement.
     * The author criterion is unbound or differs from the script the reviewer
       ran — ``inconclusive``. A different test cannot reproduce the old claim.
+    * The activate experiment environment script differs from the author's —
+      ``inconclusive``. The experiment ran somewhere other than the author's.
     * The author's baseline verify did not pass — ``inconclusive``. There is no
       accepted author claim to reproduce.
     * Reviewer verify exited nonzero — ``different``. The author's own
@@ -149,6 +153,8 @@ def compare_experiment_results(
         or expected_verify_script_digest is None
         or verify_script_digest is None
         or expected_verify_script_digest != verify_script_digest
+        or expected_activate_experiment_environment_script_digest is None
+        or expected_activate_experiment_environment_script_digest != activate_experiment_environment_script_digest
         or expected_verify_exit_code != 0
     ):
         verdict: ExperimentVerdict = "inconclusive"
@@ -165,6 +171,8 @@ def compare_experiment_results(
         verify_script_path=verify_script_path,
         expected_verify_script_digest=expected_verify_script_digest,
         verify_script_digest=verify_script_digest,
+        expected_activate_experiment_environment_script_digest=expected_activate_experiment_environment_script_digest,
+        activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
         expected_verify_exit_code=expected_verify_exit_code,
         observed_verify_exit_code=observed_verify_exit_code,
         run_exit_code=run_exit_code,

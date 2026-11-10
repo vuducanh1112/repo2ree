@@ -14,7 +14,7 @@ class PipeMaskingRule:
     code = "exit_status_masked_by_pipe"
     codes: ClassVar[frozenset[str]] = frozenset({"exit_status_masked_by_pipe"})
     applies_to: ClassVar[frozenset[TargetKind]] = frozenset(
-        {"build_experiment_environment", "activation_run", "experiment_run"}
+        {"build_experiment_environment", "activate_experiment_environment", "activation_run", "experiment_run"}
     )
 
     def check(self, context: ScriptContext) -> tuple[Finding, ...]:

@@ -1,9 +1,10 @@
 import { expect, test } from "../helpers/fixtures";
 import {
   buildExperimentEnvironment,
+  commandScript,
   declareContainerEngine,
+  dockerActivateScript,
   dockerBuildExperimentEnvironmentScript,
-  dockerRunScript,
   EXPERIMENT_OUTPUT_FILE,
   generateScript,
   openPort,
@@ -12,6 +13,7 @@ import {
   releaseWorkbench,
   runEvaluate,
   runExperiment,
+  saveActivateScript,
   sealRee,
   startReeCreation,
   testActivation,
@@ -66,22 +68,18 @@ test.describe("Java with Maven", () => {
       );
     });
 
+    await test.step("activate the experiment environment: a container from the built image", async () => {
+      await saveActivateScript(page, dockerActivateScript(EXPERIMENT_ENVIRONMENT_PATH, IMAGE));
+    });
+
     await test.step("test activation: the JVM starts", async () => {
-      await testActivation(
-        page,
-        dockerRunScript("java -version", EXPERIMENT_ENVIRONMENT_PATH, undefined, IMAGE),
-      );
+      await testActivation(page, commandScript("java -version"));
     });
 
     await test.step("run the experiment", async () => {
       await runExperiment(page, {
         name: "java-hello",
-        runScript: dockerRunScript(
-          `java -cp ${CLASSPATH} com.example.Main`,
-          EXPERIMENT_ENVIRONMENT_PATH,
-          EXPERIMENT_OUTPUT_FILE,
-          IMAGE,
-        ),
+        runScript: commandScript(`java -cp ${CLASSPATH} com.example.Main`, EXPERIMENT_OUTPUT_FILE),
         expectedStdout: '"greeting": "Hello"',
       });
     });

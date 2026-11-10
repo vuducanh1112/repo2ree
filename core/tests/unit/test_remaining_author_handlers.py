@@ -27,8 +27,8 @@ from repo2ree_ree.receipt import (
     WorkspaceDrift,
 )
 from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATION_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
     experiment_run_script_path,
 )
 
@@ -99,8 +99,8 @@ def _workbench(
     store.ensure_dirs()
     store.overlay.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
     store.workspace.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
-    store.overlay.write_bytes(RESERVED_ACTIVATION_SCRIPT, _ACTIVATION)
-    store.workspace.write_bytes(RESERVED_ACTIVATION_SCRIPT, _ACTIVATION)
+    store.overlay.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, _ACTIVATION)
+    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, _ACTIVATION)
     store.write_ree(ree or _ree())
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store

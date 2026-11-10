@@ -37,9 +37,13 @@ def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
     activation = definition.test_activation
     if activation is None:
         raise ValueError("no activation test is declared")
+    activation_script = definition.activate_experiment_environment
+    if activation_script is None:
+        raise ValueError("no activate experiment environment script is declared")
     return (
         RunnableSpec(
             run_script=str(activation.run_script_path),
+            activate_script=str(activation_script.activate_experiment_environment_script_path),
             verify_script=str(activation.verify_script_path or ""),
         ),
         "activation",
@@ -99,6 +103,9 @@ def handle_review_activation_test(
     run_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.run_script)
     if run_script_digest is None:
         return opened.step.stop("failed", "the activation script disappeared after it ran")
+    activate_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.activate_script)
+    if activate_script_digest is None:
+        return opened.step.stop("failed", "the activate experiment environment script disappeared after it ran")
     if certified.experiment_environment_digest is None:
         return opened.step.stop("failed", "the certified experiment environment disappeared after activation")
     verify_script_digest = (
@@ -112,6 +119,7 @@ def handle_review_activation_test(
             timing,
             "succeeded" if outcome.status == "succeeded" else "failed",
         ),
+        activate_experiment_environment_script_digest=activate_script_digest,
         run_script_path=ReePath(activation.run_script),
         run_script_digest=run_script_digest,
         run_exit_code=outcome.run_outputs.exit_code,

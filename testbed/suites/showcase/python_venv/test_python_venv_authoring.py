@@ -27,10 +27,13 @@ def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, ne
     run = client.build_experiment_environment(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 
+    activate = client.infer(ree_id, "activate_experiment_environment").first_body()
+    assert "tar -xzf" in activate
+    assert "VENV_DIR=/tmp/ree-venv" in activate
+    assert 'exec "$@"' in activate
     scaffold = client.infer(ree_id, "activation_run").first_body()
-    assert "tar -xzf" in scaffold
-    assert "VENV_DIR=/tmp/ree-venv" in scaffold
     assert "exit 64" in scaffold
+    assert "tar -xzf" not in scaffold
     run = client.activate(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 

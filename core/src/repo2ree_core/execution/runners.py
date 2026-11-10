@@ -218,6 +218,7 @@ def run_workspace_script(
     *,
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
+    activate_rel: str | None = None,
 ) -> StepOutcome:
     """Run a workspace-relative script under ``sh`` from the workspace root.
 
@@ -244,6 +245,13 @@ def run_workspace_script(
             return StepOutcome("failed", 1)
 
         cmd = ["sh", script_rel]
+        if activate_rel is not None:
+            activate_abs = resolve_within(workspace, activate_rel)
+            if activate_abs is None or not activate_abs.is_file():
+                log("system", "error", f"activate experiment environment script not found: {activate_rel}")
+                record_span_facts(span, {"script.error": "activate script not found"})
+                return StepOutcome("failed", 1)
+            cmd = ["sh", activate_rel, *cmd]
         log("system", "info", f"$ {format_argv(cmd)}")
 
         result = current_runner().run(workspace, cmd, log=log, is_canceled=is_canceled)

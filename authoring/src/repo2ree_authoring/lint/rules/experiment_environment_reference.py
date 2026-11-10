@@ -1,4 +1,4 @@
-"""Check whether run and build scripts mention the declared experiment environment path."""
+"""Check whether the build and activate experiment environment scripts mention the declared artifact path."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class ExperimentEnvironmentReferenceRule:
     code = "experiment_environment_not_referenced"
     codes: ClassVar[frozenset[str]] = frozenset({"experiment_environment_not_referenced"})
     applies_to: ClassVar[frozenset[TargetKind]] = frozenset(
-        {"build_experiment_environment", "activation_run", "experiment_run"}
+        {"build_experiment_environment", "activate_experiment_environment"}
     )
 
     def check(self, context: ScriptContext) -> tuple[Finding, ...]:

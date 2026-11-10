@@ -13,6 +13,7 @@ import {
   releaseWorkbench,
   runEvaluate,
   runExperiment,
+  saveActivateScript,
   sealRee,
   startReeCreation,
   testActivation,
@@ -63,8 +64,12 @@ test.describe("Instant authoring", () => {
       );
     });
 
+    await test.step("activate the experiment environment", async () => {
+      await saveActivateScript(page, instantRecipe("activate_experiment_environment.sh"));
+    });
+
     await test.step("test activation", async () => {
-      await testActivation(page, instantRecipe("activation.sh"));
+      await testActivation(page, instantRecipe("test_activation.sh"));
     });
 
     await test.step("run the experiment", async () => {

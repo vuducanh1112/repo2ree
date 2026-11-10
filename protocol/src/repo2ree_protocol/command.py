@@ -357,6 +357,7 @@ class ActivationTestCommand(BaseModel):
 # nothing checks are in sync.
 TargetKind = Literal[
     "build_experiment_environment",
+    "activate_experiment_environment",
     "activation_run",
     "activation_verify",
     "experiment_run",

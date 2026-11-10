@@ -1,9 +1,8 @@
 """Orchestrate a single runnable run: run script, then optional verify script.
 
-Each runnable (an experiment or the REE's activation) owns its run script: a
-workspace-relative shell script that fully defines how it executes — including
-entering its experiment environment (e.g. its own ``docker run …``). The runner executes that
-script from the workspace root and captures stdout/stderr.
+Each runnable (an experiment or the REE's test activation) owns its run script,
+which the runner executes from the workspace root inside the experiment environment:
+``sh <activate experiment environment script> sh <run script>``.
 
 Verification is a second author-owned script, not a matcher engine and with no
 magic contract: when the runnable declares a ``verify_script``, the runner
@@ -75,10 +74,11 @@ def _run_script(
     script_rel: str,
     log: LogSink,
     is_canceled: CancelCheck,
+    activate_rel: str | None = None,
 ) -> StepOutcome:
     """Validate a runnable's script path, then run it via the shared runner."""
     validate_relative_path(script_rel)
-    return run_workspace_script(workspace, script_rel, log=log, is_canceled=is_canceled)
+    return run_workspace_script(workspace, script_rel, log=log, is_canceled=is_canceled, activate_rel=activate_rel)
 
 
 # ================================================
@@ -112,7 +112,7 @@ def run_runnable(
     try:
         with tracer.start_as_current_span("runnable.run") as span:
             ScriptSpanAttrs(path=runnable.run_script).apply(span)
-            run_outcome = _run_script(workspace, runnable.run_script, log, is_canceled)
+            run_outcome = _run_script(workspace, runnable.run_script, log, is_canceled, runnable.activate_script)
             record_exit_code(span, run_outcome.exit_code)
     except Exception as exc:  # noqa: BLE001 — the experiment's own failure is the result being recorded, not an error to raise
         log("system", "error", f"Run failed: {exc}")

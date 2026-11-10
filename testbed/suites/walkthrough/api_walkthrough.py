@@ -412,6 +412,7 @@ def run() -> None:
     catalog = call("GET", "/api/v1/script-templates")
     build_experiment_environment_script_path = catalog["build_experiment_environment"]["path"]
     activation_script_path = catalog["activation"]["run_script_path"]
+    activate_script_path = catalog["activate_experiment_environment"]["path"]
     experiment_run_script_path = catalog["experiment"]["run_script_path_pattern"].replace("{slug}", EXPERIMENT_NAME)
     experiment_verify_script_path = catalog["experiment"]["verify_script_path_pattern"].replace(
         "{slug}", EXPERIMENT_NAME
@@ -603,6 +604,15 @@ def run() -> None:
         "with the experiment environment built and declared, "
         "inference resolves the experiment environment contract and emits a scaffold"
     )
+    activate_report = generate_scripts(ree_id, [{"kind": "activate_experiment_environment"}])
+    summarize_decision(activate_report, "activate_experiment_environment")
+    activate_script = inferred_script(activate_report, "activate_experiment_environment")
+    check(activate_script, "activate experiment environment inference produced no script")
+    note(
+        "the activate script is inferred whole from the experiment environment; "
+        "the test activation and experiments run through it"
+    )
+    put_file(ree_id, activate_script_path, activate_script)
     activation_report = generate_scripts(ree_id, [{"kind": "activation_run"}])
     summarize_decision(activation_report, "activation_run")
     activation_scaffold = inferred_script(activation_report, "activation_run")

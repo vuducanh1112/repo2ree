@@ -24,7 +24,11 @@ from repo2ree_core.reproduction.reproducer import (
     build_reproducer_sh,
     reproducer_entries,
 )
-from repo2ree_ree.reserved_paths import RESERVED_ACTIVATION_SCRIPT, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_TEST_ACTIVATION_SCRIPT,
+)
 from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
 
@@ -49,7 +53,7 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
     assert b"@@" not in entries[BUNDLE_REPRODUCER_README_ENTRY_PATH]
     # Defaults fall back to the reserved script paths.
     assert RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT.encode() in entries["run.sh"]
-    assert RESERVED_ACTIVATION_SCRIPT.encode() in entries["run.sh"]
+    assert RESERVED_TEST_ACTIVATION_SCRIPT.encode() in entries["run.sh"]
 
 
 def test_the_readme_says_what_the_scripts_ran_in():
@@ -69,7 +73,8 @@ def test_the_readme_says_what_the_scripts_ran_in():
 def test_reproducer_sh_is_deterministic_for_equal_inputs():
     kwargs: dict[str, Any] = {
         "build_experiment_environment_script": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        "activation_script": RESERVED_ACTIVATION_SCRIPT,
+        "activate_experiment_environment_script": RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        "activation_script": RESERVED_TEST_ACTIVATION_SCRIPT,
         "experiments": [("exp one", "ree-scripts/experiments/exp one.sh", "")],
         "experiment_environment_workspace_path": "runtime.tar.gz",
         "experiment_environment_artifact_basename": "runtime.tar.gz",
@@ -81,7 +86,8 @@ def test_generated_run_sh_passes_shellcheck_or_sh_n():
     """The generated script must at least parse as POSIX sh."""
     script = build_reproducer_sh(
         build_experiment_environment_script=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        activation_script=RESERVED_ACTIVATION_SCRIPT,
+        activate_experiment_environment_script=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        activation_script=RESERVED_TEST_ACTIVATION_SCRIPT,
         experiments=[
             ("demo exp", "ree-scripts/experiments/demo exp.sh", "ree-scripts/experiments/demo exp.verify.sh"),
             ("two", "ree-scripts/experiments/two.sh", ""),
@@ -118,7 +124,8 @@ def _seed_extracted_bundle(
 
     overlay = ree / OVERLAY_DIRNAME / "ree-scripts"
     (overlay / "build_experiment_environment.sh").write_text("#!/bin/sh\necho BUILT > runtime.tar.gz\necho did-build\n")
-    (overlay / "activation.sh").write_text("#!/bin/sh\ncat runtime.tar.gz\n")
+    (overlay / "activate_experiment_environment.sh").write_text('#!/bin/sh\nexec "$@"\n')
+    (overlay / "test_activation.sh").write_text("#!/bin/sh\ncat runtime.tar.gz\n")
     for name, script, verify in experiments:
         # The run script materializes its stdout to a workspace file so a verify
         # script can read it back — there is no injected stdout variable.
@@ -131,7 +138,8 @@ def _seed_extracted_bundle(
 
     run_sh = build_reproducer_sh(
         build_experiment_environment_script=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        activation_script=RESERVED_ACTIVATION_SCRIPT,
+        activate_experiment_environment_script=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        activation_script=RESERVED_TEST_ACTIVATION_SCRIPT,
         experiments=experiments,
         experiment_environment_workspace_path="runtime.tar.gz",
         experiment_environment_artifact_basename="runtime.tar.gz" if include_experiment_environment else None,
@@ -214,11 +222,14 @@ def test_run_sh_activation_verify_script_runs(tmp_path):
     root = _seed_extracted_bundle(tmp_path, include_experiment_environment=True, experiments=[])
     overlay = root / "ree" / OVERLAY_DIRNAME / "ree-scripts"
     # The verify script reads the reused experiment environment artifact straight from the workspace.
-    (overlay / "activation.verify.sh").write_text("#!/bin/sh\ngrep -q SEALED-EXPERIMENT_ENVIRONMENT runtime.tar.gz\n")
+    (overlay / "test_activation.verify.sh").write_text(
+        "#!/bin/sh\ngrep -q SEALED-EXPERIMENT_ENVIRONMENT runtime.tar.gz\n"
+    )
     run_sh = build_reproducer_sh(
         build_experiment_environment_script=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        activation_script=RESERVED_ACTIVATION_SCRIPT,
-        activation_verify_script="ree-scripts/activation.verify.sh",
+        activate_experiment_environment_script=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        activation_script=RESERVED_TEST_ACTIVATION_SCRIPT,
+        activation_verify_script="ree-scripts/test_activation.verify.sh",
         experiments=[],
         experiment_environment_workspace_path="runtime.tar.gz",
         experiment_environment_artifact_basename="runtime.tar.gz",
@@ -265,11 +276,14 @@ def test_run_sh_verify_only_fails_when_outputs_absent(tmp_path):
 def test_run_sh_verify_only_activation(tmp_path):
     root = _seed_extracted_bundle(tmp_path, include_experiment_environment=True, experiments=[])
     overlay = root / "ree" / OVERLAY_DIRNAME / "ree-scripts"
-    (overlay / "activation.verify.sh").write_text("#!/bin/sh\ngrep -q SEALED-EXPERIMENT_ENVIRONMENT runtime.tar.gz\n")
+    (overlay / "test_activation.verify.sh").write_text(
+        "#!/bin/sh\ngrep -q SEALED-EXPERIMENT_ENVIRONMENT runtime.tar.gz\n"
+    )
     run_sh = build_reproducer_sh(
         build_experiment_environment_script=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        activation_script=RESERVED_ACTIVATION_SCRIPT,
-        activation_verify_script="ree-scripts/activation.verify.sh",
+        activate_experiment_environment_script=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        activation_script=RESERVED_TEST_ACTIVATION_SCRIPT,
+        activation_verify_script="ree-scripts/test_activation.verify.sh",
         experiments=[],
         experiment_environment_workspace_path="runtime.tar.gz",
         experiment_environment_artifact_basename="runtime.tar.gz",
@@ -404,3 +418,24 @@ def test_acquire_source_warns_when_no_snapshot_and_no_origin(tmp_path):
     result = _run(root, "acquire-source")
     assert result.returncode == 0, result.stderr
     assert "overlay-only" in result.stdout
+
+
+def test_run_sh_runs_the_experiment_inside_the_activation_and_verifies_outside_it(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path,
+        include_experiment_environment=True,
+        experiments=[("demo", "ree-scripts/experiments/demo.sh", "ree-scripts/experiments/demo.verify.sh")],
+    )
+    scripts = root / "ree" / OVERLAY_DIRNAME / "ree-scripts"
+    (scripts / "activate_experiment_environment.sh").write_text(
+        '#!/bin/sh\nACTIVATED=inside\nexport ACTIVATED\nexec "$@"\n'
+    )
+    (scripts / "experiments" / "demo.sh").write_text('#!/bin/sh\necho "$ACTIVATED" > run.log\n')
+    (scripts / "experiments" / "demo.verify.sh").write_text(
+        '#!/bin/sh\ngrep -qx inside run.log && [ -z "${ACTIVATED:-}" ]\n'
+    )
+
+    result = _run(root, "experiment", "demo")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "VERIFIED: pass" in result.stdout
