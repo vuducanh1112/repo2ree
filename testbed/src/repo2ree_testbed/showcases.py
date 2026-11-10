@@ -25,6 +25,7 @@ class ProjectName(StrEnum):
     INSTANT = "instant"
     INSTANT_DOCKER = "instant_docker"
     JAVA_MAVEN = "java_maven"
+    NOTEBOOK = "notebook"
     PLOTTING = "plotting"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
@@ -36,6 +37,7 @@ class ProjectName(StrEnum):
 class ShowcaseName(StrEnum):
     CONDA = "conda"
     JAVA_MAVEN = "java_maven"
+    NOTEBOOK = "notebook"
     PLOTTING = "plotting"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
@@ -177,6 +179,17 @@ CONDA = Project(
     infer_build=False,
     network=True,
 )
+NOTEBOOK = Project(
+    name=ProjectName.NOTEBOOK,
+    image=None,
+    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment="notebook-decay-rate",
+    infer_build=True,
+    # The executed notebook records when each of its cells ran, so no rerun repeats its bytes.
+    verdict="reproduced",
+    network=True,
+    outputs=(RESULT, "curve.csv", "figure.json", "figure.png", "executed.ipynb"),
+)
 PLOTTING = Project(
     name=ProjectName.PLOTTING,
     image=None,
@@ -200,6 +213,7 @@ ALL_PROJECTS: tuple[Project, ...] = (
     INSTANT,
     INSTANT_DOCKER,
     JAVA_MAVEN,
+    NOTEBOOK,
     PLOTTING,
     PYTHON_DOCKER,
     PYTHON_VENV,
@@ -218,6 +232,7 @@ class ShowcaseConfig:
 SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
     ShowcaseName.CONDA: ShowcaseConfig(CONDA, EnvironmentName.BARE),
     ShowcaseName.JAVA_MAVEN: ShowcaseConfig(JAVA_MAVEN, EnvironmentName.DOCKER),
+    ShowcaseName.NOTEBOOK: ShowcaseConfig(NOTEBOOK, EnvironmentName.BARE),
     ShowcaseName.PLOTTING: ShowcaseConfig(PLOTTING, EnvironmentName.BARE),
     ShowcaseName.PYTHON_DOCKER: ShowcaseConfig(PYTHON_DOCKER, EnvironmentName.DOCKER),
     ShowcaseName.PYTHON_VENV: ShowcaseConfig(PYTHON_VENV, EnvironmentName.BARE),
