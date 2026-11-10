@@ -3,12 +3,12 @@
 
 A tier run leaves evidence (``run.json``, written by the testbed); only this module turns it
 into a receipt, judging the record as raw JSON so no testbed change can bend what it accepts.
-``policy.toml`` says what each tier must have run with and what each gate requires.
+``policy.toml`` says how each tier is judged and what each gate requires.
 
 - ``certify --tier T [--run DIR | --invocation ID] [--if-eligible]`` writes
   ``.receipts/tiers/<T>/<tree>-<os>-<arch>.json`` when the run qualifies: built from the clean
-  tree still checked out, the whole tier, the policy's parameters, every test passed (skips
-  only where the policy allows), and for a judged tier every test's behaviour passed or was
+  tree still checked out, the whole tier, every test passed (skips only where the policy
+  allows), and for a judged tier every test's behaviour passed or was
   excused, by the checker in this tree. ``--if-eligible`` reports a run that does not qualify
   and succeeds anyway, for recipes a developer runs.
 - ``missing GATE --platforms P`` prints, as ``<tier> <recipe>``, each tier the gate needs
@@ -41,7 +41,6 @@ RUNS = assurance_gate.RUNS
 class Tier:
     name: str
     recipe: str
-    parameters: dict[str, Any]
     judged: bool
     skips: bool
 
@@ -65,7 +64,6 @@ def load_policy(path: Path = POLICY) -> Policy:
         name: Tier(
             name,
             str(entry["recipe"]),
-            dict(entry.get("parameters", {})),
             bool(entry.get("judged", False)),
             bool(entry.get("skips", False)),
         )
@@ -108,10 +106,6 @@ def run_problems(root: Path, record: dict[str, Any], tier: Tier, tree: str) -> l
         problems.append(f"it ran on tree {str(record['tree'])[:12]}, not HEAD's {tree[:12]}")
     if record.get("selected"):
         problems.append(f"it ran only the tests matching {' or '.join(record['selected'])}")
-    parameters = record.get("parameters") or {}
-    for key, wanted in tier.parameters.items():
-        if parameters.get(key) != wanted:
-            problems.append(f"it ran with {key}={parameters.get(key)!r}; the policy asks {wanted!r}")
     if not record.get("platform"):
         problems.append("it names no platform")
     tests = record.get("tests") or []

@@ -7,8 +7,8 @@ from scripts.gates import assurance_gate, receipts, tiers
 from scripts.gates.receipts import ReceiptError, TierReceipt
 
 TREE = "t" * 40
-SHOWCASE = tiers.Tier("showcase", "test-showcase", {"compute_locations": 2}, judged=False, skips=False)
-INTEGRATION = tiers.Tier("integration", "test-backend-integration", {}, judged=False, skips=True)
+SHOWCASE = tiers.Tier("showcase", "test-showcase", judged=False, skips=False)
+INTEGRATION = tiers.Tier("integration", "test-backend-integration", judged=False, skips=True)
 
 
 def record(**changes: Any) -> dict[str, Any]:
@@ -29,9 +29,7 @@ def test_the_policy_names_a_place_for_every_tier_a_gate_needs() -> None:
     assert policy.gates["publish-gate"].tiers["showcase"] == "here"
     assert policy.gates["showcase-gate"].tiers == {
         "showcase": "each",
-        "showcase-api-bare": "each",
-        "showcase-api-docker": "each",
-        "showcase-api-slurm": "each",
+        "showcase-api": "each",
     }
     assert all(policy.tiers[tier].judged for tier in policy.gates["showcase-gate"].tiers)
 
@@ -43,8 +41,12 @@ def test_a_gate_naming_an_unknown_place_is_refused(tmp_path: Path) -> None:
         tiers.load_policy(policy)
 
 
-def test_a_whole_clean_run_on_the_policys_deployment_qualifies(tmp_path: Path) -> None:
+def test_a_whole_clean_run_qualifies(tmp_path: Path) -> None:
     assert tiers.run_problems(tmp_path, record(), SHOWCASE, TREE) == []
+
+
+def test_how_a_run_was_deployed_is_its_tiers_concern_not_the_policys(tmp_path: Path) -> None:
+    assert tiers.run_problems(tmp_path, record(parameters={"compute_locations": 1}), SHOWCASE, TREE) == []
 
 
 @pytest.mark.parametrize(
@@ -53,7 +55,6 @@ def test_a_whole_clean_run_on_the_policys_deployment_qualifies(tmp_path: Path) -
         ({"tree": ""}, "dirty tree"),
         ({"tree": "o" * 40}, "not HEAD's"),
         ({"selected": ["test_x"]}, "ran only the tests matching test_x"),
-        ({"parameters": {"compute_locations": 1}}, "compute_locations=1"),
         ({"tests": [{"name": "a", "outcome": "failed"}]}, "a did not pass"),
         ({"tests": [{"name": "a", "outcome": "skipped"}]}, "a was skipped"),
         ({"tests": []}, "records no test"),
