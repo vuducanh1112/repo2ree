@@ -73,12 +73,12 @@ def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
     assert allowed("receipt", "runtime", "missing", "current") == {"build_runtime", "load_ree_bundle"}
 
 
-def test_what_runs_in_the_environment_rests_on_it() -> None:
-    # The author's scripts run in the declared environment: changing it changes what their receipts prove.
+def test_what_runs_in_the_workbench_environment_rests_on_it() -> None:
+    # The author's scripts run in the declared workbench environment: changing it changes what their receipts prove.
     for name in ("runtime", "test_activation", "experiment"):
-        assert "definition.environment" in ree().receipts[name].rests_on
+        assert "definition.workbench_environment" in ree().receipts[name].rests_on
     assert "patch_ree_definition" in allowed("receipt", "runtime", "current", "stale")
-    assert allowed("field", "definition.environment", CREATED, "unset") == {"initialize_ree"}
+    assert allowed("field", "definition.workbench_environment", CREATED, "unset") == {"initialize_ree"}
 
 
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:

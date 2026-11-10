@@ -96,8 +96,8 @@ set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
 clear = ["patch_ree_definition"]
 
-# What the author's scripts run in: the build environment, and with it activation and experiments.
-[fields."definition.environment"]
+# The workbench environment the author's scripts run in: the build, activation and experiments.
+[fields."definition.workbench_environment"]
 group = "runtime"
 initial = "unset"
 set = ["patch_ree_definition"]
@@ -149,7 +149,7 @@ produced_by = "generate_hbom"
 
 [receipts.runtime]
 about = ["definition.build_runtime.runtime_path"]
-rests_on = ["definition.build_runtime", "definition.environment"]
+rests_on = ["definition.build_runtime", "definition.workbench_environment"]
 made_from = ["source"]
 produced_by = "build_runtime"
 cleared_by = ["remove_source"]
@@ -168,7 +168,7 @@ cleared_by = ["remove_source"]
 
 [receipts.test_activation]
 about = ["definition.test_activation"]
-rests_on = ["definition.test_activation", "definition.environment"]
+rests_on = ["definition.test_activation", "definition.workbench_environment"]
 made_from = ["source", "runtime"]
 produced_by = "activation_test"
 cleared_by = ["remove_source"]
@@ -176,7 +176,7 @@ cleared_by = ["remove_source"]
 [receipts.experiment]
 keyed = true
 about = ["definition.experiments[*]"]
-rests_on = ["definition.experiments[*]", "definition.environment"]
+rests_on = ["definition.experiments[*]", "definition.workbench_environment"]
 made_from = ["source", "runtime"]
 produced_by = "run_experiment"
 cleared_by = ["remove_source"]
