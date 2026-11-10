@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Protocol
 
 import pytest
-from system_client import RESULT, Api
+from system_client import Api
 
 from repo2ree_testbed.api_models import (
     AcquirableSourceType,
@@ -97,7 +97,7 @@ class Client:
     def declare_experiment(self, ree_id: str, fixture: Project) -> None:
         self.api.write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
         self.api.write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
-        experiment = ExperimentPatch(name=fixture.experiment, output_paths=(RESULT,))
+        experiment = ExperimentPatch(name=fixture.experiment, output_paths=fixture.outputs)
         self._patch(ree_id, DefinitionPatch(experiments=(experiment,)))
 
     # ---- authoring -------------------------------------------------------------

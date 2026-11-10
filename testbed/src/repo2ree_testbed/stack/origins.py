@@ -32,6 +32,7 @@ from repo2ree_testbed.artifacts import ROOT
 FIXTURE = ROOT / "examples/origins/ree-e2e-fixture"
 REPOSITORY = "ree-e2e-fixture.git"
 TARBALL = "ree-e2e-fixture.tar.gz"
+UPSTREAM = "upstream"
 # What the repository is committed as, so its commit id never changes between runs.
 _IDENTITY = {
     "GIT_AUTHOR_NAME": "repo2ree e2e",
@@ -47,9 +48,17 @@ _IDENTITY = {
 class Served:
     git_url: str
     tarball_url: str
+    # Where a test publishes the releases of an upstream the REEs it authors fetch, and where they fetch them.
+    upstream_url: str
+    upstream_directory: Path
 
     def environment(self) -> dict[str, str]:
-        return {"E2E_GIT_ORIGIN_URL": self.git_url, "E2E_TARBALL_ORIGIN_URL": self.tarball_url}
+        return {
+            "E2E_GIT_ORIGIN_URL": self.git_url,
+            "E2E_TARBALL_ORIGIN_URL": self.tarball_url,
+            "E2E_UPSTREAM_URL": self.upstream_url,
+            "E2E_UPSTREAM_DIR": str(self.upstream_directory),
+        }
 
 
 def _git(*args: str, cwd: Path) -> None:
@@ -111,6 +120,9 @@ class Origins:
         self.directory.mkdir(parents=True, exist_ok=True)
         build_repository(self.directory)
         build_tarball(self.directory)
+        upstream = self.directory / UPSTREAM
+        shutil.rmtree(upstream, ignore_errors=True)
+        upstream.mkdir()
         port = free_port()
         with log.open("ab") as output:
             self.processes.append(
@@ -124,6 +136,8 @@ class Origins:
         return Served(
             git_url=f"http://{self.host}:{port}/{REPOSITORY}",
             tarball_url=f"http://{self.host}:{port}/{TARBALL}",
+            upstream_url=f"http://{self.host}:{port}/{UPSTREAM}",
+            upstream_directory=upstream,
         )
 
     def stop(self) -> None:

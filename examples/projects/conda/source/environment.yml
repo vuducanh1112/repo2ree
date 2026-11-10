@@ -1,0 +1,6 @@
+name: analysis
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12.7
+  - numpy=2.1.3

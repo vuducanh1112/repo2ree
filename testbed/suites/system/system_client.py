@@ -22,10 +22,10 @@ import pytest
 from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 from repo2ree_testbed.showcases import INSTANT, SOURCE, Project, RecipeScript
+from repo2ree_testbed.showcases import RESULT as RESULT
 from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 
 ROOT = Path(__file__).resolve().parents[3]
-RESULT = "result.txt"
 BUILD_SCRIPT = "ree-scripts/build_script.sh"
 ACTIVATION_SCRIPT = "ree-scripts/activation.sh"
 
@@ -255,7 +255,7 @@ class Api:
     ) -> dict[str, Any]:
         self.write(ree_id, fixture.experiment_script, run or fixture.recipe("experiment.sh"))
         self.write(ree_id, fixture.experiment_verify, verify or fixture.recipe("experiment.verify.sh"))
-        self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": [RESULT]}]})
+        self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": list(fixture.outputs)}]})
         return self.stage(ree_id, f"experiments/{fixture.experiment}:run", watch=fixture.watch)
 
     def author(self, ree_id: str, fixture: Project = INSTANT) -> None:

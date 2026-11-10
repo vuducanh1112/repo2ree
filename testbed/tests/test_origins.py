@@ -36,9 +36,17 @@ def test_a_stack_serves_the_fixture_by_git_and_over_http(tmp_path: Path) -> None
         subprocess.run(["git", "-C", str(pinned), "fetch", "-q", "--depth", "1", served.git_url, commit], check=True)
         fetched = subprocess.run(["curl", "-fsS", served.tarball_url], check=True, capture_output=True).stdout
         assert fetched == (tmp_path / "served" / origins.TARBALL).read_bytes()
+        assert not any(served.upstream_directory.iterdir())
+        (served.upstream_directory / "release.txt").write_text("2.0")
+        published = subprocess.run(
+            ["curl", "-fsS", f"{served.upstream_url}/release.txt"], check=True, capture_output=True, text=True
+        )
+        assert published.stdout == "2.0"
     finally:
         served_origins.stop()
     assert served.environment() == {
         "E2E_GIT_ORIGIN_URL": served.git_url,
         "E2E_TARBALL_ORIGIN_URL": served.tarball_url,
+        "E2E_UPSTREAM_URL": served.upstream_url,
+        "E2E_UPSTREAM_DIR": str(served.upstream_directory),
     }

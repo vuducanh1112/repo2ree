@@ -22,25 +22,31 @@ from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
 
 class ProjectName(StrEnum):
     APPTAINER = "apptainer"
+    CONDA = "conda"
     INSTANT = "instant"
     INSTANT_DOCKER = "instant_docker"
     JAVA_MAVEN = "java_maven"
+    PLOTTING = "plotting"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
     SLURM = "slurm"
     STOCHASTIC = "stochastic"
+    UNPINNED = "unpinned"
 
 
 class ShowcaseName(StrEnum):
+    CONDA = "conda"
     JAVA_MAVEN = "java_maven"
+    PLOTTING = "plotting"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
     SLURM = "slurm"
     STOCHASTIC = "stochastic"
+    UNPINNED = "unpinned"
 
 
 Workflow = Literal["authoring", "review"]
-ExpectedVerdict = Literal["identical", "reproduced"]
+ExpectedVerdict = Literal["identical", "reproduced", "different"]
 RecipeScript = Literal["build_script.sh", "activation.sh", "experiment.sh", "experiment.verify.sh"]
 
 PROJECTS = ROOT / "examples/projects"
@@ -48,6 +54,7 @@ API_SUITE = ROOT / "testbed/suites/showcase"
 API_FEATURES = API_SUITE / "features"
 GUI_SUITE = ROOT / "gui/tests/showcase"
 SOURCE = "source"
+RESULT = "result.txt"
 ENVIRONMENT_VARIABLE = "SHOWCASE_ENVIRONMENT"
 
 
@@ -63,6 +70,7 @@ class Project:
     verdict: ExpectedVerdict = "identical"
     # Whether its stages pull, fetch, or build over the network, and so may go quiet for long.
     network: bool = False
+    outputs: tuple[str, ...] = (RESULT,)
 
     @property
     def directory(self) -> Path:
@@ -161,15 +169,43 @@ STOCHASTIC = Project(
     infer_build=True,
     verdict="reproduced",
 )
+CONDA = Project(
+    name=ProjectName.CONDA,
+    image=None,
+    runtime=f"{SOURCE}/runtime-conda.tar.gz",
+    experiment="conda-numpy",
+    infer_build=False,
+    network=True,
+)
+PLOTTING = Project(
+    name=ProjectName.PLOTTING,
+    image=None,
+    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment="plotting-linear-fit",
+    infer_build=True,
+    network=True,
+    outputs=(RESULT, "fit.csv", "figure.png"),
+)
+UNPINNED = Project(
+    name=ProjectName.UNPINNED,
+    image=None,
+    runtime=f"{SOURCE}/runtime-venv.tar.gz",
+    experiment="unpinned-mean-kelvin",
+    infer_build=False,
+    verdict="different",
+)
 ALL_PROJECTS: tuple[Project, ...] = (
     APPTAINER,
+    CONDA,
     INSTANT,
     INSTANT_DOCKER,
     JAVA_MAVEN,
+    PLOTTING,
     PYTHON_DOCKER,
     PYTHON_VENV,
     SLURM,
     STOCHASTIC,
+    UNPINNED,
 )
 
 
@@ -180,11 +216,14 @@ class ShowcaseConfig:
 
 
 SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
+    ShowcaseName.CONDA: ShowcaseConfig(CONDA, EnvironmentName.BARE),
     ShowcaseName.JAVA_MAVEN: ShowcaseConfig(JAVA_MAVEN, EnvironmentName.DOCKER),
+    ShowcaseName.PLOTTING: ShowcaseConfig(PLOTTING, EnvironmentName.BARE),
     ShowcaseName.PYTHON_DOCKER: ShowcaseConfig(PYTHON_DOCKER, EnvironmentName.DOCKER),
     ShowcaseName.PYTHON_VENV: ShowcaseConfig(PYTHON_VENV, EnvironmentName.BARE),
     ShowcaseName.SLURM: ShowcaseConfig(SLURM, EnvironmentName.SLURM),
     ShowcaseName.STOCHASTIC: ShowcaseConfig(STOCHASTIC, EnvironmentName.BARE),
+    ShowcaseName.UNPINNED: ShowcaseConfig(UNPINNED, EnvironmentName.BARE),
 }
 # The API tests of one feature rather than one project, and the machine they run on.
 FEATURES_ENVIRONMENT = EnvironmentName.BARE
