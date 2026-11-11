@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also scaffolds the activation script, then\n   `startActivationTest`. The scaffolds refuse to run until you fill in the command.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script; `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1633,7 +1633,7 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks the default entry for each\nenvironment with ``is_default``; the default build and activation templates\nare the content a fresh REE in that environment is seeded with. The experiment\ntemplates are for scripts created on demand under the reserved experiments\ndirectory. For scripts fitted to the REE's own project, use\n``generateScriptCandidates``.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks the default entry for each\nenvironment with ``is_default``; the default build and activate experiment environment templates\nare the content a fresh REE in that environment is seeded with. The experiment\ntemplates are for scripts created on demand under the reserved experiments\ndirectory. For scripts fitted to the REE's own project, use\n``generateScriptCandidates``.",
         "operationId": "listScriptTemplates",
         "responses": {
           "200": {
@@ -6445,7 +6445,7 @@
           "reviews"
         ],
         "summary": "Start Activation Review",
-        "description": "Probe whether the experiment environment this attempt certified is inhabitable.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivationTestArgs`).",
+        "description": "Run the author's activation alone in the experiment environment this attempt certified.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivationTestArgs`).",
         "operationId": "startActivationReview",
         "parameters": [
           {
@@ -8176,9 +8176,9 @@
         "properties": {
           "policy": {
             "type": "string",
-            "const": "activation-probe",
+            "const": "activation",
             "title": "Policy",
-            "default": "activation-probe"
+            "default": "activation"
           },
           "basis": {
             "type": "string",
@@ -8207,7 +8207,7 @@
             ],
             "title": "Experiment Environment Digest"
           },
-          "run_exit_code": {
+          "exit_code": {
             "anyOf": [
               {
                 "type": "integer"
@@ -8216,18 +8216,7 @@
                 "type": "null"
               }
             ],
-            "title": "Run Exit Code"
-          },
-          "verify_exit_code": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Exit Code"
+            "title": "Exit Code"
           }
         },
         "additionalProperties": false,
@@ -8238,32 +8227,101 @@
         ],
         "title": "ActivationOutcome"
       },
-      "ActivationScriptTemplates": {
+      "ActivationReceipt": {
         "properties": {
-          "run_script_path": {
-            "type": "string",
-            "title": "Run Script Path"
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
           },
-          "verify_script_path": {
+          "run_id": {
             "type": "string",
-            "title": "Verify Script Path"
+            "title": "Run Id"
           },
-          "templates": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Templates"
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "operation": {
+            "type": "string",
+            "const": "activation_test",
+            "title": "Operation",
+            "default": "activation_test"
+          },
+          "snapshot_digest": {
+            "type": "string",
+            "title": "Snapshot Digest"
+          },
+          "experiment_environment_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Environment Path"
+          },
+          "experiment_environment_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Environment Digest"
+          },
+          "activate_experiment_environment_script_digest": {
+            "type": "string",
+            "title": "Activate Experiment Environment Script Digest"
+          },
+          "exit_code": {
+            "type": "integer",
+            "const": 0,
+            "title": "Exit Code",
+            "default": 0
+          },
+          "workbench_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "run_script_path",
-          "verify_script_path",
-          "templates"
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "snapshot_digest",
+          "activate_experiment_environment_script_digest"
         ],
-        "title": "ActivationScriptTemplates",
-        "description": "The activation run-script templates and both reserved activation paths.\n\nThe default template for an environment (``is_default``) is the content a\nfresh REE's activation script there is seeded with. ``verify_script_path`` is where an\nactivation verify script belongs when the author writes one; declaring it\non the intent is an explicit act (a declared verify script must exist and\npass)."
+        "title": "ActivationReceipt",
+        "description": "The activate experiment environment script ran a command that does nothing, which exited 0."
       },
       "ArchiveBindingAttestation": {
         "properties": {
@@ -9005,7 +9063,7 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CreateActivationTestRunPayload",
-        "description": "Run the reserved activation script. Takes no parameters of its own."
+        "description": "Run the activate experiment environment script alone. Takes no parameters of its own."
       },
       "CreateBuildExperimentEnvironmentReviewPayload": {
         "properties": {
@@ -12358,7 +12416,7 @@
           "sbom_cross_check": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "test_activation": {
+          "activation": {
             "$ref": "#/components/schemas/StepAudit"
           },
           "experiments": {
@@ -12379,7 +12437,7 @@
           "experiment_environment",
           "sbom",
           "sbom_cross_check",
-          "test_activation"
+          "activation"
         ],
         "title": "ReeAudit"
       },
@@ -12545,16 +12603,6 @@
               }
             ]
           },
-          "test_activation": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TestActivationDefinition"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "hardware": {
             "anyOf": [
               {
@@ -12622,16 +12670,6 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WorkbenchEnvironment"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "test_activation": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TestActivationDefinition"
               },
               {
                 "type": "null"
@@ -12978,10 +13016,10 @@
               }
             ]
           },
-          "test_activation": {
+          "activation": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/TestActivationReceipt"
+                "$ref": "#/components/schemas/ActivationReceipt"
               },
               {
                 "type": "null"
@@ -13553,45 +13591,15 @@
           },
           "operation": {
             "type": "string",
-            "const": "test_activation",
+            "const": "activation_test",
             "title": "Operation",
-            "default": "test_activation"
+            "default": "activation_test"
           },
           "activate_experiment_environment_script_digest": {
             "type": "string",
             "title": "Activate Experiment Environment Script Digest"
           },
-          "run_script_path": {
-            "type": "string",
-            "title": "Run Script Path"
-          },
-          "run_script_digest": {
-            "type": "string",
-            "title": "Run Script Digest"
-          },
-          "verify_script_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Script Path"
-          },
-          "verify_script_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Script Digest"
-          },
-          "run_exit_code": {
+          "exit_code": {
             "anyOf": [
               {
                 "type": "integer"
@@ -13600,18 +13608,7 @@
                 "type": "null"
               }
             ],
-            "title": "Run Exit Code"
-          },
-          "verify_exit_code": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Exit Code"
+            "title": "Exit Code"
           },
           "experiment_environment_path": {
             "type": "string",
@@ -13632,12 +13629,11 @@
           "recorded_at",
           "status",
           "activate_experiment_environment_script_digest",
-          "run_script_path",
-          "run_script_digest",
           "experiment_environment_path",
           "experiment_environment_digest"
         ],
-        "title": "ReviewActivationReceipt"
+        "title": "ReviewActivationReceipt",
+        "description": "The author's activation, run alone in the review's workspace around a command that does nothing."
       },
       "ReviewBuildExperimentEnvironmentReceipt": {
         "properties": {
@@ -14666,8 +14662,6 @@
             "enum": [
               "build_experiment_environment",
               "activate_experiment_environment",
-              "activation_run",
-              "activation_verify",
               "experiment_run",
               "experiment_verify"
             ],
@@ -14705,8 +14699,6 @@
             "enum": [
               "build_experiment_environment",
               "activate_experiment_environment",
-              "activation_run",
-              "activation_verify",
               "experiment_run",
               "experiment_verify"
             ],
@@ -14740,9 +14732,6 @@
           "activate_experiment_environment": {
             "$ref": "#/components/schemas/ActivateExperimentEnvironmentScriptTemplates"
           },
-          "activation": {
-            "$ref": "#/components/schemas/ActivationScriptTemplates"
-          },
           "experiment": {
             "$ref": "#/components/schemas/ExperimentScriptTemplates"
           },
@@ -14758,7 +14747,6 @@
         "required": [
           "build_experiment_environment",
           "activate_experiment_environment",
-          "activation",
           "experiment",
           "verify"
         ],
@@ -15520,188 +15508,6 @@
           "decision"
         ],
         "title": "TargetInferenceResult"
-      },
-      "TestActivationDefinition": {
-        "properties": {
-          "run_script_path": {
-            "type": "string",
-            "title": "Run Script Path",
-            "default": "ree-scripts/test_activation.sh"
-          },
-          "run_script_digest": {
-            "type": "string",
-            "title": "Run Script Digest"
-          },
-          "run_script_size": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Run Script Size"
-          },
-          "verify_script_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Script Path"
-          },
-          "verify_script_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Script Digest"
-          },
-          "verify_script_size": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Script Size"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "run_script_digest",
-          "run_script_size"
-        ],
-        "title": "TestActivationDefinition"
-      },
-      "TestActivationReceipt": {
-        "properties": {
-          "schema_version": {
-            "type": "integer",
-            "const": 1,
-            "title": "Schema Version",
-            "default": 1
-          },
-          "run_id": {
-            "type": "string",
-            "title": "Run Id"
-          },
-          "started_at": {
-            "type": "string",
-            "title": "Started At"
-          },
-          "finished_at": {
-            "type": "string",
-            "title": "Finished At"
-          },
-          "duration_ms": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Duration Ms"
-          },
-          "recorded_at": {
-            "type": "string",
-            "title": "Recorded At"
-          },
-          "operation": {
-            "type": "string",
-            "const": "test_activation",
-            "title": "Operation",
-            "default": "test_activation"
-          },
-          "snapshot_digest": {
-            "type": "string",
-            "title": "Snapshot Digest"
-          },
-          "experiment_environment_path": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Experiment Environment Path"
-          },
-          "experiment_environment_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Experiment Environment Digest"
-          },
-          "activate_experiment_environment_script_digest": {
-            "type": "string",
-            "title": "Activate Experiment Environment Script Digest"
-          },
-          "run_script_digest": {
-            "type": "string",
-            "title": "Run Script Digest"
-          },
-          "verify_script_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Script Digest"
-          },
-          "run_exit_code": {
-            "type": "integer",
-            "const": 0,
-            "title": "Run Exit Code",
-            "default": 0
-          },
-          "verify_exit_code": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "const": 0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verify Exit Code"
-          },
-          "workbench_environment": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "run_id",
-          "started_at",
-          "finished_at",
-          "duration_ms",
-          "recorded_at",
-          "snapshot_digest",
-          "activate_experiment_environment_script_digest",
-          "run_script_digest"
-        ],
-        "title": "TestActivationReceipt"
       },
       "Threat": {
         "properties": {

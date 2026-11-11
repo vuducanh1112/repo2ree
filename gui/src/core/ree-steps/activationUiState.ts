@@ -15,7 +15,7 @@ export function canRunActivation(input: {
 export function activationFooterHint(input: { runDone: boolean; runFailed: boolean }): string {
   if (input.runFailed) return "Activation failed — check the log, then re-run.";
   if (input.runDone) return "Activation passed for the current experiment environment artifact.";
-  return "Run the smoke test after the experiment environment artifact and activation script are ready.";
+  return "Run the activation once the experiment environment artifact and the activate script are ready.";
 }
 
 interface ActivationReadiness {

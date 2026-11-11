@@ -13,13 +13,17 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import RunExperimentArgs
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentDefinition, Ree, ReeDefinition, ReeSubject
-from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
+from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
+    ExperimentDefinition,
+    Ree,
+    ReeDefinition,
+    ReeSubject,
+)
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import (
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -34,25 +38,24 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    activation_run = b"#!/bin/sh\nset -eu\nprintf active > activation.out\n"
-    activation_verify = b'#!/bin/sh\nset -eu\ntest "$(cat activation.out)" = active\n'
-    experiment_run = b"#!/bin/sh\nset -eu\nmkdir -p outputs\nprintf result > outputs/result.txt\n"
-    experiment_verify = b'#!/bin/sh\nset -eu\ntest "$(cat outputs/result.txt)" = result\n'
+    # The activation enters an "environment" (a variable) and hands over to whatever it is given.
+    activate = (
+        b'#!/bin/sh\nset -eu\nprintf entered >> activation.out\nprintf "%s\\n" "$*" >> handed.out\n'
+        b'ACTIVE=yes\nexport ACTIVE\nexec "$@"\n'
+    )
+    experiment_run = b'#!/bin/sh\nset -eu\nmkdir -p outputs\nprintf "result $ACTIVE" > outputs/result.txt\n'
+    experiment_verify = b'#!/bin/sh\nset -eu\ntest "$(cat outputs/result.txt)" = "result yes"\n'
     name = "local experiment"
     experiment_run_path = experiment_run_script_path(name)
     experiment_verify_path = experiment_verify_script_path(name)
 
-    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, activation_run)
-    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT, activation_verify)
+    store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, activate)
     store.workspace.write_bytes(experiment_run_path, experiment_run)
     store.workspace.write_bytes(experiment_verify_path, experiment_verify)
     definition = ReeDefinition(
-        test_activation=ActivationDefinition(
-            run_script_digest=digest_bytes(activation_run),
-            run_script_size=len(activation_run),
-            verify_script_path=ReePath(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT),
-            verify_script_digest=digest_bytes(activation_verify),
-            verify_script_size=len(activation_verify),
+        activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+            activate_experiment_environment_script_digest=digest_bytes(activate),
+            activate_experiment_environment_script_size=len(activate),
         ),
         experiments=(
             ExperimentDefinition(
@@ -99,9 +102,13 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     assert activation_result.status == "succeeded"
     assert experiment_result.status == "succeeded"
     persisted = store.read_ree().subject.receipts
-    assert persisted.test_activation is not None
-    assert persisted.test_activation.run_id == "activation-local"
+    assert persisted.activation is not None
+    assert persisted.activation.run_id == "activation-local"
+    # The activation ran twice: alone, and around the experiment.
+    assert (layout.workspace / "activation.out").read_text() == "enteredentered"
+    # Alone, it hands over a command with no options: a tool it wraps (srun) would parse them as its own.
+    assert (layout.workspace / "handed.out").read_text().splitlines()[0] == "true"
     experiment = persisted.experiments[name]
     assert experiment.run_id == "experiment-local"
     assert experiment.produced_output_digest is not None
-    assert (layout.results_dir(name) / "outputs/result.txt").read_bytes() == b"result"
+    assert (layout.results_dir(name) / "outputs/result.txt").read_bytes() == b"result yes"

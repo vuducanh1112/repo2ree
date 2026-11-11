@@ -110,13 +110,13 @@ test.describe("Review lifecycle", () => {
       await expect(review.getByText(/source and experiment environment verified/)).toHaveCount(0);
     });
 
-    await test.step("activation: the rebuilt experiment environment is inhabitable", async () => {
+    await test.step("activation: it enters the rebuilt experiment environment", async () => {
       await expect(review.getByRole("button", { name: "Reproduce Test Activation" })).toBeEnabled();
 
       expect(await reproduceActivation(page)).toBe("COMPLETE");
 
       await expect(
-        review.getByText("activation: the experiment environment is inhabitable"),
+        review.getByText("activation: it enters the experiment environment and hands over"),
       ).toBeVisible();
     });
 

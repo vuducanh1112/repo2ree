@@ -33,7 +33,7 @@ describe("shell/data/ree/mapping", () => {
         experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
         sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
         sbom_cross_check: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        test_activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
         experiments: [],
       },
       workspace_files: [],
@@ -80,7 +80,7 @@ describe("shell/data/ree/mapping", () => {
         experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
         sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
         sbom_cross_check: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        test_activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
         experiments: [],
       },
       workspace_files: [],
@@ -100,7 +100,7 @@ describe("shell/data/ree/mapping", () => {
       experiment_environment: "missing",
       sbom: "missing",
       sbom_cross_check: "missing",
-      test_activation: "missing",
+      activation: "missing",
     });
   });
 });

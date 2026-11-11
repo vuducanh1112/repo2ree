@@ -16,7 +16,10 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import WriteFileArgs
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, RESERVED_TEST_ACTIVATION_SCRIPT
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
+
+# A script no REE starts with: an experiment's, authored before it is declared.
+UNWRITTEN = experiment_run_script_path("hello")
 
 
 def _never_canceled() -> bool:
@@ -78,7 +81,7 @@ def test_expected_etag_against_missing_file_conflicts(tmp_path: Path, monkeypatc
     _store_at(tmp_path, monkeypatch)
 
     result = handler.handle_write_file(
-        WriteFileArgs(path=RESERVED_TEST_ACTIVATION_SCRIPT, content="body", expected_etag=_etag(b"anything")),
+        WriteFileArgs(path=UNWRITTEN, content="body", expected_etag=_etag(b"anything")),
         log=_silent_log,
         is_canceled=_never_canceled,
     )
@@ -92,10 +95,10 @@ def test_no_expected_etag_skips_the_guard(tmp_path: Path, monkeypatch: pytest.Mo
     store = _store_at(tmp_path, monkeypatch)
 
     result = handler.handle_write_file(
-        WriteFileArgs(path=RESERVED_TEST_ACTIVATION_SCRIPT, content="body"),
+        WriteFileArgs(path=UNWRITTEN, content="body"),
         log=_silent_log,
         is_canceled=_never_canceled,
     )
 
     assert result.status == "succeeded"
-    assert store.workspace.read_bytes(RESERVED_TEST_ACTIVATION_SCRIPT) == b"body"
+    assert store.workspace.read_bytes(UNWRITTEN) == b"body"

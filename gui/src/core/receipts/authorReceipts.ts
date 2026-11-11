@@ -34,7 +34,7 @@ const OPERATION_LABELS: Record<string, string> = {
   build_experiment_environment: "Experiment environment built",
   generate_sbom: "SBOM generated",
   cross_check_sbom: "SBOM cross-check",
-  test_activation: "Activation tested",
+  activation: "Activation tested",
   // Compatibility with the pre-contract spelling carried by early drafts.
   activation_test: "Activation tested",
   run_experiment: "Experiment run",
@@ -48,7 +48,7 @@ const OPERATION_ORDER: readonly string[] = [
   "build_experiment_environment",
   "generate_sbom",
   "cross_check_sbom",
-  "test_activation",
+  "activation",
   "activation_test",
   "run_experiment",
 ];
@@ -96,7 +96,7 @@ export function parseAuthorReceipts(value: unknown): ReceiptView[] {
     raw.experiment_environment,
     raw.sbom,
     raw.sbom_cross_check,
-    raw.test_activation,
+    raw.activation,
     ...Object.values(experiments ?? {}),
   ];
   return receipts

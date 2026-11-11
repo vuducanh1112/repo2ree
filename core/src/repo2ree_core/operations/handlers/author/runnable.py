@@ -1,4 +1,8 @@
-"""Shared direct workflow for successful activation and experiment evidence."""
+"""Shared direct workflow for successful activation and experiment evidence.
+
+The activation runs alone, around a command that does nothing; an experiment runs inside it, and
+only while the activation's evidence is current.
+"""
 
 from __future__ import annotations
 
@@ -27,14 +31,13 @@ from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
     ExperimentDefinition,
     Ree,
-    TestActivationDefinition,
 )
 from repo2ree_ree.primitives import WorkspacePath
-from repo2ree_ree.receipt import RunExperimentReceipt, TestActivationReceipt
+from repo2ree_ree.receipt import ActivationReceipt, RunExperimentReceipt
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
 
-RunnableKind = Literal["test_activation", "run_experiment"]
-RunnableDefinition = TestActivationDefinition | ExperimentDefinition
+RunnableKind = Literal["activation_test", "run_experiment"]
+RunnableDefinition = ActivateExperimentEnvironmentDefinition | ExperimentDefinition
 
 
 def handle_runnable_operation(
@@ -53,8 +56,8 @@ def handle_runnable_operation(
     try:
         ree = load_ree(layout, store)
         definition = _select_definition(ree, kind, experiment_name)
-        experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition, layout)
         activation = _check_activation(ree, layout)
+        experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot {kind}: {exc}")
         return ActionResult.failed("precondition", f"cannot {kind}: {exc}")
@@ -86,7 +89,7 @@ def handle_runnable_operation(
             exit_code=exit_code,
             outputs=outputs.model_dump(mode="json", exclude_none=True),
         )
-    expected_verify = definition.verify_script_path is not None
+    expected_verify = isinstance(definition, ExperimentDefinition) and definition.verify_script_path is not None
     if outcome.run_outputs.exit_code != 0 or (outcome.run_outputs.verify_exit_code == 0) != expected_verify:
         message = f"{kind} reported success without complete successful script outcomes"
         log("system", "error", message)
@@ -141,10 +144,10 @@ def handle_runnable_operation(
 def _select_definition(ree: Ree, kind: RunnableKind, experiment_name: str) -> RunnableDefinition:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot run author operations")
-    if kind == "test_activation":
-        definition = ree.subject.definition.test_activation
+    if kind == "activation_test":
+        definition = ree.subject.definition.activate_experiment_environment
         if definition is None:
-            raise ReePreconditionError("no activation test is defined")
+            raise ReePreconditionError("no activate experiment environment script is defined")
         return definition
     for experiment in ree.subject.definition.experiments:
         if experiment.name == experiment_name:
@@ -159,21 +162,9 @@ def _check_preconditions(
 ) -> tuple[WorkspacePath | None, Digest | None]:
     if ree.subject.receipts.source is None:
         raise ReePreconditionError("source has not been acquired")
-    _check_script(
-        layout.workspace / str(definition.run_script_path),
-        definition.run_script_digest,
-        definition.run_script_size,
-        label="run script",
-    )
-    if definition.verify_script_path is not None:
-        if definition.verify_script_digest is None or definition.verify_script_size is None:
-            raise AssertionError("definition admitted incomplete verification script identity")
-        _check_script(
-            layout.workspace / str(definition.verify_script_path),
-            definition.verify_script_digest,
-            definition.verify_script_size,
-            label="verification script",
-        )
+    if isinstance(definition, ExperimentDefinition):
+        _check_experiment_scripts(definition, layout)
+        _check_activation_evidence(ree)
 
     experiment_environment = ree.subject.definition.experiment_environment
     if experiment_environment is None or experiment_environment.artifact_path is None:
@@ -194,6 +185,31 @@ def _check_preconditions(
     if experiment_environment_digest != build.produced_artifact_digest:
         raise ReePreconditionError("experiment environment artifact does not match the selected build receipt")
     return experiment_environment.artifact_path, experiment_environment_digest
+
+
+def _check_experiment_scripts(definition: ExperimentDefinition, layout: ReeLayout) -> None:
+    _check_script(
+        layout.workspace / str(definition.run_script_path),
+        definition.run_script_digest,
+        definition.run_script_size,
+        label="run script",
+    )
+    if definition.verify_script_path is not None:
+        if definition.verify_script_digest is None or definition.verify_script_size is None:
+            raise AssertionError("definition admitted incomplete verification script identity")
+        _check_script(
+            layout.workspace / str(definition.verify_script_path),
+            definition.verify_script_digest,
+            definition.verify_script_size,
+            label="verification script",
+        )
+
+
+def _check_activation_evidence(ree: Ree) -> None:
+    """An experiment runs inside the activation, so only once the activation has run and still speaks for the REE."""
+    activation_audit = audit(ree).activation
+    if activation_audit.evidence != "current":
+        raise ReePreconditionError("; ".join(activation_audit.reasons) or "the activation has not been tested")
 
 
 def _check_script(path: Path, expected_digest: Digest, expected_size: int, *, label: str) -> None:
@@ -217,13 +233,14 @@ def _check_activation(ree: Ree, layout: ReeLayout) -> ActivateExperimentEnvironm
 
 
 def _as_runnable(definition: RunnableDefinition, activation: ActivateExperimentEnvironmentDefinition) -> RunnableSpec:
+    activate_script = str(activation.activate_experiment_environment_script_path)
+    if not isinstance(definition, ExperimentDefinition):
+        return RunnableSpec(activate_script=activate_script)
     return RunnableSpec(
+        activate_script=activate_script,
         run_script=str(definition.run_script_path),
-        activate_script=str(activation.activate_experiment_environment_script_path),
         verify_script=str(definition.verify_script_path or ""),
-        output_paths=(
-            tuple(str(path) for path in definition.output_paths) if isinstance(definition, ExperimentDefinition) else ()
-        ),
+        output_paths=tuple(str(path) for path in definition.output_paths),
     )
 
 
@@ -254,19 +271,16 @@ def _successful_receipt(
     produced_output_digest: Digest | None,
     activate_experiment_environment_script_digest: Digest,
     workbench_environment: WorkbenchEnvironmentObservation,
-) -> TestActivationReceipt | RunExperimentReceipt:
+) -> ActivationReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
-    if isinstance(definition, TestActivationDefinition):
-        return TestActivationReceipt(
+    if not isinstance(definition, ExperimentDefinition):
+        return ActivationReceipt(
             **envelope,
             snapshot_digest=snapshot_digest,
             experiment_environment_path=experiment_environment_path,
             experiment_environment_digest=experiment_environment_digest,
             activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
-            run_script_digest=definition.run_script_digest,
-            verify_script_digest=definition.verify_script_digest,
-            run_exit_code=0,
-            verify_exit_code=0 if definition.verify_script_path is not None else None,
+            exit_code=0,
             workbench_environment=workbench_environment,
         )
     return RunExperimentReceipt(

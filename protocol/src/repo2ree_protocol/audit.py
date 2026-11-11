@@ -50,7 +50,7 @@ class ReeAudit(_AuditModel):
     experiment_environment: StepAudit
     sbom: StepAudit
     sbom_cross_check: StepAudit
-    test_activation: StepAudit
+    activation: StepAudit
     experiments: tuple[ExperimentAudit, ...] = ()
 
     def stale_steps(self) -> tuple[tuple[str, StepAudit], ...]:

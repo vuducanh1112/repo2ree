@@ -69,7 +69,7 @@ describe("parseAuthorReceipts", () => {
 
   it("uses the contract operation name for activation evidence", () => {
     const [view] = parseAuthorReceipts({
-      test_activation: receipt("test_activation"),
+      activation: receipt("activation_test"),
     });
     expect(view.title).toBe("Activation tested");
   });

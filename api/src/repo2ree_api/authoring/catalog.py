@@ -14,7 +14,7 @@ whenever a step gains or loses a route.
 ``listScriptTemplates`` serves the packaged starter templates for the REE-owned
 scripts, so every client prefills from the same source
 (``repo2ree_authoring.templates``) instead of keeping copies. The build and
-activation templates are also seeded into a fresh REE's overlay; the
+activate experiment environment templates are also seeded into a fresh REE's overlay; the
 per-experiment templates cannot be (their paths only exist once an experiment is
 named), so this catalog is how clients obtain them.
 """
@@ -29,7 +29,6 @@ from repo2ree_authoring.steps import ree_step_catalog
 from repo2ree_authoring.templates import (
     ScriptTemplate,
     activate_experiment_environment_templates,
-    activation_templates,
     build_templates,
     experiment_run_templates,
     verify_templates,
@@ -38,8 +37,6 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
 )
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
 
@@ -81,7 +78,7 @@ _STEP_ACTIONS: dict[str, list[str]] = {
     "build_experiment_environment": ["startBuildExperimentEnvironment", "generateScriptCandidates", "writeReeFile"],
     "sbom": ["startSbomGeneration"],
     "crosscheck": ["startSbomCrossCheck"],
-    "activation": ["startActivationTest", "generateScriptCandidates", "writeReeFile"],
+    "activation": ["startActivationTest"],
     "experiments": ["startExperiment", "patchReeDefinition", "generateScriptCandidates", "writeReeFile"],
     "seal": ["sealRee"],
 }
@@ -154,21 +151,6 @@ class ActivateExperimentEnvironmentScriptTemplates(BaseModel):
     templates: list[ScriptTemplateEntry]
 
 
-class ActivationScriptTemplates(BaseModel):
-    """The activation run-script templates and both reserved activation paths.
-
-    The default template for an environment (``is_default``) is the content a
-    fresh REE's activation script there is seeded with. ``verify_script_path`` is where an
-    activation verify script belongs when the author writes one; declaring it
-    on the intent is an explicit act (a declared verify script must exist and
-    pass).
-    """
-
-    run_script_path: str
-    verify_script_path: str
-    templates: list[ScriptTemplateEntry]
-
-
 class ExperimentScriptTemplates(BaseModel):
     """Templates for per-experiment run scripts, plus the path convention they follow.
 
@@ -186,10 +168,8 @@ class ExperimentScriptTemplates(BaseModel):
 class ScriptTemplateCatalog(BaseModel):
     build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
     activate_experiment_environment: ActivateExperimentEnvironmentScriptTemplates
-    activation: ActivationScriptTemplates
     experiment: ExperimentScriptTemplates
-    # Verify scripts share one contract across runnables (activation and
-    # experiments), so their templates are catalog-wide.
+    # Verify scripts are shared by every experiment, so their templates are catalog-wide.
     verify: list[ScriptTemplateEntry]
 
 
@@ -220,7 +200,7 @@ def list_script_templates() -> ScriptTemplateCatalog:
     """Starter templates for the REE-owned scripts and where each belongs.
 
     Static per deployment. Each section marks the default entry for each
-    environment with ``is_default``; the default build and activation templates
+    environment with ``is_default``; the default build and activate experiment environment templates
     are the content a fresh REE in that environment is seeded with. The experiment
     templates are for scripts created on demand under the reserved experiments
     directory. For scripts fitted to the REE's own project, use
@@ -234,11 +214,6 @@ def list_script_templates() -> ScriptTemplateCatalog:
         activate_experiment_environment=ActivateExperimentEnvironmentScriptTemplates(
             path=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
             templates=_entries(activate_experiment_environment_templates()),
-        ),
-        activation=ActivationScriptTemplates(
-            run_script_path=RESERVED_TEST_ACTIVATION_SCRIPT,
-            verify_script_path=RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
-            templates=_entries(activation_templates()),
         ),
         experiment=ExperimentScriptTemplates(
             run_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",

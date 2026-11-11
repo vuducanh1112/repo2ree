@@ -23,10 +23,12 @@ function report(
 describe("selectReport", () => {
   it("finds the report for the requested target", () => {
     const response = {
-      reports: [report("build_experiment_environment"), report("activation_run")],
+      reports: [report("build_experiment_environment"), report("activate_experiment_environment")],
       missing_scripts: [],
     };
-    expect(selectReport(response, { kind: "activation_run" })?.target.kind).toBe("activation_run");
+    expect(selectReport(response, { kind: "activate_experiment_environment" })?.target.kind).toBe(
+      "activate_experiment_environment",
+    );
   });
 
   it("matches an experiment by name, not by kind alone", () => {

@@ -121,10 +121,12 @@ are synchronous. A REE is authored end to end in this order:
 5. Build: `generateScriptCandidates` proposes a build script from the project.
    `writeReeFile` writes it, `patchReeDefinition` declares its
    `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.
-6. `generateScriptCandidates` also scaffolds the activation script, then
-   `startActivationTest`. The scaffolds refuse to run until you fill in the command.
+6. `generateScriptCandidates` also proposes the activate experiment environment script;
+   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command
+   that does nothing. Experiments run only while that activation's evidence is current.
 7. For each experiment, in this order: `generateScriptCandidates` with its name
-   scaffolds the run script; `writeReeFile` writes that and a verify script;
+   scaffolds the run script, which refuses to run until you fill in the command;
+   `writeReeFile` writes that and a verify script;
    `patchReeDefinition` declares the experiment, which needs its run script to
    exist; then `startExperiment`.
 8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,

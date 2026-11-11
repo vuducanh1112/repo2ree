@@ -25,7 +25,8 @@ from repo2ree_testbed.faults import (
     UnlockHistory,
 )
 
-ACTIVATION_VERIFY = "ree-scripts/test_activation.verify.sh"
+# A script no REE starts with: an experiment's verify script, authored before it is declared.
+UNWRITTEN_SCRIPT = "ree-scripts/experiments/unwritten.verify.sh"
 
 
 def build_taking(api: Api, ree_id: str, seconds: int) -> dict[str, Any]:
@@ -127,7 +128,7 @@ def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new
     fault(PartitionWorkbench(ree_id=ree_id))
     try:
         assert disconnected(api, ree_id), "the control plane still lists the partitioned workbench"
-        answer = api.write(ree_id, ACTIVATION_VERIFY, "#!/bin/sh\n", expect=None)
+        answer = api.write(ree_id, UNWRITTEN_SCRIPT, "#!/bin/sh\n", expect=None)
     finally:
         fault(HealWorkbench(ree_id=ree_id))
     assert answer.status_code == 503, answer.text
@@ -166,7 +167,7 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
     try:
         settled = api.wait(ree_id, run, timeout=120)
         # An edit meanwhile cannot be recorded either, and is not kept.
-        refused = api.write(ree_id, ACTIVATION_VERIFY, "#!/bin/sh\n", expect=None)
+        refused = api.write(ree_id, UNWRITTEN_SCRIPT, "#!/bin/sh\n", expect=None)
     finally:
         fault(UnlockHistory(ree_id=ree_id))
 
@@ -174,6 +175,6 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
     assert settled["status"] == "failed", settled
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
     assert refused.status_code >= 400, refused.text
-    unwritten = api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": ACTIVATION_VERIFY}, expect=None)
+    unwritten = api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": UNWRITTEN_SCRIPT}, expect=None)
     assert unwritten.status_code == 404, unwritten.text
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"

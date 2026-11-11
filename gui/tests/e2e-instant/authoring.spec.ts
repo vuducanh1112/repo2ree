@@ -69,7 +69,7 @@ test.describe("Instant authoring", () => {
     });
 
     await test.step("test activation", async () => {
-      await testActivation(page, instantRecipe("test_activation.sh"));
+      await testActivation(page);
     });
 
     await test.step("run the experiment", async () => {

@@ -19,8 +19,6 @@ class UneditedPlaceholderRule:
         {
             "build_experiment_environment",
             "activate_experiment_environment",
-            "activation_run",
-            "activation_verify",
             "experiment_run",
             "experiment_verify",
         }
@@ -38,7 +36,7 @@ class UneditedPlaceholderRule:
 class EmptyCommandScaffoldRule:
     code = "empty_command_scaffold"
     codes: ClassVar[frozenset[str]] = frozenset({"empty_command_scaffold"})
-    applies_to: ClassVar[frozenset[TargetKind]] = frozenset({"activation_run", "experiment_run"})
+    applies_to: ClassVar[frozenset[TargetKind]] = frozenset({"experiment_run"})
 
     def check(self, context: ScriptContext) -> tuple[Finding, ...]:
         # Tokenization excludes the commented examples rendered above the live scaffold.

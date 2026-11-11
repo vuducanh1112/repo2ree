@@ -230,29 +230,23 @@ describe("major step page workflows", () => {
     expect(screen.getByText(/Run Evaluate first/)).toBeInTheDocument();
   });
 
-  it("saves activation scripts and runs against the built experiment environment", async () => {
+  it("shows the activate script it runs alone, and runs against the built experiment environment", async () => {
     const user = userEvent.setup();
     const onRun = vi.fn();
-    const onPersistWorkspaceFile = vi.fn().mockResolvedValue(undefined);
-    renderWithShell(
-      <PageTestActivation
-        {...createStepPageProps("activation", { onRun, onPersistWorkspaceFile })}
-      />,
-      { reeId: "ree-1", services: catalogServices() },
-    );
+    renderWithShell(<PageTestActivation {...createStepPageProps("activation", { onRun })} />, {
+      reeId: "ree-1",
+      services: catalogServices(),
+    });
 
     expect(await screen.findByText("runtime.tar")).toBeInTheDocument();
+    expect(await screen.findByText("sh overlay/activate.sh true")).toBeInTheDocument();
+    expect(screen.getByLabelText("Activate experiment environment script")).toHaveTextContent(
+      'exec "$@"',
+    );
+    // The activation has no script of its own to write.
+    expect(screen.queryByRole("button", { name: /Save/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Run activation" }));
     expect(onRun).toHaveBeenCalledWith("activation", {});
-    const verifyEditor = screen.getByLabelText("Activation verify script (optional)");
-    await user.clear(verifyEditor);
-    await user.type(verifyEditor, "#!/bin/sh\necho verified");
-    await user.click(screen.getByRole("button", { name: "Save verify script" }));
-    expect(onPersistWorkspaceFile).toHaveBeenCalledWith(
-      undefined,
-      "overlay/verify.sh",
-      expect.stringContaining("verified"),
-    );
   });
 
   it("shows activation prerequisite, failed outcome, timestamp, and cancellation states", async () => {
@@ -263,11 +257,7 @@ describe("major step page workflows", () => {
         {...createStepPageProps("activation", {
           ree: {
             ...exampleEditorRee,
-            spec: {
-              ...exampleEditorRee.spec,
-              experimentEnvironmentPath: "",
-              activation: createEmptyReeSpec().activation,
-            },
+            spec: { ...exampleEditorRee.spec, experimentEnvironmentPath: "" },
           },
           workspaceFiles: [],
           reeFiles: [],
@@ -287,40 +277,6 @@ describe("major step page workflows", () => {
     expect(screen.getByText("Experiment environment")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Cancel/ }));
     expect(onCancel).toHaveBeenCalledWith("activation");
-  });
-
-  it("declares catalog fallback activation paths when their scripts are first saved", async () => {
-    const user = userEvent.setup();
-    const onReeSpecChange = vi.fn();
-    const onPersistWorkspaceFile = vi.fn().mockResolvedValue(undefined);
-    renderWithShell(
-      <PageTestActivation
-        {...createStepPageProps("activation", {
-          ree: {
-            ...exampleEditorRee,
-            spec: { ...exampleEditorRee.spec, activation: createEmptyReeSpec().activation },
-          },
-          onReeSpecChange,
-          onPersistWorkspaceFile,
-        })}
-      />,
-      { reeId: "ree-1", services: catalogServices() },
-    );
-
-    const runEditor = await screen.findByLabelText("Activation run script");
-    await waitFor(() => expect(runEditor).toBeEnabled());
-    await user.clear(runEditor);
-    await user.type(runEditor, "echo activate");
-    await user.click(screen.getByRole("button", { name: "Save run script" }));
-    const runUpdate = onReeSpecChange.mock.calls[0][0];
-    expect(runUpdate(createEmptyReeSpec()).activation.runScript).toBe("overlay/activate.sh");
-
-    const verifyEditor = screen.getByLabelText("Activation verify script (optional)");
-    await user.clear(verifyEditor);
-    await user.type(verifyEditor, "echo verify");
-    await user.click(screen.getByRole("button", { name: "Save verify script" }));
-    const verifyUpdate = onReeSpecChange.mock.calls[1][0];
-    expect(verifyUpdate(createEmptyReeSpec()).activation.verifyScript).toBe("overlay/verify.sh");
   });
 
   it("adds hardware rows across categories and invokes profiling", async () => {

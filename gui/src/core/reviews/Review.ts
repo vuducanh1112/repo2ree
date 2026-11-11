@@ -58,10 +58,10 @@ export interface ReviewBuildComparison {
 }
 
 /**
- * Whether the runtime an attempt certified is inhabitable.
+ * Whether the author's activation, run alone, enters the experiment environment an attempt certified.
  *
- * Not a comparison — there is no author artifact to reproduce here, so the
- * reviewer's own probe is the whole claim. `basis` is inherited from the steps
+ * Not a comparison — there is no author artifact to reproduce here, so whether
+ * it hands over is the whole claim. `basis` is inherited from the steps
  * before it rather than chosen: activation runs in the workspace the build left
  * behind and cannot tell whether the runtime there was rebuilt or unpacked.
  */
@@ -69,8 +69,7 @@ export interface ReviewActivationOutcome {
   basis: ReviewEvidenceBasis;
   verdict: ActivationVerdict;
   experimentEnvironmentDigest?: string;
-  runExitCode?: number;
-  verifyExitCode?: number;
+  exitCode?: number;
 }
 
 export type ActivationVerdict = "passed" | "failed";

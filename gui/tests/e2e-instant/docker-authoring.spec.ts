@@ -77,7 +77,7 @@ test.describe("Instant Docker authoring", () => {
     });
 
     await test.step("test activation", async () => {
-      await testActivation(page, instantRecipe("test_activation.sh", PROJECT));
+      await testActivation(page);
     });
 
     await test.step("run the experiment", async () => {

@@ -6,9 +6,9 @@ import io
 import zipfile
 from collections.abc import Callable
 
-from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT, RESULT, Api, recipe
+from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT, RESULT, Api
 
-AUTHORED_STEPS = ("source", "evaluation", "hardware", "experiment_environment", "test_activation")
+AUTHORED_STEPS = ("source", "evaluation", "hardware", "experiment_environment", "activation")
 
 
 def test_author_seal_and_download(api: Api, new_ree: Callable[..., str]) -> None:
@@ -24,7 +24,7 @@ def test_author_seal_and_download(api: Api, new_ree: Callable[..., str]) -> None
     sealed = api.ree(ree_id)
     assert sealed["seal"]["ree_digest"].startswith("sha256:")
     receipts = sealed["subject"]["receipts"]
-    for name in ("source", "evaluation", "hardware_observation", "experiment_environment", "test_activation"):
+    for name in ("source", "evaluation", "hardware_observation", "experiment_environment", "activation"):
         assert receipts[name] is not None, name
     assert EXPERIMENT in receipts["experiments"]
 
@@ -122,7 +122,7 @@ def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..
     # again.
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
-    assert api.activate(ree_id, recipe("test_activation.sh"))["status"] == "succeeded"
+    assert api.activate(ree_id)["status"] == "succeeded"
     assert api.experiment(ree_id)["status"] == "succeeded"
     assert api.seal(ree_id)["status"] == "succeeded"
 

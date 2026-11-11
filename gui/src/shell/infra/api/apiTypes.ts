@@ -29,7 +29,7 @@ export type ExperimentEnvironmentComparisonWire = Schema<"ExperimentEnvironmentC
 
 export type PackageDeltaWire = Schema<"PackageDeltaRecord">;
 
-/** Whether the runtime a review attempt certified is inhabitable. */
+/** Whether the author's activation, run alone, entered the runtime a review attempt certified. */
 export type ActivationOutcomeWire = Schema<"ActivationOutcome">;
 
 /** Whether one experiment's result reproduced, by the author's own verify script. */

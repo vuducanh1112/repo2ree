@@ -6,8 +6,6 @@ from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -28,8 +26,6 @@ def resolve_target(selector: ScriptTargetSelectorArg) -> ScriptTarget:
     path = {
         "build_experiment_environment": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
         "activate_experiment_environment": RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        "activation_run": RESERVED_TEST_ACTIVATION_SCRIPT,
-        "activation_verify": RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     }[kind]
     return ScriptTarget(kind=kind, path=path)
 

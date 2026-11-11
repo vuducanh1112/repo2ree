@@ -109,11 +109,7 @@ export function packedProject(project: ExampleProject): string {
 
 /** One of the scripts that run an instant project (`examples/projects/<project>/recipe/`). */
 export function instantRecipe(
-  name:
-    | "build_experiment_environment.sh"
-    | "activate_experiment_environment.sh"
-    | "test_activation.sh"
-    | "experiment.sh",
+  name: "build_experiment_environment.sh" | "activate_experiment_environment.sh" | "experiment.sh",
   project: "instant" | "instant_docker" = "instant",
 ): string {
   return readFileSync(path.join(EXAMPLES_DIR, "projects", project, "recipe", name), "utf8");
@@ -729,19 +725,15 @@ export async function crossCheckSbom(page: Page) {
 }
 
 /**
- * Author and run the activation. Navigates to the Activation canvas node (a
- * standalone page) and authors the given run script (e.g. {@link commandScript}), which runs
- * inside the activated experiment environment and proves it starts.
+ * Run the activation. Navigates to the Activation canvas node (a standalone page) and runs
+ * the activate experiment environment script the build step wrote, alone, around a command
+ * that does nothing: it enters the experiment environment and hands over.
  */
-export async function testActivation(page: Page, runScript: string) {
+export async function testActivation(page: Page) {
   await stepShot(page, "test-activation", "before");
   await openPort(page, "Activation");
-  await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
-  await saveRunScript(
-    page,
-    main(page).getByRole("textbox", { name: "Activation run script", exact: true }),
-    runScript,
-  );
+  await expect(main(page).getByText("What Runs", { exact: true })).toBeVisible();
+  await expect(main(page).getByText(/activate_experiment_environment\.sh true/)).toBeVisible();
   await runToEnd(page, () =>
     main(page)
       .getByRole("button", { name: /Run activation/ })
@@ -923,8 +915,8 @@ export async function reproduceBuild(page: Page) {
  * Run the activation step of the review lifecycle and wait for its verdict.
  *
  * Unlike source and build this settles a boolean, not a comparison: there is no
- * author artifact to diff against, so the reviewer's own probe is the claim.
- * ``COMPLETE`` means the runtime came up; ``DID NOT ACTIVATE`` means it did not,
+ * author artifact to diff against, so whether the author's activation, run alone, hands over is the
+ * claim. ``COMPLETE`` means it did; ``DID NOT ACTIVATE`` means it did not,
  * which is a finding the step completed with rather than a step that broke.
  */
 export async function reproduceActivation(page: Page) {

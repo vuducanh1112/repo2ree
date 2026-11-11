@@ -212,9 +212,15 @@ def current_runner() -> ScriptRunner:
     )
 
 
+# What the activation runs inside the experiment environment when it is tested alone: a command that does
+# nothing, so the run shows only that the activation enters the environment and hands over. It takes no
+# options, because an activation may hand its command to a tool that parses on past the command (srun does).
+NOTHING = ("true",)
+
+
 def run_workspace_script(
     workspace: Path,
-    script_rel: str,
+    script_rel: str | None,
     *,
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
@@ -230,21 +236,26 @@ def run_workspace_script(
     its own scripts; wrapper scripts are POSIX ``sh`` while project scripts that
     need bash or their own directory (e.g. ``docker build .``) invoke it
     explicitly. Scripts that resolve outside the workspace are rejected.
+
+    With no ``script_rel`` the activation runs alone, around a command that does nothing.
     """
     workspace = workspace.resolve()
+    if script_rel is None and activate_rel is None:
+        raise ValueError("nothing to run: no script and no activation")
     with tracer.start_as_current_span("script.run") as span:
-        ScriptSpanAttrs(path=script_rel).apply(span)
-        script_abs = resolve_within(workspace, script_rel)
-        if script_abs is None:
-            log("system", "error", f"script escapes workspace: {script_rel}")
-            record_span_facts(span, {"script.error": "escapes workspace"})
-            return StepOutcome("failed", 1)
-        if not script_abs.is_file():
-            log("system", "error", f"script not found: {script_rel}")
-            record_span_facts(span, {"script.error": "not found"})
-            return StepOutcome("failed", 1)
-
-        cmd = ["sh", script_rel]
+        ScriptSpanAttrs(path=script_rel or activate_rel or "").apply(span)
+        cmd = list(NOTHING)
+        if script_rel is not None:
+            script_abs = resolve_within(workspace, script_rel)
+            if script_abs is None:
+                log("system", "error", f"script escapes workspace: {script_rel}")
+                record_span_facts(span, {"script.error": "escapes workspace"})
+                return StepOutcome("failed", 1)
+            if not script_abs.is_file():
+                log("system", "error", f"script not found: {script_rel}")
+                record_span_facts(span, {"script.error": "not found"})
+                return StepOutcome("failed", 1)
+            cmd = ["sh", script_rel]
         if activate_rel is not None:
             activate_abs = resolve_within(workspace, activate_rel)
             if activate_abs is None or not activate_abs.is_file():

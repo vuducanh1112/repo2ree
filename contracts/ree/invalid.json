@@ -99,7 +99,7 @@
       "error": "Unsafe LFS path"
     },
     {
-      "name": "an activation verify script without its size",
+      "name": "an experiment verify script without its size",
       "patch": [
         {
           "op": "remove",
@@ -107,10 +107,10 @@
         },
         {
           "op": "remove",
-          "path": "/subject/definition/test_activation/verify_script_size"
+          "path": "/subject/definition/experiments/0/verify_script_size"
         }
       ],
-      "error": "activation verification path, digest, and size must be present together"
+      "error": "experiment verification path, digest, and size must be present together"
     },
     {
       "name": "an experiment receipt under another name",

@@ -9,7 +9,7 @@ import {
 } from "../ree-editor/reeEditorViewModel";
 import { buildSealStepItems, SEAL_STEPS } from "./sealSteps";
 
-const activationStep: EvidenceStep = "test_activation";
+const activationStep: EvidenceStep = "activation";
 
 /** Half-authored: some steps hold a receipt, some only a declaration. */
 function halfAuthoredRee() {

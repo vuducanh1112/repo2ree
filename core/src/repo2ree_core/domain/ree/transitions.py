@@ -14,13 +14,13 @@ from repo2ree_ree.model import (
 from repo2ree_ree.primitives import Digest, UtcInstant
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
+    ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
     RunReceipt,
-    TestActivationReceipt,
 )
 
 
@@ -71,8 +71,8 @@ def commit_receipt(ree: Ree, receipt: RunReceipt) -> Ree:
         updates = {"sbom": receipt}
     elif isinstance(receipt, CrossCheckSbomReceipt):
         updates = {"sbom_cross_check": receipt}
-    elif isinstance(receipt, TestActivationReceipt):
-        updates = {"test_activation": receipt}
+    elif isinstance(receipt, ActivationReceipt):
+        updates = {"activation": receipt}
     else:
         experiments = dict(ree.subject.receipts.experiments)
         experiments[receipt.experiment_name] = receipt

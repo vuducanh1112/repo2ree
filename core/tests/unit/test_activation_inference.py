@@ -1,4 +1,7 @@
-"""End-to-end activation-run inference: runtime-contract resolution + scaffold."""
+"""End-to-end inference of what runs in the experiment environment: its contract, activate script, and run scaffold.
+
+The run scaffold is an experiment's: it shares the contract subgraph with the activate script.
+"""
 
 from __future__ import annotations
 
@@ -11,10 +14,19 @@ from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, 
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
-from repo2ree_ree.model import ReeDefinition
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.primitives import ReePath
+from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
 _VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
+_EXPERIMENT = ExperimentDefinition(
+    name="run",
+    run_script_path=ReePath(experiment_run_script_path("run")),
+    run_script_digest=digest_bytes(b"script"),
+    run_script_size=6,
+)
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -31,18 +43,20 @@ def _activation(
     experiment_environment: str | None,
     files: dict[str, bytes],
     name: str = "Demo",
-    kind: Literal["activation_run", "activate_experiment_environment"] = "activation_run",
+    kind: Literal["experiment_run", "activate_experiment_environment"] = "experiment_run",
 ) -> TargetInferenceResult:
-    definition = ReeDefinition(name=name)
+    definition = ReeDefinition(name=name, experiments=(_EXPERIMENT,))
     inputs = ExperimentEnvironmentInputs(
-        declared_experiment_environment_path=experiment_environment, accessor=MemoryAccessor(files)
+        declared_experiment_environment_path=experiment_environment,
+        experiments=[_EXPERIMENT],
+        accessor=MemoryAccessor(files),
     )
-    report = infer_scripts(
-        root,
-        [ScriptTargetSelectorArg(kind=kind)],
-        definition=definition,
-        experiment_environment_inputs=inputs,
+    selector = (
+        ScriptTargetSelectorArg(kind=kind, experiment_name=_EXPERIMENT.name)
+        if kind == "experiment_run"
+        else ScriptTargetSelectorArg(kind=kind)
     )
+    report = infer_scripts(root, [selector], definition=definition, experiment_environment_inputs=inputs)
     return report.results[0]
 
 
@@ -60,13 +74,13 @@ def test_docker_experiment_environment_yields_confirmation_required_scaffold(tmp
     assert result.status == "needs_input"
     assert result.application == "confirmation_required"
     candidate = result.candidates[0]
-    assert candidate.inference_rule == "docker-runtime-activation-v1"
+    assert candidate.inference_rule == "docker-runtime-experiment-v1"
     body = candidate.body or ""
     assert "docker load" not in body
     assert "set --\n" in body
     assert "exit 64" in body
     assert "#   set -- python main.py" in body
-    assert "activation_command_missing" in _codes(result)
+    assert "experiment_command_missing" in _codes(result)
     activate = _activation(
         tmp_path,
         experiment_environment=_DOCKER_EXPERIMENT_ENVIRONMENT,
@@ -82,7 +96,7 @@ def test_docker_experiment_environment_yields_confirmation_required_scaffold(tmp
 def test_oci_experiment_environment_resolves_like_a_legacy_docker_archive(tmp_path: Path) -> None:
     # A containerd-image-store ``docker save`` writes an OCI archive (no
     # manifest.json); it must resolve the same docker experiment environment contract so
-    # activation is inferred rather than falling to not_inferred.
+    # what runs in it is inferred rather than falling to not_inferred.
     _tree(tmp_path, {"Dockerfile": "FROM x\n", "main.py": "y"})
     result = _activation(
         tmp_path,
@@ -91,7 +105,7 @@ def test_oci_experiment_environment_resolves_like_a_legacy_docker_archive(tmp_pa
     )
     assert result.status == "needs_input"
     candidate = result.candidates[0]
-    assert candidate.inference_rule == "docker-runtime-activation-v1"
+    assert candidate.inference_rule == "docker-runtime-experiment-v1"
     body = candidate.body or ""
     assert "#   set -- python main.py" in body
     activate = _activation(

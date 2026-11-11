@@ -4,10 +4,8 @@ import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import {
   createEmptyExperimentResourceEstimates,
-  createEmptyReeActivation,
   createEmptyReeCatalogMetadata,
   createEmptyReeExperiment,
-  type ReeActivation,
   type ReeCatalogMetadata,
   type ReeContributor,
   type ReeExperiment,
@@ -90,29 +88,18 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resourceEstimat
   };
 }
 
-// Map the shared Runnable fields (description / runScript / verifyScript /
-// outputPaths / estimates) common to experiments and activation. runScript
-// falls back to defaultRunScript when absent, so activation can default to its
-// reserved path.
-function mapRawRunnable(raw: Record<string, unknown>, defaultRunScript = ""): ReeRunnable {
+// Map an experiment's Runnable fields (description / runScript / verifyScript /
+// outputPaths / estimates).
+function mapRawRunnable(raw: Record<string, unknown>): ReeRunnable {
   return {
     description: String(raw.description ?? ""),
-    runScript: raw.run_script ? String(raw.run_script) : defaultRunScript,
+    runScript: raw.run_script ? String(raw.run_script) : "",
     verifyScript: raw.verify_script ? String(raw.verify_script) : "",
     outputPaths: Array.isArray(raw.output_paths)
       ? raw.output_paths.map((path) => String(path)).filter(Boolean)
       : [],
     runtimeEstimate: String(raw.runtime_estimate ?? ""),
     resourceEstimates: mapRawResourceEstimates(raw.resource_estimates),
-  };
-}
-
-function mapRawActivation(value: unknown): ReeActivation {
-  const raw = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const activation = createEmptyReeActivation();
-  return {
-    ...activation,
-    ...mapRawRunnable(raw, activation.runScript),
   };
 }
 
@@ -162,7 +149,6 @@ export function mapRawReeIntentToSlices({
       resolvedRevision: String(intent.revision ?? ""),
       experimentEnvironmentPath: String(intent.experiment_environment_path ?? ""),
       workbenchEnvironment: mapRawWorkbenchEnvironment(intent.workbench_environment),
-      activation: mapRawActivation(intent.activation),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),
       experiments,

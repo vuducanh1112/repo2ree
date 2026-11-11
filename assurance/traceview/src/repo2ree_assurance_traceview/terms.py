@@ -66,7 +66,7 @@ STEP_ORDER = (
     "experiment_environment",
     "sbom",
     "sbom_cross_check",
-    "test_activation",
+    "activation",
 )
 
 # A workbench's connection, its store, the facts it is drawn by, and the state it opens in.

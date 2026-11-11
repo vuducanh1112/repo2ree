@@ -56,7 +56,6 @@ const FIELD_TO_PAGE: Partial<Record<EditorField, AppShellPage>> = {
   sourceAcquiredBy: PAGE.SOURCE,
   hardwareDescription: PAGE.HBOM,
   experimentEnvironmentPath: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-  activation: PAGE.ACTIVATION,
   sbom: PAGE.SBOM,
   swhid: PAGE.ARCHIVE,
 };

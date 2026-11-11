@@ -72,7 +72,7 @@ describe("selectCandidate — build", () => {
 
   it("reports not_inferred when there is no build target", () => {
     const result = selectCandidate(
-      report([{ target: { kind: "activation_run" }, candidates: [candidate()] }]),
+      report([{ target: { kind: "activate_experiment_environment" }, candidates: [candidate()] }]),
       "build_experiment_environment",
     );
     expect(result.status).toBe("not_inferred");
@@ -160,25 +160,25 @@ describe("selectCandidate — build", () => {
 });
 
 describe("selectCandidate — run scaffolds", () => {
-  it("returns the activation target's first candidate", () => {
+  it("returns the activate target's first candidate", () => {
     const result = selectCandidate(
       report([
         {
-          target: { kind: "activation_run" },
+          target: { kind: "activate_experiment_environment" },
           candidates: [
             candidate({
-              inference_rule: "docker-runtime-activation-v1",
+              inference_rule: "docker-activate-experiment-environment-v1",
               application: "confirmation_required",
             }),
           ],
           warnings: [],
         },
       ]),
-      "activation_run",
+      "activate_experiment_environment",
     );
     expect(result.status).toBe("generated");
     if (result.status !== "generated") return;
-    expect(result.script.ruleId).toBe("docker-runtime-activation-v1");
+    expect(result.script.ruleId).toBe("docker-activate-experiment-environment-v1");
     expect(result.script.application).toBe("confirmation_required");
   });
 
@@ -186,7 +186,7 @@ describe("selectCandidate — run scaffolds", () => {
     const result = selectCandidate(
       report([
         {
-          target: { kind: "activation_run" },
+          target: { kind: "activate_experiment_environment" },
           candidates: [],
           warnings: [
             {
@@ -198,7 +198,7 @@ describe("selectCandidate — run scaffolds", () => {
           ],
         },
       ]),
-      "activation_run",
+      "activate_experiment_environment",
     );
     expect(result.status).toBe("not_inferred");
     if (result.status !== "not_inferred") return;
@@ -222,12 +222,15 @@ describe("selectCandidate — run scaffolds", () => {
     const result = selectCandidate(
       report([
         {
-          target: { kind: "activation_run" },
-          candidates: [candidate(), candidate({ inference_rule: "venv-runtime-activation-v1" })],
+          target: { kind: "activate_experiment_environment" },
+          candidates: [
+            candidate(),
+            candidate({ inference_rule: "venv-activate-experiment-environment-v1" }),
+          ],
           warnings: [],
         },
       ]),
-      "activation_run",
+      "activate_experiment_environment",
     );
     if (result.status !== "generated") throw new Error("expected generated");
     expect(result.script.alternativeCount).toBe(2);
@@ -239,15 +242,22 @@ describe("selectTrace / selectDag", () => {
     const rep = report(
       [
         {
-          target: { kind: "activation_run" },
+          target: { kind: "activate_experiment_environment" },
           candidates: [],
           warnings: [],
-          decision: { dag: "activation-run-inference" },
+          decision: { dag: "activate-experiment-environment-inference" },
         },
       ],
-      [{ key: "activation-run-inference" }, { key: "build-experiment-environment-inference" }],
+      [
+        { key: "activate-experiment-environment-inference" },
+        { key: "build-experiment-environment-inference" },
+      ],
     );
-    expect(selectTrace(rep, "activation_run")?.dag).toBe("activation-run-inference");
-    expect(selectDag(rep, "activation_run")?.key).toBe("activation-run-inference");
+    expect(selectTrace(rep, "activate_experiment_environment")?.dag).toBe(
+      "activate-experiment-environment-inference",
+    );
+    expect(selectDag(rep, "activate_experiment_environment")?.key).toBe(
+      "activate-experiment-environment-inference",
+    );
   });
 });

@@ -134,10 +134,7 @@ test.describe("REE pip pipeline", () => {
     });
 
     await test.step("test activation", async () => {
-      await testActivation(
-        page,
-        commandScript("python -c \"import pandas; print('activation ok')\""),
-      );
+      await testActivation(page);
     });
 
     await test.step("run experiment", async () => {

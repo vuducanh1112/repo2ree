@@ -107,7 +107,7 @@ export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, Eviden
   [PAGE.EVALUATE]: "evaluation",
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experiment_environment",
   [PAGE.SBOM]: "sbom",
-  [PAGE.ACTIVATION]: "test_activation",
+  [PAGE.ACTIVATION]: "activation",
 };
 
 // Doneness is a property of the REE, not of this browser session: every step

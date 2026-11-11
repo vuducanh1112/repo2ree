@@ -18,7 +18,8 @@ def test_an_experiment_run_as_a_job_is_sealed_and_downloaded(client: Client, new
     client.upload_source(ree_id, F)
     assert client.evaluate(ree_id).status == "succeeded"
     assert client.build_experiment_environment(ree_id, F).status == "succeeded"
-    assert client.activate(ree_id, F).status == "succeeded"
+    activation = client.activate(ree_id, F)
+    assert activation.status == "succeeded", client.logs(ree_id, activation)
     run = client.run_experiment(ree_id, F)
     logs = client.logs(ree_id, run)
     assert run.status == "succeeded", logs

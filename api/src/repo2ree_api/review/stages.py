@@ -123,7 +123,7 @@ def start_build_review(
     responses=ERROR_RESPONSES,
 )
 def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPayload) -> RunSummary:
-    """Probe whether the experiment environment this attempt certified is inhabitable.
+    """Run the author's activation alone in the experiment environment this attempt certified.
 
     Takes no ``basis``, unlike the two steps before it: activation runs in the
     workspace the build left behind and inherits what that evidence is worth

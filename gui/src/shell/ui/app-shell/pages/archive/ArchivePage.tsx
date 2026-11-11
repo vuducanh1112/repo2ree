@@ -80,7 +80,7 @@ export function PageArchive({
 
   const buildDone = isAuditCurrent(ree.audit, "experiment_environment");
   const sbomDone = isAuditCurrent(ree.audit, "sbom");
-  const activationDone = isAuditCurrent(ree.audit, "test_activation");
+  const activationDone = isAuditCurrent(ree.audit, "activation");
   const capstoneReady = buildDone && sbomDone && activationDone;
   const isSealed = !!artifactStatus.sealedAt;
   const depositedAnywhere = ["swh", "zenodo", "dataverse"].some((key) =>

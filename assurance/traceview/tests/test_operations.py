@@ -28,7 +28,7 @@ def test_the_baseline_is_each_steps_standing_before_the_first_capture() -> None:
     assert trace_of(recorded()).baseline == {
         "experiment_environment": "not_applicable",
         "sbom": "not_applicable",
-        "test_activation": "missing",
+        "activation": "missing",
     }
 
 
@@ -177,7 +177,7 @@ def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it()
         ("lifecycle", "lifecycle"),
         ("receipt", "experiment_environment"),
         ("receipt", "sbom"),
-        ("receipt", "test_activation"),
+        ("receipt", "activation"),
     ]
     steps = [(step.operation, step.moved) for step in history.steps]
     # Creation moves nothing yet; a new experiment environment makes the SBOM made from the old one stale in the same
@@ -189,5 +189,5 @@ def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it()
         "lifecycle": "sealed",
         "experiment_environment": "current",
         "sbom": "current",
-        "test_activation": "missing",
+        "activation": "missing",
     }

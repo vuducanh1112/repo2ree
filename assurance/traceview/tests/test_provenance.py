@@ -45,16 +45,16 @@ def test_each_step_is_traced_to_the_operation_that_last_produced_it() -> None:
     provenance = build_provenance(trace_of(recorded(sealed=True)))
     assert provenance is not None
     origins = {origin.step: origin for origin in provenance.steps}
-    assert provenance.standing == {"experiment_environment": "current", "sbom": "current", "test_activation": "missing"}
+    assert provenance.standing == {"experiment_environment": "current", "sbom": "current", "activation": "missing"}
     # Experiment environment went stale and was rebuilt: its receipt is the first build's, refreshed in place.
     assert origins["experiment_environment"].produced_by == "build_experiment_environment"
     assert origins["experiment_environment"].later == (
         "current → stale by authoring",
         "stale → current by build_experiment_environment",
     )
-    assert origins["test_activation"].change is None
+    assert origins["activation"].change is None
     # Declared from the start, and never run.
-    assert origins["test_activation"].history == ("missing",)
+    assert origins["activation"].history == ("missing",)
     assert provenance.after_seal == 0
 
 
@@ -86,7 +86,7 @@ def test_provenance_renders_as_a_tree() -> None:
     assert provenance is not None
     text = render_text(provenance)
     assert "SEALED @c8000000" in text
-    assert "└─ test_activation" in text
+    assert "└─ activation" in text
     assert "never produced: missing" in text
     tree = text.split("\n[git]")[0]  # Above the legend.
     assert "✗" not in tree

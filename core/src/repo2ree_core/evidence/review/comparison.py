@@ -2,8 +2,8 @@
 
 What settles a verdict differs per step, because the certifiable property does:
 source by SWHID identity, build by experiment environment digest then SBOM closure, experiments
-by the author's own verify script. Activation has no comparison at all — the
-reviewer's probe is the whole claim, recorded as an ``ActivationOutcome`` rather
+by the author's own verify script. Activation has no comparison at all — whether
+the reviewer's activation hands over is the whole claim, recorded as an ``ActivationOutcome`` rather
 than a comparison to keep that visible in the type.
 
 The rationale for each is in ``docs/engineering/explanation/review-evidence.md``.

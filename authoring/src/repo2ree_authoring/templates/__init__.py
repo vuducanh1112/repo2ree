@@ -2,7 +2,7 @@
 
 Each template is a dedicated ``.sh`` file shipped inside this package — the
 single source of truth for the starter content authors (human or workbench) work
-from. The build, activate and test activation templates are seeded into the overlay at REE
+from. The build and activate templates are seeded into the overlay at REE
 creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the per-experiment run
 and verify templates cannot be seeded (their paths only exist once an
 experiment is named), so the API serves them for clients to prefill from.
@@ -56,7 +56,6 @@ def reserved_script_template(reserved_path: str, workbench_environment: Workbenc
     catalogs = {
         "build_experiment_environment.sh": build_templates,
         "activate_experiment_environment.sh": activate_experiment_environment_templates,
-        "test_activation.sh": activation_templates,
     }
     templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
     return next(
@@ -106,18 +105,6 @@ def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
             description="Restore the packed virtual environment and run the given command with it on the path.",
             body=_template("activate_experiment_environment_venv.sh"),
             workbench_environment="host",
-        ),
-    )
-
-
-def activation_templates() -> tuple[ScriptTemplate, ...]:
-    """The test activation templates: a command run inside the activated experiment environment."""
-    return (
-        ScriptTemplate(
-            key="command",
-            label="Command",
-            description="Run a command inside the activated experiment environment that shows it works.",
-            body=_template("test_activation.sh"),
         ),
     )
 

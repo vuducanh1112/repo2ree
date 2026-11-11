@@ -69,6 +69,6 @@ def test_author_receipts_cross_as_a_typed_document(
         "experiment_environment": None,
         "sbom": None,
         "sbom_cross_check": None,
-        "test_activation": None,
+        "activation": None,
         "experiments": {},
     }

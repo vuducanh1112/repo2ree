@@ -194,7 +194,7 @@ export interface paths {
          * @description Starter templates for the REE-owned scripts and where each belongs.
          *
          *     Static per deployment. Each section marks the default entry for each
-         *     environment with ``is_default``; the default build and activation templates
+         *     environment with ``is_default``; the default build and activate experiment environment templates
          *     are the content a fresh REE in that environment is seeded with. The experiment
          *     templates are for scripts created on demand under the reserved experiments
          *     directory. For scripts fitted to the REE's own project, use
@@ -830,7 +830,7 @@ export interface paths {
         put?: never;
         /**
          * Start Activation Review
-         * @description Probe whether the experiment environment this attempt certified is inhabitable.
+         * @description Run the author's activation alone in the experiment environment this attempt certified.
          *
          *     Takes no ``basis``, unlike the two steps before it: activation runs in the
          *     workspace the build left behind and inherits what that evidence is worth
@@ -1166,10 +1166,10 @@ export interface components {
         ActivationOutcome: {
             /**
              * Policy
-             * @default activation-probe
+             * @default activation
              * @constant
              */
-            policy: "activation-probe";
+            policy: "activation";
             /**
              * Basis
              * @enum {string}
@@ -1182,28 +1182,51 @@ export interface components {
             verdict: "passed" | "failed";
             /** Experiment Environment Digest */
             experiment_environment_digest?: string | null;
-            /** Run Exit Code */
-            run_exit_code?: number | null;
-            /** Verify Exit Code */
-            verify_exit_code?: number | null;
+            /** Exit Code */
+            exit_code?: number | null;
         };
         /**
-         * ActivationScriptTemplates
-         * @description The activation run-script templates and both reserved activation paths.
-         *
-         *     The default template for an environment (``is_default``) is the content a
-         *     fresh REE's activation script there is seeded with. ``verify_script_path`` is where an
-         *     activation verify script belongs when the author writes one; declaring it
-         *     on the intent is an explicit act (a declared verify script must exist and
-         *     pass).
+         * ActivationReceipt
+         * @description The activate experiment environment script ran a command that does nothing, which exited 0.
          */
-        ActivationScriptTemplates: {
-            /** Run Script Path */
-            run_script_path: string;
-            /** Verify Script Path */
-            verify_script_path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
+        ActivationReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Operation
+             * @default activation_test
+             * @constant
+             */
+            operation: "activation_test";
+            /** Snapshot Digest */
+            snapshot_digest: string;
+            /** Experiment Environment Path */
+            experiment_environment_path?: string | null;
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
+            /** Activate Experiment Environment Script Digest */
+            activate_experiment_environment_script_digest: string;
+            /**
+             * Exit Code
+             * @default 0
+             * @constant
+             */
+            exit_code: 0;
+            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
         };
         /**
          * ArchiveBindingAttestation
@@ -1601,7 +1624,7 @@ export interface components {
         };
         /**
          * CreateActivationTestRunPayload
-         * @description Run the reserved activation script. Takes no parameters of its own.
+         * @description Run the activate experiment environment script alone. Takes no parameters of its own.
          */
         CreateActivationTestRunPayload: {
             /** Idempotency Key */
@@ -2956,7 +2979,7 @@ export interface components {
             experiment_environment: components["schemas"]["StepAudit"];
             sbom: components["schemas"]["StepAudit"];
             sbom_cross_check: components["schemas"]["StepAudit"];
-            test_activation: components["schemas"]["StepAudit"];
+            activation: components["schemas"]["StepAudit"];
             /**
              * Experiments
              * @default []
@@ -3035,7 +3058,6 @@ export interface components {
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
-            test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
@@ -3055,7 +3077,6 @@ export interface components {
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
-            test_activation?: components["schemas"]["TestActivationDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
@@ -3169,7 +3190,7 @@ export interface components {
             experiment_environment?: components["schemas"]["BuildExperimentEnvironmentReceipt"] | null;
             sbom?: components["schemas"]["GenerateSbomReceipt"] | null;
             sbom_cross_check?: components["schemas"]["CrossCheckSbomReceipt"] | null;
-            test_activation?: components["schemas"]["TestActivationReceipt"] | null;
+            activation?: components["schemas"]["ActivationReceipt"] | null;
             /** Experiments */
             experiments?: {
                 [key: string]: components["schemas"]["RunExperimentReceipt"];
@@ -3394,7 +3415,10 @@ export interface components {
             /** Observed Swhid */
             observed_swhid?: string | null;
         };
-        /** ReviewActivationReceipt */
+        /**
+         * ReviewActivationReceipt
+         * @description The author's activation, run alone in the review's workspace around a command that does nothing.
+         */
         ReviewActivationReceipt: {
             /**
              * Schema Version
@@ -3419,24 +3443,14 @@ export interface components {
             status: "succeeded" | "failed";
             /**
              * Operation
-             * @default test_activation
+             * @default activation_test
              * @constant
              */
-            operation: "test_activation";
+            operation: "activation_test";
             /** Activate Experiment Environment Script Digest */
             activate_experiment_environment_script_digest: string;
-            /** Run Script Path */
-            run_script_path: string;
-            /** Run Script Digest */
-            run_script_digest: string;
-            /** Verify Script Path */
-            verify_script_path?: string | null;
-            /** Verify Script Digest */
-            verify_script_digest?: string | null;
-            /** Run Exit Code */
-            run_exit_code?: number | null;
-            /** Verify Exit Code */
-            verify_exit_code?: number | null;
+            /** Exit Code */
+            exit_code?: number | null;
             /** Experiment Environment Path */
             experiment_environment_path: string;
             /** Experiment Environment Digest */
@@ -3808,7 +3822,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activate_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify";
             /** Experiment Name */
             experiment_name?: string | null;
             /** Path */
@@ -3827,7 +3841,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activate_experiment_environment" | "activation_run" | "activation_verify" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify";
             /** Experiment Name */
             experiment_name?: string | null;
         };
@@ -3835,7 +3849,6 @@ export interface components {
         ScriptTemplateCatalog: {
             build_experiment_environment: components["schemas"]["BuildExperimentEnvironmentScriptTemplates"];
             activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentScriptTemplates"];
-            activation: components["schemas"]["ActivationScriptTemplates"];
             experiment: components["schemas"]["ExperimentScriptTemplates"];
             /** Verify */
             verify: components["schemas"]["ScriptTemplateEntry"][];
@@ -4141,70 +4154,6 @@ export interface components {
             /** Warnings */
             warnings?: components["schemas"]["InferenceWarning"][];
             decision: components["schemas"]["DecisionTrace"];
-        };
-        /** TestActivationDefinition */
-        TestActivationDefinition: {
-            /**
-             * Run Script Path
-             * @default ree-scripts/test_activation.sh
-             */
-            run_script_path: string;
-            /** Run Script Digest */
-            run_script_digest: string;
-            /** Run Script Size */
-            run_script_size: number;
-            /** Verify Script Path */
-            verify_script_path?: string | null;
-            /** Verify Script Digest */
-            verify_script_digest?: string | null;
-            /** Verify Script Size */
-            verify_script_size?: number | null;
-        };
-        /** TestActivationReceipt */
-        TestActivationReceipt: {
-            /**
-             * Schema Version
-             * @default 1
-             * @constant
-             */
-            schema_version: 1;
-            /** Run Id */
-            run_id: string;
-            /** Started At */
-            started_at: string;
-            /** Finished At */
-            finished_at: string;
-            /** Duration Ms */
-            duration_ms: number;
-            /** Recorded At */
-            recorded_at: string;
-            /**
-             * Operation
-             * @default test_activation
-             * @constant
-             */
-            operation: "test_activation";
-            /** Snapshot Digest */
-            snapshot_digest: string;
-            /** Experiment Environment Path */
-            experiment_environment_path?: string | null;
-            /** Experiment Environment Digest */
-            experiment_environment_digest?: string | null;
-            /** Activate Experiment Environment Script Digest */
-            activate_experiment_environment_script_digest: string;
-            /** Run Script Digest */
-            run_script_digest: string;
-            /** Verify Script Digest */
-            verify_script_digest?: string | null;
-            /**
-             * Run Exit Code
-             * @default 0
-             * @constant
-             */
-            run_exit_code: 0;
-            /** Verify Exit Code */
-            verify_exit_code?: 0 | null;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
         };
         /** Threat */
         Threat: {

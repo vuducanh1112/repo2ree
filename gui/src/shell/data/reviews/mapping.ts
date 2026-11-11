@@ -85,8 +85,7 @@ function mapActivationOutcome(wire: ActivationOutcomeWire): ReviewActivationOutc
     basis: wire.basis,
     verdict: wire.verdict,
     experimentEnvironmentDigest: wire.experiment_environment_digest ?? undefined,
-    runExitCode: wire.run_exit_code ?? undefined,
-    verifyExitCode: wire.verify_exit_code ?? undefined,
+    exitCode: wire.exit_code ?? undefined,
   };
 }
 

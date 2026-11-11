@@ -14,7 +14,7 @@ export type EvidenceStep =
   | "experiment_environment"
   | "sbom"
   | "sbom_cross_check"
-  | "test_activation";
+  | "activation";
 
 export type StepEvidence = Partial<Record<EvidenceStep, EvidenceStatus>>;
 
@@ -42,7 +42,7 @@ export interface ReeAudit {
   experiment_environment?: StepAudit | EvidenceStatus;
   sbom?: StepAudit | EvidenceStatus;
   sbom_cross_check?: StepAudit | EvidenceStatus;
-  test_activation?: StepAudit | EvidenceStatus;
+  activation?: StepAudit | EvidenceStatus;
   experiments?: ExperimentAudit[];
 }
 
@@ -53,7 +53,7 @@ const EVIDENCE_STEPS: readonly EvidenceStep[] = [
   "experiment_environment",
   "sbom",
   "sbom_cross_check",
-  "test_activation",
+  "activation",
 ];
 
 const EVIDENCE_STATUSES: readonly EvidenceStatus[] = [

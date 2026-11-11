@@ -36,7 +36,7 @@ from httpx import Client as TestClient
 from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
 
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
-ACTIVATION_SCRIPT = "ree-scripts/test_activation.sh"
+ACTIVATE_SCRIPT = "ree-scripts/activate_experiment_environment.sh"
 EXPERIMENT_NAME = "demo"
 EXPERIMENT_SCRIPT = f"ree-scripts/experiments/{EXPERIMENT_NAME}.sh"
 EXPERIMENT_ENVIRONMENT_ARTIFACT = "runtime.tar"
@@ -219,10 +219,9 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     filmstrip.frame(ree_id, "sbom cross-check")
 
-    # --- activation: does the experiment environment come up at all ---------------------
-    _put_file(client, ree_id, ACTIVATION_SCRIPT, "#!/bin/sh\nset -eu\ntar -tf runtime.tar > /dev/null\n")
-    _patch_definition(client, ree_id, {"test_activation": {}})
-    filmstrip.frame(ree_id, "declare activation")
+    # --- activation: does it enter the experiment environment and hand over ---------------
+    _put_file(client, ree_id, ACTIVATE_SCRIPT, '#!/bin/sh\nset -eu\ntar -tf runtime.tar > /dev/null\nexec "$@"\n')
+    filmstrip.frame(ree_id, "write activation")
     _stage(client, ree_id, "activation-test", {}, what="activation")
 
     filmstrip.frame(ree_id, "activation")
@@ -292,10 +291,10 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     assert receipts["source"] is not None
     assert receipts["evaluation"] is not None
     assert receipts["hardware_observation"] is not None
-    assert receipts["build_experiment_environment"] is not None
+    assert receipts["experiment_environment"] is not None
     assert receipts["sbom"] is not None
     assert receipts["sbom_cross_check"] is not None
-    assert receipts["test_activation"] is not None
+    assert receipts["activation"] is not None
     assert EXPERIMENT_NAME in receipts["experiments"]
 
     response = client.get(f"/api/v1/rees/{ree_id}/ree-archive")

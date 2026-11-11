@@ -191,6 +191,8 @@ export const CanvasHub = memo(function CanvasHub({
                   receipts: authorReceipts,
                   buildExperimentEnvironmentScriptPath:
                     scriptTemplates?.build_experiment_environment.path,
+                  activateExperimentEnvironmentScriptPath:
+                    scriptTemplates?.activate_experiment_environment.path,
                   crossCheck: latestCrossCheckSummary(runs ?? []),
                 });
                 return (

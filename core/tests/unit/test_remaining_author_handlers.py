@@ -16,8 +16,14 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import DeleteFileArgs, PatchReeDefinitionArgs, WriteFileArgs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM, CPUDefinition
-from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
-from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
+from repo2ree_ree.model import (
+    ActivateExperimentEnvironmentDefinition,
+    ExperimentEnvironmentDefinition,
+    Ree,
+    ReeDefinition,
+    ReeSubject,
+    SourceDefinition,
+)
 from repo2ree_ree.primitives import ArtifactPath, ReePath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
@@ -27,14 +33,14 @@ from repo2ree_ree.receipt import (
     WorkspaceDrift,
 )
 from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
     experiment_run_script_path,
 )
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _BUILD = b"#!/bin/sh\nexit 0\n"
-_ACTIVATION = b"#!/bin/sh\nexit 0\n"
+_ACTIVATE = b'#!/bin/sh\nexec "$@"\n'
 _EXPERIMENT_ENVIRONMENT = b"experiment_environment"
 _SNAPSHOT = digest_bytes(b"snapshot")
 _REPORT = {
@@ -80,9 +86,9 @@ def _ree() -> Ree:
                     build_experiment_environment_script_digest=digest_bytes(_BUILD),
                     build_experiment_environment_script_size=len(_BUILD),
                 ),
-                test_activation=ActivationDefinition(
-                    run_script_digest=digest_bytes(_ACTIVATION),
-                    run_script_size=len(_ACTIVATION),
+                activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+                    activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE),
+                    activate_experiment_environment_script_size=len(_ACTIVATE),
                 ),
             )
         )
@@ -99,8 +105,8 @@ def _workbench(
     store.ensure_dirs()
     store.overlay.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
     store.workspace.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
-    store.overlay.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, _ACTIVATION)
-    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, _ACTIVATION)
+    store.overlay.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE)
+    store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE)
     store.write_ree(ree or _ree())
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store

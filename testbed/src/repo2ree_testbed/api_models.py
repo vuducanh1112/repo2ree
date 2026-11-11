@@ -24,8 +24,6 @@ Evidence = Literal["missing", "current", "stale", "not_applicable"]
 ScriptKind = Literal[
     "build_experiment_environment",
     "activate_experiment_environment",
-    "activation_run",
-    "activation_verify",
     "experiment_run",
     "experiment_verify",
 ]
@@ -151,7 +149,7 @@ class Audit(_Response):
     experiment_environment: StepAudit
     sbom: StepAudit
     sbom_cross_check: StepAudit
-    test_activation: StepAudit
+    activation: StepAudit
 
 
 class ReeState(_Response):

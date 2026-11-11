@@ -71,13 +71,14 @@ class ExperimentRunOutcome:
 
 def _run_script(
     workspace: Path,
-    script_rel: str,
+    script_rel: str | None,
     log: LogSink,
     is_canceled: CancelCheck,
     activate_rel: str | None = None,
 ) -> StepOutcome:
-    """Validate a runnable's script path, then run it via the shared runner."""
-    validate_relative_path(script_rel)
+    """Validate a runnable's script path, then run it via the shared runner; with none, the activation alone."""
+    if script_rel is not None:
+        validate_relative_path(script_rel)
     return run_workspace_script(workspace, script_rel, log=log, is_canceled=is_canceled, activate_rel=activate_rel)
 
 
@@ -97,7 +98,8 @@ def run_runnable(
 ) -> ExperimentRunOutcome:
     """Run *runnable*'s run script, then its verify script when declared.
 
-    Shared by experiments and activation through their executable projection.
+    Shared by experiments and the activation through their executable projection; the activation
+    has no run script, and runs alone.
     """
     workspace = workspace.resolve()
 
@@ -105,14 +107,16 @@ def run_runnable(
 
     log("system", "info", f"Starting run {run_id}")
     log("system", "info", f"Subject: {label!r}")
-    log("system", "info", f"Run script: {runnable.run_script}")
+    log("system", "info", f"Run script: {runnable.run_script or '(none: the activation alone)'}")
 
     record_current_span_facts({"runnable.subject": label})
 
     try:
         with tracer.start_as_current_span("runnable.run") as span:
-            ScriptSpanAttrs(path=runnable.run_script).apply(span)
-            run_outcome = _run_script(workspace, runnable.run_script, log, is_canceled, runnable.activate_script)
+            ScriptSpanAttrs(path=runnable.run_script or runnable.activate_script).apply(span)
+            run_outcome = _run_script(
+                workspace, runnable.run_script or None, log, is_canceled, runnable.activate_script
+            )
             record_exit_code(span, run_outcome.exit_code)
     except Exception as exc:  # noqa: BLE001 — the experiment's own failure is the result being recorded, not an error to raise
         log("system", "error", f"Run failed: {exc}")

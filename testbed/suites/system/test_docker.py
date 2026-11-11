@@ -38,7 +38,7 @@ def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[
     api.author(ree_id, FIXTURE)
 
     audit = api.audit(ree_id)
-    for step in ("source", "evaluation", "hardware", "experiment_environment", "test_activation"):
+    for step in ("source", "evaluation", "hardware", "experiment_environment", "activation"):
         assert audit[step]["evidence"] == "current", (step, audit[step])
     assert [(item["name"], item["run"]["evidence"]) for item in audit["experiments"]] == [
         (FIXTURE.experiment, "current")

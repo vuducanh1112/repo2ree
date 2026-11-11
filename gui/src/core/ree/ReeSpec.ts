@@ -65,8 +65,8 @@ export interface ExperimentResourceEstimates {
   network: string;
 }
 
-// A Runnable is anything executed inside the runtime: an experiment or the
-// REE's activation. Each owns a run script — a workspace-relative shell script
+// A Runnable is an experiment: what is executed inside the experiment environment.
+// Each owns a run script — a workspace-relative shell script
 // that fully defines how it executes (e.g. its own `docker run …`) — and an
 // optional verify script that checks the run's results afterwards: a plain
 // script run from the workspace root after the run script, with nothing
@@ -88,12 +88,10 @@ export interface ReeExperiment extends ReeRunnable {
   name: string;
 }
 
-export type ReeActivation = ReeRunnable;
-
-// Reserved script paths are backend-owned: the intent arrives with activation
-// and experiment run-script paths already settled by the backend, and the
-// remaining paths (build script, activation verify, unsaved experiment
-// scripts) come from GET /script-templates — see shell/data/scriptTemplates.
+// Reserved script paths are backend-owned: the intent arrives with experiment
+// run-script paths already settled by the backend, and the remaining paths
+// (build and activate scripts, unsaved experiment scripts) come from
+// GET /script-templates — see shell/data/scriptTemplates.
 
 // ================================================
 // REE types
@@ -147,7 +145,6 @@ export interface ReeSpec {
   experimentEnvironmentPath: string;
   /** Null until the REE declares one; set when its workbench is set up. */
   workbenchEnvironment: WorkbenchEnvironment | null;
-  activation: ReeActivation;
   sbom: string;
   /** Intrinsic content identity of the acquired source tree. Not an archival
    *  claim: deposit identifiers name a deposit of a sealed REE and live in
@@ -194,19 +191,6 @@ export function createEmptyReeExperiment(): ReeExperiment {
   };
 }
 
-export function createEmptyReeActivation(): ReeActivation {
-  return {
-    description: "",
-    // Empty is safe to send: the backend normalizes an empty activation
-    // run script back to its reserved path.
-    runScript: "",
-    verifyScript: "",
-    outputPaths: [],
-    runtimeEstimate: "",
-    resourceEstimates: createEmptyExperimentResourceEstimates(),
-  };
-}
-
 /** The source-identity ReeSpec fields, zeroed — one definition every
  *  clear/switch path spreads in, so a newly added identity field can't be
  *  cleared in one path and forgotten in another.
@@ -231,7 +215,6 @@ export function createEmptyReeSpec(): ReeSpec {
     resolvedRevision: "",
     experimentEnvironmentPath: "",
     workbenchEnvironment: null,
-    activation: createEmptyReeActivation(),
     sbom: "",
     swhid: "",
     experiments: [],

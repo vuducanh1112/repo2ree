@@ -138,7 +138,7 @@ hardware = ["generate_hbom", "load_ree_bundle"]
 experiment_environment = ["build_experiment_environment", "load_ree_bundle"]
 sbom = ["generate_sbom", "load_ree_bundle"]
 sbom_cross_check = ["cross_check_sbom", "load_ree_bundle"]
-test_activation = ["activation_test", "load_ree_bundle"]
+activation = ["activation_test", "load_ree_bundle"]
 experiment = ["run_experiment", "load_ree_bundle"]
 
 [[invariant]]

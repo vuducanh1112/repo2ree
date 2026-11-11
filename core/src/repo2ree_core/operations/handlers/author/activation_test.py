@@ -1,4 +1,4 @@
-"""Run the REE's dedicated activation test against current evidence."""
+"""Run the REE's activation alone, around a command that does nothing, against current evidence."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def handle_activation_test(
     is_canceled: CancelCheck,
 ) -> ActionResult:
     return handle_runnable_operation(
-        "test_activation",
+        "activation_test",
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,

@@ -275,7 +275,7 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
     created = [
         ("experiment_environment", None, "not_applicable", "baseline"),
         ("sbom", None, "not_applicable", "baseline"),
-        ("test_activation", None, "missing", "baseline"),
+        ("activation", None, "missing", "baseline"),
     ]
     s.commit(1, None, "initialize_ree", "", created, (None, "draft"))
     declared = [

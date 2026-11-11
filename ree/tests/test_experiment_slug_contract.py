@@ -42,8 +42,8 @@ def test_reserved_script_paths_are_built_from_the_slug(case: dict[str, str]) -> 
     ("path", "allowed"),
     [
         ("ree-scripts/build_experiment_environment.sh", True),
-        ("ree-scripts/test_activation.sh", True),
-        ("ree-scripts/test_activation.verify.sh", True),
+        ("ree-scripts/activate_experiment_environment.sh", True),
+        ("ree-scripts/test_activation.sh", False),
         ("ree-scripts/experiments/train-model.sh", True),
         ("ree-scripts/experiments/train-model.verify.sh", True),
         ("ree-scripts/helper.sh", False),

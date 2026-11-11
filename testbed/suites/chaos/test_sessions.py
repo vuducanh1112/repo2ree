@@ -21,7 +21,6 @@ import httpx
 import pytest
 from system_client import (
     ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    ACTIVATION_SCRIPT,
     BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     EXPERIMENT,
     EXPERIMENT_ENVIRONMENT,
@@ -130,8 +129,7 @@ class Session:
         return str(self.api.wait(self.ree_id, run)["status"])
 
     def activate(self) -> str:
-        self.write(ACTIVATION_SCRIPT, recipe("test_activation.sh"))
-        self.patch({"test_activation": {}})
+        self.write(ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, recipe("activate_experiment_environment.sh"))
         return self.stage("activation-test")
 
     def experiment(self) -> str:

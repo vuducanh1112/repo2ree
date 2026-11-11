@@ -116,15 +116,7 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
             "generated script points at the path the venv was built at before running."
         ),
     ),
-    # --- activation / experiment command ---
-    "activation_command_missing": (
-        "warning",
-        True,
-        (
-            "No activation command was selected; edit the 'set --' line to define a finite command that "
-            "proves the experiment environment is usable before running activation."
-        ),
-    ),
+    # --- experiment command ---
     "experiment_command_missing": (
         "warning",
         True,

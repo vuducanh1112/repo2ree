@@ -21,14 +21,16 @@ from repo2ree_ree.model import (
     ReeDefinition,
     ReeSubject,
 )
-from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import (
+    AcquireSourceReceipt,
+    ActivationReceipt,
+    BuildExperimentEnvironmentReceipt,
+    WorkspaceDrift,
+)
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -38,8 +40,6 @@ _SNAPSHOT = digest_bytes(b"snapshot")
 _EXPERIMENT_ENVIRONMENT = b"experiment_environment"
 _BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = b"#!/bin/sh\nexit 0\n"
 _ACTIVATE_SCRIPT = b'#!/bin/sh\nexec "$@"\n'
-_ACTIVATION_SCRIPT = b"#!/bin/sh\nexit 0\n"
-_ACTIVATION_VERIFY = b"#!/bin/sh\nexit 0\n"
 _EXPERIMENT_SCRIPT = b"#!/bin/sh\nprintf result > outputs/result.txt\n"
 _EXPERIMENT_VERIFY = b"#!/bin/sh\ntest -f outputs/result.txt\n"
 _EXPERIMENT_NAME = "demo"
@@ -74,13 +74,17 @@ def _build_receipt() -> BuildExperimentEnvironmentReceipt:
     )
 
 
-def _activation_definition(*, verify: bool = True) -> ActivationDefinition:
-    return ActivationDefinition(
-        run_script_digest=digest_bytes(_ACTIVATION_SCRIPT),
-        run_script_size=len(_ACTIVATION_SCRIPT),
-        verify_script_path=ReePath(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT) if verify else None,
-        verify_script_digest=digest_bytes(_ACTIVATION_VERIFY) if verify else None,
-        verify_script_size=len(_ACTIVATION_VERIFY) if verify else None,
+def _activation_receipt(*, experiment_environment: bool = True, script: bytes = _ACTIVATE_SCRIPT) -> ActivationReceipt:
+    return ActivationReceipt(
+        run_id=RunId("activation-0"),
+        started_at=_NOW,
+        finished_at=_NOW,
+        duration_ms=0,
+        recorded_at=_NOW,
+        snapshot_digest=_SNAPSHOT,
+        experiment_environment_path=WorkspacePath("runtime.tar") if experiment_environment else None,
+        experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT) if experiment_environment else None,
+        activate_experiment_environment_script_digest=digest_bytes(script),
     )
 
 
@@ -102,7 +106,8 @@ def _ree(
     source: bool = True,
     experiment_environment: bool = True,
     build: bool = True,
-    activation: bool = True,
+    activate: bool = True,
+    activated: bool = True,
     experiments: bool = True,
 ) -> Ree:
     definition = ReeDefinition(
@@ -115,11 +120,14 @@ def _ree(
             if experiment_environment
             else None
         ),
-        activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
-            activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE_SCRIPT),
-            activate_experiment_environment_script_size=len(_ACTIVATE_SCRIPT),
+        activate_experiment_environment=(
+            ActivateExperimentEnvironmentDefinition(
+                activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE_SCRIPT),
+                activate_experiment_environment_script_size=len(_ACTIVATE_SCRIPT),
+            )
+            if activate
+            else None
         ),
-        test_activation=_activation_definition() if activation else None,
         experiments=(_experiment_definition(),) if experiments else (),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
@@ -127,6 +135,8 @@ def _ree(
         ree = commit_receipt(ree, _source_receipt())
     if experiment_environment and build:
         ree = commit_receipt(ree, _build_receipt())
+    if source and activate and activated:
+        ree = commit_receipt(ree, _activation_receipt(experiment_environment=experiment_environment))
     return ree
 
 
@@ -139,8 +149,6 @@ def _workbench(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE_SCRIPT)
-    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, _ACTIVATION_SCRIPT)
-    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT, _ACTIVATION_VERIFY)
     store.workspace.write_bytes(experiment_run_script_path(_EXPERIMENT_NAME), _EXPERIMENT_SCRIPT)
     store.workspace.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
     store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
@@ -149,12 +157,12 @@ def _workbench(
     return layout, store
 
 
-def _outcome(status: str) -> ExperimentRunOutcome:
+def _outcome(status: str, *, verified: bool = True) -> ExperimentRunOutcome:
     if status == "succeeded":
         outputs = RunnableRunOutputs(
             subject_name="subject",
             exit_code=0,
-            verify_exit_code=0,
+            verify_exit_code=0 if verified else None,
             verdict="pass",
         )
     elif status == "canceled":
@@ -164,12 +172,22 @@ def _outcome(status: str) -> ExperimentRunOutcome:
     return ExperimentRunOutcome(status=status, run_outputs=outputs)  # type: ignore[arg-type]
 
 
-def test_activation_success_commits_exact_input_receipt(
+def _activate_alone(**kwargs: object) -> ExperimentRunOutcome:
+    return _outcome("succeeded", verified=False)
+
+
+def test_activation_runs_alone_and_commits_exact_input_receipt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _layout, store = _workbench(tmp_path, monkeypatch)
-    monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome("succeeded"))
+    _layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
+    ran: list[object] = []
+
+    def execute(**kwargs: object) -> ExperimentRunOutcome:
+        ran.append(kwargs["runnable"])
+        return _outcome("succeeded", verified=False)
+
+    monkeypatch.setattr(runnable, "run_runnable", execute)
 
     result = activation_test.handle_activation_test(
         run_id="activation-1",
@@ -177,25 +195,26 @@ def test_activation_success_commits_exact_input_receipt(
         is_canceled=lambda: False,
     )
 
-    receipt = store.read_ree().subject.receipts.test_activation
+    receipt = store.read_ree().subject.receipts.activation
     assert result.status == "succeeded"
+    assert [(spec.activate_script, spec.run_script, spec.verify_script) for spec in ran] == [  # type: ignore[attr-defined]
+        (RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "", "")
+    ]
     assert receipt is not None
     assert receipt.run_id == "activation-1"
     assert receipt.snapshot_digest == _SNAPSHOT
     assert receipt.experiment_environment_path == "runtime.tar"
     assert receipt.experiment_environment_digest == digest_bytes(_EXPERIMENT_ENVIRONMENT)
-    assert receipt.run_script_digest == digest_bytes(_ACTIVATION_SCRIPT)
-    assert receipt.verify_script_digest == digest_bytes(_ACTIVATION_VERIFY)
-    assert receipt.run_exit_code == 0
-    assert receipt.verify_exit_code == 0
+    assert receipt.activate_experiment_environment_script_digest == digest_bytes(_ACTIVATE_SCRIPT)
+    assert receipt.exit_code == 0
 
 
 def test_native_activation_has_no_experiment_environment_binding(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _layout, store = _workbench(tmp_path, monkeypatch, _ree(experiment_environment=False))
-    monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome("succeeded"))
+    _layout, store = _workbench(tmp_path, monkeypatch, _ree(experiment_environment=False, activated=False))
+    monkeypatch.setattr(runnable, "run_runnable", _activate_alone)
 
     result = activation_test.handle_activation_test(
         run_id="activation-native",
@@ -203,7 +222,7 @@ def test_native_activation_has_no_experiment_environment_binding(
         is_canceled=lambda: False,
     )
 
-    receipt = store.read_ree().subject.receipts.test_activation
+    receipt = store.read_ree().subject.receipts.activation
     assert result.status == "succeeded"
     assert receipt is not None
     assert receipt.experiment_environment_path is None
@@ -244,13 +263,54 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     assert (layout.results_dir(_EXPERIMENT_NAME) / "outputs/result.txt").read_bytes() == b"result"
 
 
+@pytest.mark.parametrize(
+    ("ree", "message"),
+    [
+        (_ree(activated=False), "the activation has not been tested"),
+        (
+            commit_receipt(_ree(), _activation_receipt(script=b'#!/bin/sh\nexec env "$@"\n')),
+            "activate experiment environment script changed",
+        ),
+    ],
+)
+def test_an_experiment_runs_only_while_the_activation_is_current(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    ree: Ree,
+    message: str,
+) -> None:
+    _layout, store = _workbench(tmp_path, monkeypatch, ree)
+    executed = False
+
+    def execute(**kwargs: object) -> ExperimentRunOutcome:
+        nonlocal executed
+        executed = True
+        return _outcome("succeeded")
+
+    monkeypatch.setattr(runnable, "run_runnable", execute)
+
+    result = run_experiment.handle_run_experiment(
+        RunExperimentArgs(experiment_name=_EXPERIMENT_NAME),
+        run_id="experiment-unactivated",
+        log=lambda *args: None,
+        is_canceled=lambda: False,
+    )
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "precondition"
+    assert message in result.failure.message
+    assert executed is False
+    assert store.read_ree().subject.receipts.experiments == {}
+
+
 @pytest.mark.parametrize("status", ["failed", "canceled"])
 def test_unsuccessful_attempt_commits_no_receipt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     status: str,
 ) -> None:
-    _layout, store = _workbench(tmp_path, monkeypatch)
+    _layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
     monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome(status))
 
     result = activation_test.handle_activation_test(
@@ -260,16 +320,16 @@ def test_unsuccessful_attempt_commits_no_receipt(
     )
 
     assert result.status == status
-    assert store.read_ree().subject.receipts.test_activation is None
+    assert store.read_ree().subject.receipts.activation is None
 
 
 @pytest.mark.parametrize(
     ("ree", "message"),
     [
         (_ree(source=False), "source has not been acquired"),
-        (_ree(build=False), "experiment environment has not been built"),
-        (_ree(activation=False), "no activation test is defined"),
-        (record_seal(_ree(), sealed_at=_NOW), "sealed REE"),
+        (_ree(build=False, activated=False), "experiment environment has not been built"),
+        (_ree(activate=False), "no activate experiment environment script is defined"),
+        (record_seal(_ree(activated=False), sealed_at=_NOW), "sealed REE"),
     ],
 )
 def test_activation_preconditions_reject_invalid_evidence_before_execution(
@@ -299,15 +359,15 @@ def test_activation_preconditions_reject_invalid_evidence_before_execution(
     assert result.failure.category == "precondition"
     assert message in result.failure.message
     assert executed is False
-    assert store.read_ree().subject.receipts.test_activation is None
+    assert store.read_ree().subject.receipts.activation is None
 
 
 def test_changed_script_is_rejected_before_execution(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _layout, store = _workbench(tmp_path, monkeypatch)
-    store.workspace.write_bytes(RESERVED_TEST_ACTIVATION_SCRIPT, b"changed")
+    _layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
+    store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, b"changed")
     executed = False
 
     def execute(**kwargs: object) -> ExperimentRunOutcome:
@@ -325,7 +385,7 @@ def test_changed_script_is_rejected_before_execution(
 
     assert result.status == "failed"
     assert result.failure is not None
-    assert "run script does not match its definition" in result.failure.message
+    assert "activate experiment environment script does not match its definition" in result.failure.message
     assert executed is False
 
 
@@ -361,8 +421,8 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _layout, store = _workbench(tmp_path, monkeypatch)
-    monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome("succeeded"))
+    _layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
+    monkeypatch.setattr(runnable, "run_runnable", _activate_alone)
 
     def conflict(*args: object, **kwargs: object) -> None:
         raise ReeRevisionConflictError("REE changed while activation ran")
@@ -379,4 +439,4 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure is not None
     assert result.failure.category == "conflict"
     assert result.failure.retryable is True
-    assert store.read_ree().subject.receipts.test_activation is None
+    assert store.read_ree().subject.receipts.activation is None

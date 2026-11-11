@@ -692,8 +692,8 @@
       "additionalProperties": false,
       "properties": {
         "policy": {
-          "const": "activation-probe",
-          "default": "activation-probe",
+          "const": "activation",
+          "default": "activation",
           "title": "Policy",
           "type": "string"
         },
@@ -725,7 +725,7 @@
           "default": null,
           "title": "Experiment Environment Digest"
         },
-        "run_exit_code": {
+        "exit_code": {
           "anyOf": [
             {
               "type": "integer"
@@ -735,19 +735,7 @@
             }
           ],
           "default": null,
-          "title": "Run Exit Code"
-        },
-        "verify_exit_code": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Exit Code"
+          "title": "Exit Code"
         }
       },
       "required": [
@@ -755,6 +743,108 @@
         "verdict"
       ],
       "title": "ActivationOutcome",
+      "type": "object"
+    },
+    "ActivationReceipt": {
+      "additionalProperties": false,
+      "description": "The activate experiment environment script ran a command that does nothing, which exited 0.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "activation_test",
+          "default": "activation_test",
+          "title": "Operation",
+          "type": "string"
+        },
+        "snapshot_digest": {
+          "title": "Snapshot Digest",
+          "type": "string"
+        },
+        "experiment_environment_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment Environment Path"
+        },
+        "experiment_environment_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment Environment Digest"
+        },
+        "activate_experiment_environment_script_digest": {
+          "title": "Activate Experiment Environment Script Digest",
+          "type": "string"
+        },
+        "exit_code": {
+          "const": 0,
+          "default": 0,
+          "title": "Exit Code",
+          "type": "integer"
+        },
+        "workbench_environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "snapshot_digest",
+        "activate_experiment_environment_script_digest"
+      ],
+      "title": "ActivationReceipt",
       "type": "object"
     },
     "ActivationTestArgs": {
@@ -5029,7 +5119,7 @@
         "sbom_cross_check": {
           "$ref": "#/$defs/StepAudit"
         },
-        "test_activation": {
+        "activation": {
           "$ref": "#/$defs/StepAudit"
         },
         "experiments": {
@@ -5048,7 +5138,7 @@
         "experiment_environment",
         "sbom",
         "sbom_cross_check",
-        "test_activation"
+        "activation"
       ],
       "title": "ReeAudit",
       "type": "object"
@@ -5151,17 +5241,6 @@
           "anyOf": [
             {
               "$ref": "#/$defs/WorkbenchEnvironment"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "test_activation": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/TestActivationDefinition"
             },
             {
               "type": "null"
@@ -5304,10 +5383,10 @@
           ],
           "default": null
         },
-        "test_activation": {
+        "activation": {
           "anyOf": [
             {
-              "$ref": "#/$defs/TestActivationReceipt"
+              "$ref": "#/$defs/ActivationReceipt"
             },
             {
               "type": "null"
@@ -5720,6 +5799,7 @@
     },
     "ReviewActivationReceipt": {
       "additionalProperties": false,
+      "description": "The author's activation, run alone in the review's workspace around a command that does nothing.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -5760,8 +5840,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "test_activation",
-          "default": "test_activation",
+          "const": "activation_test",
+          "default": "activation_test",
           "title": "Operation",
           "type": "string"
         },
@@ -5769,39 +5849,7 @@
           "title": "Activate Experiment Environment Script Digest",
           "type": "string"
         },
-        "run_script_path": {
-          "title": "Run Script Path",
-          "type": "string"
-        },
-        "run_script_digest": {
-          "title": "Run Script Digest",
-          "type": "string"
-        },
-        "verify_script_path": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Path"
-        },
-        "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Digest"
-        },
-        "run_exit_code": {
+        "exit_code": {
           "anyOf": [
             {
               "type": "integer"
@@ -5811,19 +5859,7 @@
             }
           ],
           "default": null,
-          "title": "Run Exit Code"
-        },
-        "verify_exit_code": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Exit Code"
+          "title": "Exit Code"
         },
         "experiment_environment_path": {
           "title": "Experiment Environment Path",
@@ -5842,8 +5878,6 @@
         "recorded_at",
         "status",
         "activate_experiment_environment_script_digest",
-        "run_script_path",
-        "run_script_digest",
         "experiment_environment_path",
         "experiment_environment_digest"
       ],
@@ -6726,7 +6760,7 @@
         "receipt": {
           "anyOf": [
             {
-              "$ref": "#/$defs/TestActivationReceipt"
+              "$ref": "#/$defs/ActivationReceipt"
             },
             {
               "$ref": "#/$defs/RunExperimentReceipt"
@@ -6843,8 +6877,6 @@
           "enum": [
             "build_experiment_environment",
             "activate_experiment_environment",
-            "activation_run",
-            "activation_verify",
             "experiment_run",
             "experiment_verify"
           ],
@@ -6883,8 +6915,6 @@
           "enum": [
             "build_experiment_environment",
             "activate_experiment_environment",
-            "activation_run",
-            "activation_verify",
             "experiment_run",
             "experiment_verify"
           ],
@@ -7587,199 +7617,6 @@
         "decision"
       ],
       "title": "TargetInferenceResult",
-      "type": "object"
-    },
-    "TestActivationDefinition": {
-      "additionalProperties": false,
-      "properties": {
-        "run_script_path": {
-          "default": "ree-scripts/test_activation.sh",
-          "title": "Run Script Path",
-          "type": "string"
-        },
-        "run_script_digest": {
-          "title": "Run Script Digest",
-          "type": "string"
-        },
-        "run_script_size": {
-          "minimum": 0,
-          "title": "Run Script Size",
-          "type": "integer"
-        },
-        "verify_script_path": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Path"
-        },
-        "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Digest"
-        },
-        "verify_script_size": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Size"
-        }
-      },
-      "required": [
-        "run_script_digest",
-        "run_script_size"
-      ],
-      "title": "TestActivationDefinition",
-      "type": "object"
-    },
-    "TestActivationReceipt": {
-      "additionalProperties": false,
-      "properties": {
-        "schema_version": {
-          "const": 1,
-          "default": 1,
-          "title": "Schema Version",
-          "type": "integer"
-        },
-        "run_id": {
-          "title": "Run Id",
-          "type": "string"
-        },
-        "started_at": {
-          "format": "date-time",
-          "title": "Started At",
-          "type": "string"
-        },
-        "finished_at": {
-          "format": "date-time",
-          "title": "Finished At",
-          "type": "string"
-        },
-        "duration_ms": {
-          "minimum": 0,
-          "title": "Duration Ms",
-          "type": "integer"
-        },
-        "recorded_at": {
-          "format": "date-time",
-          "title": "Recorded At",
-          "type": "string"
-        },
-        "operation": {
-          "const": "test_activation",
-          "default": "test_activation",
-          "title": "Operation",
-          "type": "string"
-        },
-        "snapshot_digest": {
-          "title": "Snapshot Digest",
-          "type": "string"
-        },
-        "experiment_environment_path": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Experiment Environment Path"
-        },
-        "experiment_environment_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Experiment Environment Digest"
-        },
-        "activate_experiment_environment_script_digest": {
-          "title": "Activate Experiment Environment Script Digest",
-          "type": "string"
-        },
-        "run_script_digest": {
-          "title": "Run Script Digest",
-          "type": "string"
-        },
-        "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Digest"
-        },
-        "run_exit_code": {
-          "const": 0,
-          "default": 0,
-          "title": "Run Exit Code",
-          "type": "integer"
-        },
-        "verify_exit_code": {
-          "anyOf": [
-            {
-              "const": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Exit Code"
-        },
-        "workbench_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        }
-      },
-      "required": [
-        "run_id",
-        "started_at",
-        "finished_at",
-        "duration_ms",
-        "recorded_at",
-        "snapshot_digest",
-        "activate_experiment_environment_script_digest",
-        "run_script_digest"
-      ],
-      "title": "TestActivationReceipt",
       "type": "object"
     },
     "TierStatus": {

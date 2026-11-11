@@ -32,14 +32,6 @@ export function useGenerateActivateExperimentEnvironmentScript(reeId?: string) {
 }
 
 /**
- * Run read-only inference for the activation-run scaffold and reduce it to the
- * script the build page loads plus its decision trace. Persists nothing.
- */
-export function useGenerateActivationScript(reeId?: string) {
-  return useGenerateScriptForTarget("activation_run", undefined, reeId);
-}
-
-/**
  * Run read-only inference for one experiment's run scaffold. The experiment
  * name selects the target; the returned body becomes a script only when saved.
  */

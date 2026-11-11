@@ -71,7 +71,7 @@ observe_hardware = "Record the hardware the REE runs on."
 build_experiment_environment = "Build the experiment environment with the build experiment environment script."
 generate_sbom = "List what the built experiment environment contains."
 cross_check_sbom = "Compare the declared dependencies with the SBOM."
-test_activation = "Check that the experiment environment activates."
+test_activation = "Run the activation alone: it enters the experiment environment and hands over."
 run_experiment = "Run one declared experiment and verify its outputs."
 
 [facts.action.groups.lifecycle]

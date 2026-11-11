@@ -1,10 +1,6 @@
 import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import { type EvaluationState, emptyEvaluationState } from "../evaluate/EvaluationState";
-import {
-  clearedSourceIdentityReeSpec,
-  createEmptyReeActivation,
-  type ReeSpec,
-} from "../ree/ReeSpec";
+import { clearedSourceIdentityReeSpec, type ReeSpec } from "../ree/ReeSpec";
 import type { ActionStates, Badges, ReeStepParams, Timestamps } from "../ree/ReeTypes";
 import type { WorkspaceSourceState } from "./WorkspaceSourceState";
 
@@ -37,7 +33,6 @@ export function computeSourceChangeConsequences(input: SourceChangeInput): Sourc
       ...input.reeSpec,
       ...clearedSourceIdentityReeSpec(),
       experimentEnvironmentPath: "",
-      activation: createEmptyReeActivation(),
       sbom: "",
       swhid: "",
     },

@@ -61,7 +61,7 @@ def write_review_activation_evidence(
     receipt: ReviewActivationReceipt,
     outcome: ActivationOutcome,
 ) -> None:
-    """Persist the activation probe beside the other steps' evidence.
+    """Persist the activation beside the other steps' evidence.
 
     Filed under ``comparisons/activation.json`` despite not being a comparison:
     the directory is the attempt's per-step verdict store, and giving activation

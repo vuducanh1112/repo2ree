@@ -281,19 +281,13 @@ def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_test_activation_step(subject: _Subject) -> StepAudit:
-    declared, receipt = subject.definition.test_activation, subject.receipts.test_activation
+def _audit_activation_step(subject: _Subject) -> StepAudit:
+    """The activation, run alone: what it ran with, against what the REE now declares and was built from."""
+    declared, receipt = subject.definition.activate_experiment_environment, subject.receipts.activation
     reasons: list[str] = []
     if receipt:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
             reasons.append("source snapshot changed")
-        if declared is None:
-            reasons.append("activation definition was removed")
-        else:
-            if receipt.run_script_digest != declared.run_script_digest:
-                reasons.append("test activation script changed")
-            if receipt.verify_script_digest != declared.verify_script_digest:
-                reasons.append("test activation verification script changed")
         reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
         if _workbench_environment_changed(subject, receipt.workbench_environment):
             reasons.append("workbench environment changed")
@@ -305,7 +299,7 @@ def _audit_test_activation_step(subject: _Subject) -> StepAudit:
             reasons.append("experiment environment changed")
     return _step(
         receipt.run_id if receipt else None,
-        reasons or (() if receipt else ("activation has not been tested",)),
+        reasons or (() if receipt else ("the activation has not been tested",)),
         applicable=declared is not None,
     )
 
@@ -340,6 +334,12 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
                 != subject.receipts.experiment_environment.produced_artifact_digest
             ):
                 reasons.append("experiment environment changed")
+            if (activation := subject.receipts.activation) and (
+                receipt.activate_experiment_environment_script_digest
+                != activation.activate_experiment_environment_script_digest
+                or receipt.experiment_environment_digest != activation.experiment_environment_digest
+            ):
+                reasons.append("activation changed")
         audits.append(
             ExperimentAudit(
                 name=experiment.name,
@@ -367,7 +367,7 @@ def audit(ree: Ree) -> ReeAudit:
     experiment_environment_audit = _audit_experiment_environment_step(subject)
     sbom_audit = _audit_sbom_step(subject)
     sbom_cross_check_audit = _audit_sbom_cross_check_step(subject)
-    test_activation_audit = _audit_test_activation_step(subject)
+    activation_audit = _audit_activation_step(subject)
     experiments_audit = _audit_experiments_step(subject)
 
     return ReeAudit(
@@ -377,6 +377,6 @@ def audit(ree: Ree) -> ReeAudit:
         experiment_environment=experiment_environment_audit,
         sbom=sbom_audit,
         sbom_cross_check=sbom_cross_check_audit,
-        test_activation=test_activation_audit,
+        activation=activation_audit,
         experiments=experiments_audit,
     )

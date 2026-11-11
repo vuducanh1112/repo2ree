@@ -9,7 +9,6 @@ import { dagForTrace, findResult, type InferenceResult, traceForResult } from ".
 export type ScriptTargetKind =
   | "build_experiment_environment"
   | "activate_experiment_environment"
-  | "activation_run"
   | "experiment_run";
 
 function matches(kind: ScriptTargetKind, experimentName?: string) {

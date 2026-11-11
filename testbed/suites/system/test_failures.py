@@ -14,6 +14,7 @@ from system_client import (
     BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     EXPERIMENT,
     EXPERIMENT_ENVIRONMENT,
+    EXPERIMENT_VERIFY,
     RECONNECT_BOUND,
     Api,
     fault,
@@ -62,16 +63,18 @@ def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api
     prepared(api, ree_id)
     assert api.build_experiment_environment(ree_id)["status"] == "succeeded"
 
-    broken = recipe("test_activation.sh").replace("print('activation ok')", "raise SystemExit(7)")
-    assert api.activate(ree_id, broken)["status"] == "failed"
-    assert api.ree(ree_id)["subject"]["receipts"]["test_activation"] is None
+    assert api.activate(ree_id, "#!/usr/bin/env sh\nexit 7\n")["status"] == "failed"
+    assert api.ree(ree_id)["subject"]["receipts"]["activation"] is None
+    # An experiment runs inside the activation, so only once the activation has been tested.
+    assert api.experiment(ree_id)["status"] == "failed"
+    assert EXPERIMENT not in api.ree(ree_id)["subject"]["receipts"]["experiments"]
 
+    assert api.activate(ree_id, recipe("activate_experiment_environment.sh"))["status"] == "succeeded"
     # The run succeeds but its claimed result does not hold: the verify script decides.
     wrong_claim = recipe("experiment.verify.sh").replace("Hello, World!", "Goodbye, World!")
     assert api.experiment(ree_id, verify=wrong_claim)["status"] == "failed"
     assert EXPERIMENT not in api.ree(ree_id)["subject"]["receipts"]["experiments"]
 
-    assert api.activate(ree_id)["status"] == "succeeded"
     assert api.experiment(ree_id)["status"] == "succeeded"
 
 
@@ -143,7 +146,7 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     busy = api.request(
         "PUT",
         f"/api/v1/rees/{ree_id}/files/content",
-        json={"path": "ree-scripts/test_activation.verify.sh", "content": "#!/bin/sh\n"},
+        json={"path": EXPERIMENT_VERIFY, "content": "#!/bin/sh\n"},
         expect=None,
         timeout=120.0,
     )
@@ -152,4 +155,4 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     assert api.wait(ree_id, run, timeout=60)["status"] == "canceled"
     assert busy.status_code == 409, busy.text
     assert busy.json()["error"]["code"] == "ree_busy"
-    api.write(ree_id, "ree-scripts/test_activation.verify.sh", "#!/bin/sh\n")
+    api.write(ree_id, EXPERIMENT_VERIFY, "#!/bin/sh\n")

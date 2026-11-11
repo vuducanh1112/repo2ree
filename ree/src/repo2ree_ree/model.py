@@ -9,19 +9,17 @@ from repo2ree_ree.hbom import HBOM
 from repo2ree_ree.primitives import Digest, ReePath, SourceType, UtcInstant, WorkspacePath
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
+    ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
     RunExperimentReceipt,
-    TestActivationReceipt,
 )
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
@@ -99,25 +97,6 @@ class ActivateExperimentEnvironmentDefinition(_DomainModel):
         return value
 
 
-class TestActivationDefinition(_DomainModel):
-    run_script_path: ReePath = ReePath(RESERVED_TEST_ACTIVATION_SCRIPT)
-    run_script_digest: Digest
-    run_script_size: int = Field(ge=0)
-    verify_script_path: ReePath | None = None
-    verify_script_digest: Digest | None = None
-    verify_script_size: int | None = Field(default=None, ge=0)
-
-    @model_validator(mode="after")
-    def _complete_scripts(self) -> TestActivationDefinition:
-        if self.run_script_path != RESERVED_TEST_ACTIVATION_SCRIPT:
-            raise ValueError(f"activation script path must be {RESERVED_TEST_ACTIVATION_SCRIPT!r}")
-        if not _all_or_none(self.verify_script_path, self.verify_script_digest, self.verify_script_size):
-            raise ValueError("activation verification path, digest, and size must be present together")
-        if self.verify_script_path is not None and self.verify_script_path != RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT:
-            raise ValueError(f"activation verification path must be {RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT!r}")
-        return self
-
-
 class ExperimentDefinition(_DomainModel):
     name: str = Field(min_length=1)
     run_script_path: ReePath
@@ -152,7 +131,6 @@ class ReeDefinition(_DomainModel):
     experiment_environment: ExperimentEnvironmentDefinition | None = None
     activate_experiment_environment: ActivateExperimentEnvironmentDefinition | None = None
     workbench_environment: WorkbenchEnvironment | None = None
-    test_activation: TestActivationDefinition | None = None
     hardware: HardwareDefinition | None = None
     experiments: tuple[ExperimentDefinition, ...] = ()
 
@@ -174,7 +152,7 @@ class ReeReceipts(_DomainModel):
     experiment_environment: BuildExperimentEnvironmentReceipt | None = None
     sbom: GenerateSbomReceipt | None = None
     sbom_cross_check: CrossCheckSbomReceipt | None = None
-    test_activation: TestActivationReceipt | None = None
+    activation: ActivationReceipt | None = None
     experiments: dict[str, RunExperimentReceipt] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -291,7 +269,6 @@ __all__ = [
     "ReeSubject",
     "Signature",
     "SourceDefinition",
-    "TestActivationDefinition",
     "canonical_subject_digest",
     "ree_status",
 ]

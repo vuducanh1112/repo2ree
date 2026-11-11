@@ -199,7 +199,7 @@ export class ReeApi {
   }
 
   /**
-   * Probe whether the runtime an attempt certified is inhabitable. Takes no
+   * Run the author's activation alone in the runtime an attempt certified. Takes no
    * basis, unlike the two steps before it: activation inherits what the
    * attempt's evidence is worth rather than choosing.
    */

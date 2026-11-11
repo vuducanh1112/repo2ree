@@ -19,7 +19,7 @@ stale = "A receipt exists, but something it rests on moved or was removed."
 not_applicable = "Nothing is declared for this step to be about, and there is no receipt."
 
 [facts]
-# source, evaluation, hardware, experiment_environment, sbom, sbom_cross_check, test_activation, or experiment:<name>.
+# source, evaluation, hardware, experiment_environment, sbom, sbom_cross_check, activation, or experiment:<name>.
 step = "str"
 operation = "str?"
 attempt_id = "str?"
@@ -36,7 +36,7 @@ hardware = "The observed hardware."
 experiment_environment = "The built experiment environment."
 sbom = "The experiment environment's SBOM."
 sbom_cross_check = "Declared dependencies checked against the SBOM."
-test_activation = "The experiment environment's activation test."
+activation = "The activation, run alone: it enters the experiment environment and hands over."
 experiment = "One declared experiment."
 
 [facts.cause]

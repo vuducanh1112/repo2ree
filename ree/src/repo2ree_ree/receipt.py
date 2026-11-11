@@ -118,22 +118,16 @@ class CrossCheckSbomReceipt(ReceiptEnvelope):
     observed_total: int = Field(ge=0)
 
 
-class TestActivationReceipt(ReceiptEnvelope):
-    operation: Literal["test_activation"] = "test_activation"
+class ActivationReceipt(ReceiptEnvelope):
+    """The activate experiment environment script ran a command that does nothing, which exited 0."""
+
+    operation: Literal["activation_test"] = "activation_test"
     snapshot_digest: Digest
     experiment_environment_path: WorkspacePath | None = None
     experiment_environment_digest: Digest | None = None
     activate_experiment_environment_script_digest: Digest
-    run_script_digest: Digest
-    verify_script_digest: Digest | None = None
-    run_exit_code: Literal[0] = 0
-    verify_exit_code: Literal[0] | None = None
+    exit_code: Literal[0] = 0
     workbench_environment: WorkbenchEnvironmentObservation | None = None
-
-    @model_validator(mode="after")
-    def _verification_pair(self) -> TestActivationReceipt:
-        _require_verification_pair(self.verify_script_digest, self.verify_exit_code)
-        return self
 
 
 class RunExperimentReceipt(ReceiptEnvelope):
@@ -162,7 +156,7 @@ RunReceipt = Annotated[
     | BuildExperimentEnvironmentReceipt
     | GenerateSbomReceipt
     | CrossCheckSbomReceipt
-    | TestActivationReceipt
+    | ActivationReceipt
     | RunExperimentReceipt,
     Field(discriminator="operation"),
 ]

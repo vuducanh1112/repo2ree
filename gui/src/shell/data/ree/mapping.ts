@@ -7,7 +7,6 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
   const receipts = subject?.receipts;
   const source = definition?.source;
   const sourceReceipt = receipts?.source;
-  const activation = definition?.test_activation;
   // The axes are evaluate's own finding, so they are read from the receipt that
   // recorded them rather than from the audit, which reports evidence and nothing else.
   const evaluation = receipts?.evaluation;
@@ -24,12 +23,6 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       revision: sourceReceipt?.resolved_revision ?? source?.requested_ref,
       experiment_environment_path: definition?.experiment_environment?.artifact_path,
       workbench_environment: definition?.workbench_environment,
-      activation: activation
-        ? {
-            run_script: activation.run_script_path,
-            verify_script: activation.verify_script_path,
-          }
-        : undefined,
       sbom: receipts?.sbom?.sbom_path,
       swhid: sourceReceipt?.observed_swhid,
       experiments: (definition?.experiments ?? []).map((experiment) => ({

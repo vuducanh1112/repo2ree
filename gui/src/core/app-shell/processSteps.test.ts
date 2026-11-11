@@ -23,7 +23,7 @@ describe("executed step navCompleted", () => {
   const cases = [
     { page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT, step: "experiment_environment" },
     { page: PAGE.SBOM, step: "sbom" },
-    { page: PAGE.ACTIVATION, step: "test_activation" },
+    { page: PAGE.ACTIVATION, step: "activation" },
     { page: PAGE.EVALUATE, step: "evaluation" },
   ] as const;
 

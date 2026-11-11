@@ -47,13 +47,10 @@ const visualRee = {
           build_experiment_environment_script_size: 428,
           artifact_path: "artifacts/climate-runtime.tar",
         },
-        test_activation: {
-          run_script_path: "overlay/activate.sh",
-          run_script_digest: "sha256:activation-script",
-          run_script_size: 312,
-          verify_script_path: "overlay/verify-test_activation.sh",
-          verify_script_digest: "sha256:verify-activation",
-          verify_script_size: 94,
+        activate_experiment_environment: {
+          activate_experiment_environment_script_path: "overlay/activate.sh",
+          activate_experiment_environment_script_digest: "sha256:activation-script",
+          activate_experiment_environment_script_size: 312,
         },
         hardware: {
           cpus: {
@@ -148,21 +145,19 @@ const visualRee = {
           artifact_path: "artifacts/climate-runtime.tar",
           produced_artifact_digest: "sha256:experiment-environment",
         },
-        test_activation: {
+        activation: {
           schema_version: 1,
           run_id: "run-activation",
           started_at: "2026-04-12T09:35:00Z",
           finished_at: "2026-04-12T09:35:07Z",
           duration_ms: 7000,
           recorded_at: "2026-04-12T09:35:07Z",
-          operation: "test_activation",
+          operation: "activation_test",
           snapshot_digest: "sha256:source-snapshot",
           experiment_environment_path: "artifacts/climate-runtime.tar",
           experiment_environment_digest: "sha256:experiment-environment",
-          run_script_digest: "sha256:activation-script",
-          verify_script_digest: "sha256:verify-activation",
-          run_exit_code: 0,
-          verify_exit_code: 0,
+          activate_experiment_environment_script_digest: "sha256:activation-script",
+          exit_code: 0,
         },
         experiments: {
           "regional-forecast": {
@@ -195,7 +190,7 @@ const visualRee = {
     experiment_environment: auditStep,
     sbom: auditStep,
     sbom_cross_check: auditStep,
-    test_activation: auditStep,
+    activation: auditStep,
     experiments: [{ name: "regional-forecast", ...auditStep }],
   },
   location_id: "lab-oslo",
@@ -229,14 +224,7 @@ const visualRee = {
       kind: "ree",
       tag: "Overlay",
       size: 312,
-      content: "#!/bin/sh\nset -eu\npython -m climate_model\n",
-    },
-    {
-      path: "overlay/verify-test_activation.sh",
-      kind: "ree",
-      tag: "Overlay",
-      size: 94,
-      content: "#!/bin/sh\npython --version\n",
+      content: '#!/bin/sh\nset -eu\nexec docker run --rm climate-runtime "$@"\n',
     },
     {
       path: "overlay/experiments/regional-forecast.sh",
@@ -449,12 +437,11 @@ const reviews = {
         ],
       },
       activation_outcome: {
-        policy: "activation-probe",
+        policy: "activation",
         basis: "independent",
         verdict: "passed",
         experiment_environment_digest: "sha256:review-runtime",
-        run_exit_code: 0,
-        verify_exit_code: 0,
+        exit_code: 0,
       },
       experiment_comparisons: [
         {
@@ -480,11 +467,6 @@ const reviews = {
 const scriptTemplates = {
   build_experiment_environment: { path: "overlay/build.sh", templates: [] },
   activate_experiment_environment: { path: "overlay/activate.sh", templates: [] },
-  activation: {
-    run_script_path: "overlay/activate.sh",
-    verify_script_path: "overlay/verify-test_activation.sh",
-    templates: [],
-  },
   experiment: {
     run_script_path_pattern: "overlay/experiments/{slug}.sh",
     verify_script_path_pattern: "overlay/experiments/{slug}-verify.sh",

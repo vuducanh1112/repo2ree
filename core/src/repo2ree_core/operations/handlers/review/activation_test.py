@@ -1,14 +1,14 @@
-"""Probe the experiment environment a review attempt certified, inside that attempt's workspace.
+"""Run the author's activation alone in the experiment environment a review attempt certified.
 
 The reviewer-side counterpart of the author's ``activation_test`` step, and the
 only review step that certifies nothing by comparison: there is no author
-artifact to reproduce, so the reviewer's own probe is the whole claim.
+artifact to reproduce, so whether the activation enters and hands over is the whole claim.
 
 Two consequences a comparison would otherwise have carried: the ``basis`` is
-inherited from the attempt rather than chosen, and the probe is bound to the
-experiment environment digest the build recorded. An experiment environment that does not come up *completes*
-the step with a ``failed`` verdict; only conditions that stop it probing at all
-fail the step. See ``docs/engineering/explanation/review-evidence.md``.
+inherited from the attempt rather than chosen, and the run is bound to the
+experiment environment digest the build recorded. An activation that does not hand over *completes*
+the step with a ``failed`` verdict; only conditions that stop it running at all
+fail the step.
 """
 
 from __future__ import annotations
@@ -29,32 +29,22 @@ from repo2ree_protocol.outputs import ReviewActivationTestOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
-from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.review import ActivationOutcome, ActivationVerdict, ReviewActivationReceipt, ReviewRecord
 
 
 def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
-    activation = definition.test_activation
+    activation = definition.activate_experiment_environment
     if activation is None:
-        raise ValueError("no activation test is declared")
-    activation_script = definition.activate_experiment_environment
-    if activation_script is None:
         raise ValueError("no activate experiment environment script is declared")
-    return (
-        RunnableSpec(
-            run_script=str(activation.run_script_path),
-            activate_script=str(activation_script.activate_experiment_environment_script_path),
-            verify_script=str(activation.verify_script_path or ""),
-        ),
-        "activation",
-    )
+    return RunnableSpec(activate_script=str(activation.activate_experiment_environment_script_path)), "activation"
 
 
 def _admit(_record: ReviewRecord, certified: CertifiedExperimentEnvironment) -> str | None:
-    """Unlike an experiment, a probe of nothing is not a probe.
+    """Unlike an experiment, entering nothing is not a test.
 
-    Activation exists to say the *experiment environment* comes up, so a baseline that declares
-    none has no question here to answer.
+    The activation exists to say the *experiment environment* can be entered, so a baseline that
+    declares none has no question here to answer.
     """
     if not certified.experiment_environment_path:
         return "The certified build recorded no experiment environment artifact to activate"
@@ -66,13 +56,13 @@ _STEP = ReviewRunnableStep(
     noun="review activation",
     subject="activation",
     requires="build_experiment_environment",
-    requires_message="Certify the experiment environment before probing whether it is inhabitable",
+    requires_message="Certify the experiment environment before testing the activation",
     experiment_environment_purpose="to activate",
     experiment_environment_retry_purpose="to activate",
     admit=_admit,
     select=_select,
     unresolvable="the author baseline cannot be activated",
-    script_noun="an activation script",
+    script_noun="an activate experiment environment script",
 )
 
 
@@ -100,19 +90,11 @@ def handle_review_activation_test(
     # review records neither: both describe an author's workspace drifting from
     # what it was materialized from, and a review namespace is materialized
     # fresh from its own acquisition every time.
-    run_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.run_script)
-    if run_script_digest is None:
-        return opened.step.stop("failed", "the activation script disappeared after it ran")
     activate_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.activate_script)
     if activate_script_digest is None:
         return opened.step.stop("failed", "the activate experiment environment script disappeared after it ran")
     if certified.experiment_environment_digest is None:
         return opened.step.stop("failed", "the certified experiment environment disappeared after activation")
-    verify_script_digest = (
-        digest_file_if_exists(opened.review_layout.workspace / activation.verify_script)
-        if activation.verify_script
-        else None
-    )
     receipt = ReviewActivationReceipt(
         **review_receipt_envelope(
             run_id,
@@ -120,12 +102,7 @@ def handle_review_activation_test(
             "succeeded" if outcome.status == "succeeded" else "failed",
         ),
         activate_experiment_environment_script_digest=activate_script_digest,
-        run_script_path=ReePath(activation.run_script),
-        run_script_digest=run_script_digest,
-        run_exit_code=outcome.run_outputs.exit_code,
-        verify_script_path=ReePath(activation.verify_script) if activation.verify_script else None,
-        verify_script_digest=verify_script_digest,
-        verify_exit_code=outcome.run_outputs.verify_exit_code,
+        exit_code=outcome.run_outputs.exit_code,
         experiment_environment_path=WorkspacePath(certified.experiment_environment_path),
         experiment_environment_digest=Digest(certified.experiment_environment_digest),
     )
@@ -133,12 +110,11 @@ def handle_review_activation_test(
         basis=certified.basis,
         verdict=verdict,
         experiment_environment_digest=certified.experiment_environment_digest,
-        run_exit_code=outcome.run_outputs.exit_code,
-        verify_exit_code=outcome.run_outputs.verify_exit_code,
+        exit_code=outcome.run_outputs.exit_code,
     )
     write_review_activation_evidence(opened.review_layout, receipt, activation_outcome)
     _log_outcome(activation_outcome, log=log)
-    # Completed either way: an experiment environment that will not come up is this step
+    # Completed either way: an activation that will not hand over is this step
     # working, not failing. Recording it as a failure would put the attempt into
     # ``failed`` and lose the difference between "the review could not run" and
     # "the review found the experiment environment uninhabitable".
@@ -159,7 +135,7 @@ def handle_review_activation_test(
 
 
 def _log_outcome(outcome: ActivationOutcome, *, log: LogSink) -> None:
-    """Say what the probe settled, and — on a failure — which half settled it."""
+    """Say what the activation settled, and on a failure how it exited."""
     log(
         "system",
         "info" if outcome.verdict == "passed" else "warn",
@@ -167,16 +143,11 @@ def _log_outcome(outcome: ActivationOutcome, *, log: LogSink) -> None:
         f"against experiment environment {outcome.experiment_environment_digest or 'none'}",
     )
     if outcome.verdict == "failed":
-        log(
-            "system",
-            "warn",
-            f"run script exited {outcome.run_exit_code}, "
-            f"verify script exited {outcome.verify_exit_code if outcome.verify_exit_code is not None else 'not run'}",
-        )
+        log("system", "warn", f"the activation exited {outcome.exit_code}")
     if outcome.basis == "bundled":
         log(
             "system",
             "warn",
-            "this probe ran against evidence the REE itself carries — it says that artifact is inhabitable, "
-            "not that the recorded origin and recipe still produce one that is",
+            "this activation ran against evidence the REE itself carries — it says that artifact can be entered, "
+            "not that the recorded origin and recipe still produce one that can",
         )

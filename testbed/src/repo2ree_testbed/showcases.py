@@ -51,7 +51,6 @@ ExpectedVerdict = Literal["identical", "reproduced", "different"]
 RecipeScript = Literal[
     "build_experiment_environment.sh",
     "activate_experiment_environment.sh",
-    "test_activation.sh",
     "experiment.sh",
     "experiment.verify.sh",
 ]

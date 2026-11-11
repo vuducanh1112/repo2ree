@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_core.author_recipes.inference.decision_graphs.activation_run import ACTIVATION_RUN_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
 from repo2ree_core.author_recipes.inference.engine import DagValidationError, validate_dag
@@ -25,15 +24,14 @@ def test_reference_build_dag_is_valid() -> None:
     _validate(BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG)  # must not raise
 
 
-def test_activation_and_experiment_dags_are_valid() -> None:
-    _validate(ACTIVATION_RUN_DAG)
+def test_experiment_dag_is_valid() -> None:
     _validate(EXPERIMENT_RUN_DAG)
 
 
 def test_check_short_circuit_to_non_not_inferred_result_is_rejected() -> None:
-    # The activation DAG's declared-runtime check short-circuits blocked branches
+    # The experiment DAG's declared-runtime check short-circuits blocked branches
     # to run-not-inferred. Repointing one at a needs_input result must be caught.
-    dag = ACTIVATION_RUN_DAG.model_copy(deep=True)
+    dag = EXPERIMENT_RUN_DAG.model_copy(deep=True)
     nodes = []
     for node in dag.nodes:
         if isinstance(node, CheckNode) and node.id == "declared-runtime":

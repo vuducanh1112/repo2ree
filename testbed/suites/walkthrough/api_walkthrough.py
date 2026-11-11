@@ -230,11 +230,9 @@ if __name__ == "__main__":
 """
 
 # Phase 1 inference never selects a run command — it emits a fail-closed scaffold
-# with a guarded, empty ``set --``. Authoring an activation or experiment run
-# script is therefore: infer the scaffold, then fill in that one line. These are
-# the commands the author supplies — activation proves the experiment environment is inhabitable
-# (import the installed dep); the experiment runs the project.
-ACTIVATION_COMMAND = "python -c \"import pandas; print('activation ok')\""
+# with a guarded, empty ``set --``. Authoring an experiment run script is
+# therefore: infer the scaffold, then fill in that one line. This is the command
+# the author supplies: the experiment runs the project.
 EXPERIMENT_COMMAND = f"python {PROJECT_DIR}/main.py"
 
 # The verify script owns the claim: the captured stdout contains the expected
@@ -411,14 +409,13 @@ def run() -> None:
     note("listScriptTemplates publishes where each REE-owned script belongs — no hardcoded paths")
     catalog = call("GET", "/api/v1/script-templates")
     build_experiment_environment_script_path = catalog["build_experiment_environment"]["path"]
-    activation_script_path = catalog["activation"]["run_script_path"]
     activate_script_path = catalog["activate_experiment_environment"]["path"]
     experiment_run_script_path = catalog["experiment"]["run_script_path_pattern"].replace("{slug}", EXPERIMENT_NAME)
     experiment_verify_script_path = catalog["experiment"]["verify_script_path_pattern"].replace(
         "{slug}", EXPERIMENT_NAME
     )
     check(
-        build_experiment_environment_script_path and activation_script_path,
+        build_experiment_environment_script_path and activate_script_path,
         "catalog did not resolve the reserved paths",
     )
     ok(f"reserved paths resolved (build → {build_experiment_environment_script_path})")
@@ -599,7 +596,7 @@ def run() -> None:
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/cross-check-sbom", {}, what="SBOM cross-check")
     ok("SBOM generated and cross-checked against the scanned dependencies")
 
-    chapter("10. Infer the activation scaffold, then author its command")
+    chapter("10. Infer the activate script, then test the activation")
     note(
         "with the experiment environment built and declared, "
         "inference resolves the experiment environment contract and emits a scaffold"
@@ -610,18 +607,12 @@ def run() -> None:
     check(activate_script, "activate experiment environment inference produced no script")
     note(
         "the activate script is inferred whole from the experiment environment; "
-        "the test activation and experiments run through it"
+        "the activation test and experiments run through it"
     )
     put_file(ree_id, activate_script_path, activate_script)
-    activation_report = generate_scripts(ree_id, [{"kind": "activation_run"}])
-    summarize_decision(activation_report, "activation_run")
-    activation_scaffold = inferred_script(activation_report, "activation_run")
-    check(activation_scaffold, "activation inference produced no scaffold")
-    note("Phase 1 never selects the run command; the author fills the guarded 'set --' line and saves")
-    activation_script = author_command(activation_scaffold, ACTIVATION_COMMAND)
-    put_file(ree_id, activation_script_path, activation_script)
+    note("the activation test runs the activate script alone, around a command that does nothing")
     run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/activation-test", {}, what="activation")
-    ok("experiment environment activates: pandas imports inside the sealed image")
+    ok("the activation enters the experiment environment and hands over")
 
     chapter("11. Infer the experiment scaffold, then run it")
     note("declare a named experiment; naming it settles its run-script path, and its declared output is sealed")
@@ -675,7 +666,7 @@ def run() -> None:
     note("getReeState carries the aggregate audit for each authoring step")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
     ree_audit = state["audit"]
-    for step_key in ("source", "evaluation", "experiment_environment", "sbom", "sbom_cross_check", "test_activation"):
+    for step_key in ("source", "evaluation", "experiment_environment", "sbom", "sbom_cross_check", "activation"):
         check(ree_audit[step_key]["evidence"] == "current", f"step {step_key} is not current")
     check(ree_audit["experiments"][0]["run"]["evidence"] == "current", "experiment is not current")
     ok("every authored receipt is current — nothing has moved under one")

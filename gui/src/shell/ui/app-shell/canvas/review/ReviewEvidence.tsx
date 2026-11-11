@@ -173,13 +173,7 @@ function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
   );
 }
 
-/**
- * What the activation probe settled, and on a failure which half settled it.
- *
- * A run script that never brought the runtime up and a verify script that
- * rejected a runtime which did come up both read as "failed" and call for
- * entirely different work, so the exit codes are shown rather than summarised.
- */
+/** What the activation, run alone, settled, and on a failure how it exited. */
 function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
   const outcome = attempt.activationOutcome;
   if (!outcome) return null;
@@ -190,15 +184,10 @@ function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
       <span>
         activation:{" "}
         {passed
-          ? "the experiment environment is inhabitable"
-          : "the experiment environment did not activate"}
+          ? "it enters the experiment environment and hands over"
+          : "it did not enter the experiment environment"}
       </span>
-      {passed ? null : (
-        <span>
-          run exited {outcome.runExitCode ?? "?"} · verify{" "}
-          {outcome.verifyExitCode == null ? "not run" : `exited ${outcome.verifyExitCode}`}
-        </span>
-      )}
+      {passed ? null : <span>exited {outcome.exitCode ?? "?"}</span>}
     </div>
   );
 }

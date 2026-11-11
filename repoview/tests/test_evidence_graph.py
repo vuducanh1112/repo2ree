@@ -14,7 +14,8 @@ def ree() -> Aggregate:
 
 def test_re_running_a_receipt_stales_everything_made_from_it() -> None:
     downstream = stales(ree())
-    assert downstream["experiment_environment"] == ("experiment", "sbom", "sbom_cross_check", "test_activation")
+    assert downstream["experiment_environment"] == ("activation", "experiment", "sbom", "sbom_cross_check")
+    assert downstream["activation"] == ("experiment",)
     assert downstream["sbom"] == ("sbom_cross_check",)
     assert downstream["experiment"] == ()
 
@@ -30,4 +31,5 @@ def test_the_graph_draws_every_dependency_the_specification_states() -> None:
     }
     assert drawn == stated
     assert ("field:definition.workbench_environment", "experiment") in drawn
-    assert ("field:definition.activate_experiment_environment", "test_activation") in drawn
+    assert ("field:definition.activate_experiment_environment", "activation") in drawn
+    assert ("activation", "experiment") in drawn

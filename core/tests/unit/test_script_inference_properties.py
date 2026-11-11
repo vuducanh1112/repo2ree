@@ -16,7 +16,6 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path, PurePosixPath
-from typing import Literal
 
 import pytest
 from hypothesis import given
@@ -224,7 +223,7 @@ _NASTY = [
 ]
 
 
-def _docker_activation_body(root: Path, experiment_environment_path: str, image_tag: str) -> str:
+def _docker_activate_body(root: Path, experiment_environment_path: str, image_tag: str) -> str:
     definition = ReeDefinition(name="Demo")
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=experiment_environment_path,
@@ -232,7 +231,7 @@ def _docker_activation_body(root: Path, experiment_environment_path: str, image_
     )
     report = infer_scripts(
         root,
-        [ScriptTargetSelectorArg(kind="activation_run")],
+        [ScriptTargetSelectorArg(kind="activate_experiment_environment")],
         definition=definition,
         experiment_environment_inputs=inputs,
     )
@@ -249,7 +248,7 @@ def _sh_parses(body: str) -> bool:
 @pytest.mark.parametrize("tag", _NASTY)
 def test_adversarial_image_tag_cannot_break_the_scaffold(tmp_path: Path, tag: str) -> None:
     (tmp_path / "Dockerfile").write_text("FROM x\n")
-    body = _docker_activation_body(tmp_path, ".repo2ree/artifacts/runtime.tar", tag)
+    body = _docker_activate_body(tmp_path, ".repo2ree/artifacts/runtime.tar", tag)
     assert _sh_parses(body), body
     # `reboot` must never appear as an executable token, only inside a quoted literal.
     assert "\nreboot\n" not in body
@@ -259,7 +258,7 @@ def test_adversarial_image_tag_cannot_break_the_scaffold(tmp_path: Path, tag: st
 def test_adversarial_experiment_environment_path_cannot_break_the_scaffold(tmp_path: Path, suffix: str) -> None:
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     experiment_environment_path = f".repo2ree/{suffix}.tar"
-    body = _docker_activation_body(tmp_path, experiment_environment_path, "ree-runtime:demo")
+    body = _docker_activate_body(tmp_path, experiment_environment_path, "ree-runtime:demo")
     assert _sh_parses(body), body
 
 
@@ -285,8 +284,8 @@ def test_adversarial_declared_experiment_environment_cannot_break_the_build_expe
     assert "\nreboot\n" not in body
 
 
-@given(st.sampled_from(["activation_run", "experiment_run"]), st.booleans())
-def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "experiment_run"], docker: bool) -> None:
+@given(st.booleans())
+def test_every_run_scaffold_is_fail_closed(docker: bool) -> None:
     root = Path(tempfile.mkdtemp())
     try:
         (root / "Dockerfile").write_text("FROM x\n")
@@ -295,14 +294,14 @@ def test_every_run_scaffold_is_fail_closed(kind: Literal["activation_run", "expe
             ".repo2ree/artifacts/runtime.tar" if docker else ".repo2ree/artifacts/runtime-venv.tar.gz"
         )
         archive = docker_archive(["ree-runtime:demo"]) if docker else _venv_bytes()
-        experiments = [_exp()] if kind == "experiment_run" else []
+        experiments = [_exp()]
         definition = ReeDefinition(name="Demo", experiments=tuple(experiments))
         inputs = ExperimentEnvironmentInputs(
             declared_experiment_environment_path=experiment_environment,
             experiments=experiments,
             accessor=MemoryAccessor({experiment_environment: archive}),
         )
-        selector = ScriptTargetSelectorArg(kind=kind, experiment_name="run" if experiments else None)
+        selector = ScriptTargetSelectorArg(kind="experiment_run", experiment_name="run")
         result = infer_scripts(root, [selector], definition=definition, experiment_environment_inputs=inputs).results[0]
         body = result.candidates[0].body
         assert body is not None

@@ -341,7 +341,7 @@ def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
             "experiment_environment",
             "sbom",
             "sbom_cross_check",
-            "test_activation",
+            "activation",
         )
         if (step := getattr(report, name)) is not None
     }

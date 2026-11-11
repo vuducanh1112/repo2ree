@@ -19,7 +19,12 @@ export const exampleWorkspaceFiles = [
         type: "file" as const,
         content: "#!/bin/sh\nexit 0",
       },
-      { id: "activate", name: "activate.sh", type: "file" as const, content: "#!/bin/sh\nexit 0" },
+      {
+        id: "activate",
+        name: "activate.sh",
+        type: "file" as const,
+        content: '#!/bin/sh\nexec "$@"',
+      },
       { id: "verify", name: "verify.sh", type: "file" as const, content: "#!/bin/sh\nexit 0" },
     ],
   },
@@ -37,11 +42,6 @@ export const exampleEditorRee = {
     },
     experimentEnvironmentPath: "runtime.tar",
     sbom: "artifacts/sbom.json",
-    activation: {
-      ...createEmptyReeEditorViewModel().spec.activation,
-      runScript: "overlay/activate.sh",
-      verifyScript: "overlay/verify.sh",
-    },
   },
   source: { sourceAvailable: true, sourceIncluded: true },
   artifact: { experimentEnvironmentIncluded: true },
@@ -55,7 +55,7 @@ export const exampleEditorRee = {
     hardware: "current" as const,
     experiment_environment: "current" as const,
     sbom: "current" as const,
-    test_activation: "current" as const,
+    activation: "current" as const,
   },
 };
 
@@ -108,11 +108,6 @@ export const scriptTemplateCatalog = {
   },
   build_experiment_environment: {
     path: "overlay/build.sh",
-    templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
-  },
-  activation: {
-    run_script_path: "overlay/activate.sh",
-    verify_script_path: "overlay/verify.sh",
     templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
   },
   experiment: {

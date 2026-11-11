@@ -21,7 +21,6 @@ from repo2ree_protocol.lint import ScriptDeclarations
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
 )
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "authoring/src/repo2ree_authoring/templates"
@@ -51,7 +50,6 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
         ("activate_experiment_environment_docker.sh", "activate_experiment_environment"),
         ("build_experiment_environment_venv.sh", "build_experiment_environment"),
         ("activate_experiment_environment_venv.sh", "activate_experiment_environment"),
-        ("test_activation.sh", "activation_run"),
         ("experiment_run.sh", "experiment_run"),
     ],
 )
@@ -80,7 +78,6 @@ def test_a_fresh_ree_starts_with_scripts_that_suit_its_environment() -> None:
     assert "docker" not in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
     assert "docker run" in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "image")
     assert "docker" not in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
-    assert "docker" not in reserved_script_template(RESERVED_TEST_ACTIVATION_SCRIPT, "host")
 
 
 def test_every_template_is_covered_by_a_case_above() -> None:
@@ -90,7 +87,6 @@ def test_every_template_is_covered_by_a_case_above() -> None:
         "activate_experiment_environment_docker.sh",
         "build_experiment_environment_venv.sh",
         "activate_experiment_environment_venv.sh",
-        "test_activation.sh",
         "experiment_run.sh",
         "verify_stdout_contains.sh",
         "verify_stdout_regex.sh",

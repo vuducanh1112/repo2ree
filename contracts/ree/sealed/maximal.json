@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:c215fc49e83793a80abce36b3a34f9b3163b81485c3b9c29f4ee06e3596d0da7",
+    "ree_digest": "sha256:acf21fd4c3c916eee805904e253986c9252ede91e9e53684a9ec18a7336f9d60",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -150,14 +150,6 @@
         "requested_ref": "v1.0",
         "source_type": "git"
       },
-      "test_activation": {
-        "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
-        "run_script_path": "ree-scripts/test_activation.sh",
-        "run_script_size": 64,
-        "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7",
-        "verify_script_path": "ree-scripts/test_activation.verify.sh",
-        "verify_script_size": 32
-      },
       "workbench_environment": {
         "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "kind": "image",
@@ -165,6 +157,36 @@
       }
     },
     "receipts": {
+      "activation": {
+        "activate_experiment_environment_script_digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
+        "duration_ms": 5000,
+        "exit_code": 0,
+        "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
+        "experiment_environment_path": "runtime",
+        "finished_at": "2026-10-01T08:16:05.000000Z",
+        "operation": "activation_test",
+        "recorded_at": "2026-10-01T08:16:05.000000Z",
+        "run_id": "run-activation",
+        "schema_version": 1,
+        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
+        "started_at": "2026-10-01T08:16:00.000000Z",
+        "workbench_environment": {
+          "backend": "container",
+          "declared": {
+            "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "kind": "image",
+            "needs_container_engine": true
+          },
+          "host": {
+            "arch": "x86_64",
+            "container_engine": "Docker 29.0.1",
+            "kernel": "6.12.5",
+            "os": "Debian GNU/Linux 12"
+          },
+          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "script_engine": "socket"
+        }
+      },
       "evaluation": {
         "analyzer_version": "1.4.0",
         "dependency_count": 42,
@@ -383,39 +405,6 @@
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "source_type": "git",
         "started_at": "2026-10-01T08:00:00.000000Z"
-      },
-      "test_activation": {
-        "activate_experiment_environment_script_digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
-        "duration_ms": 5000,
-        "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
-        "experiment_environment_path": "runtime",
-        "finished_at": "2026-10-01T08:16:05.000000Z",
-        "operation": "test_activation",
-        "recorded_at": "2026-10-01T08:16:05.000000Z",
-        "run_exit_code": 0,
-        "run_id": "run-activation",
-        "run_script_digest": "sha256:b15526c9c0e75acea3d1f8055de216c85f0330baf8604e13d8c6ce90fb90d6d7",
-        "schema_version": 1,
-        "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
-        "started_at": "2026-10-01T08:16:00.000000Z",
-        "verify_exit_code": 0,
-        "verify_script_digest": "sha256:52921383caa538702b3e3fc76ef400f3fe5129319aa02908a68bb718220c47d7",
-        "workbench_environment": {
-          "backend": "container",
-          "declared": {
-            "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "kind": "image",
-            "needs_container_engine": true
-          },
-          "host": {
-            "arch": "x86_64",
-            "container_engine": "Docker 29.0.1",
-            "kernel": "6.12.5",
-            "os": "Debian GNU/Linux 12"
-          },
-          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "script_engine": "socket"
-        }
       }
     },
     "schema_version": 1

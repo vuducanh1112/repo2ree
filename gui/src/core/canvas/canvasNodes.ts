@@ -407,8 +407,9 @@ export interface CanvasNodeOverview {
 interface CanvasNodeOverviewContext {
   workspaceFiles?: FileTreeNode[];
   receipts?: ReceiptView[];
-  /** Backend-owned reserved path published by the script-template catalog. */
+  /** Backend-owned reserved paths published by the script-template catalog. */
   buildExperimentEnvironmentScriptPath?: string;
+  activateExperimentEnvironmentScriptPath?: string;
   crossCheck?: SbomCrossCheckSummary | null;
 }
 
@@ -563,12 +564,9 @@ export function nodeSummary(
     case PAGE.ACTIVATION:
       return [
         {
-          label: "Run",
-          value: ree.spec.activation?.runScript?.trim() ? "configured" : null,
-        },
-        {
-          label: "Verify",
-          value: ree.spec.activation?.verifyScript?.trim() ? "configured" : null,
+          label: "Runs",
+          value: context.activateExperimentEnvironmentScriptPath ? "alone" : null,
+          title: "The activate experiment environment script, around a command that does nothing",
         },
       ];
     case PAGE.ARCHIVE:
@@ -594,8 +592,7 @@ const RECEIPT_OPERATIONS_BY_PAGE: Readonly<Partial<Record<AppShellPage, readonly
   [PAGE.EVALUATE]: ["evaluate_reproducibility"],
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: ["build_experiment_environment"],
   [PAGE.SBOM]: ["generate_sbom", "cross_check_sbom"],
-  // Keep the old spelling readable for REEs written before the contract name settled.
-  [PAGE.ACTIVATION]: ["test_activation", "activation_test"],
+  [PAGE.ACTIVATION]: ["activation_test"],
   [PAGE.EXPERIMENTS]: ["run_experiment"],
 };
 
@@ -687,13 +684,12 @@ export function nodeOverview(
     ];
   } else if (node.key === PAGE.ACTIVATION) {
     scripts = [
-      scriptPreview(files, "activation-run", "RUN SCRIPT", ree.spec.activation.runScript, 2),
       scriptPreview(
         files,
-        "activation-verify",
-        "VERIFY SCRIPT",
-        ree.spec.activation.verifyScript,
-        1,
+        "activate_experiment_environment",
+        "ACTIVATE SCRIPT",
+        context.activateExperimentEnvironmentScriptPath,
+        3,
       ),
     ];
   } else if (node.key === PAGE.EXPERIMENTS) {

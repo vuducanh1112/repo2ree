@@ -96,8 +96,7 @@ describe("ReviewWorkflowPanel", () => {
         basis: "independent",
         verdict: "passed",
         experiment_environment_digest: "sha256:b",
-        run_exit_code: 0,
-        verify_exit_code: 0,
+        exit_code: 0,
       },
       experiment_comparisons: [
         {
@@ -139,7 +138,9 @@ describe("ReviewWorkflowPanel", () => {
       await screen.findByText(/source verified from the REE's own artifacts/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/1 missing/)).toBeInTheDocument();
-    expect(screen.getByText(/experiment environment is inhabitable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/enters the experiment environment and hands over/i),
+    ).toBeInTheDocument();
     expect(screen.getByText("hello")).toBeInTheDocument();
   });
 
@@ -178,8 +179,7 @@ describe("ReviewWorkflowPanel", () => {
         basis: "bundled",
         verdict: "failed",
         experiment_environment_digest: "sha256:same",
-        run_exit_code: 1,
-        verify_exit_code: null,
+        exit_code: 1,
       },
       experiment_comparisons: [],
       failure: "activation failed",
@@ -195,40 +195,7 @@ describe("ReviewWorkflowPanel", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/artifact digest: bit-identical/)).toBeInTheDocument();
     expect(screen.getByText(/2 advisory/)).toBeInTheDocument();
-    expect(screen.getByText(/experiment environment did not activate/)).toBeInTheDocument();
-    expect(screen.getByText(/verify not run/)).toBeInTheDocument();
-  });
-
-  it("shows the verify exit code for an activation failure", async () => {
-    const review = {
-      review_id: "review-verify-failed",
-      created_at: "created",
-      updated_at: "updated",
-      status: "failed",
-      steps: [
-        { step: "source", status: "succeeded", failure: null },
-        { step: "build_experiment_environment", status: "succeeded", failure: null },
-        { step: "activation", status: "failed", failure: "verify failed" },
-      ],
-      source_comparison: { basis: "independent", verdict: "identical" },
-      experiment_environment_comparison: null,
-      activation_outcome: {
-        basis: "independent",
-        verdict: "failed",
-        experiment_environment_digest: null,
-        run_exit_code: 0,
-        verify_exit_code: 2,
-      },
-      experiment_comparisons: [],
-      failure: "verify failed",
-    };
-    renderWithShell(<ReviewWorkflowPanel experiments={[]} />, {
-      reeId: "ree-1",
-      services: fakeApiServices({
-        ree: { listReviews: vi.fn().mockResolvedValue({ reviews: [review] }) },
-      }),
-    });
-    expect(await screen.findByText(/verify exited 2/)).toBeInTheDocument();
-    expect(screen.queryByText(/verified from the REE/)).not.toBeInTheDocument();
+    expect(screen.getByText(/did not enter the experiment environment/)).toBeInTheDocument();
+    expect(screen.getByText(/exited 1/)).toBeInTheDocument();
   });
 });

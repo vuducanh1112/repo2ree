@@ -51,14 +51,11 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
 
 
 class ReviewActivationReceipt(ReviewReceiptEnvelope):
-    operation: Literal["test_activation"] = "test_activation"
+    """The author's activation, run alone in the review's workspace around a command that does nothing."""
+
+    operation: Literal["activation_test"] = "activation_test"
     activate_experiment_environment_script_digest: Digest
-    run_script_path: ReePath
-    run_script_digest: Digest
-    verify_script_path: ReePath | None = None
-    verify_script_digest: Digest | None = None
-    run_exit_code: int | None = None
-    verify_exit_code: int | None = None
+    exit_code: int | None = None
     experiment_environment_path: WorkspacePath
     experiment_environment_digest: Digest
 
@@ -116,12 +113,11 @@ class ExperimentEnvironmentComparison(_ReviewModel):
 
 
 class ActivationOutcome(_ReviewModel):
-    policy: Literal["activation-probe"] = "activation-probe"
+    policy: Literal["activation"] = "activation"
     basis: EvidenceBasis
     verdict: ActivationVerdict
     experiment_environment_digest: str | None = None
-    run_exit_code: int | None = None
-    verify_exit_code: int | None = None
+    exit_code: int | None = None
 
 
 class ExperimentComparison(_ReviewModel):

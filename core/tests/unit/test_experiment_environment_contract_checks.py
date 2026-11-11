@@ -2,7 +2,8 @@
 
 End-to-end coverage of the blocked/resolved branches lives in the activation and
 experiment suites; this pins the two subtler behaviours — the pre-build
-``unchanged_generated_build`` provenance and Docker config command parsing.
+``unchanged_generated_build`` provenance and Docker config command parsing — through an
+experiment's run target, which shares the contract subgraph.
 """
 
 from __future__ import annotations
@@ -21,11 +22,21 @@ from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import default_policy
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_protocol.command import ScriptTargetSelectorArg
-from repo2ree_ree.model import ReeDefinition
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+from repo2ree_ree.digest import digest_bytes
+from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.primitives import ReePath
+from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
 _VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
+_EXPERIMENT = ExperimentDefinition(
+    name="run",
+    run_script_path=ReePath(experiment_run_script_path("run")),
+    run_script_digest=digest_bytes(b"script"),
+    run_script_size=6,
+)
+_RUN = ScriptTargetSelectorArg(kind="experiment_run", experiment_name=_EXPERIMENT.name)
+_DEFINITION = ReeDefinition(name="Demo", experiments=(_EXPERIMENT,))
 
 
 def _tree(root: Path, files: dict[str, str]) -> None:
@@ -68,16 +79,17 @@ def test_unchanged_generated_docker_build_resolves_before_the_artifact_exists(tm
     # The artifact itself is absent; only the written build script is present.
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        experiments=[_EXPERIMENT],
         accessor=MemoryAccessor({RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT: body.encode()}),
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelectorArg(kind="activation_run")],
-        definition=ReeDefinition(name="Demo"),
+        [_RUN],
+        definition=_DEFINITION,
         experiment_environment_inputs=inputs,
     ).results[0]
     assert result.status == "needs_input"
-    assert result.candidates[0].inference_rule == "docker-runtime-activation-v1"
+    assert result.candidates[0].inference_rule == "docker-runtime-experiment-v1"
     assert "unchanged_generated_build" in _provenances(result)
 
 
@@ -86,15 +98,16 @@ def test_unchanged_generated_venv_build_resolves_before_the_artifact_exists(tmp_
     body = _generated_build_body(tmp_path, _VENV_EXPERIMENT_ENVIRONMENT)
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=_VENV_EXPERIMENT_ENVIRONMENT,
+        experiments=[_EXPERIMENT],
         accessor=MemoryAccessor({RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT: body.encode()}),
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelectorArg(kind="activation_run")],
-        definition=ReeDefinition(name="Demo"),
+        [_RUN],
+        definition=_DEFINITION,
         experiment_environment_inputs=inputs,
     ).results[0]
-    assert result.candidates[0].inference_rule == "venv-runtime-activation-v1"
+    assert result.candidates[0].inference_rule == "venv-runtime-experiment-v1"
     assert "unchanged_generated_build" in _provenances(result)
 
 
@@ -102,12 +115,13 @@ def test_edited_build_experiment_environment_script_does_not_resolve(tmp_path: P
     _tree(tmp_path, {"Dockerfile": "FROM python:3.11-slim\n", "main.py": "y"})
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        experiments=[_EXPERIMENT],
         accessor=MemoryAccessor({RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT: b"#!/bin/sh\n# hand-edited\n"}),
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelectorArg(kind="activation_run")],
-        definition=ReeDefinition(name="Demo"),
+        [_RUN],
+        definition=_DEFINITION,
         experiment_environment_inputs=inputs,
     ).results[0]
     assert result.status == "not_inferred"
@@ -118,6 +132,7 @@ def test_docker_entrypoint_and_cmd_combine_into_one_argv_example(tmp_path: Path)
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=_DOCKER_EXPERIMENT_ENVIRONMENT,
+        experiments=[_EXPERIMENT],
         accessor=MemoryAccessor(
             {
                 _DOCKER_EXPERIMENT_ENVIRONMENT: docker_archive(
@@ -128,8 +143,8 @@ def test_docker_entrypoint_and_cmd_combine_into_one_argv_example(tmp_path: Path)
     )
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelectorArg(kind="activation_run")],
-        definition=ReeDefinition(name="Demo"),
+        [_RUN],
+        definition=_DEFINITION,
         experiment_environment_inputs=inputs,
     ).results[0]
     body = result.candidates[0].body or ""
@@ -151,12 +166,13 @@ def test_two_viable_strategies_resolve_by_the_written_script_not_by_path(tmp_pat
 
     result = infer_scripts(
         tmp_path,
-        [ScriptTargetSelectorArg(kind="activation_run")],
-        definition=ReeDefinition(name="Demo"),
+        [_RUN],
+        definition=_DEFINITION,
         experiment_environment_inputs=ExperimentEnvironmentInputs(
             declared_experiment_environment_path=declared,
+            experiments=[_EXPERIMENT],
             accessor=MemoryAccessor({RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT: venv_body.encode()}),
         ),
     ).results[0]
-    assert result.candidates[0].inference_rule == "venv-runtime-activation-v1"
+    assert result.candidates[0].inference_rule == "venv-runtime-experiment-v1"
     assert "unchanged_generated_build" in _provenances(result)

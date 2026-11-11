@@ -1,5 +1,4 @@
 import { PAGE } from "@core/app-shell/pages";
-import { createEmptyReeActivation, type ReeActivation } from "@core/ree/ReeSpec";
 import {
   activationFooterHint,
   activationRunLabel,
@@ -9,14 +8,11 @@ import { resolvedExperimentEnvironmentPath } from "@core/ree-steps/buildExperime
 import { findSbomArtifact, resolvedSbomPath } from "@core/ree-steps/sbomUiState";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import { findFileByWorkspacePath, workspaceFileExists } from "@core/workspace/fileTreeTraversal";
-import { useGenerateActivationScript } from "@shell/data/scriptInference/mutations";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { stageTone } from "@shell/ui/theme/appearance";
-import { useCallback, useState } from "react";
 import { CollapsibleLogCard } from "../../components/CollapsibleLogCard";
-import { GenerateScriptControl } from "../../components/GenerateScriptControl";
 import { GlassPageHeader } from "../../components/GlassPageHeader";
 import { GlassPageShell } from "../../components/GlassPageShell";
 import { GlassPanelFooter } from "../../components/GlassPanelFooter";
@@ -26,37 +22,14 @@ import { LastRunStamp } from "../../components/LastRunStamp";
 import { MissingInputsBanner } from "../../components/MissingInputsBanner";
 import { OutcomeBadge } from "../../components/OutcomeBadge";
 import { RunActionButton } from "../../components/RunActionButton";
-import { RunScriptCard } from "../../components/RunScriptCard";
-import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import type { StepPageProps } from "../sharedStepUi";
 import styles from "./ActivationTestPage.module.css";
 import { ActivationTargetCard } from "./sections";
 
 const ACTIVATION_PAGE_COLOR = stageTone(PAGE.ACTIVATION);
 
-function ActivationRunControls({
-  running,
-  runDone,
-  disabled,
-  onRun,
-  onCancel,
-}: {
-  running: boolean;
-  runDone: boolean;
-  disabled: boolean;
-  onRun: () => void;
-  onCancel?: () => void;
-}) {
-  return (
-    <RunActionButton
-      label={activationRunLabel({ running, runDone })}
-      running={running}
-      disabled={disabled}
-      onRun={onRun}
-      onCancel={onCancel}
-    />
-  );
-}
+/** What the activation test runs inside the experiment environment: a command that does nothing. */
+const NOTHING = "true";
 
 export function PageTestActivation({
   step,
@@ -74,34 +47,15 @@ export function PageTestActivation({
   onGoFields,
   missing,
   params,
-  onReeSpecChange,
-  onPersistWorkspaceFile,
 }: StepPageProps) {
   const files = workspaceFiles || [];
-  // Backend-owned starter templates; the verify editor prefills from the
-  // default verify template until a script exists.
   const { data: templates } = useScriptTemplates();
 
-  // Read-only inference: generate an activation scaffold from the built runtime
-  // and load it into the editor. Never written here — the author reviews and
-  // saves it exactly like editing by hand.
-  const generateActivation = useGenerateActivationScript();
-  const [activationExternalEdit, setActivationExternalEdit] = useState<
-    { content: string; nonce: number } | undefined
-  >();
-
-  const activation: ReeActivation = ree.spec.activation ?? createEmptyReeActivation();
-  // The backend settles the activation run-script path on the intent; the
-  // catalog covers the moment before that lands and the not-yet-declared
-  // verify script.
-  const activationScriptPath =
-    activation.runScript || (templates?.activation.run_script_path ?? "");
-  const activationScriptContent =
-    findFileByWorkspacePath(files, activationScriptPath)?.content ?? "";
-  const activationVerifyScriptPath =
-    activation.verifyScript || (templates?.activation.verify_script_path ?? "");
-  const activationVerifyScriptContent =
-    findFileByWorkspacePath(files, activationVerifyScriptPath)?.content ?? "";
+  // The activation is the activate script the build page writes, run alone: it has no script of its own.
+  const activatePath = templates?.activate_experiment_environment.path ?? "";
+  const activateContent = activatePath
+    ? (findFileByWorkspacePath(files, activatePath)?.content ?? "")
+    : "";
 
   const experimentEnvironmentPath = resolvedExperimentEnvironmentPath(
     ree.spec.experimentEnvironmentPath,
@@ -120,38 +74,7 @@ export function PageTestActivation({
     experimentEnvironmentPathExists,
   });
   const activationReady = runDone && !runFailed && canRun;
-
-  const handleSaveScript = useCallback(
-    (content: string) => {
-      if (!activationScriptPath) return;
-      void onPersistWorkspaceFile?.(undefined, activationScriptPath, content);
-      if (activation.runScript !== activationScriptPath) {
-        onReeSpecChange?.((current) => ({
-          ...current,
-          activation: { ...current.activation, runScript: activationScriptPath },
-        }));
-      }
-    },
-    [onPersistWorkspaceFile, onReeSpecChange, activationScriptPath, activation.runScript],
-  );
-
-  // Saving a verify script declares it on the intent; until then activation's
-  // verdict is its run script's exit code alone.
-  const handleSaveVerifyScript = useCallback(
-    (content: string) => {
-      if (!activationVerifyScriptPath) return;
-      void onPersistWorkspaceFile?.(undefined, activationVerifyScriptPath, content);
-      if (activation.verifyScript !== activationVerifyScriptPath) {
-        onReeSpecChange?.((current) => ({
-          ...current,
-          activation: { ...current.activation, verifyScript: activationVerifyScriptPath },
-        }));
-      }
-    },
-    [onPersistWorkspaceFile, onReeSpecChange, activationVerifyScriptPath, activation.verifyScript],
-  );
-
-  const commandLabel = activationScriptPath;
+  const command = activatePath ? `sh ${activatePath} ${NOTHING}` : "";
 
   return (
     <GlassPageShell variant="docked">
@@ -159,12 +82,12 @@ export function PageTestActivation({
         icon={Ic.shield(24)}
         tint={ACTIVATION_PAGE_COLOR}
         title="Test Activation"
-        subtitle="Verify the packaged experiment environment actually starts and activates."
+        subtitle="Run the activation alone: it enters the experiment environment and hands over, as it does for every experiment."
         badges={
           <>
-            {commandLabel && (
+            {activatePath && (
               <Badge tone="info" flavor="code">
-                {commandLabel}
+                {activatePath}
               </Badge>
             )}
             <Badge tone={activationReady ? "success" : "warning"}>
@@ -175,10 +98,10 @@ export function PageTestActivation({
         }
         right={
           <div className={styles.headerActions}>
-            {runDone && ts && <LastRunStamp label="Last verified" ts={ts} />}
-            <ActivationRunControls
+            {runDone && ts && <LastRunStamp label="Last tested" ts={ts} />}
+            <RunActionButton
+              label={activationRunLabel({ running, runDone })}
               running={running}
-              runDone={runDone}
               disabled={!canRun}
               onRun={() => onRun(step.key, activationParams)}
               onCancel={onCancel ? () => onCancel(step.key) : undefined}
@@ -194,69 +117,21 @@ export function PageTestActivation({
           <GlassSectionHeader
             icon={Ic.shield(19)}
             tint={ACTIVATION_PAGE_COLOR}
-            title="Activation Run Script"
-            subtitle="Activation owns its run script: it fully defines how the experiment environment is entered and probed for liveness."
+            title="What Runs"
+            subtitle="The activate experiment environment script, written on the Build Experiment Environment page, around a command that does nothing. Experiments run only while this activation's evidence is current."
           />
-
           <div className={styles.section}>
-            <RunScriptCard
-              scriptPath={activationScriptPath}
-              currentContent={activationScriptContent}
-              disabled={!activationScriptPath}
-              label="Activation run script"
-              helper="Saved to the workspace overlay and run from the workspace root."
-              templates={templates?.activation.templates}
-              externalEdit={activationExternalEdit}
-              generateSlot={
-                <GenerateScriptControl
-                  generate={generateActivation}
-                  noun="activation script"
-                  disabled={!activationScriptPath}
-                  onLoad={(body) =>
-                    setActivationExternalEdit((prev) => ({
-                      content: body,
-                      nonce: (prev?.nonce ?? 0) + 1,
-                    }))
-                  }
-                />
-              }
-              renderAnalysis={(content, dirty, focusLine) => (
-                <ScriptAnalysis
-                  target={{ kind: "activation_run" }}
-                  source={content}
-                  dirty={dirty}
-                  experimentEnvironmentPath={experimentEnvironmentPath || null}
-                  onFocusLine={focusLine}
-                  disabled={!activationScriptPath}
-                />
-              )}
-              onSave={handleSaveScript}
-            />
-          </div>
-
-          <div className={styles.section}>
-            <RunScriptCard
-              scriptPath={activationVerifyScriptPath}
-              currentContent={activationVerifyScriptContent}
-              disabled={!activationVerifyScriptPath}
-              label="Activation verify script (optional)"
-              helper="Checks the activation run afterwards — a plain script run from the workspace root, reading outputs straight from the workspace; its exit code is the verdict. Without one, the run script's exit code decides."
-              templates={templates?.verify}
-              saveButtonContent="Save verify script"
-              savedLabel="Saved verify script"
-              unsavedLabel="Unsaved verify script"
-              renderAnalysis={(content, dirty, focusLine) => (
-                <ScriptAnalysis
-                  target={{ kind: "activation_verify" }}
-                  source={content}
-                  dirty={dirty}
-                  experimentEnvironmentPath={experimentEnvironmentPath || null}
-                  onFocusLine={focusLine}
-                  disabled={!activationVerifyScriptPath}
-                />
-              )}
-              onSave={handleSaveVerifyScript}
-            />
+            {command && <code className={styles.command}>{command}</code>}
+            {activateContent ? (
+              <figure className={styles.figure} aria-label="Activate experiment environment script">
+                <pre className={styles.script}>{activateContent}</pre>
+              </figure>
+            ) : (
+              <p className={styles.empty}>
+                No activate experiment environment script yet: write one on the Build Experiment
+                Environment page.
+              </p>
+            )}
           </div>
         </GlassSubPanel>
 
@@ -265,7 +140,7 @@ export function PageTestActivation({
             icon={Ic.cpu(19)}
             tint={ACTIVATION_PAGE_COLOR}
             title="Experiment Environment Under Test"
-            subtitle="Activation reuses the experiment environment artifact from Build Experiment environment and the inventory context from Generate SBOM."
+            subtitle="The activation enters the experiment environment artifact from Build Experiment environment, with the inventory context from Generate SBOM."
           />
 
           <ActivationTargetCard

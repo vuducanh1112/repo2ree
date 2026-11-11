@@ -49,7 +49,7 @@ describe("activationFooterHint", () => {
   });
   it("prompts to run when not done", () => {
     expect(activationFooterHint({ runDone: false, runFailed: false })).toContain(
-      "Run the smoke test",
+      "Run the activation once",
     );
   });
 });

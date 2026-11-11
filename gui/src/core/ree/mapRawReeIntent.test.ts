@@ -70,25 +70,6 @@ describe("mapRawReeIntentToSlices", () => {
     ]);
   });
 
-  it("maps the activation run script from persisted intent", () => {
-    const mapped = mapRawReeIntentToSlices({
-      reeIntent: {
-        activation: { run_script: "ree/custom-test_activation.sh" },
-      },
-      fallbackName: "demo",
-    });
-
-    expect(mapped.reeSpec.activation.runScript).toBe("ree/custom-test_activation.sh");
-  });
-
-  it("keeps the activation run script empty when not present in intent", () => {
-    // The reserved path is backend-owned: intents arrive with it settled, and
-    // an empty local value is normalized server-side on the next patch.
-    const mapped = mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" });
-
-    expect(mapped.reeSpec.activation.runScript).toBe("");
-  });
-
   it("maps the declared workbench environment, and whether its image is pinned", () => {
     const pinned = `docker.io/library/python@sha256:${"a".repeat(64)}`;
     const image = mapRawReeIntentToSlices({
@@ -154,14 +135,6 @@ describe("mapRawReeIntentToSlices", () => {
         source_type: "git",
         revision: "abc",
         experiment_environment_path: "runtime.tar",
-        activation: {
-          description: "activate",
-          run_script: "run.sh",
-          verify_script: "verify.sh",
-          output_paths: ["one", "", 2],
-          runtime_estimate: "minute",
-          resource_estimates: { cpu: 2, memory: "1GB", gpu: 0, storage: 3, network: "fast" },
-        },
         sbom: "sbom.json",
         swhid: "swh:1:dir:test",
         hardware_description: {},
@@ -198,12 +171,6 @@ describe("mapRawReeIntentToSlices", () => {
         keywords: ["one", "2"],
         correspondingAuthorIdentifier: "id",
         contributors: [{ affiliationName: "lab", affiliationIdentifier: "ror" }],
-      },
-      activation: {
-        runScript: "run.sh",
-        verifyScript: "verify.sh",
-        outputPaths: ["one", "2"],
-        resourceEstimates: { cpu: "2", memory: "1GB", gpu: "0", storage: "3", network: "fast" },
       },
     });
     expect(mapped.workspaceSourceState).toMatchObject({

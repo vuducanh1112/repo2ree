@@ -169,7 +169,7 @@ describe("activation", () => {
     // something. Rendering that as "failed" would report the review as broken.
     const statuses = reviewStepStatuses({
       ...settledBuild,
-      activationOutcome: { basis: "independent", verdict: "failed", runExitCode: 7 },
+      activationOutcome: { basis: "independent", verdict: "failed", exitCode: 7 },
     });
 
     expect(statuses.activation).toBe("uninhabitable");
@@ -179,7 +179,7 @@ describe("activation", () => {
   it("does not offer experiments inside an experiment environment that would not come up", () => {
     const statuses = reviewStepStatuses({
       ...settledBuild,
-      activationOutcome: { basis: "independent", verdict: "failed", runExitCode: 7 },
+      activationOutcome: { basis: "independent", verdict: "failed", exitCode: 7 },
     });
 
     // Experiments run *in* that runtime, so their failures would say nothing

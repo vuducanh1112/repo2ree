@@ -224,27 +224,14 @@ test.describe("REE pipeline", () => {
       await saveActivateScript(page, script);
     });
 
-    await test.step("generate a test activation script", async () => {
-      // The test activation runs inside the activated experiment environment: its scaffold is
-      // the command alone, left fail-closed for the author.
-      await openPort(page, "Activation");
-      await expect(main(page).getByText("Activation Run Script", { exact: true })).toBeVisible();
-
-      const { message, graph, script } = await generateScript(page);
-      expect(message).toMatch(/Loaded a generated activation script/);
-      expect(message).toMatch(/No activation command was selected/);
-      expect(graph).toContain("activation-run-inference");
-      expect(script).toMatch(/exit 64/);
-      expect(script).not.toMatch(/docker load/);
-    });
-
     await test.step("test activation", async () => {
-      await testActivation(
-        page,
-        commandScript("python -c \"import pandas; print('activation ok')\""),
-      );
+      await testActivation(page);
       await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
-      await narrate(page, main(page), "Activation proves the experiment environment comes up");
+      await narrate(
+        page,
+        main(page),
+        "The activation enters the experiment environment and hands over",
+      );
     });
 
     await test.step("run experiment", async () => {

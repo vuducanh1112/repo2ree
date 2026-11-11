@@ -392,8 +392,8 @@ class ReviewRunnableStep:
     with the outcome stays in the handler. See
     ``docs/engineering/explanation/step-lifecycle.md``.
 
-    ``admit`` is the one genuinely per-step precondition — activation needs a
-    experiment environment artifact to probe, an experiment needs an activation that passed. It
+    ``admit`` is the one genuinely per-step precondition — activation needs an
+    experiment environment artifact to enter, an experiment needs an activation that passed. It
     runs after certification, so both steps report the apparatus being absent
     before reporting what they wanted it for.
     """
@@ -500,10 +500,11 @@ def open_review_run(
 
     # Absent apparatus is a fact about the baseline, not a verdict about it:
     # fail the step rather than settle a verdict nothing ever exercised.
-    if not (review_layout.workspace / runnable.run_script).is_file():
+    script = runnable.run_script or runnable.activate_script
+    if not (review_layout.workspace / script).is_file():
         return started.stop(
             "failed",
-            f"the author baseline declares {step.script_noun} that is not there: {runnable.run_script}",
+            f"the author baseline declares {step.script_noun} that is not there: {script}",
         )
 
     outcome = run_runnable(

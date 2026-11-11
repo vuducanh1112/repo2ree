@@ -10,12 +10,12 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import Digest, UtcInstant
 from repo2ree_ree.receipt import (
+    ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
     CrossCheckSbomReceipt,
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
     RunExperimentReceipt,
-    TestActivationReceipt,
 )
 from repo2ree_ree.review import (
     ActivationOutcome,
@@ -157,7 +157,7 @@ class RunnableOperationOutputs(BaseModel):
     verify_exit_code: int | None = None
     verdict: Literal["pass", "fail"] | None = None
     experiment_environment_path: str = ""
-    receipt: TestActivationReceipt | RunExperimentReceipt | None = None
+    receipt: ActivationReceipt | RunExperimentReceipt | None = None
 
 
 class GenerateHbomOutputs(BaseModel):

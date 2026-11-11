@@ -41,8 +41,7 @@ describe("mapReviewRecord", () => {
         basis: "independent",
         verdict: "pass",
         experiment_environment_digest: "digest",
-        run_exit_code: 0,
-        verify_exit_code: 0,
+        exit_code: 0,
       },
       experiment_comparisons: [
         {
@@ -75,7 +74,7 @@ describe("mapReviewRecord", () => {
       expectedVersion: "1",
       observedVersion: undefined,
     });
-    expect(mapped.activationOutcome?.verifyExitCode).toBe(0);
+    expect(mapped.activationOutcome?.exitCode).toBe(0);
     expect(mapped.experimentComparisons[0]).toMatchObject({
       experimentName: "hello",
       verifyScriptPath: "",
@@ -123,8 +122,7 @@ describe("mapReviewRecord", () => {
         basis: "receipt",
         verdict: "unknown",
         experiment_environment_digest: null,
-        run_exit_code: null,
-        verify_exit_code: null,
+        exit_code: null,
       },
       experiment_comparisons: [
         {
@@ -157,8 +155,7 @@ describe("mapReviewRecord", () => {
     });
     expect(mapped.activationOutcome).toMatchObject({
       experimentEnvironmentDigest: undefined,
-      runExitCode: undefined,
-      verifyExitCode: undefined,
+      exitCode: undefined,
     });
     expect(mapped.experimentComparisons[0]).toMatchObject({
       verifyScriptPath: "",

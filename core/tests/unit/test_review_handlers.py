@@ -35,13 +35,10 @@ from repo2ree_ree.model import (
     ReeSubject,
     SourceDefinition,
 )
-from repo2ree_ree.model import TestActivationDefinition as ActivationDefinition
 from repo2ree_ree.primitives import ReePath, RunId, Swhid, WorkspacePath
 from repo2ree_ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -56,7 +53,6 @@ _REVIEW_ID = "review-one"
 _EXPERIMENT_ENVIRONMENT_PATH = "runtime.tar"
 _EXPERIMENT_ENVIRONMENT = b"experiment environment bytes\n"
 _ACTIVATE = b'#!/bin/sh\nexec "$@"\n'
-_ACTIVATION = b"#!/bin/sh\ntest -f runtime.tar\n"
 
 
 def _build_recipe(experiment_environment_path: WorkspacePath) -> ExperimentEnvironmentDefinition:
@@ -73,7 +69,6 @@ def _build_recipe(experiment_environment_path: WorkspacePath) -> ExperimentEnvir
     )
 
 
-_ACTIVATION_VERIFY = b"#!/bin/sh\nexit 0\n"
 _EXPERIMENT_NAME = "demo"
 _EXPERIMENT = b"#!/bin/sh\nmkdir -p outputs && printf result > outputs/result.txt\n"
 _EXPERIMENT_VERIFY = b'#!/bin/sh\ntest "$(cat outputs/result.txt)" = result\n'
@@ -112,13 +107,6 @@ def _author_ree() -> Ree:
                     activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE),
                     activate_experiment_environment_script_size=len(_ACTIVATE),
                 ),
-                test_activation=ActivationDefinition(
-                    run_script_digest=digest_bytes(_ACTIVATION),
-                    run_script_size=len(_ACTIVATION),
-                    verify_script_path=ReePath(RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT),
-                    verify_script_digest=digest_bytes(_ACTIVATION_VERIFY),
-                    verify_script_size=len(_ACTIVATION_VERIFY),
-                ),
                 experiments=(experiment,),
             ),
             receipts=ReeReceipts(experiments={_EXPERIMENT_NAME: author_experiment}),
@@ -126,7 +114,7 @@ def _author_ree() -> Ree:
     )
 
 
-def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activation: bytes = _ACTIVATION) -> ReeLayout:
+def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activate: bytes = _ACTIVATE) -> ReeLayout:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
@@ -137,9 +125,7 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activation: b
     review.workspace.mkdir(parents=True)
     files = {
         _EXPERIMENT_ENVIRONMENT_PATH: _EXPERIMENT_ENVIRONMENT,
-        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT: _ACTIVATE,
-        RESERVED_TEST_ACTIVATION_SCRIPT: activation,
-        RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT: _ACTIVATION_VERIFY,
+        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT: activate,
         experiment_run_script_path(_EXPERIMENT_NAME): _EXPERIMENT,
         experiment_verify_script_path(_EXPERIMENT_NAME): _EXPERIMENT_VERIFY,
     }
@@ -288,14 +274,14 @@ def test_failed_activation_is_completed_review_evidence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    layout = _workbench(tmp_path, monkeypatch, activation=b"#!/bin/sh\nexit 7\n")
+    layout = _workbench(tmp_path, monkeypatch, activate=b"#!/bin/sh\nexit 7\n")
 
     result = _activate()
 
     assert result.status == "succeeded"
     assert result.outputs["outcome"]["verdict"] == "failed"
     assert result.outputs["receipt"]["status"] == "failed"
-    assert result.outputs["receipt"]["run_exit_code"] == 7
+    assert result.outputs["receipt"]["exit_code"] == 7
     record = read_review_record(layout.review(_REVIEW_ID))
     assert record is not None
     assert step_state(record, "activation").status == "completed"  # type: ignore[union-attr]

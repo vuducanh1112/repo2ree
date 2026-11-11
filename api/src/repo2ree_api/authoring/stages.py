@@ -259,7 +259,7 @@ def create_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPay
 
 
 class CreateActivationTestRunPayload(CreateRunPayload):
-    """Run the reserved activation script. Takes no parameters of its own."""
+    """Run the activate experiment environment script alone. Takes no parameters of its own."""
 
 
 @stages_router.post(

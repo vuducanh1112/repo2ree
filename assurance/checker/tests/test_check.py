@@ -690,7 +690,7 @@ def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> No
 def test_evidence_restored_by_a_bundle_load_passes_for_every_kind() -> None:
     recorder = Recorder()
     recorder.attempt("a1", operation="load_ree_bundle")
-    for step in ("source", "experiment_environment", "test_activation"):
+    for step in ("source", "experiment_environment", "activation"):
         recorder.receipt(step, None, "missing", attempt_id=None, cause="baseline")
         recorder.receipt(step, "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"

@@ -65,7 +65,6 @@ from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_singl
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
 )
 from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
@@ -133,8 +132,6 @@ def build_reproducer_sh(
     *,
     build_experiment_environment_script: str,
     activate_experiment_environment_script: str,
-    activation_script: str,
-    activation_verify_script: str = "",
     experiments: Sequence[tuple[str, str, str]],
     experiment_environment_workspace_path: str | None,
     experiment_environment_artifact_basename: str | None,
@@ -160,8 +157,6 @@ def build_reproducer_sh(
         (
             f"BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(build_experiment_environment_script)}",
             f"ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(activate_experiment_environment_script)}",
-            f"ACTIVATION_SCRIPT={shell_single_quote(activation_script)}",
-            f"ACTIVATION_VERIFY_SCRIPT={shell_single_quote(activation_verify_script)}",
             f"EXPERIMENT_ENVIRONMENT_WS_PATH={shell_single_quote(experiment_environment_workspace_path or '')}",
             f"EXPERIMENT_ENVIRONMENT_ARTIFACT={shell_single_quote(experiment_environment_artifact_basename or '')}",
         )
@@ -181,8 +176,6 @@ def reproducer_entries(
     *,
     build_experiment_environment_script: str = RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     activate_experiment_environment_script: str = RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    activation_script: str = RESERVED_TEST_ACTIVATION_SCRIPT,
-    activation_verify_script: str = "",
     experiments: Sequence[tuple[str, str, str]] = (),
     experiment_environment_workspace_path: str | None = None,
     experiment_environment_artifact_basename: str | None = None,
@@ -205,8 +198,6 @@ def reproducer_entries(
         or RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
         activate_experiment_environment_script=activate_experiment_environment_script
         or RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-        activation_script=activation_script or RESERVED_TEST_ACTIVATION_SCRIPT,
-        activation_verify_script=activation_verify_script,
         experiments=experiments,
         experiment_environment_workspace_path=experiment_environment_workspace_path,
         experiment_environment_artifact_basename=experiment_environment_artifact_basename,
@@ -351,13 +342,25 @@ _RUN_SH_TEMPLATE = shell_text("""
       fi
     }
 
+    require_activation() {
+      [ -f "$WS/$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" ] \\
+        || die "script not found in workspace: $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT"
+    }
+
     run_activated() {
       script=$1
       [ -f "$WS/$script" ] || die "script not found in workspace: $script"
-      [ -f "$WS/$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" ] \\
-        || die "script not found in workspace: $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT"
+      require_activation
       say "\\$ sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT sh $script"
       ( cd "$WS" && sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" sh "$script" )
+    }
+
+    # The activation alone, around a command that does nothing: it enters the experiment
+    # environment and hands over.
+    run_activation() {
+      require_activation
+      say "\\$ sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT true"
+      ( cd "$WS" && sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" true )
     }
 
     # Run a run script inside the activated experiment environment, then its verify
@@ -378,7 +381,7 @@ _RUN_SH_TEMPLATE = shell_text("""
     do_activate() {
       ensure_workspace; ensure_experiment_environment
       say "== test-activation =="
-      run_verified "$ACTIVATION_SCRIPT" "$ACTIVATION_VERIFY_SCRIPT"
+      run_activation
     }
 
     do_experiment() {
@@ -395,21 +398,15 @@ _RUN_SH_TEMPLATE = shell_text("""
       run_verified "$script" "$verify"
     }
 
-    # Verify only: re-check a claim against the outputs a previous run left in
-    # the workspace, without re-running. With a name, verifies that experiment;
-    # with no name, verifies activation. Needs the workspace populated but not
+    # Verify only: re-check an experiment's claim against the outputs a previous run
+    # left in the workspace, without re-running. Needs the workspace populated but not
     # the experiment environment (the verify script only reads workspace files). Fails if the
-    # subject declares no verify script, or if the outputs it expects are absent
+    # experiment declares no verify script, or if the outputs it expects are absent
     # (never produced, or the workspace was reset since the run).
     do_verify() {
       name=${1:-}
+      [ -n "$name" ] || die "usage: $0 verify <name>"
       ensure_workspace
-      if [ -z "$name" ]; then
-        [ -n "$ACTIVATION_VERIFY_SCRIPT" ] || die "activation declares no verify script — nothing to verify"
-        say "== verify: activation =="
-        run_verify_only "$ACTIVATION_VERIFY_SCRIPT"
-        return
-      fi
       match=$(experiments | while IFS='\t' read -r n s v; do
         if [ "$n" = "$name" ]; then printf 'Y\t%s' "$v"; break; fi
       done)
@@ -427,7 +424,7 @@ _RUN_SH_TEMPLATE = shell_text("""
       do_materialize
       ensure_experiment_environment
       say "== test-activation =="
-      run_verified "$ACTIVATION_SCRIPT" "$ACTIVATION_VERIFY_SCRIPT"
+      run_activation
       experiments | while IFS='\t' read -r n s v; do
         [ -n "$n" ] || continue
         say "== experiment: $n =="
@@ -482,7 +479,7 @@ _REPRODUCING_MD = shell_text("""
     - A POSIX shell and `tar` (present on macOS/Linux; on Windows use WSL or Git
       Bash).
     - Whatever experiment environment the author's scripts call into — commonly **Docker**. The
-      test activation and every experiment run inside
+      activation test and every experiment run inside
       `ree-scripts/activate_experiment_environment.sh` (for example its `docker run …`), so
       read `ree/@@OVERLAY_DIRNAME@@/` if you want to see exactly what will run.
     - Only if the source was **not** bundled: the fetch tool for its type (`git`,
@@ -523,9 +520,9 @@ _REPRODUCING_MD = shell_text("""
     sh run.sh acquire-source           # extract/fetch the source (verify SWHID if able)
     sh run.sh materialize-workspace    # assemble a clean workspace = source + overlay
     sh run.sh build-experiment-environment            # build the experiment environment from the author's build script
-    sh run.sh test-activation          # prove the experiment environment is inhabitable
+    sh run.sh test-activation          # enter the experiment environment and hand over
     sh run.sh experiment <name>        # run a named experiment and verify its result
-    sh run.sh verify <name>            # verify only, without re-running (activation if <name> omitted)
+    sh run.sh verify <name>            # verify only, without re-running
     sh run.sh list                     # list commands again
     ```
 
@@ -543,7 +540,7 @@ _REPRODUCING_MD = shell_text("""
     — read them to see exactly what is being claimed.
 
     To re-check a claim without re-running the experiment, use `sh run.sh verify
-    <name>` (or `sh run.sh verify` for activation): it runs only the verify
+    <name>`: it runs only the verify
     script against the outputs the previous run left in the workspace. It fails
     if those outputs are absent — because the experiment hasn't run yet, or the
     workspace was reset since.

@@ -72,8 +72,8 @@ test.describe("Java with Maven", () => {
       await saveActivateScript(page, dockerActivateScript(EXPERIMENT_ENVIRONMENT_PATH, IMAGE));
     });
 
-    await test.step("test activation: the JVM starts", async () => {
-      await testActivation(page, commandScript("java -version"));
+    await test.step("test activation: it enters the container and hands over", async () => {
+      await testActivation(page);
     });
 
     await test.step("run the experiment", async () => {

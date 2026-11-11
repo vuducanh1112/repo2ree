@@ -16,9 +16,8 @@ from repo2ree_authoring.targets import resolve_target
 from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_TEST_ACTIVATION_SCRIPT,
-    RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
@@ -29,9 +28,9 @@ def test_resolve_target_reserved_paths() -> None:
         resolve_target(ScriptTargetSelectorArg(kind="build_experiment_environment")).path
         == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     )
-    assert resolve_target(ScriptTargetSelectorArg(kind="activation_run")).path == RESERVED_TEST_ACTIVATION_SCRIPT
     assert (
-        resolve_target(ScriptTargetSelectorArg(kind="activation_verify")).path == RESERVED_TEST_ACTIVATION_VERIFY_SCRIPT
+        resolve_target(ScriptTargetSelectorArg(kind="activate_experiment_environment")).path
+        == RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
     )
 
 
@@ -58,10 +57,7 @@ def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     report = infer_scripts(
         tmp_path,
-        [
-            ScriptTargetSelectorArg(kind="activation_verify"),
-            ScriptTargetSelectorArg(kind="experiment_verify", experiment_name="e1"),
-        ],
+        [ScriptTargetSelectorArg(kind="experiment_verify", experiment_name="e1")],
     )
     for result in report.results:
         assert result.status == "not_inferred"
@@ -106,7 +102,7 @@ def test_report_deduplicates_dags_across_targets(tmp_path: Path) -> None:
 
 def test_unregistered_targets_contribute_no_dag(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("x")
-    report = infer_scripts(tmp_path, [ScriptTargetSelectorArg(kind="activation_verify")])
+    report = infer_scripts(tmp_path, [ScriptTargetSelectorArg(kind="experiment_verify", experiment_name="e1")])
     assert report.dags == []
 
 

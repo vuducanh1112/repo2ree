@@ -70,7 +70,7 @@ def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
     assert {"write_file", "acquire_source"} <= allowed("receipt", "experiment_environment", "current", "stale")
     # A new experiment environment makes everything run on the old one stale, but never the experiment environment
     # itself.
-    assert "build_experiment_environment" in allowed("receipt", "test_activation", "current", "stale")
+    assert "build_experiment_environment" in allowed("receipt", "activation", "current", "stale")
     assert "build_experiment_environment" not in allowed("receipt", "experiment_environment", "current", "stale")
     assert allowed("receipt", "experiment_environment", "missing", "current") == {
         "build_experiment_environment",
@@ -79,15 +79,22 @@ def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
 
 
 def test_what_runs_through_the_activation_rests_on_it_and_the_build_does_not() -> None:
-    for name in ("test_activation", "experiment"):
+    for name in ("activation", "experiment"):
         assert "definition.activate_experiment_environment" in ree().receipts[name].rests_on
     assert "definition.activate_experiment_environment" not in ree().receipts["experiment_environment"].rests_on
     assert "write_file" in allowed("receipt", "experiment", "current", "stale")
 
 
+def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_its_script() -> None:
+    assert ree().receipts["activation"].about == ("definition.activate_experiment_environment",)
+    assert "activation" in ree().receipts["experiment"].made_from
+    # Testing the activation again may stale every experiment run through the one before.
+    assert "activation_test" in allowed("receipt", "experiment", "current", "stale")
+
+
 def test_what_runs_in_the_workbench_environment_rests_on_it() -> None:
     # The author's scripts run in the declared workbench environment: changing it changes what their receipts prove.
-    for name in ("experiment_environment", "test_activation", "experiment"):
+    for name in ("experiment_environment", "activation", "experiment"):
         assert "definition.workbench_environment" in ree().receipts[name].rests_on
     assert "patch_ree_definition" in allowed("receipt", "experiment_environment", "current", "stale")
     assert allowed("field", "definition.workbench_environment", CREATED, "unset") == {"initialize_ree"}
@@ -96,7 +103,7 @@ def test_what_runs_in_the_workbench_environment_rests_on_it() -> None:
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
     # Standing is the receipt against the document as it now stands: undoing an edit undoes its staleness.
     assert {"patch_ree_definition", "write_file", "build_experiment_environment"} <= allowed(
-        "receipt", "test_activation", "stale", "current"
+        "receipt", "activation", "stale", "current"
     )
     assert allowed("receipt", "experiment_environment", "current", "stale") <= allowed(
         "receipt", "experiment_environment", "stale", "current"
@@ -121,7 +128,7 @@ def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale
 
 
 def test_a_receipt_starts_applicable_only_when_what_it_is_about_is_declared_from_the_start() -> None:
-    assert allowed("receipt", "test_activation", CREATED, "missing") == {"initialize_ree"}
+    assert allowed("receipt", "activation", CREATED, "missing") == {"initialize_ree"}
     assert allowed("receipt", "experiment_environment", CREATED, "not_applicable") == {"initialize_ree"}
     assert allowed("receipt", "experiment", CREATED, "missing") == {"patch_ree_definition"}
 
@@ -155,7 +162,7 @@ def mutated(change: Any) -> dict[str, Any]:
         ),
         (lambda a: a["fields"]["definition.experiments[*]"].update(files=["ree-scripts/x.sh"]), "name its item once"),
         (
-            lambda a: a["fields"]["definition.test_activation"].update(
+            lambda a: a["fields"]["definition.activate_experiment_environment"].update(
                 files=["ree-scripts/build_experiment_environment.sh"]
             ),
             "claimed by more than one field",
@@ -357,7 +364,6 @@ def authored() -> Evidence:
                     "definition.name",
                     "definition.experiment_environment",
                     "definition.activate_experiment_environment",
-                    "definition.test_activation",
                 )
             ),
             change(
@@ -463,7 +469,8 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     ("path", "claim"),
     [
         ("ree-scripts/build_experiment_environment.sh", ("definition.experiment_environment", "")),
-        ("ree-scripts/test_activation.verify.sh", ("definition.test_activation", "")),
+        ("ree-scripts/activate_experiment_environment.sh", ("definition.activate_experiment_environment", "")),
+        ("ree-scripts/test_activation.sh", None),
         ("ree-scripts/experiments/train-model.sh", ("definition.experiments[*]", "train-model")),
         ("ree-scripts/experiments/train-model.verify.sh", ("definition.experiments[*]", "train-model")),
         ("ree-scripts/experiments/nested/train.sh", None),
