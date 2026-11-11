@@ -21,11 +21,9 @@ def page_architecture(bundle: Bundle) -> Page:
     )
     body += diagram(bundle, architecture / "gui.svg", "GUI, collapsed", "dependency-cruiser over gui/src.")
     body += (
-        "<h3>Per package</h3><details><summary>Show the import graph of each backend package</summary>"
-        + "".join(diagram(bundle, p, p.stem) for p in packages)
+        "".join(diagram(bundle, p, f"{p.stem} package") for p in packages)
         + diagram(bundle, architecture / "workspace-modules.svg", "Backend workspace, by module")
         + diagram(bundle, architecture / "gui-core.svg", "GUI, functional core expanded")
-        + "</details>"
     )
     lede = "Import graphs of the backend and the GUI."
     teaser = "Import graphs of the backend and the GUI"
