@@ -148,6 +148,6 @@ def test_sealed_bundle_loads_into_a_fresh_ree(api: Api, new_ree: Callable[..., s
     restored = api.ree(reader)
     assert restored["seal"] == sealed["seal"]
     assert (
-        restored["subject"]["receipts"]["build_experiment_environment"]
-        == sealed["subject"]["receipts"]["build_experiment_environment"]
+        restored["subject"]["receipts"]["experiment_environment"]
+        == sealed["subject"]["receipts"]["experiment_environment"]
     )

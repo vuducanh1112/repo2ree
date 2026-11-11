@@ -60,7 +60,7 @@ def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callab
     failed = api.build_experiment_environment(ree_id, FAILING_DOCKER_BUILD, fixture=FIXTURE)
     assert failed["status"] == "failed"
     assert "step failing" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
 
     # The author's own recipe then builds on the same bench.
@@ -88,7 +88,11 @@ def test_reviewer_reproduces_a_sealed_docker_ree(api: Api, new_ree: Callable[...
     assert source["status"] == "succeeded", api.logs(reviewer, source["run_id"])
     review_id = api.get(f"/api/v1/rees/{reviewer}/reviews")["reviews"][0]["review_id"]
 
-    for stage in ("build:reproduce", "activation:reproduce", f"experiments/{FIXTURE.experiment}:reproduce"):
-        payload = {"basis": "auto"} if stage == "build:reproduce" else {}
+    for stage in (
+        "build-experiment-environment:reproduce",
+        "activation:reproduce",
+        f"experiments/{FIXTURE.experiment}:reproduce",
+    ):
+        payload = {"basis": "auto"} if stage == "build-experiment-environment:reproduce" else {}
         run = api.stage(reviewer, f"reviews/{review_id}/{stage}", payload)
         assert run["status"] == "succeeded", (stage, api.logs(reviewer, run["run_id"]))

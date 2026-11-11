@@ -39,7 +39,7 @@ def test_failing_build_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) 
     failed = api.build_experiment_environment(ree_id, FAILING_BUILD)
     assert failed["status"] == "failed"
     assert "resolving dependencies" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
 
     # The author fixes the script; the same REE then builds.
@@ -54,7 +54,7 @@ def test_build_that_produces_no_experiment_environment_fails(api: Api, new_ree: 
     failed = api.build_experiment_environment(ree_id, SILENT_BUILD)
     assert failed["status"] == "failed"
     assert f"did not produce {EXPERIMENT_ENVIRONMENT}" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
 
 
 def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api, new_ree: Callable[..., str]) -> None:
@@ -88,7 +88,7 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     settled = api.wait(ree_id, run, timeout=60)
     assert settled["status"] == "canceled"
     assert time.monotonic() - started < 30, "cancel waited for the script instead of stopping it"
-    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
     # The attempt ended, it was not abandoned: captured, and canceled. (That its capture changed
     # nothing is witnessed from Git by the behaviour check: canceled-attempts-change-nothing.)
     attempts = [

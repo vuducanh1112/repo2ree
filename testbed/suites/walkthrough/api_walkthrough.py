@@ -532,9 +532,9 @@ def run() -> None:
         f"/api/v1/rees/{ree_id}/definition",
         {"definition_patch": {"experiment_environment": {"artifact_path": experiment_environment_artifact}}},
     )
-    experiment_environment = declared["ree"]["subject"]["definition"]["build_experiment_environment"]
+    experiment_environment = declared["ree"]["subject"]["definition"]["experiment_environment"]
     check(
-        experiment_environment["experiment_environment_path"] == experiment_environment_artifact,
+        experiment_environment["artifact_path"] == experiment_environment_artifact,
         "experiment environment artifact not declared",
     )
     run_stage(

@@ -43,8 +43,12 @@ def test_reviewer_reproduces_a_sealed_ree(api: Api, new_ree: Callable[..., str])
     assert reviews, "a source review opens a review"
     review_id = reviews[0]["review_id"]
 
-    for stage in ("build:reproduce", "activation:reproduce", f"experiments/{EXPERIMENT}:reproduce"):
-        payload = {"basis": "auto"} if stage == "build:reproduce" else {}
+    for stage in (
+        "build-experiment-environment:reproduce",
+        "activation:reproduce",
+        f"experiments/{EXPERIMENT}:reproduce",
+    ):
+        payload = {"basis": "auto"} if stage == "build-experiment-environment:reproduce" else {}
         run = api.stage(reviewer, f"reviews/{review_id}/{stage}", payload)
         assert run["status"] == "succeeded", (stage, api.logs(reviewer, run["run_id"]))
 
