@@ -1,4 +1,4 @@
-"""Graphviz drawings of the specification: one machine, one part of an aggregate, and the system map."""
+"""Graphviz drawings of the specification: a machine, a part or the evidence of an aggregate, and the system map."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 
 from repo2ree_repoview.graphviz import inline_svg
 from repo2ree_repoview.graphviz import quote as q
-from repo2ree_repoview.overview.exports import Spec, SubMachine
+from repo2ree_repoview.overview.exports import Aggregate, Spec, SubMachine
 from repo2ree_repoview.overview.html import esc
 from repo2ree_repoview.overview.receipt import Move
 
@@ -141,5 +141,82 @@ def system_svg(spec: Spec) -> str:
         )
         lines.append(f"  {q(sender)} -> {node} [ltail={q(f'cluster_c_{boundary.sender}')}];")
         lines.append(f"  {node} -> {q(receiver)} [lhead={q(f'cluster_c_{boundary.receiver}')}];")
+    lines.append("}")
+    return dot_svg("\n".join(lines))
+
+
+def stales(aggregate: Aggregate) -> dict[str, tuple[str, ...]]:
+    """For each receipt, every receipt made from it, directly or through others: what re-running it stales."""
+    made_into: dict[str, set[str]] = defaultdict(set)
+    for name, receipt in aggregate.receipts.items():
+        for source in receipt.made_from:
+            made_into[source].add(name)
+
+    def reach(start: str) -> set[str]:
+        seen: set[str] = set()
+        stack = list(made_into[start])
+        while stack:
+            if (name := stack.pop()) not in seen:
+                seen.add(name)
+                stack.extend(made_into[name])
+        return seen
+
+    return {name: tuple(sorted(reach(name))) for name in aggregate.receipts}
+
+
+def _tiers(aggregate: Aggregate) -> dict[str, int]:
+    """Each receipt's longest chain of receipts it is made from, so a receipt sits after all of them."""
+    depth: dict[str, int] = {}
+
+    def rank(name: str) -> int:
+        if name not in depth:
+            depth[name] = 1 + max((rank(other) for other in aggregate.receipts[name].made_from), default=-1)
+        return depth[name]
+
+    return {name: rank(name) for name in aggregate.receipts}
+
+
+def evidence_svg(aggregate: Aggregate) -> str:
+    """An aggregate's receipts: what each is made from and rests on, and what re-running it stales.
+
+    A receipt goes stale when a receipt it is made from is produced again (grey), or when a field
+    it rests on moves (teal); a field it is only about makes it applicable (dashed).
+    """
+    lines = [
+        "digraph evidence {",
+        '  rankdir=LR; newrank=true; bgcolor="transparent"; pad=0.2; nodesep=0.4; ranksep=0.7;',
+        '  node [shape=box, style="rounded,filled", fillcolor="#dbeafe", color="#3b82f6", fontsize=11, height=0.3];',
+        '  edge [fontsize=9, arrowsize=0.6, color="#64748b"];',
+    ]
+    downstream = stales(aggregate)
+    for name, receipt in aggregate.receipts.items():
+        label = [f"<B>{esc(name)}</B>" + (" (each)" if receipt.keyed else "")]
+        label.append(f'<FONT POINT-SIZE="9" COLOR="#475569">by {esc(receipt.produced_by)}</FONT>')
+        if receipt.applies_without_declaration:
+            label.append('<FONT POINT-SIZE="9" COLOR="#0f766e">applies undeclared</FONT>')
+        if count := len(downstream[name]):
+            label.append(f'<FONT POINT-SIZE="9" COLOR="#b45309">stales {count}</FONT>')
+        lines.append(f"  {q(name)} [label=<{'<BR/>'.join(label)}>];")
+    fields = sorted({path for r in aggregate.receipts.values() for path in (*r.about, *r.rests_on)})
+    field_style = 'shape=note, fillcolor="#e2ece8", color="#0f766e", fontsize=10'
+    lines.extend(
+        f"  {q('field:' + path)} [label={q(path.removeprefix('definition.'))}, {field_style}];" for path in fields
+    )
+    by_tier: dict[int, list[str]] = defaultdict(list)
+    for name, tier in _tiers(aggregate).items():
+        by_tier[tier].append(name)
+    lines.extend(
+        f"  {{ rank=same; {'; '.join(q(name) for name in sorted(members))}; }}"
+        for members in by_tier.values()
+        if len(members) > 1
+    )
+    for name, receipt in aggregate.receipts.items():
+        lines.extend(f"  {q(source)} -> {q(name)} [penwidth=1.3, weight=3];" for source in receipt.made_from)
+        lines.extend(f'  {q("field:" + path)} -> {q(name)} [color="#0f766e"];' for path in receipt.rests_on)
+        lines.extend(
+            f'  {q("field:" + path)} -> {q(name)} [style=dashed, color="#0f766e"];'
+            for path in receipt.about
+            if path not in receipt.rests_on
+        )
     lines.append("}")
     return dot_svg("\n".join(lines))

@@ -70,12 +70,17 @@ tr:last-child td{border-bottom:none}
 .parts{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
 .card.part{min-width:0;max-width:100%}
 .card.part .svgwrap svg{max-width:none}
+.diagram.full svg{display:block;max-width:none}
 .never{color:var(--bad);font-size:12px;margin-top:4px}
 .never summary{cursor:pointer}
 
 input.filter{width:100%;max-width:360px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);margin:6px 0 10px}
 
 .legend span{margin-right:14px;font-size:12px}
+.legend.symbols{display:flex;flex-wrap:wrap;gap:6px 18px}
+.legend.symbols span{margin-right:0;display:inline-flex;align-items:center;gap:6px}
+.legend .stales{color:#b45309;font-weight:400}
+.legend .undeclared{color:#0f766e;font-weight:400}
 .ok{color:#0f766e}
 .ex{color:#b45309}
 .no{color:#dc2626}

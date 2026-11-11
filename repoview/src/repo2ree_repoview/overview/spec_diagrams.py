@@ -4,8 +4,8 @@ From the specification as exported (reports/exports/spec.json) and this tree's a
 assurance-gate receipt's runs and the showcases' (reports/behaviour/), it writes under
 reports/diagrams/spec/: the system map (system.svg), each machine as the specification allows it
 (machines/), each machine with how often the receipt's tests took each edge (coverage/) and the
-showcases' tests (showcase-coverage/), and each part of an aggregate with the operations that moved
-it (aggregates/).
+showcases' tests (showcase-coverage/), each part of an aggregate with the operations that moved
+it (aggregates/), and each aggregate's receipts with what they are made from and rest on (evidence/).
 It prints each file it wrote, for the recipe to stamp.
 
     python -m repo2ree_repoview spec-diagrams --spec reports/exports/spec.json -o reports/diagrams/spec
@@ -17,7 +17,7 @@ import argparse
 import re
 from pathlib import Path
 
-from repo2ree_repoview.overview.drawing import machine_svg, submachine_svg, system_svg
+from repo2ree_repoview.overview.drawing import evidence_svg, machine_svg, submachine_svg, system_svg
 from repo2ree_repoview.overview.exports import EXPORTS, ShowcaseRuns, Spec
 from repo2ree_repoview.overview.figures import DIAGRAMS
 from repo2ree_repoview.overview.receipt import (
@@ -50,6 +50,10 @@ def part_drawing(aggregate: str, part: str) -> str:
     return f"spec/aggregates/{aggregate}/{re.sub(r'[^A-Za-z0-9._-]+', '-', part).strip('-')}.svg"
 
 
+def evidence_drawing(aggregate: str) -> str:
+    return f"spec/evidence/{aggregate}.svg"
+
+
 def drawings(spec: Spec, evidence: Evidence, excused: dict[str, str], showcases: Evidence) -> dict[str, str]:
     """Every drawing, by its path under reports/diagrams/."""
     edges = Exercised.over(evidence).edges
@@ -66,6 +70,7 @@ def drawings(spec: Spec, evidence: Evidence, excused: dict[str, str], showcases:
         if len(parts) != len(aggregate.machines):
             raise ValueError(f"two parts of {name} would share a drawing")
         drawn |= {path: submachine_svg(machine, moves.of(machine.name)) for path, machine in parts.items()}
+        drawn[evidence_drawing(name)] = evidence_svg(aggregate)
     return drawn
 
 

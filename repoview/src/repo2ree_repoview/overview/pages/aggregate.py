@@ -1,4 +1,4 @@
-"""An aggregate as one machine of machines: every part of its committed document, and the operations that moved it."""
+"""An aggregate: its evidence graph, and every part of its committed document with the operations that moved it."""
 
 from __future__ import annotations
 
@@ -11,13 +11,19 @@ from repo2ree_repoview.overview.exports import Aggregate, Spec, SubMachine
 from repo2ree_repoview.overview.figures import inlined
 from repo2ree_repoview.overview.html import Page, esc, section
 from repo2ree_repoview.overview.receipt import AggregateMoves, Move
-from repo2ree_repoview.overview.spec_diagrams import part_drawing
+from repo2ree_repoview.overview.spec_diagrams import evidence_drawing, part_drawing
 
 DISALLOWED_SHOWN = 20
+# How a page names an aggregate whose name is an acronym.
+TITLES = {"Ree": "REE"}
 
 
 def slug(aggregate: Aggregate) -> str:
-    return f"{aggregate.name.lower()}-machine"
+    return aggregate.name.lower()
+
+
+def title(aggregate: Aggregate) -> str:
+    return TITLES.get(aggregate.name, aggregate.name)
 
 
 def codes(names: Iterable[str]) -> str:
@@ -33,7 +39,7 @@ def without_machine(spec: Spec) -> str:
     items = [
         codes([name])
         + (
-            f' (part by part: <a href="{slug(drawn[name])}.html">{esc(drawn[name].name)} machine</a>)'
+            f' (part by part: <a href="{slug(drawn[name])}.html">{esc(title(drawn[name]))}</a>)'
             if name in drawn
             else ""
         )
@@ -98,17 +104,58 @@ LEGEND = (
 )
 
 
+def _symbol(shape: str) -> str:
+    return f'<svg width="30" height="14" viewBox="0 0 30 14" aria-hidden="true">{shape}</svg>'
+
+
+def _arrow(color: str, dashed: bool = False) -> str:
+    dash = ' stroke-dasharray="4 3"' if dashed else ""
+    return _symbol(
+        f'<line x1="1" y1="7" x2="24" y2="7" stroke="{color}" stroke-width="1.5"{dash}/>'
+        f'<path d="M23 3 L29 7 L23 11 Z" fill="{color}"/>'
+    )
+
+
+# What the evidence graph's shapes mean, drawn in the graph's own colours (overview/drawing.py).
+EVIDENCE_LEGEND = (
+    '<p class="legend symbols">'
+    "<span>"
+    + _symbol('<rect x="1" y="1" width="28" height="12" rx="5" fill="#dbeafe" stroke="#3b82f6"/>')
+    + "receipt: by the operation that produces it; (each) for one per experiment</span>"
+    "<span>"
+    + _symbol(
+        '<path d="M1 1 H24 L29 6 V13 H1 Z" fill="#e2ece8" stroke="#0f766e"/>'
+        '<path d="M24 1 V6 H29" fill="none" stroke="#0f766e"/>'
+    )
+    + "field of the REE's definition</span>"
+    f"<span>{_arrow('#64748b')}made from: stale when that receipt is produced again</span>"
+    f"<span>{_arrow('#0f766e')}rests on: stale when that field moves</span>"
+    f"<span>{_arrow('#0f766e', dashed=True)}about: applicable only while that field is declared</span>"
+    '<span><b class="stales">stales N</b> re-running it makes N receipts stale</span>'
+    '<span><b class="undeclared">applies undeclared</b> applicable even with nothing declared</span>'
+    "</p>"
+)
+
+
 def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle) -> Page:
     """Every part in the checker's order, one row of cards per group."""
     groups: dict[str, list[str]] = {}
     for machine in aggregate.machines:
         note = receipt_note(aggregate, machine.name) if machine.kind == "receipt" else ""
         groups.setdefault(machine.group, []).append(card(bundle, aggregate, machine, moves.of(machine.name), note))
-    body = (
-        summary(aggregate, moves)
-        + LEGEND
-        + "".join(f'<h3>{esc(group)}</h3><div class="parts">{"".join(cards)}</div>' for group, cards in groups.items())
+    graph = (
+        "<h3>Evidence graph</h3>"
+        '<p class="muted">The receipts as the specification states them, and what each depends on.</p>'
+        + EVIDENCE_LEGEND
+        + f'<div class="diagram full">{inlined(bundle, evidence_drawing(aggregate.name))}</div>'
     )
-    title = f"{aggregate.name} machine"
-    teaser = f"{len(aggregate.machines)} parts of the {aggregate.name}, and the operations that moved each"
-    return Page(slug(aggregate), title, teaser, section(slug(aggregate), title, "", body))
+    body = (
+        graph
+        + "<h3>Parts</h3>"
+        + summary(aggregate, moves)
+        + LEGEND
+        + "".join(f'<h4>{esc(group)}</h4><div class="parts">{"".join(cards)}</div>' for group, cards in groups.items())
+    )
+    name = title(aggregate)
+    teaser = f"The {name}'s evidence graph, its {len(aggregate.machines)} parts, and the operations that moved each"
+    return Page(slug(aggregate), name, teaser, section(slug(aggregate), name, "", body))

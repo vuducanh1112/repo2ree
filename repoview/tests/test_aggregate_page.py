@@ -1,4 +1,4 @@
-"""The Ree machine page: every part of the REE, what moved it, and what the specification allows but nothing took."""
+"""The REE page: its evidence graph, every part, what moved each, and what the spec allows but nothing took."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def test_entities_without_a_machine_are_listed_not_drawn_and_point_to_their_part
     coverage = page_coverage(current, None, exercised, {}, {}, no_operations(), bundle).body
     for body in (coverage, page_specification(current, bundle).body):
         assert "<b>Receipt</b>" not in body
-        assert '<a href="ree-machine.html">Ree machine</a>' in body
+        assert '<a href="ree.html">REE</a>' in body
 
 
 def test_the_count_leaves_out_bulk_operations_and_groups_follow_the_checkers_order(
@@ -127,5 +127,7 @@ def test_the_count_leaves_out_bulk_operations_and_groups_follow_the_checkers_ord
     allowed = sum(op not in m.bulk for m in ree.machines for edge in m.edges for op in edge.by)
     page = page_aggregate(ree, AggregateMoves.over(run_with(tmp_path, {"aggregates": []}), "Ree"), bundle).body
     assert f"of {allowed} allowed moves" in page
-    headings = [chunk.split("</h3>", 1)[0] for chunk in page.split("<h3>")[1:]]
-    assert headings == list(dict.fromkeys(machine.group for machine in ree.machines))
+    sections = [chunk.split("</h3>", 1)[0] for chunk in page.split("<h3>")[1:]]
+    assert sections == ["Evidence graph", "Parts"]
+    groups = [chunk.split("</h4>", 1)[0] for chunk in page.split("<h4>")[1:]]
+    assert groups == list(dict.fromkeys(machine.group for machine in ree.machines))

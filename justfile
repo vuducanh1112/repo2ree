@@ -33,7 +33,6 @@ JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 # Records the commit each generated diagram or metric came from (repo2ree_repoview stamp).
 STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --manifest " + DIAGRAM_DIR + "/manifest.json"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
-DOMAIN_DIR := DIAGRAM_DIR + "/domain"
 METRICS_DIR := REPORTS_DIR + "/metrics"
 # The owners' exports the overview reads (zones, behaviour spec, operations), stamped like the diagrams.
 EXPORT_DIR := REPORTS_DIR + "/exports"
@@ -62,7 +61,7 @@ _require-clean-tree:
 
 # Generate every architecture, domain, specification, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-domain-diagrams generate-spec-diagrams generate-just-recipe-graph
+generate-diagrams: generate-architecture-diagrams generate-spec-diagrams generate-just-recipe-graph
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Run every generated tree's own prune and list what no one owns (scripts/generated.toml); `--dry-run`, `--remove-unclaimed`.

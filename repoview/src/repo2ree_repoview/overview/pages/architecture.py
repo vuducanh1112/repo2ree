@@ -1,4 +1,4 @@
-"""Import graphs of the backend and the GUI, and the domain's evidence graph."""
+"""Import graphs of the backend and the GUI."""
 
 from __future__ import annotations
 
@@ -27,12 +27,6 @@ def page_architecture(bundle: Bundle) -> Page:
         + diagram(bundle, architecture / "gui-core.svg", "GUI, functional core expanded")
         + "</details>"
     )
-    body += diagram(
-        bundle,
-        DIAGRAMS / "domain/evidence.svg",
-        "Evidence graph",
-        "Which receipts and steps depend on which, from core's audit rules.",
-    )
-    lede = "Import graphs of the backend and the GUI, and the domain's evidence graph."
+    lede = "Import graphs of the backend and the GUI."
     teaser = "Import graphs of the backend and the GUI"
     return Page("architecture", "Architecture", teaser, section("architecture", "Architecture", lede, body))

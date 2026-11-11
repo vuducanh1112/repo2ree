@@ -8,7 +8,6 @@ import sys
 COMMANDS = {
     "overview": "repo2ree_repoview.overview.build",
     "architecture": "repo2ree_repoview.diagrams.architecture",
-    "evidence": "repo2ree_repoview.diagrams.evidence",
     "recipes": "repo2ree_repoview.diagrams.recipes",
     "stamp": "repo2ree_repoview.stamp",
     "gate-verifications": "repo2ree_repoview.overview.receipt",
