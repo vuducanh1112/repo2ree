@@ -54,6 +54,16 @@ directories, downloading nothing; its activation and experiment enter that SIF i
 a job with `srun apptainer exec`.
 Submission and container entry are the author's own. Run by `just test-e2e-slurm`.
 
+### `podman/`
+
+A project whose recipe uses rootless Podman, on a machine where the workbench
+runs scripts directly (`podman-host`). Its build runs `podman build` on the
+`Containerfile`, which pins its Python base image by digest, and saves the
+image as the experiment environment; its activation loads that image and runs
+each experiment in it with `podman run`. Podman is the author's own tool here:
+the product runs these scripts like any others. Run by
+`just test-showcase-api 1 podman/`.
+
 ### `stochastic/`
 
 An instant project whose result changes on every run: a Monte Carlo estimate of

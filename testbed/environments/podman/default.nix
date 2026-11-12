@@ -1,7 +1,12 @@
-# A machine with rootless Podman and no daemon: an REE's scripts run in containers from its image.
-{ machine, pkgs }:
+# A machine with rootless Podman and no daemon. On `podman` the workbench runs an REE's scripts in
+# containers from its image; on `podman-host` it runs them on the machine, where they call Podman.
+{
+  machine,
+  pkgs,
+  name ? "podman",
+}:
 machine {
-  name = "podman";
+  inherit name;
   packages = [ pkgs.podman ];
   entrypoint = ./entrypoint.sh;
   variables = {

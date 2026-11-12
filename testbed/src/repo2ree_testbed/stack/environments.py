@@ -21,6 +21,7 @@ class EnvironmentName(StrEnum):
     BARE = "bare"
     DOCKER = "docker"
     PODMAN = "podman"
+    PODMAN_HOST = "podman-host"
     SLURM = "slurm"
 
 
@@ -60,6 +61,8 @@ ENVIRONMENTS: dict[EnvironmentName, Environment] = {
             nested_daemon=True,
         ),
         Environment(EnvironmentName.PODMAN, "container", engine="podman", privileged=True),
+        # The same machine, its workbench running scripts on it: an REE's own scripts call Podman.
+        Environment(EnvironmentName.PODMAN_HOST, "host", privileged=True),
         Environment(EnvironmentName.SLURM, "host", privileged=True, parallel=False),
     )
 }

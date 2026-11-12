@@ -89,6 +89,7 @@
           testbed-environment-bare = testbedEnvironments.bare;
           testbed-environment-docker = testbedEnvironments.docker;
           testbed-environment-podman = testbedEnvironments.podman;
+          testbed-environment-podman-host = testbedEnvironments.podman-host;
           testbed-environment-slurm = testbedEnvironments.slurm;
           backend-image = import ./nix/backend-image.nix { inherit pkgs buildRevision; };
           gui-image = guiImage;

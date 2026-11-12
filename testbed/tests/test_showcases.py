@@ -87,7 +87,12 @@ def test_a_test_outside_the_api_showcases_has_no_machine() -> None:
 
 def test_one_run_holds_every_api_showcase_and_the_features() -> None:
     assert set(api_suites()) == {api_suite(name) for name in ShowcaseName} | {API_FEATURES}
-    assert set(environments_in_use()) == {EnvironmentName.BARE, EnvironmentName.DOCKER, EnvironmentName.SLURM}
+    assert set(environments_in_use()) == {
+        EnvironmentName.BARE,
+        EnvironmentName.DOCKER,
+        EnvironmentName.PODMAN_HOST,
+        EnvironmentName.SLURM,
+    }
 
 
 def test_the_tiers_run_places_its_tests_itself() -> None:

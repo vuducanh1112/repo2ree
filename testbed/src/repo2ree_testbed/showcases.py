@@ -27,6 +27,7 @@ class ProjectName(StrEnum):
     JAVA_MAVEN = "java_maven"
     NOTEBOOK = "notebook"
     PLOTTING = "plotting"
+    PODMAN = "podman"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
     SLURM = "slurm"
@@ -39,6 +40,7 @@ class ShowcaseName(StrEnum):
     JAVA_MAVEN = "java_maven"
     NOTEBOOK = "notebook"
     PLOTTING = "plotting"
+    PODMAN = "podman"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
     SLURM = "slurm"
@@ -161,6 +163,15 @@ JAVA_MAVEN = Project(
     infer_build=False,
     network=True,
 )
+PODMAN = Project(
+    name=ProjectName.PODMAN,
+    image=None,
+    experiment_environment_path=f"{SOURCE}/runtime.tar",
+    experiment="podman-hello",
+    # Inference proposes `docker build` of a Dockerfile; this project's build is its own Podman one.
+    infer_build=False,
+    network=True,
+)
 SLURM = Project(
     name=ProjectName.SLURM,
     image=None,
@@ -220,6 +231,7 @@ ALL_PROJECTS: tuple[Project, ...] = (
     JAVA_MAVEN,
     NOTEBOOK,
     PLOTTING,
+    PODMAN,
     PYTHON_DOCKER,
     PYTHON_VENV,
     SLURM,
@@ -239,6 +251,7 @@ SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
     ShowcaseName.JAVA_MAVEN: ShowcaseConfig(JAVA_MAVEN, EnvironmentName.DOCKER),
     ShowcaseName.NOTEBOOK: ShowcaseConfig(NOTEBOOK, EnvironmentName.BARE),
     ShowcaseName.PLOTTING: ShowcaseConfig(PLOTTING, EnvironmentName.BARE),
+    ShowcaseName.PODMAN: ShowcaseConfig(PODMAN, EnvironmentName.PODMAN_HOST),
     ShowcaseName.PYTHON_DOCKER: ShowcaseConfig(PYTHON_DOCKER, EnvironmentName.DOCKER),
     ShowcaseName.PYTHON_VENV: ShowcaseConfig(PYTHON_VENV, EnvironmentName.BARE),
     ShowcaseName.SLURM: ShowcaseConfig(SLURM, EnvironmentName.SLURM),

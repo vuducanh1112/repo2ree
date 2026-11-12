@@ -49,7 +49,7 @@ _load-environment name: _stage-nix-sources
 check-environment name: (_load-environment name)
     python -m repo2ree_testbed environment {{ quote(name) }}
 
-# Run the golden path on one machine a workbench is installed on (bare, docker, podman, slurm), not gated.
+# Run the golden path on one machine a workbench is installed on (bare, docker, podman, podman-host, slurm), not gated.
 [group('E2E tests')]
 test-e2e-environment name: (_load-environment name)
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/environments/run_environment_suite.py") }} --tier e2e-environment-{{ name }} --environment {{ quote(name) }} --per-test --exit-on tests
