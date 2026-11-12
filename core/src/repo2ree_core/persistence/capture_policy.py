@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_ree import layout as tree
 from repo2ree_ree.model import Ree
 
 
@@ -41,7 +42,8 @@ class CapturePlan(BaseModel):
 def capture_plan(layout: ReeLayout, ree: Ree | None) -> CapturePlan:
     paths: set[Path] = set()
     fixed = [*layout.history_files, layout.sbom, layout.reproducibility_report]
-    fixed.extend(layout.root / name for name in (".gitattributes", ".gitignore", "run.sh", "REPRODUCING.md"))
+    controls = (tree.GIT_ATTRIBUTES, tree.GIT_IGNORE, tree.REPRODUCER_SCRIPT, tree.REPRODUCER_README)
+    fixed.extend(layout.root / name for name in controls)
     for path in fixed:
         if path.exists() or path.is_symlink():
             paths.add(path)
@@ -74,10 +76,10 @@ def write_capture_controls(layout: ReeLayout, ree: Ree) -> None:
     """Ordinary Git commands share the recorder's optional-payload policy."""
     paths = ree.subject.capture.lfs_paths
     attributes = "".join(f"{json.dumps('/' + str(path))} filter=lfs diff=lfs merge=lfs -text\n" for path in paths)
-    write_atomic(layout.root / ".gitattributes", attributes.encode())
+    write_atomic(layout.root / tree.GIT_ATTRIBUTES, attributes.encode())
     ignored = (
         "/upstream/\n/workspace/\n/results/\n/artifacts/*\n/snapshot.tar.gz\n/upload-staging/\n/reviews/\n/runs/\n"
     )
     for path in (layout.sbom, layout.reproducibility_report):
         ignored += f"!/{path.relative_to(layout.root).as_posix()}\n"
-    write_atomic(layout.root / ".gitignore", ignored.encode())
+    write_atomic(layout.root / tree.GIT_IGNORE, ignored.encode())

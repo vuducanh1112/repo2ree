@@ -22,7 +22,14 @@ from repo2ree_ree.model import (
     ReeSubject,
     SourceDefinition,
 )
-from repo2ree_ree.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    Digest,
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    ReePath,
+    RunId,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
     BuildExperimentEnvironmentReceipt,
@@ -43,7 +50,7 @@ _SBOM_DIGEST = digest_bytes(b"sbom")
 _REPORT_DIGEST = digest_bytes(b"report")
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SOURCE = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
-_EXPERIMENT_ENVIRONMENT_PATH = WorkspacePath("runtime.tar")
+_EXPERIMENT_ENVIRONMENT_PATH = ExperimentEnvironmentPath("runtime.tar")
 _EXPERIMENT_NAME = "demo"
 
 
@@ -68,7 +75,7 @@ def _build_receipt(script_digest: Digest = _DIGEST) -> BuildExperimentEnvironmen
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_DIGEST,
-        build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+        build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         build_experiment_environment_script_digest=script_digest,
         workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=_EXPERIMENT_ENVIRONMENT_PATH,
@@ -79,7 +86,7 @@ def _build_receipt(script_digest: Digest = _DIGEST) -> BuildExperimentEnvironmen
 def _experiment(name: str = _EXPERIMENT_NAME, *, run_script_digest: Digest = _DIGEST) -> ExperimentDefinition:
     return ExperimentDefinition(
         name=name,
-        run_script_path=ReePath(experiment_run_script_path(name)),
+        run_script_path=OverlayPath(experiment_run_script_path(name)),
         run_script_digest=run_script_digest,
         run_script_size=1,
     )
@@ -139,7 +146,7 @@ def test_editing_the_build_experiment_environment_script_leaves_the_build_receip
                 "experiment_environment": ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=_OTHER_DIGEST,
                     build_experiment_environment_script_size=2,
-                    artifact_path=WorkspacePath("runtime.tar"),
+                    artifact_path=ExperimentEnvironmentPath("runtime.tar"),
                 )
             }
         ),
@@ -228,7 +235,7 @@ def test_stale_steps_names_every_stale_step_including_experiments() -> None:
                 "experiment_environment": ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=_OTHER_DIGEST,
                     build_experiment_environment_script_size=2,
-                    artifact_path=WorkspacePath("runtime.tar"),
+                    artifact_path=ExperimentEnvironmentPath("runtime.tar"),
                 ),
                 "experiments": (_experiment(run_script_digest=_OTHER_DIGEST),),
             }

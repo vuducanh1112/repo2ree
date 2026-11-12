@@ -11,7 +11,7 @@ from repo2ree_core.author_recipes.inference.experiment_environment_inputs import
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
-from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.primitives import OverlayPath, WorkspacePath
 from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
@@ -133,7 +133,7 @@ def test_missing_experiment_environment_blocks_even_for_declared_experiment(tmp_
 def _definition(name: str, output_paths: list[str]) -> ExperimentDefinition:
     return ExperimentDefinition(
         name=name,
-        run_script_path=ReePath(experiment_run_script_path(name)),
+        run_script_path=OverlayPath(experiment_run_script_path(name)),
         run_script_digest=digest_bytes(b"script"),
         run_script_size=6,
         output_paths=tuple(WorkspacePath(path) for path in output_paths),

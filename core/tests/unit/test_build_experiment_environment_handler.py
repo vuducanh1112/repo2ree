@@ -12,7 +12,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
-from repo2ree_ree.primitives import RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import ExperimentEnvironmentPath, RunId, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
@@ -45,7 +45,7 @@ def _ree(*, with_source: bool = True, with_experiment_environment: bool = True, 
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
             build_experiment_environment_script_size=len(_SCRIPT),
-            artifact_path=WorkspacePath("runtime.tar") if with_experiment_environment else None,
+            artifact_path=ExperimentEnvironmentPath("runtime.tar") if with_experiment_environment else None,
         ),
     )
     ree = Ree(subject=ReeSubject(definition=definition))

@@ -22,7 +22,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import GenerateSbomOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
-from repo2ree_ree.primitives import ArtifactPath, WorkspacePath
+from repo2ree_ree.primitives import ArtifactPath, ExperimentEnvironmentPath
 from repo2ree_ree.receipt import GenerateSbomReceipt
 
 
@@ -133,7 +133,7 @@ def handle_generate_sbom(
 def _check_preconditions(
     ree: Ree,
     layout: ReeLayout,
-) -> WorkspacePath:
+) -> ExperimentEnvironmentPath:
     """Resolve the experiment environment to scan from the build recipe that produced it.
 
     The path is not a parameter of the scan. The author declared it before the

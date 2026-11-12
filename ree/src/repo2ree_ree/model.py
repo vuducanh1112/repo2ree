@@ -1,21 +1,34 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from repo2ree_ree.digest import digest_json
 from repo2ree_ree.hbom import HBOM
-from repo2ree_ree.primitives import Digest, ReePath, SourceType, UtcInstant, WorkspacePath
+from repo2ree_ree.layout import digest_of
+from repo2ree_ree.primitives import (
+    Digest,
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    ReePath,
+    SourceType,
+    UtcInstant,
+    WorkspacePath,
+)
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
+    ActivateScriptDigest,
     ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
+    BuildScriptDigest,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
     RunExperimentReceipt,
+    RunScriptDigest,
+    VerifyScriptDigest,
 )
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
@@ -68,14 +81,14 @@ class SourceDefinition(_DomainModel):
 
 
 class ExperimentEnvironmentDefinition(_DomainModel):
-    build_experiment_environment_script_path: ReePath = ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
-    build_experiment_environment_script_digest: Digest
+    build_experiment_environment_script_path: OverlayPath = OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
+    build_experiment_environment_script_digest: BuildScriptDigest
     build_experiment_environment_script_size: int = Field(ge=0)
-    artifact_path: WorkspacePath | None = None
+    artifact_path: ExperimentEnvironmentPath | None = None
 
     @field_validator("build_experiment_environment_script_path")
     @classmethod
-    def _fixed_path(cls, value: ReePath) -> ReePath:
+    def _fixed_path(cls, value: OverlayPath) -> OverlayPath:
         if value != RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT:
             raise ValueError(
                 f"build experiment environment script path must be {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT!r}"
@@ -84,13 +97,15 @@ class ExperimentEnvironmentDefinition(_DomainModel):
 
 
 class ActivateExperimentEnvironmentDefinition(_DomainModel):
-    activate_experiment_environment_script_path: ReePath = ReePath(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
-    activate_experiment_environment_script_digest: Digest
+    activate_experiment_environment_script_path: OverlayPath = OverlayPath(
+        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
+    )
+    activate_experiment_environment_script_digest: ActivateScriptDigest
     activate_experiment_environment_script_size: int = Field(ge=0)
 
     @field_validator("activate_experiment_environment_script_path")
     @classmethod
-    def _fixed_path(cls, value: ReePath) -> ReePath:
+    def _fixed_path(cls, value: OverlayPath) -> OverlayPath:
         if value != RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT:
             expected = RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
             raise ValueError(f"activate experiment environment script path must be {expected!r}")
@@ -99,11 +114,11 @@ class ActivateExperimentEnvironmentDefinition(_DomainModel):
 
 class ExperimentDefinition(_DomainModel):
     name: str = Field(min_length=1)
-    run_script_path: ReePath
-    run_script_digest: Digest
+    run_script_path: OverlayPath
+    run_script_digest: RunScriptDigest
     run_script_size: int = Field(ge=0)
-    verify_script_path: ReePath | None = None
-    verify_script_digest: Digest | None = None
+    verify_script_path: OverlayPath | None = None
+    verify_script_digest: VerifyScriptDigest = None
     verify_script_size: int | None = Field(default=None, ge=0)
     output_paths: tuple[WorkspacePath, ...] = ()
 
@@ -169,7 +184,7 @@ OVERLAY_ENTRY = "overlay/"
 
 class BundleEntry(_DomainModel):
     path: ReePath
-    digest: Digest
+    digest: Annotated[Digest, digest_of("file", ".", named_by="contents.entries[*].path")]
     size: int = Field(ge=0)
 
 
@@ -220,7 +235,7 @@ class Signature(_DomainModel):
 
 class ReeSeal(_DomainModel):
     sealed_at: UtcInstant
-    ree_digest: Digest
+    ree_digest: Annotated[Digest, digest_of("subject")]
     signature: Signature | None = None
 
 

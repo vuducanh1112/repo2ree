@@ -105,7 +105,13 @@
         },
         "snapshot_digest": {
           "title": "Snapshot Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "snapshot.tar.gz"
+            ]
+          }
         }
       },
       "required": [
@@ -126,11 +132,20 @@
         "activate_experiment_environment_script_path": {
           "default": "ree-scripts/activate_experiment_environment.sh",
           "title": "Activate Experiment Environment Script Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "activate_experiment_environment_script_digest": {
           "title": "Activate Experiment Environment Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/activate_experiment_environment.sh"
+            ]
+          }
         },
         "activate_experiment_environment_script_size": {
           "minimum": 0,
@@ -187,12 +202,23 @@
         },
         "snapshot_digest": {
           "title": "Snapshot Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "snapshot.tar.gz"
+            ]
+          }
         },
         "experiment_environment_path": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "x-relative-to": [
+                "workspace",
+                ".",
+                "artifacts"
+              ]
             },
             {
               "type": "null"
@@ -211,11 +237,25 @@
             }
           ],
           "default": null,
-          "title": "Experiment Environment Digest"
+          "title": "Experiment Environment Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "workspace/{experiment_environment}",
+              "artifacts/{experiment_environment}"
+            ],
+            "named_by": "definition.experiment_environment.artifact_path"
+          }
         },
         "activate_experiment_environment_script_digest": {
           "title": "Activate Experiment Environment Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/activate_experiment_environment.sh"
+            ]
+          }
         },
         "exit_code": {
           "const": 0,
@@ -288,26 +328,54 @@
         },
         "snapshot_digest": {
           "title": "Snapshot Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "snapshot.tar.gz"
+            ]
+          }
         },
         "build_experiment_environment_script_path": {
           "title": "Build Experiment Environment Script Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "build_experiment_environment_script_digest": {
           "title": "Build Experiment Environment Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/build_experiment_environment.sh"
+            ]
+          }
         },
         "workspace_drift": {
           "$ref": "#/$defs/WorkspaceDrift"
         },
         "artifact_path": {
           "title": "Artifact Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "workspace",
+            ".",
+            "artifacts"
+          ]
         },
         "produced_artifact_digest": {
           "title": "Produced Artifact Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "workspace/{experiment_environment}",
+              "artifacts/{experiment_environment}"
+            ],
+            "named_by": "definition.experiment_environment.artifact_path"
+          }
         },
         "workbench_environment": {
           "anyOf": [
@@ -357,11 +425,21 @@
       "properties": {
         "path": {
           "title": "Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "."
+          ]
         },
         "digest": {
           "title": "Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "."
+            ],
+            "named_by": "contents.entries[*].path"
+          }
         },
         "size": {
           "minimum": 0,
@@ -450,7 +528,10 @@
         "lfs_paths": {
           "default": [],
           "items": {
-            "type": "string"
+            "type": "string",
+            "x-relative-to": [
+              "."
+            ]
           },
           "title": "Lfs Paths",
           "type": "array"
@@ -527,11 +608,23 @@
         },
         "sbom_digest": {
           "title": "Sbom Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "artifacts/sbom.json"
+            ]
+          }
         },
         "report_digest": {
           "title": "Report Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "artifacts/reproducibility-report.json"
+            ]
+          }
         },
         "declared_direct_total": {
           "minimum": 0,
@@ -617,11 +710,23 @@
         },
         "snapshot_digest": {
           "title": "Snapshot Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "snapshot.tar.gz"
+            ]
+          }
         },
         "overlay_digest": {
           "title": "Overlay Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "tree",
+            "entries": [
+              "overlay"
+            ]
+          }
         },
         "strict": {
           "title": "Strict",
@@ -655,7 +760,10 @@
         "report_path": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "x-relative-to": [
+                "."
+              ]
             },
             {
               "type": "null"
@@ -666,7 +774,13 @@
         },
         "report_digest": {
           "title": "Report Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "artifacts/reproducibility-report.json"
+            ]
+          }
         },
         "analyzer_version": {
           "minLength": 1,
@@ -704,11 +818,20 @@
         },
         "run_script_path": {
           "title": "Run Script Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "run_script_digest": {
           "title": "Run Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/experiments/{experiment_slug}.sh"
+            ]
+          }
         },
         "run_script_size": {
           "minimum": 0,
@@ -718,7 +841,10 @@
         "verify_script_path": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "x-relative-to": [
+                "overlay"
+              ]
             },
             {
               "type": "null"
@@ -737,7 +863,13 @@
             }
           ],
           "default": null,
-          "title": "Verify Script Digest"
+          "title": "Verify Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/experiments/{experiment_slug}.verify.sh"
+            ]
+          }
         },
         "verify_script_size": {
           "anyOf": [
@@ -755,7 +887,10 @@
         "output_paths": {
           "default": [],
           "items": {
-            "type": "string"
+            "type": "string",
+            "x-relative-to": [
+              "workspace"
+            ]
           },
           "title": "Output Paths",
           "type": "array"
@@ -776,11 +911,20 @@
         "build_experiment_environment_script_path": {
           "default": "ree-scripts/build_experiment_environment.sh",
           "title": "Build Experiment Environment Script Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "build_experiment_environment_script_digest": {
           "title": "Build Experiment Environment Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/build_experiment_environment.sh"
+            ]
+          }
         },
         "build_experiment_environment_script_size": {
           "minimum": 0,
@@ -790,7 +934,12 @@
         "artifact_path": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "x-relative-to": [
+                "workspace",
+                ".",
+                "artifacts"
+              ]
             },
             {
               "type": "null"
@@ -902,16 +1051,32 @@
         },
         "experiment_environment_path": {
           "title": "Experiment Environment Path",
-          "type": "string"
+          "type": "string",
+          "x-relative-to": [
+            "workspace",
+            ".",
+            "artifacts"
+          ]
         },
         "experiment_environment_digest": {
           "title": "Experiment Environment Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "workspace/{experiment_environment}",
+              "artifacts/{experiment_environment}"
+            ],
+            "named_by": "definition.experiment_environment.artifact_path"
+          }
         },
         "sbom_path": {
           "anyOf": [
             {
-              "type": "string"
+              "type": "string",
+              "x-relative-to": [
+                "."
+              ]
             },
             {
               "type": "null"
@@ -922,7 +1087,13 @@
         },
         "sbom_digest": {
           "title": "Sbom Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "artifacts/sbom.json"
+            ]
+          }
         },
         "sbom_format": {
           "minLength": 1,
@@ -1563,7 +1734,10 @@
         },
         "ree_digest": {
           "title": "Ree Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "subject"
+          }
         },
         "signature": {
           "anyOf": [
@@ -1655,7 +1829,13 @@
         },
         "snapshot_digest": {
           "title": "Snapshot Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "snapshot.tar.gz"
+            ]
+          }
         },
         "experiment_environment_digest": {
           "anyOf": [
@@ -1667,15 +1847,35 @@
             }
           ],
           "default": null,
-          "title": "Experiment Environment Digest"
+          "title": "Experiment Environment Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "workspace/{experiment_environment}",
+              "artifacts/{experiment_environment}"
+            ],
+            "named_by": "definition.experiment_environment.artifact_path"
+          }
         },
         "activate_experiment_environment_script_digest": {
           "title": "Activate Experiment Environment Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/activate_experiment_environment.sh"
+            ]
+          }
         },
         "run_script_digest": {
           "title": "Run Script Digest",
-          "type": "string"
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/experiments/{experiment_slug}.sh"
+            ]
+          }
         },
         "verify_script_digest": {
           "anyOf": [
@@ -1687,7 +1887,13 @@
             }
           ],
           "default": null,
-          "title": "Verify Script Digest"
+          "title": "Verify Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/experiments/{experiment_slug}.verify.sh"
+            ]
+          }
         },
         "run_exit_code": {
           "const": 0,
@@ -1729,7 +1935,14 @@
             }
           ],
           "default": null,
-          "title": "Produced Output Digest"
+          "title": "Produced Output Digest",
+          "x-digest-of": {
+            "covers": "paths",
+            "entries": [
+              "workspace"
+            ],
+            "named_by": "definition.experiments[*].output_paths"
+          }
         }
       },
       "required": [
@@ -1957,7 +2170,10 @@
             }
           ],
           "default": null,
-          "title": "Image Digest"
+          "title": "Image Digest",
+          "x-digest-of": {
+            "covers": "outside"
+          }
         },
         "host": {
           "anyOf": [
@@ -2002,7 +2218,10 @@
         "changed_paths": {
           "default": [],
           "items": {
-            "type": "string"
+            "type": "string",
+            "x-relative-to": [
+              "workspace"
+            ]
           },
           "title": "Changed Paths",
           "type": "array"

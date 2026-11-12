@@ -12,7 +12,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
-from repo2ree_ree.primitives import RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import ExperimentEnvironmentPath, RunId, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
@@ -39,7 +39,7 @@ def test_build_experiment_environment_script_runs_and_commits_the_produced_exper
                 experiment_environment=ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=digest_bytes(script),
                     build_experiment_environment_script_size=len(script),
-                    artifact_path=WorkspacePath("runtime.tar"),
+                    artifact_path=ExperimentEnvironmentPath("runtime.tar"),
                 ),
             )
         )

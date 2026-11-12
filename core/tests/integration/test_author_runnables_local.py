@@ -20,7 +20,7 @@ from repo2ree_ree.model import (
     ReeDefinition,
     ReeSubject,
 )
-from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import OverlayPath, RunId, WorkspacePath, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
@@ -60,10 +60,10 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
         experiments=(
             ExperimentDefinition(
                 name=name,
-                run_script_path=ReePath(experiment_run_path),
+                run_script_path=OverlayPath(experiment_run_path),
                 run_script_digest=digest_bytes(experiment_run),
                 run_script_size=len(experiment_run),
-                verify_script_path=ReePath(experiment_verify_path),
+                verify_script_path=OverlayPath(experiment_verify_path),
                 verify_script_digest=digest_bytes(experiment_verify),
                 verify_script_size=len(experiment_verify),
                 output_paths=(WorkspacePath("outputs/result.txt"),),

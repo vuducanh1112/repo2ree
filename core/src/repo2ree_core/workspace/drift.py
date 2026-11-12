@@ -8,7 +8,7 @@ from pathlib import Path, PurePosixPath
 from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.workspace.materialization import stat_table
-from repo2ree_ree.primitives import ReePath
+from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.receipt import WorkspaceDrift
 from repo2ree_ree.reserved_paths import WORKSPACE_CONTROL_PREFIXES
 
@@ -55,6 +55,6 @@ def check_workspace_drift(layout: ReeLayout, *, excluded_paths: set[str]) -> Wor
         return WorkspaceDrift(status="clean")
     return WorkspaceDrift(
         status="modified",
-        changed_paths=tuple(ReePath(path) for path in drifted[:_DRIFT_PATHS_CAP]),
+        changed_paths=tuple(WorkspacePath(path) for path in drifted[:_DRIFT_PATHS_CAP]),
         changed_path_count=len(drifted),
     )

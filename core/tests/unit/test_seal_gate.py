@@ -13,7 +13,13 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
-from repo2ree_ree.primitives import Digest, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    Digest,
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    RunId,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
@@ -36,7 +42,7 @@ def _ree(*, build_experiment_environment_script_digest: Digest = _SCRIPT_DIGEST)
                 experiment_environment=ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=build_experiment_environment_script_digest,
                     build_experiment_environment_script_size=len(_SCRIPT),
-                    artifact_path=WorkspacePath("runtime.tar"),
+                    artifact_path=ExperimentEnvironmentPath("runtime.tar"),
                 ),
             )
         )
@@ -63,10 +69,10 @@ def _ree(*, build_experiment_environment_script_digest: Digest = _SCRIPT_DIGEST)
             duration_ms=0,
             recorded_at=_NOW,
             snapshot_digest=_SNAPSHOT_DIGEST,
-            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=build_experiment_environment_script_digest,
             workspace_drift=WorkspaceDrift(status="clean"),
-            artifact_path=WorkspacePath("runtime.tar"),
+            artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
         ),
     )
@@ -108,7 +114,7 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
                 "experiment_environment": ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=_OTHER_DIGEST,
                     build_experiment_environment_script_size=1,
-                    artifact_path=WorkspacePath("runtime.tar"),
+                    artifact_path=ExperimentEnvironmentPath("runtime.tar"),
                 )
             }
         ),

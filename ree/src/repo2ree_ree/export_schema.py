@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from repo2ree_ree.layout import layout_document
 from repo2ree_ree.model import CURRENT_SCHEMA_VERSION, Ree
 
-SCHEMA_PATH = Path(__file__).resolve().parents[3] / "contracts" / "ree" / "ree.schema.json"
+CONTRACT = Path(__file__).resolve().parents[3] / "contracts" / "ree"
+SCHEMA_PATH = CONTRACT / "ree.schema.json"
+LAYOUT_PATH = CONTRACT / "layout.json"
 
 
 def schema_document() -> str:
@@ -19,6 +22,7 @@ def schema_document() -> str:
 
 def main() -> None:
     SCHEMA_PATH.write_text(schema_document(), encoding="utf-8")
+    LAYOUT_PATH.write_text(layout_document(), encoding="utf-8")
 
 
 if __name__ == "__main__":

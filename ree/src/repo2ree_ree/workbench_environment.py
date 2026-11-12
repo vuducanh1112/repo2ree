@@ -8,10 +8,11 @@ is whatever machine runs the step, described only by what was observed there.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from repo2ree_ree.layout import digest_of
 from repo2ree_ree.primitives import Digest
 
 WorkbenchEnvironmentKind = Literal["image", "host"]
@@ -57,7 +58,7 @@ class WorkbenchEnvironmentObservation(_WorkbenchEnvironmentModel):
 
     declared: WorkbenchEnvironment | None = None
     backend: EnvironmentBackend
-    image_digest: Digest | None = None
+    image_digest: Annotated[Digest | None, digest_of("outside")] = None
     host: HostFingerprint | None = None
     script_engine: ScriptEngine = "none"
 

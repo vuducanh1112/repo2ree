@@ -24,7 +24,14 @@ from repo2ree_ree.model import (
     ReeSubject,
     SourceDefinition,
 )
-from repo2ree_ree.primitives import ArtifactPath, ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    ArtifactPath,
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    RunId,
+    WorkspacePath,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
     BuildExperimentEnvironmentReceipt,
@@ -281,7 +288,7 @@ def _cross_check_ree(
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_BUILD),
             build_experiment_environment_script_size=len(_BUILD),
-            artifact_path=WorkspacePath("runtime.tar"),
+            artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         ),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
@@ -299,10 +306,10 @@ def _cross_check_ree(
         BuildExperimentEnvironmentReceipt(
             **_envelope("build-1"),
             snapshot_digest=_SNAPSHOT,
-            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=digest_bytes(_BUILD),
             workspace_drift=WorkspaceDrift(status="unknown"),
-            artifact_path=WorkspacePath("runtime.tar"),
+            artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
         ),
     )
@@ -327,7 +334,7 @@ def _cross_check_ree(
         ree,
         GenerateSbomReceipt(
             **_envelope("sbom-1"),
-            experiment_environment_path=WorkspacePath("runtime.tar"),
+            experiment_environment_path=ExperimentEnvironmentPath("runtime.tar"),
             experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
             sbom_path=ArtifactPath("artifacts/sbom.json"),
             sbom_digest=sbom_digest,

@@ -18,7 +18,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import BuildExperimentEnvironmentFailureOutputs, BuildExperimentEnvironmentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree
-from repo2ree_ree.primitives import WorkspacePath
+from repo2ree_ree.primitives import ExperimentEnvironmentPath
 from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt
 
 
@@ -128,7 +128,7 @@ def handle_build_experiment_environment(
 def _check_preconditions(
     ree: Ree,
     layout: ReeLayout,
-) -> tuple[ExperimentEnvironmentDefinition, WorkspacePath]:
+) -> tuple[ExperimentEnvironmentDefinition, ExperimentEnvironmentPath]:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot build an experiment environment")
     # Currency, not mere presence. A source that has been re-pointed but not

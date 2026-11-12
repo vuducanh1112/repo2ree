@@ -35,7 +35,7 @@ from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityR
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
-from repo2ree_ree.primitives import ReePath, WorkspacePath
+from repo2ree_ree.primitives import OverlayPath, WorkspacePath
 from repo2ree_ree.reserved_paths import experiment_run_script_path
 
 pytestmark = pytest.mark.property
@@ -342,7 +342,7 @@ def test_recovered_venv_restore_dir_is_absolute_and_reconciled(top_dir: str, tar
 def _exp():
     return ExperimentDefinition(
         name="run",
-        run_script_path=ReePath(experiment_run_script_path("run")),
+        run_script_path=OverlayPath(experiment_run_script_path("run")),
         run_script_digest=digest_bytes(b"script"),
         run_script_size=6,
         output_paths=(WorkspacePath("results/run.log"),),

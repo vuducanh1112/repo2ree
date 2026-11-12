@@ -12,7 +12,12 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
-from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    RunId,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
@@ -34,7 +39,7 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(script),
             build_experiment_environment_script_size=len(script),
-            artifact_path=WorkspacePath("runtime.tar"),
+            artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         ),
     )
     ree = Ree(subject=ReeSubject(definition=definition))
@@ -60,10 +65,10 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
             duration_ms=0,
             recorded_at=_NOW,
             snapshot_digest=digest_bytes(b"snapshot"),
-            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=digest_bytes(script),
             workspace_drift=WorkspaceDrift(status="unknown"),
-            artifact_path=WorkspacePath("runtime.tar"),
+            artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=digest_bytes(experiment_environment),
         ),
     )

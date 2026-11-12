@@ -24,14 +24,14 @@ from repo2ree_core.author_recipes.inference.repository_facts import scan_reposit
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
-from repo2ree_ree.primitives import ReePath
+from repo2ree_ree.primitives import OverlayPath
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
 _VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
 _EXPERIMENT = ExperimentDefinition(
     name="run",
-    run_script_path=ReePath(experiment_run_script_path("run")),
+    run_script_path=OverlayPath(experiment_run_script_path("run")),
     run_script_digest=digest_bytes(b"script"),
     run_script_size=6,
 )

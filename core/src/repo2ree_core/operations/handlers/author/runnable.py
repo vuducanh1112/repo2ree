@@ -32,7 +32,7 @@ from repo2ree_ree.model import (
     ExperimentDefinition,
     Ree,
 )
-from repo2ree_ree.primitives import WorkspacePath
+from repo2ree_ree.primitives import ExperimentEnvironmentPath
 from repo2ree_ree.receipt import ActivationReceipt, RunExperimentReceipt
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
 
@@ -159,7 +159,7 @@ def _check_preconditions(
     ree: Ree,
     definition: RunnableDefinition,
     layout: ReeLayout,
-) -> tuple[WorkspacePath | None, Digest | None]:
+) -> tuple[ExperimentEnvironmentPath | None, Digest | None]:
     if ree.subject.receipts.source is None:
         raise ReePreconditionError("source has not been acquired")
     if isinstance(definition, ExperimentDefinition):
@@ -245,7 +245,7 @@ def _as_runnable(definition: RunnableDefinition, activation: ActivateExperimentE
 
 
 def _outputs(
-    outcome: ExperimentRunOutcome, experiment_environment_path: WorkspacePath | None
+    outcome: ExperimentRunOutcome, experiment_environment_path: ExperimentEnvironmentPath | None
 ) -> RunnableOperationOutputs:
     return RunnableOperationOutputs(
         **outcome.run_outputs.model_dump(),
@@ -266,7 +266,7 @@ def _successful_receipt(
     run_id: str,
     timing: OperationTiming,
     snapshot_digest: Digest,
-    experiment_environment_path: WorkspacePath | None,
+    experiment_environment_path: ExperimentEnvironmentPath | None,
     experiment_environment_digest: Digest | None,
     produced_output_digest: Digest | None,
     activate_experiment_environment_script_digest: Digest,

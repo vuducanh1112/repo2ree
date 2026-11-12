@@ -21,7 +21,13 @@ from repo2ree_ree.model import (
     ReeDefinition,
     ReeSubject,
 )
-from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    RunId,
+    WorkspacePath,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
     ActivationReceipt,
@@ -66,10 +72,10 @@ def _build_receipt() -> BuildExperimentEnvironmentReceipt:
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_SNAPSHOT,
-        build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+        build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         build_experiment_environment_script_digest=digest_bytes(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         workspace_drift=WorkspaceDrift(status="unknown"),
-        artifact_path=WorkspacePath("runtime.tar"),
+        artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
     )
 
@@ -82,7 +88,7 @@ def _activation_receipt(*, experiment_environment: bool = True, script: bytes = 
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_SNAPSHOT,
-        experiment_environment_path=WorkspacePath("runtime.tar") if experiment_environment else None,
+        experiment_environment_path=ExperimentEnvironmentPath("runtime.tar") if experiment_environment else None,
         experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT) if experiment_environment else None,
         activate_experiment_environment_script_digest=digest_bytes(script),
     )
@@ -91,10 +97,10 @@ def _activation_receipt(*, experiment_environment: bool = True, script: bytes = 
 def _experiment_definition(*, verify: bool = True) -> ExperimentDefinition:
     return ExperimentDefinition(
         name=_EXPERIMENT_NAME,
-        run_script_path=ReePath(experiment_run_script_path(_EXPERIMENT_NAME)),
+        run_script_path=OverlayPath(experiment_run_script_path(_EXPERIMENT_NAME)),
         run_script_digest=digest_bytes(_EXPERIMENT_SCRIPT),
         run_script_size=len(_EXPERIMENT_SCRIPT),
-        verify_script_path=(ReePath(experiment_verify_script_path(_EXPERIMENT_NAME)) if verify else None),
+        verify_script_path=(OverlayPath(experiment_verify_script_path(_EXPERIMENT_NAME)) if verify else None),
         verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY) if verify else None,
         verify_script_size=len(_EXPERIMENT_VERIFY) if verify else None,
         output_paths=(WorkspacePath("outputs/result.txt"),),
@@ -115,7 +121,7 @@ def _ree(
             ExperimentEnvironmentDefinition(
                 build_experiment_environment_script_digest=digest_bytes(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
                 build_experiment_environment_script_size=len(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
-                artifact_path=WorkspacePath("runtime.tar"),
+                artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             )
             if experiment_environment
             else None

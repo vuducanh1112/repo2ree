@@ -19,7 +19,7 @@ from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import LogicalRootObservation
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, ReeDefinition
-from repo2ree_ree.primitives import WorkspacePath
+from repo2ree_ree.primitives import ExperimentEnvironmentPath
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -40,7 +40,7 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
             ExperimentEnvironmentDefinition(
                 build_experiment_environment_script_digest=digest_bytes(b"build_experiment_environment"),
                 build_experiment_environment_script_size=5,
-                artifact_path=WorkspacePath(str(experiment_environment)),
+                artifact_path=ExperimentEnvironmentPath(str(experiment_environment)),
             )
             if experiment_environment
             else None

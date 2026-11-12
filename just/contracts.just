@@ -12,7 +12,7 @@ generate-openapi:
 generate-api-types: generate-openapi
     npm --prefix gui run api:types
 
-# Regenerate the committed REE document schema.
+# Regenerate the committed REE document schema and the REE file tree (contracts/ree/layout.json).
 [group('Contracts')]
 generate-ree-schema:
     python -m repo2ree_ree.export_schema

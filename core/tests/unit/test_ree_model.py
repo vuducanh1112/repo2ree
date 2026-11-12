@@ -26,7 +26,13 @@ from repo2ree_ree.model import (
     SourceDefinition,
     canonical_subject_digest,
 )
-from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    ReePath,
+    RunId,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import experiment_run_script_path
 
@@ -77,7 +83,7 @@ def test_experiment_slug_collisions_are_rejected() -> None:
     def experiment(name: str) -> ExperimentDefinition:
         return ExperimentDefinition(
             name=name,
-            run_script_path=ReePath(experiment_run_script_path(name)),
+            run_script_path=OverlayPath(experiment_run_script_path(name)),
             run_script_digest=_DIGEST,
             run_script_size=1,
         )
@@ -96,10 +102,10 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
         duration_ms=0,
         recorded_at=_NOW,
         snapshot_digest=_DIGEST,
-        build_experiment_environment_script_path=ReePath("ree-scripts/build_experiment_environment.sh"),
+        build_experiment_environment_script_path=OverlayPath("ree-scripts/build_experiment_environment.sh"),
         build_experiment_environment_script_digest=_DIGEST,
         workspace_drift=WorkspaceDrift(status="clean"),
-        artifact_path=WorkspacePath("runtime.tar"),
+        artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         produced_artifact_digest=_OTHER_DIGEST,
     )
 

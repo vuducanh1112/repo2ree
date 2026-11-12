@@ -35,7 +35,7 @@ from repo2ree_ree.model import (
     ReeSubject,
     SourceDefinition,
 )
-from repo2ree_ree.primitives import ReePath, RunId, Swhid, WorkspacePath
+from repo2ree_ree.primitives import ExperimentEnvironmentPath, OverlayPath, RunId, Swhid, WorkspacePath
 from repo2ree_ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
@@ -55,7 +55,7 @@ _EXPERIMENT_ENVIRONMENT = b"experiment environment bytes\n"
 _ACTIVATE = b'#!/bin/sh\nexec "$@"\n'
 
 
-def _build_recipe(experiment_environment_path: WorkspacePath) -> ExperimentEnvironmentDefinition:
+def _build_recipe(experiment_environment_path: ExperimentEnvironmentPath) -> ExperimentEnvironmentDefinition:
     """The author baseline's build recipe, named by where it left its experiment environment.
 
     A reviewer reproduces from what the author declared, and the experiment environment path is
@@ -77,10 +77,10 @@ _EXPERIMENT_VERIFY = b'#!/bin/sh\ntest "$(cat outputs/result.txt)" = result\n'
 def _author_ree() -> Ree:
     experiment = ExperimentDefinition(
         name=_EXPERIMENT_NAME,
-        run_script_path=ReePath(experiment_run_script_path(_EXPERIMENT_NAME)),
+        run_script_path=OverlayPath(experiment_run_script_path(_EXPERIMENT_NAME)),
         run_script_digest=digest_bytes(_EXPERIMENT),
         run_script_size=len(_EXPERIMENT),
-        verify_script_path=ReePath(experiment_verify_script_path(_EXPERIMENT_NAME)),
+        verify_script_path=OverlayPath(experiment_verify_script_path(_EXPERIMENT_NAME)),
         verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY),
         verify_script_size=len(_EXPERIMENT_VERIFY),
         output_paths=(WorkspacePath("outputs/result.txt"),),
@@ -102,7 +102,7 @@ def _author_ree() -> Ree:
     return Ree(
         subject=ReeSubject(
             definition=ReeDefinition(
-                experiment_environment=_build_recipe(WorkspacePath(_EXPERIMENT_ENVIRONMENT_PATH)),
+                experiment_environment=_build_recipe(ExperimentEnvironmentPath(_EXPERIMENT_ENVIRONMENT_PATH)),
                 activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
                     activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE),
                     activate_experiment_environment_script_size=len(_ACTIVATE),
@@ -241,7 +241,9 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
     store.write_ree(
         Ree(
             subject=ReeSubject(
-                definition=ReeDefinition(experiment_environment=_build_recipe(WorkspacePath("artifacts/runtime.tar")))
+                definition=ReeDefinition(
+                    experiment_environment=_build_recipe(ExperimentEnvironmentPath("artifacts/runtime.tar"))
+                )
             )
         )
     )

@@ -14,7 +14,12 @@ from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
-from repo2ree_ree.primitives import ReePath, RunId, WorkspacePath, parse_utc_instant
+from repo2ree_ree.primitives import (
+    ExperimentEnvironmentPath,
+    OverlayPath,
+    RunId,
+    parse_utc_instant,
+)
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
@@ -44,7 +49,7 @@ def _ree(
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
             build_experiment_environment_script_size=len(_SCRIPT),
-            artifact_path=WorkspacePath(
+            artifact_path=ExperimentEnvironmentPath(
                 experiment_environment_path,
             ),
         ),
@@ -67,10 +72,10 @@ def _ree(
         BuildExperimentEnvironmentReceipt(
             **_envelope("build-1"),
             snapshot_digest=_SNAPSHOT,
-            build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
             workspace_drift=WorkspaceDrift(status="unknown"),
-            artifact_path=WorkspacePath(experiment_environment_path),
+            artifact_path=ExperimentEnvironmentPath(experiment_environment_path),
             produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
         ),
     )

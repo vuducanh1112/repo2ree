@@ -1,0 +1,383 @@
+{
+  "format": "repo2ree-ree-layout/1",
+  "root": {
+    "name": ".",
+    "kind": "directory",
+    "origin": "repo2ree",
+    "capture": "git",
+    "description": "An REE root: on the host, in a workbench at /ree, a review attempt, and what a bundle unpacks to.",
+    "children": [
+      {
+        "name": "ree.json",
+        "kind": "file",
+        "origin": "document",
+        "capture": "git",
+        "description": "The REE document: what it declares, what its receipts prove, its seal."
+      },
+      {
+        "name": ".git",
+        "kind": "directory",
+        "origin": "repo2ree",
+        "capture": "never",
+        "description": "The REE's history: each capture is a commit here."
+      },
+      {
+        "name": ".gitattributes",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "Which captured paths are LFS payloads."
+      },
+      {
+        "name": ".gitignore",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "What a capture leaves out."
+      },
+      {
+        "name": "acquire_source.sh",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "Fills upstream/ from the origin, or from the snapshot beside it."
+      },
+      {
+        "name": "materialize_workspace.sh",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "Derives workspace/ from upstream/ and overlay/."
+      },
+      {
+        "name": ".workspace.materialized.json",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "What workspace/ was last materialized from, for drift checks."
+      },
+      {
+        "name": "snapshot.tar.gz",
+        "kind": "file",
+        "origin": "acquired",
+        "capture": "lfs",
+        "description": "The frozen upstream archive."
+      },
+      {
+        "name": "upstream",
+        "kind": "directory",
+        "origin": "derived",
+        "capture": "never",
+        "description": "The snapshot, extracted; read only."
+      },
+      {
+        "name": "overlay",
+        "kind": "directory",
+        "origin": "authored",
+        "capture": "git",
+        "description": "The author's files, laid over upstream/ in the workspace.",
+        "children": [
+          {
+            "name": "ree-scripts",
+            "kind": "directory",
+            "origin": "authored",
+            "capture": "git",
+            "description": "The REE's scripts; the overlay holds these and nothing else.",
+            "children": [
+              {
+                "name": "build_experiment_environment.sh",
+                "kind": "file",
+                "origin": "authored",
+                "capture": "git",
+                "description": "Builds the experiment environment."
+              },
+              {
+                "name": "activate_experiment_environment.sh",
+                "kind": "file",
+                "origin": "authored",
+                "capture": "git",
+                "description": "Enters the experiment environment."
+              },
+              {
+                "name": "experiments",
+                "kind": "directory",
+                "origin": "authored",
+                "capture": "git",
+                "description": "One run script and one optional verify script per experiment.",
+                "children": [
+                  {
+                    "name": "{experiment_slug}.sh",
+                    "kind": "file",
+                    "origin": "authored",
+                    "capture": "git",
+                    "description": "Runs the experiment.",
+                    "key": "experiment_slug"
+                  },
+                  {
+                    "name": "{experiment_slug}.verify.sh",
+                    "kind": "file",
+                    "origin": "authored",
+                    "capture": "git",
+                    "description": "Verifies its outputs.",
+                    "key": "experiment_slug"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "artifacts",
+        "kind": "directory",
+        "origin": "produced",
+        "capture": "git",
+        "description": "Produced evidence, with one fixed place each.",
+        "children": [
+          {
+            "name": "sbom.json",
+            "kind": "file",
+            "origin": "produced",
+            "capture": "git",
+            "description": "The software bill of materials of the experiment environment."
+          },
+          {
+            "name": "reproducibility-report.json",
+            "kind": "file",
+            "origin": "produced",
+            "capture": "git",
+            "description": "The evaluate step's report."
+          },
+          {
+            "name": "{experiment_environment}",
+            "kind": "file",
+            "origin": "produced",
+            "capture": "lfs",
+            "description": "The experiment environment as sealed or loaded: lifted here from the workspace by its file name.",
+            "key": "experiment_environment",
+            "named_by": "definition.experiment_environment.artifact_path"
+          }
+        ]
+      },
+      {
+        "name": "results",
+        "kind": "directory",
+        "origin": "produced",
+        "capture": "lfs",
+        "description": "The author's captured outputs, for a reviewer to compare against.",
+        "children": [
+          {
+            "name": "{experiment}",
+            "kind": "directory",
+            "origin": "produced",
+            "capture": "lfs",
+            "description": "One experiment's outputs.",
+            "key": "experiment"
+          }
+        ]
+      },
+      {
+        "name": "workspace",
+        "kind": "directory",
+        "origin": "derived",
+        "capture": "never",
+        "description": "upstream/ with overlay/ laid over it, where builds and experiments run.",
+        "children": [
+          {
+            "name": "{experiment_environment}",
+            "kind": "file",
+            "origin": "produced",
+            "capture": "never",
+            "description": "The experiment environment as the build script wrote it, at the definition's artifact_path.",
+            "key": "experiment_environment",
+            "named_by": "definition.experiment_environment.artifact_path"
+          }
+        ]
+      },
+      {
+        "name": "run.sh",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "A bundle's reproducer: runs the REE without repo2ree."
+      },
+      {
+        "name": "REPRODUCING.md",
+        "kind": "file",
+        "origin": "repo2ree",
+        "capture": "git",
+        "description": "How to run the reproducer."
+      },
+      {
+        "name": "runs",
+        "kind": "directory",
+        "origin": "working",
+        "capture": "never",
+        "description": "One log per run, and the marker that asks a run to stop.",
+        "children": [
+          {
+            "name": "{run}.ndjson",
+            "kind": "file",
+            "origin": "working",
+            "capture": "never",
+            "description": "A run's log.",
+            "key": "run"
+          },
+          {
+            "name": "{run}.cancel",
+            "kind": "file",
+            "origin": "working",
+            "capture": "never",
+            "description": "Present while the run is asked to stop.",
+            "key": "run"
+          }
+        ]
+      },
+      {
+        "name": "upload-staging",
+        "kind": "directory",
+        "origin": "working",
+        "capture": "never",
+        "description": "Source uploads in flight.",
+        "children": [
+          {
+            "name": "{upload}.bin",
+            "kind": "file",
+            "origin": "working",
+            "capture": "never",
+            "description": "One upload, by its token.",
+            "key": "upload"
+          }
+        ]
+      },
+      {
+        "name": "reviews",
+        "kind": "directory",
+        "origin": "working",
+        "capture": "git",
+        "description": "The review attempts on this REE.",
+        "children": [
+          {
+            "name": "{review}",
+            "kind": "directory",
+            "origin": "working",
+            "capture": "git",
+            "description": "One review attempt: an REE root of its own, beside the author's, which it only reads. Its overlay and snapshot are copies of the author's; its artifacts are its own.",
+            "key": "review",
+            "ree_root": true,
+            "children": [
+              {
+                "name": "review.json",
+                "kind": "file",
+                "origin": "working",
+                "capture": "git",
+                "description": "The attempt's record."
+              },
+              {
+                "name": "receipts",
+                "kind": "directory",
+                "origin": "produced",
+                "capture": "git",
+                "description": "The receipt the attempt selected for each step.",
+                "children": [
+                  {
+                    "name": "{operation}.json",
+                    "kind": "file",
+                    "origin": "produced",
+                    "capture": "git",
+                    "description": "The receipt of one step.",
+                    "key": "operation"
+                  },
+                  {
+                    "name": "experiments",
+                    "kind": "directory",
+                    "origin": "produced",
+                    "capture": "git",
+                    "description": "One receipt per reproduced experiment.",
+                    "children": [
+                      {
+                        "name": "{experiment_slug}.json",
+                        "kind": "file",
+                        "origin": "produced",
+                        "capture": "git",
+                        "description": "The receipt of one experiment.",
+                        "key": "experiment_slug"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "comparisons",
+                "kind": "directory",
+                "origin": "produced",
+                "capture": "git",
+                "description": "The attempt's verdict on each step, against the author's evidence.",
+                "children": [
+                  {
+                    "name": "{step}.json",
+                    "kind": "file",
+                    "origin": "produced",
+                    "capture": "git",
+                    "description": "The verdict on one step.",
+                    "key": "step"
+                  },
+                  {
+                    "name": "experiments",
+                    "kind": "directory",
+                    "origin": "produced",
+                    "capture": "git",
+                    "description": "One verdict per reproduced experiment.",
+                    "children": [
+                      {
+                        "name": "{experiment_slug}.json",
+                        "kind": "file",
+                        "origin": "produced",
+                        "capture": "git",
+                        "description": "The verdict on one experiment.",
+                        "key": "experiment_slug"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "runs",
+                "kind": "directory",
+                "origin": "working",
+                "capture": "never",
+                "description": "The attempt's run logs, and each run's receipt.",
+                "children": [
+                  {
+                    "name": "{run}.ndjson",
+                    "kind": "file",
+                    "origin": "working",
+                    "capture": "never",
+                    "description": "A run's log.",
+                    "key": "run"
+                  },
+                  {
+                    "name": "{run}.cancel",
+                    "kind": "file",
+                    "origin": "working",
+                    "capture": "never",
+                    "description": "Present while the run is asked to stop.",
+                    "key": "run"
+                  },
+                  {
+                    "name": "{run}.receipt.json",
+                    "kind": "file",
+                    "origin": "produced",
+                    "capture": "git",
+                    "description": "The receipt a run wrote.",
+                    "key": "run"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

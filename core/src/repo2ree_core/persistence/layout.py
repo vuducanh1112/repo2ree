@@ -5,19 +5,8 @@ path arithmetic, but performs no filesystem I/O. The imperative shell —
 :class:`repo2ree_core.persistence.directory.ReeDirectory` and the read views beside it — uses
 ``ReeLayout`` to know where to read and write.
 
-Layout under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench):
-
-    ree.json              the REE document (a bundle carries the same file)
-    snapshot.tar.gz       frozen upstream archive
-    upload-staging/       staging area for in-flight source uploads
-    upstream/             extracted snapshot, treated as read-only
-    overlay/              user-added and tool-generated recipe files
-    artifacts/            produced evidence (sbom.json, reproducibility-report.json,
-                          and an experiment environment restored from a loaded bundle)
-    workspace/            materialized view (upstream + overlay) used at build time
-    runs/                 per-action logs and immutable receipt history
-    reviews/<review-id>/  isolated reviewer tree: its own upstream/, overlay/,
-                          workspace/, receipts, and comparisons
+The tree under ``<storage_root>/<ree_id>/`` (host) or ``/ree/`` (workbench) is
+``repo2ree_ree.layout.REE_TREE``: each entry, who writes it, and how a capture carries it.
 
 ``upstream/`` and ``overlay/`` are the sources of truth; ``workspace/`` is
 derived and may be rebuilt at any time.
@@ -32,6 +21,7 @@ from pathlib import Path, PurePosixPath
 # Canonical lexical path checks live in the dependency-free leaf module so the
 # domain and experiment layers can share them without an import cycle. Import
 # them from there, never from here: one spelling per primitive.
+from repo2ree_ree import layout as tree
 from repo2ree_ree.paths import validate_path_segment, validate_relative_path
 
 # ================================================
@@ -39,53 +29,28 @@ from repo2ree_ree.paths import validate_path_segment, validate_relative_path
 # ================================================
 
 
-# The REE manifest, and the only spelling of it. The same file at the same name
-# is what a bundle carries at ``ree/ree.json``: unpacking a bundle produces a
-# directory that *is* an REE root, so the manifest it arrives with is already
-# the manifest the workbench keeps — nothing is copied from one name to another.
-REE_MANIFEST_FILENAME = "ree.json"
-_MATERIALIZE_MARKER_FILENAME = ".workspace.materialized.json"
-_UPLOAD_STAGING_DIRNAME = "upload-staging"
-
-# Public names: shared with the bundle layout (run.sh calls the same scripts).
-# REE-owned infra that runs *before* / to build the workspace, so they sit at the
-# root alongside the snapshot rather than in the overlay.
-ACQUIRE_SCRIPT_FILENAME = "acquire_source.sh"
-MATERIALIZE_SCRIPT_FILENAME = "materialize_workspace.sh"
-
-# Public names: shared with the bundle layout so the published REE mirrors
-# the on-disk tree. Import these (rather than redefining) to avoid drift.
-UPSTREAM_DIRNAME = "upstream"
-SNAPSHOT_FILENAME = "snapshot.tar.gz"
-OVERLAY_DIRNAME = "overlay"
-ARTIFACTS_DIRNAME = "artifacts"
-# The SBOM is REE-owned evidence, not an authored file: only ``generate_sbom``
-# writes it, and it names one fixed place. Published in the aggregate as this
-# REE-root-relative path, which is also where the bundle
-# carries it — so an REE loaded from a bundle declares exactly what it declared
-# before packaging.
-SBOM_FILENAME = "sbom.json"
+# The names are the REE tree's (repo2ree_ree.layout, exported as contracts/ree/layout.json); this module
+# joins them into paths and keeps the names its callers import.
+REE_MANIFEST_FILENAME = tree.REE_MANIFEST
+_MATERIALIZE_MARKER_FILENAME = tree.MATERIALIZE_MARKER
+_UPLOAD_STAGING_DIRNAME = tree.UPLOAD_STAGING
+ACQUIRE_SCRIPT_FILENAME = tree.ACQUIRE_SCRIPT
+MATERIALIZE_SCRIPT_FILENAME = tree.MATERIALIZE_SCRIPT
+UPSTREAM_DIRNAME = tree.UPSTREAM
+SNAPSHOT_FILENAME = tree.SNAPSHOT
+OVERLAY_DIRNAME = tree.OVERLAY
+ARTIFACTS_DIRNAME = tree.ARTIFACTS
+SBOM_FILENAME = tree.SBOM
+# Published in the aggregate as this REE-root-relative path, which is also where the bundle carries it.
 SBOM_ARTIFACT_PATH = f"{ARTIFACTS_DIRNAME}/{SBOM_FILENAME}"
-# The evaluate step's report, the other piece of REE-owned produced evidence
-# with one fixed home. Unlike the SBOM it is never published on the intent (no
-# step consumes it as a declared input), so it needs no root-relative spelling —
-# but it is read by the step overlay and the cross-check, which is exactly why
-# its name belongs here rather than in each of them.
-REPRODUCIBILITY_REPORT_FILENAME = "reproducibility-report.json"
-# Produced-results store: per-experiment captured outputs, keyed by name. A
-# sibling of ``artifacts/`` (produced, not authored) rather than a subtree of
-# it, so the sealed bundle exposes the author baseline at ``ree/results/<name>/``
-# for reviewer diffing — deliberately outside ``workspace/`` so a fresh run's
-# output at the declared path never collides with the restored baseline.
-RESULTS_DIRNAME = "results"
-WORKSPACE_DIRNAME = "workspace"
-RUNS_DIRNAME = "runs"
-RECEIPTS_DIRNAME = "receipts"
-REVIEWS_DIRNAME = "reviews"
-# A review attempt's own two documents, beside the receipts and comparisons it
-# files: the attempt record, and the directory its verdicts land in.
-REVIEW_RECORD_FILENAME = "review.json"
-COMPARISONS_DIRNAME = "comparisons"
+REPRODUCIBILITY_REPORT_FILENAME = tree.REPRODUCIBILITY_REPORT
+RESULTS_DIRNAME = tree.RESULTS
+WORKSPACE_DIRNAME = tree.WORKSPACE
+RUNS_DIRNAME = tree.RUNS
+RECEIPTS_DIRNAME = tree.RECEIPTS
+REVIEWS_DIRNAME = tree.REVIEWS
+REVIEW_RECORD_FILENAME = tree.REVIEW_RECORD
+COMPARISONS_DIRNAME = tree.COMPARISONS
 
 # Fixed mount point inside every REE workbench container.
 WORKBENCH_ROOT = Path(os.environ.get("REPO2REE_WORKBENCH_ROOT", "/ree"))
@@ -116,8 +81,8 @@ BUNDLE_RESULTS_PREFIX = f"{BUNDLE_ROOT_PREFIX}{RESULTS_DIRNAME}/"
 # unpacked it, so its entry point and instructions sit at the top level rather
 # than under ``ree/``. The scripts they call are the workbench's own, which is
 # why those two carry the prefix and these do not.
-BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH = "run.sh"
-BUNDLE_REPRODUCER_README_ENTRY_PATH = "REPRODUCING.md"
+BUNDLE_REPRODUCER_SCRIPT_ENTRY_PATH = tree.REPRODUCER_SCRIPT
+BUNDLE_REPRODUCER_README_ENTRY_PATH = tree.REPRODUCER_README
 BUNDLE_ACQUIRE_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{ACQUIRE_SCRIPT_FILENAME}"
 BUNDLE_MATERIALIZE_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{MATERIALIZE_SCRIPT_FILENAME}"
 
@@ -170,7 +135,7 @@ class ReeLayout:
     @property
     def git_dir(self) -> Path:
         """Local version storage, excluded from REE file views and bundles."""
-        return self.root / ".git"
+        return self.root / tree.GIT_DIR
 
     @property
     def snapshot_archive(self) -> Path:
@@ -362,11 +327,11 @@ class ReviewLayout(ReeLayout):
         The experiments step is the one step with more than one subject, so its
         evidence needs a directory where the others need a file.
         """
-        return _resolve_under(self.receipts, PurePosixPath("experiments") / f"{experiment_slug}.json")
+        return _resolve_under(self.receipts, PurePosixPath(tree.EXPERIMENTS) / f"{experiment_slug}.json")
 
     def experiment_comparison(self, experiment_slug: str) -> Path:
         """This attempt's verdict for one experiment, keyed by its slug."""
-        return _resolve_under(self.comparisons, PurePosixPath("experiments") / f"{experiment_slug}.json")
+        return _resolve_under(self.comparisons, PurePosixPath(tree.EXPERIMENTS) / f"{experiment_slug}.json")
 
 
 # ================================================
