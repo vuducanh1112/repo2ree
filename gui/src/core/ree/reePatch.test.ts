@@ -142,19 +142,10 @@ describe("toReePatchFromSlices", () => {
       ...slices,
       reeSpec: {
         ...createEmptyReeSpec(),
-        workbenchEnvironment: {
-          kind: "image",
-          image: "python:3.12",
-          pinned: false,
-          needsContainerEngine: true,
-        },
+        workbenchEnvironment: { oci: "python:3.12", pinned: false },
       },
     });
-    expect(declared.workbench_environment).toEqual({
-      kind: "image",
-      image: "python:3.12",
-      needs_container_engine: true,
-    });
+    expect(declared.workbench_environment).toEqual({ oci: "python:3.12" });
 
     const undeclared = toReePatchFromSlices({ ...slices, reeSpec: createEmptyReeSpec() });
     expect("workbench_environment" in undeclared).toBe(false);

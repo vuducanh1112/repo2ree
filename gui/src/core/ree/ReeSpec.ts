@@ -124,12 +124,10 @@ export interface Hbom {
 
 /** What the REE's scripts run in, as the REE declares it. */
 export interface WorkbenchEnvironment {
-  kind: "image" | "host";
-  /** The image reference; empty for a host workbench environment. */
-  image: string;
+  /** The OCI image reference the scripts run in; null runs them on the workbench host. */
+  oci: string | null;
   /** Whether the reference names a digest, so it cannot move. */
   pinned: boolean;
-  needsContainerEngine: boolean;
 }
 
 export interface ReeSpec {

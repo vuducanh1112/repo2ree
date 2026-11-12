@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib.resources import files
 
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
+from repo2ree_ree.workbench_environment import EnvironmentBackend
 
 
 def _template(name: str) -> str:
@@ -44,10 +44,10 @@ class ScriptTemplate:
     description: str
     body: str
     # The workbench environment it suits; None for one that suits any, as a verify script does.
-    workbench_environment: WorkbenchEnvironmentKind | None = None
+    workbench_environment: EnvironmentBackend | None = None
 
 
-def reserved_script_template(reserved_path: str, workbench_environment: WorkbenchEnvironmentKind = "image") -> str:
+def reserved_script_template(reserved_path: str, workbench_environment: EnvironmentBackend = "container") -> str:
     """Return the default starter template for a seeded reserved script path in ``workbench_environment``.
 
     Catalogs are keyed by the script's file name, so the lookup is stable
@@ -73,7 +73,7 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
                 "Build the project's Dockerfile into an image and save it as the experiment environment tarball."
             ),
             body=_template("build_experiment_environment_docker.sh"),
-            workbench_environment="image",
+            workbench_environment="container",
         ),
         ScriptTemplate(
             key="venv",
@@ -97,7 +97,7 @@ def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
             description="Load the saved image and run the given command in a container from it, "
             "with the workspace mounted at its own path.",
             body=_template("activate_experiment_environment_docker.sh"),
-            workbench_environment="image",
+            workbench_environment="container",
         ),
         ScriptTemplate(
             key="venv",

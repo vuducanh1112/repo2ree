@@ -74,22 +74,23 @@ describe("mapRawReeIntentToSlices", () => {
     const pinned = `docker.io/library/python@sha256:${"a".repeat(64)}`;
     const image = mapRawReeIntentToSlices({
       reeIntent: {
-        workbench_environment: { kind: "image", image: pinned, needs_container_engine: true },
+        workbench_environment: { oci: pinned },
       },
       fallbackName: "demo",
     }).reeSpec.workbenchEnvironment;
-    expect(image).toEqual({
-      kind: "image",
-      image: pinned,
-      pinned: true,
-      needsContainerEngine: true,
-    });
+    expect(image).toEqual({ oci: pinned, pinned: true });
 
     const tagged = mapRawReeIntentToSlices({
-      reeIntent: { workbench_environment: { kind: "image", image: "python:3.12" } },
+      reeIntent: { workbench_environment: { oci: "python:3.12" } },
       fallbackName: "demo",
     }).reeSpec.workbenchEnvironment;
     expect(tagged?.pinned).toBe(false);
+
+    const host = mapRawReeIntentToSlices({
+      reeIntent: { workbench_environment: { oci: null } },
+      fallbackName: "demo",
+    }).reeSpec.workbenchEnvironment;
+    expect(host).toEqual({ oci: null, pinned: false });
 
     expect(
       mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" }).reeSpec.workbenchEnvironment,

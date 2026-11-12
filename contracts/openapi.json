@@ -15010,8 +15010,8 @@
               {
                 "type": "string",
                 "enum": [
-                  "image",
-                  "host"
+                  "host",
+                  "container"
                 ]
               },
               {
@@ -16047,15 +16047,7 @@
       },
       "WorkbenchEnvironment": {
         "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "image",
-              "host"
-            ],
-            "title": "Kind"
-          },
-          "image": {
+          "oci": {
             "anyOf": [
               {
                 "type": "string",
@@ -16065,19 +16057,11 @@
                 "type": "null"
               }
             ],
-            "title": "Image"
-          },
-          "needs_container_engine": {
-            "type": "boolean",
-            "title": "Needs Container Engine",
-            "default": false
+            "title": "Oci"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "kind"
-        ],
         "title": "WorkbenchEnvironment"
       },
       "WorkbenchEnvironmentObservation": {

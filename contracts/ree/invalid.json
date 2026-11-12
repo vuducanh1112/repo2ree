@@ -203,21 +203,7 @@
       "error": "timestamp must be timezone-aware"
     },
     {
-      "name": "an image environment that names no image",
-      "patch": [
-        {
-          "op": "remove",
-          "path": "/seal"
-        },
-        {
-          "op": "remove",
-          "path": "/subject/definition/workbench_environment/image"
-        }
-      ],
-      "error": "an image environment names its image"
-    },
-    {
-      "name": "a host environment that names an image",
+      "name": "an OCI image environment that names an empty image",
       "patch": [
         {
           "op": "remove",
@@ -225,11 +211,11 @@
         },
         {
           "op": "replace",
-          "path": "/subject/definition/workbench_environment/kind",
-          "value": "host"
+          "path": "/subject/definition/workbench_environment/oci",
+          "value": ""
         }
       ],
-      "error": "a host environment names no image"
+      "error": "String should have at least 1 character"
     }
   ]
 }

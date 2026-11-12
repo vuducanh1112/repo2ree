@@ -71,12 +71,12 @@ function WorkbenchEnvironmentBadges({
   workbenchEnvironment: WorkbenchEnvironment | null;
 }) {
   if (!workbenchEnvironment) return <Badge tone="warning">No workbench environment declared</Badge>;
-  if (workbenchEnvironment.kind === "host")
+  if (workbenchEnvironment.oci === null)
     return <Badge tone="info">Runs on the workbench host</Badge>;
   return (
     <>
       <Badge tone="info" flavor="code">
-        {workbenchEnvironment.image}
+        {workbenchEnvironment.oci}
       </Badge>
       {!workbenchEnvironment.pinned && (
         <Badge tone="warning">Workbench environment not pinned</Badge>

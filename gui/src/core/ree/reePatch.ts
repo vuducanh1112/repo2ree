@@ -111,14 +111,7 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     // Sent only once declared: a spec read before the REE declared one must not clear it.
     ...(reeSpec.workbenchEnvironment
       ? {
-          workbench_environment: {
-            kind: reeSpec.workbenchEnvironment.kind,
-            image:
-              reeSpec.workbenchEnvironment.kind === "image"
-                ? reeSpec.workbenchEnvironment.image || null
-                : null,
-            needs_container_engine: reeSpec.workbenchEnvironment.needsContainerEngine,
-          },
+          workbench_environment: { oci: reeSpec.workbenchEnvironment.oci },
         }
       : {}),
   };

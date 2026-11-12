@@ -35,19 +35,15 @@ def _declared(
 
 
 def test_an_ree_declares_the_image_its_store_offers(monkeypatch: pytest.MonkeyPatch) -> None:
-    patch, logged = _declared(
-        monkeypatch, WorkbenchEnvironment(kind="image", image=PINNED), ActionResult(status="succeeded")
-    )
+    patch, logged = _declared(monkeypatch, WorkbenchEnvironment(oci=PINNED), ActionResult(status="succeeded"))
 
-    assert patch == {"workbench_environment": {"kind": "image", "image": PINNED, "needs_container_engine": False}}
+    assert patch == {"workbench_environment": {"oci": PINNED}}
     assert logged == []
 
 
 def test_a_declaration_that_will_not_record_is_said_and_does_not_fail_the_creation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, logged = _declared(
-        monkeypatch, WorkbenchEnvironment(kind="host"), ActionResult.failed("conflict", "version moved")
-    )
+    _, logged = _declared(monkeypatch, WorkbenchEnvironment(), ActionResult.failed("conflict", "version moved"))
 
     assert logged == ["warn: The REE's workbench environment was not recorded: version moved"]

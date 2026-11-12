@@ -1,9 +1,9 @@
 """What an REE's scripts run in: declared by the author, and observed by each step that ran in it.
 
-The build script is the author's own and may need anything, a container engine included; the
-environment is what provides it. Activation and experiments run in the same environment, on the
-experiment environment the build produced. An ``image`` environment is a container image; a ``host`` environment
-is whatever machine runs the step, described only by what was observed there.
+The build script is the author's own and may need anything; the environment is what provides it.
+Activation and experiments run in the same environment, on the experiment environment the build
+produced. An environment with an ``oci`` image runs each step in a container from it; one without
+runs it on whatever machine runs the step, described only by what was observed there.
 """
 
 from __future__ import annotations
@@ -15,8 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from repo2ree_ree.layout import digest_of
 from repo2ree_ree.primitives import Digest
 
-WorkbenchEnvironmentKind = Literal["image", "host"]
-# Where a step's script ran: a container from the environment's image, or the host itself.
+# Where a step's script runs: a container from the environment's image, or the host itself.
 EnvironmentBackend = Literal["host", "container"]
 # The container engine the script could reach: none, the host's own (its socket mounted), or a
 # daemon nested inside the environment (the privileged benches before stores).
@@ -28,22 +27,16 @@ class _WorkbenchEnvironmentModel(BaseModel):
 
 
 class WorkbenchEnvironment(_WorkbenchEnvironmentModel):
-    kind: WorkbenchEnvironmentKind
-    # A reference, pinned or not ("ref@sha256:<hex>" is pinned); only for an image environment.
-    image: str | None = Field(default=None, min_length=1)
-    needs_container_engine: bool = False
+    # An OCI image reference, pinned or not ("ref@sha256:<hex>" is pinned); none runs on the host.
+    oci: str | None = Field(default=None, min_length=1)
 
-    @model_validator(mode="after")
-    def _image_only_for_images(self) -> WorkbenchEnvironment:
-        if self.kind == "image" and self.image is None:
-            raise ValueError("an image environment names its image")
-        if self.kind == "host" and self.image is not None:
-            raise ValueError("a host environment names no image")
-        return self
+    @property
+    def backend(self) -> EnvironmentBackend:
+        return "host" if self.oci is None else "container"
 
     @property
     def pinned(self) -> bool:
-        return self.image is not None and "@sha256:" in self.image
+        return self.oci is not None and "@sha256:" in self.oci
 
 
 class HostFingerprint(_WorkbenchEnvironmentModel):

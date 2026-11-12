@@ -67,16 +67,3 @@ def test_a_sif_has_no_sbom_and_the_ree_says_so(api: Api, new_ree: Callable[..., 
 
     assert api.stage(ree_id, "generate-sbom")["status"] == "failed"
     assert api.audit(ree_id)["sbom"]["evidence"] == "missing"
-
-
-def test_declaring_a_container_engine_is_refused_where_only_apptainer_is_installed(
-    api: Api, new_ree: Callable[..., str]
-) -> None:
-    ree_id = new_ree()
-    api.acquire(ree_id, APPTAINER)
-    api.patch(ree_id, {"workbench_environment": {"kind": "host", "needs_container_engine": True}})
-
-    run = api.build_experiment_environment(ree_id, fixture=APPTAINER)
-
-    assert run["status"] == "failed"
-    assert "need a container engine" in api.logs(ree_id, run["run_id"])

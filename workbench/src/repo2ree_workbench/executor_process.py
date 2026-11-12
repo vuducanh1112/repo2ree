@@ -47,7 +47,7 @@ class ScriptBackend:
 
     def choice(self, workbench_environment: dict[str, object]) -> str:
         """The runner for an REE that declares ``workbench_environment``, or why this workbench cannot run it."""
-        image = workbench_environment.get("image") if workbench_environment.get("kind") == "image" else None
+        image = workbench_environment.get("oci")
         mapped = {"local": self.engine_path[0], "engine": self.engine_path[1]} if self.engine_path else None
         return json.dumps(
             {
@@ -63,14 +63,11 @@ class ScriptBackend:
 
     def refusal(self, workbench_environment: dict[str, object]) -> str | None:
         """Why this workbench cannot run scripts in the REE's declared ``workbench_environment``; None when it can."""
-        kind = workbench_environment.get("kind")
-        if self.backend == "container" and kind != "image":
-            return "this workbench runs scripts in a container: declare the image the REE's scripts run in"
-        if self.backend == "host" and kind == "image":
-            image = workbench_environment.get("image")
+        image = workbench_environment.get("oci")
+        if self.backend == "container" and not image:
+            return "this workbench runs scripts in a container: declare the OCI image the REE's scripts run in"
+        if self.backend == "host" and image:
             return f"this workbench runs scripts on its own machine, and cannot run them in {image}"
-        if workbench_environment.get("needs_container_engine") and self.script_engine == "none":
-            return "the REE's scripts need a container engine, and this workbench gives them none"
         return None
 
     def remove_leftover_jobs(self, keep: frozenset[str] = frozenset()) -> None:

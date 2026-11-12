@@ -110,13 +110,8 @@ function mapRawRunnable(raw: Record<string, unknown>): ReeRunnable {
 function mapRawWorkbenchEnvironment(value: unknown): WorkbenchEnvironment | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
-  const image = String(raw.image ?? "");
-  return {
-    kind: raw.kind === "image" ? "image" : "host",
-    image,
-    pinned: image.includes("@sha256:"),
-    needsContainerEngine: Boolean(raw.needs_container_engine),
-  };
+  const oci = typeof raw.oci === "string" ? raw.oci : null;
+  return { oci, pinned: oci?.includes("@sha256:") ?? false };
 }
 
 export function mapRawReeIntentToSlices({

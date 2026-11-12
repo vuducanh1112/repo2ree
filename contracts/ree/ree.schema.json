@@ -2104,15 +2104,7 @@
     "WorkbenchEnvironment": {
       "additionalProperties": false,
       "properties": {
-        "kind": {
-          "enum": [
-            "image",
-            "host"
-          ],
-          "title": "Kind",
-          "type": "string"
-        },
-        "image": {
+        "oci": {
           "anyOf": [
             {
               "minLength": 1,
@@ -2123,17 +2115,9 @@
             }
           ],
           "default": null,
-          "title": "Image"
-        },
-        "needs_container_engine": {
-          "default": false,
-          "title": "Needs Container Engine",
-          "type": "boolean"
+          "title": "Oci"
         }
       },
-      "required": [
-        "kind"
-      ],
       "title": "WorkbenchEnvironment",
       "type": "object"
     },

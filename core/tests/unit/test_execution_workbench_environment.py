@@ -9,7 +9,7 @@ import pytest
 from repo2ree_core.execution.workbench_environment import ENVIRONMENT_VARIABLE, observe_workbench_environment
 from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
-_DECLARED = WorkbenchEnvironment(kind="image", image="python:3.12-slim", needs_container_engine=True)
+_DECLARED = WorkbenchEnvironment(oci="python:3.12-slim")
 _DIGEST = "sha256:" + "a" * 64
 
 

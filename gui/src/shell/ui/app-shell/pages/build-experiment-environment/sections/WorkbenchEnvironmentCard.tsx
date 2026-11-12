@@ -10,15 +10,10 @@ interface WorkbenchEnvironmentCardProps {
   onWorkbenchEnvironmentChange: (workbenchEnvironment: WorkbenchEnvironment) => void;
 }
 
-const HOST: WorkbenchEnvironment = {
-  kind: "host",
-  image: "",
-  pinned: false,
-  needsContainerEngine: false,
-};
+const HOST: WorkbenchEnvironment = { oci: null, pinned: false };
 
 /**
- * Declare what the build, and everything run on its runtime, runs in: a container
+ * Declare what the build, and everything run on its runtime, runs in: an OCI
  * image (pinned by digest, ideally), or the lab's own machine. The lab runs the
  * scripts there, or refuses with the reason when it cannot.
  */
@@ -27,13 +22,8 @@ export function WorkbenchEnvironmentCard({
   onWorkbenchEnvironmentChange,
 }: WorkbenchEnvironmentCardProps) {
   const current = workbenchEnvironment ?? HOST;
-  const change = (update: Partial<WorkbenchEnvironment>) => {
-    const next = { ...current, ...update };
-    onWorkbenchEnvironmentChange({
-      ...next,
-      pinned: next.kind === "image" && next.image.includes("@sha256:"),
-    });
-  };
+  const change = (oci: string | null) =>
+    onWorkbenchEnvironmentChange({ oci, pinned: oci?.includes("@sha256:") ?? false });
 
   return (
     <Surface spacing="separated">
@@ -43,7 +33,7 @@ export function WorkbenchEnvironmentCard({
         </span>
         <Caption
           title="Workbench environment"
-          hint="What the scripts run in: a container image, or the lab's own machine. A reviewer reruns them in the same."
+          hint="What the scripts run in: an OCI image, or the lab's own machine. A reviewer reruns them in the same."
         />
       </div>
       <section aria-label="Workbench environment">
@@ -51,38 +41,30 @@ export function WorkbenchEnvironmentCard({
           <input
             type="radio"
             name="workbench-environment-kind"
-            checked={current.kind === "image"}
-            onChange={() => change({ kind: "image" })}
+            checked={current.oci !== null}
+            onChange={() => change(current.oci ?? "")}
           />{" "}
-          A container image
+          An OCI image
         </label>{" "}
         <label>
           <input
             type="radio"
             name="workbench-environment-kind"
-            checked={current.kind === "host"}
-            onChange={() => change({ kind: "host", image: "" })}
+            checked={current.oci === null}
+            onChange={() => change(null)}
           />{" "}
           The lab's own machine
         </label>
-        {current.kind === "image" && (
+        {current.oci !== null && (
           <Input
             type="text"
             aria-label="Workbench environment image"
-            value={current.image}
+            value={current.oci}
             placeholder="docker.io/library/python:3.12-slim@sha256:…"
-            onChange={(event) => change({ image: event.target.value.trim() })}
+            onChange={(event) => change(event.target.value.trim())}
             flavor="code"
           />
         )}
-        <label>
-          <input
-            type="checkbox"
-            checked={current.needsContainerEngine}
-            onChange={(event) => change({ needsContainerEngine: event.target.checked })}
-          />{" "}
-          The scripts call a container engine (docker build, docker run)
-        </label>
       </section>
     </Surface>
   );

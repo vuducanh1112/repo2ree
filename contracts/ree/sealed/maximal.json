@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:acf21fd4c3c916eee805904e253986c9252ede91e9e53684a9ec18a7336f9d60",
+    "ree_digest": "sha256:c84343e98fe9c0b51f47a3a26a61828c20ac662242d6f7ea824738d02c6780dd",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -151,9 +151,7 @@
         "source_type": "git"
       },
       "workbench_environment": {
-        "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "kind": "image",
-        "needs_container_engine": true
+        "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     },
     "receipts": {
@@ -173,9 +171,7 @@
         "workbench_environment": {
           "backend": "container",
           "declared": {
-            "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "kind": "image",
-            "needs_container_engine": true
+            "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
           "host": {
             "arch": "x86_64",
@@ -223,9 +219,7 @@
         "workbench_environment": {
           "backend": "container",
           "declared": {
-            "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "kind": "image",
-            "needs_container_engine": true
+            "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
           "host": {
             "arch": "x86_64",
@@ -265,9 +259,7 @@
           "workbench_environment": {
             "backend": "container",
             "declared": {
-              "image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-              "kind": "image",
-              "needs_container_engine": true
+              "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
             },
             "host": {
               "arch": "x86_64",

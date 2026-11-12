@@ -65,21 +65,16 @@ describe("major step page workflows", () => {
   });
 
   it.each([
-    [
-      "names a pinned image",
-      { kind: "image", image: "python@sha256:abc", pinned: true },
-      ["python@sha256:abc"],
-      [],
-    ],
+    ["names a pinned image", { oci: "python@sha256:abc", pinned: true }, ["python@sha256:abc"], []],
     [
       "warns that a tag can move",
-      { kind: "image", image: "python:3.12", pinned: false },
+      { oci: "python:3.12", pinned: false },
       ["python:3.12", "Workbench environment not pinned"],
       [],
     ],
     [
       "says when the workbench host is the workbench environment",
-      { kind: "host", image: "", pinned: false },
+      { oci: null, pinned: false },
       ["Runs on the workbench host"],
       ["Workbench environment not pinned"],
     ],
@@ -92,10 +87,7 @@ describe("major step page workflows", () => {
             ...exampleEditorRee,
             spec: {
               ...exampleEditorRee.spec,
-              workbenchEnvironment: workbenchEnvironment && {
-                ...workbenchEnvironment,
-                needsContainerEngine: false,
-              },
+              workbenchEnvironment,
             },
           },
         })}
@@ -107,15 +99,10 @@ describe("major step page workflows", () => {
     for (const text of hidden) expect(screen.queryByText(text)).toBeNull();
   });
 
-  it("declares the image the build runs in, and that its scripts call a container engine", async () => {
+  it("declares the image the build runs in, or the lab's own machine", async () => {
     const user = userEvent.setup();
     const onReeSpecChange = vi.fn();
-    const workbenchEnvironment = {
-      kind: "image" as const,
-      image: "",
-      pinned: false,
-      needsContainerEngine: false,
-    };
+    const workbenchEnvironment = { oci: "", pinned: false };
     renderWithShell(
       <PageBuildExperimentEnvironment
         {...createStepPageProps("build_experiment_environment", {
@@ -131,18 +118,10 @@ describe("major step page workflows", () => {
     fireEvent.change(await screen.findByLabelText("Workbench environment image"), {
       target: { value: "python@sha256:abc" },
     });
-    expect(lastUpdate()).toEqual({
-      kind: "image",
-      image: "python@sha256:abc",
-      pinned: true,
-      needsContainerEngine: false,
-    });
-
-    await user.click(screen.getByLabelText(/call a container engine/));
-    expect(lastUpdate()).toMatchObject({ needsContainerEngine: true });
+    expect(lastUpdate()).toEqual({ oci: "python@sha256:abc", pinned: true });
 
     await user.click(screen.getByLabelText("The lab's own machine"));
-    expect(lastUpdate()).toMatchObject({ kind: "host", image: "", pinned: false });
+    expect(lastUpdate()).toEqual({ oci: null, pinned: false });
   });
 
   // The generated build script writes to the path the REE declares, and falls

@@ -102,7 +102,7 @@ def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_execu
     executor = LocalExecutor(tmp_path / "store", str(fake_executor), scripts=scripts)
     root = executor.ree_root("ree-1")
     root.mkdir(parents=True)
-    environment = {"kind": "image", "image": "python:3.12-slim", "needs_container_engine": True}
+    environment = {"oci": "python:3.12-slim"}
     (root / "ree.json").write_text(json.dumps({"subject": {"definition": {"workbench_environment": environment}}}))
 
     choice = json.loads(executor.environment(root)["REPO2REE_SCRIPT_RUNNER"])
@@ -139,11 +139,11 @@ def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -
 @pytest.mark.parametrize(
     ("backend", "script_engine", "environment", "refused"),
     [
-        ("container", "socket", {}, "declare the image"),
-        ("container", "socket", {"kind": "host"}, "declare the image"),
-        ("host", "socket", {"kind": "image", "image": "python:3.12"}, "cannot run them in python:3.12"),
-        ("container", "none", {"kind": "image", "image": "docker:29", "needs_container_engine": True}, "engine"),
-        ("host", "socket", {"kind": "host"}, None),
+        ("container", "socket", {}, "declare the OCI image"),
+        ("container", "socket", {"oci": None}, "declare the OCI image"),
+        ("host", "socket", {"oci": "python:3.12"}, "cannot run them in python:3.12"),
+        ("container", "none", {"oci": "docker:29"}, None),
+        ("host", "socket", {"oci": None}, None),
         ("host", "socket", {}, None),
     ],
 )

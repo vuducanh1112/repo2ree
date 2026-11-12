@@ -159,7 +159,7 @@ def test_editing_the_build_experiment_environment_script_leaves_the_build_receip
     assert experiment_environment.receipt_run_id == RunId("build-1")
 
 
-_PYTHON = WorkbenchEnvironment(kind="image", image="python:3.12-slim")
+_PYTHON = WorkbenchEnvironment(oci="python:3.12-slim")
 
 
 def _ran_under(declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
@@ -187,7 +187,7 @@ def test_changing_the_environment_leaves_what_ran_in_it_stale_and_changing_it_ba
     )
     assert audit(ree).stale_steps() == ()
 
-    moved = _with_environment(ree, WorkbenchEnvironment(kind="image", image="python:3.13-slim"))
+    moved = _with_environment(ree, WorkbenchEnvironment(oci="python:3.13-slim"))
     result = audit(moved)
     assert result.experiment_environment.reasons == ("workbench environment changed",)
     assert result.experiments[0].run.reasons == ("workbench environment changed",)

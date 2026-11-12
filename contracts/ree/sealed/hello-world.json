@@ -1,7 +1,7 @@
 {
   "seal": {
-    "ree_digest": "sha256:ca24badeebcebd2e42f6a306ad585fa50c235c146edee2d9bec301af519896f5",
-    "sealed_at": "2026-11-11T14:53:46.026793Z"
+    "ree_digest": "sha256:7928fdb2502f8c014b599b28912bc80949d1975f10c299ba0226ea6933c39182",
+    "sealed_at": "2026-11-12T15:07:46.116803Z"
   },
   "subject": {
     "capture": {
@@ -24,14 +24,14 @@
           "size": 159
         },
         {
-          "digest": "sha256:815496efa24b2cfb651415b059c4fba6d4c6746532643dfa8714391e2ce61f8b",
+          "digest": "sha256:8ba42f13bf15b2e60ddbe3b4de1f895ffb5778e4e2817dd46081ab3188e742cc",
           "path": ".workspace.materialized.json",
           "size": 676
         },
         {
-          "digest": "sha256:3c91797a443c4d58e1d693322bee2e9023031f28c25a76224890ca50e22fcf01",
+          "digest": "sha256:4dcd42454c93762dea1467d5554acd0ef4e33fc205cd2b7423c3e2b24431b3d0",
           "path": "REPRODUCING.md",
-          "size": 4125
+          "size": 4046
         },
         {
           "digest": "sha256:eb1d0f4f5fcfb53bdb702ed50ccf6cb5f37918679d00d0be7c5e29aaf5adec3c",
@@ -44,7 +44,7 @@
           "size": 10909
         },
         {
-          "digest": "sha256:804f03618cae18797df7c5e95fc6444e5f29835aba3b1a955ad263d8e82996fc",
+          "digest": "sha256:f40611bc88a2a3096256a03d2cbc01cd3ff3b1c1906684494321bc3e0ac10823",
           "path": "artifacts/sbom.json",
           "size": 1079924
         },
@@ -79,12 +79,12 @@
           "size": 425
         },
         {
-          "digest": "sha256:068dbe6ff2dabc86a872100d0dd68c75b0b336daa1e72433820deb8ed6901a7e",
+          "digest": "sha256:ee2696dce7fcdee222c968f45f6ed607a1d0d3aa34272044e7cc5419e40700b0",
           "path": "run.sh",
-          "size": 8760
+          "size": 8754
         },
         {
-          "digest": "sha256:d6a4a051773c9f472be76efe7489e2314e4fca79f610b6fe69f60acd7fe15b6a",
+          "digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
           "path": "snapshot.tar.gz",
           "size": 4024
         }
@@ -145,31 +145,27 @@
         "source_type": "tarball"
       },
       "workbench_environment": {
-        "image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
-        "kind": "image",
-        "needs_container_engine": true
+        "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
       }
     },
     "receipts": {
       "activation": {
         "activate_experiment_environment_script_digest": "sha256:e8837f986e959630b5e7de8c7101ef83d9f834ab214a9ef8163e8ebc42e1335f",
-        "duration_ms": 925,
+        "duration_ms": 832,
         "exit_code": 0,
-        "experiment_environment_digest": "sha256:7275534d277086a774e4c63faff4612278de32c1332be85073f568a23c81d2e0",
+        "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
         "experiment_environment_path": "source/runtime.tar",
-        "finished_at": "2026-11-11T14:53:34.139000Z",
+        "finished_at": "2026-11-12T15:07:33.730267Z",
         "operation": "activation_test",
-        "recorded_at": "2026-11-11T14:53:34.139000Z",
-        "run_id": "activation-1b02d9982e664627a5c7c02c157b7b63",
+        "recorded_at": "2026-11-12T15:07:33.730267Z",
+        "run_id": "activation-255c57f341764aa3bfbfa7e8556497e7",
         "schema_version": 1,
-        "snapshot_digest": "sha256:d6a4a051773c9f472be76efe7489e2314e4fca79f610b6fe69f60acd7fe15b6a",
-        "started_at": "2026-11-11T14:53:33.213958Z",
+        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
+        "started_at": "2026-11-12T15:07:32.897896Z",
         "workbench_environment": {
           "backend": "container",
           "declared": {
-            "image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
-            "kind": "image",
-            "needs_container_engine": true
+            "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
           },
           "host": {
             "arch": "aarch64",
@@ -185,41 +181,39 @@
         "analyzer_version": "1",
         "dependency_count": 6,
         "dependency_level": 3,
-        "duration_ms": 6,
+        "duration_ms": 3,
         "environment_level": 1,
-        "finished_at": "2026-11-11T14:52:47.776927Z",
+        "finished_at": "2026-11-12T15:06:45.459016Z",
         "machine_level": 0,
         "manifest_count": 1,
         "operation": "evaluate_reproducibility",
         "overlay_digest": "sha256:092d7d5bf89492fee9cade6ebd65e1efef90ac5c4239fdda37499162fcdb6e97",
-        "recorded_at": "2026-11-11T14:52:47.776927Z",
+        "recorded_at": "2026-11-12T15:06:45.459016Z",
         "report_digest": "sha256:3266a222ccbb6b88c859ef252c97f466aeadb937c289736c76a2562b3097b1e3",
         "report_path": "artifacts/reproducibility-report.json",
-        "run_id": "evaluate-62c2c655ceff46ab9b0c8c6f124f0e98",
+        "run_id": "evaluate-e6d67913a53f4ca89d9cc21b9ff7082e",
         "schema_version": 1,
-        "snapshot_digest": "sha256:d6a4a051773c9f472be76efe7489e2314e4fca79f610b6fe69f60acd7fe15b6a",
-        "started_at": "2026-11-11T14:52:47.770271Z",
+        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
+        "started_at": "2026-11-12T15:06:45.455862Z",
         "strict": false
       },
       "experiment_environment": {
         "artifact_path": "source/runtime.tar",
         "build_experiment_environment_script_digest": "sha256:673940c8e2e2451205b608239810624f554e049d4c43d99dec2c85b2c8cce454",
         "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
-        "duration_ms": 29341,
-        "finished_at": "2026-11-11T14:53:22.262316Z",
+        "duration_ms": 29995,
+        "finished_at": "2026-11-12T15:07:21.524127Z",
         "operation": "build_experiment_environment",
-        "produced_artifact_digest": "sha256:7275534d277086a774e4c63faff4612278de32c1332be85073f568a23c81d2e0",
-        "recorded_at": "2026-11-11T14:53:22.262316Z",
-        "run_id": "build_experiment_environment-1b428b307cd34d22ade0285f608e3419",
+        "produced_artifact_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
+        "recorded_at": "2026-11-12T15:07:21.524127Z",
+        "run_id": "build_experiment_environment-b2969ca1cc994418a3c9733da028adab",
         "schema_version": 1,
-        "snapshot_digest": "sha256:d6a4a051773c9f472be76efe7489e2314e4fca79f610b6fe69f60acd7fe15b6a",
-        "started_at": "2026-11-11T14:52:52.921371Z",
+        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
+        "started_at": "2026-11-12T15:06:51.529337Z",
         "workbench_environment": {
           "backend": "container",
           "declared": {
-            "image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
-            "kind": "image",
-            "needs_container_engine": true
+            "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
           },
           "host": {
             "arch": "aarch64",
@@ -239,27 +233,25 @@
       "experiments": {
         "python-hello": {
           "activate_experiment_environment_script_digest": "sha256:e8837f986e959630b5e7de8c7101ef83d9f834ab214a9ef8163e8ebc42e1335f",
-          "duration_ms": 1985,
-          "experiment_environment_digest": "sha256:7275534d277086a774e4c63faff4612278de32c1332be85073f568a23c81d2e0",
+          "duration_ms": 1706,
+          "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
           "experiment_name": "python-hello",
-          "finished_at": "2026-11-11T14:53:44.990507Z",
+          "finished_at": "2026-11-12T15:07:44.763405Z",
           "operation": "run_experiment",
           "produced_output_digest": "sha256:8413a8c8bd8aaf94d7404d59c4c62734fcd0cd5577e22efc5c19b43c4bc32e14",
-          "recorded_at": "2026-11-11T14:53:44.990507Z",
+          "recorded_at": "2026-11-12T15:07:44.763405Z",
           "run_exit_code": 0,
-          "run_id": "experiment-25c18f0cbd1b4251bca5943f2f2b7b1a",
+          "run_id": "experiment-6e1858a848e448e29d2b8ff319b3bd09",
           "run_script_digest": "sha256:fdf3dc4a13f4d5ad6ce47890ffbefbca330f806bbf5724aabf4169ef2e291c6f",
           "schema_version": 1,
-          "snapshot_digest": "sha256:d6a4a051773c9f472be76efe7489e2314e4fca79f610b6fe69f60acd7fe15b6a",
-          "started_at": "2026-11-11T14:53:43.004855Z",
+          "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
+          "started_at": "2026-11-12T15:07:43.057081Z",
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:fe95e38cfebb82d420df440287581b32959c5168b4191e298cfabf99da98efbe",
           "workbench_environment": {
             "backend": "container",
             "declared": {
-              "image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515",
-              "kind": "image",
-              "needs_container_engine": true
+              "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
             },
             "host": {
               "arch": "aarch64",
@@ -273,47 +265,47 @@
         }
       },
       "sbom": {
-        "duration_ms": 5435,
-        "experiment_environment_digest": "sha256:7275534d277086a774e4c63faff4612278de32c1332be85073f568a23c81d2e0",
+        "duration_ms": 4709,
+        "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
         "experiment_environment_path": "source/runtime.tar",
-        "finished_at": "2026-11-11T14:53:30.836247Z",
+        "finished_at": "2026-11-12T15:07:29.298923Z",
         "operation": "generate_sbom",
-        "recorded_at": "2026-11-11T14:53:30.836247Z",
-        "run_id": "sbom-4b3ed3a21f2c466096ed85a6939288b3",
-        "sbom_digest": "sha256:804f03618cae18797df7c5e95fc6444e5f29835aba3b1a955ad263d8e82996fc",
+        "recorded_at": "2026-11-12T15:07:29.298923Z",
+        "run_id": "sbom-cb70d0f12e434ce1b5215ec68a2dd471",
+        "sbom_digest": "sha256:f40611bc88a2a3096256a03d2cbc01cd3ff3b1c1906684494321bc3e0ac10823",
         "sbom_format": "cyclonedx-json",
         "sbom_path": "artifacts/sbom.json",
         "schema_version": 1,
-        "started_at": "2026-11-11T14:53:25.400925Z",
+        "started_at": "2026-11-12T15:07:24.589618Z",
         "tool_version": "1.51.0"
       },
       "sbom_cross_check": {
         "declared_direct_total": 6,
         "duration_ms": 12,
-        "finished_at": "2026-11-11T14:53:31.889818Z",
+        "finished_at": "2026-11-12T15:07:30.561262Z",
         "observed_matched": 6,
         "observed_total": 2853,
         "operation": "cross_check_sbom",
-        "recorded_at": "2026-11-11T14:53:31.889818Z",
+        "recorded_at": "2026-11-12T15:07:30.561262Z",
         "report_digest": "sha256:3266a222ccbb6b88c859ef252c97f466aeadb937c289736c76a2562b3097b1e3",
-        "run_id": "crosscheck-c347fa0a68214cf8a84b61e1794e0654",
-        "sbom_digest": "sha256:804f03618cae18797df7c5e95fc6444e5f29835aba3b1a955ad263d8e82996fc",
+        "run_id": "crosscheck-f1ce6dd132884671820043b03c1018f8",
+        "sbom_digest": "sha256:f40611bc88a2a3096256a03d2cbc01cd3ff3b1c1906684494321bc3e0ac10823",
         "schema_version": 1,
-        "started_at": "2026-11-11T14:53:31.877620Z",
+        "started_at": "2026-11-12T15:07:30.548425Z",
         "undeclared_same_ecosystem": 18,
         "version_mismatches": 0
       },
       "source": {
         "duration_ms": 110,
-        "finished_at": "2026-11-11T14:52:42.757508Z",
+        "finished_at": "2026-11-12T15:06:40.134483Z",
         "observed_swhid": "swh:1:dir:d628538e71146ddab265cb55b04a35c2bf22e7ba",
         "operation": "acquire_source",
-        "recorded_at": "2026-11-11T14:52:42.757508Z",
-        "run_id": "source-1fb8d6c4ec714361a1b92cb5a849c54c",
+        "recorded_at": "2026-11-12T15:06:40.134483Z",
+        "run_id": "source-ba9b047253cf4519968452a086483df9",
         "schema_version": 1,
-        "snapshot_digest": "sha256:d6a4a051773c9f472be76efe7489e2314e4fca79f610b6fe69f60acd7fe15b6a",
+        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
         "source_type": "tarball",
-        "started_at": "2026-11-11T14:52:42.646517Z"
+        "started_at": "2026-11-12T15:06:40.024375Z"
       }
     },
     "schema_version": 1

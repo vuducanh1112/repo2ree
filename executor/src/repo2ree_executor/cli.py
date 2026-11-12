@@ -52,7 +52,7 @@ from repo2ree_protocol.queries import (
     READ_REE_FILE_PATH,
 )
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
+from repo2ree_ree.workbench_environment import EnvironmentBackend
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.log import configure_logging as _configure_logging
 from repo2ree_telemetry.relay import setup_relay_tracing
@@ -386,11 +386,11 @@ def experiment_cmd(name: str, run_id: str | None) -> None:
 @click.option("--name", required=True, help="Human-readable name for the REE.")
 @click.option(
     "--workbench-environment",
-    type=click.Choice(get_args(WorkbenchEnvironmentKind)),
-    default="image",
+    type=click.Choice(get_args(EnvironmentBackend)),
+    default="container",
     help="What the REE's scripts run in, which decides the scripts it starts with.",
 )
-def init_ree_cmd(name: str, workbench_environment: WorkbenchEnvironmentKind) -> None:
+def init_ree_cmd(name: str, workbench_environment: EnvironmentBackend) -> None:
     """Initialize the REE through core and capture its first Git version.
 
     Retrying preserves existing files and ensures a baseline exists. A capture

@@ -193,9 +193,9 @@ def test_a_served_store_offers_its_workbench_images_and_refuses_others(client: T
 @pytest.mark.parametrize(
     ("offered", "requested", "declared"),
     [
-        (("python:3.12", "docker:29"), "", {"kind": "image", "image": "python:3.12"}),
-        (("python:3.12", "docker:29"), "docker:29", {"kind": "image", "image": "docker:29"}),
-        ((), "", {"kind": "host"}),
+        (("python:3.12", "docker:29"), "", {"oci": "python:3.12"}),
+        (("python:3.12", "docker:29"), "docker:29", {"oci": "docker:29"}),
+        ((), "", {}),
     ],
 )
 def test_a_new_ree_in_a_store_declares_the_image_asked_for_its_first_or_its_host(

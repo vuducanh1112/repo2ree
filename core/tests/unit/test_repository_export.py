@@ -205,7 +205,7 @@ def test_a_draft_that_declares_no_workbench_environment_keeps_the_one_its_ree_wa
     destination = ReeLayout(root=tmp_path / "destination")
     initialize_ree(destination, name="blank")
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: destination))
-    created = WorkbenchEnvironment(kind="image", image="docker.io/library/docker:29-dind")
+    created = WorkbenchEnvironment(oci="docker.io/library/docker:29-dind")
     patched = run_command(
         PatchReeDefinitionCommand(
             args=PatchReeDefinitionArgs(

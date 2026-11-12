@@ -545,32 +545,6 @@ export async function buildExperimentEnvironment(
 }
 
 /**
- * Declare on the Build Runtime page that the REE's scripts call a container
- * engine (`docker build`, `docker run`). A store gives one only to an REE that
- * declares it needs one; a provider's bench has its own and ignores it.
- */
-export async function declareContainerEngine(page: Page) {
-  await openPort(page, "Build Experiment Environment");
-  const engine = main(page)
-    .getByRole("region", { name: "Workbench environment" })
-    .getByRole("checkbox", { name: /call a container engine/ });
-  if (await engine.isChecked()) return;
-  const declared = page.waitForResponse(
-    (res) =>
-      res.url().includes("/definition") &&
-      res.request().method() === "PATCH" &&
-      (res.request().postData() ?? "").includes('"needs_container_engine":true'),
-  );
-  await engine.check();
-  const response = await declared;
-  if (!response.ok()) {
-    throw new Error(
-      `definition PATCH rejected with ${response.status()}: ${await response.text()}`,
-    );
-  }
-}
-
-/**
  * Author, declare and run a build, and wait for the run to settle whatever its
  * outcome — the half of {@link buildExperimentEnvironment} a spec about a failing build needs.
  */

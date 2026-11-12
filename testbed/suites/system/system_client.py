@@ -23,7 +23,7 @@ from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 from repo2ree_testbed.showcases import INSTANT, SOURCE, Project, RecipeScript
 from repo2ree_testbed.showcases import RESULT as RESULT
-from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
+from repo2ree_testbed.stack.store_images import PYTHON_SLIM_IMAGE
 
 ROOT = Path(__file__).resolve().parents[3]
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
@@ -32,8 +32,6 @@ ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/activate_experiment_enviro
 # A bench without a Docker daemon: the base image is the experiment environment environment.
 # Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
 LIGHTWEIGHT_IMAGE = PYTHON_SLIM_IMAGE
-# The Docker CLI, which a store offers for the REEs whose scripts build and run images.
-DIND_IMAGE = DOCKER_IMAGE
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 # Where a store runs the scripts of the REEs it keeps: in a container from each REE's image, or on its host.
 STORE_BACKEND = os.environ.get("E2E_STORE_BACKEND", "container")
@@ -151,10 +149,6 @@ class Api:
         provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
         if provisioned["status"] != "succeeded":
             raise ApiError(f"provisioning ended {provisioned['status']}\n{self.logs(ree_id, created['run_id'])}")
-        if STORE_BACKEND == "container" and image == DIND_IMAGE:
-            # The Docker REEs build and run images: they declare they need the engine their store gives them.
-            environment = {"kind": "image", "image": image, "needs_container_engine": True}
-            self.patch(ree_id, {"workbench_environment": environment})
         return ree_id
 
     def keep_archive(self, ree_id: str, label: str) -> Path | None:

@@ -5,7 +5,6 @@ import {
   buildExperimentEnvironment,
   commandScript,
   crossCheckSbom,
-  declareContainerEngine,
   dockerBuildExperimentEnvironmentScript,
   EXPERIMENT_OUTPUT_FILE,
   generateSbom,
@@ -172,8 +171,6 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("build experiment environment", async () => {
-      // The build runs `docker build`: the REE declares it needs a container engine.
-      await declareContainerEngine(page);
       await buildExperimentEnvironment(
         page,
         dockerBuildExperimentEnvironmentScript(PROJECT_DIR, EXPERIMENT_ENVIRONMENT_PATH),

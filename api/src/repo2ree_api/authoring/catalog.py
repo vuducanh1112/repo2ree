@@ -38,7 +38,7 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
 )
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
+from repo2ree_ree.workbench_environment import EnvironmentBackend
 
 # ================================================
 # The step catalog
@@ -129,7 +129,7 @@ class ScriptTemplateEntry(BaseModel):
     description: str
     body: str
     is_default: bool
-    workbench_environment: WorkbenchEnvironmentKind | None = None
+    workbench_environment: EnvironmentBackend | None = None
 
 
 class BuildExperimentEnvironmentScriptTemplates(BaseModel):

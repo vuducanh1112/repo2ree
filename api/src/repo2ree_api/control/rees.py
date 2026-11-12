@@ -80,7 +80,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
         try:
             handle = require_handle(rid)
             workbench_environment = _store_workbench_environment(_store_images(store_id) or (), requested)
-            command_dispatcher.init_ree(handle, name, workbench_environment.kind)
+            command_dispatcher.init_ree(handle, name, workbench_environment.backend)
         except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
             ree_registry.delete(rid)
             detail = exc.detail if isinstance(exc, HTTPException) else exc
@@ -108,8 +108,7 @@ def _store_workbench_environment(offered: tuple[str, ...], requested: str) -> Wo
     """What a new REE in a store declares: the image asked for or the store's first, or its host."""
     if requested and requested not in offered:
         raise ValueError(f"the store does not offer image {requested!r}")
-    image = requested or next(iter(offered), "")
-    return WorkbenchEnvironment(kind="image", image=image) if image else WorkbenchEnvironment(kind="host")
+    return WorkbenchEnvironment(oci=requested or next(iter(offered), None))
 
 
 def _declare_workbench_environment(

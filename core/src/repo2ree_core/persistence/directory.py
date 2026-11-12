@@ -29,7 +29,7 @@ from repo2ree_core.persistence.ree_manifest import parse_ree_manifest, ree_manif
 from repo2ree_ree.model import Ree
 from repo2ree_ree.paths import validate_relative_path
 from repo2ree_ree.reserved_paths import RESERVED_OVERLAY_SCRIPTS
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
+from repo2ree_ree.workbench_environment import EnvironmentBackend
 
 # What a half-built or damaged persisted document raises on the way through
 # json and pydantic: an unreadable file, malformed bytes, or content that no
@@ -206,7 +206,7 @@ class ReeDirectory:
         artifact = self.author_artifact(str(build.artifact_path)) if build and build.artifact_path else None
         return (artifact,) if artifact is not None else ()
 
-    def ensure_reserved_overlay_scripts(self, workbench_environment: WorkbenchEnvironmentKind = "image") -> None:
+    def ensure_reserved_overlay_scripts(self, workbench_environment: EnvironmentBackend = "container") -> None:
         """Seed the REE-owned scripts with the starter templates that suit ``workbench_environment``.
 
         Only missing files are created, so authored content is never touched.

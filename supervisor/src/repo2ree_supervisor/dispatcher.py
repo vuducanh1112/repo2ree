@@ -42,7 +42,7 @@ from repo2ree_protocol.queries import (
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
 from repo2ree_ree.review import ReviewSet
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
+from repo2ree_ree.workbench_environment import EnvironmentBackend
 from repo2ree_supervisor.client import ReeBusyError, WorkbenchClient, WorkbenchUnavailableError
 from repo2ree_supervisor.handle import ReeRoute
 from repo2ree_supervisor.locks import ReeLocks
@@ -483,7 +483,7 @@ class CommandDispatcher:
         with us (see ``WorkbenchClient.copy_in``)."""
         self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)
 
-    def init_ree(self, handle: ReeRoute, name: str, workbench_environment: WorkbenchEnvironmentKind = "image") -> None:
+    def init_ree(self, handle: ReeRoute, name: str, workbench_environment: EnvironmentBackend = "container") -> None:
         """Create the REE in the store its workbench serves; refused where one is already."""
         with self._locks(handle.ree_id):
             self._workbench.exec_simple(

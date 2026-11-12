@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "../helpers/fixtures";
 import {
   buildExperimentEnvironment,
-  declareContainerEngine,
   generateScript,
   INSTANT_DOCKER_EXPERIMENT_ENVIRONMENT_PATH,
   instantDockerHelloWorld,
@@ -58,8 +57,6 @@ test.describe("Instant Docker authoring", () => {
     });
 
     await test.step("build the image on the bench's own daemon", async () => {
-      // The build runs `docker build`: the REE declares it needs a container engine.
-      await declareContainerEngine(page);
       // The recipe adds the bench's busybox to the build context, which an
       // image FROM scratch needs and inference cannot know.
       await buildExperimentEnvironment(

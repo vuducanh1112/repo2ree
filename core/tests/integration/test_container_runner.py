@@ -82,7 +82,7 @@ def test_a_script_sees_its_workspace_at_the_same_path_and_nothing_of_the_ree_aro
     assert str(workspace) in result.stdout
     assert "no history here" in result.stdout
     assert (workspace / "out.txt").read_text() == "built\n"
-    observed = runner.observe(WorkbenchEnvironment(kind="image", image=IMAGE))
+    observed = runner.observe(WorkbenchEnvironment(oci=IMAGE))
     assert observed.backend == "container"
     assert observed.image_digest is not None
     assert observed.image_digest.startswith("sha256:")

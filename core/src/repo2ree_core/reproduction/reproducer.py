@@ -220,15 +220,10 @@ def _workbench_environment_text(workbench_environment: WorkbenchEnvironment | No
     """What the REE says its scripts run in, for a reader about to run them."""
     if workbench_environment is None:
         return "The author declared no workbench environment: the scripts run in whatever shell runs `run.sh`."
-    engine = (
-        " The scripts call a container engine, so it must be reachable from there."
-        if workbench_environment.needs_container_engine
-        else ""
-    )
-    if workbench_environment.kind == "host":
-        return "The author ran the scripts directly on their machine; no image describes it." + engine
+    if workbench_environment.oci is None:
+        return "The author ran the scripts directly on their machine; no image describes it."
     pin = "" if workbench_environment.pinned else " It is not pinned by digest, so what it names may have moved since."
-    return f"The author's scripts ran in the container image `{workbench_environment.image}`.{pin}{engine}"
+    return f"The author's scripts ran in the OCI image `{workbench_environment.oci}`.{pin}"
 
 
 # ================================================

@@ -2,7 +2,6 @@ import { expect, test } from "../helpers/fixtures";
 import {
   buildExperimentEnvironment,
   commandScript,
-  declareContainerEngine,
   dockerActivateScript,
   dockerBuildExperimentEnvironmentScript,
   EXPERIMENT_OUTPUT_FILE,
@@ -59,8 +58,6 @@ test.describe("Java with Maven", () => {
     });
 
     await test.step("build the experiment environment: Maven compiles and fetches org.json", async () => {
-      // The build runs `docker build`: the REE declares it needs a container engine.
-      await declareContainerEngine(page);
       await buildExperimentEnvironment(
         page,
         dockerBuildExperimentEnvironmentScript(PROJECT_DIR, EXPERIMENT_ENVIRONMENT_PATH, IMAGE),

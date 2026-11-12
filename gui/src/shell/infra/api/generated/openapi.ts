@@ -3874,7 +3874,7 @@ export interface components {
             /** Is Default */
             is_default: boolean;
             /** Workbench Environment */
-            workbench_environment?: ("image" | "host") | null;
+            workbench_environment?: ("host" | "container") | null;
         };
         /**
          * ScriptValidation
@@ -4308,18 +4308,8 @@ export interface components {
         };
         /** WorkbenchEnvironment */
         WorkbenchEnvironment: {
-            /**
-             * Kind
-             * @enum {string}
-             */
-            kind: "image" | "host";
-            /** Image */
-            image?: string | null;
-            /**
-             * Needs Container Engine
-             * @default false
-             */
-            needs_container_engine: boolean;
+            /** Oci */
+            oci?: string | null;
         };
         /**
          * WorkbenchEnvironmentObservation

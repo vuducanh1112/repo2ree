@@ -23,7 +23,7 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
 )
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentKind
+from repo2ree_ree.workbench_environment import EnvironmentBackend
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ class InitializationResult:
 
 
 def initialize_ree(
-    layout: ReeLayout, *, name: str, workbench_environment: WorkbenchEnvironmentKind = "image"
+    layout: ReeLayout, *, name: str, workbench_environment: EnvironmentBackend = "container"
 ) -> InitializationResult:
     """Preserve existing files on retry, including after a failed first capture.
 

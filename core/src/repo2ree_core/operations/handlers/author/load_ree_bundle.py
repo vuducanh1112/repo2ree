@@ -110,7 +110,7 @@ def _keep_workbench_environment(layout: ReeLayout, declared: WorkbenchEnvironmen
         return
     definition = ree.subject.definition.model_copy(update={"workbench_environment": declared})
     save_ree(layout, store, replace_definition(ree, definition), expected_revision=revision_of(ree))
-    where = declared.image if declared.kind == "image" else "the lab's own machine"
+    where = declared.oci or "the lab's own machine"
     log("system", "warn", f"the bundle declares no workbench environment; the REE keeps running in {where}")
 
 

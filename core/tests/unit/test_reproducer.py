@@ -60,13 +60,12 @@ def test_the_readme_says_what_the_scripts_ran_in():
         return dict(reproducer_entries(workbench_environment=environment))["REPRODUCING.md"].decode()
 
     assert "declared no workbench environment" in readme(None)
-    pinned = WorkbenchEnvironment(kind="image", image="python:3.12@sha256:" + "a" * 64, needs_container_engine=True)
+    pinned = WorkbenchEnvironment(oci="python:3.12@sha256:" + "a" * 64)
     text = readme(pinned)
-    assert f"`{pinned.image}`" in text
+    assert f"`{pinned.oci}`" in text
     assert "not pinned" not in text
-    assert "container engine" in text
-    assert "not pinned" in readme(WorkbenchEnvironment(kind="image", image="python:3.12"))
-    assert "directly on their machine" in readme(WorkbenchEnvironment(kind="host"))
+    assert "not pinned" in readme(WorkbenchEnvironment(oci="python:3.12"))
+    assert "directly on their machine" in readme(WorkbenchEnvironment())
 
 
 def test_reproducer_sh_is_deterministic_for_equal_inputs():
