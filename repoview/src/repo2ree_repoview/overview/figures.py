@@ -37,14 +37,14 @@ def diagram(bundle: Bundle, path: Path, title: str, note: str = "") -> str:
     )
 
 
-def inlined(bundle: Bundle, relative: str) -> str:
-    """A drawing `just generate-spec-diagrams` wrote, copied into the bundle and drawn in the page, unstamped."""
+def inlined(bundle: Bundle, relative: str, recipe: str = "generate-spec-diagrams") -> str:
+    """A drawing ``recipe`` wrote, copied into the bundle and drawn in the page, unstamped."""
     path = DIAGRAMS / relative
     stamp = read_svg_stamp(path) if path.is_file() else None
     if (
         bundle.copy(path, f"diagrams/{relative}", Origin(kind="diagram", revision=stamp.revision if stamp else ""))
         is None
     ):
-        return '<p class="state-missing">Missing: run <code>just generate-spec-diagrams</code>.</p>'
+        return f'<p class="state-missing">Missing: run <code>just {esc(recipe)}</code>.</p>'
     svg = unstamp(path.read_text(encoding="utf-8"))
     return svg[svg.index("<svg") :]

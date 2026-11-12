@@ -5,17 +5,22 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable
 
+from repo2ree_repoview.diagrams.ree import COLOURS, PAIR, Role
+from repo2ree_repoview.overview import figures
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.drawing import never_taken
 from repo2ree_repoview.overview.exports import Aggregate, Spec, SubMachine
-from repo2ree_repoview.overview.figures import inlined
+from repo2ree_repoview.overview.figures import diagram_origin, inlined
 from repo2ree_repoview.overview.html import Page, esc, section
 from repo2ree_repoview.overview.receipt import AggregateMoves, Move
 from repo2ree_repoview.overview.spec_diagrams import evidence_drawing, part_drawing
+from repo2ree_repoview.stamp import read_svg_stamp
 
 DISALLOWED_SHOWN = 20
 # How a page names an aggregate whose name is an acronym.
 TITLES = {"Ree": "REE"}
+# The drawing of an aggregate's document as its contract states it, and the recipe that draws it.
+ANATOMIES = {"Ree": ("ree/anatomy.svg", "generate-ree-anatomy", "contracts/ree/ree.schema.json")}
 
 
 def slug(aggregate: Aggregate) -> str:
@@ -108,10 +113,10 @@ def _symbol(shape: str) -> str:
     return f'<svg width="30" height="14" viewBox="0 0 30 14" aria-hidden="true">{shape}</svg>'
 
 
-def _arrow(color: str, dashed: bool = False) -> str:
+def _arrow(color: str, dashed: bool = False, width: float = 1.5) -> str:
     dash = ' stroke-dasharray="4 3"' if dashed else ""
     return _symbol(
-        f'<line x1="1" y1="7" x2="24" y2="7" stroke="{color}" stroke-width="1.5"{dash}/>'
+        f'<line x1="1" y1="7" x2="24" y2="7" stroke="{color}" stroke-width="{width:g}"{dash}/>'
         f'<path d="M23 3 L29 7 L23 11 Z" fill="{color}"/>'
     )
 
@@ -137,6 +142,42 @@ EVIDENCE_LEGEND = (
 )
 
 
+def _box(role: Role) -> str:
+    fill, frame = COLOURS[role]
+    return _symbol(
+        f'<rect x="1" y="1" width="28" height="12" fill="{fill}" stroke="{frame}"/>'
+        f'<rect x="1" y="1" width="28" height="4" fill="{frame}"/>'
+    )
+
+
+# What the anatomy's shapes mean, drawn in its own colours (diagrams/ree.py).
+ANATOMY_LEGEND = (
+    '<p class="legend symbols">'
+    f"<span>{_box('definition')}section of the definition: what the author declares</span>"
+    f"<span>{_box('receipt')}receipt: what a run observed, by the operation that writes it</span>"
+    f"<span>{_box('bundle')}bundle and seal</span>"
+    f"<span>{_arrow(PAIR)}the receipt repeats the declared field</span>"
+    f"<span>{_arrow(PAIR, width=3)}the receipt holds the whole declared section</span>"
+    f"<span>{_arrow(PAIR, dashed=True)}the receipt field has the declared section's fields</span>"
+    "</p>"
+)
+
+
+def anatomy(aggregate: Aggregate, bundle: Bundle) -> str:
+    if aggregate.name not in ANATOMIES:
+        return ""
+    drawing, recipe, contract = ANATOMIES[aggregate.name]
+    path = figures.DIAGRAMS / drawing
+    origin = diagram_origin(bundle, read_svg_stamp(path)) if path.is_file() else ""
+    return (
+        "<h3>Anatomy</h3>"
+        f'<p class="muted">Every part of the document as <code>{esc(contract)}</code> states it, and the declared '
+        f"fields each receipt records as a run found them. Drawn by <code>just {esc(recipe)}</code>. {origin}</p>"
+        + ANATOMY_LEGEND
+        + f'<div class="diagram full">{inlined(bundle, drawing, recipe)}</div>'
+    )
+
+
 def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle) -> Page:
     """Every part in the checker's order, one row of cards per group."""
     groups: dict[str, list[str]] = {}
@@ -150,12 +191,14 @@ def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle) 
         + f'<div class="diagram full">{inlined(bundle, evidence_drawing(aggregate.name))}</div>'
     )
     body = (
-        graph
+        anatomy(aggregate, bundle)
+        + graph
         + "<h3>Parts</h3>"
         + summary(aggregate, moves)
         + LEGEND
         + "".join(f'<h4>{esc(group)}</h4><div class="parts">{"".join(cards)}</div>' for group, cards in groups.items())
     )
     name = title(aggregate)
-    teaser = f"The {name}'s evidence graph, its {len(aggregate.machines)} parts, and the operations that moved each"
+    drawings = "anatomy, evidence graph" if aggregate.name in ANATOMIES else "evidence graph"
+    teaser = f"The {name}'s {drawings}, its {len(aggregate.machines)} parts, and the operations that moved each"
     return Page(slug(aggregate), name, teaser, section(slug(aggregate), name, "", body))

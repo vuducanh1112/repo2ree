@@ -128,6 +128,6 @@ def test_the_count_leaves_out_bulk_operations_and_groups_follow_the_checkers_ord
     page = page_aggregate(ree, AggregateMoves.over(run_with(tmp_path, {"aggregates": []}), "Ree"), bundle).body
     assert f"of {allowed} allowed moves" in page
     sections = [chunk.split("</h3>", 1)[0] for chunk in page.split("<h3>")[1:]]
-    assert sections == ["Evidence graph", "Parts"]
+    assert sections == ["Anatomy", "Evidence graph", "Parts"]
     groups = [chunk.split("</h4>", 1)[0] for chunk in page.split("<h4>")[1:]]
     assert groups == list(dict.fromkeys(machine.group for machine in ree.machines))

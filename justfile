@@ -30,6 +30,7 @@ export REPO2REE_ASSURANCE_DIR := env("REPO2REE_ASSURANCE_DIR", REPO2REE_TEST_RUN
 REPORTS_DIR := "reports"
 DIAGRAM_DIR := REPORTS_DIR + "/diagrams"
 JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
+REE_ANATOMY := DIAGRAM_DIR + "/ree/anatomy.svg"
 # Records the commit each generated diagram or metric came from (repo2ree_repoview stamp).
 STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --manifest " + DIAGRAM_DIR + "/manifest.json"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
@@ -59,9 +60,9 @@ import 'just/publish.just'
 _require-clean-tree:
     @test -z "$(git status --porcelain)" || { echo "working tree dirty — commit first, so published images match a commit"; exit 1; }
 
-# Generate every architecture, domain, specification, and recipe graph diagram.
+# Generate every architecture, domain, specification, REE anatomy, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-spec-diagrams generate-just-recipe-graph
+generate-diagrams: generate-architecture-diagrams generate-spec-diagrams generate-just-recipe-graph generate-ree-anatomy
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Run every generated tree's own prune and list what no one owns (scripts/generated.toml); `--dry-run`, `--remove-unclaimed`.
@@ -93,3 +94,9 @@ export-just-recipes:
 generate-just-recipe-graph: export-just-recipes
     python -m repo2ree_repoview recipes --dump {{ quote(EXPORT_DIR + "/just-recipes.json") }} -o {{ quote(JUST_RECIPE_GRAPH) }}
     {{ STAMP_DIAGRAMS }} --by generate-just-recipe-graph {{ quote(JUST_RECIPE_GRAPH) }}
+
+# Draw the REE contract's anatomy from contracts/ree/ree.schema.json: every part, and which declared field each receipt repeats.
+[group('Diagrams')]
+generate-ree-anatomy:
+    python -m repo2ree_repoview ree-anatomy -o {{ quote(REE_ANATOMY) }}
+    {{ STAMP_DIAGRAMS }} --by generate-ree-anatomy {{ quote(REE_ANATOMY) }}
