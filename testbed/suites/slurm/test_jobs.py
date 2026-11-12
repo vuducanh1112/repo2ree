@@ -10,7 +10,7 @@ from system_client import RESULT, Api, ApiError
 from repo2ree_testbed.showcases import SLURM
 
 HELD = "held"
-SRUN_HELD = f"#!/usr/bin/env sh\nsrun --job-name={HELD} sh -c 'echo job-started; sleep 300'\n"
+SRUN_HELD = f"#!/usr/bin/env sh\nsrun --overlap --job-name={HELD} sh -c 'echo job-started; sleep 300'\n"
 SBATCH_WAIT_HELD = f"#!/usr/bin/env sh\nsbatch --wait --job-name={HELD} --wrap 'sleep 300'\n"
 NOTHING_TO_VERIFY = "#!/usr/bin/env sh\ntrue\n"
 GONE_WITHIN_30S = f"""#!/usr/bin/env sh
@@ -32,6 +32,7 @@ def built(api: Api, ree_id: str) -> None:
     api.acquire(ree_id, SLURM)
     api.succeed(ree_id, "evaluate")
     assert api.build_experiment_environment(ree_id, fixture=SLURM)["status"] == "succeeded"
+    assert api.activate(ree_id, fixture=SLURM)["status"] == "succeeded"
 
 
 def holds(api: Api, ree_id: str, script: str) -> None:
@@ -61,7 +62,7 @@ def test_a_job_that_fails_fails_the_experiment_and_leaves_no_receipt(api: Api, n
     ree_id = new_ree()
     built(api, ree_id)
 
-    failed = api.experiment(ree_id, run="#!/usr/bin/env sh\nset -eu\nsrun sh -c 'exit 7'\n", fixture=SLURM)
+    failed = api.experiment(ree_id, run="#!/usr/bin/env sh\nset -eu\nsrun --overlap sh -c 'exit 7'\n", fixture=SLURM)
 
     assert failed["status"] == "failed"
     assert SLURM.experiment not in api.ree(ree_id)["subject"]["receipts"]["experiments"]
