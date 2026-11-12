@@ -1,0 +1,9 @@
+Bootstrap: scratch
+
+%setup
+    for directory in bin sbin lib lib64 usr; do
+        [ -e "/$directory" ] && tar -cf - -C / --exclude=usr/share "$directory" | tar -xf - --no-same-owner -C "$APPTAINER_ROOTFS"
+    done
+    mkdir -p "$APPTAINER_ROOTFS/etc"
+    : > "$APPTAINER_ROOTFS/etc/passwd"
+    : > "$APPTAINER_ROOTFS/etc/group"

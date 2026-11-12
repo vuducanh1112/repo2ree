@@ -49,8 +49,9 @@ like any others. Run in more depth by `just test-e2e-slurm`.
 ### `apptainer/`
 
 The instant project for a cluster with Apptainer. The recipe's build makes a SIF
-from the machine's own Python and system directories, downloading nothing; its
-activation and experiment enter that SIF in a job with `srun apptainer exec`.
+from `runtime.def`, whose root filesystem is the machine's own Python and system
+directories, downloading nothing; its activation and experiment enter that SIF in
+a job with `srun apptainer exec`.
 Submission and container entry are the author's own. Run by `just test-e2e-slurm`.
 
 ### `stochastic/`
