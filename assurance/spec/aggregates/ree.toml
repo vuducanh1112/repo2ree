@@ -10,6 +10,9 @@ receipt_entity = "Receipt"
 # write_file or delete_file changes a file and the field claiming it together. An experiment's
 # files are named by its slug, and may be authored before the experiment is declared.
 overlay = "overlay/"
+# The REE's file tree, as the contract states it: every file a capture commits is an entry of it, and is stored
+# as the entry says, git or LFS. Read from the repository root.
+tree = "contracts/ree/layout.json"
 
 [lifecycle]
 initial = "draft"

@@ -73,6 +73,8 @@ class AggregateResult(EvidenceModel):
     moves: tuple[MoveCount, ...] = ()
     # Overlay file changes judged against the fields that claim them.
     files: int = 0
+    # Committed files judged against the document's tree.
+    committed: int = 0
     findings: tuple[Finding, ...] = ()
 
 

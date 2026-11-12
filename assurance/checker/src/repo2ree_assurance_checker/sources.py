@@ -8,9 +8,9 @@ import os
 import re
 import subprocess
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
@@ -20,7 +20,6 @@ from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, Fi
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
 # The REE's authored files, as its capture commits hold them.
-OVERLAY = "overlay/"
 INITIAL_REF = "refs/repo2ree/initial"
 EXPORTED_JOURNAL = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/journal$")
 MESSAGE_KINDS = {"send", "receive", "abandon"}
@@ -255,15 +254,96 @@ def committed_document(executable: str, repository: Path, commit: str) -> dict[s
     return document if isinstance(document, dict) else None
 
 
-def committed_files(executable: str, repository: Path, commit: str, directory: str) -> dict[str, str]:
-    """Each file committed under ``directory`` in ``commit``, with its blob."""
-    listed = git(executable, repository, "ls-tree", "-r", "-z", commit, "--", directory)
+def committed_files(executable: str, repository: Path, commit: str, directory: str | None = None) -> dict[str, str]:
+    """Each file committed in ``commit`` (under ``directory``, if one is named), with its blob."""
+    listed = git(executable, repository, "ls-tree", "-r", "-z", commit, *(("--", directory) if directory else ()))
     files: dict[str, str] = {}
     for entry in listed.split("\0"):
         if entry:
             meta, _, path = entry.partition("\t")
             files[path] = meta.split()[2]
     return files
+
+
+type Storage = Literal["git", "lfs"]
+type Committed = dict[str, tuple[str, Storage]]
+# A path in .gitattributes, quoted as the recorder writes it or bare, and its attributes.
+ATTRIBUTE_LINE = re.compile(r'^("(?:[^"\\]|\\.)*"|\S+)\s+(.*)$')
+
+
+def lfs_paths(attributes: str) -> frozenset[str]:
+    """The paths a .gitattributes stores as LFS payloads; the recorder anchors each at the root, one per line."""
+    found: set[str] = set()
+    for line in attributes.splitlines():
+        matched = ATTRIBUTE_LINE.match(line.strip())
+        if matched and "filter=lfs" in matched.group(2).split():
+            token = matched.group(1)
+            found.add((json.loads(token) if token.startswith('"') else token).removeprefix("/"))
+    return frozenset(found)
+
+
+def committed_tree(executable: str, repository: Path, commit: str, read: dict[str, frozenset[str]]) -> Committed:
+    """Every file of a commit, with its blob and how the commit stores it; ``read`` keeps each .gitattributes read."""
+    files = committed_files(executable, repository, commit)
+    lfs: frozenset[str] = frozenset()
+    if attributes := files.get(".gitattributes"):
+        if attributes not in read:
+            read[attributes] = lfs_paths(git(executable, repository, "cat-file", "-p", attributes))
+        lfs = read[attributes]
+    return {path: (blob, "lfs" if path in lfs else "git") for path, blob in files.items()}
+
+
+def path_fields(value: JsonValue, path: str = "") -> Iterator[tuple[str, str]]:
+    """Each path a document's ``*_path`` and ``*_paths`` fields hold, under the field's path (lists by item name)."""
+    if isinstance(value, dict):
+        for key, inner in value.items():
+            at = f"{path}.{key}" if path else key
+            if isinstance(inner, str) and key.endswith("_path"):
+                yield at, inner
+            elif isinstance(inner, list) and key.endswith("_paths"):
+                yield from ((at, item) for item in inner if isinstance(item, str))
+            else:
+                yield from path_fields(inner, at)
+    elif isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict) and isinstance(item.get("name"), str):
+                yield from path_fields(item, f"{path}[{item['name']}]")
+
+
+def naming(document: JsonValue) -> dict[str, tuple[str, ...]]:
+    """For each path or file name a document's path fields hold, the fields holding it."""
+    held: dict[str, set[str]] = defaultdict(set)
+    for field_path, value in path_fields(document):
+        held[value].add(field_path)
+        held[PurePosixPath(value).name].add(field_path)
+    return {value: tuple(sorted(fields)) for value, fields in held.items()}
+
+
+def named_by(path: str, named: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
+    return tuple(sorted({*named.get(path, ()), *named.get(PurePosixPath(path).name, ())}))
+
+
+def changed_files(
+    before: Committed,
+    after: Committed,
+    named: dict[str, tuple[str, ...]],
+    *,
+    scope: str = "",
+    **common: Any,
+) -> list[FileChange]:
+    """The files a commit added, changed, removed, or now stores otherwise, with ``scope`` before each path."""
+    return [
+        FileChange(
+            path=f"{scope}{path}",
+            before=before[path][0] if path in before else None,
+            after=after[path][0] if path in after else None,
+            storage=after[path][1] if path in after else None,
+            named_by=named_by(path, named) if path in after else (),
+            **common,
+        )
+        for path in sorted(before.keys() | after.keys())
+        if before.get(path) != after.get(path)
+    ]
 
 
 def document_parts(value: JsonValue, path: str = "") -> dict[str, str]:
@@ -456,8 +536,9 @@ def ree_events(
     """Witnessed Ree transitions, document and overlay changes, and recorded Receipt transitions, commit by commit."""
     events: list[Event] = []
     changes: list[FieldChange] = []
-    file_changes: list[FileChange] = []
-    files: dict[str, str] = {}
+    found_files: list[FileChange] = []
+    files: Committed = {}
+    attributes: dict[str, frozenset[str]] = {}
     problems: list[str] = []
     steps = StepTracker(source_id, ree_id)
     state: str | None = None
@@ -511,21 +592,19 @@ def ree_events(
                 if parts.get(path) != now.get(path)
             )
         parts = now
-        committed = committed_files(executable, repository, commit.id, OVERLAY)
-        file_changes.extend(
-            FileChange(
+        committed = committed_tree(executable, repository, commit.id, attributes)
+        found_files.extend(
+            changed_files(
+                files,
+                committed,
+                naming(document.get("subject") or {}),
                 source=source_id,
                 position=base + 900,
                 partition=ree_id,
-                path=path,
-                before=files.get(path),
-                after=committed.get(path),
                 operation=commit.subject,
                 cause=cause,
                 locator=locator,
             )
-            for path in sorted(files.keys() | committed.keys())
-            if files.get(path) != committed.get(path)
         )
         files = committed
         events.append(
@@ -544,11 +623,47 @@ def ree_events(
             )
         )
         state = target
-    return events, changes, file_changes, problems
+    return events, changes, found_files, problems
 
 
-def read_git_history(repository: Path, label: str, executable: str = "git", *, author: bool = True) -> Evidence:
-    """One REE history as one source: its attempts, and for an author's REE its document and receipts."""
+def scope_files(
+    executable: str, repository: Path, source_id: str, label: str, partition: str, commits: list[Commit], scope: str
+) -> list[FileChange]:
+    """The files of a scope holding no document of its own, such as a review attempt, commit by commit."""
+    found: list[FileChange] = []
+    files: Committed = {}
+    attributes: dict[str, frozenset[str]] = {}
+    for index, commit in enumerate(commits):
+        if index and commit.tree == commit.parent_tree:
+            continue
+        metadata = commit.metadata or {}
+        operated = metadata.get("kind") == "operation.completed" and isinstance(metadata.get("record"), dict)
+        committed = committed_tree(executable, repository, commit.id, attributes)
+        found.extend(
+            changed_files(
+                files,
+                committed,
+                {},
+                scope=scope,
+                source=source_id,
+                position=(index + 1) * 1000 + 900,
+                partition=partition,
+                operation=commit.subject,
+                cause="operation" if operated else "created" if not index else "external",
+                locator=f"git:{label}@{commit.id[:12]}",
+            )
+        )
+        files = committed
+    return found
+
+
+def read_git_history(
+    repository: Path, label: str, executable: str = "git", *, author: bool = True, scope: str = ""
+) -> Evidence:
+    """One REE history as one source: its attempts, its files, and for an author's REE its document and receipts.
+
+    ``scope`` is where the history sits under the REE root, such as ``reviews/<id>/``; its files' paths carry it.
+    """
     source_id = f"git:{label}"
     problems: list[str] = []
     events: list[Event] = []
@@ -589,6 +704,8 @@ def read_git_history(repository: Path, label: str, executable: str = "git", *, a
         problems.extend(found)
     elif len(ree_ids) > 1:
         problems.append(f"attempts name several REEs: {sorted(ree_ids)}")
+    elif scope and ree_ids:
+        file_changes = scope_files(executable, repository, source_id, label, next(iter(ree_ids)), commits, scope)
     source = Source(
         id=source_id,
         kind="git",
@@ -603,15 +720,15 @@ def read_git_history(repository: Path, label: str, executable: str = "git", *, a
     return Evidence(sources=(source,), events=tuple(events), changes=tuple(changes), files=tuple(file_changes))
 
 
-def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, bool]]:
-    """An REE root and its review attempts; each scope keeps its own history."""
+def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, str]]:
+    """An REE root and its review attempts, each with where it sits under the root; each keeps its own history."""
     label = label or root.name
-    yield root, label, True
+    yield root, label, ""
     reviews = root / "reviews"
     if reviews.is_dir():
         for path in sorted(reviews.iterdir()):
             if (path / ".git").is_dir():
-                yield path, f"{label}/reviews/{path.name}", False
+                yield path, f"{label}/reviews/{path.name}", f"reviews/{path.name}/"
 
 
 # ================================================
@@ -710,8 +827,8 @@ def load_evidence(
             problems.append(f"{root} is not an REE repository")
             continue
         histories.extend(
-            read_git_history(repository, label, git_executable, author=author)
-            for repository, label, author in git_repositories(root)
+            read_git_history(repository, label, git_executable, author=not scope, scope=scope)
+            for repository, label, scope in git_repositories(root)
         )
     for directory in stores:
         source, found = read_stores(directory)

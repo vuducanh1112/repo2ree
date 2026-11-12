@@ -22,7 +22,7 @@ from repo2ree_assurance_checker.check.results import (
     StateStep,
 )
 from repo2ree_assurance_checker.evidence import Evidence, FieldChange, FileChange
-from repo2ree_assurance_checker.spec import CREATED, KEYED, AggregateSpec, Spec, SubMachine
+from repo2ree_assurance_checker.spec import CREATED, KEYED, AggregateSpec, Spec, SubMachine, place
 
 # Where a move was made between operations rather than by one.
 EXTERNAL = "(between operations)"
@@ -57,6 +57,7 @@ def check_aggregates(spec: Spec, evidence: Evidence) -> tuple[AggregateResult, .
 def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateResult:
     found = moves(aggregate, evidence)
     files = [change for change in evidence.files if aggregate.overlay and change.path.startswith(aggregate.overlay)]
+    committed = [change for change in evidence.files if aggregate.layout and change.after is not None]
     tally = Counter((m.machine.kind, m.machine.name, m.source, m.target, m.operation, m.allowed) for m in found)
     return AggregateResult(
         aggregate=aggregate.name,
@@ -75,8 +76,10 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
             for move in found
             if not move.allowed
         )
-        + tuple(overlay_findings(aggregate, files, evidence.changes)),
+        + tuple(overlay_findings(aggregate, files, evidence.changes))
+        + tuple(tree_findings(aggregate, committed)),
         files=len(files),
+        committed=len(committed),
     )
 
 
@@ -115,6 +118,23 @@ def overlay_findings(
                 yield _finding(subject, f"changed by {file.operation}, but {part}, which claims it, did not", file)
 
 
+def tree_findings(aggregate: AggregateSpec, files: Sequence[FileChange]) -> Iterator[Finding]:
+    """A committed file is an entry of the document's tree, which captures it, stored as the tree stores it."""
+    if aggregate.layout is None:
+        return
+    for file in files:
+        placed = place(aggregate.layout, file.path, file.named_by)
+        subject = f"{aggregate.name} {file.partition} {file.path}"
+        if placed.entry.capture == "never":
+            yield _finding(subject, f"is committed, but the tree never captures {placed.at}", file)
+        elif not placed.named:
+            yield _finding(subject, f"is committed, but no entry of the tree is it (it falls in {placed.at})", file)
+        elif placed.entry.kind == "file" and file.storage != placed.entry.capture:
+            yield _finding(
+                subject, f"is stored as {file.storage}, but the tree stores {placed.at} as {placed.entry.capture}", file
+            )
+
+
 def _item(field: str, slug: str, held: Mapping[str, str]) -> str | None:
     """The declared item of a keyed field whose name has ``slug``; None while no such item is declared."""
     head = field.removesuffix(KEYED)
@@ -139,8 +159,9 @@ def aggregate_rule(result: AggregateResult) -> RuleResult:
         rule=f"aggregate:{result.aggregate}",
         kind="aggregate",
         summary=f"Every part of the {result.aggregate} document moves only along an edge that allows the "
-        "operation that moved it, and every file of its overlay is a field's, changing with it.",
-        triggered=sum(move.count for move in result.moves) + result.files,
+        "operation that moved it, every file of its overlay is a field's, changing with it, and every file it "
+        "commits is an entry of its tree, stored as the tree says.",
+        triggered=sum(move.count for move in result.moves) + result.files + result.committed,
         findings=result.findings,
     )
 

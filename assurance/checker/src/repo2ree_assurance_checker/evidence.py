@@ -111,9 +111,10 @@ class FieldChange(EvidenceModel):
 
 
 class FileChange(EvidenceModel):
-    """One file of an overlay that a capture commit added, changed, or removed; ``before`` and ``after`` name its blob.
+    """One file a capture commit added, changed, or removed; ``before`` and ``after`` name its blob.
 
-    ``path`` is the file's path in the committed tree. The commit that creates the history lists every file.
+    ``path`` is the file's path from the REE root: a review attempt's files carry its ``reviews/<id>/``.
+    The commit that creates a history lists every file.
     """
 
     source: str
@@ -125,6 +126,10 @@ class FileChange(EvidenceModel):
     operation: str
     cause: Literal["created", "operation", "external"]
     locator: str
+    # How the commit stores it, by its .gitattributes; None once removed.
+    storage: Literal["git", "lfs"] | None = None
+    # The fields of the committed document whose value names it, by its path or its file name.
+    named_by: tuple[str, ...] = ()
 
     @property
     def ref(self) -> str:

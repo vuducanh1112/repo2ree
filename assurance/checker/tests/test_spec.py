@@ -10,7 +10,14 @@ import pytest
 from pydantic import ValidationError
 
 from repo2ree_assurance_checker.codegen import render_schema
-from repo2ree_assurance_checker.files import GENERATED_SCHEMA, SPEC_DIR, load_spec, split_combined
+from repo2ree_assurance_checker.files import (
+    GENERATED_SCHEMA,
+    SPEC_DIR,
+    load_spec,
+    read_from_root,
+    split_combined,
+    with_tree,
+)
 from repo2ree_assurance_checker.spec import (
     EntitySpec,
     EntityTrigger,
@@ -55,7 +62,7 @@ def documents() -> Documents:
         read("boundaries"),
         tomllib.loads((SPEC_DIR / "invariants.toml").read_text()),
         tomllib.loads((SPEC_DIR / "components.toml").read_text()),
-        read("aggregates"),
+        [with_tree(document, read_from_root) for document in read("aggregates")],
     )
 
 

@@ -5,9 +5,12 @@ The checker reports every move, and each one no edge allows violates the aggrega
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import dataclass
 from functools import cached_property
+from pathlib import PurePosixPath
 from typing import Annotated, Final, Literal, Self
 
 from pydantic import Field, model_validator
@@ -99,6 +102,59 @@ class ReceiptMachine(SpecModel):
     keyed: bool = False
 
 
+# The REE tree as its contract states it (contracts/ree/layout.json); the checker's own reading of that file.
+TREE_FORMAT: Final = "repo2ree-ree-layout/1"
+
+
+class TreeEntry(SpecModel):
+    name: str
+    kind: Literal["file", "directory"]
+    origin: str
+    capture: Literal["git", "lfs", "never"]
+    description: str
+    key: str | None = None
+    named_by: str | None = None
+    ree_root: bool = False
+    children: tuple[TreeEntry, ...] = ()
+
+    def names(self, name: str, named_by: Iterable[str]) -> bool:
+        """Whether this entry is the one called ``name``: by its own name, as one of its keyed kind, or, for an
+        entry a field names, because that field names it."""
+        if self.named_by is not None:
+            return self.named_by in {re.sub(r"\[[^]]*\]", "[*]", field) for field in named_by}
+        if self.key is None:
+            return name == self.name
+        return re.fullmatch(re.sub(r"\\\{[a-z_]+\\\}", ".+", re.escape(self.name)), name) is not None
+
+
+@dataclass(frozen=True)
+class Placed:
+    """Where in the tree a committed path falls: the deepest entry on its way, spelled as the tree spells it."""
+
+    entry: TreeEntry
+    at: str
+    # Whether that entry is the path itself, or a directory the tree leaves open.
+    named: bool
+
+
+def place(root: TreeEntry, path: str, named_by: Iterable[str] = ()) -> Placed:
+    """The entry a path from the REE root falls in; ``named_by`` are the fields naming the file the path ends in."""
+    entry, at = root, list[str]()
+    parts = PurePosixPath(path).parts
+    for index, part in enumerate(parts):
+        naming = named_by if index == len(parts) - 1 else ()
+        children = (*entry.children, *(root.children if entry.ree_root else ()))
+        named = [child for child in children if child.key is None and child.named_by is None and child.name == part]
+        matched = next(iter(named), None) or next(
+            (child for child in children if (child.key or child.named_by) and child.names(part, naming)), None
+        )
+        if matched is None:
+            return Placed(entry, "/".join(at) or ".", entry.kind == "directory" and not entry.children)
+        entry = matched
+        at.append(matched.name)
+    return Placed(entry, "/".join(at) or ".", True)
+
+
 class AggregateSpec(SpecModel):
     name: Name
     summary: str
@@ -108,12 +164,17 @@ class AggregateSpec(SpecModel):
     receipt_entity: Name  # Whose transitions are the receipt standings.
     # The committed directory whose every file some field claims (``files``); None: no such directory.
     overlay: str | None = None
+    # The contract stating the document's file tree, from the repository root; the loader reads it into ``layout``.
+    tree: str | None = None
+    layout: TreeEntry | None = None
     lifecycle: Lifecycle
     fields: dict[FieldPath, FieldMachine]
     receipts: dict[Name, ReceiptMachine]
 
     @model_validator(mode="after")
     def coherent_aggregate(self) -> Self:
+        if (self.tree is None) != (self.layout is None):
+            raise ValueError(f"{self.name}: names the tree {self.tree}, but it was not read")
         for path, field in self.fields.items():
             if path.endswith(KEYED) == (field.initial is not None):
                 raise ValueError(f"{self.name}: {path} needs an initial state exactly when it is not keyed")

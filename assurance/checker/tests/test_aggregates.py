@@ -488,7 +488,16 @@ def test_an_item_is_named_in_its_files_by_the_slug_the_product_gives_it() -> Non
         assert experiment_slug(case["name"]) == case["slug"]
 
 
-def file(position: int, path: str, before: str | None, after: str | None, operation: str, cause: Cause) -> FileChange:
+def file(
+    position: int,
+    path: str,
+    before: str | None,
+    after: str | None,
+    operation: str,
+    cause: Cause,
+    storage: Literal["git", "lfs"] = "git",
+    named_by: tuple[str, ...] = (),
+) -> FileChange:
     return FileChange(
         source="git:ree",
         position=position,
@@ -499,6 +508,8 @@ def file(position: int, path: str, before: str | None, after: str | None, operat
         operation=operation,
         cause=cause,
         locator=commit(position),
+        storage=storage if after is not None else None,
+        named_by=named_by,
     )
 
 
@@ -541,14 +552,15 @@ def test_scripts_of_what_is_not_declared_need_no_field_to_change() -> None:
 def test_a_file_no_field_claims_violates_the_aggregate_rule() -> None:
     extra = "overlay/instant/requirements-extra.txt"
     assert overlay_findings(file(5900, extra, None, "m", "write_file", "operation")) == [
-        f"Ree {REE} {extra}: is in the overlay, but no field claims it"
+        f"Ree {REE} {extra}: is in the overlay, but no field claims it",
+        f"Ree {REE} {extra}: is committed, but no entry of the tree is it (it falls in overlay)",
     ]
     # Taking it away again is what the rule asks for.
     assert overlay_findings(file(5900, extra, "m", None, "delete_file", "operation")) == []
 
 
 @pytest.mark.skipif(GIT is None, reason="needs git")
-def test_each_capture_commit_reports_the_overlay_files_it_changed(tmp_path: Path) -> None:
+def test_each_capture_commit_reports_the_files_it_changed(tmp_path: Path) -> None:
     assert GIT is not None
     root = tmp_path / "ree"
     subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True)
@@ -567,6 +579,82 @@ def test_each_capture_commit_reports_the_overlay_files_it_changed(tmp_path: Path
     moved = [(c.cause, c.operation, c.path, c.before is None, c.after is None) for c in evidence.files]
     assert moved == [
         ("created", "initialize_ree", "overlay/ree-scripts/build_experiment_environment.sh", True, False),
+        ("created", "initialize_ree", "ree.json", True, False),
         ("operation", "write_file", "overlay/notes.txt", True, False),
         ("operation", "write_file", "overlay/ree-scripts/build_experiment_environment.sh", False, False),
     ]
+
+
+def tree_findings(*files: FileChange) -> list[str]:
+    evidence = authored().model_copy(update={"files": files})
+    result = check_aggregate(ree(), evidence)
+    assert result.committed == len([f for f in files if f.after is not None])
+    return [f"{finding.subject}: {finding.reason}" for finding in result.findings]
+
+
+ARTIFACT_PATH = "definition.experiment_environment.artifact_path"
+
+
+def test_what_a_capture_commits_is_an_entry_of_the_tree_stored_as_it_says() -> None:
+    assert (
+        tree_findings(
+            file(1900, "ree.json", None, "j", "initialize_ree", "created"),
+            file(1900, "snapshot.tar.gz", None, "s", "seal_ree", "operation", "lfs"),
+            file(1900, "artifacts/sbom.json", None, "b", "generate_sbom", "operation"),
+            file(1900, "artifacts/runtime.tar", None, "r", "seal_ree", "operation", "lfs", (ARTIFACT_PATH,)),
+            file(1900, "results/train/metrics/out.json", None, "o", "seal_ree", "operation", "lfs"),
+            file(1900, "reviews/r1/review.json", None, "v", "review_acquire_source", "operation"),
+            file(1900, "reviews/r1/receipts/experiments/train.json", None, "e", "review_run_experiment", "operation"),
+            file(1900, "reviews/r1/overlay/ree-scripts/experiments/train.sh", None, "t", "review_acquire", "operation"),
+        )
+        == []
+    )
+
+
+def test_a_file_the_tree_does_not_name_or_never_captures_violates_the_aggregate_rule() -> None:
+    assert tree_findings(
+        file(1900, "artifacts/runtime.tar", None, "r", "seal_ree", "operation", "lfs"),
+        file(1900, "notes.txt", None, "n", "write_file", "operation"),
+        file(1900, "workspace/build/out.o", None, "w", "seal_ree", "operation"),
+        file(1900, "reviews/r1/runs/a.ndjson", None, "l", "review_run_experiment", "operation"),
+    ) == [
+        f"Ree {REE} artifacts/runtime.tar: is committed, but no entry of the tree is it (it falls in artifacts)",
+        f"Ree {REE} notes.txt: is committed, but no entry of the tree is it (it falls in .)",
+        f"Ree {REE} workspace/build/out.o: is committed, but the tree never captures workspace",
+        (
+            f"Ree {REE} reviews/r1/runs/a.ndjson: is committed, but the tree never captures "
+            "reviews/{review}/runs/{run}.ndjson"
+        ),
+    ]
+
+
+def test_a_file_stored_otherwise_than_the_tree_says_violates_the_aggregate_rule() -> None:
+    assert tree_findings(
+        file(1900, "snapshot.tar.gz", None, "s", "seal_ree", "operation", "git"),
+        file(1900, "artifacts/sbom.json", None, "b", "generate_sbom", "operation", "lfs"),
+    ) == [
+        f"Ree {REE} snapshot.tar.gz: is stored as git, but the tree stores snapshot.tar.gz as lfs",
+        f"Ree {REE} artifacts/sbom.json: is stored as lfs, but the tree stores artifacts/sbom.json as git",
+    ]
+    # A removal is not judged: the file is no longer committed.
+    assert tree_findings(file(1900, "notes.txt", "n", None, "delete_file", "operation")) == []
+
+
+@pytest.mark.skipif(GIT is None, reason="needs git")
+def test_a_committed_file_records_how_it_is_stored_and_which_fields_name_it(tmp_path: Path) -> None:
+    assert GIT is not None
+    root = tmp_path / "ree"
+    subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True)
+    (root / "artifacts").mkdir()
+    (root / "artifacts/runtime.tar").write_text("environment\n")
+    (root / "snapshot.tar.gz").write_text("snapshot\n")
+    (root / ".gitattributes").write_text('"/snapshot.tar.gz" filter=lfs diff=lfs merge=lfs -text\n')
+    subprocess.run([GIT, "-C", str(root), "add", "."], check=True)
+    document = {"subject": {"definition": {"experiment_environment": {"artifact_path": "out/runtime.tar"}}}}
+    record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "initialize_ree"}}
+    commit_document(root, "initialize_ree", document, record | {"operation_status": "succeeded"})
+    evidence = load_evidence(repositories=[root], git_executable=GIT)
+    recorded = {change.path: (change.storage, change.named_by) for change in evidence.files}
+    assert recorded["snapshot.tar.gz"] == ("lfs", ())
+    assert recorded["artifacts/runtime.tar"] == ("git", (ARTIFACT_PATH,))
+    assert recorded["ree.json"] == ("git", ())
