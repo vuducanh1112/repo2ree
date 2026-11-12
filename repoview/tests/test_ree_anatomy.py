@@ -1,4 +1,4 @@
-"""The REE's anatomy is the contract's schema, drawn: every part, and which declared field each receipt repeats."""
+"""The REE anatomy is the contract drawn: every part, the files it is about, and where declarations meet receipts."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_repoview.diagrams.ree import SCHEMA, Anatomy, Pair, Schema, anatomy, render_dot
+from repo2ree_repoview.diagrams.ree import LAYOUT, SCHEMA, Anatomy, Layout, Link, Pair, Schema, anatomy, render_dot
 from repo2ree_repoview.overview import figures
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.exports import SPEC_EXPORT, Spec, exported
@@ -20,7 +20,7 @@ def contract() -> Schema:
 
 
 def drawn() -> Anatomy:
-    return anatomy(contract())
+    return anatomy(contract(), Layout.model_validate_json(LAYOUT.read_text(encoding="utf-8")))
 
 
 def test_every_section_of_the_definition_and_every_receipt_is_a_box() -> None:
@@ -43,9 +43,37 @@ def test_the_fields_every_receipt_carries_are_named_once_not_in_each_box() -> No
             assert box.note.startswith("by ")
 
 
-def test_a_declared_field_is_joined_to_the_receipt_field_that_records_it() -> None:
+def test_a_declaration_and_the_receipts_that_ran_it_meet_at_the_file_they_are_digests_of() -> None:
+    links = set(drawn().links)
+    script = "overlay/ree-scripts/experiments/{experiment_slug}.sh"
+    assert Link("definition:experiments", "run_script_digest", "definition", script) in links
+    assert Link("receipt:experiments", "run_script_digest", "receipt", script) in links
+    assert {link.node for link in links if link.entry == "snapshot.tar.gz"} == {
+        "receipt:source",
+        "receipt:evaluation",
+        "receipt:experiment_environment",
+        "receipt:activation",
+        "receipt:experiments",
+    }
+    # The seal is the digest of the document's subject; a bundle entry, of the file its path names.
+    assert Link("bundle:seal", "ree_digest", "bundle", "ree.json") in links
+    assert Link("bundle:contents", "entries[*].digest", "bundle", ".") in links
+    # Meeting in the tree, they need no pairing of their own.
+    assert not [pair for pair in drawn().pairs if pair.field and pair.field.endswith(("_digest", "_path"))]
+
+
+def test_every_digest_field_drawn_points_into_the_tree_unless_it_is_of_something_outside() -> None:
+    result = drawn()
+    linked = {(link.node, link.field) for link in result.links}
+    for box in result.boxes:
+        for name, prop in box.fields.items():
+            of = prop.annotated().digest_of
+            if of is not None and of.covers != "outside":
+                assert (box.node, name) in linked, f"{box.node}.{name}"
+
+
+def test_a_declared_field_no_file_joins_is_paired_with_the_receipt_field_that_records_it() -> None:
     pairs = set(drawn().pairs)
-    assert Pair("experiments", "run_script_digest", "experiments", "run_script_digest", "field") in pairs
     assert Pair("experiments", "name", "experiments", "experiment_name", "field") in pairs
     assert Pair("source", "origin_url", "source", "origin_url", "field") in pairs
     for receipt in ("experiment_environment", "activation", "experiments"):
@@ -61,7 +89,7 @@ def test_every_pair_ends_on_a_field_its_receipt_shows() -> None:
     receipts = {box.name: box for box in result.boxes if box.role == "receipt"}
     for pair in result.pairs:
         assert pair.receipt_field in receipts[pair.receipt].fields
-    assert render_dot(result).count(" -> ") == len(result.pairs)
+    assert render_dot(result).count(" -> ") == len(result.pairs) + len(result.links)
 
 
 @pytest.fixture
@@ -94,7 +122,7 @@ def test_the_ree_page_shows_the_anatomy_with_its_commit_and_recipe(
     assert "Generated from <code>aaaaaaaaaa</code>" in page
     assert "Drawn by <code>just generate-ree-anatomy</code>" in page
     assert '<g id="a"/>' in page
-    assert "receipt repeats the declared field" in page
+    assert "a digest of that file" in page
     assert "Open full size" not in page.split("<h3>Evidence graph</h3>")[0]
     assert (bundle.root / "diagrams/ree/anatomy.svg").is_file()
     assert page.index("<h3>Anatomy</h3>") < page.index("<h3>Evidence graph</h3>")

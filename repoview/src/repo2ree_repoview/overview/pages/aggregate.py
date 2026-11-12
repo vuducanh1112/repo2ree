@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Iterable
 
-from repo2ree_repoview.diagrams.ree import COLOURS, PAIR, Role
+from repo2ree_repoview.diagrams.ree import CAPTURES, COLOURS, DIGEST, PAIR, TREE, Role
 from repo2ree_repoview.overview import figures
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.drawing import never_taken
@@ -20,7 +20,9 @@ DISALLOWED_SHOWN = 20
 # How a page names an aggregate whose name is an acronym.
 TITLES = {"Ree": "REE"}
 # The drawing of an aggregate's document as its contract states it, and the recipe that draws it.
-ANATOMIES = {"Ree": ("ree/anatomy.svg", "generate-ree-anatomy", "contracts/ree/ree.schema.json")}
+ANATOMIES = {
+    "Ree": ("ree/anatomy.svg", "generate-ree-anatomy", ("contracts/ree/ree.schema.json", "contracts/ree/layout.json"))
+}
 
 
 def slug(aggregate: Aggregate) -> str:
@@ -142,8 +144,8 @@ EVIDENCE_LEGEND = (
 )
 
 
-def _box(role: Role) -> str:
-    fill, frame = COLOURS[role]
+def _box(role: Role | None) -> str:
+    fill, frame = COLOURS[role] if role else TREE
     return _symbol(
         f'<rect x="1" y="1" width="28" height="12" fill="{fill}" stroke="{frame}"/>'
         f'<rect x="1" y="1" width="28" height="4" fill="{frame}"/>'
@@ -156,7 +158,11 @@ ANATOMY_LEGEND = (
     f"<span>{_box('definition')}section of the definition: what the author declares</span>"
     f"<span>{_box('receipt')}receipt: what a run observed, by the operation that writes it</span>"
     f"<span>{_box('bundle')}bundle and seal</span>"
-    f"<span>{_arrow(PAIR)}the receipt repeats the declared field</span>"
+    f"<span>{_box(None)}file tree: each entry, and how a capture carries it: "
+    + " ".join(f'<b style="color:{colour};font-weight:400">{capture}</b>' for capture, colour in CAPTURES.items())
+    + "</span>"
+    f"<span>{_arrow(DIGEST)}a digest of that file; a declaration and the receipts that ran it meet there</span>"
+    f"<span>{_arrow(PAIR)}the receipt records the declared field</span>"
     f"<span>{_arrow(PAIR, width=3)}the receipt holds the whole declared section</span>"
     f"<span>{_arrow(PAIR, dashed=True)}the receipt field has the declared section's fields</span>"
     "</p>"
@@ -166,13 +172,14 @@ ANATOMY_LEGEND = (
 def anatomy(aggregate: Aggregate, bundle: Bundle) -> str:
     if aggregate.name not in ANATOMIES:
         return ""
-    drawing, recipe, contract = ANATOMIES[aggregate.name]
+    drawing, recipe, contracts = ANATOMIES[aggregate.name]
     path = figures.DIAGRAMS / drawing
     origin = diagram_origin(bundle, read_svg_stamp(path)) if path.is_file() else ""
     return (
         "<h3>Anatomy</h3>"
-        f'<p class="muted">Every part of the document as <code>{esc(contract)}</code> states it, and the declared '
-        f"fields each receipt records as a run found them. Drawn by <code>just {esc(recipe)}</code>. {origin}</p>"
+        f'<p class="muted">Every part of the document, and the files it is about, as {codes(contracts)} state them. '
+        "A path field names where it is resolved; a digest field points at the file it is the digest of. "
+        f"Drawn by <code>just {esc(recipe)}</code>. {origin}</p>"
         + ANATOMY_LEGEND
         + f'<div class="diagram full">{inlined(bundle, drawing, recipe)}</div>'
     )
