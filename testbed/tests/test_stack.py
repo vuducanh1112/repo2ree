@@ -40,6 +40,37 @@ def test_global_cleanup_takes_only_job_and_bench_containers_and_unused_anonymous
     assert cleanup.global_volumes() == [anonymous]
 
 
+def test_global_cleanup_takes_the_machines_of_stacks_whose_clients_no_longer_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    label = "repo2ree.resource-owner"
+    listed = [
+        f"e2e-live-1\t{label}=e2e-live",
+        f"e2e-dead-1\tother=x,{label}=e2e-dead",
+        f"e2e-dead-2\t{label}=e2e-dead",
+        # A job a workbench started for a stack without machines: no machine says that stack is gone.
+        f"repo2ree-job-x\t{label}=e2e-plain",
+    ]
+    monkeypatch.setattr(cleanup, "lines", lambda args: listed if f"label={label}" in args else [])
+    running = [
+        ("/usr/bin/docker", "run", "--rm", "--init", "--name", "e2e-live-1", "--hostname", "bare", "image"),
+        ("python", "-m", "pytest", "--name", "e2e-dead-1"),
+    ]
+
+    assert cleanup.orphaned_owners(running) == ["e2e-dead"]
+    assert cleanup.orphaned_owners([]) == ["e2e-dead", "e2e-live"]
+
+
+def test_running_commands_are_read_from_each_process_command_line(tmp_path: Path) -> None:
+    (tmp_path / "12").mkdir()
+    (tmp_path / "12/cmdline").write_bytes(b"docker\0run\0--name\0e2e-a-1\0")
+    (tmp_path / "13").mkdir()
+    (tmp_path / "13/cmdline").write_bytes(b"")
+    (tmp_path / "self").mkdir()
+
+    assert cleanup.running_commands(tmp_path) == [("docker", "run", "--name", "e2e-a-1")]
+
+
 def test_stack_clis_reject_invalid_combinations() -> None:
     commands = (
         ["images", "up", "--compute-locations", "0"],

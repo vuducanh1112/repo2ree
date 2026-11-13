@@ -151,7 +151,7 @@ stack-down:
 stack-clean:
     python -m repo2ree_testbed images down --volumes
 
-# Remove the job and bench containers runs left, and the volumes nothing uses any more.
+# Remove the job and bench containers runs left, the machines of stacks no longer running, and the volumes nothing uses any more.
 [group('Stack management')]
 clean-workbenches:
     python -m repo2ree_testbed workbench-cleanup

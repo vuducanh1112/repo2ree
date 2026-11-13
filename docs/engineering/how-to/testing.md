@@ -27,7 +27,7 @@
 | `just test-stack-published <suite> [locations] [repository] [tag]` | Run the same flow against published registry images. |
 | `just stack-up` / `stack-down` | Start/stop the image-backed stack, keeping its volumes (`testbed/src/repo2ree_testbed/stack/images.py`). |
 | `just stack-clean` | Stop it and drop every volume it created, workbench leftovers included. |
-| `just clean-workbenches` | Just the workbench leftovers; pass `1` to also drop every bundle store volume. |
+| `just clean-workbenches` | Just the workbench leftovers, the machines of stacks no longer running included; pass `1` to also drop every bundle store volume. |
 | `just gc-bundle-store` | Remove every unused bundle store cache but the live one; pass a number to keep that many more. |
 | `just gate-e2e-on [machine] [jobs]` | The assurance gate on a machine (`local`, or one of your own), its receipt and runs brought back here. |
 | `just on <machine> <recipe> [args]` | Any recipe on a machine, what it wrote under `test-artifacts/` and `.receipts/` brought back here. |
@@ -421,8 +421,11 @@ service DNS. `testbed/src/repo2ree_testbed/stack/images.py` selects the correct 
 One-command flows end with `stack-clean`, which removes Compose volumes,
 leftover workbenches, and per-REE volumes. For a manually started stack, use
 `stack-down` to preserve backend state and workbench identity, or `stack-clean` to
-remove them. Source-run `e2e-*` targets also prune unreachable workbenches.
-After an interrupted run, invoke `just clean-workbenches` directly.
+remove them. After an interrupted run, invoke `just clean-workbenches` directly
+(`just machine cancel` does it on a machine): a stack that died before stopping
+leaves its machines running, since killing a `docker run` client does not stop
+its container, and the cleanup removes every machine whose `docker run` client
+no longer runs in this environment, keeping those of runs still going.
 
 The prune also sweeps unreferenced anonymous volumes — the hex-named ones the
 bench image declares for itself (`docker:dind` declares `/var/lib/docker` and
