@@ -16,6 +16,7 @@ from repo2ree_testbed.api_models import (
     CatalogPatch,
     Cpu,
     DefinitionPatch,
+    ExperimentEnvironmentPatch,
     ExperimentPatch,
     GenerateScripts,
     HardwarePatch,
@@ -113,8 +114,15 @@ class Client:
         [result] = InferenceReport.model_validate(response).results
         return result
 
-    def build_experiment_environment(self, ree_id: str, fixture: Project) -> Run:
-        return Run.model_validate(self.api.build_experiment_environment(ree_id, fixture=fixture))
+    def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
+        """Declare the experiment environment, ask inference for its build, and build with ``script``, else the
+        recipe's, else, for a project whose build is the inferred one, what inference proposed."""
+        artifact = ExperimentEnvironmentPatch(artifact_path=fixture.experiment_environment_path)
+        self._patch(ree_id, DefinitionPatch(experiment_environment=artifact))
+        proposed = self.infer(ree_id, "build_experiment_environment")
+        if script is None and fixture.infer_build:
+            script = proposed.first_body()
+        return Run.model_validate(self.api.build_experiment_environment(ree_id, script, fixture=fixture))
 
     def generate_sbom(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._stage(ree_id, "generate-sbom", watch=watch)
@@ -123,13 +131,30 @@ class Client:
         return self._stage(ree_id, "cross-check-sbom", watch=watch)
 
     def activate(self, ree_id: str, fixture: Project) -> Run:
+        """Ask inference for the activate script of the environment just built, then test the recipe's."""
+        self.infer(ree_id, "activate_experiment_environment")
         return Run.model_validate(self.api.activate(ree_id, fixture=fixture))
 
     def run_experiment(self, ree_id: str, fixture: Project) -> Run:
+        """Declare the experiment with the recipe's scripts, which declaring it requires, ask inference for its run
+        and verify scripts, which it infers from the source and the declarations alone, then run the recipe's."""
+        self.declare_experiment(ree_id, fixture)
+        self.infer(ree_id, "experiment_run", experiment=fixture.experiment)
+        self.infer(ree_id, "experiment_verify", experiment=fixture.experiment)
         return Run.model_validate(self.api.experiment(ree_id, fixture=fixture))
 
     def author(self, ree_id: str, fixture: Project) -> None:
-        self.api.author(ree_id, fixture)
+        """Every authoring stage, inference asked for each script before the recipe's is written."""
+        self.api.acquire(ree_id, fixture)
+        self.api.succeed(ree_id, "evaluate", watch=fixture.watch)
+        self.api.succeed(ree_id, "generate-hbom")
+        for label, run in (
+            ("build_experiment_environment", lambda: self.build_experiment_environment(ree_id, fixture)),
+            ("activation", lambda: self.activate(ree_id, fixture)),
+            ("experiment", lambda: self.run_experiment(ree_id, fixture)),
+        ):
+            done = run()
+            assert done.status == "succeeded", f"{label} ended {done.status}\n{self.logs(ree_id, done)}"
 
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return Run.model_validate(self.api.seal(ree_id, watch=watch))

@@ -222,10 +222,15 @@ class ExperimentPatch(_Payload):
     output_paths: tuple[str, ...]
 
 
+class ExperimentEnvironmentPatch(_Payload):
+    artifact_path: str
+
+
 class DefinitionPatch(_Payload):
     name: str | None = None
     catalog: CatalogPatch | None = None
     hardware: HardwarePatch | None = None
+    experiment_environment: ExperimentEnvironmentPatch | None = None
     experiments: tuple[ExperimentPatch, ...] | None = None
 
 

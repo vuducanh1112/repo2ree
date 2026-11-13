@@ -9,7 +9,6 @@ from typing import Literal
 
 from typed_client import Client
 
-from repo2ree_testbed.api_models import Run
 from repo2ree_testbed.showcases import Project
 
 Release = Literal["1.0", "2.0"]
@@ -28,7 +27,7 @@ def author(client: Client, ree_id: str, project: Project) -> None:
     """Every authoring stage, with the build fetching from this stack's upstream."""
     client.upload_source(ree_id, project)
     script = project.recipe("build_experiment_environment.sh").replace(PLACEHOLDER, URL)
-    build = Run.model_validate(client.api.build_experiment_environment(ree_id, script, fixture=project))
+    build = client.build_experiment_environment(ree_id, project, script)
     assert build.status == "succeeded", client.logs(ree_id, build)
     activation = client.activate(ree_id, project)
     assert activation.status == "succeeded", client.logs(ree_id, activation)
