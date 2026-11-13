@@ -20,6 +20,8 @@ from repo2ree_repoview.documents import Document
 
 OVERLAY = "overlay/"
 SCRIPTS = OVERLAY + "ree-scripts/"
+# The scripts in the order an REE runs them: its environment built, then activated; its experiments after.
+RUN_ORDER = (SCRIPTS + "build_experiment_environment.sh", SCRIPTS + "activate_experiment_environment.sh")
 SEAL = "seal_ree"
 INFER = "generate_script_candidates"
 LFS_POINTER = b"version https://git-lfs.github.com/spec/v1"
@@ -484,7 +486,13 @@ def read_sealed(repo: Path, ree_id: str) -> SealedRee | None:
     except ValidationError:
         sealed = None
     files = _files(repo, seal_commit)
-    scripts = tuple(_script(entry, tuple(requests)) for entry in files if entry.path.startswith(SCRIPTS))
+    scripts = tuple(
+        _script(entry, tuple(requests))
+        for entry in sorted(
+            (entry for entry in files if entry.path.startswith(SCRIPTS)),
+            key=lambda entry: (RUN_ORDER.index(entry.path) if entry.path in RUN_ORDER else len(RUN_ORDER), entry.path),
+        )
+    )
     return SealedRee(
         source=repo,
         ree_id=ree_id,

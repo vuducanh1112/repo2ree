@@ -172,6 +172,13 @@ def test_each_script_says_whether_it_is_what_inference_proposed(tmp_path: Path) 
         f"overlay/{EXPERIMENT}": "not_asked",
         f"overlay/{VERIFY}": "no_candidate",
     }
+    # In the order an REE runs them, not by name: built, activated, then its experiments.
+    assert [script.path for script in ree.scripts] == [
+        f"overlay/{BUILD}",
+        f"overlay/{ACTIVATE}",
+        f"overlay/{EXPERIMENT}",
+        f"overlay/{VERIFY}",
+    ]
     decided = {script.path: script.decision for script in ree.scripts}
     build = decided[f"overlay/{BUILD}"]
     assert build is not None
