@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from repo2ree_repoview.overview.bundle import source_name
+from repo2ree_repoview.overview.drawing import decision_svg
 from repo2ree_repoview.overview.exports import Showcase, ShowcaseTest
 from repo2ree_repoview.overview.html import Page, esc, section, table
 from repo2ree_repoview.overview.showcase_ree import OVERLAY, Entry, Script, SealedRee, TargetResult, Written
@@ -71,8 +72,29 @@ def script_rows(ree: SealedRee) -> list[list[str]]:
     return rows
 
 
-def labelled(label: str, body: str) -> str:
-    return f'<div><div class="muted">{label}</div>{code_block(body)}</div>'
+def decision_block(script: Script) -> str:
+    """How inference reached its last answer for the script: the graph it walked, and what each step observed."""
+    decision = script.decision
+    if decision is None:
+        return ""
+    trace = decision.trace
+    rows = [
+        [
+            f"<code>{esc(step.node_id)}</code>",
+            esc(step.check or step.kind),
+            esc(step.branch or step.outcome or ""),
+            esc(step.observed.summary() if step.observed else ""),
+        ]
+        for step in trace.steps
+    ]
+    return (
+        f"<details open><summary>How inference decided: <code>{esc(trace.dag)}</code> v{trace.version}, "
+        f"ending at <code>{esc(trace.result_node)}</code></summary>"
+        f'<div class="diagram full">{decision_svg(decision)}</div>'
+        "<details><summary>the steps it took</summary>"
+        + table(["Node", "Check", "Branch", "Observed"], rows)
+        + "</details></details>"
+    )
 
 
 def script_section(script: Script) -> str:
@@ -86,33 +108,18 @@ def script_section(script: Script) -> str:
             f"({esc(proposal.candidate.decision_leaf)}), written as proposed"
             + (f"; its warnings: {warnings}" if warnings else "")
             + ".</p>"
-            + code_block(script.body)
         )
-    elif proposal and script.written == "chosen_over":
-        rule = f"<code>{esc(proposal.candidate.inference_rule)}</code> ({esc(proposal.candidate.decision_leaf)})"
-        warnings = ", ".join(f"<code>{esc(w.code)}</code>" for w in proposal.candidate.warnings)
-        others = [p for p in script.proposals if p.candidate.body != proposal.candidate.body]
-        parts.append(
-            '<div class="compare">'
-            + labelled(f"What inference proposed: {rule}", proposal.candidate.body)
-            + labelled("What was chosen", script.body)
-            + "</div>"
-            + (f'<p class="muted">Its warnings: {warnings}.</p>' if warnings else "")
-            + f"<details><summary>the difference</summary>{code_block(script.diff())}</details>"
-            + "".join(
-                f"<details><summary>also proposed: <code>{esc(p.candidate.inference_rule)}</code></summary>"
-                f"{code_block(p.candidate.body)}</details>"
-                for p in {p.candidate.body: p for p in others}.values()
-            )
-        )
+    elif script.written == "chosen_over":
+        rules = ", ".join(dict.fromkeys(f"<code>{esc(p.candidate.inference_rule)}</code>" for p in script.proposals))
+        parts.append(f'<p class="muted">Inference proposed {rules}; the script written is none of them.</p>')
     elif script.written == "no_candidate":
         parts.append(
             f'<p class="muted">Inference was asked and answered {answered(script.answer)} with no candidate.</p>'
-            + code_block(script.body)
         )
     else:
         parts.append('<p class="muted">No inference request named this script before the seal.</p>')
-        parts.append(code_block(script.body))
+    parts.append(decision_block(script))
+    parts.append(code_block(script.body))
     return "".join(parts)
 
 
@@ -229,7 +236,8 @@ def page_showcase_ree(showcase: Showcase, test: ShowcaseTest | None, ree: Sealed
         f'The REE the <a href="showcase-gate.html#showcase-{esc(showcase.name)}">{esc(showcase.name)}</a> showcase\'s '
         "authoring test sealed, as the test preserved it. Each script is matched against what inference proposed "
         "in the REE's own history: written as inferred, chosen over what inference proposed, written where inference "
-        "proposed nothing, or written without inference being asked."
+        "proposed nothing, or written without inference being asked. Where inference was asked, its decision graph "
+        "shows the path its last answer took and what each check observed."
     )
     if test is None:
         body = '<p class="muted">This clone has no run of its API authoring test.</p>'

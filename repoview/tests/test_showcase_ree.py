@@ -48,6 +48,82 @@ def candidate(target: str, body: str, rule: str) -> dict[str, object]:
     }
 
 
+PROBE = {
+    "kind": "container_engines",
+    "engine": "podman",
+    "probe": {
+        "status": "probed",
+        "runner": "container",
+        "image": "docker:29-dind",
+        "engines": [{"engine": "docker", "state": "usable"}, {"engine": "podman", "state": "absent"}],
+    },
+}
+BUILD_DAG = {
+    "key": "build",
+    "version": 1,
+    "root": "podman-engine",
+    "nodes": [
+        {
+            "id": "podman-engine",
+            "kind": "check",
+            "check": "podman_engine",
+            "branches": {"usable": "podman-complete", "unavailable": "podman-no-engine"},
+        },
+        {
+            "id": "podman-complete",
+            "kind": "strategy_leaf",
+            "strategy": "podman",
+            "outcome": "complete",
+            "rule": "podman-build",
+            "next": "resolve",
+        },
+        {
+            "id": "podman-no-engine",
+            "kind": "strategy_leaf",
+            "strategy": "podman",
+            "outcome": "blocked",
+            "rule": "podman-build",
+            "next": "resolve",
+        },
+        {
+            "id": "resolve",
+            "kind": "resolve",
+            "fork": "f",
+            "resolver": "r",
+            "branches": {"needs_input": "build-needs-input"},
+        },
+        {"id": "build-needs-input", "kind": "result", "status": "needs_input", "application": "confirmation_required"},
+    ],
+}
+BUILD_WALK = {
+    "dag": "build",
+    "version": 1,
+    "steps": [
+        {
+            "node_id": "podman-engine",
+            "kind": "check",
+            "check": "podman_engine",
+            "branch": "unavailable",
+            "observed": PROBE,
+        },
+        {"node_id": "podman-no-engine", "kind": "strategy_leaf", "outcome": "blocked"},
+        {
+            "node_id": "resolve",
+            "kind": "resolve",
+            "observed": {"kind": "a_kind_not_known_yet"},
+            "outcome": "needs_input",
+        },
+        {"node_id": "build-needs-input", "kind": "result", "outcome": "needs_input"},
+    ],
+    "edges": [
+        {"source": "podman-engine", "branch": "unavailable", "target": "podman-no-engine"},
+        {"source": "podman-no-engine", "branch": "join", "target": "resolve"},
+        {"source": "resolve", "branch": "needs_input", "target": "build-needs-input"},
+    ],
+    "result_node": "build-needs-input",
+}
+
+
 def write(repo: Path, path: str, body: str) -> None:
     target = repo / "overlay" / path
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -69,9 +145,10 @@ def sealed_test(tmp_path: Path) -> Path:
     operation(repo, "provision")
     report = {
         "results": [
-            candidate(BUILD, PROPOSED_BUILD, "root-pip-requirements-v1"),
+            candidate(BUILD, PROPOSED_BUILD, "root-pip-requirements-v1") | {"decision": BUILD_WALK},
             candidate(ACTIVATE, PROPOSED_ACTIVATE, "venv-activate-experiment-environment-v1"),
-        ]
+        ],
+        "dags": [BUILD_DAG],
     }
     operation(repo, "generate_script_candidates", outputs=report)
     write(repo, BUILD, PROPOSED_BUILD)
@@ -95,8 +172,13 @@ def test_each_script_says_whether_it_is_what_inference_proposed(tmp_path: Path) 
         f"overlay/{EXPERIMENT}": "not_asked",
         f"overlay/{VERIFY}": "no_candidate",
     }
-    edited = next(script for script in ree.scripts if script.written == "chosen_over")
-    assert "+PATH=/venv/bin:$PATH" in edited.diff()
+    decided = {script.path: script.decision for script in ree.scripts}
+    build = decided[f"overlay/{BUILD}"]
+    assert build is not None
+    assert build.dag.key == "build"
+    assert build.trace.result_node == "build-needs-input"
+    # A record older than the trace carries no walk; the script has no decision to show.
+    assert decided[f"overlay/{ACTIVATE}"] is None
     assert ree.sealed is not None
     assert ree.sealed.ree_digest == "sha256:aa"
     assert ree.after_seal == 1
@@ -124,7 +206,12 @@ def test_the_page_shows_the_final_scripts_and_what_inference_was_asked(tmp_path:
     assert "root-pip-requirements-v1" in page.body
     assert "inference not asked" in page.body
     assert "inference proposed nothing" in page.body
-    assert "What inference proposed" in page.body
+    assert "Inference proposed <code>venv-activate-experiment-environment-v1</code>" in page.body
+    # The decision graph: the walk drawn over the whole graph, each step with what it observed.
+    assert "<svg" in page.body
+    assert "How inference decided: <code>build</code> v1, ending at <code>build-needs-input</code>" in page.body
+    assert "probed in docker:29-dind: docker usable; podman absent" in page.body
+    assert "a_kind_not_known_yet" in page.body
     # The files as a tree: a folder holding its files, each text file opening to its contents.
     assert '<summary><b>overlay/</b><span class="meta">4 files</span></summary>' in page.body
     assert '<summary>ree.json<span class="meta">2 B · Git</span></summary><pre class="code">{}</pre>' in page.body

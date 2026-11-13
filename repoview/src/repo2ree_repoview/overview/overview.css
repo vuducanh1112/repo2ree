@@ -154,5 +154,3 @@ ul.decided ul{margin:2px 0;padding-left:18px;color:var(--muted)}
 .filetree .meta{color:var(--muted);margin-left:10px;font-size:12px}
 .filetree .lfs{color:#7c3aed}
 .filetree pre.code{margin:4px 0 8px;font-size:12px}
-.compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
-.compare pre.code{margin:4px 0 0}

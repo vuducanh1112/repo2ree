@@ -10,10 +10,19 @@ from repo2ree_repoview.graphviz import quote as q
 from repo2ree_repoview.overview.exports import Aggregate, Spec, SubMachine
 from repo2ree_repoview.overview.html import esc
 from repo2ree_repoview.overview.receipt import Move
+from repo2ree_repoview.overview.showcase_ree import Decision, Node, StrategyOutcome
 
 TAKEN = 'color="#0f766e", fontcolor="#0f766e", penwidth=1.5'
 NEVER = 'style=dashed, color="#dc2626"'
 DISALLOWED = 'color="#7c3aed", fontcolor="#7c3aed", penwidth=1.5'
+UNWALKED = 'color="#cbd5e1", fontcolor="#94a3b8"'
+LEAF_TONE: dict[StrategyOutcome, str] = {
+    "complete": "#15803d",
+    "candidate": "#0f766e",
+    "blocked": "#dc2626",
+    "not_applicable": "#64748b",
+}
+SHAPE = {"check": "box", "fork": "invtrapezium", "strategy_leaf": "box", "resolve": "trapezium", "result": "box"}
 
 
 def dot_svg(source: str) -> str:
@@ -218,5 +227,53 @@ def evidence_svg(aggregate: Aggregate) -> str:
             for path in receipt.about
             if path not in receipt.rests_on
         )
+    lines.append("}")
+    return dot_svg("\n".join(lines))
+
+
+def _node_label(node: Node) -> str:
+    match node.kind:
+        case "strategy_leaf":
+            return f"{node.id}\n{node.outcome}" + (f"\n{node.rule}" if node.rule else "")
+        case "result":
+            return f"{node.id}\n{node.status}"
+        case _:
+            return node.id
+
+
+def decision_svg(decision: Decision) -> str:
+    """One inference decision: the whole graph, the nodes the walk visited filled, the edges it took drawn heavy.
+
+    A visited node's tooltip says what its check observed.
+    """
+    steps = {step.node_id: step for step in decision.trace.steps}
+    walked = {(edge.source, edge.branch, edge.target) for edge in decision.trace.edges}
+    lines = [
+        "digraph decision {",
+        '  rankdir=TB; bgcolor="transparent"; pad=0.1; nodesep=0.25; ranksep=0.35;',
+        '  node [style="rounded,filled", fontsize=10, height=0.3];',
+        "  edge [fontsize=9, arrowsize=0.6];",
+    ]
+    for node in decision.dag.nodes:
+        step = steps.get(node.id)
+        peripheries = 2 if node.kind == "result" else 1
+        style = "filled" if node.kind == "strategy_leaf" else "rounded,filled"
+        if step is None:
+            look = f'fillcolor="#f8fafc", {UNWALKED}'
+        else:
+            tone = LEAF_TONE[node.outcome] if node.kind == "strategy_leaf" else "#0f766e"
+            width = 2.2 if node.id == decision.trace.result_node else 1.4
+            look = f'fillcolor="#e6f4f1", color="{tone}", fontcolor="#0f172a", penwidth={width}'
+        what = node.check if node.kind == "check" else node.kind
+        tip = what + (f": {step.summary()}" if step and step.summary() else "")
+        lines.append(
+            f"  {q(node.id)} [label={q(_node_label(node))}, shape={SHAPE[node.kind]}, style={q(style)}, "
+            f"peripheries={peripheries}, tooltip={q(tip)}, {look}];"
+        )
+    for node in decision.dag.nodes:
+        for branch, target in node.edges():
+            label = "" if branch == "join" else branch
+            style = TAKEN if (node.id, branch, target) in walked else UNWALKED
+            lines.append(f"  {q(node.id)} -> {q(target)} [label={q(label)}, {style}];")
     lines.append("}")
     return dot_svg("\n".join(lines))

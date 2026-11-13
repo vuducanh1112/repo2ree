@@ -9,13 +9,12 @@ and proposed nothing, or bytes written without inference being asked.
 
 from __future__ import annotations
 
-import difflib
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import JsonValue, ValidationError
+from pydantic import Field, JsonValue, ValidationError
 
 from repo2ree_repoview.documents import Document
 
@@ -30,6 +29,10 @@ SHOWN_BYTES = 64_000
 InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
 Application = Literal["automatic_allowed", "confirmation_required", "unavailable"]
 Written = Literal["inferred", "chosen_over", "no_candidate", "not_asked"]
+StrategyOutcome = Literal["complete", "candidate", "blocked", "not_applicable"]
+NodeKind = Literal["check", "fork", "strategy_leaf", "resolve", "result"]
+ContainerEngine = Literal["docker", "podman"]
+EngineState = Literal["absent", "unreachable", "usable"]
 
 
 class _Command(Document):
@@ -71,15 +74,230 @@ class Candidate(Document):
     warnings: tuple[CandidateWarning, ...] = ()
 
 
+class LogicalRootSeen(Document):
+    kind: Literal["logical_root"]
+    path: str
+    wrapper_depth: int
+
+    def summary(self) -> str:
+        return f"project root {self.path or '.'}, {self.wrapper_depth} wrapper folder(s) deep"
+
+
+class PathMatchesSeen(Document):
+    kind: Literal["path_matches"]
+    count: int
+    paths: tuple[str, ...] = ()
+
+    def summary(self) -> str:
+        return f"{self.count} match(es)" + (f": {', '.join(self.paths)}" if self.paths else "")
+
+
+class StrategyOutcomeSeen(Document):
+    strategy: str
+    outcome: StrategyOutcome
+    leaf: str
+
+
+class StrategyOutcomesSeen(Document):
+    kind: Literal["strategy_outcomes"]
+    outcomes: tuple[StrategyOutcomeSeen, ...]
+
+    def summary(self) -> str:
+        return ", ".join(f"{o.strategy} {o.outcome}" for o in self.outcomes)
+
+
+class ContractSeen(Document):
+    kind: Literal["experiment_environment_contract"]
+    result: str
+    experiment_environment_kind: str | None = None
+    provenance: str | None = None
+    detail: str = ""
+
+    def summary(self) -> str:
+        known = [part for part in (self.experiment_environment_kind, self.provenance, self.detail) if part]
+        return self.result + (f" ({'; '.join(known)})" if known else "")
+
+
+class CommandCandidatesSeen(Document):
+    kind: Literal["command_candidates"]
+    count: int
+    sources: tuple[str, ...] = ()
+
+    def summary(self) -> str:
+        return f"{self.count} command(s)" + (f" from {', '.join(self.sources)}" if self.sources else "")
+
+
+class ExperimentGateSeen(Document):
+    kind: Literal["experiment_gate"]
+    result: str
+    requested: str = ""
+    declared: bool = False
+
+    def summary(self) -> str:
+        return f"{self.requested or 'no experiment'} {'declared' if self.declared else 'not declared'}"
+
+
+class EngineSeen(Document):
+    engine: ContainerEngine
+    state: EngineState
+    server: str | None = None
+    version: str | None = None
+    detail: str | None = None
+
+    def summary(self) -> str:
+        served = f", served by {self.server}" if self.server and self.server != self.engine else ""
+        known = f" {self.version}" if self.version else ""
+        why = f" ({self.detail})" if self.detail else ""
+        return f"{self.engine} {self.state}{known}{served}{why}"
+
+
+class EngineProbeSeen(Document):
+    status: Literal["probed", "failed", "not_probed"]
+    runner: Literal["host", "container"] | None = None
+    image: str | None = None
+    engines: tuple[EngineSeen, ...] = ()
+    detail: str = ""
+
+
+class ContainerEnginesSeen(Document):
+    kind: Literal["container_engines"]
+    engine: ContainerEngine
+    probe: EngineProbeSeen
+
+    def summary(self) -> str:
+        probe = self.probe
+        if probe.status != "probed":
+            return f"{self.engine}: probe {probe.status}" + (f" ({probe.detail})" if probe.detail else "")
+        where = f"in {probe.image}" if probe.image else f"on the {probe.runner or 'host'}"
+        return f"probed {where}: " + "; ".join(engine.summary() for engine in probe.engines)
+
+
+class OtherSeen(Document):
+    """An observation of a kind this view does not know yet: named, not described."""
+
+    kind: str
+
+    def summary(self) -> str:
+        return self.kind
+
+
+Observation = Annotated[
+    LogicalRootSeen
+    | PathMatchesSeen
+    | StrategyOutcomesSeen
+    | ContractSeen
+    | CommandCandidatesSeen
+    | ExperimentGateSeen
+    | ContainerEnginesSeen
+    | OtherSeen,
+    Field(union_mode="left_to_right"),
+]
+
+
+class Step(Document):
+    node_id: str
+    kind: NodeKind
+    check: str | None = None
+    branch: str | None = None
+    observed: Observation | None = None
+    outcome: str | None = None
+
+    def summary(self) -> str:
+        return self.observed.summary() if self.observed else (self.outcome or "")
+
+
+class Edge(Document):
+    source: str
+    branch: str
+    target: str
+
+
+class Trace(Document):
+    dag: str
+    version: int
+    steps: tuple[Step, ...]
+    edges: tuple[Edge, ...]
+    result_node: str
+
+
+class CheckNode(Document):
+    id: str
+    kind: Literal["check"]
+    check: str
+    branches: dict[str, str]
+
+    def edges(self) -> list[tuple[str, str]]:
+        return list(self.branches.items())
+
+
+class ForkNode(Document):
+    id: str
+    kind: Literal["fork"]
+    branches: dict[str, str]
+    join: str
+
+    def edges(self) -> list[tuple[str, str]]:
+        return list(self.branches.items())
+
+
+class LeafNode(Document):
+    id: str
+    kind: Literal["strategy_leaf"]
+    strategy: str
+    outcome: StrategyOutcome
+    rule: str | None = None
+    warnings: tuple[str, ...] = ()
+    next: str
+
+    def edges(self) -> list[tuple[str, str]]:
+        return [("join", self.next)]
+
+
+class ResolveNode(Document):
+    id: str
+    kind: Literal["resolve"]
+    resolver: str
+    branches: dict[str, str]
+
+    def edges(self) -> list[tuple[str, str]]:
+        return list(self.branches.items())
+
+
+class ResultNode(Document):
+    id: str
+    kind: Literal["result"]
+    status: InferenceStatus
+    application: Application
+
+    def edges(self) -> list[tuple[str, str]]:
+        return []
+
+
+Node = Annotated[CheckNode | ForkNode | LeafNode | ResolveNode | ResultNode, Field(discriminator="kind")]
+
+
+class Dag(Document):
+    key: str
+    version: int
+    root: str
+    nodes: tuple[Node, ...]
+
+
 class TargetResult(Document):
     target: ScriptTarget
     status: InferenceStatus
     application: Application
     candidates: tuple[Candidate, ...] = ()
+    # Absent from records older than the trace.
+    decision: Trace | None = None
 
 
 class InferenceReport(Document):
     results: tuple[TargetResult, ...]
+
+
+class _Dags(Document):
+    dags: tuple[Dag, ...] = ()
 
 
 class Sealed(Document):
@@ -100,6 +318,16 @@ class Request:
 
     commit: str
     results: tuple[TargetResult, ...]
+    # The whole graphs its results walked, by key.
+    dags: dict[str, Dag]
+
+
+@dataclass(frozen=True)
+class Decision:
+    """How inference reached an answer: the whole graph, and the walk it took through it."""
+
+    dag: Dag
+    trace: Trace
 
 
 @dataclass(frozen=True)
@@ -114,24 +342,13 @@ class Script:
     path: str
     body: str
     written: Written
-    # The candidate whose bytes it is, or, when chosen over, the one nearest to them.
+    # The candidate whose bytes it is.
     proposal: Proposal | None
     proposals: tuple[Proposal, ...]
     # What inference last answered for its path, whether or not it proposed anything.
     answer: TargetResult | None
-
-    def diff(self) -> str:
-        """How its bytes differ from the nearest proposal, as a unified diff; empty when they do not."""
-        if self.proposal is None or self.written != "chosen_over":
-            return ""
-        return "".join(
-            difflib.unified_diff(
-                self.proposal.candidate.body.splitlines(keepends=True),
-                self.body.splitlines(keepends=True),
-                fromfile=f"proposed by {self.proposal.candidate.inference_rule}",
-                tofile="written",
-            )
-        )
+    # How it reached that answer, where the record carries the walk and its graph.
+    decision: Decision | None
 
 
 @dataclass(frozen=True)
@@ -212,8 +429,11 @@ def _files(repo: Path, commit: str) -> tuple[Entry, ...]:
     return tuple(entries)
 
 
-def _nearest(body: str, proposals: list[Proposal]) -> Proposal:
-    return max(proposals, key=lambda p: difflib.SequenceMatcher(None, p.candidate.body, body).ratio())
+def _decision(request: Request, result: TargetResult) -> Decision | None:
+    trace = result.decision
+    if trace is None or trace.dag not in request.dags:
+        return None
+    return Decision(request.dags[trace.dag], trace)
 
 
 def _script(entry: Entry, requests: tuple[Request, ...]) -> Script:
@@ -221,15 +441,16 @@ def _script(entry: Entry, requests: tuple[Request, ...]) -> Script:
     body = entry.text or ""
     answers = [(request, result) for request in requests for result in request.results if result.target.path == target]
     answer = answers[-1][1] if answers else None
+    decision = _decision(*answers[-1]) if answers else None
     proposals = tuple(
         Proposal(request, result, candidate) for request, result in answers for candidate in result.candidates
     )
     same = [proposal for proposal in proposals if proposal.candidate.body == body]
     if same:
-        return Script(entry.path, body, "inferred", same[-1], proposals, answer)
+        return Script(entry.path, body, "inferred", same[-1], proposals, answer, decision)
     if proposals:
-        return Script(entry.path, body, "chosen_over", _nearest(body, list(proposals)), proposals, answer)
-    return Script(entry.path, body, "no_candidate" if answers else "not_asked", None, (), answer)
+        return Script(entry.path, body, "chosen_over", None, proposals, answer, decision)
+    return Script(entry.path, body, "no_candidate" if answers else "not_asked", None, (), answer, decision)
 
 
 def read_sealed(repo: Path, ree_id: str) -> SealedRee | None:
@@ -248,7 +469,11 @@ def read_sealed(repo: Path, ree_id: str) -> SealedRee | None:
             report = InferenceReport.model_validate(record.record.result.outputs)
         except ValidationError:
             continue
-        requests.append(Request(commit, report.results))
+        try:
+            dags = _Dags.model_validate(record.record.result.outputs).dags
+        except ValidationError:
+            dags = ()
+        requests.append(Request(commit, report.results, {dag.key: dag for dag in dags}))
     seal_commit, _, seal_record = commits[sealed_at]
     try:
         sealed = (
