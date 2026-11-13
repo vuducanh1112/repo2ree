@@ -14,6 +14,7 @@ from pathlib import Path
 from repo2ree_authoring.targets import resolve_target
 from repo2ree_core.author_recipes.inference.engine import evaluate_target
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
+from repo2ree_core.author_recipes.inference.machine import MachineInputs
 from repo2ree_core.author_recipes.inference.models import DecisionContext
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy, default_policy
 from repo2ree_core.author_recipes.inference.registry import (
@@ -44,6 +45,7 @@ def infer_scripts(
     definition: ReeDefinition | None = None,
     policy: InferencePolicy | None = None,
     experiment_environment_inputs: ExperimentEnvironmentInputs | None = None,
+    machine: MachineInputs | None = None,
     source_snapshot_digest: str | None = None,
 ) -> InferenceReport:
     facts = scan_repository(upstream_path)
@@ -53,6 +55,7 @@ def infer_scripts(
         policy=active_policy,
         ree_name=definition.name if definition else "",
         experiment_environment=experiment_environment_inputs or ExperimentEnvironmentInputs(),
+        machine=machine or MachineInputs(),
     )
 
     results: list[TargetInferenceResult] = []

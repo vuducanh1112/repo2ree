@@ -69,6 +69,7 @@ ACTIVATE: RecipeScript = "activate_experiment_environment.sh"
 PIP_BUILD = ((BUILD, InferenceRule.PIP_REQUIREMENTS),)
 VENV = (*PIP_BUILD, (ACTIVATE, InferenceRule.VENV_ACTIVATE))
 DOCKER = ((BUILD, InferenceRule.DOCKERFILE), (ACTIVATE, InferenceRule.DOCKER_ACTIVATE))
+PODMAN_SCRIPTS = ((BUILD, InferenceRule.PODMAN_BUILD), (ACTIVATE, InferenceRule.PODMAN_ACTIVATE))
 # The API showcases' tier: every test of API_SUITE, each on a stack on the machine its showcase names.
 API_TIER = "showcase-api"
 
@@ -176,8 +177,8 @@ PODMAN = Project(
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="podman-hello",
-    # Inference proposes `docker build` of the Containerfile and `docker run` of its image; this machine has Podman.
     network=True,
+    inferred=PODMAN_SCRIPTS,
 )
 SLURM = Project(
     name=ProjectName.SLURM,

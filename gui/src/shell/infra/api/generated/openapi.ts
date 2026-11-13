@@ -1599,6 +1599,48 @@ export interface components {
             /** Sources */
             sources?: string[];
         };
+        /**
+         * ContainerEnginesObservation
+         * @description A container-engine check's view of the probe: the engine it judged, and everything the probe saw.
+         */
+        ContainerEnginesObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "container_engines";
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "docker" | "podman";
+            probe: components["schemas"]["ContainerEnginesProbe"];
+        };
+        /**
+         * ContainerEnginesProbe
+         * @description Which container engines a script run for this REE can use, as probed where it runs.
+         *
+         *     ``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so
+         *     nothing is known about the engines, which is not the same as their absence.
+         */
+        ContainerEnginesProbe: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "probed" | "failed" | "not_probed";
+            /** Runner */
+            runner?: ("host" | "container") | null;
+            /** Image */
+            image?: string | null;
+            /** Engines */
+            engines?: components["schemas"]["EngineObservation"][];
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+        };
         /** Contributor */
         Contributor: {
             /**
@@ -1797,7 +1839,7 @@ export interface components {
             /** Branch */
             branch?: string | null;
             /** Observed */
-            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["ExperimentEnvironmentContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"]) | null;
+            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["ExperimentEnvironmentContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"] | components["schemas"]["ContainerEnginesObservation"]) | null;
             /** Outcome */
             outcome?: string | null;
             /**
@@ -1880,6 +1922,8 @@ export interface components {
             artifact_path: string;
             /** Image Ref */
             image_ref: string;
+            /** Engine */
+            engine?: ("docker" | "podman") | null;
             /**
              * Workspace Mount
              * @default /workspace
@@ -1921,6 +1965,32 @@ export interface components {
             build_context: string;
             /** Digest */
             digest: string;
+        };
+        /**
+         * EngineObservation
+         * @description One engine as the probe found it where the REE's scripts run.
+         */
+        EngineObservation: {
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "docker" | "podman";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "absent" | "unreachable" | "usable";
+            /** Client Path */
+            client_path?: string | null;
+            /** Server */
+            server?: string | null;
+            /** Version */
+            version?: string | null;
+            /** Rootless */
+            rootless?: boolean | null;
+            /** Detail */
+            detail?: string | null;
         };
         /**
          * EnvironmentLevel

@@ -1,4 +1,4 @@
-"""An REE whose author's scripts build a Containerfile and run it with rootless Podman, on the machine."""
+"""An REE whose Containerfile is built and run with rootless Podman, on a machine whose scripts can use only Podman."""
 
 from __future__ import annotations
 

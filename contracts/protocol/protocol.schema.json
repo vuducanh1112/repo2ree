@@ -1581,6 +1581,95 @@
       "title": "CommandCandidatesObservation",
       "type": "object"
     },
+    "ContainerEnginesObservation": {
+      "additionalProperties": false,
+      "description": "A container-engine check's view of the probe: the engine it judged, and everything the probe saw.",
+      "properties": {
+        "kind": {
+          "const": "container_engines",
+          "default": "container_engines",
+          "title": "Kind",
+          "type": "string"
+        },
+        "engine": {
+          "enum": [
+            "docker",
+            "podman"
+          ],
+          "title": "Engine",
+          "type": "string"
+        },
+        "probe": {
+          "$ref": "#/$defs/ContainerEnginesProbe"
+        }
+      },
+      "required": [
+        "engine",
+        "probe"
+      ],
+      "title": "ContainerEnginesObservation",
+      "type": "object"
+    },
+    "ContainerEnginesProbe": {
+      "additionalProperties": false,
+      "description": "Which container engines a script run for this REE can use, as probed where it runs.\n\n``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so\nnothing is known about the engines, which is not the same as their absence.",
+      "properties": {
+        "status": {
+          "enum": [
+            "probed",
+            "failed",
+            "not_probed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "runner": {
+          "anyOf": [
+            {
+              "enum": [
+                "host",
+                "container"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "engines": {
+          "items": {
+            "$ref": "#/$defs/EngineObservation"
+          },
+          "title": "Engines",
+          "type": "array"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ContainerEnginesProbe",
+      "type": "object"
+    },
     "Contributor": {
       "additionalProperties": false,
       "properties": {
@@ -1868,6 +1957,7 @@
               "discriminator": {
                 "mapping": {
                   "command_candidates": "#/$defs/CommandCandidatesObservation",
+                  "container_engines": "#/$defs/ContainerEnginesObservation",
                   "experiment_environment_contract": "#/$defs/ExperimentEnvironmentContractObservation",
                   "experiment_gate": "#/$defs/ExperimentGateObservation",
                   "logical_root": "#/$defs/LogicalRootObservation",
@@ -1894,6 +1984,9 @@
                 },
                 {
                   "$ref": "#/$defs/ExperimentGateObservation"
+                },
+                {
+                  "$ref": "#/$defs/ContainerEnginesObservation"
                 }
               ]
             },
@@ -2098,6 +2191,22 @@
           "title": "Image Ref",
           "type": "string"
         },
+        "engine": {
+          "anyOf": [
+            {
+              "enum": [
+                "docker",
+                "podman"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Engine"
+        },
         "workspace_mount": {
           "default": "/workspace",
           "title": "Workspace Mount",
@@ -2193,6 +2302,95 @@
         }
       },
       "title": "DoneFrame",
+      "type": "object"
+    },
+    "EngineObservation": {
+      "additionalProperties": false,
+      "description": "One engine as the probe found it where the REE's scripts run.",
+      "properties": {
+        "engine": {
+          "enum": [
+            "docker",
+            "podman"
+          ],
+          "title": "Engine",
+          "type": "string"
+        },
+        "state": {
+          "enum": [
+            "absent",
+            "unreachable",
+            "usable"
+          ],
+          "title": "State",
+          "type": "string"
+        },
+        "client_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Client Path"
+        },
+        "server": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Server"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "rootless": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rootless"
+        },
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detail"
+        }
+      },
+      "required": [
+        "engine",
+        "state"
+      ],
+      "title": "EngineObservation",
       "type": "object"
     },
     "ErrorFrame": {

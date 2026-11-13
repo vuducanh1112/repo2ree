@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scriptinfer_helpers import MemoryAccessor, docker_archive
+from scriptinfer_helpers import MemoryAccessor, docker_archive, machine
 
 from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.author_recipes.inference.build_regeneration import (
@@ -60,6 +60,7 @@ def _expected_builds(root: Path, experiment_environment: str) -> list[ExpectedBu
         # The renderers write to the declared path, so regeneration only matches
         # the author's script when it regenerates against the same declaration.
         experiment_environment=ExperimentEnvironmentInputs(declared_experiment_environment_path=experiment_environment),
+        machine=machine("docker"),
     )
     return expected_builds_for_experiment_environment(ctx, experiment_environment)
 

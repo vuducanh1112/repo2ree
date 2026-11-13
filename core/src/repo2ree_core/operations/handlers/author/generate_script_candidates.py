@@ -3,14 +3,18 @@
 Inference scans the immutable ``upstream`` tree (never the materialized
 workspace, so it can never discover its own generated output as evidence),
 runs the versioned decision DAGs, and returns the full ``InferenceReport`` in
-the result outputs. It is synchronous, deterministic, persists nothing, and
-writes no files — turning a candidate into a script stays on the existing
-``write_file`` path.
+the result outputs. It is synchronous, persists nothing, and writes no files —
+turning a candidate into a script stays on the existing ``write_file`` path.
+
+Besides the REE, it reads the machine its scripts run on: which container engines
+they can use, probed through the REE's script runner when a check first asks.
 """
 
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference import infer_scripts
+from repo2ree_core.author_recipes.inference.machine import EngineProbe, MachineInputs
+from repo2ree_core.execution.engine_probe import RunnerEngineProbe
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_experiment_environment_inputs
@@ -19,6 +23,11 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
+
+
+def engine_probe(layout: ReeLayout) -> EngineProbe:
+    """The probe of the engines this REE's scripts can use, run from its workspace when first asked."""
+    return RunnerEngineProbe(layout.workspace)
 
 
 def handle_generate_script_candidates(
@@ -55,6 +64,7 @@ def handle_generate_script_candidates(
             selectors,
             definition=definition,
             experiment_environment_inputs=experiment_environment_inputs,
+            machine=MachineInputs(engines=engine_probe(layout)),
             source_snapshot_digest=snapshot_digest,
         )
     except ValueError as exc:

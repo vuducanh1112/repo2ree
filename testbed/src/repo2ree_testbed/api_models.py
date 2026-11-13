@@ -35,6 +35,8 @@ class InferenceRule(StrEnum):
     PIP_REQUIREMENTS = "root-pip-requirements-v1"
     DOCKER_ACTIVATE = "docker-activate-experiment-environment-v1"
     VENV_ACTIVATE = "venv-activate-experiment-environment-v1"
+    PODMAN_BUILD = "single-project-root-containerfile-podman"
+    PODMAN_ACTIVATE = "podman-activate-experiment-environment"
 
 
 class InferenceDag(StrEnum):

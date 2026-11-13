@@ -68,6 +68,8 @@ class DecisionContext(BaseModel):
     # experiment environment path, experiment declarations, and access to the built artifact /
     # written build script. Empty for build inference, which needs none of it.
     experiment_environment: ExperimentEnvironmentInputs = Field(default_factory=lambda: ExperimentEnvironmentInputs())
+    # The machine the REE's scripts run on, as far as a check may ask about it: its container engines.
+    machine: MachineInputs = Field(default_factory=lambda: MachineInputs())
     # The experiment a run/verify experiment target names. Empty for build and
     # activation targets. Set per-target by ``infer_scripts`` because the name
     # lives on the target, not on the shared scan.
@@ -167,6 +169,7 @@ class Resolver(Protocol):
 # Deferred imports resolved at module end to keep the union definitions above
 # free of forward-reference clutter while avoiding an import cycle.
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs  # noqa: E402
+from repo2ree_core.author_recipes.inference.machine import MachineInputs  # noqa: E402
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy  # noqa: E402
 from repo2ree_core.author_recipes.inference.repository_facts import RepositoryFacts  # noqa: E402
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from scriptinfer_helpers import machine
 
 from repo2ree_core.author_recipes.inference import (
     TargetInferenceResult,
@@ -56,6 +57,8 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
         experiment_environment_inputs=ExperimentEnvironmentInputs(
             declared_experiment_environment_path=str(experiment_environment) if experiment_environment else None
         ),
+        # A machine whose scripts can use Docker alone, so a Dockerfile's Docker build is the one runnable.
+        machine=machine("docker"),
     )
     return report.results[0]
 

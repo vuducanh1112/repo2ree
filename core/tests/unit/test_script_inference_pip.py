@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from scriptinfer_helpers import machine
+
 from repo2ree_core.author_recipes.inference import (
     TargetInferenceResult,
     infer_scripts,
@@ -28,7 +30,9 @@ def _tree(root: Path, files: dict[str, str]) -> Path:
 
 
 def _build(root: Path) -> TargetInferenceResult:
-    return infer_scripts(root, [ScriptTargetSelectorArg(kind="build_experiment_environment")]).results[0]
+    return infer_scripts(
+        root, [ScriptTargetSelectorArg(kind="build_experiment_environment")], machine=machine("docker")
+    ).results[0]
 
 
 def _pip_candidate(result: TargetInferenceResult):

@@ -38,6 +38,24 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
             "context cannot be determined without explicit evidence."
         ),
     ),
+    "docker_unavailable": (
+        "info",
+        False,
+        "Docker is not usable where this REE's scripts run, so no script that drives it is proposed as runnable.",
+    ),
+    "podman_unavailable": (
+        "info",
+        False,
+        "Podman is not usable where this REE's scripts run, so no script that drives it is proposed as runnable.",
+    ),
+    "container_engines_not_probed": (
+        "warning",
+        False,
+        (
+            "Which container engines this REE's scripts can use is unknown, so every engine's script is "
+            "proposed for confirmation."
+        ),
+    ),
     "experiment_environment_declaration_missing": (
         "warning",
         True,

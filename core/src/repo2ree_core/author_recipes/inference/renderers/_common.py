@@ -82,3 +82,9 @@ def experiment_environment_image_ref(ree_name: str) -> str:
     falls back to ``ree``.
     """
     return f"ree-runtime:{ree_name_slug(ree_name)}"
+
+
+def podman_image_ref(ree_name: str) -> str:
+    """The image reference a Podman build tags: Podman names an image it built ``localhost/<name>``, which is
+    also the name its saved archive records and the name an activation finds it by."""
+    return f"localhost/{experiment_environment_image_ref(ree_name)}"

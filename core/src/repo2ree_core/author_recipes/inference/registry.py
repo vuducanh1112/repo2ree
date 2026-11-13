@@ -9,6 +9,7 @@ fails the process at startup rather than at request time.
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.build_wiring import BUILD_CHECKS, BUILD_RENDERERS, BUILD_RESOLVERS
+from repo2ree_core.author_recipes.inference.checks.container_engine import ContractEngineCheck
 from repo2ree_core.author_recipes.inference.checks.docker_config import DockerConfigCommandsCheck
 from repo2ree_core.author_recipes.inference.checks.experiment import RequestedExperimentCheck
 from repo2ree_core.author_recipes.inference.checks.experiment_environment_contract import (
@@ -27,6 +28,7 @@ from repo2ree_core.author_recipes.inference.engine import validate_dag
 from repo2ree_core.author_recipes.inference.models import Check, Renderer, Resolver
 from repo2ree_core.author_recipes.inference.renderers.activate_experiment_environment import (
     DockerActivateExperimentEnvironmentRenderer,
+    PodmanActivateExperimentEnvironmentRenderer,
     VenvActivateExperimentEnvironmentRenderer,
 )
 from repo2ree_core.author_recipes.inference.renderers.docker_experiment import DockerExperimentRenderer
@@ -45,6 +47,7 @@ CHECKS: dict[str, Check] = {
             ExperimentEnvironmentArtifactInspectionCheck(),
             UnchangedGeneratedBuildCheck(),
             ExperimentEnvironmentContractKindCheck(),
+            ContractEngineCheck(),
             DockerConfigCommandsCheck(),
             RequestedExperimentCheck(),
         )
@@ -59,6 +62,7 @@ RENDERERS: dict[str, Renderer] = {
         renderer.code: renderer
         for renderer in (
             DockerActivateExperimentEnvironmentRenderer(),
+            PodmanActivateExperimentEnvironmentRenderer(),
             VenvActivateExperimentEnvironmentRenderer(),
             DockerExperimentRenderer(),
             VenvExperimentRenderer(),

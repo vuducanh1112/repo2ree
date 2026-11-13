@@ -57,13 +57,13 @@ Submission and container entry are the author's own. Run by `just test-e2e-slurm
 
 ### `podman/`
 
-A project whose recipe uses rootless Podman, on a machine where the workbench
-runs scripts directly (`podman-host`). Its build runs `podman build` on the
-`Containerfile`, which pins its Python base image by digest, and saves the
-image as the experiment environment; its activation loads that image and runs
-each experiment in it with `podman run`. Podman is the author's own tool here:
-the product runs these scripts like any others. Run by
-`just test-showcase-api 1 podman/`.
+A project built and run with rootless Podman, on a machine where the workbench
+runs scripts directly (`podman-host`) and Podman is the only engine they can
+use. Script inference probes that, so its build is `podman build` on the
+`Containerfile`, which pins its Python base image by digest, saved as the
+experiment environment, and its activation loads that image and runs each
+experiment in it with `podman run`; the recipe holds only the experiment and
+its verify script. Run by `just test-showcase-api 1 podman/`.
 
 ### `stochastic/`
 

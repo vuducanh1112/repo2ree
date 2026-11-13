@@ -23,6 +23,7 @@ ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG = DecisionDag(
             docker_render="docker_activate_experiment_environment_v1",
             venv_rule="venv-activate-experiment-environment-v1",
             venv_render="venv_activate_experiment_environment_v1",
+            podman=("podman-activate-experiment-environment", "podman_activate_experiment_environment"),
         ),
     ],
 )

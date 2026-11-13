@@ -115,12 +115,19 @@ class DockerExperimentEnvironmentPlan(BaseModel):
 ExperimentEnvironmentPlan = DockerExperimentEnvironmentPlan
 
 
+# The container engines a build or activation script may drive.
+ContainerEngine = Literal["docker", "podman"]
+
+
 class DockerExperimentEnvironmentContract(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["docker_archive"] = "docker_archive"
     artifact_path: str
     image_ref: str
+    # The engine whose store the image was built in, when a generated build says so; None when only the
+    # archive is known, which either engine loads.
+    engine: ContainerEngine | None = None
     workspace_mount: str = "/workspace"
     working_directory: str = "/workspace"
 
@@ -377,13 +384,61 @@ class ExperimentGateObservation(BaseModel):
     declared: bool = False
 
 
+EngineState = Literal["absent", "unreachable", "usable"]
+
+
+class EngineObservation(BaseModel):
+    """One engine as the probe found it where the REE's scripts run."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    engine: ContainerEngine
+    # absent: no client on PATH; unreachable: a client that could not reach an engine; usable: it answered.
+    state: EngineState
+    client_path: str | None = None
+    # The engine that answered the client: a docker client may be served by Podman.
+    server: str | None = None
+    version: str | None = None
+    rootless: bool | None = None
+    # The first line of what the client printed when it could not reach an engine.
+    detail: str | None = None
+
+
+class ContainerEnginesProbe(BaseModel):
+    """Which container engines a script run for this REE can use, as probed where it runs.
+
+    ``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so
+    nothing is known about the engines, which is not the same as their absence.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["probed", "failed", "not_probed"]
+    runner: Literal["host", "container"] | None = None
+    # The REE's image the probe ran in, on a workbench that runs scripts in containers.
+    image: str | None = None
+    engines: list[EngineObservation] = Field(default_factory=list)
+    detail: str = ""
+
+
+class ContainerEnginesObservation(BaseModel):
+    """A container-engine check's view of the probe: the engine it judged, and everything the probe saw."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["container_engines"] = "container_engines"
+    engine: ContainerEngine
+    probe: ContainerEnginesProbe
+
+
 DecisionObservation = Annotated[
     LogicalRootObservation
     | PathMatchesObservation
     | StrategyOutcomesObservation
     | ExperimentEnvironmentContractObservation
     | CommandCandidatesObservation
-    | ExperimentGateObservation,
+    | ExperimentGateObservation
+    | ContainerEnginesObservation,
     Field(discriminator="kind"),
 ]
 

@@ -10,11 +10,18 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from scriptinfer_helpers import FixedEngines
 
 from repo2ree_core.operations.handlers.author import generate_script_candidates as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
+
+
+@pytest.fixture(autouse=True)
+def _docker_machine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests never probe the machine they run on: its scripts can use Docker alone."""
+    monkeypatch.setattr(handler, "engine_probe", lambda _layout: FixedEngines("docker"))
 
 
 def _silent_log(*_: object) -> None:

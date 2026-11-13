@@ -25,10 +25,11 @@ from repo2ree_core.author_recipes.inference.decision_graphs.build import (
     BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG,
     DOCKER_BUILD_RULE,
     PIP_BUILD_RULE,
+    PODMAN_BUILD_RULE,
 )
 from repo2ree_core.author_recipes.inference.engine import evaluate_target
 from repo2ree_core.author_recipes.inference.models import DecisionContext
-from repo2ree_core.author_recipes.inference.renderers._common import experiment_environment_image_ref
+from repo2ree_core.author_recipes.inference.renderers._common import experiment_environment_image_ref, podman_image_ref
 from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import (
     DockerExperimentEnvironmentContract,
@@ -65,6 +66,7 @@ def expected_builds_for_experiment_environment(
         facts=context.facts,
         policy=context.policy,
         ree_name=context.ree_name,
+        machine=context.machine,
         experiment_environment=context.experiment_environment.model_copy(
             update={"declared_experiment_environment_path": declared_experiment_environment_path}
         ),
@@ -96,7 +98,13 @@ def _contract_for(
     """
     if rule == DOCKER_BUILD_RULE:
         return DockerExperimentEnvironmentContract(
-            artifact_path=declared_experiment_environment_path, image_ref=experiment_environment_image_ref(ree_name)
+            artifact_path=declared_experiment_environment_path,
+            image_ref=experiment_environment_image_ref(ree_name),
+            engine="docker",
+        )
+    if rule == PODMAN_BUILD_RULE:
+        return DockerExperimentEnvironmentContract(
+            artifact_path=declared_experiment_environment_path, image_ref=podman_image_ref(ree_name), engine="podman"
         )
     if rule == PIP_BUILD_RULE:
         return VenvExperimentEnvironmentContract(artifact_path=declared_experiment_environment_path)

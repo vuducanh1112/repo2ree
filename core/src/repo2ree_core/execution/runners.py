@@ -45,12 +45,44 @@ EXECUTION_VARIABLE = "REPO2REE_EXECUTION"
 _ENGINE_SOCKET = "/var/run/docker.sock"
 
 
+@dataclass(frozen=True)
+class ProbeResult:
+    """What a probe printed where the REE's scripts run; ``returncode`` None when it ran out of time."""
+
+    runner: Literal["host", "container"]
+    image: str | None
+    returncode: int | None
+    stdout: str
+    stderr: str
+
+
 class ScriptRunner(Protocol):
     def run(
         self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
     ) -> StreamingProcessResult: ...
 
+    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
+        """Run ``argv`` where a script runs, as a script would, for at most ``seconds``, keeping what it prints
+        out of the step's logs. A probe reads and writes nothing in the workspace."""
+        ...
+
     def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation: ...
+
+
+def _bounded(command: list[str], *, cwd: Path | None, seconds: float) -> tuple[int | None, str, str]:
+    try:
+        done = subprocess.run(command, cwd=cwd, check=False, capture_output=True, text=True, timeout=seconds)
+    except subprocess.TimeoutExpired as expired:
+        return None, _text(expired.stdout), _text(expired.stderr)
+    return done.returncode, done.stdout, done.stderr
+
+
+def _text(output: str | bytes | None) -> str:
+    return output.decode(errors="replace") if isinstance(output, bytes) else output or ""
+
+
+def _quiet(_stream: str, _level: str, _message: str) -> None:
+    return None
 
 
 class LocalScriptRunner:
@@ -60,6 +92,10 @@ class LocalScriptRunner:
         self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
     ) -> StreamingProcessResult:
         return run_streaming_process(argv, log=log, cwd=workspace, is_canceled=is_canceled)
+
+    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
+        returncode, stdout, stderr = _bounded(argv, cwd=workspace, seconds=seconds)
+        return ProbeResult(runner="host", image=None, returncode=returncode, stdout=stdout, stderr=stderr)
 
     def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
         return observe_workbench_environment(declared)
@@ -84,6 +120,26 @@ class ContainerScriptRunner:
     ) -> StreamingProcessResult:
         image = self._resolved(log)
         name = f"repo2ree-job-{uuid.uuid4().hex[:12]}"
+        command, mounts = self._command(workspace, argv, name, image)
+        try:
+            return run_streaming_process(command, log=log, is_canceled=is_canceled)
+        finally:
+            # A canceled run stops the engine's client, not always the container it started.
+            subprocess.run([self.engine, "rm", "-f", name], check=False, capture_output=True, timeout=60)
+            self._hand_back(workspace, image, mounts, log)
+
+    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
+        image = self._resolved(_quiet)
+        name = f"repo2ree-job-{uuid.uuid4().hex[:12]}"
+        command, _ = self._command(workspace, argv, name, image)
+        try:
+            returncode, stdout, stderr = _bounded(command, cwd=None, seconds=seconds)
+        finally:
+            subprocess.run([self.engine, "rm", "-f", name], check=False, capture_output=True, timeout=60)
+        return ProbeResult(runner="container", image=self.image, returncode=returncode, stdout=stdout, stderr=stderr)
+
+    def _command(self, workspace: Path, argv: list[str], name: str, image: str) -> tuple[list[str], list[str]]:
+        """The engine command that runs ``argv`` in a container named ``name``, and the mounts it gives it."""
         engine_side = self._engine_side(workspace)
         mounts = ["-v", f"{engine_side}:{workspace}"]
         workdir = str(workspace)
@@ -103,12 +159,7 @@ class ContainerScriptRunner:
             *(self.engine, "run", "--rm", "--init", "--name", name, *labels, *mounts),
             *("-w", workdir, image, *argv),
         ]
-        try:
-            return run_streaming_process(command, log=log, is_canceled=is_canceled)
-        finally:
-            # A canceled run stops the engine's client, not always the container it started.
-            subprocess.run([self.engine, "rm", "-f", name], check=False, capture_output=True, timeout=60)
-            self._hand_back(workspace, image, mounts, log)
+        return command, mounts
 
     def _hand_back(self, workspace: Path, image: str, mounts: list[str], log: LogSink) -> None:
         """Give what the script wrote back to the workbench's user.

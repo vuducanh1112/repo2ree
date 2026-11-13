@@ -9100,6 +9100,93 @@
         ],
         "title": "CommandCandidatesObservation"
       },
+      "ContainerEnginesObservation": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "container_engines",
+            "title": "Kind",
+            "default": "container_engines"
+          },
+          "engine": {
+            "type": "string",
+            "enum": [
+              "docker",
+              "podman"
+            ],
+            "title": "Engine"
+          },
+          "probe": {
+            "$ref": "#/components/schemas/ContainerEnginesProbe"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "engine",
+          "probe"
+        ],
+        "title": "ContainerEnginesObservation",
+        "description": "A container-engine check's view of the probe: the engine it judged, and everything the probe saw."
+      },
+      "ContainerEnginesProbe": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "probed",
+              "failed",
+              "not_probed"
+            ],
+            "title": "Status"
+          },
+          "runner": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "host",
+                  "container"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runner"
+          },
+          "image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image"
+          },
+          "engines": {
+            "items": {
+              "$ref": "#/components/schemas/EngineObservation"
+            },
+            "type": "array",
+            "title": "Engines"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "ContainerEnginesProbe",
+        "description": "Which container engines a script run for this REE can use, as probed where it runs.\n\n``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so\nnothing is known about the engines, which is not the same as their absence."
+      },
       "Contributor": {
         "properties": {
           "identifier": {
@@ -9563,12 +9650,16 @@
                   },
                   {
                     "$ref": "#/components/schemas/ExperimentGateObservation"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ContainerEnginesObservation"
                   }
                 ],
                 "discriminator": {
                   "propertyName": "kind",
                   "mapping": {
                     "command_candidates": "#/components/schemas/CommandCandidatesObservation",
+                    "container_engines": "#/components/schemas/ContainerEnginesObservation",
                     "experiment_environment_contract": "#/components/schemas/ExperimentEnvironmentContractObservation",
                     "experiment_gate": "#/components/schemas/ExperimentGateObservation",
                     "logical_root": "#/components/schemas/LogicalRootObservation",
@@ -9782,6 +9873,21 @@
             "type": "string",
             "title": "Image Ref"
           },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "docker",
+                  "podman"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
           "workspace_mount": {
             "type": "string",
             "title": "Workspace Mount",
@@ -9865,6 +9971,90 @@
           "digest"
         ],
         "title": "DockerfileBinding"
+      },
+      "EngineObservation": {
+        "properties": {
+          "engine": {
+            "type": "string",
+            "enum": [
+              "docker",
+              "podman"
+            ],
+            "title": "Engine"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "absent",
+              "unreachable",
+              "usable"
+            ],
+            "title": "State"
+          },
+          "client_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Path"
+          },
+          "server": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Server"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "rootless": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rootless"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "engine",
+          "state"
+        ],
+        "title": "EngineObservation",
+        "description": "One engine as the probe found it where the REE's scripts run."
       },
       "EnvironmentLevel": {
         "type": "integer",

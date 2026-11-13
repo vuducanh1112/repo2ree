@@ -11,8 +11,11 @@ import hashlib
 import io
 import json
 import tarfile
+from typing import get_args
 
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ArtifactFile
+from repo2ree_core.author_recipes.inference.machine import MachineInputs
+from repo2ree_protocol.inference import ContainerEngine, ContainerEnginesProbe, EngineObservation
 
 
 def docker_archive(repo_tags: list[str], *, entrypoint: object = None, cmd: object = None) -> bytes:
@@ -149,3 +152,26 @@ class MemoryAccessor:
     def open(self, rel_path: str):
         data = self.files.get(rel_path)
         return io.BytesIO(data) if data is not None else None
+
+
+class FixedEngines:
+    """A machine whose container engines are what a test says: these usable, the others absent."""
+
+    def __init__(self, *usable: ContainerEngine) -> None:
+        self.usable = usable
+        self.asked = 0
+
+    def probe(self) -> ContainerEnginesProbe:
+        self.asked += 1
+        return ContainerEnginesProbe(
+            status="probed",
+            runner="host",
+            engines=[
+                EngineObservation(engine=engine, state="usable" if engine in self.usable else "absent")
+                for engine in get_args(ContainerEngine)
+            ],
+        )
+
+
+def machine(*usable: ContainerEngine) -> MachineInputs:
+    return MachineInputs(engines=FixedEngines(*usable))
