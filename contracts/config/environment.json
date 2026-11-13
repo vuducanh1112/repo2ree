@@ -503,6 +503,20 @@
         "type": "string"
       }
     },
+    "REE_LAUNCH": {
+      "kind": "runtime",
+      "owner": "reproducer",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REE_LAUNCH_OPTIONS": {
+      "kind": "runtime",
+      "owner": "reproducer",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REGISTRIES": {
       "kind": "deployment",
       "owner": "publishing",
@@ -709,6 +723,20 @@
     "SERVICE_VERSION": {
       "kind": "runtime",
       "owner": "protocol",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "SLURM_JOB_ID": {
+      "kind": "external",
+      "owner": "slurm",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "SLURM_STEP_ID": {
+      "kind": "external",
+      "owner": "slurm",
       "schema": {
         "type": "string"
       }

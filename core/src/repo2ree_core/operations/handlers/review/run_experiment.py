@@ -128,6 +128,7 @@ def handle_review_run_experiment(
         # compares this with the author receipt before granting a verdict.
         verify_script_digest=verify_script_digest,
         activate_experiment_environment_script_digest=activate_script_digest,
+        launch_script_digest=opened.launch_script_digest,
     )
 
     timing = opened.timer.finish()
@@ -156,6 +157,8 @@ def handle_review_run_experiment(
         if certified.experiment_environment_digest
         else None,
         produced_output_digest=Digest(comparison.observed_output_digest) if comparison.observed_output_digest else None,
+        launch_script_digest=opened.launch_script_digest,
+        launched=outcome.launched,
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
     _log_verdict(comparison, log=log)
@@ -192,6 +195,7 @@ def _certify(
     experiment_environment_digest: str | None,
     verify_script_digest: str | None,
     activate_experiment_environment_script_digest: str | None,
+    launch_script_digest: str | None,
 ) -> ExperimentComparison:
     """Compare the reviewer's run with the author's recorded run of the same name.
 
@@ -206,8 +210,10 @@ def _certify(
     expected_verify_script_digest = None
     expected_output_digest = None
     expected_activate_digest = None
+    expected_launch_digest = None
     if isinstance(author, RunExperimentReceipt):
         expected_activate_digest = author.activate_experiment_environment_script_digest
+        expected_launch_digest = author.launch_script_digest
         expected_verify_exit_code = _author_verify_exit_code(author)
         expected_verify_script_digest = author.verify_script_digest
         expected_output_digest = author.produced_output_digest
@@ -226,6 +232,8 @@ def _certify(
         expected_output_digest=expected_output_digest,
         observed_output_digest=observed_output_digest,
         experiment_environment_digest=experiment_environment_digest,
+        expected_launch_script_digest=expected_launch_digest,
+        launch_script_digest=launch_script_digest,
     )
 
 

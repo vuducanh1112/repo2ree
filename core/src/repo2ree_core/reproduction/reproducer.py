@@ -135,8 +135,12 @@ def build_reproducer_sh(
     experiments: Sequence[tuple[str, str, str]],
     experiment_environment_workspace_path: str | None,
     experiment_environment_artifact_basename: str | None,
+    launch_script: str | None = None,
 ) -> bytes:
     """Render the self-contained ``run.sh`` for a bundle.
+
+    With ``launch_script``, every script runs through the author's launch script, as on the author's workbench,
+    unless the reproducer sets ``REE_LAUNCH``.
 
     ``experiments`` is a sequence of ``(name, run_script, verify_script)``
     triples; ``verify_script`` may be empty (run only, exit code is the
@@ -159,6 +163,7 @@ def build_reproducer_sh(
             f"ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(activate_experiment_environment_script)}",
             f"EXPERIMENT_ENVIRONMENT_WS_PATH={shell_single_quote(experiment_environment_workspace_path or '')}",
             f"EXPERIMENT_ENVIRONMENT_ARTIFACT={shell_single_quote(experiment_environment_artifact_basename or '')}",
+            f"LAUNCH_SCRIPT={shell_single_quote(launch_script or '')}",
         )
     )
     script = (
@@ -184,6 +189,7 @@ def reproducer_entries(
     revision: str = "",
     swhid: str = "",
     workbench_environment: WorkbenchEnvironment | None = None,
+    launch_script: str | None = None,
 ) -> list[tuple[str, bytes]]:
     """Return the ``(path, bytes)`` bundle entries for the reproducer.
 
@@ -201,10 +207,11 @@ def reproducer_entries(
         experiments=experiments,
         experiment_environment_workspace_path=experiment_environment_workspace_path,
         experiment_environment_artifact_basename=experiment_environment_artifact_basename,
+        launch_script=launch_script,
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
-    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD).replace(
+    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD.replace("@@LAUNCH@@", _launch_text(launch_script))).replace(
         "@@ENVIRONMENT@@", _workbench_environment_text(workbench_environment)
     )
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=BUNDLE_REPRODUCER_README_ENTRY_PATH)
@@ -224,6 +231,23 @@ def _workbench_environment_text(workbench_environment: WorkbenchEnvironment | No
         return "The author ran the scripts directly on their machine; no image describes it."
     pin = "" if workbench_environment.pinned else " It is not pinned by digest, so what it names may have moved since."
     return f"The author's scripts ran in the OCI image `{workbench_environment.oci}`.{pin}"
+
+
+def _launch_text(launch_script: str | None) -> str:
+    """How the scripts are launched, and how a reproducer launches them otherwise."""
+    if not launch_script:
+        return (
+            "The author ran every script directly. To launch each through something of your own, a scheduler for "
+            "instance, set `REE_LAUNCH` to its command: `REE_LAUNCH='srun -N1 -t 30' sh run.sh all`."
+        )
+    return (
+        f"The author launched every script through `{launch_script}` (in `ree/@@OVERLAY_DIRNAME@@/`), "
+        "and `run.sh` does the same: read it to see the launcher and the options it sets. To change that:\n\n"
+        "- `REE_LAUNCH_OPTIONS='--partition=short --account=mylab' sh run.sh all` adds your options to the "
+        "launcher's; yours come last, so they win.\n"
+        "- `REE_LAUNCH=native sh run.sh all` runs every script directly, on a machine without the launcher.\n"
+        "- `REE_LAUNCH='srun -N1 -t 30' sh run.sh all` launches every script with a command of your own instead."
+    )
 
 
 # ================================================
@@ -264,6 +288,32 @@ _RUN_SH_TEMPLATE = shell_text("""
 
     say() { printf '%s\\n' "$*"; }
     die() { printf 'error: %s\\n' "$*" >&2; exit 1; }
+
+    # Every script runs through the author's launch script when the REE declares one, as on the author's
+    # workbench. REE_LAUNCH=native runs them directly; REE_LAUNCH='<command>' launches them with that command
+    # instead; REE_LAUNCH_OPTIONS reaches the author's launch script, which adds it to its launcher's options.
+    launched() {
+      case "${REE_LAUNCH:-}" in
+        native) "$@" ;;
+        "")
+          if [ -n "$LAUNCH_SCRIPT" ]; then
+            [ -f "$LAUNCH_SCRIPT" ] || die "launch script not found in workspace: $LAUNCH_SCRIPT"
+            sh "$LAUNCH_SCRIPT" "$@"
+          else
+            "$@"
+          fi ;;
+        *) eval "$REE_LAUNCH" '"$@"' ;;
+      esac
+    }
+
+    # How the next command is launched, as a prefix for the line that shows it.
+    launch_prefix() {
+      case "${REE_LAUNCH:-}" in
+        native) ;;
+        "") if [ -n "$LAUNCH_SCRIPT" ]; then printf 'sh %s ' "$LAUNCH_SCRIPT"; fi ;;
+        *) printf '%s ' "$REE_LAUNCH" ;;
+      esac
+    }
 
     # Populate the upstream source layer: extract the bundled snapshot, else fetch
     # from the recorded origin and verify the SWHID. Delegated to the bundled
@@ -315,8 +365,8 @@ _RUN_SH_TEMPLATE = shell_text("""
     run_in_workspace() {
       script=$1
       [ -f "$WS/$script" ] || die "script not found in workspace: $script"
-      say "\\$ sh $script"
-      ( cd "$WS" && sh "$script" )
+      say "\\$ $(launch_prefix)sh $script"
+      ( cd "$WS" && launched sh "$script" )
     }
 
     # Run just a verify script from the workspace root (no run script). The
@@ -327,8 +377,8 @@ _RUN_SH_TEMPLATE = shell_text("""
     run_verify_only() {
       verify=$1
       [ -f "$WS/$verify" ] || die "verify script not found in workspace: $verify"
-      say "\\$ sh $verify"
-      if ( cd "$WS" && sh "$verify" ); then
+      say "\\$ $(launch_prefix)sh $verify"
+      if ( cd "$WS" && launched sh "$verify" ); then
         say "VERIFIED: pass"
       else
         vrc=$?
@@ -346,16 +396,16 @@ _RUN_SH_TEMPLATE = shell_text("""
       script=$1
       [ -f "$WS/$script" ] || die "script not found in workspace: $script"
       require_activation
-      say "\\$ sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT sh $script"
-      ( cd "$WS" && sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" sh "$script" )
+      say "\\$ $(launch_prefix)sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT sh $script"
+      ( cd "$WS" && launched sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" sh "$script" )
     }
 
     # The activation alone, around a command that does nothing: it enters the experiment
     # environment and hands over.
     run_activation() {
       require_activation
-      say "\\$ sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT true"
-      ( cd "$WS" && sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" true )
+      say "\\$ $(launch_prefix)sh $ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT true"
+      ( cd "$WS" && launched sh "$ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT" true )
     }
 
     # Run a run script inside the activated experiment environment, then its verify
@@ -485,6 +535,10 @@ _REPRODUCING_MD = shell_text("""
     ## Environment
 
     @@ENVIRONMENT@@
+
+    ## Launch
+
+    @@LAUNCH@@
 
     ## Layout
 

@@ -8,6 +8,7 @@ from repo2ree_authoring.lint.catalog import catalog_codes
 from repo2ree_authoring.lint.models import ScriptContext
 from repo2ree_authoring.lint.rules.exit_status import PipeMaskingRule
 from repo2ree_authoring.lint.rules.experiment_environment_reference import ExperimentEnvironmentReferenceRule
+from repo2ree_authoring.lint.rules.launch import LaunchContractRule
 from repo2ree_authoring.lint.rules.placeholders import (
     EmptyCommandScaffoldRule,
     UneditedPlaceholderRule,
@@ -30,6 +31,7 @@ RULES: tuple[LintRule, ...] = (
     EmptyCommandScaffoldRule(),
     PipeMaskingRule(),
     ExperimentEnvironmentReferenceRule(),
+    LaunchContractRule(),
 )
 
 

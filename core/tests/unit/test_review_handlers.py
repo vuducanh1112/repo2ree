@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -29,22 +30,32 @@ from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
     ExperimentDefinition,
     ExperimentEnvironmentDefinition,
+    LaunchDefinition,
     Ree,
     ReeDefinition,
     ReeReceipts,
     ReeSubject,
     SourceDefinition,
 )
-from repo2ree_ree.primitives import ExperimentEnvironmentPath, OverlayPath, RunId, Swhid, WorkspacePath
+from repo2ree_ree.primitives import (
+    ExperimentEnvironmentPath,
+    LaunchOption,
+    OverlayPath,
+    RunId,
+    Swhid,
+    WorkspacePath,
+)
 from repo2ree_ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
 from repo2ree_ree.review import (
     ExperimentEnvironmentComparison,
     ReviewBuildExperimentEnvironmentReceipt,
+    ReviewLaunch,
     SourceComparison,
 )
 
@@ -74,7 +85,7 @@ _EXPERIMENT = b"#!/bin/sh\nmkdir -p outputs && printf result > outputs/result.tx
 _EXPERIMENT_VERIFY = b'#!/bin/sh\ntest "$(cat outputs/result.txt)" = result\n'
 
 
-def _author_ree() -> Ree:
+def _author_ree(launch: bytes | None = None) -> Ree:
     experiment = ExperimentDefinition(
         name=_EXPERIMENT_NAME,
         run_script_path=OverlayPath(experiment_run_script_path(_EXPERIMENT_NAME)),
@@ -108,17 +119,28 @@ def _author_ree() -> Ree:
                     activate_experiment_environment_script_size=len(_ACTIVATE),
                 ),
                 experiments=(experiment,),
+                launch=LaunchDefinition(launch_script_digest=digest_bytes(launch), launch_script_size=len(launch))
+                if launch is not None
+                else None,
             ),
             receipts=ReeReceipts(experiments={_EXPERIMENT_NAME: author_experiment}),
         )
     )
 
 
-def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activate: bytes = _ACTIVATE) -> ReeLayout:
+def _workbench(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    activate: bytes = _ACTIVATE,
+    launch: bytes | None = None,
+    reviewer_launch: ReviewLaunch | None = None,
+    reviewer_copy: bytes | None = None,
+) -> ReeLayout:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_ree(_author_ree())
+    store.write_ree(_author_ree(launch))
     monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
 
     review = layout.review(_REVIEW_ID)
@@ -129,12 +151,14 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, activate: byt
         experiment_run_script_path(_EXPERIMENT_NAME): _EXPERIMENT,
         experiment_verify_script_path(_EXPERIMENT_NAME): _EXPERIMENT_VERIFY,
     }
+    if launch is not None:
+        files[RESERVED_LAUNCH_SCRIPT] = reviewer_copy if reviewer_copy is not None else launch
     for relative, contents in files.items():
         target = review.workspace / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(contents)
 
-    record = new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z")
+    record = new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z", launch=reviewer_launch)
     record = with_step(record, "source", status="completed", at="2026-08-03T00:00:01Z")
     record = with_step(record, "build_experiment_environment", status="completed", at="2026-08-03T00:00:02Z")
     record = record.model_copy(
@@ -332,3 +356,66 @@ def test_an_experiment_run_through_another_activate_script_is_inconclusive(
     comparison = result.outputs["comparison"]
     assert comparison["verdict"] == "inconclusive"
     assert comparison["expected_activate_experiment_environment_script_digest"] == digest_bytes(_ACTIVATE)
+
+
+# Stands in for srun: puts the command in a "job step", keeps the options it was given, and runs it.
+_LAUNCH = (
+    b'#!/bin/sh\nSLURM_JOB_ID=4711\nexport SLURM_JOB_ID\nprintf "%s" "${REE_LAUNCH_OPTIONS:-}" > options.txt\n'
+    b'exec "$@"\n'
+)
+
+
+def _experiment() -> dict[str, Any]:
+    result = run_experiment.handle_review_run_experiment(
+        ReviewRunExperimentArgs(review_id=_REVIEW_ID, experiment_name=_EXPERIMENT_NAME),
+        run_id="review-experiment",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+    )
+    assert result.status == "succeeded"
+    return result.outputs
+
+
+def test_a_review_launches_the_authors_scripts_through_the_authors_launch_with_its_own_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout = _workbench(
+        tmp_path,
+        monkeypatch,
+        launch=_LAUNCH,
+        reviewer_launch=ReviewLaunch(options=(LaunchOption("--partition=short"),)),
+    )
+    activation = _activate().outputs["receipt"]
+    assert activation["launch_script_digest"] == digest_bytes(_LAUNCH)
+    assert activation["launched"]["slurm_job_id"] == "4711"
+    assert (layout.review(_REVIEW_ID).workspace / "options.txt").read_text() == "--partition=short"
+
+    outputs = _experiment()
+    assert outputs["receipt"]["launched"]["slurm_job_id"] == "4711"
+    # The author's receipt ran under no launch, the review under the author's: shown side by side, deciding nothing.
+    assert outputs["comparison"]["expected_launch_script_digest"] is None
+    assert outputs["comparison"]["launch_script_digest"] == digest_bytes(_LAUNCH)
+    assert outputs["comparison"]["verdict"] == "reproduced"
+
+
+def test_a_review_that_chose_native_runs_the_authors_scripts_directly(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout = _workbench(tmp_path, monkeypatch, launch=_LAUNCH, reviewer_launch=ReviewLaunch(mode="native"))
+    activation = _activate().outputs["receipt"]
+    assert (activation["launch_script_digest"], activation["launched"]) == (None, None)
+    assert not (layout.review(_REVIEW_ID).workspace / "options.txt").exists()
+    assert _experiment()["comparison"]["verdict"] == "reproduced"
+
+
+def test_a_review_does_not_launch_through_a_copy_that_is_not_the_authors_launch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _workbench(tmp_path, monkeypatch, launch=_LAUNCH, reviewer_copy=_LAUNCH + b"# edited\n")
+    result = _activate()
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert "cannot launch the author's scripts" in result.failure.message

@@ -1227,6 +1227,9 @@ export interface components {
              */
             exit_code: 0;
             workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
         };
         /**
          * ArchiveBindingAttestation
@@ -1431,6 +1434,9 @@ export interface components {
             /** Produced Artifact Digest */
             produced_artifact_digest: string;
             workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
         };
         /**
          * BuildExperimentEnvironmentScriptTemplates
@@ -1774,6 +1780,7 @@ export interface components {
              * @enum {string}
              */
             basis: "auto" | "independent" | "bundled";
+            launch?: components["schemas"]["ReviewLaunch"];
         };
         /** CrossCheckSbomReceipt */
         CrossCheckSbomReceipt: {
@@ -1839,7 +1846,7 @@ export interface components {
             /** Branch */
             branch?: string | null;
             /** Observed */
-            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["ExperimentEnvironmentContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"] | components["schemas"]["ContainerEnginesObservation"]) | null;
+            observed?: (components["schemas"]["LogicalRootObservation"] | components["schemas"]["PathMatchesObservation"] | components["schemas"]["StrategyOutcomesObservation"] | components["schemas"]["ExperimentEnvironmentContractObservation"] | components["schemas"]["CommandCandidatesObservation"] | components["schemas"]["ExperimentGateObservation"] | components["schemas"]["ContainerEnginesObservation"] | components["schemas"]["SlurmObservation"]) | null;
             /** Outcome */
             outcome?: string | null;
             /**
@@ -2175,6 +2182,10 @@ export interface components {
             expected_activate_experiment_environment_script_digest?: string | null;
             /** Activate Experiment Environment Script Digest */
             activate_experiment_environment_script_digest?: string | null;
+            /** Expected Launch Script Digest */
+            expected_launch_script_digest?: string | null;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
             /** Expected Verify Exit Code */
             expected_verify_exit_code?: number | null;
             /** Observed Verify Exit Code */
@@ -2764,6 +2775,46 @@ export interface components {
             } | null;
         };
         /**
+         * LaunchDefinition
+         * @description The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``.
+         */
+        LaunchDefinition: {
+            /**
+             * Launch Script Path
+             * @default ree-scripts/launch.sh
+             */
+            launch_script_path: string;
+            /** Launch Script Digest */
+            launch_script_digest: string;
+            /** Launch Script Size */
+            launch_script_size: number;
+        };
+        /**
+         * LaunchScriptTemplates
+         * @description The launch-script templates and the reserved path they belong at.
+         *
+         *     Optional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run
+         *     each script through it, ``sh launch.sh <command>``.
+         */
+        LaunchScriptTemplates: {
+            /** Path */
+            path: string;
+            /** Templates */
+            templates: components["schemas"]["ScriptTemplateEntry"][];
+        };
+        /**
+         * Launched
+         * @description Where a launched script ran, as it saw from inside the launch.
+         */
+        Launched: {
+            /** Node */
+            node: string;
+            /** Slurm Job Id */
+            slurm_job_id?: string | null;
+            /** Slurm Step Id */
+            slurm_step_id?: string | null;
+        };
+        /**
          * LintReport
          * @description Everything one lint run observed about one script.
          */
@@ -3128,6 +3179,7 @@ export interface components {
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
+            launch?: components["schemas"]["LaunchDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
@@ -3147,6 +3199,7 @@ export interface components {
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
+            launch?: components["schemas"]["LaunchDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
@@ -3525,6 +3578,9 @@ export interface components {
             experiment_environment_path: string;
             /** Experiment Environment Digest */
             experiment_environment_digest: string;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
         };
         /** ReviewBuildExperimentEnvironmentReceipt */
         ReviewBuildExperimentEnvironmentReceipt: {
@@ -3563,6 +3619,9 @@ export interface components {
             artifact_path: string;
             /** Produced Artifact Digest */
             produced_artifact_digest: string;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
         };
         /** ReviewExperimentReceipt */
         ReviewExperimentReceipt: {
@@ -3615,6 +3674,30 @@ export interface components {
             experiment_environment_digest?: string | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
+        };
+        /**
+         * ReviewLaunch
+         * @description The reviewer's choice of launch, kept for the whole attempt.
+         *
+         *     ``author`` runs every script through the author's launch script where the REE declares one, with ``options``
+         *     added to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them
+         *     directly, as an REE with no launch does.
+         */
+        ReviewLaunch: {
+            /**
+             * Mode
+             * @default author
+             * @enum {string}
+             */
+            mode: "author" | "native";
+            /**
+             * Options
+             * @default []
+             */
+            options: string[];
         };
         /** ReviewRecord */
         ReviewRecord: {
@@ -3629,6 +3712,7 @@ export interface components {
              * @enum {string}
              */
             status: "running" | "completed" | "failed" | "canceled";
+            launch?: components["schemas"]["ReviewLaunch"];
             /** Steps */
             steps?: components["schemas"]["ReviewStepState"][];
             source_receipt?: components["schemas"]["ReviewAcquireSourceReceipt"] | null;
@@ -3713,6 +3797,9 @@ export interface components {
             /** Verify Exit Code */
             verify_exit_code?: 0 | null;
             workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;
         };
@@ -3892,7 +3979,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify" | "launch";
             /** Experiment Name */
             experiment_name?: string | null;
             /** Path */
@@ -3911,7 +3998,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify" | "launch";
             /** Experiment Name */
             experiment_name?: string | null;
         };
@@ -3919,6 +4006,7 @@ export interface components {
         ScriptTemplateCatalog: {
             build_experiment_environment: components["schemas"]["BuildExperimentEnvironmentScriptTemplates"];
             activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentScriptTemplates"];
+            launch: components["schemas"]["LaunchScriptTemplates"];
             experiment: components["schemas"]["ExperimentScriptTemplates"];
             /** Verify */
             verify: components["schemas"]["ScriptTemplateEntry"][];
@@ -4006,6 +4094,65 @@ export interface components {
             verification_material: string;
             /** Value */
             value: string;
+        };
+        /**
+         * SlurmObservation
+         * @description A launch check's view of the Slurm probe.
+         */
+        SlurmObservation: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "slurm";
+            probe: components["schemas"]["SlurmProbe"];
+        };
+        /**
+         * SlurmPartition
+         * @description One partition the controller reported: its name, whether jobs land there by default, and its time limit
+         *     as Slurm prints it (``30:00``, ``1-00:00:00``, ``infinite``).
+         */
+        SlurmPartition: {
+            /** Name */
+            name: string;
+            /**
+             * Default
+             * @default false
+             */
+            default: boolean;
+            /** Time Limit */
+            time_limit?: string | null;
+        };
+        /**
+         * SlurmProbe
+         * @description Whether a script run for this REE can launch Slurm job steps, as probed where it runs.
+         *
+         *     ``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;
+         *     ``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence.
+         */
+        SlurmProbe: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "probed" | "failed" | "not_probed";
+            /** Runner */
+            runner?: ("host" | "container") | null;
+            /** Image */
+            image?: string | null;
+            /** State */
+            state?: ("absent" | "unreachable" | "usable") | null;
+            /** Srun Path */
+            srun_path?: string | null;
+            /** Version */
+            version?: string | null;
+            /** Partitions */
+            partitions?: components["schemas"]["SlurmPartition"][];
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
         };
         /** SourceAcquirePayload */
         SourceAcquirePayload: {

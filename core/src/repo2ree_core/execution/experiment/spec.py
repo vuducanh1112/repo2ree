@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from repo2ree_core.execution.launch import Launch
 from repo2ree_ree.paths import validate_relative_path
 
 
@@ -15,6 +16,8 @@ class RunnableSpec:
     run_script: str = ""
     verify_script: str = ""
     output_paths: tuple[str, ...] = ()
+    # The launch every one of its scripts runs through; None runs them directly.
+    launch: Launch | None = None
 
     def __post_init__(self) -> None:
         if self.run_script:

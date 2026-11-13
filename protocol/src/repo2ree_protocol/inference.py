@@ -431,6 +431,48 @@ class ContainerEnginesObservation(BaseModel):
     probe: ContainerEnginesProbe
 
 
+SlurmState = Literal["absent", "unreachable", "usable"]
+
+
+class SlurmPartition(BaseModel):
+    """One partition the controller reported: its name, whether jobs land there by default, and its time limit
+    as Slurm prints it (``30:00``, ``1-00:00:00``, ``infinite``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    default: bool = False
+    time_limit: str | None = None
+
+
+class SlurmProbe(BaseModel):
+    """Whether a script run for this REE can launch Slurm job steps, as probed where it runs.
+
+    ``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;
+    ``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["probed", "failed", "not_probed"]
+    runner: Literal["host", "container"] | None = None
+    image: str | None = None
+    state: SlurmState | None = None
+    srun_path: str | None = None
+    version: str | None = None
+    partitions: list[SlurmPartition] = Field(default_factory=list)
+    detail: str = ""
+
+
+class SlurmObservation(BaseModel):
+    """A launch check's view of the Slurm probe."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["slurm"] = "slurm"
+    probe: SlurmProbe
+
+
 DecisionObservation = Annotated[
     LogicalRootObservation
     | PathMatchesObservation
@@ -438,7 +480,8 @@ DecisionObservation = Annotated[
     | ExperimentEnvironmentContractObservation
     | CommandCandidatesObservation
     | ExperimentGateObservation
-    | ContainerEnginesObservation,
+    | ContainerEnginesObservation
+    | SlurmObservation,
     Field(discriminator="kind"),
 ]
 

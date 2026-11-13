@@ -31,12 +31,14 @@ from repo2ree_authoring.templates import (
     activate_experiment_environment_templates,
     build_templates,
     experiment_run_templates,
+    launch_templates,
     verify_templates,
 )
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
+    RESERVED_LAUNCH_SCRIPT,
 )
 from repo2ree_ree.workbench_environment import EnvironmentBackend
 
@@ -151,6 +153,17 @@ class ActivateExperimentEnvironmentScriptTemplates(BaseModel):
     templates: list[ScriptTemplateEntry]
 
 
+class LaunchScriptTemplates(BaseModel):
+    """The launch-script templates and the reserved path they belong at.
+
+    Optional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run
+    each script through it, ``sh launch.sh <command>``.
+    """
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
 class ExperimentScriptTemplates(BaseModel):
     """Templates for per-experiment run scripts, plus the path convention they follow.
 
@@ -168,6 +181,7 @@ class ExperimentScriptTemplates(BaseModel):
 class ScriptTemplateCatalog(BaseModel):
     build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
     activate_experiment_environment: ActivateExperimentEnvironmentScriptTemplates
+    launch: LaunchScriptTemplates
     experiment: ExperimentScriptTemplates
     # Verify scripts are shared by every experiment, so their templates are catalog-wide.
     verify: list[ScriptTemplateEntry]
@@ -215,6 +229,7 @@ def list_script_templates() -> ScriptTemplateCatalog:
             path=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
             templates=_entries(activate_experiment_environment_templates()),
         ),
+        launch=LaunchScriptTemplates(path=RESERVED_LAUNCH_SCRIPT, templates=_entries(launch_templates())),
         experiment=ExperimentScriptTemplates(
             run_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
             verify_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",

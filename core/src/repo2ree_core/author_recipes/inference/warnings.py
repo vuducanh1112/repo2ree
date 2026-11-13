@@ -48,6 +48,27 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
         False,
         "Podman is not usable where this REE's scripts run, so no script that drives it is proposed as runnable.",
     ),
+    "slurm_unavailable": (
+        "info",
+        False,
+        "Slurm cannot launch job steps where this REE's scripts run, so no launch is proposed: they run directly.",
+    ),
+    "slurm_not_probed": (
+        "warning",
+        False,
+        (
+            "Whether this REE's scripts can be launched as Slurm job steps is unknown, so the launch is proposed "
+            "for confirmation."
+        ),
+    ),
+    "launch_needs_unset": (
+        "warning",
+        False,
+        (
+            "The CPUs, memory, time limit and GPUs the launch asks Slurm for are starting values, not what the "
+            "experiment needs: set them before running it."
+        ),
+    ),
     "container_engines_not_probed": (
         "warning",
         False,

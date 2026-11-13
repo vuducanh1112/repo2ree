@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from repo2ree_ree.primitives import Digest, ReePath, RunId, SourceType, Swhid, UtcInstant, WorkspacePath
+from repo2ree_ree.primitives import Digest, LaunchOption, ReePath, RunId, SourceType, Swhid, UtcInstant, WorkspacePath
+from repo2ree_ree.receipt import Launched
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ReviewStepKey = Literal["source", "build_experiment_environment", "activation", "experiments"]
@@ -14,6 +15,8 @@ ActivationVerdict = Literal["passed", "failed"]
 ExperimentVerdict = Literal["identical", "reproduced", "different", "inconclusive"]
 
 EvidenceBasis = Literal["independent", "bundled"]
+# How a review launches the author's scripts: through the author's launch script, or directly.
+ReviewLaunchMode = Literal["author", "native"]
 
 
 class _ReviewModel(BaseModel):
@@ -21,6 +24,24 @@ class _ReviewModel(BaseModel):
 
 
 ReviewExecutionStatus = Literal["succeeded", "failed"]
+
+
+class ReviewLaunch(_ReviewModel):
+    """The reviewer's choice of launch, kept for the whole attempt.
+
+    ``author`` runs every script through the author's launch script where the REE declares one, with ``options``
+    added to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them
+    directly, as an REE with no launch does.
+    """
+
+    mode: ReviewLaunchMode = "author"
+    options: tuple[LaunchOption, ...] = ()
+
+    @model_validator(mode="after")
+    def _options_need_a_launch(self) -> ReviewLaunch:
+        if self.mode == "native" and self.options:
+            raise ValueError("launch options apply to the author's launch, not to a native one")
+        return self
 
 
 class ReviewReceiptEnvelope(_ReviewModel):
@@ -48,6 +69,9 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
     build_experiment_environment_script_digest: Digest | None = None
     artifact_path: WorkspacePath
     produced_artifact_digest: Digest
+    # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: Digest | None = None
+    launched: Launched | None = None
 
 
 class ReviewActivationReceipt(ReviewReceiptEnvelope):
@@ -58,6 +82,9 @@ class ReviewActivationReceipt(ReviewReceiptEnvelope):
     exit_code: int | None = None
     experiment_environment_path: WorkspacePath
     experiment_environment_digest: Digest
+    # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: Digest | None = None
+    launched: Launched | None = None
 
 
 class ReviewExperimentReceipt(ReviewReceiptEnvelope):
@@ -73,6 +100,9 @@ class ReviewExperimentReceipt(ReviewReceiptEnvelope):
     experiment_environment_path: WorkspacePath | None = None
     experiment_environment_digest: Digest | None = None
     produced_output_digest: Digest | None = None
+    # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: Digest | None = None
+    launched: Launched | None = None
 
 
 class SourceComparison(_ReviewModel):
@@ -130,6 +160,9 @@ class ExperimentComparison(_ReviewModel):
     verify_script_digest: str | None = None
     expected_activate_experiment_environment_script_digest: str | None = None
     activate_experiment_environment_script_digest: str | None = None
+    # The author's launch and the review's, side by side; neither decides the verdict.
+    expected_launch_script_digest: str | None = None
+    launch_script_digest: str | None = None
     expected_verify_exit_code: int | None = None
     observed_verify_exit_code: int | None = None
     run_exit_code: int | None = None
@@ -151,6 +184,7 @@ class ReviewRecord(_ReviewModel):
     created_at: str
     updated_at: str
     status: ReviewStatus
+    launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
     steps: list[ReviewStepState] = Field(default_factory=list)
     source_receipt: ReviewAcquireSourceReceipt | None = None
     source_comparison: SourceComparison | None = None

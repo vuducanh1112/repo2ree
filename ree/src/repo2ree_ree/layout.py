@@ -153,6 +153,7 @@ _SCRIPTS = _directory(
     "The REE's scripts; the overlay holds these and nothing else.",
     _file("build_experiment_environment.sh", "authored", "git", "Builds the experiment environment."),
     _file("activate_experiment_environment.sh", "authored", "git", "Enters the experiment environment."),
+    _file("launch.sh", "authored", "git", "Launches each of the scripts, as a Slurm job step for instance; optional."),
     _directory(
         EXPERIMENTS,
         "authored",

@@ -213,12 +213,20 @@ def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
                 reasons.append("experiment environment artifact path changed")
         if _workbench_environment_changed(subject, receipt.workbench_environment):
             reasons.append("workbench environment changed")
+        if _launch_changed(subject, receipt.launch_script_digest):
+            reasons.append("launch script changed")
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("experiment environment has not been built",)),
         applicable=_experiment_environment_is_declared(subject),
         payload=subject.payload(receipt.produced_artifact_digest if receipt else None),
     )
+
+
+def _launch_changed(subject: _Subject, ran_under: Digest | None) -> bool:
+    """Whether the step ran under another launch than the one the REE declares, or none where it declares one."""
+    declared = subject.definition.launch
+    return ran_under != (declared.launch_script_digest if declared else None)
 
 
 def _workbench_environment_changed(subject: _Subject, observed: WorkbenchEnvironmentObservation | None) -> bool:
@@ -291,6 +299,8 @@ def _audit_activation_step(subject: _Subject) -> StepAudit:
         reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
         if _workbench_environment_changed(subject, receipt.workbench_environment):
             reasons.append("workbench environment changed")
+        if _launch_changed(subject, receipt.launch_script_digest):
+            reasons.append("launch script changed")
         if (
             subject.receipts.experiment_environment
             and receipt.experiment_environment_digest
@@ -328,6 +338,8 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
             reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
             if _workbench_environment_changed(subject, receipt.workbench_environment):
                 reasons.append("workbench environment changed")
+            if _launch_changed(subject, receipt.launch_script_digest):
+                reasons.append("launch script changed")
             if (
                 subject.receipts.experiment_environment
                 and receipt.experiment_environment_digest

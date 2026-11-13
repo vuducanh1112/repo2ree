@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 RunStatus = Literal["queued", "provisioning", "running", "canceling", "succeeded", "failed", "canceled"]
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
@@ -26,6 +26,7 @@ ScriptKind = Literal[
     "activate_experiment_environment",
     "experiment_run",
     "experiment_verify",
+    "launch",
 ]
 InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
 
@@ -37,6 +38,7 @@ class InferenceRule(StrEnum):
     VENV_ACTIVATE = "venv-activate-experiment-environment-v1"
     PODMAN_BUILD = "single-project-root-containerfile-podman"
     PODMAN_ACTIVATE = "podman-activate-experiment-environment"
+    SLURM_LAUNCH = "slurm-job-step-launch"
 
 
 class InferenceDag(StrEnum):
@@ -77,12 +79,23 @@ class ExperimentComparison(_Response):
     observed_output_digest: str | None = None
 
 
+class Launched(_Response):
+    node: str
+    slurm_job_id: str | None = None
+
+
+class ReviewExperimentReceipt(_Response):
+    experiment_name: str
+    launched: Launched | None = None
+
+
 class Review(_Response):
     review_id: str
     status: ReviewStatus
     source_comparison: SourceComparison | None = None
     experiment_environment_comparison: ExperimentEnvironmentComparison | None = None
     experiment_comparisons: tuple[ExperimentComparison, ...] = ()
+    experiment_receipts: tuple[ReviewExperimentReceipt, ...] = ()
 
 
 class ReviewSet(_Response):
@@ -100,9 +113,14 @@ class SbomReceipt(_Response):
     sbom_path: str | None = None
 
 
+class ExperimentReceipt(_Response):
+    launched: Launched | None = None
+
+
 class Receipts(_Response):
     source: SourceReceipt | None = None
     sbom: SbomReceipt | None = None
+    experiments: dict[str, ExperimentReceipt] = Field(default_factory=dict)
 
 
 class Catalog(_Response):
@@ -247,6 +265,9 @@ CONTRACT_SCHEMAS: dict[type[BaseModel], str] = {
     ReviewSet: "ReviewSet",
     SourceReceipt: "AcquireSourceReceipt",
     SbomReceipt: "GenerateSbomReceipt",
+    ExperimentReceipt: "RunExperimentReceipt",
+    ReviewExperimentReceipt: "ReviewExperimentReceipt",
+    Launched: "Launched",
     Receipts: "ReeReceipts",
     Catalog: "ReeCatalogMetadata",
     Hardware: "HardwareDefinition",

@@ -99,6 +99,13 @@
                 "description": "Enters the experiment environment."
               },
               {
+                "name": "launch.sh",
+                "kind": "file",
+                "origin": "authored",
+                "capture": "git",
+                "description": "Launches each of the scripts, as a Slurm job step for instance; optional."
+              },
+              {
                 "name": "experiments",
                 "kind": "directory",
                 "origin": "authored",

@@ -51,6 +51,7 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
         ("build_experiment_environment_venv.sh", "build_experiment_environment"),
         ("activate_experiment_environment_venv.sh", "activate_experiment_environment"),
         ("experiment_run.sh", "experiment_run"),
+        ("launch_slurm.sh", "launch"),
     ],
 )
 def test_a_run_or_build_template_lints_clean(name: str, kind: TargetKind) -> None:
@@ -88,6 +89,7 @@ def test_every_template_is_covered_by_a_case_above() -> None:
         "build_experiment_environment_venv.sh",
         "activate_experiment_environment_venv.sh",
         "experiment_run.sh",
+        "launch_slurm.sh",
         "verify_stdout_contains.sh",
         "verify_stdout_regex.sh",
         "verify_numeric_tolerance.sh",
@@ -113,3 +115,19 @@ def test_the_teed_run_script_the_tutorial_teaches_is_reported() -> None:
     assert "exit_status_masked_by_pipe" in {finding.code for finding in report.findings}
     # Advisory: the author may have meant it. Lint reports; it does not refuse.
     assert report.ok
+
+
+@pytest.mark.parametrize(
+    ("source", "codes"),
+    [
+        # Launches nothing: the script it was asked to run never runs.
+        ("exec srun -N1 ${REE_LAUNCH_OPTIONS:-} true\n", {"launch_command_dropped"}),
+        # Fixed options only: a reproducer on another cluster has to edit it.
+        ('exec srun -N1 "$@"\n', {"launch_options_ignored"}),
+        # Submits and returns before the job has run.
+        ('exec sbatch ${REE_LAUNCH_OPTIONS:-} --wrap "$*" "$@"\n', {"launch_does_not_wait"}),
+    ],
+)
+def test_a_launch_that_drops_waits_for_or_closes_off_its_command_is_reported(source: str, codes: set[str]) -> None:
+    report = lint_script(ScriptTarget(kind="launch", path="ree-scripts/launch.sh"), source, tiers=CONTRACT_ONLY)
+    assert {finding.code for finding in report.findings} == codes

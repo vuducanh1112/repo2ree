@@ -19,11 +19,13 @@ from repo2ree_core.author_recipes.inference.checks.experiment_environment_contra
     ExperimentEnvironmentContractKindCheck,
     UnchangedGeneratedBuildCheck,
 )
+from repo2ree_core.author_recipes.inference.checks.slurm import SlurmCheck
 from repo2ree_core.author_recipes.inference.decision_graphs.activate_experiment_environment import (
     ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG,
 )
 from repo2ree_core.author_recipes.inference.decision_graphs.build import BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG
 from repo2ree_core.author_recipes.inference.decision_graphs.experiment_run import EXPERIMENT_RUN_DAG
+from repo2ree_core.author_recipes.inference.decision_graphs.launch import LAUNCH_DAG
 from repo2ree_core.author_recipes.inference.engine import validate_dag
 from repo2ree_core.author_recipes.inference.models import Check, Renderer, Resolver
 from repo2ree_core.author_recipes.inference.renderers.activate_experiment_environment import (
@@ -32,6 +34,7 @@ from repo2ree_core.author_recipes.inference.renderers.activate_experiment_enviro
     VenvActivateExperimentEnvironmentRenderer,
 )
 from repo2ree_core.author_recipes.inference.renderers.docker_experiment import DockerExperimentRenderer
+from repo2ree_core.author_recipes.inference.renderers.slurm_launch import SlurmLaunchRenderer
 from repo2ree_core.author_recipes.inference.renderers.venv_experiment import VenvExperimentRenderer
 from repo2ree_protocol.inference import DecisionDag
 
@@ -50,6 +53,7 @@ CHECKS: dict[str, Check] = {
             ContractEngineCheck(),
             DockerConfigCommandsCheck(),
             RequestedExperimentCheck(),
+            SlurmCheck(),
         )
     },
 }
@@ -66,6 +70,7 @@ RENDERERS: dict[str, Renderer] = {
             VenvActivateExperimentEnvironmentRenderer(),
             DockerExperimentRenderer(),
             VenvExperimentRenderer(),
+            SlurmLaunchRenderer(),
         )
     },
 }
@@ -74,6 +79,7 @@ DECISION_DAGS: dict[str, DecisionDag] = {
     BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key: BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG,
     ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG.key: ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG,
     EXPERIMENT_RUN_DAG.key: EXPERIMENT_RUN_DAG,
+    LAUNCH_DAG.key: LAUNCH_DAG,
 }
 
 # Which DAG serves each target kind. Verify targets are deferred (they need an
@@ -83,6 +89,7 @@ DAG_FOR_TARGET_KIND: dict[str, str] = {
     "build_experiment_environment": BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key,
     "activate_experiment_environment": ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG.key,
     "experiment_run": EXPERIMENT_RUN_DAG.key,
+    "launch": LAUNCH_DAG.key,
 }
 
 

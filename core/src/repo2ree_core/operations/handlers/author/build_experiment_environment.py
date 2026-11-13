@@ -6,6 +6,7 @@ from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
+from repo2ree_core.execution.launch import declared_launch
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.execution.runners import current_runner, run_workspace_script
 from repo2ree_core.failures import failed_from_exception
@@ -18,7 +19,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import BuildExperimentEnvironmentFailureOutputs, BuildExperimentEnvironmentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree
-from repo2ree_ree.primitives import ExperimentEnvironmentPath
+from repo2ree_ree.primitives import Digest, ExperimentEnvironmentPath
 from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt
 
 
@@ -36,6 +37,7 @@ def handle_build_experiment_environment(
     try:
         ree = load_ree(layout, store)
         build, experiment_environment_path = _check_preconditions(ree, layout)
+        launch = declared_launch(ree.subject.definition.launch, layout.workspace)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot build the experiment environment: {exc}")
         return ActionResult.failed("precondition", f"cannot build the experiment environment: {exc}")
@@ -57,6 +59,7 @@ def handle_build_experiment_environment(
         str(build.build_experiment_environment_script_path),
         log=log,
         is_canceled=is_canceled,
+        launch=launch,
     )
     if outcome.status == "canceled":
         log("system", "warn", "build_experiment_environment canceled")
@@ -92,6 +95,8 @@ def handle_build_experiment_environment(
         artifact_path=experiment_environment_path,
         produced_artifact_digest=produced_artifact_digest,
         workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
+        launch_script_digest=_launch_digest(ree),
+        launched=outcome.launched,
     )
     try:
         save_ree(
@@ -159,3 +164,8 @@ def _check_preconditions(
     ):
         raise ReePreconditionError("the build experiment environment script does not match its definition")
     return build, experiment_environment_path
+
+
+def _launch_digest(ree: Ree) -> Digest | None:
+    launch = ree.subject.definition.launch
+    return launch.launch_script_digest if launch else None

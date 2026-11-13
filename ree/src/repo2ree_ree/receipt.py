@@ -24,6 +24,7 @@ RECEIPT_SCHEMA_VERSION: Literal[1] = 1
 _ARTIFACT_PATH = "definition.experiment_environment.artifact_path"
 _BUILD_SCRIPT = "overlay/ree-scripts/build_experiment_environment.sh"
 _ACTIVATE_SCRIPT = "overlay/ree-scripts/activate_experiment_environment.sh"
+_LAUNCH_SCRIPT = "overlay/ree-scripts/launch.sh"
 _RUN_SCRIPT = "overlay/ree-scripts/experiments/{experiment_slug}.sh"
 _VERIFY_SCRIPT = "overlay/ree-scripts/experiments/{experiment_slug}.verify.sh"
 _ENVIRONMENT = ("workspace/{experiment_environment}", "artifacts/{experiment_environment}")
@@ -34,6 +35,8 @@ ReportDigest = Annotated[Digest, digest_of("file", "artifacts/reproducibility-re
 SbomDigest = Annotated[Digest, digest_of("file", "artifacts/sbom.json")]
 BuildScriptDigest = Annotated[Digest, digest_of("file", _BUILD_SCRIPT)]
 ActivateScriptDigest = Annotated[Digest, digest_of("file", _ACTIVATE_SCRIPT)]
+LaunchScriptDigest = Annotated[Digest, digest_of("file", _LAUNCH_SCRIPT)]
+OptionalLaunchScriptDigest = Annotated[Digest | None, digest_of("file", _LAUNCH_SCRIPT)]
 RunScriptDigest = Annotated[Digest, digest_of("file", _RUN_SCRIPT)]
 VerifyScriptDigest = Annotated[Digest | None, digest_of("file", _VERIFY_SCRIPT)]
 EnvironmentDigest = Annotated[Digest, digest_of("file", *_ENVIRONMENT, named_by=_ARTIFACT_PATH)]
@@ -78,6 +81,14 @@ class ReceiptEnvelope(_ReceiptModel):
         return self
 
 
+class Launched(_ReceiptModel):
+    """Where a launched script ran, as it saw from inside the launch."""
+
+    node: str = Field(min_length=1)
+    slurm_job_id: str | None = None
+    slurm_step_id: str | None = None
+
+
 class AcquireSourceReceipt(ReceiptEnvelope):
     operation: Literal["acquire_source"] = "acquire_source"
     origin_url: str | None = None
@@ -118,6 +129,9 @@ class BuildExperimentEnvironmentReceipt(ReceiptEnvelope):
     artifact_path: ExperimentEnvironmentPath
     produced_artifact_digest: EnvironmentDigest
     workbench_environment: WorkbenchEnvironmentObservation | None = None
+    # The launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: OptionalLaunchScriptDigest = None
+    launched: Launched | None = None
 
 
 class GenerateSbomReceipt(ReceiptEnvelope):
@@ -151,6 +165,9 @@ class ActivationReceipt(ReceiptEnvelope):
     activate_experiment_environment_script_digest: ActivateScriptDigest
     exit_code: Literal[0] = 0
     workbench_environment: WorkbenchEnvironmentObservation | None = None
+    # The launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: OptionalLaunchScriptDigest = None
+    launched: Launched | None = None
 
 
 class RunExperimentReceipt(ReceiptEnvelope):
@@ -164,6 +181,9 @@ class RunExperimentReceipt(ReceiptEnvelope):
     run_exit_code: Literal[0] = 0
     verify_exit_code: Literal[0] | None = None
     workbench_environment: WorkbenchEnvironmentObservation | None = None
+    # The launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: OptionalLaunchScriptDigest = None
+    launched: Launched | None = None
     produced_output_digest: OutputDigest = None
 
     @model_validator(mode="after")

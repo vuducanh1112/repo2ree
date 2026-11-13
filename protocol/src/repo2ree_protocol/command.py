@@ -17,6 +17,8 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from repo2ree_ree.review import ReviewLaunch
+
 # What a review step is allowed to reproduce *from*.
 #
 # ``independent`` is the strong form: fetch the source from its recorded origin,
@@ -37,6 +39,8 @@ class ReviewAcquireSourceArgs(BaseModel):
     # ``independent`` fetches the recorded origin; ``bundled`` extracts the REE's
     # own snapshot.tar.gz, which is what makes a bundle-only REE reviewable.
     basis: ReviewBasis = "auto"
+    # How every script of the attempt is launched: the author's launch, with the reviewer's options, or directly.
+    launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
 
 
 class ReviewAcquireSourceCommand(BaseModel):
@@ -360,6 +364,7 @@ TargetKind = Literal[
     "activate_experiment_environment",
     "experiment_run",
     "experiment_verify",
+    "launch",
 ]
 
 

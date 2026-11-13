@@ -29,6 +29,7 @@ from repo2ree_ree.review import (
     ExperimentComparison,
     ReviewExecutionStatus,
     ReviewExperimentReceipt,
+    ReviewLaunch,
     ReviewRecord,
     ReviewStatus,
     ReviewStepKey,
@@ -69,9 +70,11 @@ def review_receipt_envelope(
 # ================================================
 
 
-def new_review_record(review_id: str, *, at: str) -> ReviewRecord:
-    """A fresh attempt with no steps taken yet."""
-    return ReviewRecord(review_id=review_id, created_at=at, updated_at=at, status="running")
+def new_review_record(review_id: str, *, at: str, launch: ReviewLaunch | None = None) -> ReviewRecord:
+    """A fresh attempt with no steps taken yet, launching its scripts as the reviewer chose."""
+    return ReviewRecord(
+        review_id=review_id, created_at=at, updated_at=at, status="running", launch=launch or ReviewLaunch()
+    )
 
 
 def with_step(

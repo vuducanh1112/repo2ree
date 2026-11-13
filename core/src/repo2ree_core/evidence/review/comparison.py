@@ -125,6 +125,8 @@ def compare_experiment_results(
     expected_output_digest: str | None = None,
     observed_output_digest: str | None = None,
     experiment_environment_digest: str | None = None,
+    expected_launch_script_digest: str | None = None,
+    launch_script_digest: str | None = None,
 ) -> ExperimentComparison:
     """Settle whether one experiment reproduced, by the author's own criterion.
 
@@ -146,6 +148,9 @@ def compare_experiment_results(
     An output digest mismatch never downgrades a passing verify: timestamps,
     seeds, and hostnames land in output files on every honest re-run. A
     criterion digest mismatch does, because it means a different test ran.
+
+    The two launches are recorded side by side and decide nothing: where a script ran is the reviewer's choice, and
+    the author's criterion is what judges the result.
     """
     if (
         not verify_script_path.strip()
@@ -179,6 +184,8 @@ def compare_experiment_results(
         expected_output_digest=expected_output_digest,
         observed_output_digest=observed_output_digest,
         experiment_environment_digest=experiment_environment_digest,
+        expected_launch_script_digest=expected_launch_script_digest,
+        launch_script_digest=launch_script_digest,
     )
 
 

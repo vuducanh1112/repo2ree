@@ -19,6 +19,7 @@ from pathlib import Path
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.analysis.sbom.scan import is_experiment_environment_archive, scan_experiment_environment_archive
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.evidence.review.comparison import compare_build_experiment_environments
 from repo2ree_core.evidence.review.records import resolve_basis, review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_build_evidence
@@ -30,9 +31,11 @@ from repo2ree_core.execution.process import (
 from repo2ree_core.execution.runners import run_workspace_script
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
+    launch_digest,
     require_completed_step,
     require_ree_baseline,
     require_review_record,
+    review_launch,
     workspace_experiment_environment,
     workspace_experiment_environment_candidates,
 )
@@ -143,7 +146,12 @@ def handle_review_build_experiment_environment(
         except OSError as exc:
             return stop("failed", f"could not stage the bundled experiment environment: {exc}")
         build_experiment_environment_script_digest = None
+        launch, launched = None, None
     else:
+        try:
+            launch = review_launch(started, ree, review_layout.workspace)
+        except ReePreconditionError as exc:
+            return stop("failed", f"cannot launch the author's build: {exc}")
         # The author's build script, run from that workspace, unmodified.
         log("system", "info", f"Build script: {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}")
         outcome = run_workspace_script(
@@ -151,7 +159,9 @@ def handle_review_build_experiment_environment(
             RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             log=log,
             is_canceled=is_canceled,
+            launch=launch,
         )
+        launched = outcome.launched
         if outcome.status == "canceled" or is_canceled():
             return stop("canceled", "build canceled")
         if outcome.status != "succeeded":
@@ -196,6 +206,8 @@ def handle_review_build_experiment_environment(
         build_experiment_environment_script_digest=build_experiment_environment_script_digest,
         artifact_path=WorkspacePath(experiment_environment_path),
         produced_artifact_digest=observed_artifact_digest,
+        launch_script_digest=launch_digest(ree, launch),
+        launched=launched,
     )
     write_review_build_evidence(review_layout, receipt, comparison)
     _log_verdict(comparison, log=log)

@@ -22,6 +22,7 @@ from typing import IO, Literal
 
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
+from repo2ree_ree.receipt import Launched
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import (
     ExecSpanAttrs,
@@ -52,6 +53,8 @@ class StepOutcome:
     exit_code: int | None = None
     captured_stdout: str = field(default="")
     captured_stderr: str = field(default="")
+    # Where a launch put the script; None when it ran directly.
+    launched: Launched | None = None
 
 
 # ================================================

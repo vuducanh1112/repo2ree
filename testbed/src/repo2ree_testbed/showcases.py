@@ -11,7 +11,7 @@ import tarfile
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
+from typing import Literal, get_args
 
 from repo2ree_testbed.api_models import InferenceRule
 from repo2ree_testbed.artifacts import ROOT
@@ -54,6 +54,7 @@ ExpectedVerdict = Literal["identical", "reproduced", "different"]
 RecipeScript = Literal[
     "build_experiment_environment.sh",
     "activate_experiment_environment.sh",
+    "launch.sh",
     "experiment.sh",
     "experiment.verify.sh",
 ]
@@ -66,6 +67,10 @@ SOURCE = "source"
 RESULT = "result.txt"
 BUILD: RecipeScript = "build_experiment_environment.sh"
 ACTIVATE: RecipeScript = "activate_experiment_environment.sh"
+LAUNCH: RecipeScript = "launch.sh"
+# The scripts every project has, from its recipe or from inference; a launch is optional, and absent runs directly.
+REQUIRED_SCRIPTS: tuple[RecipeScript, ...] = tuple(script for script in get_args(RecipeScript) if script != LAUNCH)
+SLURM_LAUNCH = ((LAUNCH, InferenceRule.SLURM_LAUNCH),)
 PIP_BUILD = ((BUILD, InferenceRule.PIP_REQUIREMENTS),)
 VENV = (*PIP_BUILD, (ACTIVATE, InferenceRule.VENV_ACTIVATE))
 DOCKER = ((BUILD, InferenceRule.DOCKERFILE), (ACTIVATE, InferenceRule.DOCKER_ACTIVATE))
@@ -91,6 +96,11 @@ class Project:
     def rule(self, script: RecipeScript) -> InferenceRule | None:
         """The rule whose proposal is ``script``, or None when it is the recipe's."""
         return dict(self.inferred).get(script)
+
+    @property
+    def launches(self) -> bool:
+        """Whether its scripts run through a launch script, as inference proposes it or as the recipe writes it."""
+        return self.rule(LAUNCH) is not None or (self.directory / "recipe" / LAUNCH).is_file()
 
     @property
     def directory(self) -> Path:
@@ -147,6 +157,7 @@ APPTAINER = Project(
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime.sif",
     experiment="instant-apptainer-hello",
+    inferred=SLURM_LAUNCH,
 )
 PYTHON_DOCKER = Project(
     name=ProjectName.PYTHON_DOCKER,
@@ -185,7 +196,7 @@ SLURM = Project(
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-slurm-hello",
-    inferred=PIP_BUILD,
+    inferred=(*VENV, *SLURM_LAUNCH),
 )
 STOCHASTIC = Project(
     name=ProjectName.STOCHASTIC,

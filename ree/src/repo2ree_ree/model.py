@@ -25,6 +25,7 @@ from repo2ree_ree.receipt import (
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
+    LaunchScriptDigest,
     ObserveHardwareReceipt,
     RunExperimentReceipt,
     RunScriptDigest,
@@ -33,6 +34,7 @@ from repo2ree_ree.receipt import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
@@ -112,6 +114,21 @@ class ActivateExperimentEnvironmentDefinition(_DomainModel):
         return value
 
 
+class LaunchDefinition(_DomainModel):
+    """The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``."""
+
+    launch_script_path: OverlayPath = OverlayPath(RESERVED_LAUNCH_SCRIPT)
+    launch_script_digest: LaunchScriptDigest
+    launch_script_size: int = Field(ge=0)
+
+    @field_validator("launch_script_path")
+    @classmethod
+    def _fixed_path(cls, value: OverlayPath) -> OverlayPath:
+        if value != RESERVED_LAUNCH_SCRIPT:
+            raise ValueError(f"launch script path must be {RESERVED_LAUNCH_SCRIPT!r}")
+        return value
+
+
 class ExperimentDefinition(_DomainModel):
     name: str = Field(min_length=1)
     run_script_path: OverlayPath
@@ -146,6 +163,8 @@ class ReeDefinition(_DomainModel):
     experiment_environment: ExperimentEnvironmentDefinition | None = None
     activate_experiment_environment: ActivateExperimentEnvironmentDefinition | None = None
     workbench_environment: WorkbenchEnvironment | None = None
+    # None runs every script directly; with a launch, each runs through it.
+    launch: LaunchDefinition | None = None
     hardware: HardwareDefinition | None = None
     experiments: tuple[ExperimentDefinition, ...] = ()
 

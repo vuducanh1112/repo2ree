@@ -28,6 +28,7 @@ from repo2ree_testbed.stack.store_images import PYTHON_SLIM_IMAGE
 ROOT = Path(__file__).resolve().parents[3]
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
 ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/activate_experiment_environment.sh"
+LAUNCH_SCRIPT = "ree-scripts/launch.sh"
 
 # A bench without a Docker daemon: the base image is the experiment environment environment.
 # Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
@@ -241,9 +242,12 @@ class Api:
     ) -> dict[str, Any]:
         """Declare the experiment environment, author its build (given, else as the project writes it), and run it.
 
-        An activate script the recipe brings is written beside it; one inference proposes waits for the build.
+        An activate script the recipe brings is written beside it; one inference proposes waits for the build. A
+        project that launches its scripts declares its launch first, so the build runs through it too.
         """
         self.patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
+        if fixture.launches:
+            self.declare_launch(ree_id, fixture)
         if script is None:
             rule = fixture.rule("build_experiment_environment.sh")
             script = (
@@ -257,6 +261,13 @@ class Api:
                 ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, fixture.recipe("activate_experiment_environment.sh")
             )
         return self.stage(ree_id, "build-experiment-environment", watch=fixture.watch)
+
+    def declare_launch(self, ree_id: str, fixture: Project) -> None:
+        """Write the launch every script then runs through, as inference proposes it or the recipe writes it."""
+        rule = fixture.rule("launch.sh")
+        script = self.proposed(ree_id, "launch", rule) if rule else fixture.recipe("launch.sh")
+        self.write(ree_id, LAUNCH_SCRIPT, script)
+        self.patch(ree_id, {"launch": {}})
 
     def activate(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
         """Test the activation alone; with ``script``, or what inference proposes for a project that writes it so,

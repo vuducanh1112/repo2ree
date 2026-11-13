@@ -56,7 +56,7 @@ def handle_review_acquire_source(
     # record to require, so it starts from a freshly minted one.
     step = begin_review_step(
         review_layout,
-        new_review_record(args.review_id, at=format_utc_instant(timer.started_at)),
+        new_review_record(args.review_id, at=format_utc_instant(timer.started_at), launch=args.launch),
         "source",
         review_id=args.review_id,
         timer=timer,

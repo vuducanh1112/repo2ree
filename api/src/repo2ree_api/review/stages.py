@@ -12,6 +12,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import APIRouter
+from pydantic import Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
@@ -26,6 +27,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentArgs,
     ReviewRunExperimentCommand,
 )
+from repo2ree_ree.review import ReviewLaunch
 
 review_stages_router = APIRouter(tags=["reviews"])
 
@@ -39,6 +41,9 @@ class CreateSourceReviewPayload(CreateRunPayload):
     """
 
     basis: ReviewBasis = "auto"
+    # How the attempt launches the author's scripts: the author's launch, with options of the reviewer's own added,
+    # or directly. Kept for every step of the attempt.
+    launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
 
 
 class CreateBuildExperimentEnvironmentReviewPayload(CreateRunPayload):
@@ -59,7 +64,9 @@ class CreateBuildExperimentEnvironmentReviewPayload(CreateRunPayload):
 )
 def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunSummary:
     review_id = f"review-{uuid4().hex[:12]}"
-    command = ReviewAcquireSourceCommand(args=ReviewAcquireSourceArgs(review_id=review_id, basis=payload.basis))
+    command = ReviewAcquireSourceCommand(
+        args=ReviewAcquireSourceArgs(review_id=review_id, basis=payload.basis, launch=payload.launch)
+    )
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(

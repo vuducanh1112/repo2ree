@@ -116,6 +116,16 @@ set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
 clear = ["patch_ree_definition"]
 
+# How each script is launched, a Slurm job step for instance; unset, every script runs directly. The launch script
+# may be written before the launch is declared.
+[fields."definition.launch"]
+group = "launch"
+initial = "unset"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition", "write_file"]
+clear = ["patch_ree_definition"]
+files = ["ree-scripts/launch.sh"]
+
 [fields."definition.experiments[*]"]
 group = "experiment"
 set = ["patch_ree_definition"]
@@ -153,7 +163,7 @@ produced_by = "generate_hbom"
 
 [receipts.experiment_environment]
 about = ["definition.experiment_environment.artifact_path"]
-rests_on = ["definition.experiment_environment", "definition.workbench_environment"]
+rests_on = ["definition.experiment_environment", "definition.workbench_environment", "definition.launch"]
 made_from = ["source"]
 produced_by = "build_experiment_environment"
 cleared_by = ["remove_source"]
@@ -173,7 +183,7 @@ cleared_by = ["remove_source"]
 # The activation run alone, around a command that does nothing: it enters the experiment environment and hands over.
 [receipts.activation]
 about = ["definition.activate_experiment_environment"]
-rests_on = ["definition.activate_experiment_environment", "definition.workbench_environment"]
+rests_on = ["definition.activate_experiment_environment", "definition.workbench_environment", "definition.launch"]
 made_from = ["source", "experiment_environment"]
 produced_by = "activation_test"
 cleared_by = ["remove_source"]
@@ -181,7 +191,12 @@ cleared_by = ["remove_source"]
 [receipts.experiment]
 keyed = true
 about = ["definition.experiments[*]"]
-rests_on = ["definition.experiments[*]", "definition.activate_experiment_environment", "definition.workbench_environment"]
+rests_on = [
+    "definition.experiments[*]",
+    "definition.activate_experiment_environment",
+    "definition.workbench_environment",
+    "definition.launch",
+]
 # An experiment runs inside the activation, so only while the activation's evidence is current.
 made_from = ["source", "experiment_environment", "activation"]
 produced_by = "run_experiment"

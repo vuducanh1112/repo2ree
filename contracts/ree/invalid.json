@@ -28,6 +28,21 @@
       "error": "build experiment environment script path must be"
     },
     {
+      "name": "a launch script outside its reserved path",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/seal"
+        },
+        {
+          "op": "replace",
+          "path": "/subject/definition/launch/launch_script_path",
+          "value": "ree-scripts/other.sh"
+        }
+      ],
+      "error": "launch script path must be"
+    },
+    {
       "name": "two experiments with one slug",
       "patch": [
         {

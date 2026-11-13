@@ -16,6 +16,7 @@ from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
+from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.execution.runners import current_runner
 from repo2ree_core.failures import failed_from_exception
@@ -33,7 +34,7 @@ from repo2ree_ree.model import (
     Ree,
 )
 from repo2ree_ree.primitives import ExperimentEnvironmentPath
-from repo2ree_ree.receipt import ActivationReceipt, RunExperimentReceipt
+from repo2ree_ree.receipt import ActivationReceipt, Launched, RunExperimentReceipt
 from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
 
 RunnableKind = Literal["activation_test", "run_experiment"]
@@ -57,6 +58,7 @@ def handle_runnable_operation(
         ree = load_ree(layout, store)
         definition = _select_definition(ree, kind, experiment_name)
         activation = _check_activation(ree, layout)
+        launch = declared_launch(ree.subject.definition.launch, layout.workspace)
         experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot {kind}: {exc}")
@@ -65,7 +67,7 @@ def handle_runnable_operation(
         return failed_from_exception(exc, f"failed to load {kind} inputs: {exc}")
 
     before_revision = revision_of(ree)
-    runnable = _as_runnable(definition, activation)
+    runnable = _as_runnable(definition, activation, launch)
     label = definition.name if isinstance(definition, ExperimentDefinition) else "activation"
     timer = OperationTimer.start()
     outcome = run_runnable(
@@ -113,6 +115,8 @@ def handle_runnable_operation(
         produced_output_digest=produced_output_digest,
         activate_experiment_environment_script_digest=activation.activate_experiment_environment_script_digest,
         workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
+        launch_script_digest=_launch_digest(ree),
+        launched=outcome.launched,
     )
     try:
         save_ree(
@@ -232,12 +236,15 @@ def _check_activation(ree: Ree, layout: ReeLayout) -> ActivateExperimentEnvironm
     return activation
 
 
-def _as_runnable(definition: RunnableDefinition, activation: ActivateExperimentEnvironmentDefinition) -> RunnableSpec:
+def _as_runnable(
+    definition: RunnableDefinition, activation: ActivateExperimentEnvironmentDefinition, launch: Launch | None
+) -> RunnableSpec:
     activate_script = str(activation.activate_experiment_environment_script_path)
     if not isinstance(definition, ExperimentDefinition):
-        return RunnableSpec(activate_script=activate_script)
+        return RunnableSpec(activate_script=activate_script, launch=launch)
     return RunnableSpec(
         activate_script=activate_script,
+        launch=launch,
         run_script=str(definition.run_script_path),
         verify_script=str(definition.verify_script_path or ""),
         output_paths=tuple(str(path) for path in definition.output_paths),
@@ -251,6 +258,11 @@ def _outputs(
         **outcome.run_outputs.model_dump(),
         experiment_environment_path=str(experiment_environment_path or ""),
     )
+
+
+def _launch_digest(ree: Ree) -> Digest | None:
+    launch = ree.subject.definition.launch
+    return launch.launch_script_digest if launch else None
 
 
 def _source_snapshot(ree: Ree) -> Digest:
@@ -271,6 +283,8 @@ def _successful_receipt(
     produced_output_digest: Digest | None,
     activate_experiment_environment_script_digest: Digest,
     workbench_environment: WorkbenchEnvironmentObservation,
+    launch_script_digest: Digest | None,
+    launched: Launched | None,
 ) -> ActivationReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
     if not isinstance(definition, ExperimentDefinition):
@@ -282,6 +296,8 @@ def _successful_receipt(
             activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
             exit_code=0,
             workbench_environment=workbench_environment,
+            launch_script_digest=launch_script_digest,
+            launched=launched,
         )
     return RunExperimentReceipt(
         **envelope,
@@ -295,6 +311,8 @@ def _successful_receipt(
         verify_exit_code=0 if definition.verify_script_path is not None else None,
         produced_output_digest=produced_output_digest,
         workbench_environment=workbench_environment,
+        launch_script_digest=launch_script_digest,
+        launched=launched,
     )
 
 

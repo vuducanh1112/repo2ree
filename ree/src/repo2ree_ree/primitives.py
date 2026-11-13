@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any, ClassVar, Literal
 
 from pydantic import GetJsonSchemaHandler
@@ -76,11 +77,26 @@ class Swhid(StringValue):
         return value
 
 
+# No whitespace, quoting or shell syntax: a launch script splits its options on spaces.
+_LAUNCH_OPTION = re.compile(r"^[^\s'\"`$\\;|&<>(){}]+$")
+
+
+class LaunchOption(StringValue):
+    """One option added to a launcher's own, ``--partition=short`` for instance."""
+
+    @classmethod
+    def validate(cls, value: str) -> str:
+        if not _LAUNCH_OPTION.match(value):
+            raise ValueError(f"a launch option holds no whitespace, quoting or shell syntax: {value!r}")
+        return value
+
+
 __all__ = [
     "ArtifactPath",
     "Digest",
     "ExperimentEnvironmentPath",
     "GitRevision",
+    "LaunchOption",
     "OverlayPath",
     "ReePath",
     "ReeRevision",

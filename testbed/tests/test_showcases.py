@@ -17,10 +17,10 @@ from repo2ree_testbed.showcases import (
     GUI_SHOWCASES,
     GUI_SUITE,
     PROJECTS,
+    REQUIRED_SCRIPTS,
     SHOWCASES,
     Project,
     ProjectName,
-    RecipeScript,
     ShowcaseName,
     Workflow,
     api_suite,
@@ -41,7 +41,7 @@ def test_a_showcase_has_an_api_test_of_each_workflow(name: ShowcaseName, workflo
 @pytest.mark.parametrize("project", ALL_PROJECTS, ids=lambda project: project.name)
 def test_a_project_is_a_source_tree_beside_a_recipe_for_each_script_it_does_not_infer(project: Project) -> None:
     assert any(project.source.iterdir())
-    for script in get_args(RecipeScript):
+    for script in REQUIRED_SCRIPTS:
         if project.rule(script) is None:
             assert project.recipe(script)
 

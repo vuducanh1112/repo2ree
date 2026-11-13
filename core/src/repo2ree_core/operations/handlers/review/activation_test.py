@@ -105,6 +105,8 @@ def handle_review_activation_test(
         exit_code=outcome.run_outputs.exit_code,
         experiment_environment_path=WorkspacePath(certified.experiment_environment_path),
         experiment_environment_digest=Digest(certified.experiment_environment_digest),
+        launch_script_digest=opened.launch_script_digest,
+        launched=outcome.launched,
     )
     activation_outcome = ActivationOutcome(
         basis=certified.basis,

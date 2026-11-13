@@ -17,6 +17,7 @@ from functools import cache
 from pathlib import Path
 from typing import Literal, Protocol
 
+from repo2ree_core.execution.launch import Launch, launched_command, read_launched
 from repo2ree_core.execution.process import (
     CancelCheck,
     StepOutcome,
@@ -276,6 +277,7 @@ def run_workspace_script(
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
     activate_rel: str | None = None,
+    launch: Launch | None = None,
 ) -> StepOutcome:
     """Run a workspace-relative script under ``sh`` from the workspace root.
 
@@ -288,7 +290,8 @@ def run_workspace_script(
     need bash or their own directory (e.g. ``docker build .``) invoke it
     explicitly. Scripts that resolve outside the workspace are rejected.
 
-    With no ``script_rel`` the activation runs alone, around a command that does nothing.
+    With no ``script_rel`` the activation runs alone, around a command that does nothing. With a ``launch``, the
+    whole command runs through the REE's launch script, and the outcome says where the launch put it.
     """
     workspace = workspace.resolve()
     if script_rel is None and activate_rel is None:
@@ -314,13 +317,29 @@ def run_workspace_script(
                 record_span_facts(span, {"script.error": "activate script not found"})
                 return StepOutcome("failed", 1)
             cmd = ["sh", activate_rel, *cmd]
+        runner = current_runner()
+        record: Path | None = None
+        if launch is not None:
+            if isinstance(runner, ContainerScriptRunner):
+                log(
+                    "system",
+                    "error",
+                    "a launch script runs where the workbench runs scripts directly, not in a container",
+                )
+                record_span_facts(span, {"script.error": "launch in a script container"})
+                return StepOutcome("failed", 1)
+            cmd, record = launched_command(workspace, launch, cmd)
         log("system", "info", f"$ {format_argv(cmd)}")
 
-        result = current_runner().run(workspace, cmd, log=log, is_canceled=is_canceled)
+        result = runner.run(workspace, cmd, log=log, is_canceled=is_canceled)
+        launched = read_launched(record) if record is not None else None
+        if launched is not None:
+            where = f"{launched.node}" + (f", Slurm job {launched.slurm_job_id}" if launched.slurm_job_id else "")
+            log("system", "info", f"launched on {where}")
 
         if result.canceled or is_canceled():
             status: ActionStatus = "canceled"
         else:
             status = "succeeded" if result.returncode == 0 else "failed"
         record_command_status(span, status)
-        return StepOutcome(status, result.returncode, result.stdout, result.stderr)
+        return StepOutcome(status, result.returncode, result.stdout, result.stderr, launched)

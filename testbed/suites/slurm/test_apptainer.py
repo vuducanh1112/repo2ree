@@ -1,4 +1,4 @@
-"""An REE whose experiment environment is a SIF, entered with Apptainer in a Slurm job, all by the author's scripts."""
+"""An REE whose experiment environment is a SIF, entered with Apptainer, each script launched as a Slurm job step."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typed_client import Client, NewRee
 
 from repo2ree_testbed.showcases import APPTAINER
 
-PLACED = r"ran in job \d+ container \S*runtime\.sif"
+PLACED = r"ran in container \S*runtime\.sif"
 
 
 def built(api: Api, ree_id: str) -> None:
@@ -32,6 +32,7 @@ def test_a_sif_experiment_environment_is_run_in_a_job_sealed_and_downloaded(
     run = api.experiment(ree_id, fixture=APPTAINER)
     assert run["status"] == "succeeded", api.logs(ree_id, run["run_id"])
     assert re.search(PLACED, api.logs(ree_id, run["run_id"]))
+    assert api.ree(ree_id)["subject"]["receipts"]["experiments"][APPTAINER.experiment]["launched"]["slurm_job_id"]
 
     assert api.seal(ree_id)["status"] == "succeeded"
     archive = api.keep_archive(ree_id, "sealed")
@@ -45,6 +46,9 @@ def test_a_reviewer_on_the_cluster_reproduces_the_experiment_from_the_sif(client
     reproduction = client.reproduced(new_ree, APPTAINER)
 
     assert re.search(PLACED, reproduction.logs)
+    [receipt] = reproduction.review.experiment_receipts
+    assert receipt.launched is not None
+    assert receipt.launched.slurm_job_id is not None
     assert [(item.experiment_name, item.verdict) for item in reproduction.review.experiment_comparisons] == [
         (APPTAINER.experiment, "identical")
     ]

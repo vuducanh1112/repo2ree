@@ -273,6 +273,35 @@
             }
           ],
           "default": null
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -381,6 +410,35 @@
           "anyOf": [
             {
               "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
             },
             {
               "type": "null"
@@ -1308,6 +1366,81 @@
       "title": "HostFingerprint",
       "type": "object"
     },
+    "LaunchDefinition": {
+      "additionalProperties": false,
+      "description": "The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``.",
+      "properties": {
+        "launch_script_path": {
+          "default": "ree-scripts/launch.sh",
+          "title": "Launch Script Path",
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
+        },
+        "launch_script_digest": {
+          "title": "Launch Script Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launch_script_size": {
+          "minimum": 0,
+          "title": "Launch Script Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "launch_script_digest",
+        "launch_script_size"
+      ],
+      "title": "LaunchDefinition",
+      "type": "object"
+    },
+    "Launched": {
+      "additionalProperties": false,
+      "description": "Where a launched script ran, as it saw from inside the launch.",
+      "properties": {
+        "node": {
+          "minLength": 1,
+          "title": "Node",
+          "type": "string"
+        },
+        "slurm_job_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slurm Job Id"
+        },
+        "slurm_step_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slurm Step Id"
+        }
+      },
+      "required": [
+        "node"
+      ],
+      "title": "Launched",
+      "type": "object"
+    },
     "MemoryDefinition": {
       "additionalProperties": false,
       "properties": {
@@ -1603,6 +1736,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/WorkbenchEnvironment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "launch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LaunchDefinition"
             },
             {
               "type": "null"
@@ -1918,6 +2062,35 @@
           "anyOf": [
             {
               "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
             },
             {
               "type": "null"

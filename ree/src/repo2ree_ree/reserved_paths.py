@@ -7,6 +7,8 @@ RESERVED_SCRIPT_DIR = "ree-scripts"
 RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/build_experiment_environment.sh"
 RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activate_experiment_environment.sh"
 RESERVED_EXPERIMENT_SCRIPT_DIR = f"{RESERVED_SCRIPT_DIR}/experiments"
+# How each of the REE's scripts is launched: absent, every script runs directly where its runner puts it.
+RESERVED_LAUNCH_SCRIPT = f"{RESERVED_SCRIPT_DIR}/launch.sh"
 
 RESERVED_OVERLAY_SCRIPTS = (
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
@@ -32,6 +34,7 @@ def is_overlay_path(path: str) -> bool:
     if str(normalized) in (
         RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
         RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+        RESERVED_LAUNCH_SCRIPT,
     ):
         return True
     name = normalized.name

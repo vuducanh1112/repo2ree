@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:c84343e98fe9c0b51f47a3a26a61828c20ac662242d6f7ea824738d02c6780dd",
+    "ree_digest": "sha256:e298bf70c343a3469955671285f3453a71b86aa26904df7b7d29852737db69c3",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -144,6 +144,11 @@
           }
         }
       },
+      "launch": {
+        "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
+        "launch_script_path": "ree-scripts/launch.sh",
+        "launch_script_size": 86
+      },
       "name": "maximal",
       "source": {
         "origin_url": "https://example.org/maximal.git",
@@ -162,6 +167,12 @@
         "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
         "experiment_environment_path": "runtime",
         "finished_at": "2026-10-01T08:16:05.000000Z",
+        "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
+        "launched": {
+          "node": "node-07",
+          "slurm_job_id": "4711",
+          "slurm_step_id": "0"
+        },
         "operation": "activation_test",
         "recorded_at": "2026-10-01T08:16:05.000000Z",
         "run_id": "run-activation",
@@ -209,6 +220,12 @@
         "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
         "duration_ms": 600000,
         "finished_at": "2026-10-01T08:13:00.000000Z",
+        "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
+        "launched": {
+          "node": "node-07",
+          "slurm_job_id": "4711",
+          "slurm_step_id": "0"
+        },
         "operation": "build_experiment_environment",
         "produced_artifact_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
         "recorded_at": "2026-10-01T08:13:00.000000Z",
@@ -245,6 +262,12 @@
           "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
           "experiment_name": "train model",
           "finished_at": "2026-10-01T09:17:00.000000Z",
+          "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
+          "launched": {
+            "node": "node-07",
+            "slurm_job_id": "4711",
+            "slurm_step_id": "0"
+          },
           "operation": "run_experiment",
           "produced_output_digest": "sha256:7b8c56be0a5f71be141f0cfaa9195e2ff8d1ef89e380560b579a82fd841429c1",
           "recorded_at": "2026-10-01T09:17:00.000000Z",

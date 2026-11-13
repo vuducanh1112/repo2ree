@@ -1,5 +1,6 @@
 """Tests for the baked-in bundle reproducer (``run.sh`` + ``REPRODUCING.md``)."""
 
+import os
 import subprocess
 import tarfile
 from pathlib import Path
@@ -27,6 +28,7 @@ from repo2ree_core.reproduction.reproducer import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
 )
 from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 
@@ -100,6 +102,7 @@ def _seed_extracted_bundle(
     *,
     include_experiment_environment: bool,
     experiments: list[tuple[str, str, str]],
+    launch: str | None = None,
 ) -> Path:
     """Lay out an extracted-bundle tree (run.sh + ree/...) without sealing."""
     root = tmp_path / "download"
@@ -138,7 +141,10 @@ def _seed_extracted_bundle(
         experiments=experiments,
         experiment_environment_workspace_path="runtime.tar.gz",
         experiment_environment_artifact_basename="runtime.tar.gz" if include_experiment_environment else None,
+        launch_script=RESERVED_LAUNCH_SCRIPT if launch is not None else None,
     )
+    if launch is not None:
+        (ree / OVERLAY_DIRNAME / RESERVED_LAUNCH_SCRIPT).write_text(launch)
     (root / "run.sh").write_bytes(run_sh)
     # run.sh delegates acquisition to this bundled script (no origin baked in,
     # so it extracts the snapshot) and the clear-and-merge to the materialize script.
@@ -407,3 +413,75 @@ def test_run_sh_runs_the_experiment_inside_the_activation_and_verifies_outside_i
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "VERIFIED: pass" in result.stdout
+
+
+# A launch script that logs each command it launches, with the options it was given, then runs it.
+_LOGGING_LAUNCH = '#!/bin/sh\nprintf "%s|%s\\n" "${REE_LAUNCH_OPTIONS:-}" "$*" >> launched.log\nexec "$@"\n'
+_DEMO = [("demo", "ree-scripts/experiments/demo.sh", "ree-scripts/experiments/demo.verify.sh")]
+
+
+def _launched(root: Path) -> list[str]:
+    log = root / "ree" / WORKSPACE_DIRNAME / "launched.log"
+    return log.read_text().splitlines() if log.is_file() else []
+
+
+def _run_with(root: Path, env: dict[str, str], *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["sh", "run.sh", *args], cwd=root, text=True, capture_output=True, env={**os.environ, **env})
+
+
+def test_run_sh_launches_every_script_through_the_authors_launch(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path, include_experiment_environment=False, experiments=_DEMO, launch=_LOGGING_LAUNCH
+    )
+    result = _run(root, "all")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _launched(root) == [
+        "|sh ree-scripts/build_experiment_environment.sh",
+        "|sh ree-scripts/activate_experiment_environment.sh true",
+        "|sh ree-scripts/activate_experiment_environment.sh sh ree-scripts/experiments/demo.sh",
+        "|sh ree-scripts/experiments/demo.verify.sh",
+    ]
+    assert f"$ sh {RESERVED_LAUNCH_SCRIPT} sh ree-scripts/experiments/demo.verify.sh" in result.stdout
+    assert f"$ sh {RESERVED_LAUNCH_SCRIPT} sh {RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT} true" in result.stdout
+
+
+def test_run_sh_hands_a_reproducers_options_to_the_authors_launch(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path, include_experiment_environment=True, experiments=_DEMO, launch=_LOGGING_LAUNCH
+    )
+    result = _run_with(root, {"REE_LAUNCH_OPTIONS": "--partition=short"}, "experiment", "demo")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert {line.split("|")[0] for line in _launched(root)} == {"--partition=short"}
+
+
+def test_run_sh_runs_directly_when_the_reproducer_asks_for_native(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path, include_experiment_environment=True, experiments=_DEMO, launch=_LOGGING_LAUNCH
+    )
+    result = _run_with(root, {"REE_LAUNCH": "native"}, "all")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _launched(root) == []
+    assert "$ sh ree-scripts/activate_experiment_environment.sh true" in result.stdout
+
+
+def test_run_sh_launches_with_the_reproducers_own_command(tmp_path):
+    # An REE without a launch runs directly unless the reproducer names a launcher of their own.
+    root = _seed_extracted_bundle(tmp_path, include_experiment_environment=True, experiments=_DEMO)
+    scripts = root / "ree" / OVERLAY_DIRNAME / "ree-scripts"
+    (scripts / "experiments" / "demo.sh").write_text('#!/bin/sh\necho "exp:demo ${LAUNCHED_BY:-directly}" > run.log\n')
+    direct = _run(root, "experiment", "demo")
+    assert direct.returncode == 0, direct.stdout + direct.stderr
+    assert (root / "ree" / WORKSPACE_DIRNAME / "run.log").read_text() == "exp:demo directly\n"
+    mine = _run_with(root, {"REE_LAUNCH": "env LAUNCHED_BY=mine"}, "experiment", "demo")
+    assert mine.returncode == 0, mine.stdout + mine.stderr
+    assert (root / "ree" / WORKSPACE_DIRNAME / "run.log").read_text() == "exp:demo mine\n"
+    assert "$ env LAUNCHED_BY=mine sh ree-scripts/activate_experiment_environment.sh sh" in mine.stdout
+
+
+def test_the_readme_says_how_the_scripts_were_launched_and_how_to_launch_them_otherwise():
+    launched = dict(reproducer_entries(launch_script=RESERVED_LAUNCH_SCRIPT))[BUNDLE_REPRODUCER_README_ENTRY_PATH]
+    assert f"`{RESERVED_LAUNCH_SCRIPT}`".encode() in launched
+    assert b"REE_LAUNCH=native" in launched
+    assert b"REE_LAUNCH_OPTIONS=" in launched
+    direct = dict(reproducer_entries())[BUNDLE_REPRODUCER_README_ENTRY_PATH]
+    assert b"The author ran every script directly" in direct

@@ -48,6 +48,30 @@ _CATALOG: dict[str, tuple[FindingTier, FindingSeverity, bool, str]] = {
             "can be recorded as a pass. Redirect to a file instead."
         ),
     ),
+    "launch_command_dropped": (
+        "contract",
+        "error",
+        False,
+        'The launch script never passes on "$@", so the script it is asked to launch never runs.',
+    ),
+    "launch_options_ignored": (
+        "contract",
+        "warning",
+        False,
+        (
+            "The launch script never reads REE_LAUNCH_OPTIONS, so someone reproducing the REE on another cluster "
+            "cannot add their partition or account without editing it."
+        ),
+    ),
+    "launch_does_not_wait": (
+        "contract",
+        "warning",
+        False,
+        (
+            "sbatch returns before the job runs and salloc opens a shell, so neither runs the command and waits for "
+            "it; launch with srun."
+        ),
+    ),
 }
 
 

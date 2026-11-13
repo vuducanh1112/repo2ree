@@ -13,21 +13,24 @@ The ``require_*`` / ``open_*`` helpers return either their value or the
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
 from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.evidence.review.records import attempt_basis, step_state, with_step
 from repo2ree_core.evidence.review.store import read_review_record, write_review_record
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
+from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.digest import Digest
 from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, ReeDefinition
 from repo2ree_ree.review import (
@@ -384,6 +387,20 @@ def workspace_experiment_environment(layout: ReeLayout, experiment_environment_p
 ReviewAdmission = Callable[[ReviewRecord, CertifiedExperimentEnvironment], str | None]
 
 
+def review_launch(record: ReviewRecord, ree: Ree, workspace: Path) -> Launch | None:
+    """How this attempt launches the author's scripts in ``workspace``: as the reviewer chose, and only through the
+    launch script the author declares. Raises ``ReePreconditionError`` when the author's copy is not that script."""
+    if record.launch.mode == "native":
+        return None
+    return declared_launch(ree.subject.definition.launch, workspace, record.launch.options)
+
+
+def launch_digest(ree: Ree, launch: Launch | None) -> Digest | None:
+    """The digest of the author's launch script a step ran under; None when it ran directly."""
+    declared = ree.subject.definition.launch
+    return declared.launch_script_digest if launch is not None and declared is not None else None
+
+
 @dataclass(frozen=True)
 class ReviewRunnableStep:
     """What distinguishes the two review steps that run one of the author's runnables.
@@ -434,6 +451,8 @@ class ReviewRun:
     runnable: RunnableSpec
     label: str
     outcome: ExperimentRunOutcome
+    # The author's launch script the run went through; None when it ran directly.
+    launch_script_digest: Digest | None
 
 
 def open_review_run(
@@ -507,6 +526,12 @@ def open_review_run(
             f"the author baseline declares {step.script_noun} that is not there: {script}",
         )
 
+    try:
+        launch = review_launch(started.record, ree, review_layout.workspace)
+    except ReePreconditionError as exc:
+        return started.stop("failed", f"cannot launch the author's scripts: {exc}")
+    runnable = replace(runnable, launch=launch)
+
     outcome = run_runnable(
         workspace=review_layout.workspace.resolve(),
         runnable=runnable,
@@ -527,4 +552,5 @@ def open_review_run(
         runnable=runnable,
         label=label,
         outcome=outcome,
+        launch_script_digest=launch_digest(ree, launch),
     )

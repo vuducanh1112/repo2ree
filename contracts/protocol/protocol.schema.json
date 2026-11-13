@@ -873,6 +873,35 @@
             }
           ],
           "default": null
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -1111,6 +1140,35 @@
           "anyOf": [
             {
               "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
             },
             {
               "type": "null"
@@ -1962,6 +2020,7 @@
                   "experiment_gate": "#/$defs/ExperimentGateObservation",
                   "logical_root": "#/$defs/LogicalRootObservation",
                   "path_matches": "#/$defs/PathMatchesObservation",
+                  "slurm": "#/$defs/SlurmObservation",
                   "strategy_outcomes": "#/$defs/StrategyOutcomesObservation"
                 },
                 "propertyName": "kind"
@@ -1987,6 +2046,9 @@
                 },
                 {
                   "$ref": "#/$defs/ContainerEnginesObservation"
+                },
+                {
+                  "$ref": "#/$defs/SlurmObservation"
                 }
               ]
             },
@@ -2926,6 +2988,30 @@
           ],
           "default": null,
           "title": "Activate Experiment Environment Script Digest"
+        },
+        "expected_launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Launch Script Digest"
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest"
         },
         "expected_verify_exit_code": {
           "anyOf": [
@@ -4565,6 +4651,81 @@
       "title": "InferenceWarning",
       "type": "object"
     },
+    "LaunchDefinition": {
+      "additionalProperties": false,
+      "description": "The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``.",
+      "properties": {
+        "launch_script_path": {
+          "default": "ree-scripts/launch.sh",
+          "title": "Launch Script Path",
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
+        },
+        "launch_script_digest": {
+          "title": "Launch Script Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launch_script_size": {
+          "minimum": 0,
+          "title": "Launch Script Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "launch_script_digest",
+        "launch_script_size"
+      ],
+      "title": "LaunchDefinition",
+      "type": "object"
+    },
+    "Launched": {
+      "additionalProperties": false,
+      "description": "Where a launched script ran, as it saw from inside the launch.",
+      "properties": {
+        "node": {
+          "minLength": 1,
+          "title": "Node",
+          "type": "string"
+        },
+        "slurm_job_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slurm Job Id"
+        },
+        "slurm_step_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slurm Step Id"
+        }
+      },
+      "required": [
+        "node"
+      ],
+      "title": "Launched",
+      "type": "object"
+    },
     "LintReport": {
       "additionalProperties": false,
       "description": "Everything one lint run observed about one script.",
@@ -5617,6 +5778,17 @@
           ],
           "default": null
         },
+        "launch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LaunchDefinition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "hardware": {
           "anyOf": [
             {
@@ -5998,6 +6170,9 @@
           ],
           "title": "Basis",
           "type": "string"
+        },
+        "launch": {
+          "$ref": "#/$defs/ReviewLaunch"
         }
       },
       "required": [
@@ -6243,6 +6418,29 @@
         "experiment_environment_digest": {
           "title": "Experiment Environment Digest",
           "type": "string"
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest"
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -6470,6 +6668,29 @@
         "produced_artifact_digest": {
           "title": "Produced Artifact Digest",
           "type": "string"
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest"
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -6641,6 +6862,29 @@
           ],
           "default": null,
           "title": "Produced Output Digest"
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest"
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -6656,6 +6900,31 @@
         "run_script_digest"
       ],
       "title": "ReviewExperimentReceipt",
+      "type": "object"
+    },
+    "ReviewLaunch": {
+      "additionalProperties": false,
+      "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does.",
+      "properties": {
+        "mode": {
+          "default": "author",
+          "enum": [
+            "author",
+            "native"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "options": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Options",
+          "type": "array"
+        }
+      },
+      "title": "ReviewLaunch",
       "type": "object"
     },
     "ReviewRecord": {
@@ -6682,6 +6951,9 @@
           ],
           "title": "Status",
           "type": "string"
+        },
+        "launch": {
+          "$ref": "#/$defs/ReviewLaunch"
         },
         "steps": {
           "items": {
@@ -7100,6 +7372,35 @@
           ],
           "default": null
         },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "produced_output_digest": {
           "anyOf": [
             {
@@ -7307,7 +7608,8 @@
             "build_experiment_environment",
             "activate_experiment_environment",
             "experiment_run",
-            "experiment_verify"
+            "experiment_verify",
+            "launch"
           ],
           "title": "Kind",
           "type": "string"
@@ -7345,7 +7647,8 @@
             "build_experiment_environment",
             "activate_experiment_environment",
             "experiment_run",
-            "experiment_verify"
+            "experiment_verify",
+            "launch"
           ],
           "title": "Kind",
           "type": "string"
@@ -7573,6 +7876,159 @@
         "value"
       ],
       "title": "Signature",
+      "type": "object"
+    },
+    "SlurmObservation": {
+      "additionalProperties": false,
+      "description": "A launch check's view of the Slurm probe.",
+      "properties": {
+        "kind": {
+          "const": "slurm",
+          "default": "slurm",
+          "title": "Kind",
+          "type": "string"
+        },
+        "probe": {
+          "$ref": "#/$defs/SlurmProbe"
+        }
+      },
+      "required": [
+        "probe"
+      ],
+      "title": "SlurmObservation",
+      "type": "object"
+    },
+    "SlurmPartition": {
+      "additionalProperties": false,
+      "description": "One partition the controller reported: its name, whether jobs land there by default, and its time limit\nas Slurm prints it (``30:00``, ``1-00:00:00``, ``infinite``).",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "default": {
+          "type": "boolean",
+          "default": false,
+          "title": "Default"
+        },
+        "time_limit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Limit"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "SlurmPartition",
+      "type": "object"
+    },
+    "SlurmProbe": {
+      "additionalProperties": false,
+      "description": "Whether a script run for this REE can launch Slurm job steps, as probed where it runs.\n\n``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;\n``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence.",
+      "properties": {
+        "status": {
+          "enum": [
+            "probed",
+            "failed",
+            "not_probed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "runner": {
+          "anyOf": [
+            {
+              "enum": [
+                "host",
+                "container"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Runner"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "enum": [
+                "absent",
+                "unreachable",
+                "usable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        },
+        "srun_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Srun Path"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "partitions": {
+          "items": {
+            "$ref": "#/$defs/SlurmPartition"
+          },
+          "title": "Partitions",
+          "type": "array"
+        },
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "SlurmProbe",
       "type": "object"
     },
     "SourceComparison": {

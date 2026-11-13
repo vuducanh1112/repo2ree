@@ -3,7 +3,8 @@
 Each template is a dedicated ``.sh`` file shipped inside this package — the
 single source of truth for the starter content authors (human or workbench) work
 from. The build and activate templates are seeded into the overlay at REE
-creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the per-experiment run
+creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the launch template is not, since an REE without a
+launch script runs its scripts directly; the per-experiment run
 and verify templates cannot be seeded (their paths only exist once an
 experiment is named), so the API serves them for clients to prefill from.
 
@@ -104,6 +105,20 @@ def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
             label="Python virtual environment",
             description="Restore the packed virtual environment and run the given command with it on the path.",
             body=_template("activate_experiment_environment_venv.sh"),
+            workbench_environment="host",
+        ),
+    )
+
+
+def launch_templates() -> tuple[ScriptTemplate, ...]:
+    """The launch-script templates, one per launcher. An REE with no launch script runs its scripts directly."""
+    return (
+        ScriptTemplate(
+            key="slurm",
+            label="Slurm job step",
+            description="Run each of the REE's scripts as a Slurm job step with the resources it needs, "
+            "taking a reproducer's own options last.",
+            body=_template("launch_slurm.sh"),
             workbench_environment="host",
         ),
     )
