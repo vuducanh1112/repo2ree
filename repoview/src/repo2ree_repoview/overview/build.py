@@ -33,12 +33,13 @@ from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.api import page_api
 from repo2ree_repoview.overview.pages.architecture import page_architecture
 from repo2ree_repoview.overview.pages.configuration import page_configuration
-from repo2ree_repoview.overview.pages.coverage import page_coverage, page_showcase_coverage
+from repo2ree_repoview.overview.pages.coverage import SHOWCASES, page_coverage, page_showcase_coverage
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
 from repo2ree_repoview.overview.pages.operations import page_operations
 from repo2ree_repoview.overview.pages.receipts import page_receipts
 from repo2ree_repoview.overview.pages.recipes import page_recipes
+from repo2ree_repoview.overview.pages.showcase_ree import authoring_test, page_showcase_ree
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.zones import page_zones
@@ -46,6 +47,7 @@ from repo2ree_repoview.overview.prune import OVERVIEWS, prune
 from repo2ree_repoview.overview.receipt import (
     AggregateMoves,
     Exercised,
+    RunRecord,
     bundle_evidence,
     bundle_runs,
     decisions,
@@ -59,6 +61,7 @@ from repo2ree_repoview.overview.receipt import (
     tier_receipts,
     unreached,
 )
+from repo2ree_repoview.overview.showcase_ree import SealedRee, preserved_ree
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
 from repo2ree_repoview.repository import ROOT, Head
 from repo2ree_repoview.stamp import read_recorded_stamp
@@ -88,10 +91,10 @@ def head(title: str) -> str:
     )
 
 
-def frame(page: Page, pages: list[Page], now: Head) -> str:
-    """One page of the overview, with the sidebar that links them all."""
+def frame(page: Page, pages: list[Page], now: Head, current: str | None = None) -> str:
+    """One page of the overview, with the sidebar that links them all; a subpage marks the page it belongs to."""
     return (
-        f'{head(page.title)}<body><div class="layout">{sidebar(pages, now, page.slug)}'
+        f'{head(page.title)}<body><div class="layout">{sidebar(pages, now, current or page.slug)}'
         f"<main>{page.body}</main></div><script>{SCRIPT}</script></body></html>"
     )
 
@@ -124,6 +127,22 @@ def kept(bundle: Bundle, exports: Path, kind: str) -> str:
     return source.read_text(encoding="utf-8")
 
 
+def showcase_ree_pages(showcases: ShowcaseRuns, records: dict[str, RunRecord]) -> list[Page]:
+    """A page for each showcase's final REE, read from the copy its authoring test preserved."""
+    pages = []
+    for showcase in showcases.showcases:
+        if showcase.kind != "showcase":
+            continue
+        test = authoring_test(showcase)
+        ree: SealedRee | None = None
+        record = records.get(test.run) if test and test.run else None
+        found = next((t for t in record.tests if test and t.name == test.test), None) if record else None
+        if test and test.run and found:
+            ree = preserved_ree(ROOT / test.run / found.directory, found.rees)
+        pages.append(page_showcase_ree(showcase, test, ree))
+    return pages
+
+
 def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     now = Head.now()
     bundle = Bundle(output or OVERVIEWS / bundle_name(now), now.revision)
@@ -136,6 +155,9 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     excused = unreached()
     showcases = ShowcaseRuns.model_validate_json(kept(bundle, exports, "showcases"))
     showcase_runs = list(runs_on_disk(showcases.runs()))
+    showcase_records = {
+        str(run.relative_to(ROOT)) if run.is_relative_to(ROOT) else str(run): record for run, record in showcase_runs
+    }
     showcase_evidence = bundle_runs(bundle, showcase_runs)
     verdicts = judged_now()
     # What logs/just/ held when the overview was built, kept as the overview read it.
@@ -162,10 +184,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         page_showcase_coverage(
             spec,
             showcases,
-            {
-                str(run.relative_to(ROOT)) if run.is_relative_to(ROOT) else str(run): record
-                for run, record in showcase_runs
-            },
+            showcase_records,
             verdicts,
             Exercised.over(showcase_evidence),
             decisions(bundle, run_tests(showcase_runs), showcase_evidence),
@@ -186,6 +205,9 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
     for page in everything:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")
+    subpages = showcase_ree_pages(showcases, showcase_records)
+    for page in subpages:
+        (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now, SHOWCASES), encoding="utf-8")
     (bundle.root / f"{FRAME}.html").write_text(shell(everything, now), encoding="utf-8")
     (bundle.root / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
     if output is None:
@@ -194,8 +216,9 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         latest.symlink_to(bundle.root.name)
         prune(OVERVIEWS)
     copied = sum((bundle.root / entry.path).stat().st_size for entry in manifest.copied)
+    written = len(everything) + len(subpages)
     print(
-        f"wrote {bundle.root} ({len(everything)} pages; {len(manifest.copied)} files copied, {copied / 1e6:.1f} MB; "
+        f"wrote {bundle.root} ({written} pages; {len(manifest.copied)} files copied, {copied / 1e6:.1f} MB; "
         f"{len(manifest.referenced)} referenced by hash)"
     )
     return bundle.root

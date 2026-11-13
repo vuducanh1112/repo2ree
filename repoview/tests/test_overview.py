@@ -12,7 +12,15 @@ from pydantic import ValidationError
 
 from repo2ree_repoview.overview.build import build
 from repo2ree_repoview.overview.bundle import COMMAND, Bundle, sha256
-from repo2ree_repoview.overview.exports import SPEC_EXPORT, ZONES_EXPORT, Spec, Zones, exported, operations_export
+from repo2ree_repoview.overview.exports import (
+    SPEC_EXPORT,
+    ZONES_EXPORT,
+    ShowcaseRuns,
+    Spec,
+    Zones,
+    exported,
+    operations_export,
+)
 from repo2ree_repoview.overview.receipt import gate_verifications, read_receipt
 from repo2ree_repoview.repository import ROOT, Provenance
 from repo2ree_repoview.stamp import Stamp, record
@@ -80,6 +88,10 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
             # The frame its bundled evidence is shown in.
             "evidence",
         )
+    } | {
+        f"showcase-ree-{showcase.name}.html"
+        for showcase in ShowcaseRuns.model_validate_json((exports / "showcases.json").read_text()).showcases
+        if showcase.kind == "showcase"
     }
     manifest = json.loads((target / "manifest.json").read_text())
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True)

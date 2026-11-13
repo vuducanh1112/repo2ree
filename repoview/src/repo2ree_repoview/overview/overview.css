@@ -146,3 +146,13 @@ ul.decided ul{margin:2px 0;padding-left:18px;color:var(--muted)}
 .shell iframe{display:block;border:0;width:100%;height:100vh}
 .shell iframe[hidden]{display:none}
 .shell .missing{padding:24px 32px}
+.filetree{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font:13px/1.7 ui-monospace,monospace}
+.filetree ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line)}
+.filetree>ul{padding-left:0;border-left:0}
+.filetree details{margin:0}
+.filetree summary{color:var(--ink);font-size:13px}
+.filetree .meta{color:var(--muted);margin-left:10px;font-size:12px}
+.filetree .lfs{color:#7c3aed}
+.filetree pre.code{margin:4px 0 8px;font-size:12px}
+.compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px}
+.compare pre.code{margin:4px 0 0}

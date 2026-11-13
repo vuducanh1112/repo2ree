@@ -218,7 +218,10 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
     )
 
     assert (page.slug, page.title) == ("showcase-gate", "Showcase gate")
-    assert '<h4 id="showcase-python_venv"><code>python_venv</code> · API on <code>bare</code></h4>' in page.body
+    assert (
+        '<h4 id="showcase-python_venv"><code>python_venv</code> · <a href="showcase-ree-python_venv.html">final REE</a>'
+        " · API on <code>bare</code></h4>"
+    ) in page.body
     assert "test_python_venv_authoring.py" in page.body
     assert 'href="evidence.html?from=showcase-gate#t/traces/r.html"' in page.body
     assert "not in this clone</span>: <code>just test-showcase</code>" in page.body
