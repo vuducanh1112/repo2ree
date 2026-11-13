@@ -194,18 +194,23 @@ class _BackgroundSpanForwarder:
     *and* delay other REEs waiting on the lock. Callers ``submit`` payloads
     (non-blocking) and this thread does the network I/O with the sink's own
     deadline. Best-effort: a full queue drops rather than blocks, and the
-    daemon thread lets the process exit without joining.
+    daemon thread lets the process exit without joining. The thread starts with
+    the first submission, so building a forwarder (at import, as the API does)
+    starts nothing.
     """
 
     def __init__(self, forward: SpanSink, *, max_queue: int = 1024):
         self._forward = forward
         self._queue: queue.Queue[list[str]] = queue.Queue(maxsize=max_queue)
         self._thread = threading.Thread(target=self._run, name="span-relay-forwarder", daemon=True)
-        self._thread.start()
+        self._starting = threading.Lock()
 
     def submit(self, payloads: list[str]) -> None:
         if not payloads:
             return
+        with self._starting:
+            if self._thread.ident is None:
+                self._thread.start()
         try:
             self._queue.put_nowait(payloads)
         except queue.Full:

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from threading import RLock
 from typing import Any
@@ -49,7 +51,11 @@ def _resumable(run: StoredRun) -> bool:
 
 
 class JsonRunStore:
-    """Thread-safe JSON run store for one API process."""
+    """Thread-safe JSON run store for one API process.
+
+    It reads the runs an earlier process left when it is first used, not when it is built, so building it
+    (at import, as the API does) reads nothing.
+    """
 
     def __init__(self, root: Path) -> None:
         self._root = root
@@ -57,10 +63,10 @@ class JsonRunStore:
         self._runs: dict[tuple[str, str], Path] = {}
         self._idempotency: dict[tuple[str, str, str], tuple[str, str]] = {}
         self._next_log_seq: dict[tuple[str, str], int] = {}
-        self._load_indexes()
+        self._loaded = False
 
     def create_idempotent(self, run: StoredRun) -> tuple[StoredRun, bool]:
-        with self._lock:
+        with self._open():
             if run.idempotency_key:
                 slot = (run.ree_id, run.operation, run.idempotency_key)
                 existing_ref = self._idempotency.get(slot)
@@ -84,12 +90,12 @@ class JsonRunStore:
             return run.model_copy(deep=True), True
 
     def get(self, ree_id: str, run_id: str) -> StoredRun | None:
-        with self._lock:
+        with self._open():
             run_dir = self._runs.get((ree_id, run_id))
             return None if run_dir is None else self._read_state_unlocked(run_dir)
 
     def list_runs(self, ree_id: str) -> list[StoredRun]:
-        with self._lock:
+        with self._open():
             runs = [
                 self._read_state_unlocked(run_dir)
                 for (stored_ree_id, _run_id), run_dir in self._runs.items()
@@ -99,7 +105,7 @@ class JsonRunStore:
         return runs
 
     def begin(self, ree_id: str, run_id: str) -> StoredRun | None:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             if current is None:
                 return None
@@ -120,7 +126,7 @@ class JsonRunStore:
         level: str,
         message: str,
     ) -> RunLogEntry | None:
-        with self._lock:
+        with self._open():
             key = (ree_id, run_id)
             run_dir = self._runs.get(key)
             if run_dir is None:
@@ -149,7 +155,7 @@ class JsonRunStore:
         after_seq: int,
         limit: int | None = None,
     ) -> list[RunLogEntry]:
-        with self._lock:
+        with self._open():
             run_dir = self._runs.get((ree_id, run_id))
             if run_dir is None:
                 return []
@@ -157,7 +163,7 @@ class JsonRunStore:
             return entries if limit is None else entries[:limit]
 
     def update_outputs(self, ree_id: str, run_id: str, outputs: dict[str, Any]) -> StoredRun | None:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             if current is None:
                 return None
@@ -166,7 +172,7 @@ class JsonRunStore:
             return updated
 
     def request_cancel(self, ree_id: str, run_id: str) -> StoredRun | None:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             if current is None:
                 return None
@@ -183,7 +189,7 @@ class JsonRunStore:
             return updated
 
     def is_cancel_requested(self, ree_id: str, run_id: str) -> bool:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             return current is not None and current.cancel_requested_at is not None
 
@@ -198,7 +204,7 @@ class JsonRunStore:
         context: ExecutionContext | None = None,
         history: HistoryReference | None = None,
     ) -> StoredRun | None:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             if current is None:
                 return None
@@ -231,7 +237,7 @@ class JsonRunStore:
         return self._update_active(ree_id, run_id, {"log_offset": log_offset})
 
     def mark_cancel_sent(self, ree_id: str, run_id: str) -> bool:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             if current is None or current.cancel_sent:
                 return False
@@ -239,7 +245,7 @@ class JsonRunStore:
             return True
 
     def _update_active(self, ree_id: str, run_id: str, changes: dict[str, Any]) -> StoredRun | None:
-        with self._lock:
+        with self._open():
             current = self._get_unlocked(ree_id, run_id)
             if current is None or current.status in _TERMINAL_STATUSES:
                 return current
@@ -248,7 +254,7 @@ class JsonRunStore:
             return updated
 
     def resumable_incomplete(self) -> list[StoredRun]:
-        with self._lock:
+        with self._open():
             runs = [self._read_state_unlocked(run_dir) for run_dir in self._runs.values()]
         return [run for run in runs if _resumable(run)]
 
@@ -261,7 +267,7 @@ class JsonRunStore:
             origin="api",
             details={"code": "run_interrupted"},
         )
-        with self._lock:
+        with self._open():
             for key, run_dir in self._runs.items():
                 current = self._read_state_unlocked(run_dir)
                 if current.status not in _ACTIVE_STATUSES or _resumable(current):
@@ -272,6 +278,15 @@ class JsonRunStore:
                 interrupted.append(updated)
                 self._next_log_seq[key] = self._next_sequence_unlocked(run_dir)
         return interrupted
+
+    @contextmanager
+    def _open(self) -> Iterator[None]:
+        """Hold the store, having read the runs already on disk the first time."""
+        with self._lock:
+            if not self._loaded:
+                self._load_indexes()
+                self._loaded = True
+            yield
 
     def _load_indexes(self) -> None:
         with self._lock:

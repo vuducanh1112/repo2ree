@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 from typing import Any
 
 from repo2ree_api.export_openapi import CONTRACT_PATH, openapi_document
@@ -28,6 +32,26 @@ def test_generated_document_matches_committed_contract() -> None:
     # serialization so formatting drift can't creep into the committed file.
     assert json.loads(committed) == app.openapi(), "regenerate with `just generate-openapi`"
     assert committed == openapi_document(), "regenerate with `just generate-openapi`"
+
+
+def test_the_contract_is_written_from_the_code_alone(tmp_path: Path) -> None:
+    """Importing the app reads no runtime data and starts nothing: run records it cannot read do not stop the
+    contract being written, and no thread is started."""
+    runs = tmp_path / "runs"
+    (runs / "old-run").mkdir(parents=True)
+    (runs / "old-run" / "state.json").write_text('{"operation": "no-longer-an-operation"}')
+    script = (
+        "import threading\n"
+        "from repo2ree_api.export_openapi import openapi_document\n"
+        "openapi_document()\n"
+        "print(sorted(t.name for t in threading.enumerate()))\n"
+    )
+    environment = {**os.environ, "RUN_REGISTRY_DIR": str(runs), "CONTROL_STATE_DIR": str(tmp_path / "control")}
+    done = subprocess.run(
+        [sys.executable, "-c", script], env=environment, cwd=tmp_path, capture_output=True, text=True, check=False
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "['MainThread']"
 
 
 def test_public_operations_have_stable_unique_ids_and_tags() -> None:

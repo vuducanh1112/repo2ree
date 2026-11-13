@@ -123,10 +123,11 @@ def test_cancel_request_survives_reloading(tmp_path: Path):
     assert persisted.status == "canceling"
 
 
-def test_invalid_state_document_fails_loading(tmp_path: Path):
+def test_an_invalid_state_document_fails_the_first_use_not_the_building(tmp_path: Path):
     state = tmp_path / "bad-run" / "state.json"
     state.parent.mkdir(parents=True)
     state.write_text('{"run_id": "bad-run"}', encoding="utf-8")
 
+    store = JsonRunStore(tmp_path)
     with pytest.raises(ValueError):
-        JsonRunStore(tmp_path)
+        store.get("ree-1", "bad-run")
