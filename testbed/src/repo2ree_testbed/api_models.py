@@ -33,6 +33,8 @@ InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
 class InferenceRule(StrEnum):
     DOCKERFILE = "single-project-root-dockerfile-v1"
     PIP_REQUIREMENTS = "root-pip-requirements-v1"
+    DOCKER_ACTIVATE = "docker-activate-experiment-environment-v1"
+    VENV_ACTIVATE = "venv-activate-experiment-environment-v1"
 
 
 class InferenceDag(StrEnum):

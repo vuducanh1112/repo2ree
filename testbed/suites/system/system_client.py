@@ -202,6 +202,14 @@ class Api:
         )
         return dict(report["results"][0])
 
+    def proposed(self, ree_id: str, kind: str, rule: str, **selector: str) -> str:
+        """The script inference proposes for ``kind`` by ``rule``."""
+        result = self.infer(ree_id, kind, **selector)
+        bodies = [str(c["body"]) for c in result["candidates"] if c["inference_rule"] == rule]
+        if not bodies:
+            raise ApiError(f"inference proposed no {kind} by {rule}: {result['status']}")
+        return bodies[0]
+
     def ree(self, ree_id: str) -> dict[str, Any]:
         return dict(self.get(f"/api/v1/rees/{ree_id}")["ree"])
 
@@ -231,19 +239,31 @@ class Api:
     def build_experiment_environment(
         self, ree_id: str, script: str | None = None, fixture: Project = INSTANT
     ) -> dict[str, Any]:
-        """Declare the experiment environment, author its build (inferred unless given or brought), and run it."""
+        """Declare the experiment environment, author its build (given, else as the project writes it), and run it.
+
+        An activate script the recipe brings is written beside it; one inference proposes waits for the build.
+        """
         self.patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
-        if script is None and not fixture.infer_build:
-            script = fixture.recipe("build_experiment_environment.sh")
         if script is None:
-            result = self.infer(ree_id, "build_experiment_environment")
-            script = str(result["candidates"][0]["body"])
+            rule = fixture.rule("build_experiment_environment.sh")
+            script = (
+                self.proposed(ree_id, "build_experiment_environment", rule)
+                if rule
+                else fixture.recipe("build_experiment_environment.sh")
+            )
         self.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
-        self.write(ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, fixture.recipe("activate_experiment_environment.sh"))
+        if fixture.rule("activate_experiment_environment.sh") is None:
+            self.write(
+                ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, fixture.recipe("activate_experiment_environment.sh")
+            )
         return self.stage(ree_id, "build-experiment-environment", watch=fixture.watch)
 
     def activate(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
-        """Test the activation alone; with ``script``, after writing it as the activate script."""
+        """Test the activation alone; with ``script``, or what inference proposes for a project that writes it so,
+        after writing it as the activate script."""
+        rule = fixture.rule("activate_experiment_environment.sh")
+        if script is None and rule:
+            script = self.proposed(ree_id, "activate_experiment_environment", rule)
         if script is not None:
             self.write(ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
         return self.stage(ree_id, "activation-test", watch=fixture.watch)

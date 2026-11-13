@@ -115,13 +115,14 @@ class Client:
         return result
 
     def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
-        """Declare the experiment environment, ask inference for its build, and build with ``script``, else the
-        recipe's, else, for a project whose build is the inferred one, what inference proposed."""
+        """Declare the experiment environment, ask inference for its build, and build with ``script``, else as the
+        project writes it: what inference proposed by the project's rule, or the recipe's."""
         artifact = ExperimentEnvironmentPatch(artifact_path=fixture.experiment_environment_path)
         self._patch(ree_id, DefinitionPatch(experiment_environment=artifact))
         proposed = self.infer(ree_id, "build_experiment_environment")
-        if script is None and fixture.infer_build:
-            script = proposed.first_body()
+        rule = fixture.rule("build_experiment_environment.sh")
+        if script is None and rule:
+            script = proposed.body_of(rule)
         return Run.model_validate(self.api.build_experiment_environment(ree_id, script, fixture=fixture))
 
     def generate_sbom(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
@@ -131,9 +132,12 @@ class Client:
         return self._stage(ree_id, "cross-check-sbom", watch=watch)
 
     def activate(self, ree_id: str, fixture: Project) -> Run:
-        """Ask inference for the activate script of the environment just built, then test the recipe's."""
-        self.infer(ree_id, "activate_experiment_environment")
-        return Run.model_validate(self.api.activate(ree_id, fixture=fixture))
+        """Ask inference for the activate script of the environment just built, then test it as the project writes
+        it: what inference proposed by the project's rule, or the recipe's."""
+        proposed = self.infer(ree_id, "activate_experiment_environment")
+        rule = fixture.rule("activate_experiment_environment.sh")
+        script = proposed.body_of(rule) if rule else None
+        return Run.model_validate(self.api.activate(ree_id, script, fixture=fixture))
 
     def run_experiment(self, ree_id: str, fixture: Project) -> Run:
         """Declare the experiment with the recipe's scripts, which declaring it requires, ask inference for its run

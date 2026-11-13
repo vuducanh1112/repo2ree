@@ -8,8 +8,9 @@ hand when trying the app — so it lives at the repository root rather than insi
 
 The projects the suites author REEs from. Each folder holds `source/`, an
 ordinary source tree with no REE metadata or receipts that the suites pack as an
-upload, and `recipe/`, the scripts that run it. What each one needs deployed is
-in `testbed/src/repo2ree_testbed/showcases.py`. The real-world projects pin what they fetch: base images by
+upload, and `recipe/`, the scripts that run it which the suites do not write as
+script inference proposes them. Which scripts those are, and what each project
+needs deployed, is in `testbed/src/repo2ree_testbed/showcases.py`. The real-world projects pin what they fetch: base images by
 digest, Python packages by hash.
 
 ### `instant/`

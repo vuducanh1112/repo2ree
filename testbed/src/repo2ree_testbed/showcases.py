@@ -1,7 +1,7 @@
 """The example projects the suites author REEs from, and the showcases: each project and the machine it needs.
 
 A project is a folder of ``examples/projects``: ``source/`` is the tree that gets uploaded, unpacking to
-``source/`` in the workspace, and ``recipe/`` holds the scripts that run it.
+``source/`` in the workspace, and ``recipe/`` holds the scripts that run it which inference does not propose.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
+from repo2ree_testbed.api_models import InferenceRule
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.run_watch import INSTANT_RUN, QUIET_NETWORK_RUN, RunWatch
 from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
@@ -63,6 +64,11 @@ API_FEATURES = API_SUITE / "features"
 GUI_SUITE = ROOT / "gui/tests/showcase"
 SOURCE = "source"
 RESULT = "result.txt"
+BUILD: RecipeScript = "build_experiment_environment.sh"
+ACTIVATE: RecipeScript = "activate_experiment_environment.sh"
+PIP_BUILD = ((BUILD, InferenceRule.PIP_REQUIREMENTS),)
+VENV = (*PIP_BUILD, (ACTIVATE, InferenceRule.VENV_ACTIVATE))
+DOCKER = ((BUILD, InferenceRule.DOCKERFILE), (ACTIVATE, InferenceRule.DOCKER_ACTIVATE))
 # The API showcases' tier: every test of API_SUITE, each on a stack on the machine its showcase names.
 API_TIER = "showcase-api"
 
@@ -74,12 +80,16 @@ class Project:
     image: str | None
     experiment_environment_path: str
     experiment: str
-    # Whether the build script is the one script inference proposes, or the recipe's.
-    infer_build: bool
     verdict: ExpectedVerdict = "identical"
     # Whether its stages pull, fetch, or build over the network, and so may go quiet for long.
     network: bool = False
     outputs: tuple[str, ...] = (RESULT,)
+    # The scripts written as inference proposes them, each by the rule that proposes it; the others are the recipe's.
+    inferred: tuple[tuple[RecipeScript, InferenceRule], ...] = ()
+
+    def rule(self, script: RecipeScript) -> InferenceRule | None:
+        """The rule whose proposal is ``script``, or None when it is the recipe's."""
+        return dict(self.inferred).get(script)
 
     @property
     def directory(self) -> Path:
@@ -121,7 +131,7 @@ INSTANT = Project(
     image=PYTHON_SLIM_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-hello",
-    infer_build=True,
+    inferred=PIP_BUILD,
 )
 INSTANT_DOCKER = Project(
     name=ProjectName.INSTANT_DOCKER,
@@ -130,46 +140,43 @@ INSTANT_DOCKER = Project(
     experiment="instant-docker-hello",
     # Inference proposes `docker build` of the project as it stands; the recipe also
     # brings the bench's busybox into the build context, which a FROM scratch image needs.
-    infer_build=False,
 )
 APPTAINER = Project(
     name=ProjectName.APPTAINER,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime.sif",
     experiment="instant-apptainer-hello",
-    infer_build=False,
 )
 PYTHON_DOCKER = Project(
     name=ProjectName.PYTHON_DOCKER,
     image=DOCKER_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="python-hello",
-    infer_build=False,
     network=True,
+    inferred=DOCKER,
 )
 PYTHON_VENV = Project(
     name=ProjectName.PYTHON_VENV,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="python-pip-hello",
-    infer_build=False,
     network=True,
+    inferred=VENV,
 )
 JAVA_MAVEN = Project(
     name=ProjectName.JAVA_MAVEN,
     image=DOCKER_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="java-hello",
-    infer_build=False,
     network=True,
+    inferred=DOCKER,
 )
 PODMAN = Project(
     name=ProjectName.PODMAN,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="podman-hello",
-    # Inference proposes `docker build` of a Dockerfile; this project's build is its own Podman one.
-    infer_build=False,
+    # Inference proposes `docker build` of the Containerfile and `docker run` of its image; this machine has Podman.
     network=True,
 )
 SLURM = Project(
@@ -177,22 +184,21 @@ SLURM = Project(
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-slurm-hello",
-    infer_build=True,
+    inferred=PIP_BUILD,
 )
 STOCHASTIC = Project(
     name=ProjectName.STOCHASTIC,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-stochastic-pi",
-    infer_build=True,
     verdict="reproduced",
+    inferred=VENV,
 )
 CONDA = Project(
     name=ProjectName.CONDA,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-conda.tar.gz",
     experiment="conda-numpy",
-    infer_build=False,
     network=True,
 )
 NOTEBOOK = Project(
@@ -200,28 +206,28 @@ NOTEBOOK = Project(
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="notebook-decay-rate",
-    infer_build=True,
     # The executed notebook records when each of its cells ran, so no rerun repeats its bytes.
     verdict="reproduced",
     network=True,
     outputs=(RESULT, "curve.csv", "figure.json", "figure.png", "executed.ipynb"),
+    inferred=VENV,
 )
 PLOTTING = Project(
     name=ProjectName.PLOTTING,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="plotting-linear-fit",
-    infer_build=True,
     network=True,
     outputs=(RESULT, "fit.csv", "figure.png"),
+    inferred=VENV,
 )
 UNPINNED = Project(
     name=ProjectName.UNPINNED,
     image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="unpinned-mean-kelvin",
-    infer_build=False,
     verdict="different",
+    inferred=((ACTIVATE, InferenceRule.VENV_ACTIVATE),),
 )
 ALL_PROJECTS: tuple[Project, ...] = (
     APPTAINER,
