@@ -331,9 +331,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
         handle,
         PatchReeDefinitionCommand(
             args=PatchReeDefinitionArgs(
-                patch={
-                    "build_experiment_environment": {"experiment_environment_path": _EXPERIMENT_ENVIRONMENT_ARTIFACT}
-                },
+                patch={"experiment_environment": {"artifact_path": _EXPERIMENT_ENVIRONMENT_ARTIFACT}},
                 expected_version="",
             )
         ),
