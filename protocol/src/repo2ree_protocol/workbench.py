@@ -81,7 +81,7 @@ class WorkbenchHello(BaseModel):
 class ExecSimpleRequest(BaseModel):
     """Run an executor subcommand in the bench, discarding output.
 
-    ``argv`` is the ``ree`` subcommand argv (e.g. ``["init-ree", …]``)
+    ``argv`` is the ``ree`` subcommand argv (e.g. ``["init", …]``)
     — *without* the executor binary. The resident workbench resolves its local
     executor entry point from configuration."""
 

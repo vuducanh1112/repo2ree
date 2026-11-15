@@ -14,7 +14,6 @@ derived and may be rebuilt at any time.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -51,10 +50,6 @@ RECEIPTS_DIRNAME = tree.RECEIPTS
 REVIEWS_DIRNAME = tree.REVIEWS
 REVIEW_RECORD_FILENAME = tree.REVIEW_RECORD
 COMPARISONS_DIRNAME = tree.COMPARISONS
-
-# Fixed mount point inside every REE workbench container.
-WORKBENCH_ROOT = Path(os.environ.get("REPO2REE_WORKBENCH_ROOT", "/ree"))
-
 
 # ================================================
 # Bundle Layout
@@ -156,11 +151,6 @@ class ReeLayout:
     @classmethod
     def for_ree(cls, storage_root: Path | str, ree_id: str) -> ReeLayout:
         return cls(root=Path(storage_root) / ree_id)
-
-    @classmethod
-    def in_workbench(cls) -> ReeLayout:
-        """Layout rooted at the fixed workbench mount point (/ree)."""
-        return cls(root=WORKBENCH_ROOT)
 
     @property
     def manifest(self) -> Path:

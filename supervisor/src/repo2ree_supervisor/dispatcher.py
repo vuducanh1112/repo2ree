@@ -36,8 +36,8 @@ from repo2ree_protocol.queries import (
     GET_REE_DOCUMENT_SUMMARY,
     GET_REE_MANIFEST,
     GET_REVIEWS,
+    INIT_REE,
     READ_REE_FILE,
-    READ_REE_FILE_PATH,
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
@@ -464,7 +464,7 @@ class CommandDispatcher:
 
     def read_ree_file_bytes(self, handle: ReeRoute, path: str) -> bytes:
         # REE files can include large experiment environment and result artifacts.
-        return self.dispatch_query(handle, READ_REE_FILE, READ_REE_FILE_PATH, path, timeout=120)
+        return self.dispatch_query(handle, READ_REE_FILE, "--", path, timeout=120)
 
     def build_archive(self, handle: ReeRoute) -> ReceivedFile:
         """The REE's archive as a file on the control plane; the caller removes it.
@@ -488,7 +488,7 @@ class CommandDispatcher:
         with self._locks(handle.ree_id):
             self._workbench.exec_simple(
                 handle.workbench_id,
-                ["init-ree", "--name", name, "--workbench-environment", workbench_environment],
+                [INIT_REE, "--name", name, "--workbench-environment", workbench_environment],
                 ree_id=handle.ree_id,
             )
 

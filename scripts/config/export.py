@@ -75,7 +75,6 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_TEST_RUN_ID": ("test-recording", "internal"),
     "REPO2REE_TOOLS_BIN": ("executor", "internal"),
     "REPO2REE_TOOLS_BUNDLE": ("workbench", "deployment"),
-    "REPO2REE_WORKBENCH_ROOT": ("core", "internal"),
     "REE_LAUNCH": ("reproducer", "runtime"),
     "REE_LAUNCH_OPTIONS": ("reproducer", "runtime"),
     "REPRODUCE_REFETCH": ("reproducer", "runtime"),

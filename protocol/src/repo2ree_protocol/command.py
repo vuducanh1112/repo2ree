@@ -3,7 +3,8 @@
 The Command union is the wire form between the control plane (api) and the
 execution plane (in-container CLI). Each variant carries fully-typed args
 for one operation. The discriminator field ``operation`` is the stable
-identifier; argv subcommands are sugar that construct the same types.
+identifier; ``repo2ree_protocol.verbs`` spells each command as the ``ree`` argv
+that runs it, from the markers on these fields.
 
 Add new operations by:
   1. Defining a new ``*Args`` + ``*Command`` pair below.
@@ -17,6 +18,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from repo2ree_protocol.argv import POSITIONAL, STDIN
 from repo2ree_ree.review import ReviewLaunch
 
 # What a review step is allowed to reproduce *from*.
@@ -35,7 +37,7 @@ class ReviewAcquireSourceArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: str
+    review_id: Annotated[str, POSITIONAL]
     # ``independent`` fetches the recorded origin; ``bundled`` extracts the REE's
     # own snapshot.tar.gz, which is what makes a bundle-only REE reviewable.
     basis: ReviewBasis = "auto"
@@ -60,7 +62,7 @@ class ReviewBuildExperimentEnvironmentArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: str
+    review_id: Annotated[str, POSITIONAL]
     # Activation and the experiments run *in* the workspace this step leaves
     # behind, and on an ``independent`` basis the experiment environment exists nowhere else —
     # so reclaiming it here would end the attempt at the build. Off by default
@@ -93,7 +95,7 @@ class ReviewActivationTestArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: str
+    review_id: Annotated[str, POSITIONAL]
 
 
 class ReviewActivationTestCommand(BaseModel):
@@ -118,8 +120,8 @@ class ReviewRunExperimentArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: str
-    experiment_name: str
+    review_id: Annotated[str, POSITIONAL]
+    experiment_name: Annotated[str, POSITIONAL]
 
 
 class ReviewRunExperimentCommand(BaseModel):
@@ -199,8 +201,8 @@ class WriteFileArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    path: str
-    content: str
+    path: Annotated[str, POSITIONAL]
+    content: Annotated[str, STDIN]
     # Optimistic-concurrency guard: "sha256:<hex>" of the workspace file the
     # caller last read. The handler verifies it against the current bytes right
     # before writing — inside the per-REE dispatch serialization — so the
@@ -220,7 +222,7 @@ class DeleteFileArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    path: str
+    path: Annotated[str, POSITIONAL]
     # Same optimistic-concurrency guard as WriteFileArgs.expected_etag.
     expected_etag: str = ""
 
@@ -237,7 +239,7 @@ class PatchReeDefinitionArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    patch: dict[str, Any]
+    patch: Annotated[dict[str, Any], STDIN]
     # Checked in the execution plane immediately before the mutation. Keeping
     # this in the command makes compare-and-write atomic under per-REE dispatch.
     expected_version: str = ""
@@ -316,7 +318,7 @@ class EvaluateDependencyScoreCommand(BaseModel):
 class RunExperimentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    experiment_name: str
+    experiment_name: Annotated[str, POSITIONAL]
 
 
 class RunExperimentCommand(BaseModel):

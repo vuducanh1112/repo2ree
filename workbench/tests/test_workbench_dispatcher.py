@@ -195,16 +195,14 @@ def test_an_upload_request_sends_the_query_output_to_the_address_the_workbench_d
     try:
         asyncio.run(
             harness.dispatch(
-                ExecUploadRequest(
-                    ree_id="ree-1", argv=["build-archive"], transfer_path="/workbench/transfers/t1", timeout=30
-                ),
+                ExecUploadRequest(ree_id="ree-1", argv=["bundle"], transfer_path="/workbench/transfers/t1", timeout=30),
                 api_ws_url=f"ws://127.0.0.1:{server.server_port}/workbench/connect",
             )
         )
     finally:
         server.shutdown()
 
-    assert harness.service.calls == [("exec_query_to_file", ["build-archive"], 30)]
+    assert harness.service.calls == [("exec_query_to_file", ["bundle"], 30)]
     assert _Receiver.received == {"/workbench/transfers/t1": b"archive-bytes"}
     assert [frame.type for frame in harness.frames] == ["done"]
 

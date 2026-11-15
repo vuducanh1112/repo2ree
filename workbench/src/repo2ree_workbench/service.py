@@ -9,13 +9,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.queries import INIT_REE
 from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
 from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
 from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.executions import Executions, LogFollower
 from repo2ree_workbench.journal import journal_directory
 
-INIT_REE = "init-ree"
 JOURNAL_CHUNK = 256 * 1024
 
 

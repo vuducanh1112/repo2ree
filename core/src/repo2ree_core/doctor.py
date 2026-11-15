@@ -15,7 +15,6 @@ plane (and the user who picked the image) to judge.
 
 from __future__ import annotations
 
-import os
 import platform
 import subprocess
 import tempfile
@@ -35,9 +34,8 @@ _PROBED_TOOLS = ("syft", "git", "curl", "unzip", "tar", "gzip", "shellcheck")
 _DOCKER_WAIT_SECONDS = 15.0
 
 
-def run_doctor(ree_path: Path | None = None, docker_wait_seconds: float = _DOCKER_WAIT_SECONDS) -> dict[str, Any]:
-    ree_path = ree_path or Path(os.environ.get("REPO2REE_WORKBENCH_ROOT", "/ree"))
-    """Probe this environment; ``ok`` reflects only the hard requirements."""
+def run_doctor(ree_path: Path, docker_wait_seconds: float = _DOCKER_WAIT_SECONDS) -> dict[str, Any]:
+    """Probe this environment for the REE at ``ree_path``; ``ok`` reflects only the hard requirements."""
     ree_writable = _dir_writable(ree_path)
     return {
         "schema_version": 1,

@@ -42,20 +42,25 @@ INTERRUPTED = {
 }
 
 
+LINT = {"operation": "lint_scripts", "args": {"targets": []}}
+
+
 def fake_executor(tmp_path: Path, execute: str = "") -> Path:
-    """An executor whose ``execute`` logs a line, runs ``execute``, then reports success with its context."""
+    """A ``ree`` whose ``lint`` logs a line, runs ``execute``, then reports success with its context."""
     path = tmp_path / "ree"
     marker = tmp_path / "marker"
     path.write_text(
         "#!/bin/sh\n"
+        'while [ $# -gt 0 ]; do case "$1" in -C|--run-id) shift 2 ;; --context) context=$2; shift 2 ;; '
+        "--json) shift ;; *) break ;; esac; done\n"
         'case "$1" in\n'
-        "  execute) cat >/dev/null\n"
+        "  lint) cat >/dev/null\n"
         '    echo \'{"type":"log","stream":"stdout","level":"info","message":"one"}\' >&2\n'
         "    echo two >&2\n"
         f"    {execute}\n"
-        '    printf \'{"status":"succeeded","context":%s}\\n\' "$7" ;;\n'
-        f'  cancel-run) touch "{marker}" ;;\n'
-        f"  settle-attempt) printf '%s\\n' '{json.dumps(INTERRUPTED)}' ;;\n"
+        '    printf \'{"status":"succeeded","context":%s}\\n\' "$context" ;;\n'
+        f'  cancel) touch "{marker}" ;;\n'
+        f"  settle) printf '%s\\n' '{json.dumps(INTERRUPTED)}' ;;\n"
         "esac\n"
     )
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
@@ -70,7 +75,7 @@ def executions(tmp_path: Path, execute: str = "", **options: float) -> Execution
 
 def start(runs: Executions, ree_id: str = "ree", run_id: str = "run-1", **context: str) -> ExecutionContext:
     started = ExecutionContext.new(ree_id=ree_id).model_copy(update=context)
-    asyncio.run(runs.start(json.dumps({"operation": "lint_scripts"}), run_id, {}, started, ree_id=ree_id))
+    asyncio.run(runs.start(json.dumps(LINT), run_id, {}, started, ree_id=ree_id))
     return started
 
 
@@ -148,7 +153,7 @@ def test_a_command_waits_a_while_for_the_one_running_in_its_ree(tmp_path: Path) 
     runs = executions(tmp_path, "sleep 0.3")
     first = start(runs)
     second = ExecutionContext.new()
-    asyncio.run(runs.start("{}", "run-2", {}, second, ree_id="ree", wait=10))
+    asyncio.run(runs.start(json.dumps(LINT), "run-2", {}, second, ree_id="ree", wait=10))
     assert runs.wait(first.attempt_id, 0)
     assert runs.wait(second.attempt_id, 10)
 
@@ -160,7 +165,7 @@ def test_a_command_waits_for_a_free_slot(tmp_path: Path) -> None:
     second = ExecutionContext.new()
 
     async def start_second() -> bool:
-        waiting = asyncio.ensure_future(runs.start("{}", "run-2", {}, second, ree_id="ree-2"))
+        waiting = asyncio.ensure_future(runs.start(json.dumps(LINT), "run-2", {}, second, ree_id="ree-2"))
         await asyncio.sleep(0.2)
         waited = not waiting.done()
         (tmp_path / "marker").touch()
@@ -229,6 +234,7 @@ def launched(tmp_path: Path, runs: Executions, attempt_id: str, execute: str, re
     directory = runs.directory / attempt_id
     directory.mkdir(parents=True)
     (directory / "command.json").write_text("{}")
+    (directory / "stdin").write_bytes(b"")
     script = tmp_path / f"{attempt_id}.sh"
     script.write_text(f"#!/bin/sh\ncat >/dev/null\necho line >&2\n{execute}\n")
     script.chmod(script.stat().st_mode | stat.S_IXUSR)

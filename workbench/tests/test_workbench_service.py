@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from repo2ree_protocol.queries import INIT_REE
 from repo2ree_workbench.executions import Identity, _Live
 from repo2ree_workbench.service import WorkbenchService
 
@@ -45,7 +46,7 @@ def test_service_routes_every_execution_operation_for_the_ree_it_names(tmp_path:
     service.copy_in("source", "/ree/dest", ree_id="ree-1")
     service.delete_ree("ree-1")
 
-    assert backend.calls == ["exec_simple", "exec_query", "cancel-run", "copy_in", "delete_ree"]
+    assert backend.calls == ["exec_simple", "exec_query", "cancel", "copy_in", "delete_ree"]
 
 
 def test_a_store_deletes_an_ree_only_while_none_of_its_runs_is_active(tmp_path: Path) -> None:
@@ -68,8 +69,8 @@ def test_a_store_creates_an_ree_only_where_none_is(tmp_path: Path) -> None:
     (tmp_path / "ree-1" / "ree.json").write_text("{}")
 
     with pytest.raises(RuntimeError, match="already exists"):
-        service.exec_simple(["init-ree", "--name", "demo"], ree_id="ree-1")
-    service.exec_simple(["init-ree", "--name", "demo"], ree_id="ree-2")
+        service.exec_simple([INIT_REE, "--name", "demo"], ree_id="ree-1")
+    service.exec_simple([INIT_REE, "--name", "demo"], ree_id="ree-2")
 
 
 def test_the_service_lists_and_serves_its_store_journals_as_written(tmp_path: Path) -> None:

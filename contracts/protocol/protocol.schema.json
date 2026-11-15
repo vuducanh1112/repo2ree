@@ -251,13 +251,13 @@
     }
   },
   "x-queries": {
-    "get-ree-manifest": {
+    "manifest": {
       "flags": [],
       "reply": {
         "$ref": "#/$defs/Ree"
       }
     },
-    "get-ree-document": {
+    "show": {
       "flags": [
         "--summary"
       ],
@@ -265,27 +265,25 @@
         "$ref": "#/$defs/WorkbenchReeDocument"
       }
     },
-    "get-reviews": {
+    "reviews": {
       "flags": [],
       "reply": {
         "$ref": "#/$defs/ReviewSet"
       }
     },
-    "get-history": {
+    "log": {
       "flags": [],
       "reply": {
         "$ref": "#/$defs/OperationHistory"
       }
     },
-    "read-ree-file": {
-      "flags": [
-        "--path"
-      ],
+    "cat": {
+      "flags": [],
       "reply": {
         "contentMediaType": "application/octet-stream"
       }
     },
-    "build-archive": {
+    "bundle": {
       "flags": [],
       "reply": {
         "contentMediaType": "application/octet-stream"
@@ -2727,7 +2725,7 @@
     },
     "ExecSimpleRequest": {
       "additionalProperties": false,
-      "description": "Run an executor subcommand in the bench, discarding output.\n\n``argv`` is the ``ree`` subcommand argv (e.g. ``[\"init-ree\", …]``)\n— *without* the executor binary. The resident workbench resolves its local\nexecutor entry point from configuration.",
+      "description": "Run an executor subcommand in the bench, discarding output.\n\n``argv`` is the ``ree`` subcommand argv (e.g. ``[\"init\", …]``)\n— *without* the executor binary. The resident workbench resolves its local\nexecutor entry point from configuration.",
       "properties": {
         "op": {
           "const": "exec_simple",

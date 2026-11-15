@@ -137,7 +137,6 @@ class LocalCli:
 
     def environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
         environment = {**os.environ, **self.tools}
-        environment["REPO2REE_WORKBENCH_ROOT"] = str(root)
         if self.scripts is not None:
             environment[SCRIPT_RUNNER_VARIABLE] = self.scripts.choice(declared_workbench_environment(root))
         environment.update(extra or {})
@@ -162,13 +161,17 @@ class LocalCli:
             pass
         return BuildInfo()
 
+    def at(self, root: Path, argv: list[str]) -> list[str]:
+        """The command line that runs ``argv`` against the REE at ``root``."""
+        return [self.cli_path, "-C", str(root), *argv]
+
     def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         self.run(self.ree_root(ree_id), argv, timeout)
 
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
         """Run an executor subcommand against ``root``; its stdout."""
         result = subprocess.run(
-            [self.cli_path, *argv],
+            self.at(root, argv),
             check=False,
             capture_output=True,
             text=True,
@@ -181,12 +184,13 @@ class LocalCli:
         return result.stdout
 
     def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
+        root = self.ree_root(ree_id)
         result = subprocess.run(
-            [self.cli_path, *argv],
+            self.at(root, argv),
             check=False,
             capture_output=True,
             timeout=timeout,
-            env=self.environment(self.ree_root(ree_id)),
+            env=self.environment(root),
         )
         if result.returncode:
             detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
@@ -197,14 +201,15 @@ class LocalCli:
 
     def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
         """Run an executor query with its stdout written straight to ``target``, never held in memory."""
+        root = self.ree_root(ree_id)
         with target.open("wb") as output:
             result = subprocess.run(
-                [self.cli_path, *argv],
+                self.at(root, argv),
                 check=False,
                 stdout=output,
                 stderr=subprocess.PIPE,
                 timeout=timeout,
-                env=self.environment(self.ree_root(ree_id)),
+                env=self.environment(root),
             )
         if result.returncode:
             detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"

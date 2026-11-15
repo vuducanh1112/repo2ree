@@ -680,13 +680,6 @@
         "type": "string"
       }
     },
-    "REPO2REE_WORKBENCH_ROOT": {
-      "kind": "internal",
-      "owner": "core",
-      "schema": {
-        "type": "string"
-      }
-    },
     "REPO2REE_WORKBENCH_STATE_VOLUME": {
       "kind": "deployment",
       "owner": "compose",

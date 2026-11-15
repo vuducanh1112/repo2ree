@@ -18,8 +18,9 @@ def fake_executor(tmp_path: Path) -> Path:
     path = tmp_path / "bin" / "ree"
     path.write_text(
         "#!/bin/sh\n"
+        'while [ $# -gt 0 ]; do case "$1" in -C|--run-id|--context) shift 2 ;; '
+        "--json) shift ;; *) break ;; esac; done\n"
         'case "$1" in\n'
-        '  execute) cat >/dev/null; printf \'%s\\n\' \'{"status":"succeeded","outputs":{}}\' ;;\n'
         "  query) printf query-result ;;\n"
         "  fail) echo failed >&2; exit 7 ;;\n"
         '  build-info) printf \'%s\\n\' \'{"version":"0.1.0","revision":"executor-revision"}\' ;;\n'
@@ -75,8 +76,9 @@ def test_a_store_runs_each_command_against_the_ree_it_names(fake_executor: Path,
     executor = LocalCli(tmp_path / "store", str(fake_executor))
 
     assert executor.ree_root("ree-1") == (tmp_path / "store" / "ree-1").resolve()
-    observed = executor.environment(executor.ree_root("ree-1"))
-    assert observed["REPO2REE_WORKBENCH_ROOT"] == os.fspath((tmp_path / "store" / "ree-1").resolve())
+    root = executor.ree_root("ree-1")
+    assert executor.at(root, ["show"]) == [str(fake_executor), "-C", os.fspath(root), "show"]
+    assert "REPO2REE_WORKBENCH_ROOT" not in executor.environment(root)
     for refused in ("..", "a/b", "", "-x"):
         with pytest.raises(ValueError):
             executor.ree_root(refused)

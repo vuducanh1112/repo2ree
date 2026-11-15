@@ -23,9 +23,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from repo2ree_protocol.command import command_adapter
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
 from repo2ree_protocol.result import ActionResult
+from repo2ree_protocol.verbs import to_argv
 from repo2ree_telemetry.behaviour import events
 from repo2ree_workbench import cli_events
 from repo2ree_workbench.cli_process import LocalCli
@@ -49,7 +51,7 @@ _WRAPPER = (
     "sh",
     "-c",
     (
-        '"$@" < command.json > result.json 2>> log & child=$!; trap : TERM; '
+        '"$@" < stdin > result.json 2>> log & child=$!; trap : TERM; '
         'while :; do wait "$child"; status=$?; kill -0 "$child" 2>/dev/null || break; done; '
         'echo "$status" > exit.part && mv exit.part exit'
     ),
@@ -161,18 +163,13 @@ class Executions:
         directory.mkdir(parents=True)
         (directory / "command.json").write_text(cmd_json, encoding="utf-8")
         (directory / "context.json").write_text(context.model_dump_json(), encoding="utf-8")
+        words, stdin = to_argv(command_adapter.validate_json(cmd_json))
+        (directory / "stdin").write_bytes(stdin or b"")
+        root = self._executor.ree_root(ree_id)
         argv = [
             *_WRAPPER,
-            self._executor.cli_path,
-            "execute",
-            "--action",
-            "-",
-            "--run-id",
-            run_id,
-            "--execution-context",
-            context.model_dump_json(),
+            *self._executor.at(root, ["--json", "--run-id", run_id, "--context", context.model_dump_json(), *words]),
         ]
-        root = self._executor.ree_root(ree_id)
         process = subprocess.Popen(
             argv,
             cwd=directory,
@@ -258,11 +255,12 @@ class Executions:
     def _settle(self, identity: Identity) -> ActionResult | None:
         """Have core settle the attempt of an executor that ended without reporting."""
         directory = self.directory / identity.attempt_id
-        argv = ["settle-attempt", "--attempt-id", identity.attempt_id, "--run-id", identity.run_id]
-        if (directory / "command.json").is_file():
-            argv += ["--action", str(directory / "command.json")]
+        argv = ["--json", "--run-id", identity.run_id]
         with suppress(OSError):
-            argv += ["--execution-context", (directory / "context.json").read_text(encoding="utf-8")]
+            argv += ["--context", (directory / "context.json").read_text(encoding="utf-8")]
+        argv += ["settle", identity.attempt_id]
+        if (directory / "command.json").is_file():
+            argv += ["--command", str(directory / "command.json")]
         try:
             output = self._executor.run(self._executor.ree_root(identity.ree_id), argv, 600)
         except (OSError, RuntimeError, subprocess.SubprocessError):
@@ -320,7 +318,7 @@ class Executions:
         started yet finds the marker when it starts.
         """
         root = self._executor.ree_root(ree_id)
-        self._executor.run(root, ["cancel-run", "--run-id", run_id], 10)
+        self._executor.run(root, ["cancel", run_id], 10)
         with self._lock:
             running = (item for item in self._live.values() if item.identity.ree_id == ree_id)
             live = next((item for item in running if item.identity.run_id == run_id), None)

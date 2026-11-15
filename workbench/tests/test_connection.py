@@ -103,8 +103,8 @@ class FakeExec:
         return None
 
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
-        if argv[0] == "cancel-run":
-            self.canceled_runs.append(argv[2])
+        if argv[0] == "cancel":
+            self.canceled_runs.append(argv[1])
         return ""
 
     def ree_root(self, ree_id: str) -> Path:
@@ -170,7 +170,7 @@ def test_exec_query_result_is_chunked_under_the_frame_cap() -> None:
     payload = bytes(range(256)) * 4 * 1024  # 1 MiB, above one chunk
     FakeExec.query_result = payload
     try:
-        req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["build-archive"]))
+        req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["bundle"]))
         ws = FakeSocket([req.model_dump_json()])
         asyncio.run(_serve_and_settle(ws))
     finally:
@@ -220,9 +220,7 @@ def test_cancel_stops_an_inflight_request() -> None:
 
     ws = FakeSocket(
         [
-            WorkbenchWsRequest(
-                id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["build-archive"])
-            ).model_dump_json(),
+            WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["bundle"])).model_dump_json(),
             WorkbenchWsRequest(id="c1", request=CancelRequest(request_id="r1")).model_dump_json(),
         ]
     )

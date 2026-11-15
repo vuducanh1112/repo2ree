@@ -1,9 +1,9 @@
 """One command run against an REE, as every caller runs it: a person at a terminal, or a workbench.
 
-The session keeps the command's run log (``runs/<run_id>.ndjson``: the command, every log line, the result),
-stops it cooperatively on SIGTERM, SIGINT or the run's cancel marker, and before it starts settles any
-attempt a process that ended without reporting left behind. What the caller sees of the run is its own
-``emit``; the run log is the record.
+The session keeps the command's run log (``runs/<run_id>.ndjson``: the command, every log line, the result) and
+stops it cooperatively on SIGTERM, SIGINT or the run's cancel marker. Before the command starts, it settles any
+attempt a process that ended without reporting left behind, and records the scripts the author edited in place.
+What the caller sees of the run is its own ``emit``; the run log is the record.
 """
 
 from __future__ import annotations
@@ -18,12 +18,14 @@ from typing import Any, TextIO
 from repo2ree_core.execution.runners import ScriptRunner
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
+from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_protocol.command import Command
+from repo2ree_protocol.command import Command, WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.reserved_paths import is_overlay_path
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
@@ -84,6 +86,7 @@ def run_session(
                 },
             )
             settle_leftover_attempts(layout, log=log)
+            pick_up_authored_edits(layout, runner=runner, log=log)
             # The process itself, as one span, so a trace shows the process boundary between whoever started
             # it and core's command span.
             with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
@@ -137,6 +140,48 @@ def settle_leftover_attempts(layout: ReeLayout, *, log: LogSink) -> list[ActionR
         if result is not None:
             settled.append(result)
     return settled
+
+
+def pick_up_authored_edits(layout: ReeLayout, *, runner: ScriptRunner, log: LogSink) -> list[ActionResult]:
+    """Record every script the author edited in ``overlay/`` directly, before anything else runs.
+
+    The overlay is where an REE's scripts live, and a person edits them there with their own editor; until an
+    edit is written through ``write_file`` the workspace keeps the old script and the definition its old digest.
+    Each edited script is written as it is, an attempt of its own, so its history is that of an edit made through
+    any other caller. A script deleted from the overlay directly is not picked up: ``ree rm`` deletes one.
+    """
+    store = ReeDirectory(layout)
+    if not store.manifest_exists():
+        return []
+    edited = [
+        path
+        for path in store.overlay.iter_files()
+        if is_overlay_path(str(path))
+        and (not store.workspace.is_file(path) or store.workspace.read_bytes(path) != store.overlay.read_bytes(path))
+    ]
+    if edited and store.read_ree().seal is not None:
+        log("system", "warn", f"a sealed REE takes no edits; not picked up: {', '.join(map(str, edited))}")
+        return []
+    results = []
+    for path in edited:
+        try:
+            content = store.overlay.read_bytes(path).decode()
+        except UnicodeDecodeError:
+            log("system", "warn", f"{path} is not text, so it is not picked up")
+            continue
+        log("system", "info", f"picking up the edit to {path}")
+        context = ExecutionContext.new()
+        results.append(
+            run_command(
+                WriteFileCommand(args=WriteFileArgs(path=str(path), content=content)),
+                layout=layout,
+                runner=runner,
+                log=log,
+                run_id=f"edit-{context.attempt_id}",
+                context=context,
+            )
+        )
+    return results
 
 
 @contextmanager

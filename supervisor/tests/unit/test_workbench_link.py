@@ -113,7 +113,7 @@ def test_exec_query_returns_decoded_bytes() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"))
+    join = _run_in_thread(lambda: client.exec_query("a1", ["manifest"], ree_id="ree-1"))
     req = socket.wait_for_request()
     assert req.request.op == "exec_query"
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b'{"ok": true}').decode()))
@@ -128,7 +128,7 @@ def test_exec_query_raises_on_unavailable() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"))
+    join = _run_in_thread(lambda: client.exec_query("a1", ["manifest"], ree_id="ree-1"))
     socket.wait_for_request()
     socket.respond(UnavailableFrame(detail="gone"))
 
@@ -232,7 +232,7 @@ def test_cancel_run_sends_cancel_run_request() -> None:
         lambda client: client.exec_simple("a1", ["doctor"], ree_id="ree-1"),
         lambda client: client.cancel_run("a1", "run-7", ree_id="ree-1"),
         lambda client: list(client.follow_run("a1", "att-1", 0, ree_id="ree-1")),
-        lambda client: client.exec_query("a1", ["get-ree-manifest"], ree_id="ree-1"),
+        lambda client: client.exec_query("a1", ["manifest"], ree_id="ree-1"),
     ],
 )
 def test_every_request_names_the_ree_it_is_for(call: Any) -> None:
@@ -284,7 +284,7 @@ def test_abandoned_stream_sends_cancel_to_the_workbench() -> None:
     client = WsWorkbenchClient(registry)
 
     def call() -> None:
-        stream = cast(_ClosableIterator, client.exec_query_stream("a1", ["build-archive"], ree_id="ree-1"))
+        stream = cast(_ClosableIterator, client.exec_query_stream("a1", ["bundle"], ree_id="ree-1"))
         next(stream)
         stream.close()
 
@@ -340,7 +340,7 @@ def test_resolve_workbench_raises_when_none_connected() -> None:
 def test_pick_raises_when_no_workbench_for_exec_query() -> None:
     client = WsWorkbenchClient(WorkbenchConnectionRegistry())
     with pytest.raises(WorkbenchUnavailableError, match="no workbench service connected"):
-        client.exec_query("", ["get-ree-manifest"], ree_id="ree-1")
+        client.exec_query("", ["manifest"], ree_id="ree-1")
 
 
 def test_pick_raises_when_named_workbench_absent() -> None:
@@ -350,7 +350,7 @@ def test_pick_raises_when_named_workbench_absent() -> None:
     client = WsWorkbenchClient(registry)
     # A different workbench is connected, but the REE is pinned to one that isn't.
     with pytest.raises(WorkbenchUnavailableError, match="workbench 'a2' not connected"):
-        client.exec_query("a2", ["get-ree-manifest"], ree_id="ree-1")
+        client.exec_query("a2", ["manifest"], ree_id="ree-1")
 
 
 def test_exec_query_reassembles_multiple_chunks() -> None:
@@ -361,7 +361,7 @@ def test_exec_query_reassembles_multiple_chunks() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["build-archive"], ree_id="ree-1"))
+    join = _run_in_thread(lambda: client.exec_query("a1", ["bundle"], ree_id="ree-1"))
     socket.wait_for_request()
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-one-").decode()))
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-two").decode()))
@@ -420,10 +420,10 @@ def test_an_upload_arrives_beside_the_socket_and_is_collected_on_done(tmp_path) 
     client = WsWorkbenchClient(registry, inbox)
     received: list[ReceivedFile] = []
 
-    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", ["build-archive"], ree_id="ree-1")))
+    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", ["bundle"], ree_id="ree-1")))
     request = socket.wait_for_request().request
     assert isinstance(request, ExecUploadRequest)
-    assert request.argv == ["build-archive"]
+    assert request.argv == ["bundle"]
     # What the workbench PUTs to the path it was given, as the API's route receives it.
     token = request.transfer_path.removeprefix("/workbench/transfers/")
     asyncio.run(inbox.receive(token, _body(b"PK", b"zip-bytes"), 11))
@@ -445,7 +445,7 @@ def test_done_without_an_upload_is_an_error_and_leaves_no_file(tmp_path) -> None
 
     def call() -> None:
         try:
-            client.exec_upload("a1", ["build-archive"], ree_id="ree-1")
+            client.exec_upload("a1", ["bundle"], ree_id="ree-1")
         except TransferError as exc:
             errors.append(exc)
 
@@ -468,7 +468,7 @@ def test_a_failed_upload_request_discards_its_transfer(tmp_path) -> None:
 
     def call() -> None:
         try:
-            client.exec_upload("a1", ["build-archive"], ree_id="ree-1")
+            client.exec_upload("a1", ["bundle"], ree_id="ree-1")
         except RuntimeError as exc:
             errors.append(exc)
 
