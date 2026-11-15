@@ -6,12 +6,13 @@ from typing import get_args
 import pytest
 
 from repo2ree_testbed.artifacts import ROOT
-from repo2ree_testbed.runs.api_showcase import e2e_arguments
+from repo2ree_testbed.runs.api_showcase import RUNNERS, e2e_arguments
 from repo2ree_testbed.showcases import (
     ALL_PROJECTS,
     API_FEATURES,
     API_SUITE,
     API_TIER,
+    CLI_TIER,
     FEATURES,
     FEATURES_ENVIRONMENT,
     GUI_SHOWCASES,
@@ -113,6 +114,14 @@ def test_every_browser_showcase_spec_is_a_showcase_or_a_feature() -> None:
     assert all(feature.api is None or feature.api.is_file() for feature in FEATURES.values())
 
 
-def test_the_api_showcase_tier_has_its_recipe() -> None:
+def test_the_showcase_tiers_have_their_recipes() -> None:
     recipes = subprocess.run(["just", "--summary"], cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
     assert f"test-{API_TIER}" in recipes
+    assert f"test-{CLI_TIER}" in recipes
+
+
+def test_the_cli_tier_runs_the_same_tests_through_its_own_runner() -> None:
+    api, cli = e2e_arguments(jobs=1), e2e_arguments(jobs=1, surface="cli")
+    assert (api[1], cli[1]) == (str(RUNNERS["api"]), str(RUNNERS["cli"]))
+    assert all(runner.is_file() for runner in RUNNERS.values())
+    assert cli[2:4] == ["--tier", CLI_TIER]

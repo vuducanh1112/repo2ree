@@ -25,7 +25,13 @@ from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.docker import engine_path
-from repo2ree_testbed.stack.environments import DNS_VARIABLE, machine_command
+from repo2ree_testbed.stack.environments import (
+    DNS_VARIABLE,
+    MACHINE_CONTAINER_VARIABLE,
+    MACHINE_VARIABLE,
+    MACHINE_WORKDIR_VARIABLE,
+    machine_command,
+)
 from repo2ree_testbed.stack.injector import (
     HISTORY_LOCK_IN_REE,
     FaultUnavailableError,
@@ -418,6 +424,15 @@ class E2EStack:
             # Where the stores run scripts, for tests of one backend only.
             "E2E_STORE_BACKEND": self.deployment.backend,
         }
+        if (machine := self.deployment.environment) is not None:
+            # The first store's machine, for a client that works on it as its user does: the CLI showcases.
+            workdir = self.control_state / "workbench-1" / "cli"
+            workdir.mkdir(parents=True, exist_ok=True)
+            environment |= {
+                MACHINE_VARIABLE: machine.name,
+                MACHINE_CONTAINER_VARIABLE: f"{self.layout.run_token}-1",
+                MACHINE_WORKDIR_VARIABLE: str(workdir),
+            }
         running = self.client.start(self.api_url, environment, self.selection, launch)
         self.running = running
         while (status := running.poll()) is None:

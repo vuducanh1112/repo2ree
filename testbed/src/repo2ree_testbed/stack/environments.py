@@ -100,3 +100,23 @@ def machine_command(
         if variable not in _SOURCE_ONLY:
             command += ["--env", f"{variable}={value}"]
     return [*command, environment.image, *command_on_machine]
+
+
+# The machine a stack's first store runs on, as its test client finds it: the environment, the container, and a
+# directory the client and the machine share at the same path.
+MACHINE_VARIABLE = "E2E_MACHINE"
+MACHINE_CONTAINER_VARIABLE = "E2E_MACHINE_CONTAINER"
+MACHINE_WORKDIR_VARIABLE = "E2E_MACHINE_WORKDIR"
+
+
+def machine_exec(environment: Environment, container: str, command_on_machine: Sequence[str]) -> list[str]:
+    """The command that runs ``command_on_machine`` on a running machine, as the user who logs in to it.
+
+    With the machine's own environment: its PATH, the workbench's tools and ``ree``. A machine whose services start
+    as root has its user's home and runtime directory, as its entrypoint gives the workbench.
+    """
+    uid, gid = os.getuid(), os.getgid()
+    command = ["docker", "exec", "--interactive", "--user", f"{uid}:{gid}"]
+    if environment.privileged:
+        command += ["--env", "HOME=/home/researcher", "--env", f"XDG_RUNTIME_DIR=/run/user/{uid}"]
+    return [*command, container, *command_on_machine]

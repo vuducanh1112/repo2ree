@@ -78,6 +78,14 @@ test-showcase-api jobs=E2E_JOBS *select: (_tier-showcase-api jobs select) (asses
 _tier-showcase-api jobs *select: _load-showcase-environments
     python -m repo2ree_testbed api-showcase run --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
 
+# Run the same showcases through the command line: each test runs `ree` on the machine its showcase names, beside an idle stack; assess the run. Select tests as for test-showcase-api (e.g. `just test-showcase-cli 4 podman/`).
+[group('E2E tests')]
+test-showcase-cli jobs=E2E_JOBS *select: (_tier-showcase-cli jobs select) (assess-behaviour "--invocation" REPO2REE_TEST_RUN_ID)
+
+[private]
+_tier-showcase-cli jobs *select: _load-showcase-environments
+    python -m repo2ree_testbed cli-showcase run --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
+
 # Build and load the image of each machine an API showcase runs on.
 [private]
 _load-showcase-environments:

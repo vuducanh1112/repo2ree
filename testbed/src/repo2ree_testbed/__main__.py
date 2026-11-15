@@ -18,6 +18,7 @@ COMMANDS = {
     "machine": "repo2ree_testbed.runs.machine",
     "record": "repo2ree_testbed.runs.record",
     "api-showcase": "repo2ree_testbed.runs.api_showcase",
+    "cli-showcase": "repo2ree_testbed.runs.cli_showcase",
     "showcase-runs": "repo2ree_testbed.runs.showcase_runs",
 }
 

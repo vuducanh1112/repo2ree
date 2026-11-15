@@ -230,7 +230,7 @@ def test_title(test: ShowcaseTest) -> str:
     """A test as its file and its own name, without repeating where it is."""
     if test.test is None:
         return f"<code>{esc(Path(test.file).name)}</code>"
-    own = test.test.split("::", 1)[-1] if test.surface == "api" else test.test.split(" > ", 1)[-1]
+    own = test.test.split("::", 1)[-1] if test.surface != "browser" else test.test.split(" > ", 1)[-1]
     return f'<code>{esc(Path(test.file).name)}</code><br><span class="muted">{esc(own)}</span>'
 
 

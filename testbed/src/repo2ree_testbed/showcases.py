@@ -77,6 +77,8 @@ DOCKER = ((BUILD, InferenceRule.DOCKERFILE), (ACTIVATE, InferenceRule.DOCKER_ACT
 PODMAN_SCRIPTS = ((BUILD, InferenceRule.PODMAN_BUILD), (ACTIVATE, InferenceRule.PODMAN_ACTIVATE))
 # The API showcases' tier: every test of API_SUITE, each on a stack on the machine its showcase names.
 API_TIER = "showcase-api"
+# The same tests through the command line: each runs `ree` on the machine its showcase names.
+CLI_TIER = "showcase-cli"
 
 
 @dataclass(frozen=True)

@@ -386,14 +386,14 @@ class Operations(Export):
 
 class ShowcaseTier(Document):
     tier: str
-    surface: Literal["api", "browser"]
+    surface: Literal["api", "cli", "browser"]
     environments: tuple[str, ...]
     recipe: str
     run: str | None
 
 
 class ShowcaseTest(Document):
-    surface: Literal["api", "browser"]
+    surface: Literal["api", "cli", "browser"]
     workflow: Literal["authoring", "review"] | None
     file: str
     tier: str

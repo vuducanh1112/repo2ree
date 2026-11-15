@@ -16,6 +16,7 @@ from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.records import RunRecord, read
 from repo2ree_testbed.showcases import (
     API_TIER,
+    CLI_TIER,
     FEATURES,
     FEATURES_ENVIRONMENT,
     GUI_SHOWCASES,
@@ -31,7 +32,7 @@ from repo2ree_testbed.stack.environments import EnvironmentName
 # The browser showcases' tier, as its Playwright project names it.
 BROWSER_TIER = "showcase"
 
-Surface = Literal["api", "browser"]
+Surface = Literal["api", "cli", "browser"]
 
 
 class ShowcaseTier(BaseModel):
@@ -136,6 +137,7 @@ def showcases(found: _Found) -> tuple[Showcase, ...]:
         tests: list[ShowcaseTest] = []
         for workflow in get_args(Workflow):
             tests += found.tests("api", workflow, API_TIER, from_root(api_test(name, workflow)))
+            tests += found.tests("cli", workflow, CLI_TIER, from_root(api_test(name, workflow)))
             if spec := GUI_SHOWCASES.get(name, {}).get(workflow):
                 tests += found.tests("browser", workflow, BROWSER_TIER, from_root(GUI_SUITE / spec))
         listed.append(Showcase(name=name, kind="showcase", environment=environment, tests=tuple(tests)))
@@ -143,6 +145,7 @@ def showcases(found: _Found) -> tuple[Showcase, ...]:
         tests = []
         if files.api:
             tests += found.tests("api", None, API_TIER, from_root(files.api))
+            tests += found.tests("cli", None, CLI_TIER, from_root(files.api))
         if files.gui:
             tests += found.tests("browser", None, BROWSER_TIER, from_root(GUI_SUITE / files.gui))
         machine = FEATURES_ENVIRONMENT if files.api else None
@@ -165,7 +168,14 @@ def showcase_runs(runs: Path) -> ShowcaseRuns:
         recipe=f"just test-{API_TIER}",
         run=named(newest(API_TIER, runs)),
     )
-    tiers = (browser, api)
+    cli = ShowcaseTier(
+        tier=CLI_TIER,
+        surface="cli",
+        environments=environments_in_use(),
+        recipe=f"just test-{CLI_TIER}",
+        run=named(newest(CLI_TIER, runs)),
+    )
+    tiers = (browser, api, cli)
     return ShowcaseRuns(tiers=tiers, showcases=showcases(_Found(tiers)))
 
 

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from repo2ree_testbed.runs.showcase_runs import BROWSER_TIER, newest, showcase_runs
-from repo2ree_testbed.showcases import API_TIER, environments_in_use
+from repo2ree_testbed.showcases import API_TIER, CLI_TIER, environments_in_use
 
 
 def run(runs: Path, name: str, tier: str, *, selected: tuple[str, ...] = ()) -> Path:
@@ -30,8 +30,10 @@ def test_every_showcase_tier_is_listed_with_its_run_or_none(tmp_path: Path) -> N
 
     tiers = showcase_runs(tmp_path).tiers
 
-    assert [tier.tier for tier in tiers] == [BROWSER_TIER, API_TIER]
+    assert [tier.tier for tier in tiers] == [BROWSER_TIER, API_TIER, CLI_TIER]
+    assert [tier.surface for tier in tiers] == ["browser", "api", "cli"]
     assert tiers[0].run == str(browser)
     assert tiers[1].run is None
+    assert tiers[2].run is None
     assert tiers[0].environments == ()
-    assert tiers[1].environments == environments_in_use()
+    assert tiers[1].environments == tiers[2].environments == environments_in_use()
