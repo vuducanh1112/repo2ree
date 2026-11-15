@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:e298bf70c343a3469955671285f3453a71b86aa26904df7b7d29852737db69c3",
+    "ree_digest": "sha256:546c99eead29e6f431741036d6b5a433436aa0f849a32fe3eea909717727b872",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -52,6 +52,11 @@
         ],
         "version": "1.2.3",
         "website": "https://example.org/maximal"
+      },
+      "check_working_environment": {
+        "check_working_environment_script_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "check_working_environment_script_path": "ree-scripts/check_working_environment.sh",
+        "check_working_environment_script_size": 64
       },
       "experiment_environment": {
         "artifact_path": "runtime",
@@ -155,7 +160,7 @@
         "requested_ref": "v1.0",
         "source_type": "git"
       },
-      "workbench_environment": {
+      "working_environment": {
         "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     },
@@ -179,7 +184,7 @@
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "started_at": "2026-10-01T08:16:00.000000Z",
-        "workbench_environment": {
+        "working_environment": {
           "backend": "container",
           "declared": {
             "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -191,6 +196,7 @@
             "os": "Debian GNU/Linux 12"
           },
           "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "image_source": "engine",
           "script_engine": "socket"
         }
       },
@@ -233,7 +239,7 @@
         "schema_version": 1,
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "started_at": "2026-10-01T08:03:00.000000Z",
-        "workbench_environment": {
+        "working_environment": {
           "backend": "container",
           "declared": {
             "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -245,6 +251,7 @@
             "os": "Debian GNU/Linux 12"
           },
           "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "image_source": "engine",
           "script_engine": "socket"
         },
         "workspace_drift": {
@@ -279,7 +286,7 @@
           "started_at": "2026-10-01T08:17:00.000000Z",
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38",
-          "workbench_environment": {
+          "working_environment": {
             "backend": "container",
             "declared": {
               "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -291,6 +298,7 @@
               "os": "Debian GNU/Linux 12"
             },
             "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "image_source": "engine",
             "script_engine": "socket"
           }
         }
@@ -420,6 +428,38 @@
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "source_type": "git",
         "started_at": "2026-10-01T08:00:00.000000Z"
+      },
+      "working_environment_check": {
+        "check_working_environment_script_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "duration_ms": 1000,
+        "exit_code": 0,
+        "finished_at": "2026-10-01T08:05:01.000000Z",
+        "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
+        "launched": {
+          "node": "node-07",
+          "slurm_job_id": "4711",
+          "slurm_step_id": "0"
+        },
+        "operation": "check_working_environment",
+        "recorded_at": "2026-10-01T08:05:01.000000Z",
+        "run_id": "run-check",
+        "schema_version": 1,
+        "started_at": "2026-10-01T08:05:00.000000Z",
+        "working_environment": {
+          "backend": "container",
+          "declared": {
+            "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "host": {
+            "arch": "x86_64",
+            "container_engine": "Docker 29.0.1",
+            "kernel": "6.12.5",
+            "os": "Debian GNU/Linux 12"
+          },
+          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "image_source": "engine",
+          "script_engine": "socket"
+        }
       }
     },
     "schema_version": 1

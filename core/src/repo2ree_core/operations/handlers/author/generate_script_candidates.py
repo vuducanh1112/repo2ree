@@ -7,8 +7,8 @@ the result outputs. It is synchronous, persists nothing, and writes no files —
 turning a candidate into a script stays on the existing ``write_file`` path.
 
 Besides the REE, it reads the machine its scripts run on: which container engines
-they can use, and whether Slurm can launch them, each probed through the REE's script
-runner when a check first asks.
+they can use, probed in the REE's working environment, and whether Slurm can launch
+them, probed where a launch runs; each when a check first asks.
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.author_recipes.inference.machine import EngineProbe, MachineInputs, SlurmProbeSource
 from repo2ree_core.execution.engine_probe import RunnerEngineProbe
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import ScriptRunner
 from repo2ree_core.execution.slurm_probe import RunnerSlurmProbe
+from repo2ree_core.execution.working_environment import Entry, HostEntry
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_experiment_environment_inputs
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -28,21 +28,23 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 
 
-def engine_probe(layout: ReeLayout, runner: ScriptRunner) -> EngineProbe:
+def engine_probe(layout: ReeLayout, entry: Entry) -> EngineProbe:
     """The probe of the engines this REE's scripts can use, run from its workspace when first asked."""
-    return RunnerEngineProbe(layout.workspace, runner)
+    return RunnerEngineProbe(layout.workspace, entry)
 
 
-def slurm_probe(layout: ReeLayout, runner: ScriptRunner) -> SlurmProbeSource:
-    """The probe of whether Slurm can launch this REE's scripts, run from its workspace when first asked."""
-    return RunnerSlurmProbe(layout.workspace, runner)
+def slurm_probe(layout: ReeLayout) -> SlurmProbeSource:
+    """The probe of whether Slurm can launch this REE's scripts, run from its workspace when first asked.
+
+    A launch runs outside the working environment, so the probe does too: on the machine that runs the step."""
+    return RunnerSlurmProbe(layout.workspace, HostEntry())
 
 
 def handle_generate_script_candidates(
     args: GenerateScriptCandidatesArgs,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    entry: Entry,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
@@ -73,7 +75,7 @@ def handle_generate_script_candidates(
             selectors,
             definition=definition,
             experiment_environment_inputs=experiment_environment_inputs,
-            machine=MachineInputs(engines=engine_probe(layout, runner), slurm=slurm_probe(layout, runner)),
+            machine=MachineInputs(engines=engine_probe(layout, entry), slurm=slurm_probe(layout)),
             source_snapshot_digest=snapshot_digest,
         )
     except ValueError as exc:

@@ -18,7 +18,7 @@ from repo2ree_core.evidence.review.records import review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_activation_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import ScriptRunner
+from repo2ree_core.execution.working_environment import Entry
 from repo2ree_core.operations.steps.review import (
     CertifiedExperimentEnvironment,
     ReviewRunnableStep,
@@ -72,7 +72,7 @@ def handle_review_activation_test(
     args: ReviewActivationTestArgs,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    entry: Entry,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -80,7 +80,7 @@ def handle_review_activation_test(
     opened = open_review_run(
         _STEP,
         layout=layout,
-        runner=runner,
+        entry=entry,
         review_id=args.review_id,
         run_id=run_id,
         log=log,

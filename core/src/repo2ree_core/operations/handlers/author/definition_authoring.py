@@ -11,6 +11,7 @@ from repo2ree_ree.model import ReeDefinition, SourceDefinition
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_LAUNCH_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
@@ -76,6 +77,14 @@ def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> Re
             "launch_script_path": RESERVED_LAUNCH_SCRIPT,
             "launch_script_digest": digest_file(launch),
             "launch_script_size": launch.stat().st_size,
+        }
+
+    if hydrated.get("check_working_environment") is not None:
+        check = _required_overlay_file(layout, RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, "check script")
+        hydrated["check_working_environment"] = {
+            "check_working_environment_script_path": RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
+            "check_working_environment_script_digest": digest_file(check),
+            "check_working_environment_script_size": check.stat().st_size,
         }
 
     experiments: list[dict[str, Any]] = []

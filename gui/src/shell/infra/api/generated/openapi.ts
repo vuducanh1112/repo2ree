@@ -559,6 +559,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rees/{ree_id}/check-working-environment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Check Working Environment Run */
+        post: operations["startWorkingEnvironmentCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run": {
         parameters: {
             query?: never;
@@ -1227,7 +1244,7 @@ export interface components {
              * @constant
              */
             exit_code: 0;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+            working_environment?: components["schemas"]["WorkingEnvironmentObservation"] | null;
             /** Launch Script Digest */
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
@@ -1434,7 +1451,7 @@ export interface components {
             artifact_path: string;
             /** Produced Artifact Digest */
             produced_artifact_digest: string;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+            working_environment?: components["schemas"]["WorkingEnvironmentObservation"] | null;
             /** Launch Script Digest */
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
@@ -1584,6 +1601,74 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /**
+         * CheckWorkingEnvironmentDefinition
+         * @description The script that checks the working environment offers what the REE's scripts need, run there before them.
+         */
+        CheckWorkingEnvironmentDefinition: {
+            /**
+             * Check Working Environment Script Path
+             * @default ree-scripts/check_working_environment.sh
+             */
+            check_working_environment_script_path: string;
+            /** Check Working Environment Script Digest */
+            check_working_environment_script_digest: string;
+            /** Check Working Environment Script Size */
+            check_working_environment_script_size: number;
+        };
+        /**
+         * CheckWorkingEnvironmentReceipt
+         * @description The author's check of the working environment ran there, launched as every script is, and exited 0.
+         */
+        CheckWorkingEnvironmentReceipt: {
+            /**
+             * Schema Version
+             * @default 1
+             * @constant
+             */
+            schema_version: 1;
+            /** Run Id */
+            run_id: string;
+            /** Started At */
+            started_at: string;
+            /** Finished At */
+            finished_at: string;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Recorded At */
+            recorded_at: string;
+            /**
+             * Operation
+             * @default check_working_environment
+             * @constant
+             */
+            operation: "check_working_environment";
+            /** Check Working Environment Script Digest */
+            check_working_environment_script_digest: string;
+            /**
+             * Exit Code
+             * @default 0
+             * @constant
+             */
+            exit_code: 0;
+            working_environment: components["schemas"]["WorkingEnvironmentObservation"];
+            /** Launch Script Digest */
+            launch_script_digest?: string | null;
+            launched?: components["schemas"]["Launched"] | null;
+        };
+        /**
+         * CheckWorkingEnvironmentScriptTemplates
+         * @description The check-script templates and the reserved path they belong at.
+         *
+         *     Every REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.
+         *     The check runs in the working environment, launched as every script is, and must exit 0.
+         */
+        CheckWorkingEnvironmentScriptTemplates: {
+            /** Path */
+            path: string;
+            /** Templates */
+            templates: components["schemas"]["ScriptTemplateEntry"][];
+        };
         /** CommandCandidatesBinding */
         CommandCandidatesBinding: {
             /**
@@ -1703,6 +1788,14 @@ export interface components {
          * @description Run the reserved build script. Takes no parameters of its own.
          */
         CreateBuildExperimentEnvironmentRunPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
+        /**
+         * CreateCheckWorkingEnvironmentRunPayload
+         * @description Run the REE's check script in its working environment. Takes no parameters of its own.
+         */
+        CreateCheckWorkingEnvironmentRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
@@ -3098,6 +3191,7 @@ export interface components {
             source: components["schemas"]["StepAudit"];
             evaluation: components["schemas"]["StepAudit"];
             hardware: components["schemas"]["StepAudit"];
+            working_environment_check: components["schemas"]["StepAudit"];
             experiment_environment: components["schemas"]["StepAudit"];
             sbom: components["schemas"]["StepAudit"];
             sbom_cross_check: components["schemas"]["StepAudit"];
@@ -3179,7 +3273,8 @@ export interface components {
             source?: components["schemas"]["SourceDefinition"] | null;
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
+            working_environment?: components["schemas"]["WorkingEnvironment"] | null;
+            check_working_environment?: components["schemas"]["CheckWorkingEnvironmentDefinition"] | null;
             launch?: components["schemas"]["LaunchDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -3199,7 +3294,8 @@ export interface components {
             source?: components["schemas"]["SourceDefinition"] | null;
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironment"] | null;
+            working_environment?: components["schemas"]["WorkingEnvironment"] | null;
+            check_working_environment?: components["schemas"]["CheckWorkingEnvironmentDefinition"] | null;
             launch?: components["schemas"]["LaunchDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
@@ -3312,6 +3408,7 @@ export interface components {
             source?: components["schemas"]["AcquireSourceReceipt"] | null;
             evaluation?: components["schemas"]["EvaluateReproducibilityReceipt"] | null;
             hardware_observation?: components["schemas"]["ObserveHardwareReceipt"] | null;
+            working_environment_check?: components["schemas"]["CheckWorkingEnvironmentReceipt"] | null;
             experiment_environment?: components["schemas"]["BuildExperimentEnvironmentReceipt"] | null;
             sbom?: components["schemas"]["GenerateSbomReceipt"] | null;
             sbom_cross_check?: components["schemas"]["CrossCheckSbomReceipt"] | null;
@@ -3343,6 +3440,12 @@ export interface components {
              * @default false
              */
             include_experiment_environment: boolean;
+            /**
+             * Include Working Environment
+             * @description Save the working environment's OCI image into the sealed archive, so a review needs no registry.
+             * @default false
+             */
+            include_working_environment: boolean;
             /**
              * Include Results
              * @description Put everything under results/ in the sealed archive.
@@ -3378,7 +3481,7 @@ export interface components {
             /** Steps */
             steps?: components["schemas"]["ReeStepCatalogEntry"][];
             /** Next */
-            next?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
+            next?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
         };
         /**
          * ReeStepCatalogEntry
@@ -3389,13 +3492,13 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
+            key: "source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
             /** Order */
             order: number;
             /** Label */
             label: string;
             /** Requires */
-            requires?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
+            requires?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
             /** Commands */
             commands?: string[];
             /**
@@ -3415,13 +3518,13 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
+            key: "source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
             /** Order */
             order: number;
             /** Label */
             label: string;
             /** Requires */
-            requires?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
+            requires?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
             /** Commands */
             commands?: string[];
             /**
@@ -3438,7 +3541,7 @@ export interface components {
             /** Steps */
             steps?: components["schemas"]["ReeStepState"][];
             /** Next */
-            next?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
+            next?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
         };
         /** ReeSubject */
         ReeSubject: {
@@ -3845,7 +3948,7 @@ export interface components {
             run_exit_code: 0;
             /** Verify Exit Code */
             verify_exit_code?: 0 | null;
-            workbench_environment?: components["schemas"]["WorkbenchEnvironmentObservation"] | null;
+            working_environment?: components["schemas"]["WorkingEnvironmentObservation"] | null;
             /** Launch Script Digest */
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
@@ -3912,7 +4015,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "provision" | "ree-load" | "seal" | "build_experiment_environment" | "sbom" | "crosscheck" | "hbom" | "activation" | "source" | "evaluate" | "experiment";
+            operation: "provision" | "ree-load" | "seal" | "build_experiment_environment" | "sbom" | "crosscheck" | "hbom" | "activation" | "check_working_environment" | "source" | "evaluate" | "experiment";
             /**
              * Status
              * @enum {string}
@@ -4028,7 +4131,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify" | "launch";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify" | "launch" | "check_working_environment";
             /** Experiment Name */
             experiment_name?: string | null;
             /** Path */
@@ -4047,7 +4150,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify" | "launch";
+            kind: "build_experiment_environment" | "activate_experiment_environment" | "experiment_run" | "experiment_verify" | "launch" | "check_working_environment";
             /** Experiment Name */
             experiment_name?: string | null;
         };
@@ -4056,6 +4159,7 @@ export interface components {
             build_experiment_environment: components["schemas"]["BuildExperimentEnvironmentScriptTemplates"];
             activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentScriptTemplates"];
             launch: components["schemas"]["LaunchScriptTemplates"];
+            check_working_environment: components["schemas"]["CheckWorkingEnvironmentScriptTemplates"];
             experiment: components["schemas"]["ExperimentScriptTemplates"];
             /** Verify */
             verify: components["schemas"]["ScriptTemplateEntry"][];
@@ -4066,8 +4170,8 @@ export interface components {
          *
          *     Every catalog section lists these; one entry per environment carries
          *     ``is_default`` (for the seeded scripts it is the content a fresh REE in that
-         *     environment starts with). ``workbench_environment`` is the REE workbench environment kind a
-         *     variant suits, or null for one that suits any.
+         *     environment starts with). ``working_environment`` is the kind of working environment a variant
+         *     suits, or null for one that suits any.
          */
         ScriptTemplateEntry: {
             /** Key */
@@ -4080,8 +4184,8 @@ export interface components {
             body: string;
             /** Is Default */
             is_default: boolean;
-            /** Workbench Environment */
-            workbench_environment?: ("host" | "container") | null;
+            /** Working Environment */
+            working_environment?: ("host" | "container") | null;
         };
         /**
          * ScriptValidation
@@ -4572,32 +4676,6 @@ export interface components {
              */
             gpus: number;
         };
-        /** WorkbenchEnvironment */
-        WorkbenchEnvironment: {
-            /** Oci */
-            oci?: string | null;
-        };
-        /**
-         * WorkbenchEnvironmentObservation
-         * @description What a step ran in: the declaration it ran under, and what was there.
-         */
-        WorkbenchEnvironmentObservation: {
-            declared?: components["schemas"]["WorkbenchEnvironment"] | null;
-            /**
-             * Backend
-             * @enum {string}
-             */
-            backend: "host" | "container";
-            /** Image Digest */
-            image_digest?: string | null;
-            host?: components["schemas"]["HostFingerprint"] | null;
-            /**
-             * Script Engine
-             * @default none
-             * @enum {string}
-             */
-            script_engine: "none" | "socket" | "nested";
-        };
         /** WorkbenchList */
         WorkbenchList: {
             /** Workbenches */
@@ -4631,6 +4709,34 @@ export interface components {
              * @default connected
              */
             status: string;
+        };
+        /** WorkingEnvironment */
+        WorkingEnvironment: {
+            /** Oci */
+            oci: string;
+        };
+        /**
+         * WorkingEnvironmentObservation
+         * @description What a step ran in: the declaration it ran under, and what was there.
+         */
+        WorkingEnvironmentObservation: {
+            declared?: components["schemas"]["WorkingEnvironment"] | null;
+            /**
+             * Backend
+             * @enum {string}
+             */
+            backend: "host" | "container";
+            /** Image Digest */
+            image_digest?: string | null;
+            /** Image Source */
+            image_source?: ("engine" | "bundle") | null;
+            host?: components["schemas"]["HostFingerprint"] | null;
+            /**
+             * Script Engine
+             * @default none
+             * @enum {string}
+             */
+            script_engine: "none" | "socket" | "nested";
         };
         /** WorkspaceDrift */
         WorkspaceDrift: {
@@ -8249,6 +8355,122 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CreateActivationTestRunPayload"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Invalid request or operation precondition */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description REE, run, file, or artifact not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Version or idempotency conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload exceeds the configured size limit */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body is not application/json */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Workbench returned an invalid upstream response */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Compute provider or workbench unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Upload staging capacity exhausted */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    startWorkingEnvironmentCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ree_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCheckWorkingEnvironmentRunPayload"];
             };
         };
         responses: {

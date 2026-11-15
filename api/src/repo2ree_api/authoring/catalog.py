@@ -55,6 +55,7 @@ _STEP_ACTIONS: dict[ReeStepKey, list[str]] = {
     "source": ["startSourceAcquisition", "initializeSourceUpload", "completeSourceUpload"],
     "metadata": ["patchReeDefinition"],
     "hbom": ["startHbomGeneration", "patchReeDefinition"],
+    "check_working_environment": ["writeReeFile", "patchReeDefinition", "startWorkingEnvironmentCheck"],
     "evaluate": ["startEvaluate"],
     "build_experiment_environment": ["startBuildExperimentEnvironment", "generateScriptCandidates", "writeReeFile"],
     "sbom": ["startSbomGeneration"],

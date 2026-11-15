@@ -30,4 +30,23 @@ describe("authoring progress", () => {
     expect(progress.next).toBeUndefined();
     expect(mapRawAuthoringProgress(undefined)).toEqual({ steps: [], next: undefined });
   });
+
+  it("offers the first ready step it can show when the next one is a step it has no page for", () => {
+    const progress = mapRawAuthoringProgress({
+      steps: [
+        {
+          key: "check_working_environment",
+          order: 4,
+          label: "Check",
+          requires: [],
+          status: "ready",
+        },
+        { key: "evaluate", order: 5, label: "Readiness", requires: [], status: "ready" },
+        { key: "seal", order: 11, label: "Seal", requires: [], status: "ready" },
+      ],
+      next: "check_working_environment",
+    });
+
+    expect(progress.next).toBe("evaluate");
+  });
 });

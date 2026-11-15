@@ -14,6 +14,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
     CapturePolicy,
+    CheckWorkingEnvironmentDefinition,
     ExperimentEnvironmentDefinition,
     Ree,
     ReeDefinition,
@@ -22,8 +23,9 @@ from repo2ree_ree.model import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
 )
-from repo2ree_ree.workbench_environment import EnvironmentBackend
+from repo2ree_ree.working_environment import EnvironmentBackend
 
 
 @dataclass(frozen=True)
@@ -33,9 +35,11 @@ class InitializationResult:
 
 
 def initialize_ree(
-    layout: ReeLayout, *, name: str, workbench_environment: EnvironmentBackend = "container"
+    layout: ReeLayout, *, name: str, working_environment: EnvironmentBackend = "host"
 ) -> InitializationResult:
-    """Preserve existing files on retry, including after a failed first capture.
+    """Create the REE, starting with the scripts that suit the kind of ``working_environment`` it will declare.
+
+    Preserve existing files on retry, including after a failed first capture.
 
     A pre-existing REE without history gets an explicitly named existing-state
     baseline: its contents cannot be assumed to be the original initial state.
@@ -46,9 +50,10 @@ def initialize_ree(
         existing = store.manifest_exists()
         if not existing:
             store.ensure_dirs()
-            store.ensure_reserved_overlay_scripts(workbench_environment)
+            store.ensure_reserved_overlay_scripts(working_environment)
             build = store.overlay.absolute(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
             activate = store.overlay.absolute(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
+            check = store.overlay.absolute(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
             store.write_ree(
                 Ree(
                     subject=ReeSubject(
@@ -62,6 +67,10 @@ def initialize_ree(
                             activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
                                 activate_experiment_environment_script_digest=digest_file(activate),
                                 activate_experiment_environment_script_size=activate.stat().st_size,
+                            ),
+                            check_working_environment=CheckWorkingEnvironmentDefinition(
+                                check_working_environment_script_digest=digest_file(check),
+                                check_working_environment_script_size=check.stat().st_size,
                             ),
                         ),
                     )

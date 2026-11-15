@@ -1,286 +1,24 @@
-"""Where an author's script runs: on the workbench's host, or in a fresh container from the REE's image.
+"""How a step runs one of the REE's scripts: launched, entered into the working environment, and activated.
 
-The workbench chooses (``REPO2REE_SCRIPT_RUNNER``, JSON) and the executor reads the choice
-once. A container runner mounts only the workspace, at the same absolute path (a packed venv
-keeps the path it was built at), so a script never reaches the REE's history or receipts. It
-reports what it ran in, which the receipts of the step record.
+The command is composed outside in: the REE's launch (a scheduler, or nothing), the recorder of where the launch put
+it, the entry into the working environment (``working_environment.Entry``), the activation, and the script. It runs
+from the workspace, as a process of this one, so a launch places a job and the job enters the image where it landed.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
-import uuid
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Protocol
 
 from repo2ree_core.execution.launch import Launch, launched_command, read_launched
-from repo2ree_core.execution.process import (
-    CancelCheck,
-    StepOutcome,
-    StreamingProcessResult,
-    format_argv,
-    run_streaming_process,
-)
-from repo2ree_core.execution.workbench_environment import host_fingerprint, observe_workbench_environment
+from repo2ree_core.execution.process import CancelCheck, StepOutcome, format_argv
+from repo2ree_core.execution.working_environment import Entry, WorkingEnvironmentUnavailableError, run_in
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
-from repo2ree_ree.digest import Digest
 from repo2ree_ree.paths import resolve_within
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment, WorkbenchEnvironmentObservation
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import ScriptSpanAttrs, record_command_status, record_span_facts
 
 tracer = get_tracer(__name__)
-
-RUNNER_VARIABLE = "REPO2REE_SCRIPT_RUNNER"
-# The label naming whose job a container is: the store its workbench serves.
-JOB_OWNER_LABEL = "repo2ree.job-owner"
-# The label naming the execution a job belongs to, so a restarted workbench keeps the ones it adopts.
-JOB_EXECUTION_LABEL = "repo2ree.job-execution"
-EXECUTION_VARIABLE = "REPO2REE_EXECUTION"
-# Where a container finds the host engine's socket, when a script may reach it.
-_ENGINE_SOCKET = "/var/run/docker.sock"
-
-
-@dataclass(frozen=True)
-class ProbeResult:
-    """What a probe printed where the REE's scripts run; ``returncode`` None when it ran out of time."""
-
-    runner: Literal["host", "container"]
-    image: str | None
-    returncode: int | None
-    stdout: str
-    stderr: str
-
-
-class ScriptRunner(Protocol):
-    def run(
-        self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
-    ) -> StreamingProcessResult: ...
-
-    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
-        """Run ``argv`` where a script runs, as a script would, for at most ``seconds``, keeping what it prints
-        out of the step's logs. A probe reads and writes nothing in the workspace."""
-        ...
-
-    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation: ...
-
-
-def _bounded(command: list[str], *, cwd: Path | None, seconds: float) -> tuple[int | None, str, str]:
-    try:
-        done = subprocess.run(command, cwd=cwd, check=False, capture_output=True, text=True, timeout=seconds)
-    except subprocess.TimeoutExpired as expired:
-        return None, _text(expired.stdout), _text(expired.stderr)
-    return done.returncode, done.stdout, done.stderr
-
-
-def _text(output: str | bytes | None) -> str:
-    return output.decode(errors="replace") if isinstance(output, bytes) else output or ""
-
-
-def _quiet(_stream: str, _level: str, _message: str) -> None:
-    return None
-
-
-class LocalScriptRunner:
-    """The script runs on the workbench's own host, from the workspace."""
-
-    def run(
-        self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
-    ) -> StreamingProcessResult:
-        return run_streaming_process(argv, log=log, cwd=workspace, is_canceled=is_canceled)
-
-    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
-        returncode, stdout, stderr = _bounded(argv, cwd=workspace, seconds=seconds)
-        return ProbeResult(runner="host", image=None, returncode=returncode, stdout=stdout, stderr=stderr)
-
-    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
-        return observe_workbench_environment(declared)
-
-
-@dataclass
-class ContainerScriptRunner:
-    """The script runs in a fresh container from ``image``, with only the workspace mounted."""
-
-    engine: str
-    image: str
-    script_engine: Literal["none", "socket"] = "none"
-    # Where the engine finds this workbench's files, when it does not see them where the workbench
-    # does (a workbench in a container beside the host's engine): (local prefix, engine prefix).
-    engine_path: tuple[str, str] | None = None
-    # Who the job belongs to (its store), so what a killed workbench leaves running can be removed.
-    owner: str = ""
-    _digest: str | None = None
-
-    def run(
-        self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
-    ) -> StreamingProcessResult:
-        image = self._resolved(log)
-        name = f"repo2ree-job-{uuid.uuid4().hex[:12]}"
-        command, mounts = self._command(workspace, argv, name, image)
-        try:
-            return run_streaming_process(command, log=log, is_canceled=is_canceled)
-        finally:
-            # A canceled run stops the engine's client, not always the container it started.
-            subprocess.run([self.engine, "rm", "-f", name], check=False, capture_output=True, timeout=60)
-            self._hand_back(workspace, image, mounts, log)
-
-    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
-        image = self._resolved(_quiet)
-        name = f"repo2ree-job-{uuid.uuid4().hex[:12]}"
-        command, _ = self._command(workspace, argv, name, image)
-        try:
-            returncode, stdout, stderr = _bounded(command, cwd=None, seconds=seconds)
-        finally:
-            subprocess.run([self.engine, "rm", "-f", name], check=False, capture_output=True, timeout=60)
-        return ProbeResult(runner="container", image=self.image, returncode=returncode, stdout=stdout, stderr=stderr)
-
-    def _command(self, workspace: Path, argv: list[str], name: str, image: str) -> tuple[list[str], list[str]]:
-        """The engine command that runs ``argv`` in a container named ``name``, and the mounts it gives it."""
-        engine_side = self._engine_side(workspace)
-        mounts = ["-v", f"{engine_side}:{workspace}"]
-        workdir = str(workspace)
-        if self.script_engine == "socket":
-            mounts += ["-v", f"{_ENGINE_SOCKET}:{_ENGINE_SOCKET}", "-e", f"DOCKER_HOST=unix://{_ENGINE_SOCKET}"]
-            if engine_side != str(workspace):
-                # A path the script hands the engine ("docker run -v $(pwd):…") must be one the engine
-                # knows: the script also sees its workspace where the engine does, and starts there.
-                mounts += ["-v", f"{engine_side}:{engine_side}"]
-                workdir = engine_side
-        labels = ["--label", f"{JOB_OWNER_LABEL}={self.owner}"] if self.owner else []
-        if execution := os.environ.get(EXECUTION_VARIABLE, "").strip():
-            labels += ["--label", f"{JOB_EXECUTION_LABEL}={execution}"]
-        if resource_owner := os.environ.get("REPO2REE_RESOURCE_OWNER", "").strip():
-            labels += ["--label", f"repo2ree.resource-owner={resource_owner}"]
-        command = [
-            *(self.engine, "run", "--rm", "--init", "--name", name, *labels, *mounts),
-            *("-w", workdir, image, *argv),
-        ]
-        return command, mounts
-
-    def _hand_back(self, workspace: Path, image: str, mounts: list[str], log: LogSink) -> None:
-        """Give what the script wrote back to the workbench's user.
-
-        The script runs as its image's user (often root, which an environment may need), so on a
-        host whose engine keeps file ownership what it wrote would be root's, and unreadable here.
-        The workspace itself names the owner, as the container sees it: a rootless engine maps this
-        user to the container's root, and to it this user's own id is someone else's.
-        """
-        user = f"{os.getuid()}:{os.getgid()}"
-        if user == "0:0":
-            return
-        handed = subprocess.run(
-            [self.engine, "run", "--rm", "--user", "0:0", *mounts, image, *_hand_back_command(workspace)],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        if handed.returncode != 0:
-            log("system", "warn", f"could not give the workspace back to {user}: {handed.stderr.strip()[:200]}")
-
-    def _engine_side(self, path: Path) -> str:
-        """``path`` as the engine sees it; the job still sees it at ``path``."""
-        if self.engine_path is None:
-            return str(path)
-        local, engine = self.engine_path
-        relative = path.relative_to(local) if path.is_relative_to(local) else None
-        return str(Path(engine) / relative) if relative is not None else str(path)
-
-    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
-        return WorkbenchEnvironmentObservation(
-            declared=declared,
-            backend="container",
-            image_digest=Digest(self._digest) if self._digest else None,
-            host=host_fingerprint(container_engine=self.engine),
-            script_engine=self.script_engine,
-        )
-
-    def _resolved(self, log: LogSink) -> str:
-        """The image's id, pulled first if this host does not have it; its digest is remembered.
-
-        The script runs from the id, so a tag that moves meanwhile changes nothing it runs in.
-        """
-        resolved = _inspect(self.engine, self.image)
-        if resolved is None:
-            log("system", "info", f"pulling {self.image}")
-            subprocess.run([self.engine, "pull", self.image], check=True, capture_output=True, timeout=1800)
-            resolved = _inspect(self.engine, self.image)
-        if resolved is None:
-            raise RuntimeError(f"{self.image} is not an image {self.engine} can run")
-        image_id, self._digest = resolved
-        log("system", "info", f"running in {self.image} ({self._digest})")
-        return image_id
-
-
-def _hand_back_command(workspace: Path) -> list[str]:
-    return ["sh", "-c", 'chown -R "$(stat -c %u:%g "$0")" "$0"', str(workspace)]
-
-
-def _inspect(engine: str, image: str) -> tuple[str, str] | None:
-    """A local image's id, and its content digest: its registry digest, or its id when it has none."""
-    inspected = subprocess.run(
-        [engine, "image", "inspect", "--format", "{{.Id}} {{if .RepoDigests}}{{index .RepoDigests 0}}{{end}}", image],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    if inspected.returncode != 0:
-        return None
-    image_id, _, repo_digest = inspected.stdout.strip().partition(" ")
-    # Docker prints the id with its algorithm, and Podman without.
-    if image_id and ":" not in image_id:
-        image_id = f"sha256:{image_id}"
-    digest = repo_digest.rpartition("@")[2] or image_id
-    return (image_id, digest) if image_id.startswith("sha256:") and digest.startswith("sha256:") else None
-
-
-@dataclass(frozen=True)
-class RefusedScriptRunner:
-    """Where an REE's scripts cannot run here, and why: every use raises the reason, so only a step that runs a
-    script or probes where one would run fails, and a step that runs none never learns of it."""
-
-    reason: str
-
-    def run(
-        self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
-    ) -> StreamingProcessResult:
-        raise RuntimeError(self.reason)
-
-    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
-        raise RuntimeError(self.reason)
-
-    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
-        raise RuntimeError(self.reason)
-
-
-def runner_from_environment() -> ScriptRunner:
-    """The runner the workbench chose for this process (``REPO2REE_SCRIPT_RUNNER``); on the host when it chose none."""
-    stated = os.environ.get(RUNNER_VARIABLE, "").strip()
-    if not stated:
-        return LocalScriptRunner()
-    choice = json.loads(stated)
-    if refused := choice.get("refused"):
-        return RefusedScriptRunner(refused)
-    if choice.get("backend") != "container":
-        return LocalScriptRunner()
-    image = choice.get("image") or ""
-    if not image:
-        return RefusedScriptRunner(
-            "this workbench runs scripts in a container, and the REE declares no image to run them in"
-        )
-    mapped = choice.get("engine_path")
-    return ContainerScriptRunner(
-        engine=choice.get("engine") or "docker",
-        image=image,
-        script_engine=choice.get("script_engine") or "none",
-        engine_path=(mapped["local"], mapped["engine"]) if mapped else None,
-        owner=choice.get("owner") or "",
-    )
 
 
 # What the activation runs inside the experiment environment when it is tested alone: a command that does
@@ -295,16 +33,16 @@ def run_workspace_script(
     *,
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
-    runner: ScriptRunner,
+    entry: Entry,
     activate_rel: str | None = None,
     launch: Launch | None = None,
 ) -> StepOutcome:
     """Run a workspace-relative script under ``sh`` from the workspace root.
 
     The single execution path shared by the lifecycle runner
-    (``experiment/run.py``) and the build/activation handlers: the script runs
-    where the workbench's runner puts it: on its host, or in a fresh container
-    from the REE's image. Running from the workspace root lets authors reference
+    (``experiment/run.py``) and the build/activation/check handlers: the script
+    runs in the REE's working environment, through its launch when it declares
+    one. Running from the workspace root lets authors reference
     project files by their workspace-relative paths regardless of where REE keeps
     its own scripts; wrapper scripts are POSIX ``sh`` while project scripts that
     need bash or their own directory (e.g. ``docker build .``) invoke it
@@ -337,20 +75,19 @@ def run_workspace_script(
                 record_span_facts(span, {"script.error": "activate script not found"})
                 return StepOutcome("failed", 1)
             cmd = ["sh", activate_rel, *cmd]
+        try:
+            entry.prepare(log)
+            cmd = entry.command(workspace, cmd)
+        except WorkingEnvironmentUnavailableError as error:
+            log("system", "error", str(error))
+            record_span_facts(span, {"script.error": "working environment unavailable"})
+            return StepOutcome("failed", 1)
         record: Path | None = None
         if launch is not None:
-            if isinstance(runner, ContainerScriptRunner):
-                log(
-                    "system",
-                    "error",
-                    "a launch script runs where the workbench runs scripts directly, not in a container",
-                )
-                record_span_facts(span, {"script.error": "launch in a script container"})
-                return StepOutcome("failed", 1)
             cmd, record = launched_command(workspace, launch, cmd)
         log("system", "info", f"$ {format_argv(cmd)}")
 
-        result = runner.run(workspace, cmd, log=log, is_canceled=is_canceled)
+        result = run_in(entry, workspace, cmd, log=log, is_canceled=is_canceled)
         launched = read_launched(record) if record is not None else None
         if launched is not None:
             where = f"{launched.node}" + (f", Slurm job {launched.slurm_job_id}" if launched.slurm_job_id else "")

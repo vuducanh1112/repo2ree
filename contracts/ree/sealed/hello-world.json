@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:7928fdb2502f8c014b599b28912bc80949d1975f10c299ba0226ea6933c39182",
+    "ree_digest": "sha256:da921c2a1bc5ecdeb636cfd2619612d078429037cd957161755155194952b874",
     "sealed_at": "2026-11-12T15:07:46.116803Z"
   },
   "subject": {
@@ -144,7 +144,7 @@
       "source": {
         "source_type": "tarball"
       },
-      "workbench_environment": {
+      "working_environment": {
         "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
       }
     },
@@ -162,7 +162,7 @@
         "schema_version": 1,
         "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
         "started_at": "2026-11-12T15:07:32.897896Z",
-        "workbench_environment": {
+        "working_environment": {
           "backend": "container",
           "declared": {
             "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
@@ -210,7 +210,7 @@
         "schema_version": 1,
         "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
         "started_at": "2026-11-12T15:06:51.529337Z",
-        "workbench_environment": {
+        "working_environment": {
           "backend": "container",
           "declared": {
             "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
@@ -248,7 +248,7 @@
           "started_at": "2026-11-12T15:07:43.057081Z",
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:fe95e38cfebb82d420df440287581b32959c5168b4191e298cfabf99da98efbe",
-          "workbench_environment": {
+          "working_environment": {
             "backend": "container",
             "declared": {
               "oci": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"

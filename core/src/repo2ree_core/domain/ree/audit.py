@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from repo2ree_protocol.audit import EvidenceStatus, ExperimentAudit, PayloadStatus, ReeAudit, StepAudit
 from repo2ree_ree.model import Ree, ReeDefinition, ReeReceipts
 from repo2ree_ree.primitives import Digest, RunId
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
+from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
 # ================================================
 # Audit Inputs
@@ -198,6 +198,26 @@ def _audit_hardware_step(subject: _Subject) -> StepAudit:
     )
 
 
+def _audit_working_environment_check_step(subject: _Subject) -> StepAudit:
+    """The author's check, as it last passed: against the check script and working environment declared now."""
+    declared, receipt = subject.definition.check_working_environment, subject.receipts.working_environment_check
+    reasons: list[str] = []
+    if receipt:
+        if declared is None:
+            reasons.append("the check was removed")
+        elif receipt.check_working_environment_script_digest != declared.check_working_environment_script_digest:
+            reasons.append("check script changed")
+        if _working_environment_changed(subject, receipt.working_environment):
+            reasons.append("working environment changed")
+        if _launch_changed(subject, receipt.launch_script_digest):
+            reasons.append("launch script changed")
+    return _step(
+        receipt.run_id if receipt else None,
+        reasons or (() if receipt else ("the working environment has not been checked",)),
+        applicable=declared is not None or receipt is not None,
+    )
+
+
 def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
     build, receipt = subject.definition.experiment_environment, subject.receipts.experiment_environment
     reasons: list[str] = []
@@ -211,8 +231,8 @@ def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
                 reasons.append("build experiment environment script changed")
             if receipt.artifact_path != build.artifact_path:
                 reasons.append("experiment environment artifact path changed")
-        if _workbench_environment_changed(subject, receipt.workbench_environment):
-            reasons.append("workbench environment changed")
+        if _working_environment_changed(subject, receipt.working_environment):
+            reasons.append("working environment changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
     return _step(
@@ -229,9 +249,9 @@ def _launch_changed(subject: _Subject, ran_under: Digest | None) -> bool:
     return ran_under != (declared.launch_script_digest if declared else None)
 
 
-def _workbench_environment_changed(subject: _Subject, observed: WorkbenchEnvironmentObservation | None) -> bool:
-    """Whether the workbench environment the REE declares is not the one the step ran under."""
-    return (observed.declared if observed else None) != subject.definition.workbench_environment
+def _working_environment_changed(subject: _Subject, observed: WorkingEnvironmentObservation | None) -> bool:
+    """Whether the working environment the REE declares is not the one the step ran under."""
+    return (observed.declared if observed else None) != subject.definition.working_environment
 
 
 def _experiment_environment_is_declared(subject: _Subject) -> bool:
@@ -297,8 +317,8 @@ def _audit_activation_step(subject: _Subject) -> StepAudit:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
             reasons.append("source snapshot changed")
         reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
-        if _workbench_environment_changed(subject, receipt.workbench_environment):
-            reasons.append("workbench environment changed")
+        if _working_environment_changed(subject, receipt.working_environment):
+            reasons.append("working environment changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
         if (
@@ -336,8 +356,8 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
             if receipt.verify_script_digest != experiment.verify_script_digest:
                 reasons.append("experiment verification script changed")
             reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
-            if _workbench_environment_changed(subject, receipt.workbench_environment):
-                reasons.append("workbench environment changed")
+            if _working_environment_changed(subject, receipt.working_environment):
+                reasons.append("working environment changed")
             if _launch_changed(subject, receipt.launch_script_digest):
                 reasons.append("launch script changed")
             if (
@@ -376,6 +396,7 @@ def audit(ree: Ree) -> ReeAudit:
     source_audit = _audit_source_step(subject)
     evaluation_audit = _audit_evaluation_step(subject)
     hardware_audit = _audit_hardware_step(subject)
+    working_environment_check_audit = _audit_working_environment_check_step(subject)
     experiment_environment_audit = _audit_experiment_environment_step(subject)
     sbom_audit = _audit_sbom_step(subject)
     sbom_cross_check_audit = _audit_sbom_cross_check_step(subject)
@@ -386,6 +407,7 @@ def audit(ree: Ree) -> ReeAudit:
         source=source_audit,
         evaluation=evaluation_audit,
         hardware=hardware_audit,
+        working_environment_check=working_environment_check_audit,
         experiment_environment=experiment_environment_audit,
         sbom=sbom_audit,
         sbom_cross_check=sbom_cross_check_audit,

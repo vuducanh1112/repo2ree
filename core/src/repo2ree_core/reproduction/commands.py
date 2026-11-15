@@ -1,10 +1,10 @@
 """The reproduction commands shared by the executor CLI and the bundle run.sh.
 
 These are the phases of reproducing an REE — acquire the source, assemble a
-clean workspace, build the experiment environment, test the activation, run experiments. They are
-the single source of truth for the run vocabulary so ``ree --help`` and
-``sh run.sh --help`` expose the same verbs and one-line summaries and cannot
-drift.
+clean workspace, check the working environment, build the experiment environment,
+test the activation, run experiments. They are the single source of truth for
+the run vocabulary so ``ree --help`` and ``sh run.sh --help`` expose the same
+verbs and one-line summaries and cannot drift.
 
 The executor CLI is a superset: it also exposes *authoring* commands (seal,
 write-file, patch-ree-definition, …) that are not reproduction commands and live
@@ -33,7 +33,7 @@ class ReproductionCommand:
     summary: str
 
 
-# Ordered by lifecycle phase: acquire -> assemble -> build -> activate -> run.
+# Ordered by lifecycle phase: acquire -> assemble -> check -> build -> activate -> run.
 ACQUIRE_SOURCE = ReproductionCommand(
     "acquire-source",
     "Acquire the source, verifying it against the recorded SWHID",
@@ -41,6 +41,10 @@ ACQUIRE_SOURCE = ReproductionCommand(
 MATERIALIZE_WORKSPACE = ReproductionCommand(
     "materialize-workspace",
     "Assemble a clean workspace from the source and the REE overlay",
+)
+CHECK_WORKING_ENVIRONMENT = ReproductionCommand(
+    "check-working-environment",
+    "Run the author's check that this machine offers what the scripts need",
 )
 BUILD_EXPERIMENT_ENVIRONMENT = ReproductionCommand(
     "build-experiment-environment",
@@ -58,6 +62,7 @@ EXPERIMENT = ReproductionCommand(
 REPRODUCTION_COMMANDS: tuple[ReproductionCommand, ...] = (
     ACQUIRE_SOURCE,
     MATERIALIZE_WORKSPACE,
+    CHECK_WORKING_ENVIRONMENT,
     BUILD_EXPERIMENT_ENVIRONMENT,
     TEST_ACTIVATION,
     EXPERIMENT,

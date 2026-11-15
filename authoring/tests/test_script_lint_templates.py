@@ -52,6 +52,7 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
         ("activate_experiment_environment_venv.sh", "activate_experiment_environment"),
         ("experiment_run.sh", "experiment_run"),
         ("launch_slurm.sh", "launch"),
+        ("check_working_environment.sh", "check_working_environment"),
     ],
 )
 def test_a_run_or_build_template_lints_clean(name: str, kind: TargetKind) -> None:
@@ -90,6 +91,7 @@ def test_every_template_is_covered_by_a_case_above() -> None:
         "activate_experiment_environment_venv.sh",
         "experiment_run.sh",
         "launch_slurm.sh",
+        "check_working_environment.sh",
         "verify_stdout_contains.sh",
         "verify_stdout_regex.sh",
         "verify_numeric_tolerance.sh",
@@ -131,3 +133,17 @@ def test_the_teed_run_script_the_tutorial_teaches_is_reported() -> None:
 def test_a_launch_that_drops_waits_for_or_closes_off_its_command_is_reported(source: str, codes: set[str]) -> None:
     report = lint_script(ScriptTarget(kind="launch", path="ree-scripts/launch.sh"), source, tiers=CONTRACT_ONLY)
     assert {finding.code for finding in report.findings} == codes
+
+
+def test_the_check_template_passes_as_shipped_and_each_check_fails_with_what_is_missing(tmp_path: Path) -> None:
+    import subprocess
+
+    template = (_TEMPLATES / "check_working_environment.sh").read_text()
+    shipped = subprocess.run(["sh", "-c", template], cwd=tmp_path, capture_output=True, text=True, check=False)
+    assert shipped.returncode == 0, shipped.stderr
+    missing = template.replace(
+        "# command -v git >/dev/null 2>&1", "command -v no-such-tool-repo2ree >/dev/null 2>&1"
+    ).replace('fail "git is not installed"', 'fail "no-such-tool-repo2ree is not installed"')
+    failed = subprocess.run(["sh", "-c", missing], cwd=tmp_path, capture_output=True, text=True, check=False)
+    assert failed.returncode == 1
+    assert "no-such-tool-repo2ree is not installed" in failed.stderr

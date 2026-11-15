@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from scriptinfer_helpers import FixedEngines
 
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.author import generate_script_candidates as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -22,7 +22,7 @@ from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTarget
 @pytest.fixture(autouse=True)
 def _docker_machine(monkeypatch: pytest.MonkeyPatch) -> None:
     """These tests never probe the machine they run on: its scripts can use Docker alone."""
-    monkeypatch.setattr(handler, "engine_probe", lambda _layout, _runner: FixedEngines("docker"))
+    monkeypatch.setattr(handler, "engine_probe", lambda _layout, _entry: FixedEngines("docker"))
 
 
 def _silent_log(*_: object) -> None:
@@ -59,7 +59,7 @@ def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.Monk
         log=_silent_log,
         is_canceled=_never_canceled,
         layout=ReeLayout(root=tmp_path),
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
     assert result.status == "failed"
     assert result.failure is not None
@@ -74,7 +74,7 @@ def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.Mo
         log=_silent_log,
         is_canceled=_never_canceled,
         layout=ReeLayout(root=tmp_path),
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
     assert result.status == "failed"
     assert result.failure is not None
@@ -89,7 +89,7 @@ def test_build_success_returns_report(tmp_path: Path, monkeypatch: pytest.Monkey
         log=_silent_log,
         is_canceled=_never_canceled,
         layout=ReeLayout(root=tmp_path),
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
     assert result.status == "succeeded"
     report = result.outputs
@@ -112,7 +112,7 @@ def test_inference_ignores_overlay_generated_output(tmp_path: Path, monkeypatch:
         log=_silent_log,
         is_canceled=_never_canceled,
         layout=ReeLayout(root=tmp_path),
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
     assert result.status == "succeeded"
     assert result.outputs["results"][0]["status"] == "not_inferred"

@@ -226,7 +226,7 @@
         },
         {
           "op": "replace",
-          "path": "/subject/definition/workbench_environment/oci",
+          "path": "/subject/definition/working_environment/oci",
           "value": ""
         }
       ],

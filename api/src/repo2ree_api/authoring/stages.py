@@ -1,8 +1,8 @@
 """The run-starting authoring steps, in step order.
 
 One route per step ``ree steps`` lists that advances by
-*running something in the workbench*: hbom, evaluate, build, sbom, crosscheck,
-activation, experiments. They are one family and differ only in the command they
+*running something in the workbench*: hbom, the working environment check, evaluate, build, sbom,
+crosscheck, activation, experiments. They are one family and differ only in the command they
 dispatch and the words their run logs carry, so they live together — the shape
 they share is visible here, and the reviewer's mirror of these same steps sits
 in :mod:`repo2ree_api.review.stages`.
@@ -31,6 +31,7 @@ from repo2ree_protocol.command import (
     ActivationTestArgs,
     ActivationTestCommand,
     BuildExperimentEnvironmentCommand,
+    CheckWorkingEnvironmentCommand,
     CrossCheckSbomArgs,
     CrossCheckSbomCommand,
     EvaluateDependencyScoreArgs,
@@ -280,6 +281,39 @@ def create_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayl
                 request_payload={},
                 canceled_message="Activation run canceled",
                 fallback_outputs={"subject_name": "activation"},
+                idempotency_key=payload.idempotency_key,
+            )
+        )
+    )
+
+
+# ================================================
+# Check working environment
+# ================================================
+
+
+class CreateCheckWorkingEnvironmentRunPayload(CreateRunPayload):
+    """Run the REE's check script in its working environment. Takes no parameters of its own."""
+
+
+@stages_router.post(
+    "/api/v1/rees/{ree_id}/check-working-environment",
+    operation_id="startWorkingEnvironmentCheck",
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
+def create_check_working_environment_run(ree_id: str, payload: CreateCheckWorkingEnvironmentRunPayload) -> RunSummary:
+    return RunSummary.model_validate(
+        run_summary(
+            start_single_command_run(
+                ree_id,
+                operation="check_working_environment",
+                action="check_working_environment",
+                command=CheckWorkingEnvironmentCommand(),
+                run_id_prefix="check",
+                request_payload={},
+                canceled_message="Working environment check canceled",
+                fallback_outputs={"subject_name": "working environment"},
                 idempotency_key=payload.idempotency_key,
             )
         )

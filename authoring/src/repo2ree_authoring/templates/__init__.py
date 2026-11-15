@@ -2,7 +2,7 @@
 
 Each template is a dedicated ``.sh`` file shipped inside this package — the
 single source of truth for the starter content authors (human or workbench) work
-from. The build and activate templates are seeded into the overlay at REE
+from. The build, activate and check templates are seeded into the overlay at REE
 creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the launch template is not, since an REE without a
 launch script runs its scripts directly; the per-experiment run
 and verify templates cannot be seeded (their paths only exist once an
@@ -26,6 +26,7 @@ from importlib.resources import files
 from repo2ree_protocol.catalog import (
     ActivateExperimentEnvironmentScriptTemplates,
     BuildExperimentEnvironmentScriptTemplates,
+    CheckWorkingEnvironmentScriptTemplates,
     ExperimentScriptTemplates,
     LaunchScriptTemplates,
     ScriptTemplateCatalog,
@@ -34,10 +35,11 @@ from repo2ree_protocol.catalog import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_EXPERIMENT_SCRIPT_DIR,
     RESERVED_LAUNCH_SCRIPT,
 )
-from repo2ree_ree.workbench_environment import EnvironmentBackend
+from repo2ree_ree.working_environment import EnvironmentBackend
 
 
 def _template(name: str) -> str:
@@ -58,12 +60,12 @@ class ScriptTemplate:
     label: str
     description: str
     body: str
-    # The workbench environment it suits; None for one that suits any, as a verify script does.
-    workbench_environment: EnvironmentBackend | None = None
+    # The working environment it suits; None for one that suits any, as a verify script does.
+    working_environment: EnvironmentBackend | None = None
 
 
-def reserved_script_template(reserved_path: str, workbench_environment: EnvironmentBackend = "container") -> str:
-    """Return the default starter template for a seeded reserved script path in ``workbench_environment``.
+def reserved_script_template(reserved_path: str, working_environment: EnvironmentBackend = "host") -> str:
+    """Return the default starter template for a seeded reserved script path in ``working_environment``.
 
     Catalogs are keyed by the script's file name, so the lookup is stable
     under renames of the reserved directory itself.
@@ -71,11 +73,10 @@ def reserved_script_template(reserved_path: str, workbench_environment: Environm
     catalogs = {
         "build_experiment_environment.sh": build_templates,
         "activate_experiment_environment.sh": activate_experiment_environment_templates,
+        "check_working_environment.sh": check_working_environment_templates,
     }
     templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
-    return next(
-        template.body for template in templates if template.workbench_environment in (workbench_environment, None)
-    )
+    return next(template.body for template in templates if template.working_environment in (working_environment, None))
 
 
 def build_templates() -> tuple[ScriptTemplate, ...]:
@@ -88,7 +89,7 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
                 "Build the project's Dockerfile into an image and save it as the experiment environment tarball."
             ),
             body=_template("build_experiment_environment_docker.sh"),
-            workbench_environment="container",
+            working_environment="container",
         ),
         ScriptTemplate(
             key="venv",
@@ -98,7 +99,7 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
                 "and pack it as the experiment environment."
             ),
             body=_template("build_experiment_environment_venv.sh"),
-            workbench_environment="host",
+            working_environment="host",
         ),
     )
 
@@ -112,14 +113,14 @@ def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
             description="Load the saved image and run the given command in a container from it, "
             "with the workspace mounted at its own path.",
             body=_template("activate_experiment_environment_docker.sh"),
-            workbench_environment="container",
+            working_environment="container",
         ),
         ScriptTemplate(
             key="venv",
             label="Python virtual environment",
             description="Restore the packed virtual environment and run the given command with it on the path.",
             body=_template("activate_experiment_environment_venv.sh"),
-            workbench_environment="host",
+            working_environment="host",
         ),
     )
 
@@ -133,7 +134,20 @@ def launch_templates() -> tuple[ScriptTemplate, ...]:
             description="Run each of the REE's scripts as a Slurm job step with the resources it needs, "
             "taking a reproducer's own options last.",
             body=_template("launch_slurm.sh"),
-            workbench_environment="host",
+            working_environment="host",
+        ),
+    )
+
+
+def check_working_environment_templates() -> tuple[ScriptTemplate, ...]:
+    """The check-script templates; the first is the check every REE starts with, which passes as it comes."""
+    return (
+        ScriptTemplate(
+            key="standard-tools",
+            label="Standard tools",
+            description="Commented checks for common needs (Python, compilers, Java, a container engine, NVIDIA "
+            "GPUs and their driver, CPUs, memory, disk) to uncomment and edit.",
+            body=_template("check_working_environment.sh"),
         ),
     )
 
@@ -199,6 +213,9 @@ def script_template_catalog() -> ScriptTemplateCatalog:
             templates=_entries(activate_experiment_environment_templates()),
         ),
         launch=LaunchScriptTemplates(path=RESERVED_LAUNCH_SCRIPT, templates=_entries(launch_templates())),
+        check_working_environment=CheckWorkingEnvironmentScriptTemplates(
+            path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, templates=_entries(check_working_environment_templates())
+        ),
         experiment=ExperimentScriptTemplates(
             run_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
             verify_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
@@ -209,15 +226,15 @@ def script_template_catalog() -> ScriptTemplateCatalog:
 
 
 def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]:
-    defaults = {template.workbench_environment: template for template in reversed(templates)}
+    defaults = {template.working_environment: template for template in reversed(templates)}
     return [
         ScriptTemplateEntry(
             key=template.key,
             label=template.label,
             description=template.description,
             body=template.body,
-            is_default=defaults[template.workbench_environment] is template,
-            workbench_environment=template.workbench_environment,
+            is_default=defaults[template.working_environment] is template,
+            working_environment=template.working_environment,
         )
         for template in templates
     ]

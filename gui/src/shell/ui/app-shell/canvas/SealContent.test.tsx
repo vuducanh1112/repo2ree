@@ -87,6 +87,7 @@ describe("SealContent", () => {
     expect(onSeal).toHaveBeenCalledWith({
       includeSource: true,
       includeExperimentEnvironment: false,
+      includeWorkingEnvironment: false,
       includeResults: true,
     });
   });

@@ -13,6 +13,7 @@ from repo2ree_core.bundle.repository_files import prepare_reproducer
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, record_seal, replace_contents, revision_of
+from repo2ree_core.execution.working_environment import Machine, WorkingEnvironmentUnavailableError, save_image
 from repo2ree_core.persistence.capture_policy import capture_plan, write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths
@@ -75,6 +76,9 @@ def seal_ree(
     experiment_environment_included: bool,
     results_included: bool,
     sealed_at: UtcInstant,
+    working_environment_included: bool = False,
+    machine: Machine | None = None,
+    log: Callable[[str, str, str], None] = lambda _stream, _level, _message: None,
     progress: ProgressSink | None = None,
     is_canceled: CancelCheck | None = None,
 ) -> SealOutputs:
@@ -104,6 +108,17 @@ def seal_ree(
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
         paths.add(target.relative_to(layout.root).as_posix())
+    if working_environment_included:
+        declared = ree.subject.definition.working_environment
+        if declared is None:
+            raise ReePreconditionError(
+                "the REE declares no working environment to include: its scripts run on the host"
+            )
+        try:
+            save_image(machine or Machine(), declared, layout.working_environment_archive, log)
+        except WorkingEnvironmentUnavailableError as exc:
+            raise ValueError(f"Selected working environment is unavailable: {exc}") from exc
+        paths.add(layout.working_environment_archive.relative_to(layout.root).as_posix())
     if results_included:
         paths.update(f"results/{name}" for name in list_tree_relpaths(layout.results))
     policy = CapturePolicy(lfs_paths=tuple(ReePath(path) for path in sorted(paths)))

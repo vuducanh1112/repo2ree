@@ -112,4 +112,8 @@ class ReeSealPayload(StrictRequestModel):
     include_experiment_environment: bool = Field(
         default=False, description="Put the declared experiment environment artifact in the sealed archive."
     )
+    include_working_environment: bool = Field(
+        default=False,
+        description="Save the working environment's OCI image into the sealed archive, so a review needs no registry.",
+    )
     include_results: bool = Field(default=False, description="Put everything under results/ in the sealed archive.")

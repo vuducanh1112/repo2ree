@@ -22,9 +22,9 @@ def _assert_entries_match(entries: list[ScriptTemplateEntry], expected_keys: lis
     # Each environment has exactly one explicit default: its first entry, per the catalogs' ordering.
     first: dict[str | None, str] = {}
     for entry in entries:
-        first.setdefault(entry.workbench_environment, entry.key)
+        first.setdefault(entry.working_environment, entry.key)
     assert [entry.is_default for entry in entries] == [
-        first[entry.workbench_environment] == entry.key for entry in entries
+        first[entry.working_environment] == entry.key for entry in entries
     ]
     for entry in entries:
         assert entry.label
@@ -63,6 +63,6 @@ def test_a_host_environment_has_templates_that_need_no_container_engine() -> Non
     catalog = script_template_catalog()
 
     for section in (catalog.build_experiment_environment, catalog.activate_experiment_environment):
-        [host] = [entry for entry in section.templates if entry.workbench_environment == "host"]
+        [host] = [entry for entry in section.templates if entry.working_environment == "host"]
         assert host.is_default
         assert "docker" not in host.body

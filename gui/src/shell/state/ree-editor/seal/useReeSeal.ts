@@ -47,6 +47,7 @@ export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent 
         const run = await reeClient.sealRee(reeId, {
           includeSource: inclusionOpts.includeSource,
           includeExperimentEnvironment: inclusionOpts.includeExperimentEnvironment,
+          includeWorkingEnvironment: inclusionOpts.includeWorkingEnvironment,
           includeResults: inclusionOpts.includeResults,
         });
         const terminal = await observeReeRun(queryClient, reeRunsClient, {

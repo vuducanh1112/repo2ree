@@ -69,17 +69,16 @@ describe("major step page workflows", () => {
     [
       "warns that a tag can move",
       { oci: "python:3.12", pinned: false },
-      ["python:3.12", "Workbench environment not pinned"],
+      ["python:3.12", "Working environment not pinned"],
       [],
     ],
     [
-      "says when the workbench host is the workbench environment",
-      { oci: null, pinned: false },
-      ["Runs on the workbench host"],
-      ["Workbench environment not pinned"],
+      "says when the scripts run on the lab's own machine",
+      null,
+      ["Runs on the lab's own machine"],
+      ["Working environment not pinned"],
     ],
-    ["says when nothing is declared", null, ["No workbench environment declared"], []],
-  ] as const)("the build header %s", async (_name, workbenchEnvironment, shown, hidden) => {
+  ] as const)("the build header %s", async (_name, workingEnvironment, shown, hidden) => {
     renderWithShell(
       <PageBuildExperimentEnvironment
         {...createStepPageProps("build_experiment_environment", {
@@ -87,7 +86,7 @@ describe("major step page workflows", () => {
             ...exampleEditorRee,
             spec: {
               ...exampleEditorRee.spec,
-              workbenchEnvironment,
+              workingEnvironment,
             },
           },
         })}
@@ -102,26 +101,26 @@ describe("major step page workflows", () => {
   it("declares the image the build runs in, or the lab's own machine", async () => {
     const user = userEvent.setup();
     const onReeSpecChange = vi.fn();
-    const workbenchEnvironment = { oci: "", pinned: false };
+    const workingEnvironment = { oci: "", pinned: false };
     renderWithShell(
       <PageBuildExperimentEnvironment
         {...createStepPageProps("build_experiment_environment", {
-          ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, workbenchEnvironment } },
+          ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, workingEnvironment } },
           onReeSpecChange,
         })}
       />,
       { reeId: "ree-1", services: catalogServices() },
     );
     const lastUpdate = () =>
-      onReeSpecChange.mock.calls.at(-1)?.[0](createEmptyReeSpec()).workbenchEnvironment;
+      onReeSpecChange.mock.calls.at(-1)?.[0](createEmptyReeSpec()).workingEnvironment;
 
-    fireEvent.change(await screen.findByLabelText("Workbench environment image"), {
+    fireEvent.change(await screen.findByLabelText("Working environment image"), {
       target: { value: "python@sha256:abc" },
     });
     expect(lastUpdate()).toEqual({ oci: "python@sha256:abc", pinned: true });
 
     await user.click(screen.getByLabelText("The lab's own machine"));
-    expect(lastUpdate()).toEqual({ oci: null, pinned: false });
+    expect(lastUpdate()).toBeNull();
   });
 
   // The generated build script writes to the path the REE declares, and falls

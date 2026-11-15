@@ -30,6 +30,6 @@ def test_the_graph_draws_every_dependency_the_specification_states() -> None:
         for source in (*receipt.made_from, *(f"field:{path}" for path in (*receipt.about, *receipt.rests_on)))
     }
     assert drawn == stated
-    assert ("field:definition.workbench_environment", "experiment") in drawn
+    assert ("field:definition.working_environment", "experiment") in drawn
     assert ("field:definition.activate_experiment_environment", "activation") in drawn
     assert ("activation", "experiment") in drawn

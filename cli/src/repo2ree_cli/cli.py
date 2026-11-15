@@ -26,7 +26,7 @@ from repo2ree_authoring.templates import script_template_catalog
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.evidence.review.store import load_reviews
-from repo2ree_core.execution.runners import runner_from_environment
+from repo2ree_core.execution.working_environment import Machine
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes
@@ -42,6 +42,8 @@ from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     LoadReeBundleCommand,
+    PatchReeDefinitionArgs,
+    PatchReeDefinitionCommand,
     command_adapter,
 )
 from repo2ree_protocol.execution import ExecutionContext
@@ -162,7 +164,7 @@ def _run(invocation: Invocation, verb: tuple[str, ...], command: type[BaseModel]
     result = run_session(
         cmd,
         layout=layout,
-        runner=runner_from_environment(),
+        machine=Machine.from_environment(),
         emit=invocation.sink(),
         run_id=invocation.run_id,
         context=invocation.context,
@@ -285,9 +287,21 @@ def _fail(message: str) -> NoReturn:
 def _init(invocation: Invocation, read: InitRee) -> None:
     layout = ReeLayout(root=invocation.ree or Path.cwd())
     try:
-        result = initialize_ree(layout, name=read.name, workbench_environment=read.workbench_environment)
+        result = initialize_ree(layout, name=read.name, working_environment="container" if read.oci else "host")
     except HistoryCaptureError as exc:
         _fail(str(exc))
+    if read.oci and result.status == "initialised":
+        # The image is declared as any declaration is, so the REE's history records it as the author's choice.
+        declared = run_session(
+            PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"working_environment": {"oci": read.oci}})),
+            layout=layout,
+            machine=Machine.from_environment(),
+            emit=invocation.sink(),
+            run_id=invocation.run_id,
+            context=invocation.context,
+        )
+        if declared.status != "succeeded":
+            _fail(f"the REE was created, but its working environment was not declared: {declared.failure}")
     click.echo(json.dumps({"status": result.status, "snapshot_id": result.snapshot_id}))
 
 

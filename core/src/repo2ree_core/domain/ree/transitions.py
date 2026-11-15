@@ -16,6 +16,7 @@ from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
     ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
+    CheckWorkingEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
@@ -73,6 +74,8 @@ def commit_receipt(ree: Ree, receipt: RunReceipt) -> Ree:
         updates = {"sbom_cross_check": receipt}
     elif isinstance(receipt, ActivationReceipt):
         updates = {"activation": receipt}
+    elif isinstance(receipt, CheckWorkingEnvironmentReceipt):
+        updates = {"working_environment_check": receipt}
     else:
         experiments = dict(ree.subject.receipts.experiments)
         experiments[receipt.experiment_name] = receipt
@@ -86,7 +89,11 @@ def clear_source(ree: Ree) -> Ree:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot remove its source")
     definition = ree.subject.definition.model_copy(update={"source": None})
-    receipts = ReeReceipts(hardware_observation=ree.subject.receipts.hardware_observation)
+    # What rests on no source stays: the observed hardware, and the check of the working environment.
+    receipts = ReeReceipts(
+        hardware_observation=ree.subject.receipts.hardware_observation,
+        working_environment_check=ree.subject.receipts.working_environment_check,
+    )
     contents = BundleContents()
     subject = ree.subject.model_copy(update={"definition": definition, "receipts": receipts, "contents": contents})
     return ree.model_copy(update={"subject": subject})

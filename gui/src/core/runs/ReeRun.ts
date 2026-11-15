@@ -58,6 +58,7 @@ export type ReeRunOperation =
   | "crosscheck"
   | "hbom"
   | "activation"
+  | "check_working_environment"
   | "evaluate"
   | "swh"
   | "zenodo"
@@ -73,6 +74,7 @@ const RECEIPT_OPERATIONS: ReadonlySet<ReeRunOperation> = new Set([
   "sbom",
   "crosscheck",
   "activation",
+  "check_working_environment",
   "experiment",
 ]);
 

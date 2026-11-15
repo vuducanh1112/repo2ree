@@ -73,6 +73,7 @@ describe("ReeApi", () => {
     await api.sealRee(reeId, {
       includeSource: true,
       includeExperimentEnvironment: false,
+      includeWorkingEnvironment: false,
       includeResults: true,
     });
     await api.deleteRee(reeId);
@@ -100,7 +101,7 @@ describe("ReeApi", () => {
       '{"target":{"kind":"build_experiment_environment"},"source":"set -eu\\n","declarations":{"experiment_environment_path":"runtime.tar"}}',
     );
     expect(client.request.mock.calls[12]?.[1].body).toBe(
-      '{"include_source":true,"include_experiment_environment":false,"include_results":true}',
+      '{"include_source":true,"include_experiment_environment":false,"include_working_environment":false,"include_results":true}',
     );
   });
 

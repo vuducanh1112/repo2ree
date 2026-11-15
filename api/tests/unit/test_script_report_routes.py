@@ -3,7 +3,7 @@
 import pytest
 
 from repo2ree_api.deps import command_dispatcher
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HOST_MACHINE
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.layout import ReeLayout
@@ -19,7 +19,7 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
     outputs = {}
 
     def dispatch(handle, command, run_id, log):
-        result = run_command(command, run_id=run_id, log=log, layout=layout, runner=LocalScriptRunner())
+        result = run_command(command, run_id=run_id, log=log, layout=layout, machine=HOST_MACHINE)
         assert result.history is not None
         assert result.history.capture_status == "captured"
         outputs.update(result.model_dump(mode="json")["outputs"])

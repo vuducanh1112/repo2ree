@@ -1,8 +1,9 @@
-"""Whether a script run for an REE can launch Slurm job steps, probed where its scripts run.
+"""Whether this machine can launch an REE's scripts as Slurm job steps, probed where a launch runs.
 
-The probe is a small POSIX shell script run through the REE's script runner, so it sees what a launch script
-would: the same PATH, user and cluster configuration. It asks the controller itself (``sinfo``), not only
-whether ``srun`` is on PATH, and reports its partitions with their time limits. It writes nothing.
+A launch runs outside the working environment, on the machine that runs the step, so the probe is a small POSIX
+shell script run there: it sees what a launch script would, the same PATH, user and cluster configuration. It asks
+the controller itself (``sinfo``), not only whether ``srun`` is on PATH, and reports its partitions with their time
+limits. It writes nothing.
 
 A probe that cannot run says so (``failed``), which inference reads as unknown, never as absence.
 """
@@ -12,7 +13,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from repo2ree_core.execution.runners import ProbeResult, ScriptRunner
+from repo2ree_core.execution.working_environment import Entry, ProbeResult, WorkingEnvironmentUnavailableError, probe
 from repo2ree_protocol.inference import SlurmPartition, SlurmProbe
 
 PROBE_SECONDS = 20.0
@@ -72,16 +73,16 @@ def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> SlurmProbe:
 
 
 class RunnerSlurmProbe:
-    """Probes through the REE's script runner the first time it is asked, and answers the same after."""
+    """Probes through the REE's working environment the first time it is asked, and answers the same after."""
 
     def __init__(
         self,
         workspace: Path,
-        runner: ScriptRunner,
+        entry: Entry,
         seconds: float = PROBE_SECONDS,
     ) -> None:
         self._workspace = workspace
-        self._runner = runner
+        self._entry = entry
         self._seconds = seconds
         self._seen: SlurmProbe | None = None
 
@@ -94,7 +95,13 @@ class RunnerSlurmProbe:
         if not self._workspace.is_dir():
             return SlurmProbe(status="failed", detail=f"no workspace at {self._workspace} to probe from")
         try:
-            result = self._runner.probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
-        except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
+            result = probe(self._entry, self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
+        except (
+            WorkingEnvironmentUnavailableError,
+            RuntimeError,
+            OSError,
+            ValueError,
+            subprocess.SubprocessError,
+        ) as error:
             return SlurmProbe(status="failed", detail=str(error))
         return observed(result, self._seconds)

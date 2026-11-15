@@ -122,10 +122,10 @@ export interface Hbom {
   extraInfo: Record<string, unknown>;
 }
 
-/** What the REE's scripts run in, as the REE declares it. */
-export interface WorkbenchEnvironment {
-  /** The OCI image reference the scripts run in; null runs them on the workbench host. */
-  oci: string | null;
+/** The OCI image the REE's scripts run in, as the REE declares it. */
+export interface WorkingEnvironment {
+  /** The OCI image reference the scripts run in. */
+  oci: string;
   /** Whether the reference names a digest, so it cannot move. */
   pinned: boolean;
 }
@@ -141,8 +141,8 @@ export interface ReeSpec {
    *  form field, not persisted intent. Empty for non-git/upload sources. */
   resolvedRevision: string;
   experimentEnvironmentPath: string;
-  /** Null until the REE declares one; set when its workbench is set up. */
-  workbenchEnvironment: WorkbenchEnvironment | null;
+  /** The image every script runs in; null runs them on the machine that runs each step. */
+  workingEnvironment: WorkingEnvironment | null;
   sbom: string;
   /** Intrinsic content identity of the acquired source tree. Not an archival
    *  claim: deposit identifiers name a deposit of a sealed REE and live in
@@ -212,7 +212,7 @@ export function createEmptyReeSpec(): ReeSpec {
     sourceType: "",
     resolvedRevision: "",
     experimentEnvironmentPath: "",
-    workbenchEnvironment: null,
+    workingEnvironment: null,
     sbom: "",
     swhid: "",
     experiments: [],

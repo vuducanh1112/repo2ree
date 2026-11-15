@@ -20,7 +20,12 @@ from repo2ree_protocol.command import DeleteFileArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.paths import validate_relative_path
-from repo2ree_ree.reserved_paths import RESERVED_LAUNCH_SCRIPT, is_overlay_path, is_run_script
+from repo2ree_ree.reserved_paths import (
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
+    is_overlay_path,
+    is_run_script,
+)
 
 
 def handle_delete_file(
@@ -60,6 +65,12 @@ def handle_delete_file(
         log("system", "error", "cannot delete the declared launch script")
         return ActionResult.failed(
             "validation", f"{args.path} is the REE's declared launch; undeclare the launch instead of deleting it"
+        )
+
+    if args.path == RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT and ree.subject.definition.check_working_environment:
+        log("system", "error", "cannot delete the declared check script")
+        return ActionResult.failed(
+            "validation", f"{args.path} is the REE's declared check; undeclare the check instead of deleting it"
         )
 
     if not store.workspace.is_file(args.path):

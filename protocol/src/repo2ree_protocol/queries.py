@@ -20,7 +20,6 @@ from repo2ree_protocol.history import OperationHistory
 from repo2ree_protocol.lint import LintReport, ScriptDeclarations
 from repo2ree_ree.model import Ree
 from repo2ree_ree.review import ReviewSet
-from repo2ree_ree.workbench_environment import EnvironmentBackend
 
 
 class _Query(BaseModel):
@@ -116,14 +115,18 @@ REPLIES: dict[type[BaseModel], type[BaseModel] | None] = {
 
 
 class InitRee(BaseModel):
-    """Create an REE here (or at -C) and capture its first version; again, it keeps what is there."""
+    """Create an REE here (or at -C) and capture its first version; again, it keeps what is there.
+
+    With --oci, every script runs in that OCI image, and the REE starts with the scripts that suit one; without,
+    they run on the machine that runs each step.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     init: Annotated[Literal["init"], VERB] = "init"
     name: str
-    # What the REE's scripts run in, which decides the scripts it starts with.
-    workbench_environment: EnvironmentBackend = "container"
+    # The working environment: the OCI image the REE's scripts run in, which decides the scripts it starts with.
+    oci: str | None = Field(default=None, min_length=1)
 
 
 def query_types() -> tuple[type[BaseModel], ...]:

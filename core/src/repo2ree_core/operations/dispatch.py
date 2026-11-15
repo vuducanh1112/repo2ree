@@ -6,11 +6,12 @@ from uuid import uuid4
 from pydantic import BaseModel, ValidationError
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import ScriptRunner
+from repo2ree_core.execution.working_environment import Entry, Machine
 from repo2ree_core.operations.capture import capture_command
 from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
 from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
 from repo2ree_core.operations.handlers.author.build_experiment_environment import handle_build_experiment_environment
+from repo2ree_core.operations.handlers.author.check_working_environment import handle_check_working_environment
 from repo2ree_core.operations.handlers.author.cross_check_sbom import handle_cross_check_sbom
 from repo2ree_core.operations.handlers.author.delete_file import handle_delete_file
 from repo2ree_core.operations.handlers.author.evaluate_dependency_score import (
@@ -37,11 +38,13 @@ from repo2ree_core.operations.handlers.review.build_experiment_environment impor
     handle_review_build_experiment_environment,
 )
 from repo2ree_core.operations.handlers.review.run_experiment import handle_review_run_experiment
+from repo2ree_core.operations.working_environment import ReeEntry
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
     BuildExperimentEnvironmentCommand,
+    CheckWorkingEnvironmentCommand,
     Command,
     CrossCheckSbomCommand,
     DeleteFileCommand,
@@ -83,7 +86,7 @@ def run_command(
     cmd: Command,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    machine: Machine,
     log: LogSink,
     run_id: str | None = None,
     is_canceled: CancelCheck | None = None,
@@ -91,7 +94,8 @@ def run_command(
 ) -> ActionResult:
     """Dispatch a typed Command to its handler, against the REE at ``layout``, and return an ActionResult.
 
-    ``runner`` is where the REE's scripts run, and where inference probes the machine they run on.
+    ``machine`` is how this machine enters the working environment the REE declares: where its scripts run, and
+    where inference probes what they can use.
 
     ``run_id`` is the caller's name for this unit of work; the control plane
     mints one per background run. A hand-run command (``ree`` with no
@@ -122,7 +126,7 @@ def run_command(
             run_id=resolved_run_id,
             log=log,
             execute=lambda: _run_unless_canceled(
-                cmd, layout=layout, runner=runner, log=log, run_id=resolved_run_id, cancel=cancel
+                cmd, layout=layout, machine=machine, log=log, run_id=resolved_run_id, cancel=cancel
             ),
         )
         result = result.model_copy(update={"context": context})
@@ -144,7 +148,7 @@ def _run_unless_canceled(
     cmd: Command,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    machine: Machine,
     log: LogSink,
     run_id: str,
     cancel: CancelCheck,
@@ -160,31 +164,32 @@ def _run_unless_canceled(
     if cancel():
         log("system", "warn", f"{cmd.operation} canceled before start")
         return ActionResult(status="canceled")
-    return _dispatch(cmd, layout=layout, runner=runner, log=log, run_id=run_id, cancel=cancel)
+    return _dispatch(cmd, layout=layout, machine=machine, log=log, run_id=run_id, cancel=cancel)
 
 
 def _dispatch(
     cmd: Command,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    machine: Machine,
     log: LogSink,
     run_id: str,
     cancel: CancelCheck,
 ) -> ActionResult:
+    entry: Entry = ReeEntry(machine, layout)
     if isinstance(cmd, ReviewAcquireSourceCommand):
         return handle_review_acquire_source(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ReviewBuildExperimentEnvironmentCommand):
         return handle_review_build_experiment_environment(
-            cmd.args, layout=layout, runner=runner, run_id=run_id, log=log, is_canceled=cancel
+            cmd.args, layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel
         )
     if isinstance(cmd, ReviewActivationTestCommand):
         return handle_review_activation_test(
-            cmd.args, layout=layout, runner=runner, run_id=run_id, log=log, is_canceled=cancel
+            cmd.args, layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel
         )
     if isinstance(cmd, ReviewRunExperimentCommand):
         return handle_review_run_experiment(
-            cmd.args, layout=layout, runner=runner, run_id=run_id, log=log, is_canceled=cancel
+            cmd.args, layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel
         )
     if isinstance(cmd, MaterializeWorkspaceCommand):
         return handle_materialize_workspace(layout=layout, log=log, is_canceled=cancel)
@@ -202,12 +207,12 @@ def _dispatch(
         return handle_remove_source(layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, BuildExperimentEnvironmentCommand):
         return handle_build_experiment_environment(
-            layout=layout, runner=runner, run_id=run_id, log=log, is_canceled=cancel
+            layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel
         )
     if isinstance(cmd, EvaluateDependencyScoreCommand):
         return handle_evaluate_dependency_score(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RunExperimentCommand):
-        return handle_run_experiment(cmd.args, layout=layout, runner=runner, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_run_experiment(cmd.args, layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateHbomCommand):
         return handle_generate_hbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
@@ -215,13 +220,15 @@ def _dispatch(
     if isinstance(cmd, CrossCheckSbomCommand):
         return handle_cross_check_sbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivationTestCommand):
-        return handle_activation_test(layout=layout, runner=runner, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_activation_test(layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, CheckWorkingEnvironmentCommand):
+        return handle_check_working_environment(layout=layout, entry=entry, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateScriptCandidatesCommand):
-        return handle_generate_script_candidates(cmd.args, layout=layout, runner=runner, log=log, is_canceled=cancel)
+        return handle_generate_script_candidates(cmd.args, layout=layout, entry=entry, log=log, is_canceled=cancel)
     if isinstance(cmd, LintScriptsCommand):
         return handle_lint_scripts(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):
-        return handle_seal_ree(cmd.args, layout=layout, log=log, is_canceled=cancel)
+        return handle_seal_ree(cmd.args, layout=layout, machine=machine, log=log, is_canceled=cancel)
     return _unhandled_command(cmd)
 
 

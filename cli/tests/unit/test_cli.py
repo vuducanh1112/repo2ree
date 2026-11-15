@@ -114,10 +114,23 @@ def test_init_reports_capture_failure(root: Path, monkeypatch: pytest.MonkeyPatc
 
 
 def test_init_seeds_the_scripts_of_its_environment(root: Path) -> None:
-    result = ree(root, "init", "--name", "demo", "--workbench-environment", "host")
+    result = ree(root, "init", "--name", "demo")
 
     assert result.exit_code == 0, result.output
-    assert "docker" not in ReeDirectory(ReeLayout(root=root)).overlay.read_text(BUILD_SCRIPT)
+    store = ReeDirectory(ReeLayout(root=root))
+    assert "docker" not in store.overlay.read_text(BUILD_SCRIPT)
+    assert store.read_ree().subject.definition.working_environment is None
+
+
+def test_init_with_an_image_declares_it_as_the_working_environment(root: Path) -> None:
+    result = ree(root, "init", "--name", "demo", "--oci", "python:3.12")
+
+    assert result.exit_code == 0, result.output
+    store = ReeDirectory(ReeLayout(root=root))
+    assert "docker build" in store.overlay.read_text(BUILD_SCRIPT)
+    working_environment = store.read_ree().subject.definition.working_environment
+    assert working_environment is not None
+    assert working_environment.oci == "python:3.12"
 
 
 def test_manifest_before_init_exits_nonzero(root: Path) -> None:
@@ -255,7 +268,7 @@ def test_a_canceled_run_exits_canceled_and_clears_its_marker(initialized: Path) 
 def test_a_stop_signal_cancels_the_run_cooperatively_and_the_handler_is_restored(
     initialized: Path, monkeypatch: pytest.MonkeyPatch, stop: signal.Signals
 ) -> None:
-    def interrupted(cmd, *, layout, runner, log, run_id, is_canceled, context):
+    def interrupted(cmd, *, layout, machine, log, run_id, is_canceled, context):
         assert not is_canceled()
         os.kill(os.getpid(), stop)  # As the workbench escalates a cancel, or a person presses Ctrl-C.
         return ActionResult(status="canceled" if is_canceled() else "succeeded")
@@ -399,8 +412,8 @@ def test_every_read_a_workbench_can_be_sent_is_a_command() -> None:
     assert {*(verb_of(read) for read in query_types()), verb_of(InitRee)} <= set(cli.commands)
 
 
-def test_an_init_in_an_environment_there_is_not_is_refused(root: Path) -> None:
-    result = ree(root, "init", "--name", "demo", "--workbench-environment", "moon")
+def test_an_init_with_an_empty_image_is_refused(root: Path) -> None:
+    result = ree(root, "init", "--name", "demo", "--oci", "")
 
     assert result.exit_code == REFUSED
     assert not root.exists() or not any(root.iterdir())

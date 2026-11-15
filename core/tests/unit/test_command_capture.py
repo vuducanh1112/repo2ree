@@ -8,7 +8,7 @@ from typing import get_args
 import pytest
 
 from repo2ree_core.domain.ree.transitions import revision_of
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HOST_MACHINE
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.initialize import initialize_ree
@@ -44,7 +44,7 @@ def patch(layout: ReeLayout, name="after", *, expected_version="", cancel=None):
         log=lambda *args: None,
         is_canceled=cancel,
         layout=layout,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
 
 
@@ -83,7 +83,7 @@ def test_invocation_identity_distinguishes_repeated_run_labels_and_explicit_retr
         run_id="patch-run",
         log=lambda *args: None,
         layout=ree,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
     assert result.context == retry
     assert result.history is not None
@@ -104,7 +104,7 @@ def test_duplicate_attempt_cannot_execute_or_overwrite_its_published_outcome(ree
         context=first.context,
         log=lambda *args: None,
         layout=ree,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
     assert repeated.status == "failed"
     assert repeated.failure is not None
@@ -371,7 +371,7 @@ def test_executor_bookkeeping_does_not_create_observation(ree):
         run_id="lint",
         log=lambda *args: None,
         layout=ree,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
     assert result.history is not None
     assert result.history.changed is False
@@ -385,7 +385,7 @@ def test_write_delete_capture_scripts_and_command_bytes(ree):
     script = "ree-scripts/experiments/demo.verify.sh"
     content = "#!/bin/sh\ntest -s result.txt\n"
     command = WriteFileCommand(args=WriteFileArgs(path=script, content=content))
-    result = dispatch.run_command(command, log=lambda *args: None, layout=ree, runner=LocalScriptRunner())
+    result = dispatch.run_command(command, log=lambda *args: None, layout=ree, machine=HOST_MACHINE)
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == command.model_dump(mode="json")
     assert git(ree, "show", f"HEAD:overlay/{script}") == content.strip()
@@ -393,7 +393,7 @@ def test_write_delete_capture_scripts_and_command_bytes(ree):
         DeleteFileCommand(args=DeleteFileArgs(path=script)),
         log=lambda *args: None,
         layout=ree,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
     assert result.status == "succeeded"
     assert script not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
@@ -407,13 +407,13 @@ def test_the_overlay_takes_only_the_rees_scripts(ree, path):
         WriteFileCommand(args=WriteFileArgs(path=path, content="x\n")),
         log=lambda *args: None,
         layout=ree,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
     deleted = dispatch.run_command(
         DeleteFileCommand(args=DeleteFileArgs(path=path)),
         log=lambda *args: None,
         layout=ree,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
     for result in (written, deleted):
         assert result.status == "failed"
@@ -467,7 +467,7 @@ def test_every_command_records_inputs_and_selected_scope(ree, monkeypatch, comma
 
     monkeypatch.setattr(dispatch, "_dispatch", execute)
     monkeypatch.setattr(dispatch, "validate_outputs", lambda *_args: None)
-    result = dispatch.run_command(cmd, log=lambda *args: None, layout=ree, runner=LocalScriptRunner())
+    result = dispatch.run_command(cmd, log=lambda *args: None, layout=ree, machine=HOST_MACHINE)
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == cmd.model_dump(mode="json")
     assert git(scope, "show", "HEAD:overlay/operation.txt") == cmd.operation

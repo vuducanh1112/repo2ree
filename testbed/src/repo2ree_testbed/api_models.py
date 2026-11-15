@@ -27,6 +27,7 @@ ScriptKind = Literal[
     "experiment_run",
     "experiment_verify",
     "launch",
+    "check_working_environment",
 ]
 InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
 

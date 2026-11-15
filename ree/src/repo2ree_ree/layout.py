@@ -36,6 +36,7 @@ ACQUIRE_SCRIPT = "acquire_source.sh"
 MATERIALIZE_SCRIPT = "materialize_workspace.sh"
 MATERIALIZE_MARKER = ".workspace.materialized.json"
 SNAPSHOT = "snapshot.tar.gz"
+WORKING_ENVIRONMENT_ARCHIVE = "working-environment.tar"
 UPSTREAM = "upstream"
 OVERLAY = "overlay"
 ARTIFACTS = "artifacts"
@@ -154,6 +155,12 @@ _SCRIPTS = _directory(
     _file("build_experiment_environment.sh", "authored", "git", "Builds the experiment environment."),
     _file("activate_experiment_environment.sh", "authored", "git", "Enters the experiment environment."),
     _file("launch.sh", "authored", "git", "Launches each of the scripts, as a Slurm job step for instance; optional."),
+    _file(
+        "check_working_environment.sh",
+        "authored",
+        "git",
+        "Checks the working environment offers what the scripts need, run there before them; optional.",
+    ),
     _directory(
         EXPERIMENTS,
         "authored",
@@ -224,6 +231,12 @@ REE_TREE = _directory(
     _file(MATERIALIZE_SCRIPT, "repo2ree", "git", "Derives workspace/ from upstream/ and overlay/."),
     _file(MATERIALIZE_MARKER, "repo2ree", "git", "What workspace/ was last materialized from, for drift checks."),
     _file(SNAPSHOT, "acquired", "lfs", "The frozen upstream archive."),
+    _file(
+        WORKING_ENVIRONMENT_ARCHIVE,
+        "produced",
+        "lfs",
+        "The working environment's OCI image, saved by the seal when it is included; a review loads it.",
+    ),
     _directory(UPSTREAM, "derived", "never", "The snapshot, extracted; read only."),
     _directory(OVERLAY, "authored", "git", "The author's files, laid over upstream/ in the workspace.", _SCRIPTS),
     _directory(

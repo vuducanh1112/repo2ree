@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.execution.engine_probe import RunnerEngineProbe, observed, parse
-from repo2ree_core.execution.runners import LocalScriptRunner, ProbeResult, RefusedScriptRunner
+from repo2ree_core.execution.working_environment import HostEntry, ProbeResult, RefusedEntry
 
 NO_DAEMON = "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
@@ -37,7 +37,7 @@ def engines(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def _probe(workspace: Path, seconds: float = 10) -> RunnerEngineProbe:
     workspace.mkdir(exist_ok=True)
-    return RunnerEngineProbe(workspace, runner=LocalScriptRunner(), seconds=seconds)
+    return RunnerEngineProbe(workspace, entry=HostEntry(), seconds=seconds)
 
 
 def test_an_engine_that_answers_is_usable_and_one_that_cannot_reach_its_daemon_is_not(
@@ -88,12 +88,10 @@ def test_the_machine_is_probed_once(tmp_path: Path, engines: Path) -> None:
 
 
 def test_a_runner_that_refuses_leaves_the_engines_unknown(tmp_path: Path) -> None:
-    refusing = RefusedScriptRunner(
-        "this workbench runs scripts in a container, and the REE declares no image to run them in"
-    )
+    refusing = RefusedEntry("this workbench runs scripts in a container, and the REE declares no image to run them in")
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    seen = RunnerEngineProbe(workspace, runner=refusing).probe()
+    seen = RunnerEngineProbe(workspace, entry=refusing).probe()
     assert (seen.status, seen.engines) == ("failed", [])
     assert "declares no image" in seen.detail
 

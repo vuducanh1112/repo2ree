@@ -8,6 +8,7 @@
           "acquire_source": "#/$defs/AcquireSourceCommand",
           "activation_test": "#/$defs/ActivationTestCommand",
           "build_experiment_environment": "#/$defs/BuildExperimentEnvironmentCommand",
+          "check_working_environment": "#/$defs/CheckWorkingEnvironmentCommand",
           "cross_check_sbom": "#/$defs/CrossCheckSbomCommand",
           "delete_file": "#/$defs/DeleteFileCommand",
           "evaluate_dependency_score": "#/$defs/EvaluateDependencyScoreCommand",
@@ -83,6 +84,9 @@
         },
         {
           "$ref": "#/$defs/ActivationTestCommand"
+        },
+        {
+          "$ref": "#/$defs/CheckWorkingEnvironmentCommand"
         },
         {
           "$ref": "#/$defs/GenerateScriptCandidatesCommand"
@@ -238,6 +242,9 @@
       "$ref": "#/$defs/GenerateHbomOutputs"
     },
     "activation_test": {
+      "$ref": "#/$defs/RunnableOperationOutputs"
+    },
+    "check_working_environment": {
       "$ref": "#/$defs/RunnableOperationOutputs"
     },
     "generate_script_candidates": {
@@ -910,10 +917,10 @@
           "title": "Exit Code",
           "type": "integer"
         },
-        "workbench_environment": {
+        "working_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+              "$ref": "#/$defs/WorkingEnvironmentObservation"
             },
             {
               "type": "null"
@@ -1183,10 +1190,10 @@
             "named_by": "definition.experiment_environment.artifact_path"
           }
         },
-        "workbench_environment": {
+        "working_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+              "$ref": "#/$defs/WorkingEnvironmentObservation"
             },
             {
               "type": "null"
@@ -1681,6 +1688,189 @@
         "branches"
       ],
       "title": "CheckNode",
+      "type": "object"
+    },
+    "CheckWorkingEnvironmentArgs": {
+      "additionalProperties": false,
+      "description": "No args — runs the REE's check script in its working environment, launched as every script is.",
+      "properties": {},
+      "title": "CheckWorkingEnvironmentArgs",
+      "type": "object"
+    },
+    "CheckWorkingEnvironmentCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "check_working_environment",
+          "default": "check_working_environment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/CheckWorkingEnvironmentArgs",
+          "default": {}
+        }
+      },
+      "title": "CheckWorkingEnvironmentCommand",
+      "type": "object"
+    },
+    "CheckWorkingEnvironmentDefinition": {
+      "additionalProperties": false,
+      "description": "The script that checks the working environment offers what the REE's scripts need, run there before them.",
+      "properties": {
+        "check_working_environment_script_path": {
+          "default": "ree-scripts/check_working_environment.sh",
+          "title": "Check Working Environment Script Path",
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
+        },
+        "check_working_environment_script_digest": {
+          "title": "Check Working Environment Script Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/check_working_environment.sh"
+            ]
+          }
+        },
+        "check_working_environment_script_size": {
+          "minimum": 0,
+          "title": "Check Working Environment Script Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "check_working_environment_script_digest",
+        "check_working_environment_script_size"
+      ],
+      "title": "CheckWorkingEnvironmentDefinition",
+      "type": "object"
+    },
+    "CheckWorkingEnvironmentReceipt": {
+      "additionalProperties": false,
+      "description": "The author's check of the working environment ran there, launched as every script is, and exited 0.",
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "operation": {
+          "const": "check_working_environment",
+          "default": "check_working_environment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "check_working_environment_script_digest": {
+          "title": "Check Working Environment Script Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/check_working_environment.sh"
+            ]
+          }
+        },
+        "exit_code": {
+          "const": 0,
+          "default": 0,
+          "title": "Exit Code",
+          "type": "integer"
+        },
+        "working_environment": {
+          "$ref": "#/$defs/WorkingEnvironmentObservation"
+        },
+        "launch_script_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Launch Script Digest",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "overlay/ree-scripts/launch.sh"
+            ]
+          }
+        },
+        "launched": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Launched"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "duration_ms",
+        "recorded_at",
+        "check_working_environment_script_digest",
+        "working_environment"
+      ],
+      "title": "CheckWorkingEnvironmentReceipt",
+      "type": "object"
+    },
+    "CheckWorkingEnvironmentScriptTemplates": {
+      "additionalProperties": false,
+      "description": "The check-script templates and the reserved path they belong at.\n\nEvery REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.\nThe check runs in the working environment, launched as every script is, and must exit 0.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "templates"
+      ],
+      "title": "CheckWorkingEnvironmentScriptTemplates",
       "type": "object"
     },
     "CommandCandidatesBinding": {
@@ -4782,7 +4972,7 @@
     },
     "InitRee": {
       "additionalProperties": false,
-      "description": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
+      "description": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.\n\nWith --oci, every script runs in that OCI image, and the REE starts with the scripts that suit one; without,\nthey run on the machine that runs each step.",
       "properties": {
         "init": {
           "const": "init",
@@ -4794,14 +4984,18 @@
           "title": "Name",
           "type": "string"
         },
-        "workbench_environment": {
-          "default": "container",
-          "enum": [
-            "host",
-            "container"
+        "oci": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
           ],
-          "title": "Workbench Environment",
-          "type": "string"
+          "default": null,
+          "title": "Oci"
         }
       },
       "required": [
@@ -4954,7 +5148,8 @@
             "activate_experiment_environment",
             "experiment_run",
             "experiment_verify",
-            "launch"
+            "launch",
+            "check_working_environment"
           ],
           "title": "Kind",
           "type": "string"
@@ -5937,6 +6132,9 @@
         "hardware": {
           "$ref": "#/$defs/StepAudit"
         },
+        "working_environment_check": {
+          "$ref": "#/$defs/StepAudit"
+        },
         "experiment_environment": {
           "$ref": "#/$defs/StepAudit"
         },
@@ -5962,6 +6160,7 @@
         "source",
         "evaluation",
         "hardware",
+        "working_environment_check",
         "experiment_environment",
         "sbom",
         "sbom_cross_check",
@@ -6064,10 +6263,21 @@
           ],
           "default": null
         },
-        "workbench_environment": {
+        "working_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WorkbenchEnvironment"
+              "$ref": "#/$defs/WorkingEnvironment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "check_working_environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
             },
             {
               "type": "null"
@@ -6188,6 +6398,17 @@
           ],
           "default": null
         },
+        "working_environment_check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckWorkingEnvironmentReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "experiment_environment": {
           "anyOf": [
             {
@@ -6286,6 +6507,7 @@
             "source",
             "metadata",
             "hbom",
+            "check_working_environment",
             "evaluate",
             "build_experiment_environment",
             "sbom",
@@ -6311,6 +6533,7 @@
               "source",
               "metadata",
               "hbom",
+              "check_working_environment",
               "evaluate",
               "build_experiment_environment",
               "sbom",
@@ -6368,6 +6591,7 @@
                 "source",
                 "metadata",
                 "hbom",
+                "check_working_environment",
                 "evaluate",
                 "build_experiment_environment",
                 "sbom",
@@ -7784,10 +8008,10 @@
           "default": null,
           "title": "Verify Exit Code"
         },
-        "workbench_environment": {
+        "working_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/WorkbenchEnvironmentObservation"
+              "$ref": "#/$defs/WorkingEnvironmentObservation"
             },
             {
               "type": "null"
@@ -7919,6 +8143,9 @@
               "$ref": "#/$defs/RunExperimentReceipt"
             },
             {
+              "$ref": "#/$defs/CheckWorkingEnvironmentReceipt"
+            },
+            {
               "type": "null"
             }
           ],
@@ -8032,7 +8259,8 @@
             "activate_experiment_environment",
             "experiment_run",
             "experiment_verify",
-            "launch"
+            "launch",
+            "check_working_environment"
           ],
           "title": "Kind",
           "type": "string"
@@ -8071,7 +8299,8 @@
             "activate_experiment_environment",
             "experiment_run",
             "experiment_verify",
-            "launch"
+            "launch",
+            "check_working_environment"
           ],
           "title": "Kind",
           "type": "string"
@@ -8107,6 +8336,9 @@
         "launch": {
           "$ref": "#/$defs/LaunchScriptTemplates"
         },
+        "check_working_environment": {
+          "$ref": "#/$defs/CheckWorkingEnvironmentScriptTemplates"
+        },
         "experiment": {
           "$ref": "#/$defs/ExperimentScriptTemplates"
         },
@@ -8122,6 +8354,7 @@
         "build_experiment_environment",
         "activate_experiment_environment",
         "launch",
+        "check_working_environment",
         "experiment",
         "verify"
       ],
@@ -8130,7 +8363,7 @@
     },
     "ScriptTemplateEntry": {
       "additionalProperties": false,
-      "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``workbench_environment`` is the REE workbench environment kind a\nvariant suits, or null for one that suits any.",
+      "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``working_environment`` is the kind of working environment a variant\nsuits, or null for one that suits any.",
       "properties": {
         "key": {
           "title": "Key",
@@ -8152,7 +8385,7 @@
           "title": "Is Default",
           "type": "boolean"
         },
-        "workbench_environment": {
+        "working_environment": {
           "anyOf": [
             {
               "enum": [
@@ -8166,7 +8399,7 @@
             }
           ],
           "default": null,
-          "title": "Workbench Environment"
+          "title": "Working Environment"
         }
       },
       "required": [
@@ -8292,6 +8525,11 @@
           "title": "Experiment Environment Included",
           "type": "boolean"
         },
+        "working_environment_included": {
+          "default": false,
+          "title": "Working Environment Included",
+          "type": "boolean"
+        },
         "results_included": {
           "default": false,
           "title": "Results Included",
@@ -8315,6 +8553,7 @@
           "default": {
             "source_included": false,
             "experiment_environment_included": false,
+            "working_environment_included": false,
             "results_included": false
           }
         }
@@ -9283,92 +9522,6 @@
       "title": "WorkbenchCapabilities",
       "type": "object"
     },
-    "WorkbenchEnvironment": {
-      "additionalProperties": false,
-      "properties": {
-        "oci": {
-          "anyOf": [
-            {
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Oci"
-        }
-      },
-      "title": "WorkbenchEnvironment",
-      "type": "object"
-    },
-    "WorkbenchEnvironmentObservation": {
-      "additionalProperties": false,
-      "description": "What a step ran in: the declaration it ran under, and what was there.",
-      "properties": {
-        "declared": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkbenchEnvironment"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "backend": {
-          "enum": [
-            "host",
-            "container"
-          ],
-          "title": "Backend",
-          "type": "string"
-        },
-        "image_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image Digest",
-          "x-digest-of": {
-            "covers": "outside"
-          }
-        },
-        "host": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/HostFingerprint"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "script_engine": {
-          "default": "none",
-          "enum": [
-            "none",
-            "socket",
-            "nested"
-          ],
-          "title": "Script Engine",
-          "type": "string"
-        }
-      },
-      "required": [
-        "backend"
-      ],
-      "title": "WorkbenchEnvironmentObservation",
-      "type": "object"
-    },
     "WorkbenchHello": {
       "description": "The workbench's first message after dialing in: its identity plus the\nself-reported facts the control plane surfaces in its fleet view. Kept small\nand additive — new fields must default so an older workbench still parses,\nand unknown fields are *ignored* (unlike the frames) so an older control\nplane still accepts a newer workbench's hello.",
       "properties": {
@@ -9636,6 +9789,103 @@
         "request"
       ],
       "title": "WorkbenchWsRequest",
+      "type": "object"
+    },
+    "WorkingEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "oci": {
+          "minLength": 1,
+          "title": "Oci",
+          "type": "string"
+        }
+      },
+      "required": [
+        "oci"
+      ],
+      "title": "WorkingEnvironment",
+      "type": "object"
+    },
+    "WorkingEnvironmentObservation": {
+      "additionalProperties": false,
+      "description": "What a step ran in: the declaration it ran under, and what was there.",
+      "properties": {
+        "declared": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WorkingEnvironment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "backend": {
+          "enum": [
+            "host",
+            "container"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "image_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Digest",
+          "x-digest-of": {
+            "covers": "outside"
+          }
+        },
+        "image_source": {
+          "anyOf": [
+            {
+              "enum": [
+                "engine",
+                "bundle"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Source"
+        },
+        "host": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HostFingerprint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "script_engine": {
+          "default": "none",
+          "enum": [
+            "none",
+            "socket",
+            "nested"
+          ],
+          "title": "Script Engine",
+          "type": "string"
+        }
+      },
+      "required": [
+        "backend"
+      ],
+      "title": "WorkingEnvironmentObservation",
       "type": "object"
     },
     "WorkspaceDrift": {

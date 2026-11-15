@@ -32,6 +32,7 @@ RunOperation = Literal[
     "crosscheck",
     "hbom",
     "activation",
+    "check_working_environment",
     "source",
     "evaluate",
     "experiment",

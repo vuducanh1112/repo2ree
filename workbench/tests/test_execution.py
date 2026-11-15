@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_workbench.cli_process import LocalCli, ScriptBackend, declared_workbench_environment
+from repo2ree_workbench.cli_process import LocalCli, ScriptBackend
 from repo2ree_workbench.tools import tool_environment
 
 
@@ -106,26 +106,25 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
     assert tool_environment(None) == {}
 
 
-def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_executor: Path, tmp_path: Path) -> None:
-    scripts = ScriptBackend("container", "podman", "socket", ("/repo2ree", "/home/me/repo2ree"))
+def test_a_container_workbench_tells_ree_its_engine_and_runs_no_scripts_on_its_host(
+    fake_executor: Path, tmp_path: Path
+) -> None:
+    scripts = ScriptBackend("container", "podman", "socket", ("/repo2ree", "/home/me/repo2ree"), owner="/store")
     executor = LocalCli(tmp_path / "store", str(fake_executor), scripts=scripts)
-    root = executor.ree_root("ree-1")
-    root.mkdir(parents=True)
-    environment = {"oci": "python:3.12-slim"}
-    (root / "ree.json").write_text(json.dumps({"subject": {"definition": {"workbench_environment": environment}}}))
 
-    choice = json.loads(executor.environment(root)["REPO2REE_SCRIPT_RUNNER"])
+    environment = executor.environment(executor.root)
 
-    assert choice == {
-        "backend": "container",
-        "engine": "podman",
-        "image": "python:3.12-slim",
-        "script_engine": "socket",
-        "engine_path": {"local": "/repo2ree", "engine": "/home/me/repo2ree"},
-        "owner": "",
-        "refused": None,
+    assert {name: environment[name] for name in scripts.environment()} == {
+        "REPO2REE_ENGINE": "podman",
+        "REPO2REE_HOST_SCRIPTS": "refused",
+        "REPO2REE_SCRIPT_ENGINE": "socket",
+        "REPO2REE_JOB_OWNER": "/store",
+        "REPO2REE_ENGINE_PATH": "/repo2ree=/home/me/repo2ree",
     }
-    assert declared_workbench_environment(executor.ree_root("ree-2")) == {}
+
+
+def test_a_host_workbench_tells_ree_it_has_no_engine() -> None:
+    assert ScriptBackend("host").environment() == {"REPO2REE_ENGINE": "none", "REPO2REE_HOST_SCRIPTS": "allowed"}
 
 
 def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -> None:
@@ -145,29 +144,9 @@ def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -
     assert removed.read_text().split() == ["-f", "c2", "c3"]
 
 
-@pytest.mark.parametrize(
-    ("backend", "script_engine", "environment", "refused"),
-    [
-        ("container", "socket", {}, "declare the OCI image"),
-        ("container", "socket", {"oci": None}, "declare the OCI image"),
-        ("host", "socket", {"oci": "python:3.12"}, "cannot run them in python:3.12"),
-        ("container", "none", {"oci": "docker:29"}, None),
-        ("host", "socket", {"oci": None}, None),
-        ("host", "socket", {}, None),
-    ],
-)
-def test_a_store_workbench_refuses_an_environment_it_cannot_give(
-    backend: str, script_engine: str, environment: dict[str, object], refused: str | None
-) -> None:
-    refusal = ScriptBackend(backend, "docker", script_engine).refusal(environment)
-    assert (refusal is None) == (refused is None)
-    if refused:
-        assert refused in (refusal or "")
-
-
 def test_a_bench_set_up_for_one_ree_says_nothing_of_where_scripts_run(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalCli(tmp_path / "root", str(fake_executor))
-    assert "REPO2REE_SCRIPT_RUNNER" not in executor.environment(executor.root)
+    assert "REPO2REE_ENGINE" not in executor.environment(executor.root)
 
 
 def test_a_second_workbench_process_cannot_hold_a_held_store(tmp_path: Path) -> None:

@@ -55,6 +55,7 @@ from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.reproduction.commands import (
     ACQUIRE_SOURCE,
     BUILD_EXPERIMENT_ENVIRONMENT,
+    CHECK_WORKING_ENVIRONMENT,
     EXPERIMENT,
     MATERIALIZE_WORKSPACE,
     REPRODUCTION_COMMANDS,
@@ -66,7 +67,7 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
 )
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment
+from repo2ree_ree.working_environment import WorkingEnvironment
 
 # ================================================
 # Constants
@@ -84,6 +85,7 @@ _FIELD_SEP = "\t"
 _VERB_FUNCTIONS = {
     ACQUIRE_SOURCE.name: "do_acquire",
     MATERIALIZE_WORKSPACE.name: "do_materialize",
+    CHECK_WORKING_ENVIRONMENT.name: "do_check",
     BUILD_EXPERIMENT_ENVIRONMENT.name: "do_build",
     TEST_ACTIVATION.name: "do_activate",
 }
@@ -136,11 +138,13 @@ def build_reproducer_sh(
     experiment_environment_workspace_path: str | None,
     experiment_environment_artifact_basename: str | None,
     launch_script: str | None = None,
+    check_script: str | None = None,
 ) -> bytes:
     """Render the self-contained ``run.sh`` for a bundle.
 
     With ``launch_script``, every script runs through the author's launch script, as on the author's workbench,
-    unless the reproducer sets ``REE_LAUNCH``.
+    unless the reproducer sets ``REE_LAUNCH``. With ``check_script``, ``all`` runs the author's check of the
+    working environment before anything else runs.
 
     ``experiments`` is a sequence of ``(name, run_script, verify_script)``
     triples; ``verify_script`` may be empty (run only, exit code is the
@@ -164,6 +168,7 @@ def build_reproducer_sh(
             f"EXPERIMENT_ENVIRONMENT_WS_PATH={shell_single_quote(experiment_environment_workspace_path or '')}",
             f"EXPERIMENT_ENVIRONMENT_ARTIFACT={shell_single_quote(experiment_environment_artifact_basename or '')}",
             f"LAUNCH_SCRIPT={shell_single_quote(launch_script or '')}",
+            f"CHECK_SCRIPT={shell_single_quote(check_script or '')}",
         )
     )
     script = (
@@ -188,8 +193,9 @@ def reproducer_entries(
     source_type: str = "",
     revision: str = "",
     swhid: str = "",
-    workbench_environment: WorkbenchEnvironment | None = None,
+    working_environment: WorkingEnvironment | None = None,
     launch_script: str | None = None,
+    check_script: str | None = None,
 ) -> list[tuple[str, bytes]]:
     """Return the ``(path, bytes)`` bundle entries for the reproducer.
 
@@ -208,11 +214,12 @@ def reproducer_entries(
         experiment_environment_workspace_path=experiment_environment_workspace_path,
         experiment_environment_artifact_basename=experiment_environment_artifact_basename,
         launch_script=launch_script,
+        check_script=check_script,
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
     reproducing_md = _replace_layout_tokens(_REPRODUCING_MD.replace("@@LAUNCH@@", _launch_text(launch_script))).replace(
-        "@@ENVIRONMENT@@", _workbench_environment_text(workbench_environment)
+        "@@ENVIRONMENT@@", _working_environment_text(working_environment)
     )
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=BUNDLE_REPRODUCER_README_ENTRY_PATH)
     return [
@@ -223,14 +230,19 @@ def reproducer_entries(
     ]
 
 
-def _workbench_environment_text(workbench_environment: WorkbenchEnvironment | None) -> str:
+def _working_environment_text(working_environment: WorkingEnvironment | None) -> str:
     """What the REE says its scripts run in, for a reader about to run them."""
-    if workbench_environment is None:
-        return "The author declared no workbench environment: the scripts run in whatever shell runs `run.sh`."
-    if workbench_environment.oci is None:
-        return "The author ran the scripts directly on their machine; no image describes it."
-    pin = "" if workbench_environment.pinned else " It is not pinned by digest, so what it names may have moved since."
-    return f"The author's scripts ran in the OCI image `{workbench_environment.oci}`.{pin}"
+    if working_environment is None:
+        return (
+            "The author declared no working environment: the scripts ran directly on their machine, and run here "
+            "in whatever shell runs `run.sh`."
+        )
+    pin = "" if working_environment.pinned else " It is not pinned by digest, so what it names may have moved since."
+    bundled = " The bundle carries the image when the author included it: `docker load -i ree/working-environment.tar`."
+    return (
+        f"The author's scripts ran in the OCI image `{working_environment.oci}`.{pin} `run.sh` does not enter it: "
+        f"run `run.sh` inside it, with this directory mounted at the same path.{bundled}"
+    )
 
 
 def _launch_text(launch_script: str | None) -> str:
@@ -417,6 +429,14 @@ _RUN_SH_TEMPLATE = shell_text("""
       run_verify_only "$verify"
     }
 
+    # The author's check that this machine offers what the scripts need, launched as every script is.
+    do_check() {
+      ensure_workspace
+      [ -n "$CHECK_SCRIPT" ] || { say "The author declared no check of the working environment."; return 0; }
+      say "== check-working-environment =="
+      run_in_workspace "$CHECK_SCRIPT"
+    }
+
     do_build() {
       ensure_workspace
       say "== build-experiment-environment =="
@@ -462,11 +482,15 @@ _RUN_SH_TEMPLATE = shell_text("""
       run_verify_only "$verify"
     }
 
-    # One-click: acquire -> materialize -> experiment environment -> activation -> every experiment.
+    # One-click: acquire -> materialize -> check -> experiment environment -> activation -> every experiment.
     # Runs against a single materialized workspace (experiments are not isolated from
     # each other). Aborts on the first failure (set -e), including inside the loop.
     do_all() {
       do_materialize
+      if [ -n "$CHECK_SCRIPT" ]; then
+        say "== check-working-environment =="
+        run_in_workspace "$CHECK_SCRIPT"
+      fi
       ensure_experiment_environment
       say "== test-activation =="
       run_activation

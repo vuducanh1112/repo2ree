@@ -28,9 +28,10 @@ from repo2ree_core.reproduction.reproducer import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_LAUNCH_SCRIPT,
 )
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment
+from repo2ree_ree.working_environment import WorkingEnvironment
 
 
 def test_reproducer_entries_are_run_sh_scripts_and_readme():
@@ -58,16 +59,16 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
 
 
 def test_the_readme_says_what_the_scripts_ran_in():
-    def readme(environment: WorkbenchEnvironment | None) -> str:
-        return dict(reproducer_entries(workbench_environment=environment))["REPRODUCING.md"].decode()
+    def readme(environment: WorkingEnvironment | None) -> str:
+        return dict(reproducer_entries(working_environment=environment))["REPRODUCING.md"].decode()
 
-    assert "declared no workbench environment" in readme(None)
-    pinned = WorkbenchEnvironment(oci="python:3.12@sha256:" + "a" * 64)
+    assert "declared no working environment" in readme(None)
+    pinned = WorkingEnvironment(oci="python:3.12@sha256:" + "a" * 64)
     text = readme(pinned)
     assert f"`{pinned.oci}`" in text
     assert "not pinned" not in text
-    assert "not pinned" in readme(WorkbenchEnvironment(oci="python:3.12"))
-    assert "directly on their machine" in readme(WorkbenchEnvironment())
+    assert "not pinned" in readme(WorkingEnvironment(oci="python:3.12"))
+    assert "directly on their machine" in readme(None)
 
 
 def test_reproducer_sh_is_deterministic_for_equal_inputs():
@@ -103,6 +104,7 @@ def _seed_extracted_bundle(
     include_experiment_environment: bool,
     experiments: list[tuple[str, str, str]],
     launch: str | None = None,
+    check: str | None = None,
 ) -> Path:
     """Lay out an extracted-bundle tree (run.sh + ree/...) without sealing."""
     root = tmp_path / "download"
@@ -142,7 +144,10 @@ def _seed_extracted_bundle(
         experiment_environment_workspace_path="runtime.tar.gz",
         experiment_environment_artifact_basename="runtime.tar.gz" if include_experiment_environment else None,
         launch_script=RESERVED_LAUNCH_SCRIPT if launch is not None else None,
+        check_script=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT if check is not None else None,
     )
+    if check is not None:
+        (ree / OVERLAY_DIRNAME / RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT).write_text(check)
     if launch is not None:
         (ree / OVERLAY_DIRNAME / RESERVED_LAUNCH_SCRIPT).write_text(launch)
     (root / "run.sh").write_bytes(run_sh)
@@ -485,3 +490,35 @@ def test_the_readme_says_how_the_scripts_were_launched_and_how_to_launch_them_ot
     assert b"REE_LAUNCH_OPTIONS=" in launched
     direct = dict(reproducer_entries())[BUNDLE_REPRODUCER_README_ENTRY_PATH]
     assert b"The author ran every script directly" in direct
+
+
+def test_run_sh_all_runs_the_authors_check_before_anything_else_and_stops_when_it_fails(tmp_path):
+    passing = _seed_extracted_bundle(
+        tmp_path / "passing", include_experiment_environment=False, experiments=_DEMO, check="echo checked-here\n"
+    )
+    result = _run(passing, "all")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.index("checked-here") < result.stdout.index("did-build")
+
+    failing = _seed_extracted_bundle(
+        tmp_path / "failing",
+        include_experiment_environment=False,
+        experiments=_DEMO,
+        check="echo no gpu here >&2\nexit 1\n",
+    )
+    result = _run(failing, "all")
+    assert result.returncode != 0
+    assert "no gpu here" in result.stderr
+    assert "did-build" not in result.stdout
+
+
+def test_run_sh_checks_the_working_environment_on_its_own(tmp_path):
+    root = _seed_extracted_bundle(
+        tmp_path, include_experiment_environment=False, experiments=_DEMO, check="echo checked-here\n"
+    )
+    assert "checked-here" in _run(root, "check-working-environment").stdout
+
+    unchecked = _seed_extracted_bundle(tmp_path / "unchecked", include_experiment_environment=False, experiments=_DEMO)
+    result = _run(unchecked, "check-working-environment")
+    assert result.returncode == 0
+    assert "declared no check" in result.stdout

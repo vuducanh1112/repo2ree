@@ -1,9 +1,9 @@
 """What an REE's scripts run in: declared by the author, and observed by each step that ran in it.
 
-The build script is the author's own and may need anything; the environment is what provides it.
-Activation and experiments run in the same environment, on the experiment environment the build
-produced. An environment with an ``oci`` image runs each step in a container from it; one without
-runs it on whatever machine runs the step, described only by what was observed there.
+The working environment is an OCI image the scripts run in, or, undeclared, the machine that runs the step. The
+REE does not build it: an image is named, and pinned by its digest, as a workflow engine names the container of a
+task. Every script, the build included, runs in it; a launch, where the REE declares one, runs outside it, so a
+scheduler places a job and the job enters the image on the node it landed on.
 """
 
 from __future__ import annotations
@@ -20,43 +20,51 @@ EnvironmentBackend = Literal["host", "container"]
 # The container engine the script could reach: none, the host's own (its socket mounted), or a
 # daemon nested inside the environment (the privileged benches before stores).
 ScriptEngine = Literal["none", "socket", "nested"]
+# Where a step found the image it ran: the engine had it or pulled it, or the REE's bundle carried it.
+ImageSource = Literal["engine", "bundle"]
 
 
-class _WorkbenchEnvironmentModel(BaseModel):
+class _WorkingEnvironmentModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class WorkbenchEnvironment(_WorkbenchEnvironmentModel):
-    # An OCI image reference, pinned or not ("ref@sha256:<hex>" is pinned); none runs on the host.
-    oci: str | None = Field(default=None, min_length=1)
-
-    @property
-    def backend(self) -> EnvironmentBackend:
-        return "host" if self.oci is None else "container"
+class WorkingEnvironment(_WorkingEnvironmentModel):
+    # An OCI image reference, pinned or not ("ref@sha256:<hex>" is pinned).
+    oci: str = Field(min_length=1)
 
     @property
     def pinned(self) -> bool:
-        return self.oci is not None and "@sha256:" in self.oci
+        return "@sha256:" in self.oci
+
+    @property
+    def digest(self) -> str | None:
+        """The digest that pins the image; None when the reference is not pinned."""
+        return self.oci.rpartition("@")[2] if self.pinned else None
 
 
-class HostFingerprint(_WorkbenchEnvironmentModel):
+def backend_of(declared: WorkingEnvironment | None) -> EnvironmentBackend:
+    return "host" if declared is None else "container"
+
+
+class HostFingerprint(_WorkingEnvironmentModel):
     os: str = Field(min_length=1)
     arch: str = Field(min_length=1)
     kernel: str = ""
     container_engine: str = ""
 
 
-class WorkbenchEnvironmentObservation(_WorkbenchEnvironmentModel):
+class WorkingEnvironmentObservation(_WorkingEnvironmentModel):
     """What a step ran in: the declaration it ran under, and what was there."""
 
-    declared: WorkbenchEnvironment | None = None
+    declared: WorkingEnvironment | None = None
     backend: EnvironmentBackend
     image_digest: Annotated[Digest | None, digest_of("outside")] = None
+    image_source: ImageSource | None = None
     host: HostFingerprint | None = None
     script_engine: ScriptEngine = "none"
 
     @model_validator(mode="after")
-    def _observed_where_it_ran(self) -> WorkbenchEnvironmentObservation:
+    def _observed_where_it_ran(self) -> WorkingEnvironmentObservation:
         if self.backend == "container" and self.image_digest is None:
             raise ValueError("a step run in a container records the image digest it ran")
         if self.backend == "host" and self.host is None:

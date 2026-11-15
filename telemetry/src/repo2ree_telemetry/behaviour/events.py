@@ -50,6 +50,7 @@ AuthorApiActionName = Literal[
     "generate_sbom",
     "cross_check_sbom",
     "test_activation",
+    "check_working_environment",
     "run_experiment",
     # lifecycle
     "seal_ree",

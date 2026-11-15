@@ -28,7 +28,8 @@ from repo2ree_core.execution.process import (
     format_command,
     run_streaming_process,
 )
-from repo2ree_core.execution.runners import ScriptRunner, run_workspace_script
+from repo2ree_core.execution.runners import run_workspace_script
+from repo2ree_core.execution.working_environment import Entry
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
     launch_digest,
@@ -59,7 +60,7 @@ def handle_review_build_experiment_environment(
     args: ReviewBuildExperimentEnvironmentArgs,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    entry: Entry,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -132,7 +133,30 @@ def handle_review_build_experiment_environment(
     if materialized.returncode != 0:
         return stop("failed", f"materialize script exited {materialized.returncode}")
 
-    # 2. Put an experiment environment in that workspace: build one, or stage the shipped one.
+    # 2. Before anything runs there, the author's check of the working environment, where it declares one.
+    check = ree.subject.definition.check_working_environment
+    if check is not None:
+        try:
+            check_launch = review_launch(started, ree, review_layout.workspace)
+        except ReePreconditionError as exc:
+            return stop("failed", f"cannot launch the author's check: {exc}")
+        log("system", "info", f"review {args.review_id}: checking the working environment with the author's check")
+        checked = run_workspace_script(
+            review_layout.workspace.resolve(),
+            str(check.check_working_environment_script_path),
+            log=log,
+            is_canceled=is_canceled,
+            entry=entry,
+            launch=check_launch,
+        )
+        if checked.status == "canceled" or is_canceled():
+            return stop("canceled", "check canceled")
+        if checked.status != "succeeded":
+            return stop(
+                "failed", f"the working environment does not pass the author's check (exit {checked.exit_code})"
+            )
+
+    # 3. Put an experiment environment in that workspace: build one, or stage the shipped one.
     if basis == "bundled" and bundled_experiment_environment is not None:
         log(
             "system",
@@ -160,7 +184,7 @@ def handle_review_build_experiment_environment(
             RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             log=log,
             is_canceled=is_canceled,
-            runner=runner,
+            entry=entry,
             launch=launch,
         )
         launched = outcome.launched
@@ -173,7 +197,7 @@ def handle_review_build_experiment_environment(
             review_layout.workspace / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
         )
 
-    # 3. Certify the experiment environment, however it got there.
+    # 4. Certify the experiment environment, however it got there.
     observed_artifact_digest = digest_file_if_exists(experiment_environment_abs)
     if observed_artifact_digest is None:
         return stop("failed", f"the build produced no experiment environment artifact at {experiment_environment_path}")

@@ -22,6 +22,8 @@ from repo2ree_ree.receipt import (
     ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
     BuildScriptDigest,
+    CheckScriptDigest,
+    CheckWorkingEnvironmentReceipt,
     CrossCheckSbomReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
@@ -34,13 +36,14 @@ from repo2ree_ree.receipt import (
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_LAUNCH_SCRIPT,
     experiment_run_script_path,
     experiment_slug,
     experiment_verify_script_path,
     is_overlay_path,
 )
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment
+from repo2ree_ree.working_environment import WorkingEnvironment
 
 CURRENT_SCHEMA_VERSION: Literal[1] = 1
 
@@ -129,6 +132,21 @@ class LaunchDefinition(_DomainModel):
         return value
 
 
+class CheckWorkingEnvironmentDefinition(_DomainModel):
+    """The script that checks the working environment offers what the REE's scripts need, run there before them."""
+
+    check_working_environment_script_path: OverlayPath = OverlayPath(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
+    check_working_environment_script_digest: CheckScriptDigest
+    check_working_environment_script_size: int = Field(ge=0)
+
+    @field_validator("check_working_environment_script_path")
+    @classmethod
+    def _fixed_path(cls, value: OverlayPath) -> OverlayPath:
+        if value != RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT:
+            raise ValueError(f"check script path must be {RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT!r}")
+        return value
+
+
 class ExperimentDefinition(_DomainModel):
     name: str = Field(min_length=1)
     run_script_path: OverlayPath
@@ -162,7 +180,10 @@ class ReeDefinition(_DomainModel):
     source: SourceDefinition | None = None
     experiment_environment: ExperimentEnvironmentDefinition | None = None
     activate_experiment_environment: ActivateExperimentEnvironmentDefinition | None = None
-    workbench_environment: WorkbenchEnvironment | None = None
+    # The OCI image every script runs in; None runs them on the machine that runs the step.
+    working_environment: WorkingEnvironment | None = None
+    # The author's check that the working environment offers what the scripts need; every REE starts with one.
+    check_working_environment: CheckWorkingEnvironmentDefinition | None = None
     # None runs every script directly; with a launch, each runs through it.
     launch: LaunchDefinition | None = None
     hardware: HardwareDefinition | None = None
@@ -183,6 +204,7 @@ class ReeReceipts(_DomainModel):
     source: AcquireSourceReceipt | None = None
     evaluation: EvaluateReproducibilityReceipt | None = None
     hardware_observation: ObserveHardwareReceipt | None = None
+    working_environment_check: CheckWorkingEnvironmentReceipt | None = None
     experiment_environment: BuildExperimentEnvironmentReceipt | None = None
     sbom: GenerateSbomReceipt | None = None
     sbom_cross_check: CrossCheckSbomReceipt | None = None
@@ -290,6 +312,7 @@ __all__ = [
     "ActivateExperimentEnvironmentDefinition",
     "BundleContents",
     "BundleEntry",
+    "CheckWorkingEnvironmentDefinition",
     "Contributor",
     "ExperimentDefinition",
     "ExperimentEnvironmentDefinition",

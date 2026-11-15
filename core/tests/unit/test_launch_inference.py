@@ -9,8 +9,8 @@ import pytest
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.machine import MachineInputs
 from repo2ree_core.author_recipes.inference.renderers.slurm_launch import limit_minutes
-from repo2ree_core.execution.runners import ProbeResult
 from repo2ree_core.execution.slurm_probe import observed
+from repo2ree_core.execution.working_environment import ProbeResult
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import SlurmObservation, SlurmPartition, SlurmProbe
 from repo2ree_ree.model import ReeDefinition

@@ -64,6 +64,13 @@
         "description": "The frozen upstream archive."
       },
       {
+        "name": "working-environment.tar",
+        "kind": "file",
+        "origin": "produced",
+        "capture": "lfs",
+        "description": "The working environment's OCI image, saved by the seal when it is included; a review loads it."
+      },
+      {
         "name": "upstream",
         "kind": "directory",
         "origin": "derived",
@@ -104,6 +111,13 @@
                 "origin": "authored",
                 "capture": "git",
                 "description": "Launches each of the scripts, as a Slurm job step for instance; optional."
+              },
+              {
+                "name": "check_working_environment.sh",
+                "kind": "file",
+                "origin": "authored",
+                "capture": "git",
+                "description": "Checks the working environment offers what the scripts need, run there before them; optional."
               },
               {
                 "name": "experiments",

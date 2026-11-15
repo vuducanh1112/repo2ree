@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import ScriptRunner
+from repo2ree_core.execution.working_environment import Entry
 from repo2ree_core.operations.handlers.author.runnable import handle_runnable_operation
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.frames import LogSink
@@ -13,7 +13,7 @@ from repo2ree_protocol.result import ActionResult
 def handle_activation_test(
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    entry: Entry,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -21,7 +21,7 @@ def handle_activation_test(
     return handle_runnable_operation(
         "activation_test",
         layout=layout,
-        runner=runner,
+        entry=entry,
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,

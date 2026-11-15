@@ -108,9 +108,9 @@ change = ["patch_ree_definition", "write_file"]
 clear = ["patch_ree_definition"]
 files = ["ree-scripts/activate_experiment_environment.sh"]
 
-# The workbench environment the author's scripts run in: the build, the activation and the experiments.
-[fields."definition.workbench_environment"]
-group = "workbench_environment"
+# The working environment every script runs in, an OCI image; unset, they run on the machine that runs the step.
+[fields."definition.working_environment"]
+group = "working_environment"
 initial = "unset"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
@@ -125,6 +125,16 @@ set = ["patch_ree_definition"]
 change = ["patch_ree_definition", "write_file"]
 clear = ["patch_ree_definition"]
 files = ["ree-scripts/launch.sh"]
+
+# The author's check that the working environment offers what the scripts need: every REE starts with one that
+# passes, which the author edits; undeclared, nothing is checked.
+[fields."definition.check_working_environment"]
+group = "check_working_environment"
+initial = "set"
+set = ["patch_ree_definition"]
+change = ["patch_ree_definition", "write_file"]
+clear = ["patch_ree_definition"]
+files = ["ree-scripts/check_working_environment.sh"]
 
 [fields."definition.experiments[*]"]
 group = "experiment"
@@ -161,9 +171,15 @@ about = ["definition.hardware"]
 applies_without_declaration = true
 produced_by = "generate_hbom"
 
+# The check, run in the working environment; it rests on no source, so removing the source keeps it.
+[receipts.working_environment_check]
+about = ["definition.check_working_environment"]
+rests_on = ["definition.check_working_environment", "definition.working_environment", "definition.launch"]
+produced_by = "check_working_environment"
+
 [receipts.experiment_environment]
 about = ["definition.experiment_environment.artifact_path"]
-rests_on = ["definition.experiment_environment", "definition.workbench_environment", "definition.launch"]
+rests_on = ["definition.experiment_environment", "definition.working_environment", "definition.launch"]
 made_from = ["source"]
 produced_by = "build_experiment_environment"
 cleared_by = ["remove_source"]
@@ -183,7 +199,7 @@ cleared_by = ["remove_source"]
 # The activation run alone, around a command that does nothing: it enters the experiment environment and hands over.
 [receipts.activation]
 about = ["definition.activate_experiment_environment"]
-rests_on = ["definition.activate_experiment_environment", "definition.workbench_environment", "definition.launch"]
+rests_on = ["definition.activate_experiment_environment", "definition.working_environment", "definition.launch"]
 made_from = ["source", "experiment_environment"]
 produced_by = "activation_test"
 cleared_by = ["remove_source"]
@@ -194,7 +210,7 @@ about = ["definition.experiments[*]"]
 rests_on = [
     "definition.experiments[*]",
     "definition.activate_experiment_environment",
-    "definition.workbench_environment",
+    "definition.working_environment",
     "definition.launch",
 ]
 # An experiment runs inside the activation, so only while the activation's evidence is current.

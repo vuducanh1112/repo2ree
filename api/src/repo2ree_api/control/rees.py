@@ -33,11 +33,8 @@ from repo2ree_api.storage import author_actions
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_protocol.build import BuildInfo
-from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
-from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree, ReeStatus, ree_status
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 from repo2ree_supervisor import ReeRoute
 
 _log = logging.getLogger(__name__)
@@ -79,8 +76,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
         ree_registry.create(rid, name, store_id)
         try:
             handle = require_handle(rid)
-            workbench_environment = _store_workbench_environment(_store_images(store_id) or (), requested)
-            command_dispatcher.init_ree(handle, name, workbench_environment.backend)
+            command_dispatcher.init_ree(handle, name, _store_image(_store_images(store_id) or (), requested))
         except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
             ree_registry.delete(rid)
             detail = exc.detail if isinstance(exc, HTTPException) else exc
@@ -88,7 +84,6 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
             return ActionResult.failed(
                 "unavailable", f"The REE was not created in store {store_id}: {detail}", origin="api", retryable=True
             )
-        _declare_workbench_environment(handle, run_id, _log_run, workbench_environment)
         document = _provisioned_document(handle)
         return ActionResult(status="succeeded", outputs={"ree": document})
 
@@ -104,30 +99,11 @@ def _store_images(store_id: str) -> tuple[str, ...] | None:
     return None
 
 
-def _store_workbench_environment(offered: tuple[str, ...], requested: str) -> WorkbenchEnvironment:
-    """What a new REE in a store declares: the image asked for or the store's first, or its host."""
+def _store_image(offered: tuple[str, ...], requested: str) -> str | None:
+    """The image a new REE in a store runs its scripts in: the one asked for or the store's first; none on its host."""
     if requested and requested not in offered:
         raise ValueError(f"the store does not offer image {requested!r}")
-    return WorkbenchEnvironment(oci=requested or next(iter(offered), None))
-
-
-def _declare_workbench_environment(
-    handle: ReeRoute, run_id: str, log: LogSink, workbench_environment: WorkbenchEnvironment
-) -> None:
-    """Record what the new REE's scripts run in.
-
-    The REE exists either way, so a declaration that will not record leaves it undeclared and says
-    so, rather than failing a creation that worked.
-    """
-    command = PatchReeDefinitionCommand(
-        args=PatchReeDefinitionArgs(
-            patch={"workbench_environment": workbench_environment.model_dump(mode="json")}, expected_version=""
-        )
-    )
-    result = command_dispatcher.dispatch_action(handle, command, run_id, log)
-    if result.status != "succeeded":
-        message = result.failure.message if result.failure else result.status
-        log("system", "warn", f"The REE's workbench environment was not recorded: {message}")
+    return requested or next(iter(offered), None)
 
 
 def _provisioned_document(handle: ReeRoute) -> dict[str, Any]:

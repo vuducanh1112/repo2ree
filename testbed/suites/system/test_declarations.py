@@ -102,13 +102,13 @@ def test_a_new_ree_declares_what_its_scripts_run_in_and_the_author_may_change_it
     api: Api, new_ree: Callable[..., str]
 ) -> None:
     ree_id = new_ree()
-    declared = definition(api, ree_id)["workbench_environment"]
-    # A container store declares the OCI image it offers; a host store, its own host.
-    assert set(declared) == {"oci"}, declared
+    declared = definition(api, ree_id)["working_environment"]
+    # A container store declares the OCI image it offers; a host store declares none: its scripts run on the host.
+    assert declared is None or set(declared) == {"oci"}, declared
 
     changed = {"oci": "docker.io/library/python:3.12-slim"}
-    api.patch(ree_id, {"workbench_environment": changed})
-    assert definition(api, ree_id)["workbench_environment"] == changed
+    api.patch(ree_id, {"working_environment": changed})
+    assert definition(api, ree_id)["working_environment"] == changed
     # An OCI image is named, never empty.
-    assert api.patch(ree_id, {"workbench_environment": {"oci": ""}}, expect=None).status_code == 400
-    assert definition(api, ree_id)["workbench_environment"] == changed
+    assert api.patch(ree_id, {"working_environment": {"oci": ""}}, expect=None).status_code == 400
+    assert definition(api, ree_id)["working_environment"] == changed

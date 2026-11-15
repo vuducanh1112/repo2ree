@@ -4618,6 +4618,148 @@
         }
       }
     },
+    "/api/v1/rees/{ree_id}/check-working-environment": {
+      "post": {
+        "tags": [
+          "runs"
+        ],
+        "summary": "Create Check Working Environment Run",
+        "operationId": "startWorkingEnvironmentCheck",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckWorkingEnvironmentRunPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or operation precondition",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "REE, run, file, or artifact not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or idempotency conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request body is not application/json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Request validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Workbench returned an invalid upstream response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Compute provider or workbench unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "507": {
+            "description": "Upload staging capacity exhausted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run": {
       "post": {
         "tags": [
@@ -8372,10 +8514,10 @@
             "title": "Exit Code",
             "default": 0
           },
-          "workbench_environment": {
+          "working_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
+                "$ref": "#/components/schemas/WorkingEnvironmentObservation"
               },
               {
                 "type": "null"
@@ -8797,10 +8939,10 @@
               "named_by": "definition.experiment_environment.artifact_path"
             }
           },
-          "workbench_environment": {
+          "working_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
+                "$ref": "#/components/schemas/WorkingEnvironmentObservation"
               },
               {
                 "type": "null"
@@ -9128,6 +9270,160 @@
         ],
         "title": "CheckNode"
       },
+      "CheckWorkingEnvironmentDefinition": {
+        "properties": {
+          "check_working_environment_script_path": {
+            "type": "string",
+            "title": "Check Working Environment Script Path",
+            "default": "ree-scripts/check_working_environment.sh",
+            "x-relative-to": [
+              "overlay"
+            ]
+          },
+          "check_working_environment_script_digest": {
+            "type": "string",
+            "title": "Check Working Environment Script Digest",
+            "x-digest-of": {
+              "covers": "file",
+              "entries": [
+                "overlay/ree-scripts/check_working_environment.sh"
+              ]
+            }
+          },
+          "check_working_environment_script_size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Check Working Environment Script Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "check_working_environment_script_digest",
+          "check_working_environment_script_size"
+        ],
+        "title": "CheckWorkingEnvironmentDefinition",
+        "description": "The script that checks the working environment offers what the REE's scripts need, run there before them."
+      },
+      "CheckWorkingEnvironmentReceipt": {
+        "properties": {
+          "schema_version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Schema Version",
+            "default": 1
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Duration Ms"
+          },
+          "recorded_at": {
+            "type": "string",
+            "title": "Recorded At"
+          },
+          "operation": {
+            "type": "string",
+            "const": "check_working_environment",
+            "title": "Operation",
+            "default": "check_working_environment"
+          },
+          "check_working_environment_script_digest": {
+            "type": "string",
+            "title": "Check Working Environment Script Digest",
+            "x-digest-of": {
+              "covers": "file",
+              "entries": [
+                "overlay/ree-scripts/check_working_environment.sh"
+              ]
+            }
+          },
+          "exit_code": {
+            "type": "integer",
+            "const": 0,
+            "title": "Exit Code",
+            "default": 0
+          },
+          "working_environment": {
+            "$ref": "#/components/schemas/WorkingEnvironmentObservation"
+          },
+          "launch_script_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Launch Script Digest",
+            "x-digest-of": {
+              "covers": "file",
+              "entries": [
+                "overlay/ree-scripts/launch.sh"
+              ]
+            }
+          },
+          "launched": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Launched"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "started_at",
+          "finished_at",
+          "duration_ms",
+          "recorded_at",
+          "check_working_environment_script_digest",
+          "working_environment"
+        ],
+        "title": "CheckWorkingEnvironmentReceipt",
+        "description": "The author's check of the working environment ran there, launched as every script is, and exited 0."
+      },
+      "CheckWorkingEnvironmentScriptTemplates": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "templates"
+        ],
+        "title": "CheckWorkingEnvironmentScriptTemplates",
+        "description": "The check-script templates and the reserved path they belong at.\n\nEvery REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.\nThe check runs in the working environment, launched as every script is, and must exit 0."
+      },
       "CommandCandidatesBinding": {
         "properties": {
           "kind": {
@@ -9374,6 +9670,25 @@
         "type": "object",
         "title": "CreateBuildExperimentEnvironmentRunPayload",
         "description": "Run the reserved build script. Takes no parameters of its own."
+      },
+      "CreateCheckWorkingEnvironmentRunPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CreateCheckWorkingEnvironmentRunPayload",
+        "description": "Run the REE's check script in its working environment. Takes no parameters of its own."
       },
       "CreateCrossCheckSbomRunPayload": {
         "properties": {
@@ -12983,6 +13298,9 @@
           "hardware": {
             "$ref": "#/components/schemas/StepAudit"
           },
+          "working_environment_check": {
+            "$ref": "#/components/schemas/StepAudit"
+          },
           "experiment_environment": {
             "$ref": "#/components/schemas/StepAudit"
           },
@@ -13010,6 +13328,7 @@
           "source",
           "evaluation",
           "hardware",
+          "working_environment_check",
           "experiment_environment",
           "sbom",
           "sbom_cross_check",
@@ -13169,10 +13488,20 @@
               }
             ]
           },
-          "workbench_environment": {
+          "working_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WorkbenchEnvironment"
+                "$ref": "#/components/schemas/WorkingEnvironment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "check_working_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckWorkingEnvironmentDefinition"
               },
               {
                 "type": "null"
@@ -13252,10 +13581,20 @@
               }
             ]
           },
-          "workbench_environment": {
+          "working_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WorkbenchEnvironment"
+                "$ref": "#/components/schemas/WorkingEnvironment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "check_working_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckWorkingEnvironmentDefinition"
               },
               {
                 "type": "null"
@@ -13586,6 +13925,16 @@
               }
             ]
           },
+          "working_environment_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CheckWorkingEnvironmentReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "experiment_environment": {
             "anyOf": [
               {
@@ -13684,6 +14033,12 @@
             "description": "Put the declared experiment environment artifact in the sealed archive.",
             "default": false
           },
+          "include_working_environment": {
+            "type": "boolean",
+            "title": "Include Working Environment",
+            "description": "Save the working environment's OCI image into the sealed archive, so a review needs no registry.",
+            "default": false
+          },
           "include_results": {
             "type": "boolean",
             "title": "Include Results",
@@ -13773,6 +14128,7 @@
                   "source",
                   "metadata",
                   "hbom",
+                  "check_working_environment",
                   "evaluate",
                   "build_experiment_environment",
                   "sbom",
@@ -13801,6 +14157,7 @@
               "source",
               "metadata",
               "hbom",
+              "check_working_environment",
               "evaluate",
               "build_experiment_environment",
               "sbom",
@@ -13826,6 +14183,7 @@
                 "source",
                 "metadata",
                 "hbom",
+                "check_working_environment",
                 "evaluate",
                 "build_experiment_environment",
                 "sbom",
@@ -13881,6 +14239,7 @@
               "source",
               "metadata",
               "hbom",
+              "check_working_environment",
               "evaluate",
               "build_experiment_environment",
               "sbom",
@@ -13906,6 +14265,7 @@
                 "source",
                 "metadata",
                 "hbom",
+                "check_working_environment",
                 "evaluate",
                 "build_experiment_environment",
                 "sbom",
@@ -13963,6 +14323,7 @@
                   "source",
                   "metadata",
                   "hbom",
+                  "check_working_environment",
                   "evaluate",
                   "build_experiment_environment",
                   "sbom",
@@ -15085,10 +15446,10 @@
             ],
             "title": "Verify Exit Code"
           },
-          "workbench_environment": {
+          "working_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WorkbenchEnvironmentObservation"
+                "$ref": "#/components/schemas/WorkingEnvironmentObservation"
               },
               {
                 "type": "null"
@@ -15334,6 +15695,7 @@
               "crosscheck",
               "hbom",
               "activation",
+              "check_working_environment",
               "source",
               "evaluate",
               "experiment"
@@ -15621,7 +15983,8 @@
               "activate_experiment_environment",
               "experiment_run",
               "experiment_verify",
-              "launch"
+              "launch",
+              "check_working_environment"
             ],
             "title": "Kind"
           },
@@ -15659,7 +16022,8 @@
               "activate_experiment_environment",
               "experiment_run",
               "experiment_verify",
-              "launch"
+              "launch",
+              "check_working_environment"
             ],
             "title": "Kind"
           },
@@ -15694,6 +16058,9 @@
           "launch": {
             "$ref": "#/components/schemas/LaunchScriptTemplates"
           },
+          "check_working_environment": {
+            "$ref": "#/components/schemas/CheckWorkingEnvironmentScriptTemplates"
+          },
           "experiment": {
             "$ref": "#/components/schemas/ExperimentScriptTemplates"
           },
@@ -15711,6 +16078,7 @@
           "build_experiment_environment",
           "activate_experiment_environment",
           "launch",
+          "check_working_environment",
           "experiment",
           "verify"
         ],
@@ -15738,7 +16106,7 @@
             "type": "boolean",
             "title": "Is Default"
           },
-          "workbench_environment": {
+          "working_environment": {
             "anyOf": [
               {
                 "type": "string",
@@ -15751,7 +16119,7 @@
                 "type": "null"
               }
             ],
-            "title": "Workbench Environment"
+            "title": "Working Environment"
           }
         },
         "additionalProperties": false,
@@ -15764,7 +16132,7 @@
           "is_default"
         ],
         "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``workbench_environment`` is the REE workbench environment kind a\nvariant suits, or null for one that suits any."
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``working_environment`` is the kind of working environment a variant\nsuits, or null for one that suits any."
       },
       "ScriptValidation": {
         "properties": {
@@ -16926,88 +17294,6 @@
         "title": "WorkbenchCapabilities",
         "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there."
       },
-      "WorkbenchEnvironment": {
-        "properties": {
-          "oci": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Oci"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "WorkbenchEnvironment"
-      },
-      "WorkbenchEnvironmentObservation": {
-        "properties": {
-          "declared": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WorkbenchEnvironment"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "backend": {
-            "type": "string",
-            "enum": [
-              "host",
-              "container"
-            ],
-            "title": "Backend"
-          },
-          "image_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Digest",
-            "x-digest-of": {
-              "covers": "outside"
-            }
-          },
-          "host": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/HostFingerprint"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "script_engine": {
-            "type": "string",
-            "enum": [
-              "none",
-              "socket",
-              "nested"
-            ],
-            "title": "Script Engine",
-            "default": "none"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "backend"
-        ],
-        "title": "WorkbenchEnvironmentObservation",
-        "description": "What a step ran in: the declaration it ran under, and what was there."
-      },
       "WorkbenchList": {
         "properties": {
           "workbenches": {
@@ -17103,6 +17389,99 @@
           "connected_at"
         ],
         "title": "WorkbenchSummary"
+      },
+      "WorkingEnvironment": {
+        "properties": {
+          "oci": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Oci"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "oci"
+        ],
+        "title": "WorkingEnvironment"
+      },
+      "WorkingEnvironmentObservation": {
+        "properties": {
+          "declared": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkingEnvironment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "backend": {
+            "type": "string",
+            "enum": [
+              "host",
+              "container"
+            ],
+            "title": "Backend"
+          },
+          "image_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Digest",
+            "x-digest-of": {
+              "covers": "outside"
+            }
+          },
+          "image_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "engine",
+                  "bundle"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Source"
+          },
+          "host": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HostFingerprint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "script_engine": {
+            "type": "string",
+            "enum": [
+              "none",
+              "socket",
+              "nested"
+            ],
+            "title": "Script Engine",
+            "default": "none"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backend"
+        ],
+        "title": "WorkingEnvironmentObservation",
+        "description": "What a step ran in: the declaration it ran under, and what was there."
       },
       "WorkspaceDrift": {
         "properties": {

@@ -355,6 +355,19 @@ class ActivationTestCommand(BaseModel):
     args: ActivationTestArgs = ActivationTestArgs()
 
 
+class CheckWorkingEnvironmentArgs(BaseModel):
+    """No args — runs the REE's check script in its working environment, launched as every script is."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CheckWorkingEnvironmentCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["check_working_environment"] = "check_working_environment"
+    args: CheckWorkingEnvironmentArgs = CheckWorkingEnvironmentArgs()
+
+
 # The kinds of author-facing script inference can be asked about. Declared here,
 # on the wire type, because all three layers that name it must agree by
 # construction: the HTTP payload validating a client's request, this command
@@ -367,6 +380,7 @@ TargetKind = Literal[
     "experiment_run",
     "experiment_verify",
     "launch",
+    "check_working_environment",
 ]
 
 
@@ -443,6 +457,8 @@ class SealReeArgs(BaseModel):
 
     source_included: bool = False
     experiment_environment_included: bool = False
+    # The working environment's OCI image, saved into the bundle, so a review needs no registry to run it.
+    working_environment_included: bool = False
     results_included: bool = False
 
 
@@ -473,6 +489,7 @@ Command = Annotated[
     | RunExperimentCommand
     | GenerateHbomCommand
     | ActivationTestCommand
+    | CheckWorkingEnvironmentCommand
     | GenerateScriptCandidatesCommand
     | LintScriptsCommand
     | SealReeCommand,

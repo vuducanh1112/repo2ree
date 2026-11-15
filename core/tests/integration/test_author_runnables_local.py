@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -91,7 +91,7 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
     experiment_result = handle_run_experiment(
         RunExperimentArgs(experiment_name=name),
@@ -99,7 +99,7 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
 
     assert activation_result.status == "succeeded"

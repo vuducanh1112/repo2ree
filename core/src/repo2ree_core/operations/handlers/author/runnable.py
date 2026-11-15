@@ -18,7 +18,7 @@ from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_run
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import ScriptRunner
+from repo2ree_core.execution.working_environment import Entry
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -35,7 +35,7 @@ from repo2ree_ree.model import (
 )
 from repo2ree_ree.primitives import ExperimentEnvironmentPath
 from repo2ree_ree.receipt import ActivationReceipt, Launched, RunExperimentReceipt
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
+from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
 RunnableKind = Literal["activation_test", "run_experiment"]
 RunnableDefinition = ActivateExperimentEnvironmentDefinition | ExperimentDefinition
@@ -45,7 +45,7 @@ def handle_runnable_operation(
     kind: RunnableKind,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    entry: Entry,
     experiment_name: str = "",
     run_id: str,
     log: LogSink,
@@ -78,7 +78,7 @@ def handle_runnable_operation(
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
-        runner=runner,
+        entry=entry,
     )
     outputs = _outputs(outcome, experiment_environment_path)
     if outcome.status == "canceled":
@@ -116,7 +116,7 @@ def handle_runnable_operation(
         experiment_environment_digest=experiment_environment_digest,
         produced_output_digest=produced_output_digest,
         activate_experiment_environment_script_digest=activation.activate_experiment_environment_script_digest,
-        workbench_environment=runner.observe(ree.subject.definition.workbench_environment),
+        working_environment=entry.observe(),
         launch_script_digest=_launch_digest(ree),
         launched=outcome.launched,
     )
@@ -284,7 +284,7 @@ def _successful_receipt(
     experiment_environment_digest: Digest | None,
     produced_output_digest: Digest | None,
     activate_experiment_environment_script_digest: Digest,
-    workbench_environment: WorkbenchEnvironmentObservation,
+    working_environment: WorkingEnvironmentObservation,
     launch_script_digest: Digest | None,
     launched: Launched | None,
 ) -> ActivationReceipt | RunExperimentReceipt:
@@ -297,7 +297,7 @@ def _successful_receipt(
             experiment_environment_digest=experiment_environment_digest,
             activate_experiment_environment_script_digest=activate_experiment_environment_script_digest,
             exit_code=0,
-            workbench_environment=workbench_environment,
+            working_environment=working_environment,
             launch_script_digest=launch_script_digest,
             launched=launched,
         )
@@ -312,7 +312,7 @@ def _successful_receipt(
         run_exit_code=0,
         verify_exit_code=0 if definition.verify_script_path is not None else None,
         produced_output_digest=produced_output_digest,
-        workbench_environment=workbench_environment,
+        working_environment=working_environment,
         launch_script_digest=launch_script_digest,
         launched=launched,
     )

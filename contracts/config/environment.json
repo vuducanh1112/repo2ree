@@ -568,9 +568,37 @@
         "type": "string"
       }
     },
+    "REPO2REE_ENGINE": {
+      "kind": "runtime",
+      "owner": "executor",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_ENGINE_PATH": {
+      "kind": "runtime",
+      "owner": "executor",
+      "schema": {
+        "type": "string"
+      }
+    },
     "REPO2REE_GUI_IMAGE": {
       "kind": "deployment",
       "owner": "compose",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_HOST_SCRIPTS": {
+      "kind": "runtime",
+      "owner": "executor",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_JOB_OWNER": {
+      "kind": "internal",
+      "owner": "executor",
       "schema": {
         "type": "string"
       }
@@ -613,6 +641,13 @@
     "REPO2REE_RESOURCE_OWNER": {
       "kind": "internal",
       "owner": "core",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "REPO2REE_SCRIPT_ENGINE": {
+      "kind": "runtime",
+      "owner": "executor",
       "schema": {
         "type": "string"
       }

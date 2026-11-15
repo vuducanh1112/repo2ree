@@ -15,7 +15,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, TextIO
 
-from repo2ree_core.execution.runners import ScriptRunner
+from repo2ree_core.execution.working_environment import Machine
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -47,7 +47,7 @@ def run_session(
     cmd: Command,
     *,
     layout: ReeLayout,
-    runner: ScriptRunner,
+    machine: Machine,
     emit: LogSink,
     run_id: str | None = None,
     context: ExecutionContext | None = None,
@@ -86,7 +86,7 @@ def run_session(
                 },
             )
             settle_leftover_attempts(layout, log=log)
-            pick_up_authored_edits(layout, runner=runner, log=log)
+            pick_up_authored_edits(layout, machine=machine, log=log)
             # The process itself, as one span, so a trace shows the process boundary between whoever started
             # it and core's command span.
             with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
@@ -94,7 +94,7 @@ def run_session(
                 result = run_command(
                     cmd,
                     layout=layout,
-                    runner=runner,
+                    machine=machine,
                     log=log,
                     run_id=run_id,
                     is_canceled=is_canceled,
@@ -142,7 +142,7 @@ def settle_leftover_attempts(layout: ReeLayout, *, log: LogSink) -> list[ActionR
     return settled
 
 
-def pick_up_authored_edits(layout: ReeLayout, *, runner: ScriptRunner, log: LogSink) -> list[ActionResult]:
+def pick_up_authored_edits(layout: ReeLayout, *, machine: Machine, log: LogSink) -> list[ActionResult]:
     """Record every script the author edited in ``overlay/`` directly, before anything else runs.
 
     The overlay is where an REE's scripts live, and a person edits them there with their own editor; until an
@@ -175,7 +175,7 @@ def pick_up_authored_edits(layout: ReeLayout, *, runner: ScriptRunner, log: LogS
             run_command(
                 WriteFileCommand(args=WriteFileArgs(path=str(path), content=content)),
                 layout=layout,
-                runner=runner,
+                machine=machine,
                 log=log,
                 run_id=f"edit-{context.attempt_id}",
                 context=context,

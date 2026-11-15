@@ -34,7 +34,7 @@ from repo2ree_protocol.command import LoadReeBundleArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import LoadReeBundleOutputs
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment
+from repo2ree_ree.working_environment import WorkingEnvironment
 
 
 def handle_load_ree_bundle(
@@ -55,7 +55,7 @@ def handle_load_ree_bundle(
         return ActionResult.failed("precondition", f"staged bundle not found: {staged}")
 
     # What the REE was created to run in, for a bundle that declares nothing of its own.
-    declared = store.read_ree().subject.definition.workbench_environment if store.manifest_exists() else None
+    declared = store.read_ree().subject.definition.working_environment if store.manifest_exists() else None
     log("system", "info", f"loading REE bundle {args.archive_name}")
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -87,7 +87,7 @@ def handle_load_ree_bundle(
     )
 
     if declared is not None and not loaded.sealed:
-        _keep_workbench_environment(layout, declared, log=log)
+        _keep_working_environment(layout, declared, log=log)
 
     if is_canceled():
         return ActionResult(status="canceled")
@@ -102,16 +102,15 @@ def handle_load_ree_bundle(
     )
 
 
-def _keep_workbench_environment(layout: ReeLayout, declared: WorkbenchEnvironment, *, log: LogSink) -> None:
-    """Keep the workbench environment the REE was created with when the draft it loaded declares none."""
+def _keep_working_environment(layout: ReeLayout, declared: WorkingEnvironment, *, log: LogSink) -> None:
+    """Keep the working environment the REE was created with when the draft it loaded declares none."""
     store = ReeDirectory(layout)
     ree = load_ree(layout, store)
-    if ree.subject.definition.workbench_environment is not None:
+    if ree.subject.definition.working_environment is not None:
         return
-    definition = ree.subject.definition.model_copy(update={"workbench_environment": declared})
+    definition = ree.subject.definition.model_copy(update={"working_environment": declared})
     save_ree(layout, store, replace_definition(ree, definition), expected_revision=revision_of(ree))
-    where = declared.oci or "the lab's own machine"
-    log("system", "warn", f"the bundle declares no workbench environment; the REE keeps running in {where}")
+    log("system", "warn", f"the bundle declares no working environment; the REE keeps running in {declared.oci}")
 
 
 def _rebuild_derived_trees(

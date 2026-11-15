@@ -147,7 +147,7 @@ class CliClient:
 
     def create(self, name: str) -> str:
         ree_id = f"{name[:40]}-{uuid4().hex[:8]}"
-        done = self.machine.ree(self.root(ree_id), "init", "--name", name, "--workbench-environment", "host")
+        done = self.machine.ree(self.root(ree_id), "init", "--name", name)
         if done.status != 0:
             raise CliError(f"ree init exited {done.status}: {done.stderr}")
         return ree_id

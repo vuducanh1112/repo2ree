@@ -12,6 +12,7 @@ from repo2ree_ree.primitives import Digest, UtcInstant
 from repo2ree_ree.receipt import (
     ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
+    CheckWorkingEnvironmentReceipt,
     CrossCheckSbomReceipt,
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
@@ -157,7 +158,7 @@ class RunnableOperationOutputs(BaseModel):
     verify_exit_code: int | None = None
     verdict: Literal["pass", "fail"] | None = None
     experiment_environment_path: str = ""
-    receipt: ActivationReceipt | RunExperimentReceipt | None = None
+    receipt: ActivationReceipt | RunExperimentReceipt | CheckWorkingEnvironmentReceipt | None = None
 
 
 class GenerateHbomOutputs(BaseModel):
@@ -217,6 +218,7 @@ OUTPUTS: dict[str, Any] = {
     "run_experiment": RunnableOperationOutputs,
     "generate_hbom": GenerateHbomOutputs,
     "activation_test": RunnableOperationOutputs,
+    "check_working_environment": RunnableOperationOutputs,
     "generate_script_candidates": InferenceReport,
     "lint_scripts": LintScriptsOutputs,
     "seal_ree": SealOutputs,

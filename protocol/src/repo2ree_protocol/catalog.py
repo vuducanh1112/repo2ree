@@ -6,12 +6,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_ree.workbench_environment import EnvironmentBackend
+from repo2ree_ree.working_environment import EnvironmentBackend
 
 ReeStepKey = Literal[
     "source",
     "metadata",
     "hbom",
+    "check_working_environment",
     "evaluate",
     "build_experiment_environment",
     "sbom",
@@ -57,8 +58,8 @@ class ScriptTemplateEntry(BaseModel):
 
     Every catalog section lists these; one entry per environment carries
     ``is_default`` (for the seeded scripts it is the content a fresh REE in that
-    environment starts with). ``workbench_environment`` is the REE workbench environment kind a
-    variant suits, or null for one that suits any.
+    environment starts with). ``working_environment`` is the kind of working environment a variant
+    suits, or null for one that suits any.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -68,7 +69,7 @@ class ScriptTemplateEntry(BaseModel):
     description: str
     body: str
     is_default: bool
-    workbench_environment: EnvironmentBackend | None = None
+    working_environment: EnvironmentBackend | None = None
 
 
 class BuildExperimentEnvironmentScriptTemplates(BaseModel):
@@ -107,6 +108,19 @@ class LaunchScriptTemplates(BaseModel):
     templates: list[ScriptTemplateEntry]
 
 
+class CheckWorkingEnvironmentScriptTemplates(BaseModel):
+    """The check-script templates and the reserved path they belong at.
+
+    Every REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.
+    The check runs in the working environment, launched as every script is, and must exit 0.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
 class ExperimentScriptTemplates(BaseModel):
     """Templates for per-experiment run scripts, plus the path convention they follow.
 
@@ -129,6 +143,7 @@ class ScriptTemplateCatalog(BaseModel):
     build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
     activate_experiment_environment: ActivateExperimentEnvironmentScriptTemplates
     launch: LaunchScriptTemplates
+    check_working_environment: CheckWorkingEnvironmentScriptTemplates
     experiment: ExperimentScriptTemplates
     # Verify scripts are shared by every experiment, so their templates are catalog-wide.
     verify: list[ScriptTemplateEntry]

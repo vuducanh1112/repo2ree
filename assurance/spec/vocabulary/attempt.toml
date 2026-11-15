@@ -61,6 +61,7 @@ build_experiment_environment = "Build the experiment environment with the build 
 generate_sbom = "List what the built experiment environment contains."
 cross_check_sbom = "Compare the declared dependencies with the SBOM."
 activation_test = "Run the activation alone: it enters the experiment environment and hands over."
+check_working_environment = "Run the author's check in the working environment."
 run_experiment = "Run one declared experiment and verify its outputs."
 seal_ree = "Freeze the REE."
 load_ree_bundle = "Restore an REE from a bundle, its receipts included."

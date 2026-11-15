@@ -76,6 +76,7 @@ describe("useReeSeal", () => {
       result.current.handleSealRee({
         includeSource: true,
         includeExperimentEnvironment: false,
+        includeWorkingEnvironment: false,
         includeResults: true,
       }),
     );
@@ -84,6 +85,7 @@ describe("useReeSeal", () => {
     expect(sealRee).toHaveBeenCalledWith("ree-1", {
       includeSource: true,
       includeExperimentEnvironment: false,
+      includeWorkingEnvironment: false,
       includeResults: true,
     });
     expect(hydrateWorkspace).toHaveBeenCalledWith(
@@ -117,6 +119,7 @@ describe("useReeSeal", () => {
       result.current.handleSealRee({
         includeSource: false,
         includeExperimentEnvironment: false,
+        includeWorkingEnvironment: false,
         includeResults: false,
       }),
     );

@@ -5,7 +5,7 @@ import subprocess
 import zipfile
 
 from repo2ree_core.bundle.download import materialized_ree_download
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HOST_MACHINE
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.history import open_history
@@ -20,7 +20,7 @@ def _patch(layout: ReeLayout, name):
         PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": name})),
         log=lambda *args: None,
         layout=layout,
-        runner=LocalScriptRunner(),
+        machine=HOST_MACHINE,
     )
 
 

@@ -39,6 +39,7 @@ def _audit_with(**current: bool) -> ReeAudit:
         source=step("source"),
         evaluation=step("evaluation"),
         hardware=step("hardware"),
+        working_environment_check=step("working_environment_check"),
         experiment_environment=step("experiment_environment"),
         sbom=step("sbom"),
         sbom_cross_check=step("sbom_cross_check"),

@@ -65,7 +65,14 @@ def _for(annotation: Any) -> st.SearchStrategy[Any]:
             ),
             st.builds(
                 ScriptTargetSelectorArg,
-                kind=st.sampled_from(["build_experiment_environment", "activate_experiment_environment", "launch"]),
+                kind=st.sampled_from(
+                    [
+                        "build_experiment_environment",
+                        "activate_experiment_environment",
+                        "launch",
+                        "check_working_environment",
+                    ]
+                ),
             ),
         )
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
@@ -89,7 +96,13 @@ def _for(annotation: Any) -> st.SearchStrategy[Any]:
 
 
 def _model(model: type[BaseModel]) -> st.SearchStrategy[BaseModel]:
-    fields = {name: _for(info.annotation) for name, info in model.model_fields.items()}
+    fields = {
+        # A field that must not be empty, an image reference say, is never drawn empty.
+        name: _for(info.annotation).filter(lambda value: value != "")
+        if any(getattr(item, "min_length", 0) for item in info.metadata)
+        else _for(info.annotation)
+        for name, info in model.model_fields.items()
+    }
     return st.fixed_dictionaries(fields).map(model.model_validate)
 
 
@@ -125,7 +138,14 @@ def _read(model: type[BaseModel]) -> st.SearchStrategy[BaseModel]:
             ),
             st.builds(
                 LintDraftQuery,
-                kind=st.sampled_from(["build_experiment_environment", "activate_experiment_environment", "launch"]),
+                kind=st.sampled_from(
+                    [
+                        "build_experiment_environment",
+                        "activate_experiment_environment",
+                        "launch",
+                        "check_working_environment",
+                    ]
+                ),
                 experiment_environment_path=st.none() | _TEXT,
                 source=_TEXT,
             ),

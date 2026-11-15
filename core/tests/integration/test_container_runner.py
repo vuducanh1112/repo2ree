@@ -1,4 +1,5 @@
-"""A script run in a fresh container from the REE's image: the workspace only, cancelable, and recorded."""
+"""A script run in a fresh container from the working environment's image: the workspace only, cancelable, and
+recorded."""
 
 from __future__ import annotations
 
@@ -14,9 +15,10 @@ from typing import Literal
 
 import pytest
 
-from repo2ree_core.execution.runners import ContainerScriptRunner
+from repo2ree_core.execution.process import CancelCheck, StreamingProcessResult
+from repo2ree_core.execution.working_environment import ContainerEntry, run_in
 from repo2ree_protocol.frames import LogSink
-from repo2ree_ree.workbench_environment import WorkbenchEnvironment
+from repo2ree_ree.working_environment import WorkingEnvironment
 
 IMAGE = "alpine:3"
 # Under the checkout, which a dev container shares with the engine's host (a pytest tmp_path is not).
@@ -53,7 +55,20 @@ def engine() -> str:
     docker = shutil.which("docker")
     if docker is None or subprocess.run([docker, "image", "inspect", IMAGE], capture_output=True).returncode:
         pytest.skip(f"needs docker with {IMAGE}")
-    return docker
+    return "docker"
+
+
+def _entry(engine: str, script_engine: Literal["none", "socket"] = "none") -> ContainerEntry:
+    return ContainerEntry(
+        "docker", WorkingEnvironment(oci=IMAGE), script_engine=script_engine, engine_path=_engine_path(engine)
+    )
+
+
+def _run(
+    entry: ContainerEntry, workspace: Path, argv: list[str], log: LogSink, is_canceled: CancelCheck = lambda: False
+) -> StreamingProcessResult:
+    entry.prepare(log)
+    return run_in(entry, workspace, entry.command(workspace, argv), log=log, is_canceled=is_canceled)
 
 
 def _logged() -> tuple[list[str], LogSink]:
@@ -74,15 +89,15 @@ def test_a_script_sees_its_workspace_at_the_same_path_and_nothing_of_the_ree_aro
     (ree / ".git").mkdir()
     (workspace / "script.sh").write_text('pwd; test ! -e ../.git && echo "no history here"; echo built > out.txt\n')
     lines, log = _logged()
-    runner = ContainerScriptRunner(engine=engine, image=IMAGE, engine_path=_engine_path(engine))
+    entry = _entry(engine)
 
-    result = runner.run(workspace, ["sh", "script.sh"], log=log, is_canceled=lambda: False)
+    result = _run(entry, workspace, ["sh", "script.sh"], log)
 
     assert result.returncode == 0, lines
     assert str(workspace) in result.stdout
     assert "no history here" in result.stdout
     assert (workspace / "out.txt").read_text() == "built\n"
-    observed = runner.observe(WorkbenchEnvironment(oci=IMAGE))
+    observed = entry.observe()
     assert observed.backend == "container"
     assert observed.image_digest is not None
     assert observed.image_digest.startswith("sha256:")
@@ -95,12 +110,7 @@ def test_a_canceled_script_leaves_no_container_behind(engine: str, tmp_path: Pat
     threading.Timer(1.5, canceled.set).start()
     started = time.monotonic()
 
-    result = ContainerScriptRunner(engine=engine, image=IMAGE, engine_path=_engine_path(engine)).run(
-        tmp_path,
-        ["sh", "script.sh"],
-        log=log,
-        is_canceled=canceled.is_set,
-    )
+    result = _run(_entry(engine), tmp_path, ["sh", "script.sh"], log, canceled.is_set)
 
     assert result.canceled
     assert time.monotonic() - started < 40
@@ -113,10 +123,7 @@ def test_a_script_reaches_the_host_engine_only_when_the_workbench_allows_it(engi
     _, log = _logged()
 
     def ran(script_engine: Literal["none", "socket"]) -> str:
-        runner = ContainerScriptRunner(
-            engine=engine, image=IMAGE, script_engine=script_engine, engine_path=_engine_path(engine)
-        )
-        return runner.run(tmp_path, ["sh", "script.sh"], log=log, is_canceled=lambda: False).stdout.strip()
+        return _run(_entry(engine, script_engine), tmp_path, ["sh", "script.sh"], log).stdout.strip()
 
     assert ran("none") == "none"
     assert ran("socket") == "engine"
@@ -127,9 +134,8 @@ def test_a_script_that_reaches_the_engine_starts_where_the_engine_sees_its_works
 ) -> None:
     (tmp_path / "script.sh").write_text(f'pwd; test -f "{tmp_path}/script.sh" && echo "local path too"\n')
     _, log = _logged()
-    mapped = _engine_path(engine)
-    runner = ContainerScriptRunner(engine=engine, image=IMAGE, script_engine="socket", engine_path=mapped)
+    entry = _entry(engine, "socket")
 
-    result = runner.run(tmp_path, ["sh", "script.sh"], log=log, is_canceled=lambda: False)
+    result = _run(entry, tmp_path, ["sh", "script.sh"], log)
 
-    assert result.stdout.splitlines() == [runner._engine_side(tmp_path), "local path too"]
+    assert result.stdout.splitlines() == [entry._engine_side(tmp_path), "local path too"]

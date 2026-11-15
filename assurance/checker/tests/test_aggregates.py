@@ -92,12 +92,12 @@ def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_i
     assert "activation_test" in allowed("receipt", "experiment", "current", "stale")
 
 
-def test_what_runs_in_the_workbench_environment_rests_on_it() -> None:
-    # The author's scripts run in the declared workbench environment: changing it changes what their receipts prove.
+def test_what_runs_in_the_working_environment_rests_on_it() -> None:
+    # The author's scripts run in the declared working environment: changing it changes what their receipts prove.
     for name in ("experiment_environment", "activation", "experiment"):
-        assert "definition.workbench_environment" in ree().receipts[name].rests_on
+        assert "definition.working_environment" in ree().receipts[name].rests_on
     assert "patch_ree_definition" in allowed("receipt", "experiment_environment", "current", "stale")
-    assert allowed("field", "definition.workbench_environment", CREATED, "unset") == {"initialize_ree"}
+    assert allowed("field", "definition.working_environment", CREATED, "unset") == {"initialize_ree"}
 
 
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
@@ -364,6 +364,7 @@ def authored() -> Evidence:
                     "definition.name",
                     "definition.experiment_environment",
                     "definition.activate_experiment_environment",
+                    "definition.check_working_environment",
                 )
             ),
             change(

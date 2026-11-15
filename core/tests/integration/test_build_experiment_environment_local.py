@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.author.build_experiment_environment import handle_build_experiment_environment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -64,7 +64,7 @@ def test_build_experiment_environment_script_runs_and_commits_the_produced_exper
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
 
     assert result.status == "succeeded"

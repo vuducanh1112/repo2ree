@@ -1,5 +1,5 @@
 import { PAGE } from "@core/app-shell/pages";
-import type { WorkbenchEnvironment } from "@core/ree/ReeSpec";
+import type { WorkingEnvironment } from "@core/ree/ReeSpec";
 import {
   buildFooterHint,
   buildRunStatusLabel,
@@ -35,7 +35,7 @@ import styles from "./BuildExperimentEnvironmentPage.module.css";
 import {
   ExperimentEnvironmentArtifactCard,
   ReservedBuildExperimentEnvironmentScriptCard,
-  WorkbenchEnvironmentCard,
+  WorkingEnvironmentCard,
 } from "./sections";
 
 const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
@@ -64,23 +64,19 @@ function BuildRunControls({
   );
 }
 
-/** What the build, and everything run on its runtime, runs in. */
-function WorkbenchEnvironmentBadges({
-  workbenchEnvironment,
+/** What every script runs in: the build, the activation, and the experiments. */
+function WorkingEnvironmentBadges({
+  workingEnvironment,
 }: {
-  workbenchEnvironment: WorkbenchEnvironment | null;
+  workingEnvironment: WorkingEnvironment | null;
 }) {
-  if (!workbenchEnvironment) return <Badge tone="warning">No workbench environment declared</Badge>;
-  if (workbenchEnvironment.oci === null)
-    return <Badge tone="info">Runs on the workbench host</Badge>;
+  if (!workingEnvironment) return <Badge tone="info">Runs on the lab's own machine</Badge>;
   return (
     <>
       <Badge tone="info" flavor="code">
-        {workbenchEnvironment.oci}
+        {workingEnvironment.oci}
       </Badge>
-      {!workbenchEnvironment.pinned && (
-        <Badge tone="warning">Workbench environment not pinned</Badge>
-      )}
+      {!workingEnvironment.pinned && <Badge tone="warning">Working environment not pinned</Badge>}
     </>
   );
 }
@@ -230,7 +226,7 @@ export function PageBuildExperimentEnvironment({
                 {scriptPath}
               </Badge>
             )}
-            <WorkbenchEnvironmentBadges workbenchEnvironment={ree.spec.workbenchEnvironment} />
+            <WorkingEnvironmentBadges workingEnvironment={ree.spec.workingEnvironment} />
             <Badge tone={runDone && !runFailed ? "success" : "warning"}>{statusLabel}</Badge>
             {badge && <OutcomeBadge outcome={badge} />}
           </>
@@ -260,10 +256,10 @@ export function PageBuildExperimentEnvironment({
             subtitle="Name the path the build script writes its experiment environment to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
           <div className={styles.section}>
-            <WorkbenchEnvironmentCard
-              workbenchEnvironment={ree.spec.workbenchEnvironment}
-              onWorkbenchEnvironmentChange={(workbenchEnvironment) =>
-                onReeSpecChange?.((current) => ({ ...current, workbenchEnvironment }))
+            <WorkingEnvironmentCard
+              workingEnvironment={ree.spec.workingEnvironment}
+              onWorkingEnvironmentChange={(workingEnvironment) =>
+                onReeSpecChange?.((current) => ({ ...current, workingEnvironment }))
               }
             />
             <ExperimentEnvironmentArtifactCard

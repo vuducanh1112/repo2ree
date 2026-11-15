@@ -17,7 +17,7 @@ from repo2ree_ree.primitives import (
     UtcInstant,
     WorkspacePath,
 )
-from repo2ree_ree.workbench_environment import WorkbenchEnvironmentObservation
+from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
 RECEIPT_SCHEMA_VERSION: Literal[1] = 1
 
@@ -25,6 +25,7 @@ _ARTIFACT_PATH = "definition.experiment_environment.artifact_path"
 _BUILD_SCRIPT = "overlay/ree-scripts/build_experiment_environment.sh"
 _ACTIVATE_SCRIPT = "overlay/ree-scripts/activate_experiment_environment.sh"
 _LAUNCH_SCRIPT = "overlay/ree-scripts/launch.sh"
+_CHECK_SCRIPT = "overlay/ree-scripts/check_working_environment.sh"
 _RUN_SCRIPT = "overlay/ree-scripts/experiments/{experiment_slug}.sh"
 _VERIFY_SCRIPT = "overlay/ree-scripts/experiments/{experiment_slug}.verify.sh"
 _ENVIRONMENT = ("workspace/{experiment_environment}", "artifacts/{experiment_environment}")
@@ -37,6 +38,7 @@ BuildScriptDigest = Annotated[Digest, digest_of("file", _BUILD_SCRIPT)]
 ActivateScriptDigest = Annotated[Digest, digest_of("file", _ACTIVATE_SCRIPT)]
 LaunchScriptDigest = Annotated[Digest, digest_of("file", _LAUNCH_SCRIPT)]
 OptionalLaunchScriptDigest = Annotated[Digest | None, digest_of("file", _LAUNCH_SCRIPT)]
+CheckScriptDigest = Annotated[Digest, digest_of("file", _CHECK_SCRIPT)]
 RunScriptDigest = Annotated[Digest, digest_of("file", _RUN_SCRIPT)]
 VerifyScriptDigest = Annotated[Digest | None, digest_of("file", _VERIFY_SCRIPT)]
 EnvironmentDigest = Annotated[Digest, digest_of("file", *_ENVIRONMENT, named_by=_ARTIFACT_PATH)]
@@ -128,7 +130,19 @@ class BuildExperimentEnvironmentReceipt(ReceiptEnvelope):
     workspace_drift: WorkspaceDrift
     artifact_path: ExperimentEnvironmentPath
     produced_artifact_digest: EnvironmentDigest
-    workbench_environment: WorkbenchEnvironmentObservation | None = None
+    working_environment: WorkingEnvironmentObservation | None = None
+    # The launch script the step ran under, and where that put it; both absent when it ran directly.
+    launch_script_digest: OptionalLaunchScriptDigest = None
+    launched: Launched | None = None
+
+
+class CheckWorkingEnvironmentReceipt(ReceiptEnvelope):
+    """The author's check of the working environment ran there, launched as every script is, and exited 0."""
+
+    operation: Literal["check_working_environment"] = "check_working_environment"
+    check_working_environment_script_digest: CheckScriptDigest
+    exit_code: Literal[0] = 0
+    working_environment: WorkingEnvironmentObservation
     # The launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: OptionalLaunchScriptDigest = None
     launched: Launched | None = None
@@ -164,7 +178,7 @@ class ActivationReceipt(ReceiptEnvelope):
     experiment_environment_digest: OptionalEnvironmentDigest = None
     activate_experiment_environment_script_digest: ActivateScriptDigest
     exit_code: Literal[0] = 0
-    workbench_environment: WorkbenchEnvironmentObservation | None = None
+    working_environment: WorkingEnvironmentObservation | None = None
     # The launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: OptionalLaunchScriptDigest = None
     launched: Launched | None = None
@@ -180,7 +194,7 @@ class RunExperimentReceipt(ReceiptEnvelope):
     verify_script_digest: VerifyScriptDigest = None
     run_exit_code: Literal[0] = 0
     verify_exit_code: Literal[0] | None = None
-    workbench_environment: WorkbenchEnvironmentObservation | None = None
+    working_environment: WorkingEnvironmentObservation | None = None
     # The launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: OptionalLaunchScriptDigest = None
     launched: Launched | None = None
@@ -196,6 +210,7 @@ RunReceipt = Annotated[
     AcquireSourceReceipt
     | EvaluateReproducibilityReceipt
     | ObserveHardwareReceipt
+    | CheckWorkingEnvironmentReceipt
     | BuildExperimentEnvironmentReceipt
     | GenerateSbomReceipt
     | CrossCheckSbomReceipt

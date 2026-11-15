@@ -9,7 +9,7 @@ import pytest
 
 from repo2ree_core.evidence.review.records import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record, write_review_record
-from repo2ree_core.execution.runners import LocalScriptRunner
+from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.review import (
     acquire_source,
     activation_test,
@@ -29,6 +29,7 @@ from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.instant import parse_utc_instant
 from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
+    CheckWorkingEnvironmentDefinition,
     ExperimentDefinition,
     ExperimentEnvironmentDefinition,
     LaunchDefinition,
@@ -49,6 +50,7 @@ from repo2ree_ree.primitives import (
 from repo2ree_ree.receipt import AcquireSourceReceipt, RunExperimentReceipt
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_LAUNCH_SCRIPT,
     experiment_run_script_path,
     experiment_verify_script_path,
@@ -189,7 +191,7 @@ def _activate(layout: ReeLayout):
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
 
 
@@ -287,7 +289,7 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
 
     assert result.status == "succeeded"
@@ -295,6 +297,55 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
     assert result.outputs["receipt"]["build_experiment_environment_script_digest"] is None
     assert result.outputs["receipt"]["produced_artifact_digest"] == digest_bytes(_EXPERIMENT_ENVIRONMENT)
     assert len(load_reviews(layout).reviews) == 1
+
+
+@pytest.mark.parametrize(("check", "status"), [(b"exit 0\n", "succeeded"), (b"echo no gpu >&2; exit 3\n", "failed")])
+def test_a_review_runs_the_authors_check_before_anything_else_runs_there(
+    tmp_path: Path, check: bytes, status: str
+) -> None:
+    layout = ReeLayout(tmp_path / "ree")
+    store = ReeDirectory(layout)
+    store.ensure_dirs()
+    store.artifacts.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
+    store.overlay.write_bytes(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, check)
+    store.write_ree(
+        Ree(
+            subject=ReeSubject(
+                definition=ReeDefinition(
+                    experiment_environment=_build_recipe(ExperimentEnvironmentPath("artifacts/runtime.tar")),
+                    check_working_environment=CheckWorkingEnvironmentDefinition(
+                        check_working_environment_script_digest=digest_bytes(check),
+                        check_working_environment_script_size=len(check),
+                    ),
+                )
+            )
+        )
+    )
+    review = layout.review(_REVIEW_ID)
+    review.upstream.mkdir(parents=True)
+    record = with_step(
+        new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z"),
+        "source",
+        status="completed",
+        at="2026-08-03T00:00:01Z",
+    ).model_copy(update={"source_comparison": SourceComparison(basis="bundled", verdict="identical")})
+    write_review_record(review, record)
+    lines: list[str] = []
+
+    result = build_experiment_environment.handle_review_build_experiment_environment(
+        ReviewBuildExperimentEnvironmentArgs(review_id=_REVIEW_ID, basis="bundled", prune_workspace=False),
+        run_id="review-build",
+        log=lambda _stream, _level, message: lines.append(message),
+        is_canceled=lambda: False,
+        layout=layout,
+        entry=HostEntry(),
+    )
+
+    assert result.status == status
+    if status == "failed":
+        assert "no gpu" in lines
+        assert result.failure is not None
+        assert "does not pass the author's check" in result.failure.message
 
 
 def test_failed_activation_is_completed_review_evidence(
@@ -327,7 +378,7 @@ def test_experiment_uses_definition_and_author_receipt_baseline(
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
 
     assert result.status == "succeeded"
@@ -355,7 +406,7 @@ def test_an_experiment_run_through_another_activate_script_is_inconclusive(
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
 
     comparison = result.outputs["comparison"]
@@ -377,7 +428,7 @@ def _experiment(layout: ReeLayout) -> dict[str, Any]:
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        runner=LocalScriptRunner(),
+        entry=HostEntry(),
     )
     assert result.status == "succeeded"
     return result.outputs

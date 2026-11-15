@@ -44,24 +44,27 @@ function isStepKey(value: unknown): value is AuthoringStepKey {
 export function mapRawAuthoringProgress(raw: unknown): AuthoringProgress {
   const progress = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const steps = Array.isArray(progress.steps) ? progress.steps : [];
-  return {
-    steps: steps.flatMap((value): AuthoringStep[] => {
-      const step = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-      if (!isStepKey(step.key)) return [];
-      return [
-        {
-          key: step.key,
-          order: Number(step.order ?? 0),
-          label: String(step.label ?? step.key),
-          requires: Array.isArray(step.requires) ? step.requires.filter(isStepKey) : [],
-          status: STATUSES.includes(step.status as AuthoringStepStatus)
-            ? (step.status as AuthoringStepStatus)
-            : "blocked",
-        },
-      ];
-    }),
-    next: isStepKey(progress.next) ? progress.next : undefined,
-  };
+  const known = steps.flatMap((value): AuthoringStep[] => {
+    const step = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+    if (!isStepKey(step.key)) return [];
+    return [
+      {
+        key: step.key,
+        order: Number(step.order ?? 0),
+        label: String(step.label ?? step.key),
+        requires: Array.isArray(step.requires) ? step.requires.filter(isStepKey) : [],
+        status: STATUSES.includes(step.status as AuthoringStepStatus)
+          ? (step.status as AuthoringStepStatus)
+          : "blocked",
+      },
+    ];
+  });
+  // A step this GUI has no page for (the working environment check) is not offered as the next one: the first
+  // ready step it can show is.
+  const fallback = known
+    .filter((step) => step.status === "ready")
+    .sort((a, b) => a.order - b.order)[0]?.key;
+  return { steps: known, next: isStepKey(progress.next) ? progress.next : fallback };
 }
 
 export function isAuthoringStepComplete(

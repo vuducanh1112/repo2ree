@@ -193,22 +193,20 @@ def test_a_served_store_offers_its_workbench_images_and_refuses_others(client: T
 @pytest.mark.parametrize(
     ("offered", "requested", "declared"),
     [
-        (("python:3.12", "docker:29"), "", {"oci": "python:3.12"}),
-        (("python:3.12", "docker:29"), "docker:29", {"oci": "docker:29"}),
-        ((), "", {}),
+        (("python:3.12", "docker:29"), "", "python:3.12"),
+        (("python:3.12", "docker:29"), "docker:29", "docker:29"),
+        ((), "", None),
     ],
 )
 def test_a_new_ree_in_a_store_declares_the_image_asked_for_its_first_or_its_host(
-    offered: tuple[str, ...], requested: str, declared: dict[str, str]
+    offered: tuple[str, ...], requested: str, declared: str | None
 ) -> None:
-    environment = rees._store_workbench_environment(offered, requested)
-
-    assert environment.model_dump(exclude_defaults=True) == declared
+    assert rees._store_image(offered, requested) == declared
 
 
 def test_a_store_refuses_an_image_it_stopped_offering() -> None:
     with pytest.raises(ValueError, match="does not offer"):
-        rees._store_workbench_environment(("python:3.12",), "docker:29")
+        rees._store_image(("python:3.12",), "docker:29")
 
 
 @pytest.fixture
