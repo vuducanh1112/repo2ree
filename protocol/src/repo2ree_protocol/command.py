@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 from repo2ree_protocol.argv import POSITIONAL, STDIN
 from repo2ree_ree.review import ReviewLaunch
@@ -382,6 +382,15 @@ class ScriptTargetSelectorArg(BaseModel):
 
     kind: TargetKind
     experiment_name: str | None = None
+
+    @model_validator(mode="after")
+    def _named_only_for_experiments(self) -> ScriptTargetSelectorArg:
+        if self.kind in ("experiment_run", "experiment_verify"):
+            if not self.experiment_name:
+                raise ValueError(f"{self.kind} requires an experiment_name")
+        elif self.experiment_name:
+            raise ValueError(f"{self.kind} must not carry an experiment_name")
+        return self
 
 
 class ScriptTarget(BaseModel):

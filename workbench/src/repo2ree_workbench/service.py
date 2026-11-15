@@ -51,8 +51,10 @@ class WorkbenchService:
                 raise RuntimeError(f"REE {ree_id!r} already exists in store {self.store_id!r}")
         self._executor.exec_simple(argv, timeout, ree_id=ree_id)
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
-        return self._executor.exec_query_stream(argv, timeout, ree_id=ree_id)
+    def exec_query_stream(
+        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+    ) -> Iterator[bytes]:
+        return self._executor.exec_query_stream(argv, timeout, ree_id=ree_id, stdin=stdin)
 
     def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
         self._executor.exec_query_to_file(argv, target, timeout, ree_id=ree_id)

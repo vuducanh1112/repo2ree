@@ -16,7 +16,6 @@ import type {
   ReeDocument,
   ReeIndexList,
   ReeState,
-  ReeStepCatalog,
   ReeSummary,
   ReproducibilityReportWire,
   ReviewSetWire,
@@ -74,19 +73,14 @@ export class ReeApi {
     return this.client.request<BuildInfo>(endpoints.buildInfo(), { method: "GET" });
   }
 
-  /** Ordered authoring steps and their prerequisite edges. */
-  async listReeSteps(): Promise<ReeStepCatalog> {
-    return this.client.request<ReeStepCatalog>(endpoints.reeSteps(), { method: "GET" });
-  }
-
   /** The stores REEs are created and kept in, each with the images it offers. */
   async listStores(): Promise<StoreList> {
     return this.client.request<StoreList>(endpoints.stores(), { method: "GET" });
   }
 
-  /** Backend-owned starter templates for the REE-owned scripts. */
-  async listScriptTemplates(): Promise<ScriptTemplateCatalog> {
-    return this.client.request<ScriptTemplateCatalog>(endpoints.scriptTemplates(), {
+  /** Starter templates for the REE-owned scripts, as the REE's workbench knows them. */
+  async listScriptTemplates(reeId: ReeId | string): Promise<ScriptTemplateCatalog> {
+    return this.client.request<ScriptTemplateCatalog>(endpoints.reeScriptTemplates(reeId), {
       method: "GET",
     });
   }
@@ -367,17 +361,17 @@ export class ReeApi {
 
   /**
    * Static checks over a script that has not been saved — the bytes in an
-   * editor, with the declarations to grade them against. Stateless and not
-   * REE-scoped: it reads nothing, writes nothing, and needs no workbench, which
-   * is what lets an editor call it while the author types. Contract tier only;
-   * the syntax and shell tiers need a process and live on {@link lintReeScripts}.
+   * editor, with the declarations to grade them against. It reads and writes
+   * nothing of the REE; the REE's workbench runs the checks. Contract tier only;
+   * the syntax and shell tiers live on {@link lintReeScripts}.
    */
   async checkScriptDraft(
+    reeId: ReeId | string,
     target: ScriptTargetSelector,
     source: string,
     declarations: ScriptDeclarations,
   ): Promise<LintReport> {
-    return this.client.request<LintReport>(endpoints.scriptLintDraft(), {
+    return this.client.request<LintReport>(endpoints.reeScriptLintDraft(reeId), {
       method: "POST",
       body: JSON.stringify({ target, source, declarations }),
     });

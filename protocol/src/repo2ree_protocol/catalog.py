@@ -1,0 +1,134 @@
+"""What an author is offered: the steps of authoring an REE, where an REE stands on them, and script templates."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from repo2ree_ree.workbench_environment import EnvironmentBackend
+
+ReeStepKey = Literal[
+    "source",
+    "metadata",
+    "hbom",
+    "evaluate",
+    "build_experiment_environment",
+    "sbom",
+    "crosscheck",
+    "activation",
+    "experiments",
+    "seal",
+]
+# ``complete``: the REE's records show the step done and still true of the REE as it stands.
+# ``ready``: every step it needs is complete. ``blocked``: some step it needs is not.
+ReeStepStatus = Literal["complete", "ready", "blocked"]
+
+
+class ReeStep(BaseModel):
+    """One authoring step: its place in the order, the steps it needs first, and the ``ree`` commands that do it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: ReeStepKey
+    order: int
+    label: str
+    requires: list[ReeStepKey] = Field(default_factory=list)
+    commands: list[str] = Field(default_factory=list)
+
+
+class ReeStepState(ReeStep):
+    """A step as one REE stands on it."""
+
+    status: ReeStepStatus
+
+
+class ReeSteps(BaseModel):
+    """Where an REE stands on every step, and the one to do next: the first ready one."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    steps: list[ReeStepState] = Field(default_factory=list)
+    next: ReeStepKey | None = None
+
+
+class ScriptTemplateEntry(BaseModel):
+    """One named starter-template variant for an REE-owned script.
+
+    Every catalog section lists these; one entry per environment carries
+    ``is_default`` (for the seeded scripts it is the content a fresh REE in that
+    environment starts with). ``workbench_environment`` is the REE workbench environment kind a
+    variant suits, or null for one that suits any.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    label: str
+    description: str
+    body: str
+    is_default: bool
+    workbench_environment: EnvironmentBackend | None = None
+
+
+class BuildExperimentEnvironmentScriptTemplates(BaseModel):
+    """The build-script templates and the reserved path they all belong at.
+
+    One entry per standard runtime-packaging strategy; the default entry for an
+    environment (``is_default``) is the content a fresh REE's build script there is
+    seeded with.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
+class ActivateExperimentEnvironmentScriptTemplates(BaseModel):
+    """The activate experiment environment templates and the reserved path they all belong at."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
+class LaunchScriptTemplates(BaseModel):
+    """The launch-script templates and the reserved path they belong at.
+
+    Optional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run
+    each script through it, ``sh launch.sh <command>``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str
+    templates: list[ScriptTemplateEntry]
+
+
+class ExperimentScriptTemplates(BaseModel):
+    """Templates for per-experiment run scripts, plus the path convention they follow.
+
+    The path patterns carry a ``{slug}`` placeholder: the experiment name with
+    whitespace collapsed to hyphens. Naming an experiment on the intent settles
+    its ``run_script`` to this convention server-side; the patterns are
+    published so clients can show the destination before the intent round-trips.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_script_path_pattern: str
+    verify_script_path_pattern: str
+    templates: list[ScriptTemplateEntry]
+
+
+class ScriptTemplateCatalog(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
+    activate_experiment_environment: ActivateExperimentEnvironmentScriptTemplates
+    launch: LaunchScriptTemplates
+    experiment: ExperimentScriptTemplates
+    # Verify scripts are shared by every experiment, so their templates are catalog-wide.
+    verify: list[ScriptTemplateEntry]

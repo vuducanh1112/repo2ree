@@ -18,6 +18,7 @@ from typing import Any, Protocol, cast
 
 import pytest
 
+from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
 from repo2ree_protocol.frames import (
     AcceptedFrame,
     BytesChunkFrame,
@@ -28,8 +29,10 @@ from repo2ree_protocol.frames import (
     SpanFrame,
     UnavailableFrame,
 )
+from repo2ree_protocol.lint import LintReport, ScriptDeclarations
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
+    ExecQueryRequest,
     ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
@@ -40,7 +43,10 @@ from repo2ree_protocol.workbench import (
     workbench_ws_request_adapter,
 )
 from repo2ree_supervisor import (
+    CommandDispatcher,
     ReceivedFile,
+    ReeLocks,
+    ReeRoute,
     TransferError,
     Transfers,
     WorkbenchConnection,
@@ -120,6 +126,39 @@ def test_exec_query_returns_decoded_bytes() -> None:
     socket.respond(DoneFrame())
 
     assert join() == b'{"ok": true}'
+
+
+def test_a_draft_check_is_lint_draft_with_the_source_on_stdin() -> None:
+    socket = FakeSocket()
+    registry = WorkbenchConnectionRegistry()
+    registry.register("a1", socket.connection)
+    dispatcher = CommandDispatcher(WsWorkbenchClient(registry), ReeLocks())
+    handle = ReeRoute(ree_id="ree-1", workbench_id="a1", store_id="lab")
+    report = LintReport(engine_version="1", target=ScriptTarget(kind="experiment_run", path="ree-scripts/x.sh"))
+
+    join = _run_in_thread(
+        lambda: dispatcher.lint_draft(
+            handle,
+            ScriptTargetSelectorArg(kind="experiment_run", experiment_name="figure 3"),
+            "set -eu\n",
+            ScriptDeclarations(experiment_environment_path="runtime.tar"),
+        )
+    )
+    req = socket.wait_for_request().request
+    socket.respond(BytesChunkFrame(data_b64=base64.b64encode(report.model_dump_json().encode()).decode()))
+    socket.respond(DoneFrame())
+
+    assert isinstance(req, ExecQueryRequest)
+    assert req.argv == [
+        "lint-draft",
+        "experiment_run",
+        "--experiment-name",
+        "figure 3",
+        "--experiment-environment-path",
+        "runtime.tar",
+    ]
+    assert req.stdin == "set -eu\n"
+    assert join() == report
 
 
 def test_exec_query_raises_on_unavailable() -> None:

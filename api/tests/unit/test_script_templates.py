@@ -1,85 +1,42 @@
-"""The script-template catalog endpoint (GET /api/v1/script-templates)."""
+"""Where an REE stands on its steps, and its script templates, as the REE's workbench reports them."""
 
 from __future__ import annotations
 
 import re
-from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
-from repo2ree_authoring.templates import (
-    activate_experiment_environment_templates,
-    build_templates,
-    experiment_run_templates,
-    verify_templates,
-)
-from repo2ree_ree.reserved_paths import (
-    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-    RESERVED_EXPERIMENT_SCRIPT_DIR,
-)
+from repo2ree_api.authoring.catalog import _STEP_ACTIONS
+from repo2ree_api.deps import command_dispatcher
+from repo2ree_authoring.templates import script_template_catalog
+from repo2ree_core.domain.ree.audit import audit
+from repo2ree_core.domain.ree.steps import REE_STEPS, ree_steps
+from repo2ree_protocol.document import WorkbenchReeDocument
+from repo2ree_ree.model import Ree
+from repo2ree_supervisor import ReeRoute
 
 
-def _assert_entries_match(entries: list[dict[str, Any]], expected_keys: list[str]) -> None:
-    assert [entry["key"] for entry in entries] == expected_keys
-    # Each environment has exactly one explicit default: its first entry, per
-    # the core catalogs' ordering.
-    first: dict[str | None, str] = {}
-    for entry in entries:
-        first.setdefault(entry["workbench_environment"], entry["key"])
-    assert [entry["is_default"] for entry in entries] == [
-        first[entry["workbench_environment"]] == entry["key"] for entry in entries
-    ]
-    for entry in entries:
-        assert entry["label"]
-        assert entry["description"]
-        assert entry["body"].startswith("#!/usr/bin/env sh")
-        assert "set -eu" in entry["body"]
+@pytest.fixture
+def listed(online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch) -> ReeRoute:
+    """The REE's workbench answers for a fresh REE, with the catalogs its command line prints."""
+    document = WorkbenchReeDocument(ree=Ree(), status="draft", audit=audit(Ree()), steps=ree_steps(Ree(), audit(Ree())))
+    monkeypatch.setattr(command_dispatcher, "get_ree_state", lambda handle: document)
+    monkeypatch.setattr(command_dispatcher, "list_script_templates", lambda handle: script_template_catalog())
+    return online_ree
 
 
-def test_list_script_templates_returns_catalog(client: TestClient) -> None:
-    resp = client.get("/api/v1/script-templates")
+def test_the_templates_are_the_workbenchs(client: TestClient, listed: ReeRoute) -> None:
+    resp = client.get(f"/api/v1/rees/{listed.ree_id}/script-templates")
+
     assert resp.status_code == 200, resp.text
-    body = resp.json()
-
-    # Build and activate carry the seeded reserved paths and their named
-    # template variants (docker first, as the default a fresh REE is seeded with).
-    assert body["build_experiment_environment"]["path"] == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
-    _assert_entries_match(body["build_experiment_environment"]["templates"], [t.key for t in build_templates()])
-    assert body["build_experiment_environment"]["templates"][0]["key"] == "docker"
-    assert body["activate_experiment_environment"]["path"] == RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
-    _assert_entries_match(
-        body["activate_experiment_environment"]["templates"],
-        [t.key for t in activate_experiment_environment_templates()],
-    )
-    assert body["activate_experiment_environment"]["templates"][0]["key"] == "docker"
-    # The activation runs alone, so it has no scripts of its own to template.
-    assert "activation" not in body
-
-    # Experiment templates state the path convention and the run variants.
-    experiment = body["experiment"]
-    assert experiment["run_script_path_pattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
-    assert experiment["verify_script_path_pattern"] == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
-    _assert_entries_match(experiment["templates"], [t.key for t in experiment_run_templates()])
-    assert experiment["templates"][0]["key"] == "command"
-
-    # The verify templates mirror the packaged registry, default first.
-    _assert_entries_match(body["verify"], [t.key for t in verify_templates()])
+    assert resp.json() == script_template_catalog().model_dump(mode="json")
 
 
-def test_a_host_environment_has_templates_that_need_no_container_engine(client: TestClient) -> None:
-    body = client.get("/api/v1/script-templates").json()
-
-    for section in (body["build_experiment_environment"], body["activate_experiment_environment"]):
-        [host] = [entry for entry in section["templates"] if entry["workbench_environment"] == "host"]
-        assert host["is_default"]
-        assert "docker" not in host["body"]
-
-
-def test_the_steps_and_the_overview_name_operations_there_are(client: TestClient) -> None:
+def test_the_steps_and_the_overview_name_operations_there_are(client: TestClient, listed: ReeRoute) -> None:
     document = client.get("/openapi.json").json()
     operations = {operation["operationId"] for path in document["paths"].values() for operation in path.values()}
-    steps = client.get("/api/v1/ree-steps").json()["steps"]
+    steps = client.get(f"/api/v1/rees/{listed.ree_id}/ree-steps").json()["steps"]
 
     assert {action for step in steps for action in step["actions"]} <= operations
     assert set(re.findall(r"`([a-z][A-Za-z]+[A-Z][A-Za-z]+)`", document["info"]["description"])) <= operations | {
@@ -89,10 +46,31 @@ def test_the_steps_and_the_overview_name_operations_there_are(client: TestClient
     assert "generateScriptCandidates" in document["info"]["description"]
 
 
-def test_script_inference_is_how_a_step_gets_its_script(client: TestClient) -> None:
-    actions = {step["key"]: step["actions"] for step in client.get("/api/v1/ree-steps").json()["steps"]}
+def test_the_steps_are_where_the_ree_stands(client: TestClient, listed: ReeRoute) -> None:
+    body = client.get(f"/api/v1/rees/{listed.ree_id}/ree-steps").json()
+
+    assert [step["key"] for step in body["steps"]] == [step.key for step in REE_STEPS]
+    assert body["next"] == "source"
+    statuses = {step["key"]: step["status"] for step in body["steps"]}
+    assert statuses["source"] == "ready"
+    assert statuses["sbom"] == "blocked"
+
+
+def test_every_step_has_operations_that_advance_it() -> None:
+    assert set(_STEP_ACTIONS) == {step.key for step in REE_STEPS}
+    assert all(_STEP_ACTIONS.values())
+
+
+def test_script_inference_is_how_a_step_gets_its_script(client: TestClient, listed: ReeRoute) -> None:
+    steps = client.get(f"/api/v1/rees/{listed.ree_id}/ree-steps").json()["steps"]
+    actions = {step["key"]: step["actions"] for step in steps}
 
     for step in ("build_experiment_environment", "experiments"):
         assert "generateScriptCandidates" in actions[step]
     # The activation runs a script the build step authors, alone: it has nothing of its own to write.
     assert actions["activation"] == ["startActivationTest"]
+
+
+@pytest.mark.parametrize("catalog", ["ree-steps", "script-templates"])
+def test_an_unknown_ree_has_no_catalog(client: TestClient, catalog: str) -> None:
+    assert client.get(f"/api/v1/rees/no-such-ree/{catalog}").status_code == 404

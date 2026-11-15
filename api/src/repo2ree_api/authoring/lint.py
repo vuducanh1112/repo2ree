@@ -7,16 +7,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.authoring.inference import ScriptTargetSelectorPayload
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_authoring.lint import (
-    CONTRACT_ONLY,
-    LintReport,
-    ScriptDeclarations,
-    lint_script,
-)
-from repo2ree_authoring.targets import resolve_target
 from repo2ree_protocol.command import LintScriptsArgs, LintScriptsCommand, ScriptTargetSelectorArg
+from repo2ree_protocol.lint import LintReport, ScriptDeclarations
 
 lint_router = APIRouter(tags=["files"])
 
@@ -74,20 +69,16 @@ def _lint(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
 
 
 @lint_router.post(
-    "/api/v1/script-lints:draft",
+    "/api/v1/rees/{ree_id}/script-lints:draft",
     operation_id="checkScriptDraft",
     response_model=LintReport,
     responses=ERROR_RESPONSES,
 )
-def check_script_draft_route(payload: ScriptDraftPayload) -> LintReport:
-    """Run process-free contract checks against unsaved source."""
+def check_script_draft_route(ree_id: str, payload: ScriptDraftPayload) -> LintReport:
+    """Run the checks that start no process against unsaved source, on the REE's workbench."""
+    handle = require_handle(ree_id)
+    target = ScriptTargetSelectorArg(kind=payload.target.kind, experiment_name=payload.target.experiment_name)
     try:
-        target = resolve_target(
-            ScriptTargetSelectorArg(
-                kind=payload.target.kind,
-                experiment_name=payload.target.experiment_name,
-            )
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return lint_script(target, payload.source, declarations=payload.declarations, tiers=CONTRACT_ONLY)
+        return command_dispatcher.lint_draft(handle, target, payload.source, payload.declarations)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Workbench draft check failed: {exc}") from exc

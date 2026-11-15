@@ -14,14 +14,6 @@
           ]
         },
         {
-          "name": "repo2ree-authoring",
-          "path": "authoring",
-          "version": "0.1.0",
-          "modules": [
-            "repo2ree_authoring"
-          ]
-        },
-        {
           "name": "repo2ree-protocol",
           "path": "protocol",
           "version": "0.1.0",

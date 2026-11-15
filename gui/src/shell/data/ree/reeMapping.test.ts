@@ -34,6 +34,7 @@ function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
       activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
       experiments: [],
     },
+    steps: { steps: [], next: null },
     workspace_files: [],
     ree_files: [],
     ...overrides,

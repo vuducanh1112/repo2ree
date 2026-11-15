@@ -231,6 +231,7 @@ def _ree_state(ree_id: str) -> ReeState:
         ree=document.ree,
         status=document.status,
         audit=document.audit,
+        steps=document.steps,
         workbench=WorkbenchStatus(
             status="available",
             workbench_id=handle.workbench_id,

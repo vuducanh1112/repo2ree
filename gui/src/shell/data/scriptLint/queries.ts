@@ -1,4 +1,5 @@
-import { useApiServices, useReeRuntime } from "@shell/data/apiRuntime";
+import { DEFAULT_REE_ID } from "@core/ree/ReeId";
+import { useReeRuntime } from "@shell/data/apiRuntime";
 import { resolveReeId } from "@shell/data/client";
 import { queryKeys } from "@shell/data/queryKeys";
 import type {
@@ -34,14 +35,15 @@ export function useScriptDraftLint(
   experimentEnvironmentPath: string | null,
   options: { enabled: boolean },
 ) {
-  const { reeApi } = useApiServices();
+  const runtime = useReeRuntime();
+  const reeId = resolveReeId(runtime);
   return useQuery<LintReport>({
-    queryKey: queryKeys.scriptLintDraft(target.kind, target.experimentName ?? "", source),
+    queryKey: queryKeys.scriptLintDraft(reeId, target.kind, target.experimentName ?? "", source),
     queryFn: async () =>
-      reeApi.checkScriptDraft(selector(target), source, {
+      runtime.reeApi.checkScriptDraft(reeId, selector(target), source, {
         experiment_environment_path: experimentEnvironmentPath,
       }),
-    enabled: options.enabled && source.trim() !== "",
+    enabled: options.enabled && reeId !== DEFAULT_REE_ID && source.trim() !== "",
     staleTime: Number.POSITIVE_INFINITY,
     // Avoid flicker while a newer draft is checked.
     placeholderData: (previous) => previous,

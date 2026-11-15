@@ -141,12 +141,6 @@
   color: var(--step-next-ink);
 }
 
-.error {
-  padding: var(--space-3);
-  color: var(--status-fault);
-  font-size: var(--text-caption);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .step {
     transition: none;

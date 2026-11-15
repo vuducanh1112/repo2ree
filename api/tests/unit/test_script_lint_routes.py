@@ -1,15 +1,21 @@
 """The script-lint endpoints.
 
-``checkScriptDraft`` is the one covered in depth here: it is stateless and
-needs no workbench, so it is exercised end to end. ``lintReeScripts`` binds a
-workbench command, which the core handler tests already cover.
+``checkScriptDraft`` asks the REE's workbench to run ``ree lint-draft``; what the
+checks find is the CLI's to test (cli/tests/unit/test_authoring_verbs.py). Here:
+what the route sends there, and what it refuses before sending anything.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
+
+from repo2ree_api.deps import command_dispatcher
+from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
+from repo2ree_protocol.lint import LintReport, ScriptDeclarations
+from repo2ree_supervisor import ReeRoute
 
 
 def _draft(source: str, **extra: Any) -> dict[str, Any]:
@@ -18,68 +24,62 @@ def _draft(source: str, **extra: Any) -> dict[str, Any]:
     return payload
 
 
-def test_a_draft_is_checked_without_any_ree(client: TestClient) -> None:
-    # No ree_id in the path and none referenced: an editor can call this before
-    # a workbench exists, which is the point of the route.
-    resp = client.post("/api/v1/script-lints:draft", json=_draft('docker run img main.py | tee "out"\n'))
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
+@pytest.fixture
+def sent(online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch) -> list[tuple[Any, ...]]:
+    calls: list[tuple[Any, ...]] = []
 
-    assert body["target"]["path"] == "ree-scripts/experiments/figure-3.sh"
-    assert "exit_status_masked_by_pipe" in {finding["code"] for finding in body["findings"]}
+    def lint_draft(
+        handle: ReeRoute, target: ScriptTargetSelectorArg, source: str, declarations: ScriptDeclarations
+    ) -> LintReport:
+        calls.append((handle, target, source, declarations))
+        return LintReport(engine_version="1", target=ScriptTarget(kind=target.kind, path="ree-scripts/x.sh"))
 
-
-def test_a_draft_runs_only_the_contract_tier(client: TestClient) -> None:
-    # The other two tiers spawn a process, which the control plane does not do.
-    resp = client.post("/api/v1/script-lints:draft", json=_draft("set -eu\n"))
-    assert resp.status_code == 200, resp.text
-    assert [tier["tier"] for tier in resp.json()["tiers"]] == ["contract"]
+    monkeypatch.setattr(command_dispatcher, "lint_draft", lint_draft)
+    return calls
 
 
-def test_a_draft_is_graded_against_the_declarations_sent_with_it(client: TestClient) -> None:
-    # An editor holds the path it is editing and nothing else — no digest, no
-    # size. Those are derived server-side from the overlay file, so asking for
-    # them here would mean asking the client to invent them.
+def test_a_draft_goes_to_the_rees_workbench(
+    client: TestClient, online_ree: ReeRoute, sent: list[tuple[Any, ...]]
+) -> None:
     resp = client.post(
-        "/api/v1/script-lints:draft",
-        json=_draft(
-            "docker run img main.py\n",
-            target={"kind": "activate_experiment_environment"},
-            declarations={"experiment_environment_path": "runtime.tar"},
-        ),
+        f"/api/v1/rees/{online_ree.ree_id}/script-lints:draft",
+        json=_draft("set -eu\n", declarations={"experiment_environment_path": "runtime.tar"}),
     )
+
     assert resp.status_code == 200, resp.text
-    assert "experiment_environment_not_referenced" in {finding["code"] for finding in resp.json()["findings"]}
+    assert sent == [
+        (
+            online_ree,
+            ScriptTargetSelectorArg(kind="experiment_run", experiment_name="figure-3"),
+            "set -eu\n",
+            ScriptDeclarations(experiment_environment_path="runtime.tar"),
+        )
+    ]
 
 
-def test_a_draft_rejects_declarations_it_does_not_read(client: TestClient) -> None:
+def test_a_draft_rejects_declarations_it_does_not_read(
+    client: TestClient, online_ree: ReeRoute, sent: list[tuple[Any, ...]]
+) -> None:
     # The declaration surface is an explicit part of the contract, so a field
     # no rule consults is a mistake worth reporting rather than ignoring.
     resp = client.post(
-        "/api/v1/script-lints:draft",
+        f"/api/v1/rees/{online_ree.ree_id}/script-lints:draft",
         json=_draft("set -eu\n", declarations={"build_experiment_environment_script_size": 0}),
     )
     assert resp.status_code == 422, resp.text
+    assert sent == []
 
 
-def test_a_draft_with_no_declarations_makes_no_claims_about_them(client: TestClient) -> None:
-    resp = client.post("/api/v1/script-lints:draft", json=_draft("docker run img main.py\n"))
-    assert resp.status_code == 200, resp.text
-    assert "experiment_environment_not_referenced" not in {finding["code"] for finding in resp.json()["findings"]}
-
-
-def test_lint_never_refuses_a_script_it_dislikes(client: TestClient) -> None:
-    # Advice, not a gate: a report full of findings is still a 200 with ok true.
-    resp = client.post("/api/v1/script-lints:draft", json=_draft('set --\nrun | tee "x"\n'))
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    assert len(body["findings"]) >= 2
-    assert all(finding["blocking"] is False for finding in body["findings"])
-
-
-def test_an_experiment_target_without_a_name_is_rejected(client: TestClient) -> None:
+def test_an_experiment_target_without_a_name_is_rejected(
+    client: TestClient, online_ree: ReeRoute, sent: list[tuple[Any, ...]]
+) -> None:
     resp = client.post(
-        "/api/v1/script-lints:draft",
+        f"/api/v1/rees/{online_ree.ree_id}/script-lints:draft",
         json={"target": {"kind": "experiment_run"}, "source": "set -eu\n"},
     )
     assert resp.status_code == 422, resp.text
+    assert sent == []
+
+
+def test_a_draft_for_an_unknown_ree_is_not_found(client: TestClient) -> None:
+    assert client.post("/api/v1/rees/no-such-ree/script-lints:draft", json=_draft("set -eu\n")).status_code == 404

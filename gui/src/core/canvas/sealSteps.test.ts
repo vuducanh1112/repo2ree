@@ -1,7 +1,7 @@
 import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
-import { patchCatalogMetadata } from "@core/ree/catalogMetadataOps";
 import type { Badges } from "@core/ree/ReeTypes";
 import { describe, expect, it } from "vitest";
+import { authoringProgress } from "../../../tests/support/authoringProgress";
 import type { EvidenceStep } from "../ree/StepEvidence";
 import {
   createEmptyReeEditorViewModel,
@@ -66,24 +66,15 @@ describe("buildSealStepItems", () => {
     expect(item?.done).toBe(false);
   });
 
-  it("requires the metadata the metadata page marks required", () => {
-    const named = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-      spec: { name: "Named only" },
-    });
-    const metadata = (model: typeof named) =>
-      buildSealStepItems(model, {}).find((item) => item.key === "metadata")?.done;
+  it("counts metadata done when the REE says so", () => {
+    const metadata = (statuses: Parameters<typeof authoringProgress>[0]) =>
+      buildSealStepItems(
+        { ...createEmptyReeEditorViewModel(), steps: authoringProgress(statuses) },
+        {},
+      ).find((item) => item.key === "metadata")?.done;
 
-    expect(metadata(named)).toBe(false);
-    expect(
-      metadata(
-        patchReeEditorViewModel(named, {
-          spec: patchCatalogMetadata(named.spec, {
-            version: "1.0.0",
-            description: "Describes the REE",
-          }),
-        }),
-      ),
-    ).toBe(true);
+    expect(metadata({ metadata: "ready" })).toBe(false);
+    expect(metadata({ metadata: "complete" })).toBe(true);
   });
 
   // Experiments are the REE's scientific payload; the seal used to be silent

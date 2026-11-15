@@ -2,8 +2,6 @@ const API_V1_BASE = "/api/v1";
 
 export const endpoints = {
   stores: () => `${API_V1_BASE}/stores`,
-  reeSteps: () => `${API_V1_BASE}/ree-steps`,
-  scriptTemplates: () => `${API_V1_BASE}/script-templates`,
   workbenches: () => `${API_V1_BASE}/workbenches`,
   reeIndex: () => `${API_V1_BASE}/ree-index`,
   rees: () => `${API_V1_BASE}/rees`,
@@ -28,9 +26,10 @@ export const endpoints = {
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-inferences:generate`,
   reeScriptLints: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-lints:run`,
-  // Not REE-scoped: a draft is checked before it is saved, and before a
-  // workbench necessarily exists.
-  scriptLintDraft: () => `${API_V1_BASE}/script-lints:draft`,
+  reeScriptTemplates: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-templates`,
+  reeScriptLintDraft: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-lints:draft`,
   reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
   operationHistory: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/history`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,

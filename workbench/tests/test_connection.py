@@ -95,7 +95,7 @@ class FakeExec:
         self._root = tempfile.TemporaryDirectory()
         self.root = Path(self._root.name)
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str):
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
 
@@ -214,7 +214,7 @@ def test_cancel_stops_an_inflight_request() -> None:
     release = threading.Event()
 
     class BlockingExec(FakeExec):
-        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str):
+        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None):
             release.wait(0.5)
             yield b"too late"
 

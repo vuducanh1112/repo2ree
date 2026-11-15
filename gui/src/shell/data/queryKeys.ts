@@ -1,6 +1,5 @@
 export const queryKeys = {
-  reeSteps: () => ["ree-steps"] as const,
-  scriptTemplates: () => ["script-templates"] as const,
+  scriptTemplates: (reeId: string) => ["script-templates", reeId] as const,
   labs: () => ["labs"] as const,
   reeIndex: (depositedOnly: boolean) => ["ree-index", depositedOnly] as const,
   ree: (id: string) => ["ree", id] as const,
@@ -8,8 +7,8 @@ export const queryKeys = {
   evaluateReport: (reeId: string) => ["evaluate-report", reeId] as const,
   history: (reeId: string) => ["operation-history", reeId] as const,
   reviews: (reeId: string) => ["reviews", reeId] as const,
-  scriptLintDraft: (kind: string, experimentName: string, source: string) =>
-    ["script-lint-draft", kind, experimentName, source] as const,
+  scriptLintDraft: (reeId: string, kind: string, experimentName: string, source: string) =>
+    ["script-lint-draft", reeId, kind, experimentName, source] as const,
   scriptLintSaved: (reeId: string, kind: string, experimentName: string, source: string) =>
     ["script-lint-saved", reeId, kind, experimentName, source] as const,
   reeRuns: (reeId: string) => ["ree-runs", reeId] as const,

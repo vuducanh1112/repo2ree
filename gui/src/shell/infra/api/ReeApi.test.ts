@@ -28,24 +28,20 @@ describe("ReeApi", () => {
 
   it("maps global catalogs and filtered listings", async () => {
     const { api, client } = harness();
-    await api.listReeSteps();
     await api.getBuildInfo();
     await api.listStores();
-    await api.listScriptTemplates();
     await api.listWorkbenches();
     await api.listReeIndex({ cursor: "next page", limit: 20, depositedOnly: true });
     await api.listRees({ cursor: "cursor", limit: 10, status: "sealed" });
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
-      "/api/v1/ree-steps",
       "/api/v1/system/build-info",
       "/api/v1/stores",
-      "/api/v1/script-templates",
       "/api/v1/workbenches",
       "/api/v1/ree-index?cursor=next+page&limit=20&deposited_only=true",
       "/api/v1/rees",
     ]);
-    expect(client.request.mock.calls[6]?.[2].toString()).toBe(
+    expect(client.request.mock.calls[4]?.[2].toString()).toBe(
       "cursor=cursor&limit=10&status=sealed",
     );
   });
@@ -59,6 +55,7 @@ describe("ReeApi", () => {
       image: "docker:29-dind",
     });
     await api.getRee(reeId);
+    await api.listScriptTemplates(reeId);
     await api.getReeState(reeId);
     await api.patchReeDefinition(reeId, { definition_patch: { name: "Renamed" } });
     await api.acquireSource(reeId, {
@@ -70,7 +67,7 @@ describe("ReeApi", () => {
     await api.deleteFileContent(reeId, "dir/a b.txt");
     await api.generateScriptCandidates(reeId, [{ kind: "build_experiment_environment" }]);
     await api.lintReeScripts(reeId, [{ kind: "build_experiment_environment" }]);
-    await api.checkScriptDraft({ kind: "build_experiment_environment" }, "set -eu\n", {
+    await api.checkScriptDraft(reeId, { kind: "build_experiment_environment" }, "set -eu\n", {
       experiment_environment_path: "runtime.tar",
     });
     await api.sealRee(reeId, {
@@ -83,6 +80,7 @@ describe("ReeApi", () => {
     expect(client.request.mock.calls.map(([path, init]) => [path, init.method])).toEqual([
       ["/api/v1/rees", "POST"],
       ["/api/v1/rees/ree%2F1", "GET"],
+      ["/api/v1/rees/ree%2F1/script-templates", "GET"],
       ["/api/v1/rees/ree%2F1/state", "GET"],
       ["/api/v1/rees/ree%2F1/definition", "PATCH"],
       ["/api/v1/rees/ree%2F1/source:acquire", "POST"],
@@ -91,17 +89,17 @@ describe("ReeApi", () => {
       ["/api/v1/rees/ree%2F1/files/content", "DELETE"],
       ["/api/v1/rees/ree%2F1/script-inferences:generate", "POST"],
       ["/api/v1/rees/ree%2F1/script-lints:run", "POST"],
-      ["/api/v1/script-lints:draft", "POST"],
+      ["/api/v1/rees/ree%2F1/script-lints:draft", "POST"],
       ["/api/v1/rees/ree%2F1/ree:seal", "POST"],
       ["/api/v1/rees/ree%2F1", "DELETE"],
     ]);
-    expect(client.request.mock.calls[7]?.[2].toString()).toBe("path=dir%2Fa+b.txt");
+    expect(client.request.mock.calls[8]?.[2].toString()).toBe("path=dir%2Fa+b.txt");
     // The draft carries only the declarations lint reads — no digest, no
     // size: an editor holds neither, and the route no longer asks.
-    expect(client.request.mock.calls[10]?.[1].body).toBe(
+    expect(client.request.mock.calls[11]?.[1].body).toBe(
       '{"target":{"kind":"build_experiment_environment"},"source":"set -eu\\n","declarations":{"experiment_environment_path":"runtime.tar"}}',
     );
-    expect(client.request.mock.calls[11]?.[1].body).toBe(
+    expect(client.request.mock.calls[12]?.[1].body).toBe(
       '{"include_source":true,"include_experiment_environment":false,"include_results":true}',
     );
   });

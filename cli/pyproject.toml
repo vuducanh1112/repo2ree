@@ -2,12 +2,14 @@
 name = "repo2ree-cli"
 version = "0.1.0"
 dependencies = [
+    "repo2ree-authoring",
     "repo2ree-core",
     "repo2ree-telemetry",
     "click~=8.2.1",
 ]
 
 [tool.uv.sources]
+repo2ree-authoring = { workspace = true }
 repo2ree-core = { workspace = true }
 repo2ree-telemetry = { workspace = true }
 

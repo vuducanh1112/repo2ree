@@ -150,7 +150,7 @@ def test_violations_quoting_bytes_still_answer_422(client: TestClient):
 
 def test_a_body_that_is_not_utf8_uses_the_error_envelope(client: TestClient):
     headers = {"Content-Type": "application/json"}
-    resp = client.post("/api/v1/script-lints:draft", content=b"\xff\x1b\xfe", headers=headers)
+    resp = client.post("/api/v1/rees/any/script-lints:draft", content=b"\xff\x1b\xfe", headers=headers)
     assert resp.status_code == 400
     assert resp.json()["error"]["code"] == "http_400"
 

@@ -1,6 +1,6 @@
 """The run-starting authoring steps, in step order.
 
-One route per step of ``repo2ree_authoring.steps.REE_STEPS`` that advances by
+One route per step ``ree steps`` lists that advances by
 *running something in the workbench*: hbom, evaluate, build, sbom, crosscheck,
 activation, experiments. They are one family and differ only in the command they
 dispatch and the words their run logs carry, so they live together — the shape

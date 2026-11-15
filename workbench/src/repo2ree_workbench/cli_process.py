@@ -183,11 +183,14 @@ class LocalCli:
             raise RuntimeError(f"executor {argv[0]!r} failed (exit {result.returncode}): {detail}")
         return result.stdout
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
+    def exec_query_stream(
+        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+    ) -> Iterator[bytes]:
         root = self.ree_root(ree_id)
         result = subprocess.run(
             self.at(root, argv),
             check=False,
+            input=stdin.encode() if stdin is not None else None,
             capture_output=True,
             timeout=timeout,
             env=self.environment(root),

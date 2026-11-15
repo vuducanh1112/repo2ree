@@ -64,7 +64,7 @@ class _Service:
             raise UnknownExecutionError(attempt_id)
         return _Follower()
 
-    def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str):
+    def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str, stdin: str | None = None):
         self.calls.append(("exec_query", argv, timeout))
         yield b"query-result"
 

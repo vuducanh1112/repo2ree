@@ -20,7 +20,6 @@ from repo2ree_protocol.command import (
     GenerateScriptCandidatesArgs,
     GenerateScriptCandidatesCommand,
     ScriptTargetSelectorArg,
-    TargetKind,
 )
 from repo2ree_protocol.inference import InferenceReport
 
@@ -37,24 +36,19 @@ inference_router = APIRouter(tags=["files"])
 # ================================================
 
 
-# Its own model rather than the command's ``ScriptTargetSelectorArg``, because
-# the class name and docstring are the schema name and description in the
-# published contract — but the kind vocabulary comes from that arg's
-# ``TargetKind``, so what a client may ask for and what the workbench accepts
-# cannot drift apart. Keep maintenance notes like this one *out* of the
-# docstring: it is published to every API consumer.
-class ScriptTargetSelectorPayload(BaseModel):
+# A subclass of the command's ``ScriptTargetSelectorArg`` rather than the arg itself,
+# because the class name and docstring are the schema name and description in the
+# published contract; its fields and its rule for experiment names are the arg's,
+# so what a client may ask for and what the workbench accepts cannot drift apart.
+# Keep maintenance notes like this one *out* of the docstring: it is published to
+# every API consumer.
+class ScriptTargetSelectorPayload(ScriptTargetSelectorArg):
     """One target a caller asks inference about: a kind, never a path.
 
     The workbench resolves the reserved path from the kind (and, for
     experiments, the reserved slug convention); a caller cannot redirect
     inference at an arbitrary workspace file.
     """
-
-    model_config = ConfigDict(extra="forbid")
-
-    kind: TargetKind
-    experiment_name: str | None = None
 
 
 class GenerateScriptCandidatesPayload(BaseModel):

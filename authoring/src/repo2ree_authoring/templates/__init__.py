@@ -6,7 +6,7 @@ from. The build and activate templates are seeded into the overlay at REE
 creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the launch template is not, since an REE without a
 launch script runs its scripts directly; the per-experiment run
 and verify templates cannot be seeded (their paths only exist once an
-experiment is named), so the API serves them for clients to prefill from.
+experiment is named), so ``ree templates`` prints them for clients to prefill from.
 
 Every script kind carries a catalog of named :class:`ScriptTemplate` variants,
 one per standard case, so new strategies (a nix build, …) slot in as further
@@ -23,6 +23,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib.resources import files
 
+from repo2ree_protocol.catalog import (
+    ActivateExperimentEnvironmentScriptTemplates,
+    BuildExperimentEnvironmentScriptTemplates,
+    ExperimentScriptTemplates,
+    LaunchScriptTemplates,
+    ScriptTemplateCatalog,
+    ScriptTemplateEntry,
+)
+from repo2ree_ree.reserved_paths import (
+    RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_EXPERIMENT_SCRIPT_DIR,
+    RESERVED_LAUNCH_SCRIPT,
+)
 from repo2ree_ree.workbench_environment import EnvironmentBackend
 
 
@@ -171,3 +185,39 @@ def verify_templates() -> tuple[ScriptTemplate, ...]:
             body=_template("verify_file_sha256.sh"),
         ),
     )
+
+
+def script_template_catalog() -> ScriptTemplateCatalog:
+    """Every script kind's templates and where its scripts belong, each environment's default marked."""
+    return ScriptTemplateCatalog(
+        build_experiment_environment=BuildExperimentEnvironmentScriptTemplates(
+            path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+            templates=_entries(build_templates()),
+        ),
+        activate_experiment_environment=ActivateExperimentEnvironmentScriptTemplates(
+            path=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+            templates=_entries(activate_experiment_environment_templates()),
+        ),
+        launch=LaunchScriptTemplates(path=RESERVED_LAUNCH_SCRIPT, templates=_entries(launch_templates())),
+        experiment=ExperimentScriptTemplates(
+            run_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
+            verify_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
+            templates=_entries(experiment_run_templates()),
+        ),
+        verify=_entries(verify_templates()),
+    )
+
+
+def _entries(templates: tuple[ScriptTemplate, ...]) -> list[ScriptTemplateEntry]:
+    defaults = {template.workbench_environment: template for template in reversed(templates)}
+    return [
+        ScriptTemplateEntry(
+            key=template.key,
+            label=template.label,
+            description=template.description,
+            body=template.body,
+            is_default=defaults[template.workbench_environment] is template,
+            workbench_environment=template.workbench_environment,
+        )
+        for template in templates
+    ]

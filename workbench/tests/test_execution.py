@@ -22,6 +22,7 @@ def fake_executor(tmp_path: Path) -> Path:
         "--json) shift ;; *) break ;; esac; done\n"
         'case "$1" in\n'
         "  query) printf query-result ;;\n"
+        "  echo) cat ;;\n"
         "  fail) echo failed >&2; exit 7 ;;\n"
         '  build-info) printf \'%s\\n\' \'{"version":"0.1.0","revision":"executor-revision"}\' ;;\n'
         "  *) exit 0 ;;\n"
@@ -34,6 +35,11 @@ def fake_executor(tmp_path: Path) -> Path:
 def test_local_executor_runs_queries(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalCli(tmp_path / "ree", str(fake_executor))
     assert b"".join(executor.exec_query_stream(["query"], ree_id="ree")) == b"query-result"
+
+
+def test_a_query_reads_what_it_is_given_on_stdin(fake_executor: Path, tmp_path: Path) -> None:
+    executor = LocalCli(tmp_path / "ree", str(fake_executor))
+    assert b"".join(executor.exec_query_stream(["echo"], ree_id="ree", stdin="set -eu\n")) == b"set -eu\n"
 
 
 def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(

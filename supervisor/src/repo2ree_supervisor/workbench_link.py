@@ -505,17 +505,19 @@ class WsWorkbenchClient:
         # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
-    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str) -> bytes:
-        return b"".join(self.exec_query_stream(workbench_id, argv, timeout, ree_id=ree_id))
+    def exec_query(
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+    ) -> bytes:
+        return b"".join(self.exec_query_stream(workbench_id, argv, timeout, ree_id=ree_id, stdin=stdin))
 
     def exec_query_stream(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
     ) -> Iterator[bytes]:
         # The result arrives as bounded chunks ending in ``done``; yield each
         # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(workbench_id)
         for frame in conn.request(
-            ExecQueryRequest(argv=argv, timeout=timeout, ree_id=ree_id),
+            ExecQueryRequest(argv=argv, stdin=stdin, timeout=timeout, ree_id=ree_id),
             frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
         ):
             if isinstance(frame, BytesChunkFrame):

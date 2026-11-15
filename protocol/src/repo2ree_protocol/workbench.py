@@ -105,6 +105,8 @@ class ExecQueryRequest(BaseModel):
     # The REE this addresses in the workbench's store.
     ree_id: str
     argv: list[str]
+    # What the subcommand reads on stdin, such as the unsaved script ``lint-draft`` checks.
+    stdin: str | None = None
     timeout: int = 30
 
 

@@ -1,14 +1,11 @@
-import {
-  type AuthoringStep,
-  type AuthoringStepStatus,
-  authoringPageForStep,
-  authoringStepStatuses,
-  nextAuthoringStep,
-} from "@core/app-shell/authoringDag";
+import { authoringPageForStep } from "@core/app-shell/authoringDag";
 import type { AppShellPage } from "@core/app-shell/pages";
-import type { Badges } from "@core/ree/ReeTypes";
+import type {
+  AuthoringStep,
+  AuthoringStepKey,
+  AuthoringStepStatus,
+} from "@core/ree/AuthoringProgress";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import { useAuthoringStepsQuery } from "@shell/data/reeSteps/queries";
 import styles from "./authoring/AuthoringConsole.module.css";
 
 interface AuthoringWorkflowPanelProps {
@@ -19,56 +16,40 @@ interface AuthoringWorkflowPanelProps {
 
 export interface AuthoringWorkflowModel {
   steps: readonly AuthoringStep[];
-  statuses: Readonly<Record<string, AuthoringStepStatus>>;
+  statuses: Readonly<Partial<Record<AuthoringStepKey, AuthoringStepStatus>>>;
   complete: number;
-  /** The step the graph says to do next, highlighted wherever the DAG shows. */
-  nextKey: string | undefined;
+  /** The step the REE says to do next, highlighted wherever the DAG shows. */
+  nextKey: AuthoringStepKey | undefined;
   nextPage: AppShellPage | undefined;
   active: boolean;
-  error: boolean;
 }
 
-/** API-driven authoring graph and per-REE progress projected onto it. */
-export function useAuthoringWorkflowModel(
-  ree: ReeEditorViewModel,
-  badges: Badges,
-): AuthoringWorkflowModel {
-  const catalog = useAuthoringStepsQuery();
-  const steps = catalog.data ?? [];
-  const statuses = authoringStepStatuses(steps, ree, badges);
-  const complete = steps.filter((step) => statuses[step.key] === "complete").length;
-  const next = nextAuthoringStep(steps, statuses);
-  const nextPage = next ? authoringPageForStep(next.key) : undefined;
+/** The authoring graph as the REE stands on it. */
+export function authoringWorkflowModel(ree: ReeEditorViewModel): AuthoringWorkflowModel {
+  const { steps, next } = ree.steps;
+  const statuses = Object.fromEntries(steps.map((step) => [step.key, step.status]));
+  const complete = steps.filter((step) => step.status === "complete").length;
 
   return {
     steps,
     statuses,
     complete,
-    nextKey: next?.key,
-    nextPage,
+    nextKey: next,
+    nextPage: next ? authoringPageForStep(next) : undefined,
     active: complete > 0,
-    error: catalog.isError,
   };
 }
 
 /** Navigation panel rendered inside the shared workflow HUD. */
 export function AuthoringWorkflowPanel({ page, model, onNavigate }: AuthoringWorkflowPanelProps) {
   return (
-    <>
-      {model.error ? (
-        <div role="alert" className={styles.error}>
-          Authoring guidance is unavailable. You can still use the workbench terminals.
-        </div>
-      ) : (
-        <AuthoringDag
-          steps={model.steps}
-          statuses={model.statuses}
-          nextKey={model.nextKey}
-          page={page}
-          onNavigate={onNavigate}
-        />
-      )}
-    </>
+    <AuthoringDag
+      steps={model.steps}
+      statuses={model.statuses}
+      nextKey={model.nextKey}
+      page={page}
+      onNavigate={onNavigate}
+    />
   );
 }
 
@@ -80,8 +61,8 @@ function AuthoringDag({
   onNavigate,
 }: {
   steps: readonly AuthoringStep[];
-  statuses: Readonly<Record<string, AuthoringStepStatus>>;
-  nextKey: string | undefined;
+  statuses: Readonly<Partial<Record<AuthoringStepKey, AuthoringStepStatus>>>;
+  nextKey: AuthoringStepKey | undefined;
   page: AppShellPage;
   onNavigate: (page: AppShellPage) => void;
 }) {
@@ -106,10 +87,7 @@ function AuthoringDag({
                 data-active={target === page || undefined}
                 aria-current={target === page ? "step" : undefined}
                 aria-label={`Open ${step.label} authoring step, ${status}${next ? ", next up" : ""}${requirements ? `, requires ${requirements}` : ""}`}
-                disabled={!target}
-                onClick={() => {
-                  if (target) onNavigate(target);
-                }}
+                onClick={() => onNavigate(target)}
               >
                 <span className={styles.number}>{String(step.order).padStart(2, "0")}</span>
                 {/* Floated, so the label's own block box shrinks beside it

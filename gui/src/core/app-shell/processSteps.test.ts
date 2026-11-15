@@ -1,9 +1,9 @@
 import { PAGE } from "@core/app-shell/pages";
 import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
 import type { Badges } from "@core/ree/ReeTypes";
-import type { StepEvidence } from "@core/ree/StepEvidence";
 import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { describe, expect, it } from "vitest";
+import { authoringProgress } from "../../../tests/support/authoringProgress";
 
 function stepFor(key: string) {
   const step = PROCESS_STEPS.find((s) => s.key === key);
@@ -11,64 +11,47 @@ function stepFor(key: string) {
   return step;
 }
 
-// Doneness comes from the REE's audit, not from what this session ran, so every
-// case below leaves `badges` empty — the state a freshly reloaded tab is in.
-function reeWith(audit: StepEvidence) {
-  return { ...createEmptyReeEditorViewModel(), audit };
+// Doneness is the REE's own word on its steps, not what this session ran, so
+// every case below leaves `badges` empty — the state a freshly reloaded tab is in.
+function reeWhere(statuses: Parameters<typeof authoringProgress>[0]) {
+  return { ...createEmptyReeEditorViewModel(), steps: authoringProgress(statuses) };
 }
 
 const NO_BADGES = {} as Badges;
 
-describe("executed step navCompleted", () => {
+describe("authoring step navCompleted", () => {
   const cases = [
-    { page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT, step: "experiment_environment" },
+    { page: PAGE.SOURCE, step: "source" },
+    { page: PAGE.METADATA, step: "metadata" },
+    { page: PAGE.HBOM, step: "hbom" },
+    { page: PAGE.EVALUATE, step: "evaluate" },
+    { page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT, step: "build_experiment_environment" },
     { page: PAGE.SBOM, step: "sbom" },
     { page: PAGE.ACTIVATION, step: "activation" },
-    { page: PAGE.EVALUATE, step: "evaluation" },
+    { page: PAGE.EXPERIMENTS, step: "experiments" },
+    { page: PAGE.SEAL, step: "seal" },
   ] as const;
 
   for (const { page, step } of cases) {
-    it(`completes on current ${step} evidence, with no badge in this session`, () => {
-      const ree = reeWith({ [step]: "current" });
-      expect(resolveNavCompleted(stepFor(page), ree, NO_BADGES)).toBe(true);
+    it(`completes when the REE says ${step} is complete`, () => {
+      expect(resolveNavCompleted(stepFor(page), reeWhere({ [step]: "complete" }), NO_BADGES)).toBe(
+        true,
+      );
     });
 
-    it(`is not complete while ${step} evidence is missing`, () => {
-      expect(resolveNavCompleted(stepFor(page), reeWith({}), NO_BADGES)).toBe(false);
-    });
-
-    // The receipt is still on the aggregate, but what it rests on has moved.
-    // The step has to run again, so it does not read as done.
-    it(`is not complete while ${step} evidence is stale`, () => {
-      const ree = reeWith({ [step]: "stale" });
-      expect(resolveNavCompleted(stepFor(page), ree, NO_BADGES)).toBe(false);
+    it(`is not complete while the REE says ${step} is ready`, () => {
+      expect(resolveNavCompleted(stepFor(page), reeWhere({ [step]: "ready" }), NO_BADGES)).toBe(
+        false,
+      );
     });
   }
 
-  it("ignores a session badge that the REE's own audit does not back", () => {
-    const ree = reeWith({});
+  it("ignores a session badge that the REE does not back", () => {
     expect(
-      resolveNavCompleted(stepFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree, {
+      resolveNavCompleted(stepFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), reeWhere({}), {
         [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: true,
       } as Badges),
     ).toBe(false);
-  });
-});
-
-describe("metadata step navCompleted", () => {
-  const named = createEmptyReeEditorViewModel();
-  named.spec.name = "python-hello-world";
-
-  it("is not complete while a required field is empty", () => {
-    expect(resolveNavCompleted(stepFor(PAGE.METADATA), named, NO_BADGES)).toBe(false);
-  });
-
-  it("completes once name, version and description are all filled", () => {
-    const ree = createEmptyReeEditorViewModel();
-    ree.spec.name = "python-hello-world";
-    ree.spec.catalogMetadata.version = "1.0.0";
-    ree.spec.catalogMetadata.description = "Reproduces the hello-world figure.";
-    expect(resolveNavCompleted(stepFor(PAGE.METADATA), ree, NO_BADGES)).toBe(true);
   });
 });
 

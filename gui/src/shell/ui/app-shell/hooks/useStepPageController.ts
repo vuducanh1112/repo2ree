@@ -1,4 +1,3 @@
-import { authoringStepStatuses } from "@core/app-shell/authoringDag";
 import { type AppShellPage, appShellPageForField, PAGE } from "@core/app-shell/pages";
 import { EVIDENCE_STEP_BY_PAGE } from "@core/app-shell/processSteps";
 import { auditReceiptRunId, isAuditCurrent } from "@core/ree/StepEvidence";
@@ -10,7 +9,6 @@ import type { ReeStepParamValue } from "@core/ree-steps/stepTypes";
 import { activeRunForOperation, latestRunForOperation } from "@core/runs/stepRuns";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useRunsAwaitingDocument } from "@shell/data/ree/followRuns";
-import { useAuthoringStepsQuery } from "@shell/data/reeSteps/queries";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
 import type { ReeEditorCommands } from "@shell/state/ree-editor/hooks/createReeEditorCommands";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
@@ -32,22 +30,20 @@ export function useStepPageController({
 }: UseStepPageControllerArgs) {
   const reeId = useReeId();
   const { stepParams } = stepRuns;
-  const badges = stepRuns.badges ?? {};
   const timestamps = stepRuns.timestamps ?? {};
   const runs = useReeRunsQuery(reeId).data ?? [];
   const awaitingDocument = useRunsAwaitingDocument(reeId);
-  const authoringSteps = useAuthoringStepsQuery().data ?? [];
   const step = useMemo(() => REE_STEPS.find((step) => step.key === page), [page]);
 
   const missing = useMemo(() => {
     if (!step) {
       return [];
     }
+    const authoringSteps = ree.steps.steps;
     const catalogStep = authoringSteps.find((candidate) => candidate.key === step.key);
     if (!catalogStep) {
       return missingReeStepRequirements(step.key, { ...ree.spec, ...ree.source });
     }
-    const statuses = authoringStepStatuses(authoringSteps, ree, badges);
     const navigationFieldByStep = {
       source: "sourceAvailable",
       [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experimentEnvironmentPath",
@@ -55,14 +51,17 @@ export function useStepPageController({
       evaluate: "sourceAvailable",
     } as const;
     return catalogStep.requires
-      .filter((required) => statuses[required] !== "complete")
+      .filter(
+        (required) =>
+          authoringSteps.find((candidate) => candidate.key === required)?.status !== "complete",
+      )
       .map((required) => ({
         field:
           navigationFieldByStep[required as keyof typeof navigationFieldByStep] ??
           ("name" as const),
         label: authoringSteps.find((candidate) => candidate.key === required)?.label ?? required,
       }));
-  }, [step, ree, authoringSteps, badges]);
+  }, [step, ree]);
 
   const params = useMemo(() => {
     if (!step) {

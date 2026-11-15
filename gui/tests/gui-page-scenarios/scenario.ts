@@ -14,6 +14,59 @@ const auditStep = {
   reasons: [],
 };
 
+// What the REE says of its steps: every receipt current, the definition whole, not yet sealed.
+const visualSteps = {
+  steps: [
+    { key: "source", order: 1, label: "Source Acquisition", requires: [], status: "complete" },
+    { key: "metadata", order: 2, label: "Provide Metadata", requires: [], status: "complete" },
+    { key: "hbom", order: 3, label: "Hardware BOM", requires: [], status: "complete" },
+    {
+      key: "evaluate",
+      order: 4,
+      label: "Reproducibility Readiness",
+      requires: ["source"],
+      status: "complete",
+    },
+    {
+      key: "build_experiment_environment",
+      order: 5,
+      label: "Build Experiment Environment",
+      requires: ["source"],
+      status: "complete",
+    },
+    {
+      key: "sbom",
+      order: 6,
+      label: "Generate SBOM",
+      requires: ["build_experiment_environment"],
+      status: "complete",
+    },
+    {
+      key: "crosscheck",
+      order: 7,
+      label: "Cross-check SBOM",
+      requires: ["sbom", "evaluate"],
+      status: "complete",
+    },
+    {
+      key: "activation",
+      order: 8,
+      label: "Test Activation",
+      requires: ["build_experiment_environment"],
+      status: "complete",
+    },
+    {
+      key: "experiments",
+      order: 9,
+      label: "Experiments",
+      requires: ["build_experiment_environment"],
+      status: "complete",
+    },
+    { key: "seal", order: 10, label: "Seal", requires: [], status: "ready" },
+  ],
+  next: "seal",
+};
+
 const visualRee = {
   ree_id: VISUAL_REE_ID,
   ree: {
@@ -183,6 +236,7 @@ const visualRee = {
     },
   },
   status: "draft",
+  steps: visualSteps,
   audit: {
     source: auditStep,
     evaluation: auditStep,
@@ -282,6 +336,7 @@ const reeState = {
   ree: visualRee.ree,
   status: visualRee.status,
   audit: visualRee.audit,
+  steps: visualSteps,
   workbench: {
     status: "available",
     workbench_id: "wb-3c1f90",
@@ -475,57 +530,6 @@ const scriptTemplates = {
   verify: [],
 };
 
-const authoringSteps = {
-  steps: [
-    { key: "source", order: 1, label: "Source Acquisition", requires: [], actions: [] },
-    { key: "metadata", order: 2, label: "Provide Metadata", requires: [], actions: [] },
-    { key: "hbom", order: 3, label: "Hardware BOM", requires: [], actions: [] },
-    {
-      key: "evaluate",
-      order: 4,
-      label: "Reproducibility Readiness",
-      requires: ["source"],
-      actions: [],
-    },
-    {
-      key: "build_experiment_environment",
-      order: 5,
-      label: "Build Experiment Environment",
-      requires: ["source"],
-      actions: [],
-    },
-    {
-      key: "sbom",
-      order: 6,
-      label: "Generate SBOM",
-      requires: ["build_experiment_environment"],
-      actions: [],
-    },
-    {
-      key: "crosscheck",
-      order: 7,
-      label: "Cross-check SBOM",
-      requires: ["sbom", "evaluate"],
-      actions: [],
-    },
-    {
-      key: "activation",
-      order: 8,
-      label: "Test Activation",
-      requires: ["build_experiment_environment"],
-      actions: [],
-    },
-    {
-      key: "experiments",
-      order: 9,
-      label: "Experiments",
-      requires: ["build_experiment_environment"],
-      actions: [],
-    },
-    { key: "seal", order: 10, label: "Seal", requires: [], actions: [] },
-  ],
-};
-
 function responseFor(request: Request): unknown {
   const url = new URL(request.url());
   const path = url.pathname;
@@ -533,10 +537,9 @@ function responseFor(request: Request): unknown {
     throw new Error(`Unexpected visual API mutation: ${request.method()} ${path}`);
   if (path === "/api/v1/system/build-info") return apiBuild;
   if (path === "/api/v1/stores") return stores;
-  if (path === "/api/v1/ree-steps") return authoringSteps;
-  if (path === "/api/v1/script-templates") return scriptTemplates;
   if (path === "/api/v1/ree-index") return index;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}`) return visualRee;
+  if (path === `/api/v1/rees/${VISUAL_REE_ID}/script-templates`) return scriptTemplates;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/state`) return reeState;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/runs`) return runs;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/evaluate/report`) return evaluateReport;

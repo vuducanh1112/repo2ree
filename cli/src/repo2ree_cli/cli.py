@@ -17,8 +17,11 @@ from typing import NoReturn, get_args
 from uuid import uuid4
 
 import click
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
+from repo2ree_authoring.lint import CONTRACT_ONLY, lint_script
+from repo2ree_authoring.targets import resolve_target
+from repo2ree_authoring.templates import script_template_catalog
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.evidence.review.store import load_reviews
@@ -26,7 +29,7 @@ from repo2ree_core.execution.runners import runner_from_environment
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes
-from repo2ree_core.operations.read_models.ree_document import get_ree_document
+from repo2ree_core.operations.read_models.ree_document import get_ree_document, get_ree_steps
 from repo2ree_core.operations.session import request_cancel, run_session
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import HistoryCaptureError
@@ -34,9 +37,17 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.argv import ArgvError, describe_args, reads_stdin
 from repo2ree_protocol.build import current_build
-from repo2ree_protocol.command import AcquireSourceCommand, LoadReeBundleCommand, command_adapter
+from repo2ree_protocol.catalog import ReeSteps
+from repo2ree_protocol.command import (
+    AcquireSourceCommand,
+    LoadReeBundleCommand,
+    ScriptTargetSelectorArg,
+    TargetKind,
+    command_adapter,
+)
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
+from repo2ree_protocol.lint import ScriptDeclarations
 from repo2ree_protocol.queries import (
     BUILD_ARCHIVE,
     GET_HISTORY,
@@ -45,6 +56,10 @@ from repo2ree_protocol.queries import (
     GET_REE_MANIFEST,
     GET_REVIEWS,
     INIT_REE,
+    LINT_DRAFT,
+    LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH,
+    LINT_DRAFT_EXPERIMENT_NAME,
+    LIST_SCRIPT_TEMPLATES,
     READ_REE_FILE,
 )
 from repo2ree_protocol.result import ActionResult
@@ -350,6 +365,73 @@ def cat_cmd(invocation: Invocation, path: str) -> None:
     except ValueError as exc:
         _fail(str(exc))
     sys.stdout.buffer.write(data)
+
+
+# ================================================
+# Authoring
+# ================================================
+
+
+_MARKS = {"complete": "✓", "ready": "·", "blocked": "✗"}
+
+
+@cli.command("steps")
+@click.pass_obj
+def steps_cmd(invocation: Invocation) -> None:
+    """Show where the REE stands on each authoring step, and what to do next."""
+    try:
+        steps = get_ree_steps(invocation.layout())
+    except FileNotFoundError as exc:
+        _fail(str(exc))
+    click.echo(steps.model_dump_json() if invocation.machine else _describe_steps(steps))
+
+
+def _describe_steps(steps: ReeSteps) -> str:
+    labels = {step.key: step.label for step in steps.steps}
+    done = {step.key for step in steps.steps if step.status == "complete"}
+    lines = []
+    for step in steps.steps:
+        mark = "→" if step.key == steps.next else _MARKS[step.status]
+        line = f"{mark} {step.order:>2} {step.label}"
+        if step.status == "blocked":
+            line += f"  (needs {', '.join(labels[key] for key in step.requires if key not in done)})"
+        lines.append(line)
+    following = next((step for step in steps.steps if step.key == steps.next), None)
+    if following is not None:
+        lines += ["", f"next: {following.label}, with " + " or ".join(f"ree {words}" for words in following.commands)]
+    elif len(done) == len(steps.steps):
+        lines += ["", "every step is complete"]
+    return "\n".join(lines)
+
+
+@cli.command(LIST_SCRIPT_TEMPLATES)
+def templates_cmd() -> None:
+    """Print the starter templates for the REE's scripts and where each script belongs."""
+    click.echo(script_template_catalog().model_dump_json())
+
+
+@cli.command(LINT_DRAFT)
+@click.argument("kind", type=click.Choice(get_args(TargetKind)))
+@click.option(LINT_DRAFT_EXPERIMENT_NAME, "experiment_name", default=None, help="The experiment the script is for.")
+@click.option(
+    LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH,
+    "experiment_environment_path",
+    default=None,
+    help="The experiment environment's path the script is checked against.",
+)
+def lint_draft_cmd(kind: TargetKind, experiment_name: str | None, experiment_environment_path: str | None) -> None:
+    """Check the unsaved script on stdin as the REE's KIND script, by the checks that run no process."""
+    try:
+        selector = ScriptTargetSelectorArg(kind=kind, experiment_name=experiment_name)
+    except ValidationError as exc:
+        raise click.UsageError(exc.errors()[0]["msg"]) from exc
+    report = lint_script(
+        resolve_target(selector),
+        click.get_text_stream("stdin").read(),
+        declarations=ScriptDeclarations(experiment_environment_path=experiment_environment_path),
+        tiers=CONTRACT_ONLY,
+    )
+    click.echo(report.model_dump_json())
 
 
 @cli.command("build-info")

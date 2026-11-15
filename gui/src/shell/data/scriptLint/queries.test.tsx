@@ -1,5 +1,6 @@
 /* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 
+import { DEFAULT_REE_ID } from "@core/ree/ReeId";
 import type { LintReport, ScriptTargetSelector } from "@shell/infra/api/apiTypes";
 import { renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -57,6 +58,7 @@ describe("useScriptDraftLint", () => {
   it("checks the draft against the declarations it is given", async () => {
     const checkScriptDraft = vi.fn().mockResolvedValue(report());
     const { Wrapper } = createShellWrapper({
+      reeId: "ree-1",
       services: fakeApiServices({ ree: { checkScriptDraft } }),
     });
 
@@ -73,6 +75,7 @@ describe("useScriptDraftLint", () => {
 
     await waitFor(() => expect(result.current.data).toBeDefined());
     expect(checkScriptDraft).toHaveBeenCalledWith(
+      "ree-1",
       { kind: "build_experiment_environment" },
       "docker build .\n",
       {
@@ -84,6 +87,7 @@ describe("useScriptDraftLint", () => {
   it("asks nothing of an empty editor", async () => {
     const checkScriptDraft = vi.fn().mockResolvedValue(report());
     const { Wrapper } = createShellWrapper({
+      reeId: "ree-1",
       services: fakeApiServices({ ree: { checkScriptDraft } }),
     });
 
@@ -101,9 +105,31 @@ describe("useScriptDraftLint", () => {
     expect(checkScriptDraft).not.toHaveBeenCalled();
   });
 
+  it("asks nothing before there is an REE to ask", async () => {
+    const checkScriptDraft = vi.fn().mockResolvedValue(report());
+    const { Wrapper } = createShellWrapper({
+      reeId: DEFAULT_REE_ID,
+      services: fakeApiServices({ ree: { checkScriptDraft } }),
+    });
+
+    renderHook(
+      () =>
+        useScriptDraftLint({ kind: "build_experiment_environment" }, "set -eu\n", null, {
+          enabled: true,
+        }),
+      {
+        wrapper: Wrapper,
+      },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(checkScriptDraft).not.toHaveBeenCalled();
+  });
+
   it("asks nothing while checks are disabled", async () => {
     const checkScriptDraft = vi.fn().mockResolvedValue(report());
     const { Wrapper } = createShellWrapper({
+      reeId: "ree-1",
       services: fakeApiServices({ ree: { checkScriptDraft } }),
     });
 

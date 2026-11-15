@@ -25,6 +25,7 @@ import {
 } from "@core/ree-editor/reeEditorViewModel";
 import type { SourceRepoMetadata } from "@core/workspace/WorkspaceTypes";
 import { describe, expect, it } from "vitest";
+import { authoringProgress } from "../../../tests/support/authoringProgress";
 
 function nodeFor(page: (typeof CANVAS_NODES)[number]["key"]) {
   const node = CANVAS_NODES.find((entry) => entry.key === page);
@@ -202,10 +203,13 @@ describe("node state", () => {
 
   // Doneness travels with the REE, not with the session that produced it: no
   // badge is set here, which is exactly the state a reloaded tab starts in.
-  it("reads an executed node as done from the REE's own audit", () => {
-    const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-      audit: { experiment_environment: "current" },
-    });
+  it("reads a node as done when the REE says its step is complete", () => {
+    const ree = {
+      ...patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
+        audit: { experiment_environment: "current" },
+      }),
+      steps: authoringProgress({ build_experiment_environment: "complete" }),
+    };
     expect(isNodeDone(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree, {})).toBe(true);
     expect(isNodeStale(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree)).toBe(false);
   });

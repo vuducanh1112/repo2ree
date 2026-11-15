@@ -288,6 +288,21 @@
       "reply": {
         "contentMediaType": "application/octet-stream"
       }
+    },
+    "templates": {
+      "flags": [],
+      "reply": {
+        "$ref": "#/$defs/ScriptTemplateCatalog"
+      }
+    },
+    "lint-draft": {
+      "flags": [
+        "--experiment-name",
+        "--experiment-environment-path"
+      ],
+      "reply": {
+        "$ref": "#/$defs/LintReport"
+      }
     }
   },
   "$defs": {
@@ -699,6 +714,29 @@
         "activate_experiment_environment_script_size"
       ],
       "title": "ActivateExperimentEnvironmentDefinition",
+      "type": "object"
+    },
+    "ActivateExperimentEnvironmentScriptTemplates": {
+      "additionalProperties": false,
+      "description": "The activate experiment environment templates and the reserved path they all belong at.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "templates"
+      ],
+      "title": "ActivateExperimentEnvironmentScriptTemplates",
       "type": "object"
     },
     "ActivationOutcome": {
@@ -1189,6 +1227,29 @@
         "produced_artifact_digest"
       ],
       "title": "BuildExperimentEnvironmentReceipt",
+      "type": "object"
+    },
+    "BuildExperimentEnvironmentScriptTemplates": {
+      "additionalProperties": false,
+      "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry for an\nenvironment (``is_default``) is the content a fresh REE's build script there is\nseeded with.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "templates"
+      ],
+      "title": "BuildExperimentEnvironmentScriptTemplates",
       "type": "object"
     },
     "BuildInfo": {
@@ -2710,6 +2771,18 @@
           "title": "Argv",
           "type": "array"
         },
+        "stdin": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stdin"
+        },
         "timeout": {
           "default": 30,
           "title": "Timeout",
@@ -3571,6 +3644,34 @@
         "result"
       ],
       "title": "ExperimentGateObservation",
+      "type": "object"
+    },
+    "ExperimentScriptTemplates": {
+      "additionalProperties": false,
+      "description": "Templates for per-experiment run scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips.",
+      "properties": {
+        "run_script_path_pattern": {
+          "title": "Run Script Path Pattern",
+          "type": "string"
+        },
+        "verify_script_path_pattern": {
+          "title": "Verify Script Path Pattern",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "run_script_path_pattern",
+        "verify_script_path_pattern",
+        "templates"
+      ],
+      "title": "ExperimentScriptTemplates",
       "type": "object"
     },
     "Failure": {
@@ -4682,6 +4783,29 @@
         "launch_script_size"
       ],
       "title": "LaunchDefinition",
+      "type": "object"
+    },
+    "LaunchScriptTemplates": {
+      "additionalProperties": false,
+      "description": "The launch-script templates and the reserved path they belong at.\n\nOptional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run\neach script through it, ``sh launch.sh <command>``.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "templates"
+      ],
+      "title": "LaunchScriptTemplates",
       "type": "object"
     },
     "Launched": {
@@ -5976,6 +6100,118 @@
         "ree_digest"
       ],
       "title": "ReeSeal",
+      "type": "object"
+    },
+    "ReeStepState": {
+      "additionalProperties": false,
+      "description": "A step as one REE stands on it.",
+      "properties": {
+        "key": {
+          "enum": [
+            "source",
+            "metadata",
+            "hbom",
+            "evaluate",
+            "build_experiment_environment",
+            "sbom",
+            "crosscheck",
+            "activation",
+            "experiments",
+            "seal"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "order": {
+          "title": "Order",
+          "type": "integer"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "requires": {
+          "items": {
+            "enum": [
+              "source",
+              "metadata",
+              "hbom",
+              "evaluate",
+              "build_experiment_environment",
+              "sbom",
+              "crosscheck",
+              "activation",
+              "experiments",
+              "seal"
+            ],
+            "type": "string"
+          },
+          "title": "Requires",
+          "type": "array"
+        },
+        "commands": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Commands",
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "ready",
+            "blocked"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "order",
+        "label",
+        "status"
+      ],
+      "title": "ReeStepState",
+      "type": "object"
+    },
+    "ReeSteps": {
+      "additionalProperties": false,
+      "description": "Where an REE stands on every step, and the one to do next: the first ready one.",
+      "properties": {
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/ReeStepState"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "next": {
+          "anyOf": [
+            {
+              "enum": [
+                "source",
+                "metadata",
+                "hbom",
+                "evaluate",
+                "build_experiment_environment",
+                "sbom",
+                "crosscheck",
+                "activation",
+                "experiments",
+                "seal"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Next"
+        }
+      },
+      "title": "ReeSteps",
       "type": "object"
     },
     "ReeSubject": {
@@ -7670,6 +7906,90 @@
       "title": "ScriptTargetSelectorArg",
       "type": "object"
     },
+    "ScriptTemplateCatalog": {
+      "additionalProperties": false,
+      "properties": {
+        "build_experiment_environment": {
+          "$ref": "#/$defs/BuildExperimentEnvironmentScriptTemplates"
+        },
+        "activate_experiment_environment": {
+          "$ref": "#/$defs/ActivateExperimentEnvironmentScriptTemplates"
+        },
+        "launch": {
+          "$ref": "#/$defs/LaunchScriptTemplates"
+        },
+        "experiment": {
+          "$ref": "#/$defs/ExperimentScriptTemplates"
+        },
+        "verify": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Verify",
+          "type": "array"
+        }
+      },
+      "required": [
+        "build_experiment_environment",
+        "activate_experiment_environment",
+        "launch",
+        "experiment",
+        "verify"
+      ],
+      "title": "ScriptTemplateCatalog",
+      "type": "object"
+    },
+    "ScriptTemplateEntry": {
+      "additionalProperties": false,
+      "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``workbench_environment`` is the REE workbench environment kind a\nvariant suits, or null for one that suits any.",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "body": {
+          "title": "Body",
+          "type": "string"
+        },
+        "is_default": {
+          "title": "Is Default",
+          "type": "boolean"
+        },
+        "workbench_environment": {
+          "anyOf": [
+            {
+              "enum": [
+                "host",
+                "container"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workbench Environment"
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "description",
+        "body",
+        "is_default"
+      ],
+      "title": "ScriptTemplateEntry",
+      "type": "object"
+    },
     "ScriptValidation": {
       "additionalProperties": false,
       "description": "Execution validation of a *written* script — distinct from inference.\n\nFor a candidate that has not been written, ``script_digest`` is the\ncandidate's own byte digest and ``status`` is ``not_run``; the other digests\nstay absent until a real run produces a receipt.",
@@ -8914,6 +9234,9 @@
         "audit": {
           "$ref": "#/$defs/ReeAudit"
         },
+        "steps": {
+          "$ref": "#/$defs/ReeSteps"
+        },
         "workspace_files": {
           "items": {
             "$ref": "#/$defs/WorkspaceFile"
@@ -8932,7 +9255,8 @@
       "required": [
         "ree",
         "status",
-        "audit"
+        "audit",
+        "steps"
       ],
       "title": "WorkbenchReeDocument",
       "type": "object"

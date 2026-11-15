@@ -1,8 +1,7 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
-import { hbomHasAnyComponents } from "@core/hbom/HbomSummary";
-import { isCatalogMetadataComplete } from "@core/ree/catalogMetadataOps";
+import { type AuthoringStepKey, isAuthoringStepComplete } from "@core/ree/AuthoringProgress";
 import { type Badges, isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
-import { type EvidenceStep, isAuditCurrent } from "@core/ree/StepEvidence";
+import type { EvidenceStep } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import type { ReeStepDefinition } from "@core/ree-steps/stepTypes";
@@ -95,12 +94,7 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
 ];
 
-/**
- * The audit step whose receipt speaks for each page. Source and hardware are
- * listed for staleness only — their doneness is a question about what the REE
- * declares, answered below (and `sourceAvailable` is itself already derived
- * from this same audit when the REE document is mapped).
- */
+/** The audit step whose receipt speaks for each page, for showing it stale. */
 export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, EvidenceStep>>> = {
   [PAGE.SOURCE]: "source",
   [PAGE.HBOM]: "hardware",
@@ -110,23 +104,28 @@ export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, Eviden
   [PAGE.ACTIVATION]: "activation",
 };
 
-// Doneness is a property of the REE, not of this browser session: every step
-// that produces evidence answers from the aggregate's audit, so a reload (or a
-// second tab, or a workbench service's run) sees the same thing. `badges` remains the live
-// outcome of runs started here — including the failures the audit never records,
-// since a failed step commits no receipt.
+// The authoring step each page does. Whether it is done is the REE's own word
+// (the document's `steps`, what `ree steps` prints), so a reload, a second tab or
+// a person at a terminal all see the same thing.
+const AUTHORING_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, AuthoringStepKey>>> = {
+  [PAGE.SOURCE]: "source",
+  [PAGE.METADATA]: "metadata",
+  [PAGE.HBOM]: "hbom",
+  [PAGE.EVALUATE]: "evaluate",
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "build_experiment_environment",
+  [PAGE.SBOM]: "sbom",
+  [PAGE.ACTIVATION]: "activation",
+  [PAGE.EXPERIMENTS]: "experiments",
+  [PAGE.SEAL]: "seal",
+};
+
+// `badges` is the live outcome of runs started here. Deposits are not steps of
+// the REE, so they come from those durable run outcomes.
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
-  if (stepKey === PAGE.SOURCE) return !!ree.source.sourceAvailable;
-  if (stepKey === PAGE.METADATA) return isCatalogMetadataComplete(ree.spec);
-  if (stepKey === PAGE.EXPERIMENTS)
-    return (ree.spec.experiments || []).some((entry) => !!entry.name.trim());
-  if (stepKey === PAGE.HBOM) return hbomHasAnyComponents(ree.spec.hardwareDescription);
-  if (stepKey === PAGE.SEAL) return !!ree.artifact.sealedAt;
-  // Deposits are not audited on the aggregate, so they come from durable run outcomes.
+  const authoringStep = AUTHORING_STEP_BY_PAGE[stepKey];
+  if (authoringStep) return isAuthoringStepComplete(ree.steps, authoringStep);
   if (stepKey === PAGE.ARCHIVE)
     return ["swh", "zenodo", "dataverse"].some((key) => isSuccessfulStepOutcome(badges?.[key]));
-  const evidenceStep = EVIDENCE_STEP_BY_PAGE[stepKey];
-  if (evidenceStep) return isAuditCurrent(ree.audit, evidenceStep);
   return isSuccessfulStepOutcome(badges?.[stepKey]);
 }
 

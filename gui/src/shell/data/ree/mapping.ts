@@ -15,6 +15,7 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
     // The audit is the REE's own word on whether each receipt still holds; the
     // shell reads step doneness from it rather than from what this tab ran.
     audit: ree.audit,
+    steps: ree.steps,
     reeIntent: {
       name: definition?.name ?? "",
       catalog_metadata: definition?.catalog,

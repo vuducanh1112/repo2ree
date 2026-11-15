@@ -10,6 +10,7 @@ from repo2ree_api.contracts.runs import RunSummary
 from repo2ree_api.ree_index import ReeIndexEntry
 from repo2ree_protocol.audit import ReeAudit
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.files import ReeFile, WorkspaceFile
 from repo2ree_ree.model import Ree, ReeStatus
@@ -24,6 +25,8 @@ class ReeDocument(BaseModel):
     ree: Ree
     status: ReeStatus
     audit: ReeAudit
+    # Where the REE stands on each authoring step, as its own records say.
+    steps: ReeSteps
     location_id: str | None = None
     # The store the REE is kept in; deleting it deletes it there.
     store_id: str | None = None
@@ -44,6 +47,7 @@ class ReeDocument(BaseModel):
             ree=document.ree,
             status=document.status,
             audit=document.audit,
+            steps=document.steps,
             location_id=location_id,
             store_id=store_id,
             workspace_files=document.workspace_files,
@@ -94,6 +98,7 @@ class ReeState(BaseModel):
     ree: Ree
     status: ReeStatus
     audit: ReeAudit
+    steps: ReeSteps
     workbench: WorkbenchStatus
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)

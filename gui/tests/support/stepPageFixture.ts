@@ -3,6 +3,7 @@ import { createEmptyReeEditorViewModel } from "@core/ree-editor/reeEditorViewMod
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import type { ReeStepKey } from "@core/ree-steps/stepRunParams";
 import type { StepPageProps } from "@shell/ui/app-shell/pages/sharedStepUi";
+import { authoringProgress } from "./authoringProgress";
 
 export const exampleWorkspaceFiles = [
   { id: "experiment_environment", name: "runtime.tar", type: "file" as const, size: 4096 },
@@ -57,6 +58,22 @@ export const exampleEditorRee = {
     sbom: "current" as const,
     activation: "current" as const,
   },
+  // What the REE says of its steps with these receipts and this definition.
+  steps: authoringProgress(
+    {
+      source: "complete",
+      metadata: "complete",
+      hbom: "ready",
+      evaluate: "complete",
+      build_experiment_environment: "complete",
+      sbom: "complete",
+      crosscheck: "ready",
+      activation: "complete",
+      experiments: "ready",
+      seal: "ready",
+    },
+    "hbom",
+  ),
 };
 
 export function createStepPageProps(

@@ -3,7 +3,7 @@
 A shared project-root prefix, a fork into one branch per experiment environment strategy
 (``dockerfile`` and ``podman`` for a container file, ``pip``), and an explicit score-free resolver
 join. This is deployment-static, versioned data — the sibling of
-``ree_step_catalog`` — and it is the *only* control-flow authority: the generic
+``REE_STEPS`` — and it is the *only* control-flow authority: the generic
 engine walks exactly these nodes. Adding an ecosystem later means adding a fork
 branch and another input edge to the same resolver, never a priority number.
 

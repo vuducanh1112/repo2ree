@@ -9,7 +9,7 @@ import { Ic } from "../shared/components/Icon";
 import { Toast } from "../shared/components/Toast";
 import { AppShellContent } from "./AppShellContent";
 import styles from "./AppShellView.module.css";
-import { useAuthoringWorkflowModel } from "./canvas/AuthoringConsole";
+import { authoringWorkflowModel } from "./canvas/AuthoringConsole";
 import { CanvasHub } from "./canvas/CanvasHub";
 import { RunHud } from "./canvas/RunHud";
 import { ReviewEvidence } from "./canvas/review/ReviewEvidence";
@@ -72,7 +72,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const page = uiChrome.page;
   // Derived once here so the status-bar DAG and the canvas panels name the
   // same next step; deriving it twice lets the two drift apart.
-  const authoring = useAuthoringWorkflowModel(ree, badges);
+  const authoring = authoringWorkflowModel(ree);
   // Which workflow the bar is showing, and the review step whose evidence the
   // drawer is on. Both live here because the review strip and the evidence
   // drawer are two views of one attempt, and the attempt cannot belong to

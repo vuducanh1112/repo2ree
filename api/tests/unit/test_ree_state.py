@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
+from repo2ree_core.domain.ree.steps import ree_steps
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
 from repo2ree_supervisor import ReeRoute
@@ -23,6 +24,7 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
             "ree": ree.model_dump(mode="json"),
             "status": "draft",
             "audit": audit(ree).model_dump(mode="json"),
+            "steps": ree_steps(ree, audit(ree)).model_dump(mode="json"),
             "workspace_files": [
                 {"path": "ree-scripts/build_experiment_environment.sh", "kind": "generated", "size": 12}
             ],

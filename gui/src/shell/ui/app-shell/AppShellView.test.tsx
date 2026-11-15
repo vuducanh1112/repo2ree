@@ -14,16 +14,15 @@ vi.mock("./providers/AppShellProvider", () => ({
 }));
 vi.mock("./AppShellContent", () => ({ AppShellContent: () => <div>Dock content</div> }));
 // The shell derives the authoring graph for the status bar and the canvas
-// alike; both consumers are mocked out here, so the query behind it is too.
+// alike; both consumers are mocked out here, so it is too.
 vi.mock("./canvas/AuthoringConsole", () => ({
-  useAuthoringWorkflowModel: () => ({
+  authoringWorkflowModel: () => ({
     steps: [],
     statuses: {},
     complete: 0,
     nextKey: undefined,
     nextPage: undefined,
     active: false,
-    error: false,
   }),
 }));
 // The review attempt is derived here too, and shared by the strip in the bar

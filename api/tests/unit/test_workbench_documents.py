@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
+from repo2ree_core.domain.ree.steps import ree_steps
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_ree.model import Ree
 from repo2ree_ree.reproducibility import (
@@ -55,7 +56,9 @@ def test_author_receipts_cross_as_a_typed_document(
     monkeypatch.setattr(
         command_dispatcher,
         "get_ree_state",
-        lambda handle: WorkbenchReeDocument(ree=ree, status="draft", audit=audit(ree)),
+        lambda handle: WorkbenchReeDocument(
+            ree=ree, status="draft", audit=audit(ree), steps=ree_steps(ree, audit(ree))
+        ),
     )
 
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/receipts/author")

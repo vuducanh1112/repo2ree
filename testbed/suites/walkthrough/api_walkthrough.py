@@ -28,7 +28,7 @@ same journey — one workbench, one experiment environment build, every pipeline
 in order — driven only through the public surface:
 
     createRee -> observeRun (provision)
-      -> listReeSteps (discover the authoring steps + prerequisites)
+      -> listReeSteps (discover the authoring steps, prerequisites, and what to do next)
       -> listScriptTemplates (discover the reserved script paths)
       -> source:upload-init / uploadSourceBytes / source:upload-complete
       -> observeRun (extract)
@@ -390,8 +390,8 @@ def run() -> None:
     ok(f"REE {ree_id} created in store {store_id}")
 
     chapter("2. Discover the authoring model")
-    note("listReeSteps publishes the authoring steps, their order, and their prerequisites")
-    steps_catalog = call("GET", "/api/v1/ree-steps")
+    note("listReeSteps publishes the authoring steps, their prerequisites, and where this REE stands on each")
+    steps_catalog = call("GET", f"/api/v1/rees/{ree_id}/ree-steps")
     step_keys = [step["key"] for step in steps_catalog["steps"]]
     check("build_experiment_environment" in step_keys and "seal" in step_keys, "step catalog missing core steps")
     # The catalog is the DAG as data: `requires` names each step's prerequisites,
@@ -399,10 +399,11 @@ def run() -> None:
     # without hardcoding the pipeline shape.
     sbom_step = next(step for step in steps_catalog["steps"] if step["key"] == "sbom")
     check(sbom_step["requires"] == ["build_experiment_environment"], "sbom should require build")
-    ok(f"{len(step_keys)} authoring steps discovered: {' → '.join(step_keys)}")
+    check(steps_catalog["next"] == "source", "a fresh REE should start with its source")
+    ok(f"{len(step_keys)} authoring steps discovered: {' → '.join(step_keys)}; next: {steps_catalog['next']}")
 
     note("listScriptTemplates publishes where each REE-owned script belongs — no hardcoded paths")
-    catalog = call("GET", "/api/v1/script-templates")
+    catalog = call("GET", f"/api/v1/rees/{ree_id}/script-templates")
     build_experiment_environment_script_path = catalog["build_experiment_environment"]["path"]
     activate_script_path = catalog["activate_experiment_environment"]["path"]
     experiment_run_script_path = catalog["experiment"]["run_script_path_pattern"].replace("{slug}", EXPERIMENT_NAME)

@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
 import { exampleEditorRee } from "../../../../../tests/support/stepPageFixture";
-import { useAuthoringWorkflowModel } from "../canvas/AuthoringConsole";
+import { authoringWorkflowModel } from "../canvas/AuthoringConsole";
 import { useReviewWorkflowModel } from "../canvas/review/useReviewWorkflowModel";
 import { type WorkflowMode, WorkspaceStatusBar } from "./WorkspaceStatusBar";
 
@@ -33,7 +33,7 @@ function StatusBarHarness({
   const [openReviewStep, setOpenReviewStep] = useState<ReviewStepKey | null>(null);
   return (
     <WorkspaceStatusBar
-      authoring={useAuthoringWorkflowModel(ree, badges)}
+      authoring={authoringWorkflowModel(ree)}
       review={useReviewWorkflowModel({ experiments, active: mode === "review" })}
       mode={mode}
       onModeChange={setMode}
@@ -47,26 +47,6 @@ function StatusBarHarness({
 function services() {
   return fakeApiServices({
     ree: {
-      listReeSteps: vi.fn().mockResolvedValue({
-        steps: [
-          { key: "source", order: 1, label: "Source", requires: [], actions: [] },
-          {
-            key: "build_experiment_environment",
-            order: 2,
-            label: "Build Experiment Environment",
-            requires: ["source"],
-            actions: [],
-          },
-          { key: "sbom", order: 3, label: "Generate SBOM", requires: ["evaluate"], actions: [] },
-          {
-            key: "crosscheck",
-            order: 4,
-            label: "Cross-check SBOM",
-            requires: ["build_experiment_environment"],
-            actions: [],
-          },
-        ],
-      }),
       listReviews: vi.fn().mockResolvedValue({ reviews: [] }),
     },
   });
@@ -87,6 +67,33 @@ describe("WorkspaceStatusBar", () => {
           source: { ...exampleEditorRee.source, sourceAvailable: true },
           // Source acquired and the runtime built; nothing downstream has run.
           audit: { source: "current", experiment_environment: "current" },
+          steps: {
+            steps: [
+              { key: "source", order: 1, label: "Source", requires: [], status: "complete" },
+              {
+                key: "build_experiment_environment",
+                order: 2,
+                label: "Build Experiment Environment",
+                requires: ["source"],
+                status: "complete",
+              },
+              {
+                key: "sbom",
+                order: 3,
+                label: "Generate SBOM",
+                requires: ["evaluate"],
+                status: "blocked",
+              },
+              {
+                key: "crosscheck",
+                order: 4,
+                label: "Cross-check SBOM",
+                requires: ["build_experiment_environment"],
+                status: "ready",
+              },
+            ],
+            next: "crosscheck",
+          },
         }}
         badges={{}}
         workspaceFiles={[

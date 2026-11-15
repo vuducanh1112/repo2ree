@@ -14,6 +14,7 @@ from repo2ree_protocol.argv import ArgvError
 from repo2ree_protocol.command import (
     GenerateScriptCandidatesArgs,
     GenerateScriptCandidatesCommand,
+    ScriptTargetSelectorArg,
     WriteFileArgs,
     WriteFileCommand,
 )
@@ -43,6 +44,19 @@ def _for(annotation: Any) -> st.SearchStrategy[Any]:
                 ReviewLaunch,
                 mode=st.just("author"),
                 options=st.lists(_LAUNCH_OPTIONS.map(LaunchOption), max_size=3).map(tuple),
+            ),
+        )
+    if annotation is ScriptTargetSelectorArg:
+        # An experiment's script is named for its experiment; no other script is.
+        return st.one_of(
+            st.builds(
+                ScriptTargetSelectorArg,
+                kind=st.sampled_from(["experiment_run", "experiment_verify"]),
+                experiment_name=_TEXT.filter(bool),
+            ),
+            st.builds(
+                ScriptTargetSelectorArg,
+                kind=st.sampled_from(["build_experiment_environment", "activate_experiment_environment", "launch"]),
             ),
         )
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):

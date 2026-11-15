@@ -299,6 +299,7 @@ name = "API speaks only protocol"
 type = "forbidden"
 source_modules = ["repo2ree_api"]
 forbidden_modules = [
+    "repo2ree_authoring",
     "repo2ree_core",
     "repo2ree_cli",
     "repo2ree_workbench",
@@ -311,6 +312,7 @@ name = "Workbench speaks only protocol"
 type = "forbidden"
 source_modules = ["repo2ree_workbench"]
 forbidden_modules = [
+    "repo2ree_authoring",
     "repo2ree_core",
 ]
 
@@ -319,6 +321,7 @@ name = "Supervisor speaks only protocol"
 type = "forbidden"
 source_modules = ["repo2ree_supervisor"]
 forbidden_modules = [
+    "repo2ree_authoring",
     "repo2ree_core",
     "repo2ree_cli",
     "repo2ree_workbench",

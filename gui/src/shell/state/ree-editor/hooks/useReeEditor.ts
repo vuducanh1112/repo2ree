@@ -80,6 +80,7 @@ export function useReeEditor({ reeIntent, stepRuns, dispatch }: UseReeEditorArgs
         evaluationState: remoteRee?.evaluationState ?? emptyEvaluationState(),
         stepEvidence: remoteRee?.stepEvidence ?? {},
         audit: remoteRee?.audit,
+        steps: remoteRee?.steps,
       }),
     [reeIntent.reeSpec, remoteRee, workspaceSourceState],
   );

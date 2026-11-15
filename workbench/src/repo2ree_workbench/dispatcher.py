@@ -73,7 +73,7 @@ async def dispatch_workbench_request(
         await asyncio.to_thread(service.delete_ree, req.ree_id)
         await send(DoneFrame())
     elif isinstance(req, ExecQueryRequest):
-        await pump_bytes(lambda: service.exec_query_stream(req.argv, req.timeout, ree_id=req.ree_id))
+        await pump_bytes(lambda: service.exec_query_stream(req.argv, req.timeout, ree_id=req.ree_id, stdin=req.stdin))
     elif isinstance(req, ExecUploadRequest):
         url = transfer_url(api_ws_url, req.transfer_path)
         await asyncio.to_thread(_upload_query, service, req, url)

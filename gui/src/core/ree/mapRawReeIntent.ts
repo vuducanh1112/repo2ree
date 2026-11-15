@@ -2,6 +2,7 @@ import type { ArtifactStatus } from "../artifact/ArtifactStatus";
 import type { EvaluationState } from "../evaluate/EvaluationState";
 import { normalizeHBOM } from "../hbom/HbomSummary";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
+import { type AuthoringProgress, mapRawAuthoringProgress } from "./AuthoringProgress";
 import {
   createEmptyExperimentResourceEstimates,
   createEmptyReeCatalogMetadata,
@@ -29,6 +30,8 @@ interface MapRawReeIntentToReeOptions {
   reeSession?: Record<string, unknown> | null | undefined;
   /** The REE document's audit, as shipped: `StepAudit` per step. */
   audit?: unknown;
+  /** The REE document's steps, as shipped: where the REE stands on each. */
+  steps?: unknown;
   fallbackName: string;
   fallbackOriginUrl?: string;
 }
@@ -40,6 +43,7 @@ export interface RawReeIntentSlices {
   evaluationState: EvaluationState;
   stepEvidence: StepEvidence;
   audit: ReeAudit;
+  steps: AuthoringProgress;
 }
 
 // ================================================
@@ -118,6 +122,7 @@ export function mapRawReeIntentToSlices({
   reeIntent,
   reeSession,
   audit,
+  steps,
   fallbackName,
   fallbackOriginUrl = "",
 }: MapRawReeIntentToReeOptions): RawReeIntentSlices {
@@ -177,5 +182,6 @@ export function mapRawReeIntentToSlices({
     },
     stepEvidence: mapRawStepEvidence(audit),
     audit: mapRawReeAudit(audit),
+    steps: mapRawAuthoringProgress(steps),
   };
 }

@@ -1,5 +1,6 @@
 import type { ArtifactStatus } from "../../core/artifact/ArtifactStatus";
 import type { EvaluationState } from "../../core/evaluate/EvaluationState";
+import { type AuthoringProgress, NO_AUTHORING_PROGRESS } from "../../core/ree/AuthoringProgress";
 import { createEmptyReeSpec, type ReeSpec } from "../../core/ree/ReeSpec";
 import type { ReeAudit } from "../../core/ree/StepEvidence";
 import type { WorkspaceSourceState } from "../../core/workspace/WorkspaceSourceState";
@@ -16,6 +17,8 @@ export interface ReeEditorViewModel {
    * a sibling of `evaluation`, which carries the readiness axes.
    */
   audit: ReeAudit;
+  /** Where the REE stands on each authoring step, as the REE itself says. */
+  steps: AuthoringProgress;
 }
 
 export interface ReeEditorViewModelPatch {
@@ -36,6 +39,7 @@ export function patchReeEditorViewModel(
     artifact: { ...current.artifact, ...patch.artifact },
     evaluation: { ...current.evaluation, ...patch.evaluation },
     audit: { ...current.audit, ...patch.audit },
+    steps: current.steps,
   };
 }
 
@@ -50,6 +54,7 @@ export function createEmptyReeEditorViewModel(): ReeEditorViewModel {
       machineLevel: 0,
     },
     audit: { experiments: [] },
+    steps: NO_AUTHORING_PROGRESS,
   };
 }
 
@@ -57,7 +62,7 @@ export function createReeEditorViewModel(
   editorState: Pick<
     ReeEditorState,
     "reeSpec" | "workspaceSourceState" | "artifactStatus" | "evaluationState" | "stepEvidence"
-  > & { audit?: ReeAudit },
+  > & { audit?: ReeAudit; steps?: AuthoringProgress },
 ): ReeEditorViewModel {
   return {
     spec: editorState.reeSpec,
@@ -73,5 +78,6 @@ export function createReeEditorViewModel(
       ),
       experiments: [],
     },
+    steps: editorState.steps ?? NO_AUTHORING_PROGRESS,
   };
 }

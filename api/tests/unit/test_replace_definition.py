@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
+from repo2ree_core.domain.ree.steps import ree_steps
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree, ReeDefinition
@@ -27,7 +28,7 @@ def test_replace_definition_route_dispatches_every_definition_field(
         return ActionResult(status="succeeded", exit_code=0)
 
     ree = Ree()
-    document = WorkbenchReeDocument(ree=ree, status="draft", audit=audit(ree))
+    document = WorkbenchReeDocument(ree=ree, status="draft", audit=audit(ree), steps=ree_steps(ree, audit(ree)))
     monkeypatch.setattr(command_dispatcher, "get_ree_document", lambda handle: document)
     monkeypatch.setattr(command_dispatcher, "dispatch_action", _dispatch)
 

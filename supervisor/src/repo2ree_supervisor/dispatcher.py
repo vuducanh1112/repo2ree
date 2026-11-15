@@ -14,7 +14,8 @@ import time
 from collections.abc import Callable, Iterator
 from typing import Any
 
-from repo2ree_protocol.command import Command
+from repo2ree_protocol.catalog import ScriptTemplateCatalog
+from repo2ree_protocol.command import Command, ScriptTargetSelectorArg
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
@@ -29,6 +30,7 @@ from repo2ree_protocol.frames import (
     UnknownFrame,
 )
 from repo2ree_protocol.history import OperationHistory
+from repo2ree_protocol.lint import LintReport, ScriptDeclarations
 from repo2ree_protocol.queries import (
     BUILD_ARCHIVE,
     GET_HISTORY,
@@ -37,6 +39,10 @@ from repo2ree_protocol.queries import (
     GET_REE_MANIFEST,
     GET_REVIEWS,
     INIT_REE,
+    LINT_DRAFT,
+    LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH,
+    LINT_DRAFT_EXPERIMENT_NAME,
+    LIST_SCRIPT_TEMPLATES,
     READ_REE_FILE,
 )
 from repo2ree_protocol.result import ActionResult
@@ -399,10 +405,12 @@ class CommandDispatcher:
     # Query / mutation dispatch
     # ------------------------------------------------
 
-    def dispatch_query(self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
+    def dispatch_query(
+        self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30, stdin: str | None = None
+    ) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``ree`` subcommand (e.g. ``get-ree-manifest``);
+        ``argv`` is a ``ree`` subcommand (e.g. ``manifest``), and ``stdin`` what it reads;
         the workbench service prepends the bench's executor entry point. Set
         ``locked`` for
         queries that must observe a consistent snapshot — they take the per-REE
@@ -413,8 +421,12 @@ class CommandDispatcher:
         exec_argv = list(argv)
         if locked:
             with self._locks(handle.ree_id):
-                return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
-        return self._workbench.exec_query(handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id)
+                return self._workbench.exec_query(
+                    handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id, stdin=stdin
+                )
+        return self._workbench.exec_query(
+            handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id, stdin=stdin
+        )
 
     def dispatch_query_stream(
         self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30
@@ -436,14 +448,14 @@ class CommandDispatcher:
 
         return stream()
 
-    def _query_json(self, handle: ReeRoute, *argv: str) -> dict[str, Any]:
+    def _query_json(self, handle: ReeRoute, *argv: str, stdin: str | None = None) -> dict[str, Any]:
         """Run a read-only CLI subcommand and parse its stdout as a JSON object.
 
         The one place the workbench's untyped JSON becomes a typed value, so the
         ``Any`` that ``json.loads`` returns is narrowed once rather than at each
-        of the five call sites below.
+        call site below.
         """
-        parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv))
+        parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv, stdin=stdin))
         return parsed
 
     def get_ree_manifest(self, handle: ReeRoute) -> Ree:
@@ -461,6 +473,19 @@ class CommandDispatcher:
 
     def get_reviews(self, handle: ReeRoute) -> ReviewSet:
         return ReviewSet.model_validate(self._query_json(handle, GET_REVIEWS))
+
+    def list_script_templates(self, handle: ReeRoute) -> ScriptTemplateCatalog:
+        return ScriptTemplateCatalog.model_validate(self._query_json(handle, LIST_SCRIPT_TEMPLATES))
+
+    def lint_draft(
+        self, handle: ReeRoute, target: ScriptTargetSelectorArg, source: str, declarations: ScriptDeclarations
+    ) -> LintReport:
+        argv = [LINT_DRAFT, target.kind]
+        if target.experiment_name is not None:
+            argv += [LINT_DRAFT_EXPERIMENT_NAME, target.experiment_name]
+        if declarations.experiment_environment_path is not None:
+            argv += [LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH, declarations.experiment_environment_path]
+        return LintReport.model_validate(self._query_json(handle, *argv, stdin=source))
 
     def read_ree_file_bytes(self, handle: ReeRoute, path: str) -> bytes:
         # REE files can include large experiment environment and result artifacts.

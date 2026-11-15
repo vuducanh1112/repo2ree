@@ -107,7 +107,8 @@ are synchronous. A REE is authored end to end in this order:
 
 1. Discover: `listStores` says what each store's workbench offers (`backend`,
    `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,
-   and the operations that advance each. `listScriptTemplates` gives the starter
+   where the REE stands on each and which is next, and the operations that
+   advance each. `listScriptTemplates` gives the starter
    scripts and where they belong.
 2. `createRee` — create the REE in a store; await the returned run. It declares the
    image you ask for or the store's first, or the store's host if it offers none,
@@ -194,7 +195,7 @@ ROUTERS = (
     # Control plane — the REE and its runs exist before any step does.
     rees_router,
     runs_router,
-    # Authoring, in the order of repo2ree_authoring.steps.REE_STEPS.
+    # Authoring, in the order `ree steps` lists the steps.
     ree_steps_router,
     script_templates_router,
     source_router,

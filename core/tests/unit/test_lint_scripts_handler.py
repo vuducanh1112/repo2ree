@@ -93,12 +93,9 @@ def test_lint_needs_no_acquired_source(tmp_path: Path, monkeypatch: pytest.Monke
     assert _run(ReeLayout(root=tmp_path), _args("build_experiment_environment")).status == "succeeded"
 
 
-def test_an_experiment_target_without_a_name_is_a_validation_error(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _store_at(tmp_path, monkeypatch)
-    result = _run(ReeLayout(root=tmp_path), _args("experiment_run"))
-    assert result.status == "failed"
+def test_an_experiment_target_without_a_name_is_not_a_command() -> None:
+    with pytest.raises(ValueError, match="requires an experiment_name"):
+        _args("experiment_run")
 
 
 def test_a_canceled_run_reports_canceled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

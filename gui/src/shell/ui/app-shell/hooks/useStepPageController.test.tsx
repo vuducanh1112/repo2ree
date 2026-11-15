@@ -1,5 +1,6 @@
 /* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 import { PAGE } from "@core/app-shell/pages";
+import type { AuthoringProgress } from "@core/ree/AuthoringProgress";
 import {
   createEmptyReeEditorViewModel,
   patchReeEditorViewModel,
@@ -8,6 +9,7 @@ import {
 import { createInitialStepRunState } from "@shell/state/ree-editor/store/stepRunState";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { authoringProgress } from "../../../../../tests/support/authoringProgress";
 import { useStepPageController } from "./useStepPageController";
 
 const runQueries = vi.hoisted(() => ({
@@ -41,41 +43,23 @@ vi.mock("@shell/data/runs/queries", () => ({
 vi.mock("@shell/data/ree/followRuns", () => ({
   useRunsAwaitingDocument: () => runQueries.awaitingDocument,
 }));
-vi.mock("@shell/data/reeSteps/queries", () => ({
-  useAuthoringStepsQuery: () => ({
-    data: [
-      { key: "source", order: 1, label: "Source Acquisition", requires: [], actions: [] },
-      {
-        key: "evaluate",
-        order: 4,
-        label: "Reproducibility Readiness",
-        requires: ["source"],
-        actions: [],
-      },
-      {
-        key: "build_experiment_environment",
-        order: 5,
-        label: "Build Experiment Environment",
-        requires: ["source"],
-        actions: [],
-      },
-    ],
-  }),
-}));
-
 type ControllerArgs = Parameters<typeof useStepPageController>[0];
 
 function controllerArgs(
   overrides: {
     page?: ControllerArgs["page"];
     ree?: ReeEditorViewModelPatch;
+    steps?: AuthoringProgress;
     stepRuns?: Partial<ControllerArgs["stepRuns"]>;
   } = {},
 ) {
   const setStepParams = vi.fn();
   const setPage = vi.fn();
   const args = {
-    ree: patchReeEditorViewModel(createEmptyReeEditorViewModel(), overrides.ree ?? {}),
+    ree: {
+      ...patchReeEditorViewModel(createEmptyReeEditorViewModel(), overrides.ree ?? {}),
+      steps: overrides.steps ?? authoringProgress(),
+    },
     stepRuns: { ...createInitialStepRunState(), ...overrides.stepRuns },
     page: overrides.page ?? PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
     commands: { setStepParams, setPage },
@@ -121,6 +105,7 @@ describe("useStepPageController", () => {
     const { args, setPage, setStepParams } = controllerArgs({
       page: PAGE.EVALUATE,
       ree: { source: { sourceAvailable: false } },
+      steps: authoringProgress({ source: "ready" }),
       stepRuns: { stepParams: initialStepParams },
     });
     const { result } = renderHook(() => useStepPageController(args));
@@ -146,6 +131,7 @@ describe("useStepPageController", () => {
     const { args, setPage, setStepParams } = controllerArgs({
       page: PAGE.EVALUATE,
       ree: { source: { sourceAvailable: true } },
+      steps: authoringProgress({ source: "complete", evaluate: "ready" }),
       stepRuns: { stepParams },
     });
     const { result } = renderHook(() => useStepPageController(args));

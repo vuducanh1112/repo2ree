@@ -161,7 +161,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ree-steps": {
+    "/api/v1/rees/{ree_id}/ree-steps": {
         parameters: {
             query?: never;
             header?: never;
@@ -170,8 +170,9 @@ export interface paths {
         };
         /**
          * List Ree Steps
-         * @description The static authoring steps: ordered, their prerequisite edges, and the
-         *     operationIds that advance each. Deployment-static, so a client may cache it.
+         * @description Each authoring step, ordered, with its prerequisites, where the REE stands on
+         *     it (``complete``, ``ready`` or ``blocked``), and the operationIds that advance
+         *     it; ``next`` is the step to do next.
          */
         get: operations["listReeSteps"];
         put?: never;
@@ -182,7 +183,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/script-templates": {
+    "/api/v1/rees/{ree_id}/script-templates": {
         parameters: {
             query?: never;
             header?: never;
@@ -193,12 +194,12 @@ export interface paths {
          * List Script Templates
          * @description Starter templates for the REE-owned scripts and where each belongs.
          *
-         *     Static per deployment. Each section marks the default entry for each
-         *     environment with ``is_default``; the default build and activate experiment environment templates
-         *     are the content a fresh REE in that environment is seeded with. The experiment
-         *     templates are for scripts created on demand under the reserved experiments
-         *     directory. For scripts fitted to the REE's own project, use
-         *     ``generateScriptCandidates``.
+         *     Static for the command line the REE's workbench runs. Each section marks the
+         *     default entry for each environment with ``is_default``; the default build and
+         *     activate experiment environment templates are the content a fresh REE in that
+         *     environment is seeded with. The experiment templates are for scripts created on
+         *     demand under the reserved experiments directory. For scripts fitted to the REE's
+         *     own project, use ``generateScriptCandidates``.
          */
         get: operations["listScriptTemplates"];
         put?: never;
@@ -413,7 +414,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/script-lints:draft": {
+    "/api/v1/rees/{ree_id}/script-lints:draft": {
         parameters: {
             query?: never;
             header?: never;
@@ -424,7 +425,7 @@ export interface paths {
         put?: never;
         /**
          * Check Script Draft Route
-         * @description Run process-free contract checks against unsaved source.
+         * @description Run the checks that start no process against unsaved source, on the REE's workbench.
          */
         post: operations["checkScriptDraft"];
         delete?: never;
@@ -3242,6 +3243,7 @@ export interface components {
              */
             status: "draft" | "sealed";
             audit: components["schemas"]["ReeAudit"];
+            steps: components["schemas"]["ReeSteps"];
             /** Location Id */
             location_id?: string | null;
             /** Store Id */
@@ -3362,6 +3364,7 @@ export interface components {
              */
             status: "draft" | "sealed";
             audit: components["schemas"]["ReeAudit"];
+            steps: components["schemas"]["ReeSteps"];
             workbench: components["schemas"]["WorkbenchStatus"];
             /** Workspace Files */
             workspace_files?: components["schemas"]["WorkspaceFile"][];
@@ -3374,22 +3377,68 @@ export interface components {
         ReeStepCatalog: {
             /** Steps */
             steps?: components["schemas"]["ReeStepCatalogEntry"][];
+            /** Next */
+            next?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
         };
         /**
          * ReeStepCatalogEntry
-         * @description One authoring step: its structure (from core) plus the calls that run it.
+         * @description One authoring step as the REE stands on it, plus the operations that advance it.
          */
         ReeStepCatalogEntry: {
-            /** Key */
-            key: string;
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
             /** Order */
             order: number;
             /** Label */
             label: string;
             /** Requires */
-            requires?: string[];
+            requires?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
+            /** Commands */
+            commands?: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "ready" | "blocked";
             /** Actions */
             actions?: string[];
+        };
+        /**
+         * ReeStepState
+         * @description A step as one REE stands on it.
+         */
+        ReeStepState: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
+            /** Order */
+            order: number;
+            /** Label */
+            label: string;
+            /** Requires */
+            requires?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
+            /** Commands */
+            commands?: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "complete" | "ready" | "blocked";
+        };
+        /**
+         * ReeSteps
+         * @description Where an REE stands on every step, and the one to do next: the first ready one.
+         */
+        ReeSteps: {
+            /** Steps */
+            steps?: components["schemas"]["ReeStepState"][];
+            /** Next */
+            next?: ("source" | "metadata" | "hbom" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
         };
         /** ReeSubject */
         ReeSubject: {
@@ -5778,7 +5827,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                ree_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -5888,7 +5939,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                ree_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -7380,7 +7433,9 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                ree_id: string;
+            };
             cookie?: never;
         };
         requestBody: {

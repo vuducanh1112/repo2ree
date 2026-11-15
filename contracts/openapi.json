@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   and the operations that advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1505,14 +1505,25 @@
         }
       }
     },
-    "/api/v1/ree-steps": {
+    "/api/v1/rees/{ree_id}/ree-steps": {
       "get": {
         "tags": [
           "ree-steps"
         ],
         "summary": "List Ree Steps",
-        "description": "The static authoring steps: ordered, their prerequisite edges, and the\noperationIds that advance each. Deployment-static, so a client may cache it.",
+        "description": "Each authoring step, ordered, with its prerequisites, where the REE stands on\nit (``complete``, ``ready`` or ``blocked``), and the operationIds that advance\nit; ``next`` is the step to do next.",
         "operationId": "listReeSteps",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1627,14 +1638,25 @@
         }
       }
     },
-    "/api/v1/script-templates": {
+    "/api/v1/rees/{ree_id}/script-templates": {
       "get": {
         "tags": [
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic per deployment. Each section marks the default entry for each\nenvironment with ``is_default``; the default build and activate experiment environment templates\nare the content a fresh REE in that environment is seeded with. The experiment\ntemplates are for scripts created on demand under the reserved experiments\ndirectory. For scripts fitted to the REE's own project, use\n``generateScriptCandidates``.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic for the command line the REE's workbench runs. Each section marks the\ndefault entry for each environment with ``is_default``; the default build and\nactivate experiment environment templates are the content a fresh REE in that\nenvironment is seeded with. The experiment templates are for scripts created on\ndemand under the reserved experiments directory. For scripts fitted to the REE's\nown project, use ``generateScriptCandidates``.",
         "operationId": "listScriptTemplates",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3468,23 +3490,34 @@
         }
       }
     },
-    "/api/v1/script-lints:draft": {
+    "/api/v1/rees/{ree_id}/script-lints:draft": {
       "post": {
         "tags": [
           "files"
         ],
         "summary": "Check Script Draft Route",
-        "description": "Run process-free contract checks against unsaved source.",
+        "description": "Run the checks that start no process against unsaved source, on the REE's workbench.",
         "operationId": "checkScriptDraft",
+        "parameters": [
+          {
+            "name": "ree_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ree Id"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ScriptDraftPayload"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -8179,6 +8212,7 @@
             "title": "Templates"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "path",
@@ -8832,6 +8866,7 @@
             "title": "Templates"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "path",
@@ -11252,6 +11287,7 @@
             "title": "Templates"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "run_script_path_pattern",
@@ -12235,6 +12271,7 @@
             "title": "Templates"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "path",
@@ -13327,6 +13364,9 @@
           "audit": {
             "$ref": "#/components/schemas/ReeAudit"
           },
+          "steps": {
+            "$ref": "#/components/schemas/ReeSteps"
+          },
           "location_id": {
             "anyOf": [
               {
@@ -13370,7 +13410,8 @@
           "ree_id",
           "ree",
           "status",
-          "audit"
+          "audit",
+          "steps"
         ],
         "title": "ReeDocument",
         "description": "The portable aggregate with live workbench file projections."
@@ -13674,6 +13715,9 @@
           "audit": {
             "$ref": "#/components/schemas/ReeAudit"
           },
+          "steps": {
+            "$ref": "#/components/schemas/ReeSteps"
+          },
           "workbench": {
             "$ref": "#/components/schemas/WorkbenchStatus"
           },
@@ -13706,6 +13750,7 @@
           "ree",
           "status",
           "audit",
+          "steps",
           "workbench"
         ],
         "title": "ReeState",
@@ -13719,6 +13764,29 @@
             },
             "type": "array",
             "title": "Steps"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "source",
+                  "metadata",
+                  "hbom",
+                  "evaluate",
+                  "build_experiment_environment",
+                  "sbom",
+                  "crosscheck",
+                  "activation",
+                  "experiments",
+                  "seal"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
           }
         },
         "additionalProperties": false,
@@ -13729,6 +13797,18 @@
         "properties": {
           "key": {
             "type": "string",
+            "enum": [
+              "source",
+              "metadata",
+              "hbom",
+              "evaluate",
+              "build_experiment_environment",
+              "sbom",
+              "crosscheck",
+              "activation",
+              "experiments",
+              "seal"
+            ],
             "title": "Key"
           },
           "order": {
@@ -13741,10 +13821,38 @@
           },
           "requires": {
             "items": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "source",
+                "metadata",
+                "hbom",
+                "evaluate",
+                "build_experiment_environment",
+                "sbom",
+                "crosscheck",
+                "activation",
+                "experiments",
+                "seal"
+              ]
             },
             "type": "array",
             "title": "Requires"
+          },
+          "commands": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Commands"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "ready",
+              "blocked"
+            ],
+            "title": "Status"
           },
           "actions": {
             "items": {
@@ -13759,10 +13867,122 @@
         "required": [
           "key",
           "order",
-          "label"
+          "label",
+          "status"
         ],
         "title": "ReeStepCatalogEntry",
-        "description": "One authoring step: its structure (from core) plus the calls that run it."
+        "description": "One authoring step as the REE stands on it, plus the operations that advance it."
+      },
+      "ReeStepState": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "source",
+              "metadata",
+              "hbom",
+              "evaluate",
+              "build_experiment_environment",
+              "sbom",
+              "crosscheck",
+              "activation",
+              "experiments",
+              "seal"
+            ],
+            "title": "Key"
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "requires": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "source",
+                "metadata",
+                "hbom",
+                "evaluate",
+                "build_experiment_environment",
+                "sbom",
+                "crosscheck",
+                "activation",
+                "experiments",
+                "seal"
+              ]
+            },
+            "type": "array",
+            "title": "Requires"
+          },
+          "commands": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Commands"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "complete",
+              "ready",
+              "blocked"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "order",
+          "label",
+          "status"
+        ],
+        "title": "ReeStepState",
+        "description": "A step as one REE stands on it."
+      },
+      "ReeSteps": {
+        "properties": {
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ReeStepState"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "source",
+                  "metadata",
+                  "hbom",
+                  "evaluate",
+                  "build_experiment_environment",
+                  "sbom",
+                  "crosscheck",
+                  "activation",
+                  "experiments",
+                  "seal"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReeSteps",
+        "description": "Where an REE stands on every step, and the one to do next: the first ready one."
       },
       "ReeSubject": {
         "properties": {
@@ -15485,6 +15705,7 @@
             "title": "Verify"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "build_experiment_environment",
@@ -15533,6 +15754,7 @@
             "title": "Workbench Environment"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "key",

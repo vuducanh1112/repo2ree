@@ -5,6 +5,7 @@ import { createEmptyReeExperiment } from "@core/ree/ReeSpec";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { authoringProgress } from "../../../../../tests/support/authoringProgress";
 import { fakeApiServices } from "../../../../../tests/support/fakeApiServices";
 import { renderWithShell } from "../../../../../tests/support/renderApp";
 import {
@@ -72,25 +73,6 @@ function services() {
       listRuns: vi.fn().mockResolvedValue({ runs: [liveBuildRun], next_cursor: null }),
     },
     ree: {
-      listReeSteps: vi.fn().mockResolvedValue({
-        steps: [
-          { key: "source", order: 1, label: "Source", requires: [], actions: [] },
-          {
-            key: "build_experiment_environment",
-            order: 2,
-            label: "Build Experiment Environment",
-            requires: ["source"],
-            actions: [],
-          },
-          {
-            key: "crosscheck",
-            order: 3,
-            label: "Cross-check SBOM",
-            requires: ["build_experiment_environment"],
-            actions: [],
-          },
-        ],
-      }),
       getRee: vi.fn().mockResolvedValue(reeDocument),
       listScriptTemplates: vi.fn().mockResolvedValue(scriptTemplateCatalog),
       listReviews: vi.fn().mockResolvedValue({ reviews: [] }),
@@ -241,7 +223,11 @@ describe("CanvasHub", () => {
         page={PAGE.CANVAS}
         ree={{
           ...exampleEditorRee,
-          audit: { source: "current", experiment_environment: "current" },
+          audit: { source: "current", experiment_environment: "current", sbom: "stale" },
+          steps: authoringProgress({
+            source: "complete",
+            build_experiment_environment: "complete",
+          }),
         }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{}}

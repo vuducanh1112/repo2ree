@@ -18,7 +18,9 @@ class _Backend:
     def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         self.calls.append("exec_simple")
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
+    def exec_query_stream(
+        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+    ) -> Iterator[bytes]:
         self.calls.append("exec_query")
         yield b"result"
 

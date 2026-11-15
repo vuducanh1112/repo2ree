@@ -44,6 +44,7 @@ describe("shell data hooks", () => {
       verify: [],
     });
     const { Wrapper } = createShellWrapper({
+      reeId: "ree-1",
       services: fakeApiServices({
         ree: { listStores, listScriptTemplates },
       }),

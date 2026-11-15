@@ -36,6 +36,19 @@ describe("shell/data/ree/mapping", () => {
         activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
         experiments: [],
       },
+      steps: {
+        steps: [
+          {
+            key: "source",
+            order: 1,
+            label: "Source Acquisition",
+            requires: [],
+            commands: ["acquire-source"],
+            status: "ready",
+          },
+        ],
+        next: "source",
+      },
       workspace_files: [],
       ree_files: [],
     };
@@ -45,6 +58,8 @@ describe("shell/data/ree/mapping", () => {
     expect(mapped.reeSpec.name).toBe("workspace-demo");
     expect(mapped.reeSpec.originUrl).toBe("https://example.org/archive.tar.gz");
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(false);
+    expect(mapped.steps.next).toBe("source");
+    expect(mapped.steps.steps.map((step) => step.status)).toEqual(["ready"]);
   });
 
   // A draft's payload is always not_applicable — it describes a sealed bundle's
@@ -83,6 +98,7 @@ describe("shell/data/ree/mapping", () => {
         activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
         experiments: [],
       },
+      steps: { steps: [], next: null },
       workspace_files: [],
       ree_files: [],
     };

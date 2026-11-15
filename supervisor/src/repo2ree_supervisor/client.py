@@ -52,10 +52,12 @@ class WorkbenchClient(Protocol):
         binary — the serving backend prepends the bench's entry point."""
         ...
 
-    def exec_query(self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str) -> bytes: ...
+    def exec_query(
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+    ) -> bytes: ...
 
     def exec_query_stream(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str
+        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
     ) -> Iterator[bytes]: ...
 
     def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str) -> ReceivedFile:
