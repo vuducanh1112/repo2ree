@@ -12,6 +12,7 @@ from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_protocol.command import LintScriptsArgs, LintScriptsCommand, ScriptTargetSelectorArg
 from repo2ree_protocol.lint import LintReport, ScriptDeclarations
+from repo2ree_protocol.queries import LintDraftQuery
 
 lint_router = APIRouter(tags=["files"])
 
@@ -77,8 +78,13 @@ def _lint(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
 def check_script_draft_route(ree_id: str, payload: ScriptDraftPayload) -> LintReport:
     """Run the checks that start no process against unsaved source, on the REE's workbench."""
     handle = require_handle(ree_id)
-    target = ScriptTargetSelectorArg(kind=payload.target.kind, experiment_name=payload.target.experiment_name)
+    query = LintDraftQuery(
+        kind=payload.target.kind,
+        experiment_name=payload.target.experiment_name,
+        experiment_environment_path=payload.declarations.experiment_environment_path,
+        source=payload.source,
+    )
     try:
-        return command_dispatcher.lint_draft(handle, target, payload.source, payload.declarations)
+        return command_dispatcher.lint_draft(handle, query)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Workbench draft check failed: {exc}") from exc

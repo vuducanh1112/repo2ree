@@ -13,8 +13,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from repo2ree_api.deps import command_dispatcher
-from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
-from repo2ree_protocol.lint import LintReport, ScriptDeclarations
+from repo2ree_protocol.command import ScriptTarget
+from repo2ree_protocol.lint import LintReport
+from repo2ree_protocol.queries import LintDraftQuery
 from repo2ree_supervisor import ReeRoute
 
 
@@ -28,11 +29,9 @@ def _draft(source: str, **extra: Any) -> dict[str, Any]:
 def sent(online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch) -> list[tuple[Any, ...]]:
     calls: list[tuple[Any, ...]] = []
 
-    def lint_draft(
-        handle: ReeRoute, target: ScriptTargetSelectorArg, source: str, declarations: ScriptDeclarations
-    ) -> LintReport:
-        calls.append((handle, target, source, declarations))
-        return LintReport(engine_version="1", target=ScriptTarget(kind=target.kind, path="ree-scripts/x.sh"))
+    def lint_draft(handle: ReeRoute, query: LintDraftQuery) -> LintReport:
+        calls.append((handle, query))
+        return LintReport(engine_version="1", target=ScriptTarget(kind=query.kind, path="ree-scripts/x.sh"))
 
     monkeypatch.setattr(command_dispatcher, "lint_draft", lint_draft)
     return calls
@@ -50,9 +49,12 @@ def test_a_draft_goes_to_the_rees_workbench(
     assert sent == [
         (
             online_ree,
-            ScriptTargetSelectorArg(kind="experiment_run", experiment_name="figure-3"),
-            "set -eu\n",
-            ScriptDeclarations(experiment_environment_path="runtime.tar"),
+            LintDraftQuery(
+                kind="experiment_run",
+                experiment_name="figure-3",
+                experiment_environment_path="runtime.tar",
+                source="set -eu\n",
+            ),
         )
     ]
 

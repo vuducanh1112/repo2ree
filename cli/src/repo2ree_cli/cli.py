@@ -11,13 +11,14 @@ import json
 import os
 import shutil
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NoReturn, get_args
+from typing import Any, NoReturn
 from uuid import uuid4
 
 import click
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from repo2ree_authoring.lint import CONTRACT_ONLY, lint_script
 from repo2ree_authoring.targets import resolve_target
@@ -41,31 +42,26 @@ from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     LoadReeBundleCommand,
-    ScriptTargetSelectorArg,
-    TargetKind,
     command_adapter,
 )
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
-from repo2ree_protocol.lint import ScriptDeclarations
 from repo2ree_protocol.queries import (
-    BUILD_ARCHIVE,
-    GET_HISTORY,
-    GET_REE_DOCUMENT,
-    GET_REE_DOCUMENT_SUMMARY,
-    GET_REE_MANIFEST,
-    GET_REVIEWS,
-    INIT_REE,
-    LINT_DRAFT,
-    LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH,
-    LINT_DRAFT_EXPERIMENT_NAME,
-    LIST_SCRIPT_TEMPLATES,
-    READ_REE_FILE,
+    BundleQuery,
+    CatQuery,
+    InitRee,
+    LintDraftQuery,
+    LogQuery,
+    ManifestQuery,
+    ReviewsQuery,
+    ShowQuery,
+    TemplatesQuery,
+    query_from_argv,
+    verb_of,
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.verbs import REVIEW, SUMMARIES, VERBS, from_argv
 from repo2ree_ree.layout import REE_MANIFEST
-from repo2ree_ree.workbench_environment import EnvironmentBackend
 from repo2ree_telemetry.log import configure_logging
 from repo2ree_telemetry.relay import setup_relay_tracing
 
@@ -244,26 +240,6 @@ for _command, _words in VERBS.items():
     (review if _words[0] == REVIEW else cli).add_command(_verb(_words, _command))
 
 
-@cli.command(INIT_REE)
-@click.option("--name", required=True, help="The REE's name.")
-@click.option(
-    "--workbench-environment",
-    type=click.Choice(get_args(EnvironmentBackend)),
-    default="container",
-    help="What the REE's scripts run in, which decides the scripts it starts with.",
-)
-@click.pass_obj
-def init_cmd(invocation: Invocation, name: str, workbench_environment: EnvironmentBackend) -> None:
-    """Create an REE here (or at -C) and capture its first version; again, it keeps what is there."""
-    layout = ReeLayout(root=invocation.ree or Path.cwd())
-    try:
-        result = initialize_ree(layout, name=name, workbench_environment=workbench_environment)
-    except HistoryCaptureError as exc:
-        click.echo(json.dumps({"error": str(exc)}), err=True)
-        raise click.exceptions.Exit(1) from exc
-    click.echo(json.dumps({"status": result.status, "snapshot_id": result.snapshot_id}))
-
-
 @cli.command("cancel")
 @click.argument("run_id")
 @click.pass_obj
@@ -306,46 +282,39 @@ def _fail(message: str) -> NoReturn:
     sys.exit(1)
 
 
-@cli.command(GET_REE_MANIFEST)
-@click.pass_obj
-def manifest_cmd(invocation: Invocation) -> None:
-    """Print the REE's record (ree.json)."""
+def _init(invocation: Invocation, read: InitRee) -> None:
+    layout = ReeLayout(root=invocation.ree or Path.cwd())
+    try:
+        result = initialize_ree(layout, name=read.name, workbench_environment=read.workbench_environment)
+    except HistoryCaptureError as exc:
+        _fail(str(exc))
+    click.echo(json.dumps({"status": result.status, "snapshot_id": result.snapshot_id}))
+
+
+def _manifest(invocation: Invocation, _read: ManifestQuery) -> None:
     store = ReeDirectory(invocation.layout())
     if not store.manifest_exists():
         _fail("not initialised")
     click.echo(json.dumps(store.read_manifest_json()))
 
 
-@cli.command(GET_REE_DOCUMENT)
-@click.option(GET_REE_DOCUMENT_SUMMARY, "summary", is_flag=True, help="Leave out the files' contents.")
-@click.pass_obj
-def show_cmd(invocation: Invocation, summary: bool) -> None:
-    """Print the REE as a document: its definition, evidence, audit and files."""
+def _show(invocation: Invocation, read: ShowQuery) -> None:
     try:
-        result = get_ree_document(invocation.layout(), include_content=not summary)
+        result = get_ree_document(invocation.layout(), include_content=not read.summary)
     except FileNotFoundError as exc:
         _fail(str(exc))
     click.echo(result.model_dump_json())
 
 
-@cli.command(GET_REVIEWS)
-@click.pass_obj
-def reviews_cmd(invocation: Invocation) -> None:
-    """Print the REE's reviews, newest first."""
+def _reviews(invocation: Invocation, _read: ReviewsQuery) -> None:
     click.echo(load_reviews(invocation.layout()).model_dump_json())
 
 
-@cli.command(GET_HISTORY)
-@click.pass_obj
-def log_cmd(invocation: Invocation) -> None:
-    """Print every attempt recorded in the REE's history and its reviews'."""
+def _log(invocation: Invocation, _read: LogQuery) -> None:
     click.echo(read_operation_history(invocation.layout()).model_dump_json())
 
 
-@cli.command(BUILD_ARCHIVE)
-@click.pass_obj
-def bundle_cmd(invocation: Invocation) -> None:
-    """Write the REE's portable bundle, with its histories, to stdout."""
+def _bundle(invocation: Invocation, _read: BundleQuery) -> None:
     try:
         with materialized_ree_download(invocation.layout()) as path, path.open("rb") as archive:
             shutil.copyfileobj(archive, sys.stdout.buffer, length=1024 * 1024)
@@ -353,18 +322,65 @@ def bundle_cmd(invocation: Invocation) -> None:
         _fail(str(exc))
 
 
-@cli.command(READ_REE_FILE)
-@click.argument("path")
-@click.pass_obj
-def cat_cmd(invocation: Invocation, path: str) -> None:
-    """Write the bytes of PATH, a file anywhere in the REE, to stdout."""
+def _cat(invocation: Invocation, read: CatQuery) -> None:
     try:
-        data = read_ree_file_bytes(invocation.layout(), path)
+        data = read_ree_file_bytes(invocation.layout(), read.path)
     except FileNotFoundError:
-        _fail(f"not found: {path}")
+        _fail(f"not found: {read.path}")
     except ValueError as exc:
         _fail(str(exc))
     sys.stdout.buffer.write(data)
+
+
+def _templates(_invocation: Invocation, _read: TemplatesQuery) -> None:
+    click.echo(script_template_catalog().model_dump_json())
+
+
+def _lint_draft(_invocation: Invocation, read: LintDraftQuery) -> None:
+    report = lint_script(resolve_target(read.target), read.source, declarations=read.declarations, tiers=CONTRACT_ONLY)
+    click.echo(report.model_dump_json())
+
+
+_ANSWERS: dict[type[BaseModel], Callable[[Invocation, Any], None]] = {
+    InitRee: _init,
+    ManifestQuery: _manifest,
+    ShowQuery: _show,
+    ReviewsQuery: _reviews,
+    LogQuery: _log,
+    BundleQuery: _bundle,
+    CatQuery: _cat,
+    TemplatesQuery: _templates,
+    LintDraftQuery: _lint_draft,
+}
+
+
+def _read(model: type[BaseModel]) -> click.Command:
+    """The command that answers a read (or runs ``init``), parsed by the model a workbench is sent."""
+    verb = verb_of(model)
+    usage = "\n".join(f"  {line}" for line in describe_args(model))
+    summary = (model.__doc__ or "").strip()
+
+    @click.pass_obj
+    def callback(invocation: Invocation, words: tuple[str, ...]) -> None:
+        stdin = click.get_binary_stream("stdin").read() if reads_stdin(model) else None
+        try:
+            read = query_from_argv([verb, *words], stdin)
+        except (ArgvError, ValueError) as exc:
+            raise click.UsageError(str(exc)) from exc
+        _ANSWERS[model](invocation, read)
+
+    return click.Command(
+        verb,
+        callback=callback,
+        params=[click.Argument(["words"], nargs=-1, type=click.UNPROCESSED)],
+        context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False},
+        help=f"{summary}\n\n\b\nArguments:\n{usage}" if usage else summary,
+        add_help_option=True,
+    )
+
+
+for _model in _ANSWERS:
+    cli.add_command(_read(_model))
 
 
 # ================================================
@@ -402,36 +418,6 @@ def _describe_steps(steps: ReeSteps) -> str:
     elif len(done) == len(steps.steps):
         lines += ["", "every step is complete"]
     return "\n".join(lines)
-
-
-@cli.command(LIST_SCRIPT_TEMPLATES)
-def templates_cmd() -> None:
-    """Print the starter templates for the REE's scripts and where each script belongs."""
-    click.echo(script_template_catalog().model_dump_json())
-
-
-@cli.command(LINT_DRAFT)
-@click.argument("kind", type=click.Choice(get_args(TargetKind)))
-@click.option(LINT_DRAFT_EXPERIMENT_NAME, "experiment_name", default=None, help="The experiment the script is for.")
-@click.option(
-    LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH,
-    "experiment_environment_path",
-    default=None,
-    help="The experiment environment's path the script is checked against.",
-)
-def lint_draft_cmd(kind: TargetKind, experiment_name: str | None, experiment_environment_path: str | None) -> None:
-    """Check the unsaved script on stdin as the REE's KIND script, by the checks that run no process."""
-    try:
-        selector = ScriptTargetSelectorArg(kind=kind, experiment_name=experiment_name)
-    except ValidationError as exc:
-        raise click.UsageError(exc.errors()[0]["msg"]) from exc
-    report = lint_script(
-        resolve_target(selector),
-        click.get_text_stream("stdin").read(),
-        declarations=ScriptDeclarations(experiment_environment_path=experiment_environment_path),
-        tiers=CONTRACT_ONLY,
-    )
-    click.echo(report.model_dump_json())
 
 
 @cli.command("build-info")

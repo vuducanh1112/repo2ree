@@ -41,15 +41,16 @@ from repo2ree_protocol.frames import (
     SpanFrame,
     UnavailableFrame,
 )
+from repo2ree_protocol.queries import BundleQuery, InitRee, Query
 from repo2ree_protocol.workbench import (
     CancelRequest,
     CancelRunRequest,
     DeleteReeRequest,
     ExecQueryRequest,
-    ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
     FollowRunRequest,
+    InitReeRequest,
     ListJournalsRequest,
     ReadJournalRequest,
     StartRunRequest,
@@ -498,26 +499,22 @@ class WsWorkbenchClient:
         conn = self._registry.pick(workbench_id)
         self._drain_void(conn.request(DeleteReeRequest(ree_id=ree_id), frame_gap_timeout=COPY_IN_TIMEOUT))
 
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
+    def init_ree(self, workbench_id: str, init: InitRee, timeout: int = 60, *, ree_id: str) -> None:
         conn = self._registry.pick(workbench_id)
-        req = ExecSimpleRequest(argv=argv, timeout=timeout, ree_id=ree_id)
+        req = InitReeRequest(init=init, timeout=timeout, ree_id=ree_id)
         # The workbench enforces ``timeout`` on the exec itself; the frame gap only
         # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
-    def exec_query(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
-    ) -> bytes:
-        return b"".join(self.exec_query_stream(workbench_id, argv, timeout, ree_id=ree_id, stdin=stdin))
+    def exec_query(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> bytes:
+        return b"".join(self.exec_query_stream(workbench_id, query, timeout, ree_id=ree_id))
 
-    def exec_query_stream(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
-    ) -> Iterator[bytes]:
+    def exec_query_stream(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
         # The result arrives as bounded chunks ending in ``done``; yield each
         # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(workbench_id)
         for frame in conn.request(
-            ExecQueryRequest(argv=argv, stdin=stdin, timeout=timeout, ree_id=ree_id),
+            ExecQueryRequest(query=query, timeout=timeout, ree_id=ree_id),
             frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
         ):
             if isinstance(frame, BytesChunkFrame):
@@ -528,14 +525,14 @@ class WsWorkbenchClient:
                 raise_for_terminal_error(frame)
         raise RuntimeError("workbench exec_query ended without a result")
 
-    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str) -> ReceivedFile:
+    def exec_upload(self, workbench_id: str, query: BundleQuery, timeout: int = 600, *, ree_id: str) -> ReceivedFile:
         # The socket carries the request and its one ``done``; the bytes arrive
         # over HTTP into the transfer, so no frame waits on them.
         conn = self._registry.pick(workbench_id)
         transfer_path = self._transfers.open_upload()
         try:
             for frame in conn.request(
-                ExecUploadRequest(argv=argv, transfer_path=transfer_path, timeout=timeout, ree_id=ree_id),
+                ExecUploadRequest(query=query, transfer_path=transfer_path, timeout=timeout, ree_id=ree_id),
                 frame_gap_timeout=timeout + QUICK_OP_TIMEOUT,
             ):
                 if isinstance(frame, DoneFrame):

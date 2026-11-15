@@ -39,7 +39,7 @@ def test_local_executor_runs_queries(fake_executor: Path, tmp_path: Path) -> Non
 
 def test_a_query_reads_what_it_is_given_on_stdin(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalCli(tmp_path / "ree", str(fake_executor))
-    assert b"".join(executor.exec_query_stream(["echo"], ree_id="ree", stdin="set -eu\n")) == b"set -eu\n"
+    assert b"".join(executor.exec_query_stream(["echo"], ree_id="ree", stdin=b"set -eu\n")) == b"set -eu\n"
 
 
 def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
@@ -55,10 +55,10 @@ def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
         executor.exec_query_to_file(["fail"], tmp_path / "failed.bin", ree_id="ree")
 
 
-def test_local_executor_reports_simple_failure(fake_executor: Path, tmp_path: Path) -> None:
+def test_local_executor_reports_a_failed_run(fake_executor: Path, tmp_path: Path) -> None:
     executor = LocalCli(tmp_path / "ree", str(fake_executor))
     with pytest.raises(RuntimeError, match="exit 7"):
-        executor.exec_simple(["fail"], ree_id="ree")
+        executor.run(executor.ree_root("ree"), ["fail"], 60)
 
 
 def test_local_executor_reads_executor_build(fake_executor: Path, tmp_path: Path) -> None:

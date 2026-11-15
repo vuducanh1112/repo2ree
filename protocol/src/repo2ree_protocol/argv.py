@@ -2,6 +2,7 @@
 
 A field's spelling follows from its type and its markers:
 
+* ``Verb``: the field names the command, which its verb spells, so it is no option;
 * ``Positional``: a positional argument, in field order;
 * ``Stdin``: what is read on stdin, text as it is and anything else as JSON;
 * ``bool``: a flag, ``--prune-workspace`` for true and ``--no-prune-workspace`` for false;
@@ -25,6 +26,11 @@ from pydantic.fields import FieldInfo
 
 
 @dataclass(frozen=True)
+class Verb:
+    """The field names the command: the verb spells it."""
+
+
+@dataclass(frozen=True)
 class Positional:
     """The field is a positional argument."""
 
@@ -34,6 +40,7 @@ class Stdin:
     """The field is read from stdin."""
 
 
+VERB = Verb()
 POSITIONAL = Positional()
 STDIN = Stdin()
 TARGET_OPTION = "--target"
@@ -52,6 +59,8 @@ def describe_args(model: type[BaseModel]) -> list[str]:
     """How each argument of ``model`` is spelled, one line each, for a command's help."""
     lines = []
     for name, info in model.model_fields.items():
+        if _marked(info, Verb):
+            continue
         if _marked(info, Positional):
             lines.append(name.upper())
         elif _marked(info, Stdin):
@@ -75,6 +84,8 @@ def encode_args(args: BaseModel) -> tuple[list[str], bytes | None]:
     stdin: bytes | None = None
     for name, info in type(args).model_fields.items():
         value = getattr(args, name)
+        if _marked(info, Verb):
+            continue
         if _marked(info, Positional):
             positionals.append(str(value))
         elif _marked(info, Stdin):
@@ -109,7 +120,7 @@ def decode_args(model: type[BaseModel], words: list[str], stdin: bytes | None) -
             values[head[3:]] = False
             continue
         info = fields.get(head)
-        if info is None or _marked(info, Positional) or _marked(info, Stdin):
+        if info is None or _marked(info, Positional) or _marked(info, Stdin) or _marked(info, Verb):
             raise ArgvError(f"{model.__name__} takes no option {word}")
         if not nested and _is_flag(info):
             values[head] = True

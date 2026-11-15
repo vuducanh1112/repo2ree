@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.queries import INIT_REE
+from repo2ree_protocol.queries import BundleQuery, InitRee, Query, query_argv
 from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
 from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
 from repo2ree_workbench.cli_process import LocalCli
@@ -44,19 +44,21 @@ class WorkbenchService:
     def follow_run(self, ree_id: str, attempt_id: str, after: int) -> LogFollower:
         return self.executions.follow(ree_id, attempt_id, after)
 
-    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
-        if argv[:1] == [INIT_REE]:
-            root = self._executor.ree_root(ree_id)
-            if root.exists() and any(root.iterdir()):
-                raise RuntimeError(f"REE {ree_id!r} already exists in store {self.store_id!r}")
-        self._executor.exec_simple(argv, timeout, ree_id=ree_id)
+    def init_ree(self, init: InitRee, timeout: int = 60, *, ree_id: str) -> None:
+        """Create the REE in the store; refused where one is already."""
+        root = self._executor.ree_root(ree_id)
+        if root.exists() and any(root.iterdir()):
+            raise RuntimeError(f"REE {ree_id!r} already exists in store {self.store_id!r}")
+        argv, _stdin = query_argv(init)
+        self._executor.run(root, argv, timeout)
 
-    def exec_query_stream(
-        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
-    ) -> Iterator[bytes]:
+    def exec_query_stream(self, query: Query, timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
+        """The stdout of the ``ree`` read that answers ``query``."""
+        argv, stdin = query_argv(query)
         return self._executor.exec_query_stream(argv, timeout, ree_id=ree_id, stdin=stdin)
 
-    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
+    def exec_query_to_file(self, query: BundleQuery, target: Path, timeout: int = 600, *, ree_id: str) -> None:
+        argv, _stdin = query_argv(query)
         self._executor.exec_query_to_file(argv, target, timeout, ree_id=ree_id)
 
     def cancel_run(self, run_id: str, *, ree_id: str, record: str | None = None) -> None:

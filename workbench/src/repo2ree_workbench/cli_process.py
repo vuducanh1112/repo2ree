@@ -165,9 +165,6 @@ class LocalCli:
         """The command line that runs ``argv`` against the REE at ``root``."""
         return [self.cli_path, "-C", str(root), *argv]
 
-    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
-        self.run(self.ree_root(ree_id), argv, timeout)
-
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
         """Run an executor subcommand against ``root``; its stdout."""
         result = subprocess.run(
@@ -184,13 +181,13 @@ class LocalCli:
         return result.stdout
 
     def exec_query_stream(
-        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: bytes | None = None
     ) -> Iterator[bytes]:
         root = self.ree_root(ree_id)
         result = subprocess.run(
             self.at(root, argv),
             check=False,
-            input=stdin.encode() if stdin is not None else None,
+            input=stdin,
             capture_output=True,
             timeout=timeout,
             env=self.environment(root),

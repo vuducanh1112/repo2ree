@@ -18,7 +18,7 @@ from typing import Any, Protocol, cast
 
 import pytest
 
-from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
+from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.frames import (
     AcceptedFrame,
     BytesChunkFrame,
@@ -29,14 +29,15 @@ from repo2ree_protocol.frames import (
     SpanFrame,
     UnavailableFrame,
 )
-from repo2ree_protocol.lint import LintReport, ScriptDeclarations
+from repo2ree_protocol.lint import LintReport
+from repo2ree_protocol.queries import BundleQuery, InitRee, LintDraftQuery, ManifestQuery
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     ExecQueryRequest,
-    ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
     FollowRunRequest,
+    InitReeRequest,
     StartRunRequest,
     WorkbenchWsMessage,
     WorkbenchWsRequest,
@@ -119,7 +120,7 @@ def test_exec_query_returns_decoded_bytes() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["manifest"], ree_id="ree-1"))
+    join = _run_in_thread(lambda: client.exec_query("a1", ManifestQuery(), ree_id="ree-1"))
     req = socket.wait_for_request()
     assert req.request.op == "exec_query"
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b'{"ok": true}').decode()))
@@ -128,36 +129,27 @@ def test_exec_query_returns_decoded_bytes() -> None:
     assert join() == b'{"ok": true}'
 
 
-def test_a_draft_check_is_lint_draft_with_the_source_on_stdin() -> None:
+def test_a_read_crosses_to_the_workbench_as_the_read_itself() -> None:
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
     dispatcher = CommandDispatcher(WsWorkbenchClient(registry), ReeLocks())
     handle = ReeRoute(ree_id="ree-1", workbench_id="a1", store_id="lab")
     report = LintReport(engine_version="1", target=ScriptTarget(kind="experiment_run", path="ree-scripts/x.sh"))
-
-    join = _run_in_thread(
-        lambda: dispatcher.lint_draft(
-            handle,
-            ScriptTargetSelectorArg(kind="experiment_run", experiment_name="figure 3"),
-            "set -eu\n",
-            ScriptDeclarations(experiment_environment_path="runtime.tar"),
-        )
+    draft = LintDraftQuery(
+        kind="experiment_run",
+        experiment_name="figure 3",
+        experiment_environment_path="runtime.tar",
+        source="set -eu\n",
     )
+
+    join = _run_in_thread(lambda: dispatcher.lint_draft(handle, draft))
     req = socket.wait_for_request().request
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(report.model_dump_json().encode()).decode()))
     socket.respond(DoneFrame())
 
     assert isinstance(req, ExecQueryRequest)
-    assert req.argv == [
-        "lint-draft",
-        "experiment_run",
-        "--experiment-name",
-        "figure 3",
-        "--experiment-environment-path",
-        "runtime.tar",
-    ]
-    assert req.stdin == "set -eu\n"
+    assert req.query == draft
     assert join() == report
 
 
@@ -167,7 +159,7 @@ def test_exec_query_raises_on_unavailable() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["manifest"], ree_id="ree-1"))
+    join = _run_in_thread(lambda: client.exec_query("a1", ManifestQuery(), ree_id="ree-1"))
     socket.wait_for_request()
     socket.respond(UnavailableFrame(detail="gone"))
 
@@ -268,10 +260,10 @@ def test_cancel_run_sends_cancel_run_request() -> None:
 @pytest.mark.parametrize(
     "call",
     [
-        lambda client: client.exec_simple("a1", ["doctor"], ree_id="ree-1"),
+        lambda client: client.init_ree("a1", InitRee(name="demo"), ree_id="ree-1"),
         lambda client: client.cancel_run("a1", "run-7", ree_id="ree-1"),
         lambda client: list(client.follow_run("a1", "att-1", 0, ree_id="ree-1")),
-        lambda client: client.exec_query("a1", ["manifest"], ree_id="ree-1"),
+        lambda client: client.exec_query("a1", ManifestQuery(), ree_id="ree-1"),
     ],
 )
 def test_every_request_names_the_ree_it_is_for(call: Any) -> None:
@@ -323,7 +315,7 @@ def test_abandoned_stream_sends_cancel_to_the_workbench() -> None:
     client = WsWorkbenchClient(registry)
 
     def call() -> None:
-        stream = cast(_ClosableIterator, client.exec_query_stream("a1", ["bundle"], ree_id="ree-1"))
+        stream = cast(_ClosableIterator, client.exec_query_stream("a1", BundleQuery(), ree_id="ree-1"))
         next(stream)
         stream.close()
 
@@ -379,7 +371,7 @@ def test_resolve_workbench_raises_when_none_connected() -> None:
 def test_pick_raises_when_no_workbench_for_exec_query() -> None:
     client = WsWorkbenchClient(WorkbenchConnectionRegistry())
     with pytest.raises(WorkbenchUnavailableError, match="no workbench service connected"):
-        client.exec_query("", ["manifest"], ree_id="ree-1")
+        client.exec_query("", ManifestQuery(), ree_id="ree-1")
 
 
 def test_pick_raises_when_named_workbench_absent() -> None:
@@ -389,7 +381,7 @@ def test_pick_raises_when_named_workbench_absent() -> None:
     client = WsWorkbenchClient(registry)
     # A different workbench is connected, but the REE is pinned to one that isn't.
     with pytest.raises(WorkbenchUnavailableError, match="workbench 'a2' not connected"):
-        client.exec_query("a2", ["manifest"], ree_id="ree-1")
+        client.exec_query("a2", ManifestQuery(), ree_id="ree-1")
 
 
 def test_exec_query_reassembles_multiple_chunks() -> None:
@@ -400,7 +392,7 @@ def test_exec_query_reassembles_multiple_chunks() -> None:
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    join = _run_in_thread(lambda: client.exec_query("a1", ["bundle"], ree_id="ree-1"))
+    join = _run_in_thread(lambda: client.exec_query("a1", BundleQuery(), ree_id="ree-1"))
     socket.wait_for_request()
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-one-").decode()))
     socket.respond(BytesChunkFrame(data_b64=base64.b64encode(b"part-two").decode()))
@@ -438,7 +430,7 @@ def test_correlated_frames_still_reach_their_caller_when_a_sink_is_set() -> None
     socket = FakeSocket()
     socket.connection = WorkbenchConnection(send_text=socket._capture, span_sink=relayed.append)
 
-    pending = socket.connection.start(ExecSimpleRequest(ree_id="ree-1", argv=["doctor"]))
+    pending = socket.connection.start(InitReeRequest(ree_id="ree-1", init=InitRee(name="demo")))
     socket.wait_for_request()
     socket.connection.on_message(WorkbenchWsMessage(id=socket.sent[-1].id, frame=DoneFrame()).model_dump_json())
 
@@ -459,10 +451,10 @@ def test_an_upload_arrives_beside_the_socket_and_is_collected_on_done(tmp_path) 
     client = WsWorkbenchClient(registry, inbox)
     received: list[ReceivedFile] = []
 
-    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", ["bundle"], ree_id="ree-1")))
+    join = _run_in_thread(lambda: received.append(client.exec_upload("a1", BundleQuery(), ree_id="ree-1")))
     request = socket.wait_for_request().request
     assert isinstance(request, ExecUploadRequest)
-    assert request.argv == ["bundle"]
+    assert request.query == BundleQuery()
     # What the workbench PUTs to the path it was given, as the API's route receives it.
     token = request.transfer_path.removeprefix("/workbench/transfers/")
     asyncio.run(inbox.receive(token, _body(b"PK", b"zip-bytes"), 11))
@@ -484,7 +476,7 @@ def test_done_without_an_upload_is_an_error_and_leaves_no_file(tmp_path) -> None
 
     def call() -> None:
         try:
-            client.exec_upload("a1", ["bundle"], ree_id="ree-1")
+            client.exec_upload("a1", BundleQuery(), ree_id="ree-1")
         except TransferError as exc:
             errors.append(exc)
 
@@ -507,7 +499,7 @@ def test_a_failed_upload_request_discards_its_transfer(tmp_path) -> None:
 
     def call() -> None:
         try:
-            client.exec_upload("a1", ["bundle"], ree_id="ree-1")
+            client.exec_upload("a1", BundleQuery(), ree_id="ree-1")
         except RuntimeError as exc:
             errors.append(exc)
 

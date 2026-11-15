@@ -8,15 +8,16 @@ from typing import Any, ClassVar, cast
 
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame, LogFrame
+from repo2ree_protocol.queries import BundleQuery, InitRee, LogQuery, Query
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CancelRunRequest,
     DeleteReeRequest,
     ExecQueryRequest,
-    ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
     FollowRunRequest,
+    InitReeRequest,
     StartRunRequest,
 )
 from repo2ree_workbench.dispatcher import dispatch_workbench_request
@@ -64,19 +65,19 @@ class _Service:
             raise UnknownExecutionError(attempt_id)
         return _Follower()
 
-    def exec_query_stream(self, argv: list[str], timeout: int, *, ree_id: str, stdin: str | None = None):
-        self.calls.append(("exec_query", argv, timeout))
+    def exec_query_stream(self, query: Query, timeout: int, *, ree_id: str):
+        self.calls.append(("exec_query", query, timeout))
         yield b"query-result"
 
-    def exec_query_to_file(self, argv: list[str], target: Path, timeout: int, *, ree_id: str) -> None:
-        self.calls.append(("exec_query_to_file", argv, timeout))
+    def exec_query_to_file(self, query: BundleQuery, target: Path, timeout: int, *, ree_id: str) -> None:
+        self.calls.append(("exec_query_to_file", query, timeout))
         target.write_bytes(b"archive-bytes")
 
     def cancel_run(self, run_id: str, *, ree_id: str, record: str | None = None) -> None:
         self.calls.append(("cancel_run", run_id))
 
-    def exec_simple(self, argv: list[str], timeout: int, *, ree_id: str) -> None:
-        self.calls.append(("exec_simple", argv, timeout))
+    def init_ree(self, init: InitRee, timeout: int, *, ree_id: str) -> None:
+        self.calls.append(("init_ree", init, timeout))
 
     def copy_in(self, source_path: str, workbench_path: str, *, ree_id: str) -> None:
         self.calls.append(("copy_in", workbench_path))
@@ -130,7 +131,7 @@ def test_a_follow_streams_the_log_then_how_the_command_ended() -> None:
     async def scenario() -> None:
         await harness.dispatch(FollowRunRequest(ree_id="ree-1", attempt_id="a1", after=3))
         await harness.dispatch(FollowRunRequest(ree_id="ree-1", attempt_id="never"))
-        await harness.dispatch(ExecQueryRequest(ree_id="ree-1", argv=["archive"], timeout=12))
+        await harness.dispatch(ExecQueryRequest(ree_id="ree-1", query=LogQuery(), timeout=12))
 
     asyncio.run(scenario())
 
@@ -144,11 +145,11 @@ def test_dispatcher_routes_simple_requests_and_terminal_frames() -> None:
 
     async def scenario() -> None:
         await harness.dispatch(CancelRunRequest(ree_id="ree-1", run_id="run-1"))
-        await harness.dispatch(ExecSimpleRequest(ree_id="ree-1", argv=["doctor"], timeout=7))
+        await harness.dispatch(InitReeRequest(ree_id="ree-1", init=InitRee(name="demo"), timeout=7))
 
     asyncio.run(scenario())
 
-    assert [call[0] for call in harness.service.calls] == ["cancel_run", "exec_simple"]
+    assert [call[0] for call in harness.service.calls] == ["cancel_run", "init_ree"]
     assert [frame.type for frame in harness.frames] == ["done", "done"]
 
 
@@ -195,14 +196,14 @@ def test_an_upload_request_sends_the_query_output_to_the_address_the_workbench_d
     try:
         asyncio.run(
             harness.dispatch(
-                ExecUploadRequest(ree_id="ree-1", argv=["bundle"], transfer_path="/workbench/transfers/t1", timeout=30),
+                ExecUploadRequest(ree_id="ree-1", transfer_path="/workbench/transfers/t1", timeout=30),
                 api_ws_url=f"ws://127.0.0.1:{server.server_port}/workbench/connect",
             )
         )
     finally:
         server.shutdown()
 
-    assert harness.service.calls == [("exec_query_to_file", ["bundle"], 30)]
+    assert harness.service.calls == [("exec_query_to_file", BundleQuery(), 30)]
     assert _Receiver.received == {"/workbench/transfers/t1": b"archive-bytes"}
     assert [frame.type for frame in harness.frames] == ["done"]
 

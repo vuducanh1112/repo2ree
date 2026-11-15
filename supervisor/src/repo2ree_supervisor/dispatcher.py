@@ -11,11 +11,11 @@ from __future__ import annotations
 import json
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from typing import Any
 
 from repo2ree_protocol.catalog import ScriptTemplateCatalog
-from repo2ree_protocol.command import Command, ScriptTargetSelectorArg
+from repo2ree_protocol.command import Command
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import (
@@ -30,20 +30,18 @@ from repo2ree_protocol.frames import (
     UnknownFrame,
 )
 from repo2ree_protocol.history import OperationHistory
-from repo2ree_protocol.lint import LintReport, ScriptDeclarations
+from repo2ree_protocol.lint import LintReport
 from repo2ree_protocol.queries import (
-    BUILD_ARCHIVE,
-    GET_HISTORY,
-    GET_REE_DOCUMENT,
-    GET_REE_DOCUMENT_SUMMARY,
-    GET_REE_MANIFEST,
-    GET_REVIEWS,
-    INIT_REE,
-    LINT_DRAFT,
-    LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH,
-    LINT_DRAFT_EXPERIMENT_NAME,
-    LIST_SCRIPT_TEMPLATES,
-    READ_REE_FILE,
+    BundleQuery,
+    CatQuery,
+    InitRee,
+    LintDraftQuery,
+    LogQuery,
+    ManifestQuery,
+    Query,
+    ReviewsQuery,
+    ShowQuery,
+    TemplatesQuery,
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree
@@ -405,91 +403,44 @@ class CommandDispatcher:
     # Query / mutation dispatch
     # ------------------------------------------------
 
-    def dispatch_query(
-        self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30, stdin: str | None = None
-    ) -> bytes:
-        """Run a read-only CLI subcommand and return its stdout bytes.
+    def dispatch_query(self, handle: ReeRoute, query: Query, *, timeout: int = 30) -> bytes:
+        """The answer to a read of the REE, as the ``ree`` read wrote it on stdout.
 
-        ``argv`` is a ``ree`` subcommand (e.g. ``manifest``), and ``stdin`` what it reads;
-        the workbench service prepends the bench's executor entry point. Set
-        ``locked`` for
-        queries that must observe a consistent snapshot — they take the per-REE
-        lock so no mutating action runs concurrently. Plain reads leave it off
-        and run unsynchronised. ``timeout`` bounds the exec itself; raise it for
-        queries whose output scales with the REE (archives, large artifacts).
+        Reads run unsynchronised with commands. ``timeout`` bounds the read itself;
+        raise it for reads whose output scales with the REE (large artifacts).
         """
-        exec_argv = list(argv)
-        if locked:
-            with self._locks(handle.ree_id):
-                return self._workbench.exec_query(
-                    handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id, stdin=stdin
-                )
-        return self._workbench.exec_query(
-            handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id, stdin=stdin
-        )
+        return self._workbench.exec_query(handle.workbench_id, query, timeout=timeout, ree_id=handle.ree_id)
 
-    def dispatch_query_stream(
-        self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30
-    ) -> Iterator[bytes]:
-        """Run a read-only CLI subcommand and stream stdout bytes."""
-        exec_argv = list(argv)
-
-        def query() -> Iterator[bytes]:
-            return self._workbench.exec_query_stream(
-                handle.workbench_id, exec_argv, timeout=timeout, ree_id=handle.ree_id
-            )
-
-        def stream() -> Iterator[bytes]:
-            if locked:
-                with self._locks(handle.ree_id):
-                    yield from query()
-                return
-            yield from query()
-
-        return stream()
-
-    def _query_json(self, handle: ReeRoute, *argv: str, stdin: str | None = None) -> dict[str, Any]:
-        """Run a read-only CLI subcommand and parse its stdout as a JSON object.
-
-        The one place the workbench's untyped JSON becomes a typed value, so the
-        ``Any`` that ``json.loads`` returns is narrowed once rather than at each
-        call site below.
-        """
-        parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, *argv, stdin=stdin))
+    def _query_json(self, handle: ReeRoute, query: Query) -> dict[str, Any]:
+        """The answer to a read as a JSON object, narrowed once from ``json.loads``'s ``Any``."""
+        parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, query))
         return parsed
 
     def get_ree_manifest(self, handle: ReeRoute) -> Ree:
-        return Ree.model_validate(self._query_json(handle, GET_REE_MANIFEST))
+        return Ree.model_validate(self._query_json(handle, ManifestQuery()))
 
     def get_ree_document(self, handle: ReeRoute) -> WorkbenchReeDocument:
-        return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT))
+        return WorkbenchReeDocument.model_validate(self._query_json(handle, ShowQuery()))
 
     def get_ree_state(self, handle: ReeRoute) -> WorkbenchReeDocument:
         """Return composed REE state without embedding text file contents."""
-        return WorkbenchReeDocument.model_validate(self._query_json(handle, GET_REE_DOCUMENT, GET_REE_DOCUMENT_SUMMARY))
+        return WorkbenchReeDocument.model_validate(self._query_json(handle, ShowQuery(summary=True)))
 
     def get_history(self, handle: ReeRoute) -> OperationHistory:
-        return OperationHistory.model_validate(self._query_json(handle, GET_HISTORY))
+        return OperationHistory.model_validate(self._query_json(handle, LogQuery()))
 
     def get_reviews(self, handle: ReeRoute) -> ReviewSet:
-        return ReviewSet.model_validate(self._query_json(handle, GET_REVIEWS))
+        return ReviewSet.model_validate(self._query_json(handle, ReviewsQuery()))
 
     def list_script_templates(self, handle: ReeRoute) -> ScriptTemplateCatalog:
-        return ScriptTemplateCatalog.model_validate(self._query_json(handle, LIST_SCRIPT_TEMPLATES))
+        return ScriptTemplateCatalog.model_validate(self._query_json(handle, TemplatesQuery()))
 
-    def lint_draft(
-        self, handle: ReeRoute, target: ScriptTargetSelectorArg, source: str, declarations: ScriptDeclarations
-    ) -> LintReport:
-        argv = [LINT_DRAFT, target.kind]
-        if target.experiment_name is not None:
-            argv += [LINT_DRAFT_EXPERIMENT_NAME, target.experiment_name]
-        if declarations.experiment_environment_path is not None:
-            argv += [LINT_DRAFT_EXPERIMENT_ENVIRONMENT_PATH, declarations.experiment_environment_path]
-        return LintReport.model_validate(self._query_json(handle, *argv, stdin=source))
+    def lint_draft(self, handle: ReeRoute, query: LintDraftQuery) -> LintReport:
+        return LintReport.model_validate(self._query_json(handle, query))
 
     def read_ree_file_bytes(self, handle: ReeRoute, path: str) -> bytes:
         # REE files can include large experiment environment and result artifacts.
-        return self.dispatch_query(handle, READ_REE_FILE, "--", path, timeout=120)
+        return self.dispatch_query(handle, CatQuery(path=path), timeout=120)
 
     def build_archive(self, handle: ReeRoute) -> ReceivedFile:
         """The REE's archive as a file on the control plane; the caller removes it.
@@ -499,7 +450,7 @@ class CommandDispatcher:
         as long as a client takes to download it. Zipping and sending scale with
         the REE's size, hence the generous timeout."""
         with self._locks(handle.ree_id):
-            return self._workbench.exec_upload(handle.workbench_id, [BUILD_ARCHIVE], timeout=600, ree_id=handle.ree_id)
+            return self._workbench.exec_upload(handle.workbench_id, BundleQuery(), timeout=600, ree_id=handle.ree_id)
 
     def copy_to_workbench(self, handle: ReeRoute, host_path: str, workbench_path: str) -> None:
         """Copy a control-plane-local file into the workbench.
@@ -511,9 +462,9 @@ class CommandDispatcher:
     def init_ree(self, handle: ReeRoute, name: str, workbench_environment: EnvironmentBackend = "container") -> None:
         """Create the REE in the store its workbench serves; refused where one is already."""
         with self._locks(handle.ree_id):
-            self._workbench.exec_simple(
+            self._workbench.init_ree(
                 handle.workbench_id,
-                [INIT_REE, "--name", name, "--workbench-environment", workbench_environment],
+                InitRee(name=name, workbench_environment=workbench_environment),
                 ree_id=handle.ree_id,
             )
 

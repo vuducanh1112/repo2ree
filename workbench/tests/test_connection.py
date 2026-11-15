@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 import repo2ree_workbench.connection as connection
 from repo2ree_protocol.frames import COPY_CHUNK_BYTES, TERMINAL_FRAME_TYPES, Frame, LogFrame, SpanFrame
+from repo2ree_protocol.queries import BundleQuery
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import (
     CancelRequest,
@@ -95,12 +96,9 @@ class FakeExec:
         self._root = tempfile.TemporaryDirectory()
         self.root = Path(self._root.name)
 
-    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None):
+    def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: bytes | None = None):
         for offset in range(0, len(self.query_result), COPY_CHUNK_BYTES):
             yield self.query_result[offset : offset + COPY_CHUNK_BYTES]
-
-    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
-        return None
 
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
         if argv[0] == "cancel":
@@ -170,7 +168,7 @@ def test_exec_query_result_is_chunked_under_the_frame_cap() -> None:
     payload = bytes(range(256)) * 4 * 1024  # 1 MiB, above one chunk
     FakeExec.query_result = payload
     try:
-        req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["bundle"]))
+        req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", query=BundleQuery()))
         ws = FakeSocket([req.model_dump_json()])
         asyncio.run(_serve_and_settle(ws))
     finally:
@@ -214,13 +212,15 @@ def test_cancel_stops_an_inflight_request() -> None:
     release = threading.Event()
 
     class BlockingExec(FakeExec):
-        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None):
+        def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: bytes | None = None):
             release.wait(0.5)
             yield b"too late"
 
     ws = FakeSocket(
         [
-            WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", argv=["bundle"])).model_dump_json(),
+            WorkbenchWsRequest(
+                id="r1", request=ExecQueryRequest(ree_id="ree-1", query=BundleQuery())
+            ).model_dump_json(),
             WorkbenchWsRequest(id="c1", request=CancelRequest(request_id="r1")).model_dump_json(),
         ]
     )

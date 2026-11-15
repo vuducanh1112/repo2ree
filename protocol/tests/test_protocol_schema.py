@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 from repo2ree_protocol.command import SealReeArgs, SealReeCommand
 from repo2ree_protocol.export_schema import MESSAGES, SCHEMA_PATH, schema_document
 from repo2ree_protocol.outputs import OUTPUTS
-from repo2ree_protocol.queries import QUERIES
+from repo2ree_protocol.queries import REPLIES, query_types, verb_of
 from repo2ree_protocol.result import ActionResult
 
 DOCUMENT = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
@@ -27,7 +27,8 @@ def test_the_schema_is_valid_and_indexes_everything_the_protocol_names() -> None
     Draft202012Validator.check_schema(DOCUMENT)
     assert set(DOCUMENT["x-messages"]) == set(MESSAGES)
     assert set(DOCUMENT["x-outputs"]) == set(OUTPUTS)
-    assert set(DOCUMENT["x-queries"]) == set(QUERIES)
+    assert set(DOCUMENT["x-queries"]) == {verb_of(query) for query in REPLIES}
+    assert set(REPLIES) == set(query_types())
 
 
 @pytest.mark.parametrize(

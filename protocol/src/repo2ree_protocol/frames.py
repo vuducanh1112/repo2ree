@@ -54,7 +54,7 @@ class ResultFrame(BaseModel):
 
 
 class DoneFrame(BaseModel):
-    """Terminal frame of a call with no payload (exec_simple, remove, …)."""
+    """Terminal frame of a call with no payload (init_ree, remove, …)."""
 
     model_config = ConfigDict(extra="forbid")
 

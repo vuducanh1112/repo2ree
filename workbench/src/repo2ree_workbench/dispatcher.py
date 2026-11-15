@@ -18,10 +18,10 @@ from repo2ree_protocol.workbench import (
     CancelRunRequest,
     DeleteReeRequest,
     ExecQueryRequest,
-    ExecSimpleRequest,
     ExecUploadRequest,
     FetchFileRequest,
     FollowRunRequest,
+    InitReeRequest,
     ListJournalsRequest,
     ReadJournalRequest,
     StartRunRequest,
@@ -73,13 +73,13 @@ async def dispatch_workbench_request(
         await asyncio.to_thread(service.delete_ree, req.ree_id)
         await send(DoneFrame())
     elif isinstance(req, ExecQueryRequest):
-        await pump_bytes(lambda: service.exec_query_stream(req.argv, req.timeout, ree_id=req.ree_id, stdin=req.stdin))
+        await pump_bytes(lambda: service.exec_query_stream(req.query, req.timeout, ree_id=req.ree_id))
     elif isinstance(req, ExecUploadRequest):
         url = transfer_url(api_ws_url, req.transfer_path)
         await asyncio.to_thread(_upload_query, service, req, url)
         await send(DoneFrame())
-    elif isinstance(req, ExecSimpleRequest):
-        service.exec_simple(req.argv, req.timeout, ree_id=req.ree_id)
+    elif isinstance(req, InitReeRequest):
+        service.init_ree(req.init, req.timeout, ree_id=req.ree_id)
         await send(DoneFrame())
     elif isinstance(req, FetchFileRequest):
         url = transfer_url(api_ws_url, req.transfer_path)
@@ -113,7 +113,7 @@ def _upload_query(service: WorkbenchService, req: ExecUploadRequest, url: str) -
     os.close(handle)
     path = Path(name)
     try:
-        service.exec_query_to_file(req.argv, path, req.timeout, ree_id=req.ree_id)
+        service.exec_query_to_file(req.query, path, req.timeout, ree_id=req.ree_id)
         upload_file(path, url, timeout=req.timeout)
     finally:
         path.unlink(missing_ok=True)

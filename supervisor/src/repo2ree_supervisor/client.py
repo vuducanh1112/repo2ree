@@ -14,6 +14,7 @@ from typing import Protocol
 
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import ErrorFrame, Frame, UnavailableFrame
+from repo2ree_protocol.queries import BundleQuery, InitRee, Query
 from repo2ree_supervisor.transfers import ReceivedFile
 
 
@@ -45,23 +46,20 @@ class WorkbenchClient(Protocol):
     the store it serves.
     """
 
-    def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
-        """Run an executor subcommand in the bench, discarding output.
-
-        ``argv`` is the ``ree`` subcommand argv *without* the executor
-        binary — the serving backend prepends the bench's entry point."""
+    def init_ree(self, workbench_id: str, init: InitRee, timeout: int = 60, *, ree_id: str) -> None:
+        """Create the REE in the store the workbench serves."""
         ...
 
-    def exec_query(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
-    ) -> bytes: ...
+    def exec_query(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> bytes:
+        """The answer to a read of the REE, as the ``ree`` read wrote it on stdout."""
+        ...
 
     def exec_query_stream(
-        self, workbench_id: str, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+        self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str
     ) -> Iterator[bytes]: ...
 
-    def exec_upload(self, workbench_id: str, argv: list[str], timeout: int = 600, *, ree_id: str) -> ReceivedFile:
-        """Run an executor subcommand in the bench and receive its stdout as a file.
+    def exec_upload(self, workbench_id: str, query: BundleQuery, timeout: int = 600, *, ree_id: str) -> ReceivedFile:
+        """Bundle the REE in the bench and receive the bundle as a file.
 
         The bytes travel over HTTP beside the control socket (see
         ``repo2ree_supervisor.transfers``), never as frames on it; the caller owns

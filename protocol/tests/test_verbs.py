@@ -18,6 +18,15 @@ from repo2ree_protocol.command import (
     WriteFileArgs,
     WriteFileCommand,
 )
+from repo2ree_protocol.queries import (
+    CatQuery,
+    InitRee,
+    LintDraftQuery,
+    ShowQuery,
+    query_argv,
+    query_from_argv,
+    query_types,
+)
 from repo2ree_protocol.verbs import VERBS, command_types, from_argv, to_argv
 from repo2ree_ree.primitives import LaunchOption
 from repo2ree_ree.review import ReviewLaunch
@@ -101,6 +110,51 @@ def test_a_command_read_back_from_its_argv_is_the_command(command: type[BaseMode
     cmd = data.draw(_command(command))
     argv, stdin = to_argv(cmd)  # type: ignore[arg-type]
     assert from_argv(argv, stdin) == cmd
+
+
+def _read(model: type[BaseModel]) -> st.SearchStrategy[BaseModel]:
+    if model is LintDraftQuery:
+        # An experiment's script is named for its experiment; no other script is.
+        return st.one_of(
+            st.builds(
+                LintDraftQuery,
+                kind=st.sampled_from(["experiment_run", "experiment_verify"]),
+                experiment_name=_TEXT.filter(bool),
+                experiment_environment_path=st.none() | _TEXT,
+                source=_TEXT,
+            ),
+            st.builds(
+                LintDraftQuery,
+                kind=st.sampled_from(["build_experiment_environment", "activate_experiment_environment", "launch"]),
+                experiment_environment_path=st.none() | _TEXT,
+                source=_TEXT,
+            ),
+        )
+    return _model(model)
+
+
+@pytest.mark.parametrize("read", [*query_types(), InitRee], ids=lambda read: read.__name__)
+@settings(max_examples=60, deadline=None)
+@given(data=st.data())
+def test_a_read_read_back_from_its_argv_is_the_read(read: type[BaseModel], data: st.DataObject) -> None:
+    value = data.draw(_read(read))
+    argv, stdin = query_argv(value)
+    assert query_from_argv(argv, stdin) == value
+
+
+def test_reads_keep_the_words_a_person_types() -> None:
+    assert query_argv(ShowQuery(summary=True)) == (["show", "--summary"], None)
+    assert query_argv(CatQuery(path="-odd name")) == (["cat", "--", "-odd name"], None)
+    assert query_argv(InitRee(name="demo")) == (["init", "--name", "demo"], None)
+    assert query_argv(LintDraftQuery(kind="experiment_run", experiment_name="fig", source="x")) == (
+        ["lint-draft", "--experiment-name", "fig", "--", "experiment_run"],
+        b"x",
+    )
+
+
+def test_a_read_cannot_spell_a_command() -> None:
+    with pytest.raises(ArgvError, match="no read"):
+        query_from_argv(["seal"])
 
 
 def test_an_argv_says_only_what_differs_from_the_defaults() -> None:

@@ -31,6 +31,7 @@ from repo2ree_protocol.command import (
     RunExperimentCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.queries import InitRee, query_types, verb_of
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.verbs import SUMMARIES, VERBS
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
@@ -392,3 +393,14 @@ def test_bundle_before_seal_writes_a_draft_bundle(initialized: Path) -> None:
         assert "ree.zip" not in archive.namelist()
         manifest = json.loads(archive.read("ree/ree.json"))
     assert "seal" not in manifest
+
+
+def test_every_read_a_workbench_can_be_sent_is_a_command() -> None:
+    assert {*(verb_of(read) for read in query_types()), verb_of(InitRee)} <= set(cli.commands)
+
+
+def test_an_init_in_an_environment_there_is_not_is_refused(root: Path) -> None:
+    result = ree(root, "init", "--name", "demo", "--workbench-environment", "moon")
+
+    assert result.exit_code == REFUSED
+    assert not root.exists() or not any(root.iterdir())

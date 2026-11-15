@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from repo2ree_protocol.workbench import ExecSimpleRequest, WorkbenchHello
+from repo2ree_protocol.queries import InitRee
+from repo2ree_protocol.workbench import InitReeRequest, WorkbenchHello
 from repo2ree_supervisor import WorkbenchConnection, WorkbenchConnectionRegistry, WorkbenchUnavailableError
 
 
@@ -115,7 +116,7 @@ def test_reconnect_displaces_old_connection_without_stale_eviction() -> None:
     # `new` owns the id; `old` was closed so its callers unblock and it can't route.
     assert registry.pick("a1") is new
     with pytest.raises(WorkbenchUnavailableError, match="workbench connection closed"):
-        next(old.request(ExecSimpleRequest(ree_id="ree-1", argv=["doctor"])))
+        next(old.request(InitReeRequest(ree_id="ree-1", init=InitRee(name="demo"))))
 
     # The stale `old` socket tearing down must NOT evict its live successor.
     registry.unregister("a1", old)

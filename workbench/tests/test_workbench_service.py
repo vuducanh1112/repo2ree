@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol.queries import INIT_REE
+from repo2ree_protocol.queries import InitRee, LintDraftQuery
 from repo2ree_workbench.executions import Identity, _Live
 from repo2ree_workbench.service import WorkbenchService
 
@@ -15,13 +15,10 @@ class _Backend:
         self.calls: list[str] = []
         self.root = root or Path("/nonexistent-test-root")
 
-    def exec_simple(self, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
-        self.calls.append("exec_simple")
-
     def exec_query_stream(
-        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: str | None = None
+        self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: bytes | None = None
     ) -> Iterator[bytes]:
-        self.calls.append("exec_query")
+        self.calls.append(f"query {' '.join(argv)} < {stdin!r}")
         yield b"result"
 
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
@@ -42,13 +39,21 @@ def test_service_routes_every_execution_operation_for_the_ree_it_names(tmp_path:
     backend = _Backend(tmp_path)
     service = WorkbenchService(backend, store_id="lab-a")  # type: ignore[arg-type]
 
-    service.exec_simple(["doctor"], ree_id="ree-1")
-    assert list(service.exec_query_stream(["archive"], ree_id="ree-1")) == [b"result"]
+    service.init_ree(InitRee(name="demo"), ree_id="ree-1")
+    draft = LintDraftQuery(kind="launch", source="set -eu\n")
+    assert list(service.exec_query_stream(draft, ree_id="ree-1")) == [b"result"]
     service.cancel_run("run-1", ree_id="ree-1")
     service.copy_in("source", "/ree/dest", ree_id="ree-1")
     service.delete_ree("ree-1")
 
-    assert backend.calls == ["exec_simple", "exec_query", "cancel", "copy_in", "delete_ree"]
+    # The service spells each read as the ree argv that answers it.
+    assert backend.calls == [
+        "init",
+        "query lint-draft -- launch < b'set -eu\\n'",
+        "cancel",
+        "copy_in",
+        "delete_ree",
+    ]
 
 
 def test_a_store_deletes_an_ree_only_while_none_of_its_runs_is_active(tmp_path: Path) -> None:
@@ -71,8 +76,8 @@ def test_a_store_creates_an_ree_only_where_none_is(tmp_path: Path) -> None:
     (tmp_path / "ree-1" / "ree.json").write_text("{}")
 
     with pytest.raises(RuntimeError, match="already exists"):
-        service.exec_simple([INIT_REE, "--name", "demo"], ree_id="ree-1")
-    service.exec_simple([INIT_REE, "--name", "demo"], ree_id="ree-2")
+        service.init_ree(InitRee(name="demo"), ree_id="ree-1")
+    service.init_ree(InitRee(name="demo"), ree_id="ree-2")
 
 
 def test_the_service_lists_and_serves_its_store_journals_as_written(tmp_path: Path) -> None:

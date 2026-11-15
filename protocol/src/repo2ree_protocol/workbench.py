@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
+from repo2ree_protocol.queries import BundleQuery, InitRee, Query
 
 # ================================================
 # Identity
@@ -78,47 +79,39 @@ class WorkbenchHello(BaseModel):
 # ================================================
 
 
-class ExecSimpleRequest(BaseModel):
-    """Run an executor subcommand in the bench, discarding output.
-
-    ``argv`` is the ``ree`` subcommand argv (e.g. ``["init", …]``)
-    — *without* the executor binary. The resident workbench resolves its local
-    executor entry point from configuration."""
+class InitReeRequest(BaseModel):
+    """Create the REE in the workbench's store, which runs ``ree init`` for it; refused where one is already."""
 
     model_config = ConfigDict(extra="forbid")
 
-    op: Literal["exec_simple"] = "exec_simple"
+    op: Literal["init_ree"] = "init_ree"
     # The REE this addresses in the workbench's store.
     ree_id: str
-    argv: list[str]
+    init: InitRee
     timeout: int = 60
 
 
 class ExecQueryRequest(BaseModel):
-    """Run an executor subcommand in the bench, streaming its stdout back.
-
-    ``argv`` is the executor subcommand argv, as in ``ExecSimpleRequest``."""
+    """Read the REE: the workbench runs the ``ree`` read that answers ``query`` and streams its stdout back."""
 
     model_config = ConfigDict(extra="forbid")
 
     op: Literal["exec_query"] = "exec_query"
     # The REE this addresses in the workbench's store.
     ree_id: str
-    argv: list[str]
-    # What the subcommand reads on stdin, such as the unsaved script ``lint-draft`` checks.
-    stdin: str | None = None
+    query: Query
     timeout: int = 30
 
 
 class ExecUploadRequest(BaseModel):
-    """Run an executor subcommand in the bench and upload its stdout as a file.
+    """Bundle the REE and upload the bundle as a file.
 
-    For output too large for the control socket (an REE archive): the workbench
-    writes the subcommand's stdout to a file in the bench, then sends that file
-    over HTTP — ``PUT`` to ``transfer_path`` on the same address it dialed for
-    this socket, so the workbench still only ever dials out — and answers
-    ``done`` once the control plane has taken it. Bulk bytes never share the
-    socket that carries keepalive pings and every other request.
+    For output too large for the control socket: the workbench writes ``ree bundle``'s
+    stdout to a file in the bench, then sends that file over HTTP — ``PUT`` to
+    ``transfer_path`` on the same address it dialed for this socket, so the workbench
+    still only ever dials out — and answers ``done`` once the control plane has taken
+    it. Bulk bytes never share the socket that carries keepalive pings and every other
+    request.
 
     ``transfer_path`` is an absolute path naming a single-use transfer the
     control plane opened for this request; it is the transfer's only credential."""
@@ -128,7 +121,7 @@ class ExecUploadRequest(BaseModel):
     op: Literal["exec_upload"] = "exec_upload"
     # The REE this addresses in the workbench's store.
     ree_id: str
-    argv: list[str]
+    query: BundleQuery = Field(default_factory=BundleQuery)
     transfer_path: str
     timeout: int = 600
 
@@ -252,7 +245,7 @@ class WorkbenchJournalList(BaseModel):
 # lives on the request model itself, so both sides share one definition and a
 # mistyped op cannot compile into a well-formed request.
 WorkbenchRequest = Annotated[
-    ExecSimpleRequest
+    InitReeRequest
     | ExecQueryRequest
     | ExecUploadRequest
     | StartRunRequest
