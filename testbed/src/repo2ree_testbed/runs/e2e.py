@@ -88,7 +88,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         help="install each store's workbench on this machine, whose scripts run where the machine runs them",
     )
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
-    parser.add_argument("--exec-bundle", type=Path, default=ROOT / "dist/bundles/exec")
+    parser.add_argument("--cli-bundle", type=Path, default=ROOT / "dist/bundles/cli")
     parser.add_argument("--tools-bundle", type=Path, default=ROOT / "dist/bundles/tools")
     args = parser.parse_args(argv)
     if args.project and args.tier:
@@ -120,7 +120,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         backend=environment.backend if environment else args.backend,
         environment=environment,
         state_root=args.state_root,
-        exec_bundle=args.exec_bundle,
+        cli_bundle=args.cli_bundle,
         tools_bundle=args.tools_bundle,
     )
     schedule = PerTest(args.jobs, select) if args.per_test else WholeSuite()

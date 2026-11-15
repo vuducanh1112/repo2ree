@@ -1,14 +1,14 @@
 # ----------------------------------------------------------------
 # The workbench: everything resident inside a bench.
 #
-# A definition module like ./ree-executor.nix, not a flake package. It
+# A definition module like ./ree-cli.nix, not a flake package. It
 # answers "what is a workbench" once — the outbound listener, the REE
 # executor it spawns, and the handler tools those shell out to — and each
 # consumer packages a slice of it:
 #   ./provider-image.nix  embeds the manifests plus `store-paths` lists that
 #                         reference the image's own /nix/store, for injection
 #                         into an allocated bench
-#   ./exec-bundle.nix     materializes a `store/` copy for hosts that
+#   ./cli-bundle.nix     materializes a `store/` copy for hosts that
 #                         provision by hand
 # Sharing one definition is the point: before this module both of those
 # assembled the same closure and rebuilt the same combined manifest
@@ -31,13 +31,13 @@
 }:
 
 let
-  executor = import ./ree-executor.nix { inherit pkgs buildRevision; };
+  executor = import ./ree-cli.nix { inherit pkgs buildRevision; };
   service = import ./workbench-service.nix { inherit pkgs buildRevision; };
   tools = import ./tools.nix { inherit pkgs; };
 
   # The executor manifest with the resident listener's path folded in. Every
   # consumer needs exactly this file, so it is built here once.
-  execManifest =
+  cliManifest =
     pkgs.runCommand "repo2ree-workbench-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; }
       ''
         jq \
@@ -49,7 +49,7 @@ let
   # Everything a bench needs present at runtime to execute an REE: the
   # listener, the executor, and the static `sleep` behind the keep-alive
   # command. Consumers either copy these paths or reference them.
-  execClosure = pkgs.closureInfo {
+  cliClosure = pkgs.closureInfo {
     rootPaths = [
       executor.bin
       executor.pause
@@ -75,7 +75,7 @@ let
   # images that ship no store of their own. The provider sets the same set on
   # a bench it allocates; an image that bakes them in needs no provider.
   toolEnv = {
-    REPO2REE_EXEC_PATH = "${executor.bin}/bin/repo2ree-exec";
+    REPO2REE_CLI_PATH = "${executor.bin}/bin/ree";
     REPO2REE_TOOLS_BIN = "${tools.binDir}/bin";
   }
   // tools.extraEnv
@@ -89,8 +89,8 @@ in
     executor
     service
     tools
-    execManifest
-    execClosure
+    cliManifest
+    cliClosure
     fullClosure
     toolEnv
     ;
@@ -99,9 +99,9 @@ in
   # reads them from. A consumer that already carries the closure in its own
   # /nix/store references it through these instead of copying it a second time.
   bundleRefDir = pkgs.runCommand "repo2ree-bundles-ref" { } ''
-    mkdir -p $out/opt/repo2ree/exec-bundle $out/opt/repo2ree/tools-bundle
-    cp ${execManifest} $out/opt/repo2ree/exec-bundle/manifest.json
-    cp ${execClosure}/store-paths $out/opt/repo2ree/exec-bundle/store-paths
+    mkdir -p $out/opt/repo2ree/cli-bundle $out/opt/repo2ree/tools-bundle
+    cp ${cliManifest} $out/opt/repo2ree/cli-bundle/manifest.json
+    cp ${cliClosure}/store-paths $out/opt/repo2ree/cli-bundle/store-paths
     cp ${tools.manifest} $out/opt/repo2ree/tools-bundle/manifest.json
     cp ${tools.closure}/store-paths $out/opt/repo2ree/tools-bundle/store-paths
   '';

@@ -8,13 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend, declared_workbench_environment
+from repo2ree_workbench.cli_process import LocalCli, ScriptBackend, declared_workbench_environment
 from repo2ree_workbench.tools import tool_environment
 
 
 @pytest.fixture
 def fake_executor(tmp_path: Path) -> Path:
-    path = tmp_path / "repo2ree-exec"
+    (tmp_path / "bin").mkdir()
+    path = tmp_path / "bin" / "ree"
     path.write_text(
         "#!/bin/sh\n"
         'case "$1" in\n'
@@ -30,14 +31,14 @@ def fake_executor(tmp_path: Path) -> Path:
 
 
 def test_local_executor_runs_queries(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
+    executor = LocalCli(tmp_path / "ree", str(fake_executor))
     assert b"".join(executor.exec_query_stream(["query"], ree_id="ree")) == b"query-result"
 
 
 def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
     fake_executor: Path, tmp_path: Path
 ) -> None:
-    executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
+    executor = LocalCli(tmp_path / "ree", str(fake_executor))
     target = tmp_path / "out.bin"
 
     executor.exec_query_to_file(["query"], target, ree_id="ree")
@@ -48,13 +49,13 @@ def test_a_query_written_to_a_file_never_passes_through_memory_and_fails_loudly(
 
 
 def test_local_executor_reports_simple_failure(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "ree", str(fake_executor))
+    executor = LocalCli(tmp_path / "ree", str(fake_executor))
     with pytest.raises(RuntimeError, match="exit 7"):
         executor.exec_simple(["fail"], ree_id="ree")
 
 
 def test_local_executor_reads_executor_build(fake_executor: Path, tmp_path: Path) -> None:
-    build = LocalExecutor(tmp_path / "ree", str(fake_executor)).build_info()
+    build = LocalCli(tmp_path / "ree", str(fake_executor)).build_info()
 
     assert build.revision == "executor-revision"
 
@@ -63,7 +64,7 @@ def test_copy_in_is_atomic_and_confined(fake_executor: Path, tmp_path: Path) -> 
     root = tmp_path / "ree"
     source = tmp_path / "source"
     source.write_bytes(b"payload")
-    executor = LocalExecutor(root, str(fake_executor))
+    executor = LocalCli(root, str(fake_executor))
     executor.copy_in(str(source), "/ree/upload-staging/input.bin", ree_id="ree")
     assert (root / "ree" / "upload-staging/input.bin").read_bytes() == b"payload"
     with pytest.raises(ValueError, match=r"escapes|must not"):
@@ -71,7 +72,7 @@ def test_copy_in_is_atomic_and_confined(fake_executor: Path, tmp_path: Path) -> 
 
 
 def test_a_store_runs_each_command_against_the_ree_it_names(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "store", str(fake_executor))
+    executor = LocalCli(tmp_path / "store", str(fake_executor))
 
     assert executor.ree_root("ree-1") == (tmp_path / "store" / "ree-1").resolve()
     observed = executor.environment(executor.ree_root("ree-1"))
@@ -87,7 +88,7 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
     (bundle / "manifest.json").write_text(
         json.dumps({"tools": {"git-lfs": "/nix/store/x/bin/git-lfs"}, "bin_dir": "/nix/store/y/bin", "env": {"A": "1"}})
     )
-    executor = LocalExecutor(tmp_path / "root", str(fake_executor), environment=tool_environment(bundle))
+    executor = LocalCli(tmp_path / "root", str(fake_executor), environment=tool_environment(bundle))
 
     observed = executor.environment(executor.root)
 
@@ -99,7 +100,7 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
 
 def test_a_container_workbench_runs_each_ree_in_the_image_it_declares(fake_executor: Path, tmp_path: Path) -> None:
     scripts = ScriptBackend("container", "podman", "socket", ("/repo2ree", "/home/me/repo2ree"))
-    executor = LocalExecutor(tmp_path / "store", str(fake_executor), scripts=scripts)
+    executor = LocalCli(tmp_path / "store", str(fake_executor), scripts=scripts)
     root = executor.ree_root("ree-1")
     root.mkdir(parents=True)
     environment = {"oci": "python:3.12-slim"}
@@ -157,7 +158,7 @@ def test_a_store_workbench_refuses_an_environment_it_cannot_give(
 
 
 def test_a_bench_set_up_for_one_ree_says_nothing_of_where_scripts_run(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalExecutor(tmp_path / "root", str(fake_executor))
+    executor = LocalCli(tmp_path / "root", str(fake_executor))
     assert "REPO2REE_SCRIPT_RUNNER" not in executor.environment(executor.root)
 
 

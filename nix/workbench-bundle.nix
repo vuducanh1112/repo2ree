@@ -9,7 +9,7 @@
 # rather than a container image that would claim to be the whole environment.
 #
 #   store/                     every path the closure needs
-#   exec-bundle/manifest.json  exec_path, pause_path, workbench_path
+#   cli-bundle/manifest.json  cli_path, pause_path, workbench_path
 #   tools-bundle/manifest.json tool paths, bin_dir, CA env
 #   activate                   exports the environment and execs the listener
 #
@@ -72,12 +72,12 @@ let
   };
 in
 pkgs.runCommand "repo2ree-workbench-bundle" { } ''
-  mkdir -p $out/store $out/exec-bundle $out/tools-bundle
+  mkdir -p $out/store $out/cli-bundle $out/tools-bundle
   while IFS= read -r path; do
     cp -a "$path" $out/store/
   done < ${workbench.fullClosure}/store-paths
 
-  cp ${workbench.execManifest} $out/exec-bundle/manifest.json
+  cp ${workbench.cliManifest} $out/cli-bundle/manifest.json
   cp ${workbench.tools.manifest} $out/tools-bundle/manifest.json
   cp ${activate} $out/activate
 ''

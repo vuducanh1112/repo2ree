@@ -402,7 +402,7 @@ class CommandDispatcher:
     def dispatch_query(self, handle: ReeRoute, *argv: str, locked: bool = False, timeout: int = 30) -> bytes:
         """Run a read-only CLI subcommand and return its stdout bytes.
 
-        ``argv`` is a ``repo2ree-exec`` subcommand (e.g. ``get-ree-manifest``);
+        ``argv`` is a ``ree`` subcommand (e.g. ``get-ree-manifest``);
         the workbench service prepends the bench's executor entry point. Set
         ``locked`` for
         queries that must observe a consistent snapshot — they take the per-REE

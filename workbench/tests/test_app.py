@@ -18,7 +18,7 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
         api_ws_url="wss://control.example/workbench/connect",
         workbench_id="workbench-1",
         enrollment_token=opaque,
-        exec_path="/bin/repo2ree-exec",
+        cli_path="/bin/ree",
         store_id="lab-1",
         store_root=tmp_path / "rees",
         otlp_endpoint="http://collector:4318",
@@ -46,7 +46,7 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
         def build_info(self) -> BuildInfo:
             return BuildInfo(revision="executor-test-revision")
 
-    monkeypatch.setattr(app_module, "LocalExecutor", lambda *args, **kwargs: Executor())
+    monkeypatch.setattr(app_module, "LocalCli", lambda *args, **kwargs: Executor())
 
     async def run_workbench(*args: object, **kwargs: object) -> None:
         workbench_args.extend([*args, kwargs])

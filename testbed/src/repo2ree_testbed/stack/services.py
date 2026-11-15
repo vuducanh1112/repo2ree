@@ -20,7 +20,7 @@ class Deployment:
     tier: str
     compute_locations: int
     state_root: Path
-    exec_bundle: Path
+    cli_bundle: Path
     tools_bundle: Path
     backend: Backend = "container"
     # The machine each store's workbench is installed on; without one, it runs from source here.
@@ -87,7 +87,7 @@ def locations(
                 # Job containers carry the run's label, so its cleanup removes what a fault left.
                 "REPO2REE_RESOURCE_OWNER": token,
                 "WORKBENCH_STATE_DIR": str(state),
-                "REPO2REE_EXEC_PATH": "repo2ree-exec",
+                "REPO2REE_CLI_PATH": "ree",
             },
             # A container store offers the images the tests create REEs from.
             tuple(arg for ref in STORE_IMAGES for arg in ("--image", ref)) if deployment.backend == "container" else (),

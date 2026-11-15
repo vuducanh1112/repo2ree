@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------
-# The executor bundle: the `repo2ree-exec` closure as a mountable tree.
+# The executor bundle: the `ree` closure as a mountable tree.
 #
 # The provider copies `store/` into a content-addressed docker volume and
 # mounts it read-only at /nix/store inside any bench container. Every
@@ -9,7 +9,7 @@
 #
 # `manifest.json` tells the provider the absolute in-container paths, so
 # provisioning never assumes anything about the env image's PATH:
-#   exec_path  — the repo2ree-exec entrypoint to `docker exec`
+#   cli_path  — the ree entrypoint to `docker exec`
 #   pause_path — a static `sleep` for the bench keep-alive command,
 #                so the env image needs no coreutils of its own
 #
@@ -22,9 +22,9 @@
 # a `store-paths` list referencing its own /nix/store (see
 # provider-image.nix) — same manifest, no duplicated closure.
 #
-# Build with:   nix build .#exec-bundle
+# Build with:   nix build .#cli-bundle
 # Smoke-test:   docker run --rm -v "$(readlink -f result)/store:/nix/store:ro" \
-#                 alpine "$(jq -r .exec_path result/manifest.json)" --help
+#                 alpine "$(jq -r .cli_path result/manifest.json)" --help
 # ----------------------------------------------------------------
 {
   pkgs,
@@ -34,11 +34,11 @@
 let
   workbench = import ./workbench.nix { inherit pkgs buildRevision; };
 in
-pkgs.runCommand "repo2ree-exec-bundle" { } ''
+pkgs.runCommand "repo2ree-cli-bundle" { } ''
   mkdir -p $out/store
   while IFS= read -r path; do
     cp -a "$path" $out/store/
-  done < ${workbench.execClosure}/store-paths
+  done < ${workbench.cliClosure}/store-paths
 
-  cp ${workbench.execManifest} $out/manifest.json
+  cp ${workbench.cliManifest} $out/manifest.json
 ''

@@ -1,5 +1,5 @@
 E2E_BUNDLE_DIR := ROOT + "/dist/bundles"
-E2E_EXEC_BUNDLE := E2E_BUNDLE_DIR + "/exec"
+E2E_CLI_BUNDLE := E2E_BUNDLE_DIR + "/exec"
 E2E_TOOLS_BUNDLE := E2E_BUNDLE_DIR + "/tools"
 DEFAULT_API_DEMO_CAST := REPO2REE_TEST_RUN_DIR + "/python/attachments/api-walkthrough.cast"
 # Per-test stacks running side by side in the per-test tiers (a recipe argument overrides it).
@@ -15,12 +15,12 @@ E2E_JOBS := "4"
 [group('E2E tests')]
 build-e2e-bundles: _stage-nix-sources
     @mkdir -p {{ quote(E2E_BUNDLE_DIR) }}
-    nix build .#exec-bundle -o {{ quote(E2E_EXEC_BUNDLE) }}
+    nix build .#cli-bundle -o {{ quote(E2E_CLI_BUNDLE) }}
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
 [private]
 _source-stack-playwright project locations:
-    python -m repo2ree_testbed e2e --project {{ quote(project) }} --compute-locations {{ quote(locations) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    python -m repo2ree_testbed e2e --project {{ quote(project) }} --compute-locations {{ quote(locations) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # The per-test tiers below run as the assurance gate runs them, with `jobs` stacks side by side.
 # Trailing parts of test ids run only the tests whose id contains one (e.g. `just test-e2e-faults 4
@@ -62,12 +62,12 @@ test-e2e-slurm *select: (_load-environment "slurm")
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
 test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
-    CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Fuzz every API operation against its contract on one stack, not gated.
 [group('E2E tests')]
 test-e2e-fuzz: build-e2e-bundles
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # Run every API showcase, authoring and review, each test on a fresh stack on the machine its showcase names; assess the run and certify it if it qualifies. Select tests by parts of their ids (e.g. `just test-showcase-api 4 conda/`).
 [group('E2E tests')]
@@ -94,7 +94,7 @@ test-showcase jobs=E2E_JOBS *select: (_tier-showcase jobs select) (assess-behavi
 
 [private]
 _tier-showcase jobs *select: build-e2e-bundles
-    python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
 # dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.
@@ -133,7 +133,7 @@ demo-api cast=DEFAULT_API_DEMO_CAST transcript="": build-e2e-bundles
     transcript={{ quote(transcript) }}
     transcript=${transcript:-${cast%.cast}.md}
     mkdir -p "$(dirname "$cast")"
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/walkthrough/api_walkthrough.py") }} --tier demo-api --compute-locations 1 --exec-bundle {{ quote(E2E_EXEC_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/walkthrough/api_walkthrough.py") }} --tier demo-api --compute-locations 1 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
     python3 {{ quote(ROOT + "/testbed/suites/walkthrough/render_cast_transcript.py") }} "$cast" "$transcript"
 
 # Start the local image-backed stack.

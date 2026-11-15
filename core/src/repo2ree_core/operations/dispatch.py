@@ -89,7 +89,7 @@ def run_command(
     """Dispatch a typed Command to its handler and return an ActionResult.
 
     ``run_id`` is the caller's name for this unit of work; the control plane
-    mints one per background run. A hand-run command (``repo2ree-exec`` with no
+    mints one per background run. A hand-run command (``ree`` with no
     ``--run-id``) has none, so one is minted *here* rather than downstream in
     the receipt: the span and the evidence then name the same run, which is what
     makes a trace joinable to what it produced. Minting it later meant a manual

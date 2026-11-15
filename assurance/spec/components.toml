@@ -19,4 +19,4 @@ summary = "The service serving a store of REEs: receives commands, starts an exe
 [[component]]
 name = "core"
 process = "executor"
-summary = "Domain logic run by repo2ree-exec, one process per command the workbench starts: owns the REE and its history."
+summary = "Domain logic run by `ree`, one process per command the workbench starts: owns the REE and its history."

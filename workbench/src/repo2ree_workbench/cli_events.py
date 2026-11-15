@@ -8,7 +8,7 @@ from repo2ree_protocol.frames import Frame, LogFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
 
 
-def executor_line_to_frame(line: str) -> Frame | None:
+def cli_line_to_frame(line: str) -> Frame | None:
     try:
         event = json.loads(line)
     except json.JSONDecodeError:

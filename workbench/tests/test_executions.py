@@ -15,6 +15,7 @@ import pytest
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame, LogFrame
 from repo2ree_protocol.result import ActionResult
+from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.executions import (
     _WRAPPER,
     Executions,
@@ -23,7 +24,6 @@ from repo2ree_workbench.executions import (
     UnknownExecutionError,
     _birth,
 )
-from repo2ree_workbench.executor_process import LocalExecutor
 from repo2ree_workbench.journal import store_journal
 
 INTERRUPTED = {
@@ -44,7 +44,7 @@ INTERRUPTED = {
 
 def fake_executor(tmp_path: Path, execute: str = "") -> Path:
     """An executor whose ``execute`` logs a line, runs ``execute``, then reports success with its context."""
-    path = tmp_path / "repo2ree-exec"
+    path = tmp_path / "ree"
     marker = tmp_path / "marker"
     path.write_text(
         "#!/bin/sh\n"
@@ -65,7 +65,7 @@ def fake_executor(tmp_path: Path, execute: str = "") -> Path:
 def executions(tmp_path: Path, execute: str = "", **options: float) -> Executions:
     store = tmp_path / "store"
     store.mkdir(exist_ok=True)
-    return Executions(LocalExecutor(store, str(fake_executor(tmp_path, execute))), poll=0.02, **options)  # type: ignore[arg-type]
+    return Executions(LocalCli(store, str(fake_executor(tmp_path, execute))), poll=0.02, **options)  # type: ignore[arg-type]
 
 
 def start(runs: Executions, ree_id: str = "ree", run_id: str = "run-1", **context: str) -> ExecutionContext:

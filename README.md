@@ -93,8 +93,8 @@ scripts/with-build-revision uv run --package repo2ree-api uvicorn repo2ree_api.m
 2. Build the executor and tools bundles the provider injects into each
    workbench. The published provider image ships them baked in, but a provider
    run from source needs them built and pointed at explicitly — without them,
-   provisioning fails its executor probe (`"repo2ree-exec": executable file
-   not found`). Rebuild after changing `core/` or `executor/`, or benches
+   provisioning fails its executor probe (`"ree": executable file
+   not found`). Rebuild after changing `core/` or `cli/`, or benches
    keep running the old executor:
 
 ```bash
@@ -107,7 +107,7 @@ just build-e2e-bundles   # builds dist/bundles/{exec,tools} via nix
    process to launch by hand:
 
 ```bash
-REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
+REPO2REE_CLI_BUNDLE=$PWD/dist/bundles/cli \
 REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
 scripts/with-build-revision uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker
 ```
@@ -123,7 +123,7 @@ For faster local iteration, you can share the host Docker daemon with
 workbenches:
 
 ```bash
-REPO2REE_EXEC_BUNDLE=$PWD/dist/bundles/exec \
+REPO2REE_CLI_BUNDLE=$PWD/dist/bundles/cli \
 REPO2REE_TOOLS_BUNDLE=$PWD/dist/bundles/tools \
 PROVIDER_DOCKER_MODE=host-socket \
 scripts/with-build-revision uv run --package repo2ree-provider-docker python -m repo2ree_provider_docker

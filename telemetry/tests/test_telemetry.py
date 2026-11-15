@@ -354,7 +354,7 @@ def test_relayed_span_json_renders_scalar_attributes() -> None:
     span.attributes.add(key="cached", value=AnyValue(bool_value=True))
     span.attributes.add(key="duration", value=AnyValue(double_value=1.25))
     resource = PbResource()
-    resource.attributes.add(key="service.name", value=AnyValue(string_value="repo2ree-exec"))
+    resource.attributes.add(key="service.name", value=AnyValue(string_value="ree"))
 
     rendered = relayed_span_json(span, resource)
 
@@ -370,7 +370,7 @@ def test_relayed_span_json_renders_scalar_attributes() -> None:
         "cached": True,
         "duration": 1.25,
     }
-    assert rendered["resource"] == {"attributes": {"service.name": "repo2ree-exec"}, "schema_url": ""}
+    assert rendered["resource"] == {"attributes": {"service.name": "ree"}, "schema_url": ""}
 
 
 def test_relayed_span_json_uses_none_for_missing_parent() -> None:
@@ -490,7 +490,7 @@ def _stub_otlp_exporters(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_setup_tracing_is_a_noop_without_an_endpoint_or_fallback() -> None:
-    assert setup_tracing("repo2ree-exec") is None
+    assert setup_tracing("ree") is None
 
 
 @pytest.mark.usefixtures("_no_global_providers", "_stub_otlp_exporters")
@@ -535,7 +535,7 @@ def test_setup_tracing_console_fallback_without_a_trace_file_writes_stdout(
 
 
 def test_setup_metrics_is_a_noop_without_an_endpoint() -> None:
-    assert setup_metrics("repo2ree-exec") is None
+    assert setup_metrics("ree") is None
 
 
 @pytest.mark.usefixtures("_no_global_providers", "_stub_otlp_exporters")
@@ -548,7 +548,7 @@ def test_setup_metrics_builds_a_provider_carrying_the_service_identity() -> None
 
 
 def test_setup_logs_is_a_noop_without_an_endpoint() -> None:
-    assert setup_logs("repo2ree-exec") is None
+    assert setup_logs("ree") is None
 
 
 @pytest.mark.usefixtures("_stub_otlp_exporters")
@@ -606,7 +606,7 @@ def test_setup_relay_tracing_streams_the_executors_spans_for_relay(monkeypatch: 
     monkeypatch.setattr(trace_api, "set_tracer_provider", registered.append)
 
     stream = io.StringIO()
-    setup_relay_tracing("repo2ree-exec", stream)
+    setup_relay_tracing("ree", stream)
 
     # Registered globally in the executor process; here it is captured, so the
     # span has to be started on the provider directly.
@@ -810,7 +810,7 @@ def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape
         def shutdown(self) -> None: ...
 
     relay = io.StringIO()
-    provider = TracerProvider(resource=Resource.create({"service.name": "repo2ree-exec"}))
+    provider = TracerProvider(resource=Resource.create({"service.name": "ree"}))
     provider.add_span_processor(SimpleSpanProcessor(_Capture()))
     provider.add_span_processor(SimpleSpanProcessor(_RelaySpanExporter(relay)))
     with provider.get_tracer(__name__).start_as_current_span("command.acquire_source") as span:
@@ -832,7 +832,7 @@ def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape
     assert relayed == json.loads(captured[0].to_json(indent=None))
     # Spelled out, because these are the ones a summary loses and a reader needs.
     assert relayed["status"] == {"status_code": "ERROR", "description": "acquire failed"}
-    assert relayed["resource"]["attributes"]["service.name"] == "repo2ree-exec"
+    assert relayed["resource"]["attributes"]["service.name"] == "ree"
     assert relayed["start_time"]
     assert relayed["end_time"]
 

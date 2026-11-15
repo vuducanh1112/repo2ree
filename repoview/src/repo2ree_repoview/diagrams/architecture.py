@@ -47,7 +47,7 @@ PALETTE = {
     "repo2ree_api": "#c2410c",
     "repo2ree_protocol": "#15803d",
     "repo2ree_supervisor": "#7c3aed",
-    "repo2ree_executor": "#0891b2",
+    "repo2ree_cli": "#0891b2",
     "repo2ree_workbench": "#b45309",
 }
 FALLBACK_COLOR = "#64748b"

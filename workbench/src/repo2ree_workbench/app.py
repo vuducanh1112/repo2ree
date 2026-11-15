@@ -10,9 +10,9 @@ from repo2ree_telemetry.bootstrap import TracerProvider, otlp_log_handler, setup
 from repo2ree_telemetry.log import configure_logging
 from repo2ree_telemetry.relay import setup_relayed_span_export
 from repo2ree_workbench.capabilities import detect_capabilities
+from repo2ree_workbench.cli_process import LocalCli, ScriptBackend
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
-from repo2ree_workbench.executor_process import LocalExecutor, ScriptBackend
 from repo2ree_workbench.journal import store_journal
 from repo2ree_workbench.service import WorkbenchService
 from repo2ree_workbench.tools import tool_environment
@@ -44,9 +44,9 @@ def main(argv: Sequence[str] = ()) -> None:
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
     capabilities = detect_capabilities(config.script_engine if config.backend == "container" else None)
-    executor = LocalExecutor(
+    executor = LocalCli(
         config.store_root,
-        config.exec_path,
+        config.cli_path,
         environment=tool_environment(config.tools_bundle),
         # The store's workbench runs each REE's scripts where the REE declares, or refuses.
         scripts=ScriptBackend(

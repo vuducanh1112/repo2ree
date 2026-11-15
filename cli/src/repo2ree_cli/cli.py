@@ -139,7 +139,7 @@ def main() -> None:
     # The supervisor sets TRACE_RELAY when it wants spans; they ride the stderr
     # NDJSON stream back to it (this process has no path to the collector).
     if os.environ.get("TRACE_RELAY"):
-        setup_relay_tracing("repo2ree-exec", sys.stderr)
+        setup_relay_tracing("ree", sys.stderr)
     cli()
 
 
@@ -412,7 +412,7 @@ def init_ree_cmd(name: str, workbench_environment: EnvironmentBackend) -> None:
 @cli.command("build-info")
 def build_info_cmd() -> None:
     """Print this executor's build identity as JSON."""
-    click.echo(current_build("repo2ree-executor").model_dump_json())
+    click.echo(current_build("repo2ree-cli").model_dump_json())
 
 
 @cli.command("doctor")

@@ -2727,7 +2727,7 @@
     },
     "ExecSimpleRequest": {
       "additionalProperties": false,
-      "description": "Run an executor subcommand in the bench, discarding output.\n\n``argv`` is the ``repo2ree-exec`` subcommand argv (e.g. ``[\"init-ree\", …]``)\n— *without* the executor binary. The resident workbench resolves its local\nexecutor entry point from configuration.",
+      "description": "Run an executor subcommand in the bench, discarding output.\n\n``argv`` is the ``ree`` subcommand argv (e.g. ``[\"init-ree\", …]``)\n— *without* the executor binary. The resident workbench resolves its local\nexecutor entry point from configuration.",
       "properties": {
         "op": {
           "const": "exec_simple",

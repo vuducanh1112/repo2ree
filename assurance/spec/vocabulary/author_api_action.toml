@@ -6,7 +6,7 @@
 # it runs anything there, is one try of it. Canceling is not an action of its own but
 # the canceled action's `canceling`; watching an action is a read that names it.
 #
-# Only the API's interface: what an author runs directly through repo2ree-exec inside a
+# Only the API's interface: what an author runs directly through ree inside a
 # workbench is not one of these, and shows only as the Attempt it leaves in the REE.
 
 name = "AuthorApiAction"

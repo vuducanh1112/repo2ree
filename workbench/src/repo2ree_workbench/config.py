@@ -26,7 +26,7 @@ class WorkbenchConfig:
     workbench_id: str
     # The store's token, which admits this workbench for that store alone.
     enrollment_token: str
-    exec_path: str
+    cli_path: str
     # The store this workbench serves, and the directory of REEs it is on this machine.
     store_id: str
     store_root: Path
@@ -55,7 +55,7 @@ class WorkbenchEnvironment(BaseSettings):
     WORKBENCH_ID: str = ""
     WORKBENCH_STATE_DIR: Path = Path("~/.repo2ree")
     WORKBENCH_TELEMETRY: Literal["direct", "relay", "local", "off"] | None = None
-    REPO2REE_EXEC_PATH: str = "repo2ree-exec"
+    REPO2REE_CLI_PATH: str = "ree"
     OTLP_ENDPOINT: str | None = None
     TRACE_FILE: str | None = None
     # "ID=PATH": serve the store ID, a directory of REEs at PATH.
@@ -180,7 +180,7 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         api_ws_url=args.connect,
         workbench_id=workbench_id,
         enrollment_token=args.token_file.read_text().strip() if args.token_file else args.token,
-        exec_path=environment.REPO2REE_EXEC_PATH,
+        cli_path=environment.REPO2REE_CLI_PATH,
         store_id=store_id,
         store_root=store_root,
         backend=args.backend,

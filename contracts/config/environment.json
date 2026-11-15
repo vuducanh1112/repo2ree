@@ -97,9 +97,9 @@
           "default": null,
           "title": "Otlp Endpoint"
         },
-        "REPO2REE_EXEC_PATH": {
-          "default": "repo2ree-exec",
-          "title": "Repo2Ree Exec Path",
+        "REPO2REE_CLI_PATH": {
+          "default": "ree",
+          "title": "Repo2Ree Cli Path",
           "type": "string"
         },
         "TRACE_FILE": {
@@ -552,19 +552,19 @@
         "type": "string"
       }
     },
-    "REPO2REE_EXEC_BUNDLE": {
+    "REPO2REE_CLI_BUNDLE": {
       "kind": "deployment",
       "owner": "workbench",
       "schema": {
         "type": "string"
       }
     },
-    "REPO2REE_EXEC_PATH": {
+    "REPO2REE_CLI_PATH": {
       "kind": "runtime",
       "owner": "workbench",
       "schema": {
-        "default": "repo2ree-exec",
-        "title": "Repo2Ree Exec Path",
+        "default": "ree",
+        "title": "Repo2Ree Cli Path",
         "type": "string"
       }
     },

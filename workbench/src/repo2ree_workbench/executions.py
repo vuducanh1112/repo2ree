@@ -27,8 +27,8 @@ from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
 from repo2ree_protocol.result import ActionResult
 from repo2ree_telemetry.behaviour import events
-from repo2ree_workbench import executor_frames
-from repo2ree_workbench.executor_process import LocalExecutor
+from repo2ree_workbench import cli_events
+from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.journal import STATE
 
 # How long a canceled executor gets to stop by itself — stop its script, roll the REE back,
@@ -107,7 +107,7 @@ class Executions:
 
     def __init__(
         self,
-        executor: LocalExecutor,
+        executor: LocalCli,
         *,
         slots: int = 1,
         poll: float = POLL_SECONDS,
@@ -163,7 +163,7 @@ class Executions:
         (directory / "context.json").write_text(context.model_dump_json(), encoding="utf-8")
         argv = [
             *_WRAPPER,
-            self._executor.exec_path,
+            self._executor.cli_path,
             "execute",
             "--action",
             "-",
@@ -368,7 +368,7 @@ class LogFollower:
                     if self._skip:
                         self._skip -= 1
                         continue
-                    if frame := executor_frames.executor_line_to_frame(line.decode(errors="replace").rstrip()):
+                    if frame := cli_events.cli_line_to_frame(line.decode(errors="replace").rstrip()):
                         frames.append(frame)
         done = ending is not None and len(frames) < _FOLLOW_LINES
         return frames, ending.result if done and ending is not None else None

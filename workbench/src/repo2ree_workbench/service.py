@@ -11,8 +11,8 @@ from pathlib import Path
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
 from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
+from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.executions import Executions, LogFollower
-from repo2ree_workbench.executor_process import LocalExecutor
 from repo2ree_workbench.journal import journal_directory
 
 INIT_REE = "init-ree"
@@ -22,7 +22,7 @@ JOURNAL_CHUNK = 256 * 1024
 class WorkbenchService:
     """The backend-neutral execution service of a store's workbench."""
 
-    def __init__(self, executor: LocalExecutor, *, store_id: str, slots: int = 1, executions: Executions | None = None):
+    def __init__(self, executor: LocalCli, *, store_id: str, slots: int = 1, executions: Executions | None = None):
         self._executor = executor
         self.store_id = store_id
         self.slots = slots

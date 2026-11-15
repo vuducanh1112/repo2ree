@@ -1,7 +1,7 @@
 # ----------------------------------------------------------------
 # Handler tools the provider ships into benches.
 #
-# A definition module like ./ree-executor.nix, but for the tools core
+# A definition module like ./ree-cli.nix, but for the tools core
 # handlers and lifecycle scripts shell out to rather than the executor
 # itself. Kept as a separate closure on purpose: the executor closure is
 # the protocol-coupled reproducibility surface and must stay minimal,

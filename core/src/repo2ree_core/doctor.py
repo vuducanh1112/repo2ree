@@ -1,4 +1,4 @@
-"""The bench capability probe behind ``repo2ree-exec doctor``.
+"""The bench capability probe behind ``ree doctor``.
 
 Runs inside a freshly provisioned bench and reports, as one JSON document,
 whether this environment can actually serve as a workbench: the hard

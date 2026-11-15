@@ -13,7 +13,7 @@ from repo2ree_testbed.stack.docker import engine_side
 
 # What the stack gives a workbench it runs from source, and the machine's image already holds.
 _SOURCE_ONLY = frozenset(
-    {"REPO2REE_EXEC_PATH", "WORKBENCH_ENGINE_PATH", "WORKBENCH_SCRIPT_ENGINE", "WORKBENCH_TOOLS_BUNDLE"}
+    {"REPO2REE_CLI_PATH", "WORKBENCH_ENGINE_PATH", "WORKBENCH_SCRIPT_ENGINE", "WORKBENCH_TOOLS_BUNDLE"}
 )
 
 

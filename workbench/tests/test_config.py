@@ -15,7 +15,7 @@ def test_load_config_prefers_explicit_workbench_identity(monkeypatch: pytest.Mon
     monkeypatch.setenv("WORKBENCH_API_WS_URL", "wss://api.example/workbench/connect")
     monkeypatch.setenv("WORKBENCH_AUTH_TOKEN", opaque)
     monkeypatch.setenv("WORKBENCH_STORE", "lab-1=/srv/rees")
-    monkeypatch.setenv("REPO2REE_EXEC_PATH", "/bin/repo2ree-exec")
+    monkeypatch.setenv("REPO2REE_CLI_PATH", "/bin/ree")
     monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
 
     config = config_module.load_config()
@@ -24,7 +24,7 @@ def test_load_config_prefers_explicit_workbench_identity(monkeypatch: pytest.Mon
     assert config.api_ws_url == "wss://api.example/workbench/connect"
     assert config.enrollment_token == opaque
     assert (config.store_id, config.store_root) == ("lab-1", Path("/srv/rees"))
-    assert config.exec_path == "/bin/repo2ree-exec"
+    assert config.cli_path == "/bin/ree"
     assert config.otlp_endpoint == "http://collector:4318"
 
 

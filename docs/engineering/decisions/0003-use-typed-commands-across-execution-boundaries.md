@@ -52,4 +52,4 @@ same protocol instead of creating parallel execution paths.
 - [The command envelope is the contract](../reference/architecture.md#the-command-envelope-is-the-contract)
 - [`repo2ree_protocol.command`](../../../protocol/src/repo2ree_protocol/command.py)
 - [`repo2ree_protocol.result`](../../../protocol/src/repo2ree_protocol/result.py)
-- [`repo2ree_executor.cli`](../../../executor/src/repo2ree_executor/cli.py)
+- [`repo2ree_executor.cli`](../../../cli/src/repo2ree_cli/cli.py)

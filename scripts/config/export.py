@@ -55,7 +55,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "REPO2REE_ASSURANCE_DIR": ("test-recording", "internal"),
     "REPO2REE_BACKEND_IMAGE": ("compose", "deployment"),
     "REPO2REE_BUILD_REVISION": ("protocol", "build"),
-    "REPO2REE_EXEC_BUNDLE": ("workbench", "deployment"),
+    "REPO2REE_CLI_BUNDLE": ("workbench", "deployment"),
     "REPO2REE_GUI_IMAGE": ("compose", "deployment"),
     "REPO2REE_NETWORK": ("compose", "deployment"),
     "REPO2REE_API_WS_URL": ("compose", "deployment"),

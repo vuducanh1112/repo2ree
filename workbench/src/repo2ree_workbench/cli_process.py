@@ -108,19 +108,19 @@ def declared_workbench_environment(root: Path) -> dict[str, object]:
     return declared if isinstance(declared, dict) else {}
 
 
-class LocalExecutor:
+class LocalCli:
     """Run executor processes locally, each against one REE of the store."""
 
     def __init__(
         self,
         root: Path,
-        exec_path: str = "repo2ree-exec",
+        cli_path: str = "ree",
         *,
         environment: dict[str, str] | None = None,
         scripts: ScriptBackend | None = None,
     ) -> None:
         self.root = root.resolve()
-        self.exec_path = exec_path
+        self.cli_path = cli_path
         # What every executor is started with besides this process's own environment (the tools).
         self.tools = environment or {}
         # Where the author's scripts run, and what this workbench refuses to run; None: on this host.
@@ -149,7 +149,7 @@ class LocalExecutor:
         """Ask the configured executor to identify itself, tolerating older binaries."""
         try:
             result = subprocess.run(
-                [self.exec_path, "build-info"],
+                [self.cli_path, "build-info"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -168,7 +168,7 @@ class LocalExecutor:
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
         """Run an executor subcommand against ``root``; its stdout."""
         result = subprocess.run(
-            [self.exec_path, *argv],
+            [self.cli_path, *argv],
             check=False,
             capture_output=True,
             text=True,
@@ -182,7 +182,7 @@ class LocalExecutor:
 
     def exec_query_stream(self, argv: list[str], timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
         result = subprocess.run(
-            [self.exec_path, *argv],
+            [self.cli_path, *argv],
             check=False,
             capture_output=True,
             timeout=timeout,
@@ -199,7 +199,7 @@ class LocalExecutor:
         """Run an executor query with its stdout written straight to ``target``, never held in memory."""
         with target.open("wb") as output:
             result = subprocess.run(
-                [self.exec_path, *argv],
+                [self.cli_path, *argv],
                 check=False,
                 stdout=output,
                 stderr=subprocess.PIPE,

@@ -16,7 +16,7 @@ let
         "repo2ree_telemetry"
         "repo2ree_authoring"
         "repo2ree_core"
-        "repo2ree_executor"
+        "repo2ree_cli"
       ];
     };
     workbench = {

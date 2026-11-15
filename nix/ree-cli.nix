@@ -1,10 +1,10 @@
 # ----------------------------------------------------------------
-# The REE executor closure: `repo2ree-exec` and everything it reaches.
+# The REE executor closure: `ree` and everything it reaches.
 #
 # A definition module, not a flake package — it answers "what is the
 # executor" once, and each consumer packages a slice of it:
 # nix/provider-image.nix references closure+manifest from the image's own
-# /nix/store, and nix/exec-bundle.nix copies the closure into a
+# /nix/store, and nix/cli-bundle.nix copies the closure into a
 # standalone mountable tree. Sharing one definition is the point: every
 # delivery form of the executor is the same derivation.
 #
@@ -17,7 +17,7 @@
 }:
 
 let
-  # Python runtime carrying only what `repo2ree_executor.cli` reaches at
+  # Python runtime carrying only what `repo2ree_cli.cli` reaches at
   # import time. Keep this list minimal — adding deps here grows the
   # closure and bypasses the reproducibility surface we're trying to
   # keep small.
@@ -48,10 +48,10 @@ let
     telemetry = cleanPySrc ../telemetry/src;
     authoring = cleanPySrc ../authoring/src;
     core = cleanPySrc ../core/src;
-    executor = cleanPySrc ../executor/src;
+    executor = cleanPySrc ../cli/src;
   };
 
-  # `repo2ree-exec` entrypoint script. Adds the source dirs to PYTHONPATH
+  # `ree` entrypoint script. Adds the source dirs to PYTHONPATH
   # and dispatches through the executor's __main__.
   pythonPath = [
     srcs.ree
@@ -62,10 +62,10 @@ let
     srcs.executor
   ];
 
-  bin = pkgs.writeShellScriptBin "repo2ree-exec" ''
+  bin = pkgs.writeShellScriptBin "ree" ''
     export REPO2REE_BUILD_REVISION=${pkgs.lib.escapeShellArg buildRevision}
     export PYTHONPATH="${pkgs.lib.concatStringsSep ":" pythonPath}''${PYTHONPATH:+:$PYTHONPATH}"
-    exec ${python}/bin/python -m repo2ree_executor "$@"
+    exec ${python}/bin/python -m repo2ree_cli "$@"
   '';
 
   # A static `sleep` for the bench keep-alive command, so an env image
@@ -83,11 +83,11 @@ let
 
   # The provider-facing manifest: absolute in-container paths, so
   # provisioning never assumes anything about the env image's PATH.
-  manifest = pkgs.runCommand "repo2ree-exec-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
+  manifest = pkgs.runCommand "repo2ree-cli-manifest.json" { nativeBuildInputs = [ pkgs.jq ]; } ''
     jq -n \
-      --arg execPath "${bin}/bin/repo2ree-exec" \
+      --arg cliPath "${bin}/bin/ree" \
       --arg pausePath "${pause}/bin/sleep" \
-      '{schema_version: 1, exec_path: $execPath, pause_path: $pausePath}' \
+      '{schema_version: 1, cli_path: $cliPath, pause_path: $pausePath}' \
       > $out
   '';
 in

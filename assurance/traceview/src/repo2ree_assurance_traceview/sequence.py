@@ -192,7 +192,7 @@ def build_sequence(
                     span.start, "supervisor", "workbench", operation or span.name, "span", detail=milliseconds(span)
                 )
         elif span.service == "exec" and span.name.startswith("executor."):
-            builder.message(span.start, "workbench", "executor", "start repo2ree-exec", "span", detail=span.name)
+            builder.message(span.start, "workbench", "executor", "start ree", "span", detail=span.name)
             builder.activate("executor", span.start, span.end, span.name)
             for mark in span.events:
                 if mark.attributes.get("repo2ree.boundary") == "executor.completed":

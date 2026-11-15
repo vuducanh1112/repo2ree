@@ -11,8 +11,8 @@ members = [
     "repo2ree-assurance-dossier",
     "repo2ree-assurance-traceview",
     "repo2ree-authoring",
+    "repo2ree-cli",
     "repo2ree-core",
-    "repo2ree-executor",
     "repo2ree-protocol",
     "repo2ree-ree",
     "repo2ree-repoview",
@@ -1129,6 +1129,23 @@ requires-dist = [
 ]
 
 [[package]]
+name = "repo2ree-cli"
+version = "0.1.0"
+source = { editable = "cli" }
+dependencies = [
+    { name = "click" },
+    { name = "repo2ree-core" },
+    { name = "repo2ree-telemetry" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "click", specifier = "~=8.2.1" },
+    { name = "repo2ree-core", editable = "core" },
+    { name = "repo2ree-telemetry", editable = "telemetry" },
+]
+
+[[package]]
 name = "repo2ree-core"
 version = "0.1.0"
 source = { editable = "core" }
@@ -1161,23 +1178,6 @@ requires-dist = [
 dev = [
     { name = "swh-model", specifier = "~=8.4" },
     { name = "types-pyyaml", specifier = "~=6.0" },
-]
-
-[[package]]
-name = "repo2ree-executor"
-version = "0.1.0"
-source = { editable = "executor" }
-dependencies = [
-    { name = "click" },
-    { name = "repo2ree-core" },
-    { name = "repo2ree-telemetry" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = "~=8.2.1" },
-    { name = "repo2ree-core", editable = "core" },
-    { name = "repo2ree-telemetry", editable = "telemetry" },
 ]
 
 [[package]]

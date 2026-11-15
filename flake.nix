@@ -16,7 +16,7 @@
   # Concerns live here, each in its own module under ./nix:
   #   - devshell.nix          local developer tooling (changes often)
   #   - clean-py-src.nix      the shared "Python sources only" source filter
-  #   - ree-executor.nix      the repo2ree-exec closure (shared, not a package)
+  #   - ree-cli.nix      the ree closure (shared, not a package)
   #   - workbench-service.nix the repo2ree-workbench listener closure (shared)
   #   - tools.nix             handler-tools closure, e.g. syft (shared, not a package)
   #   - workbench.nix         the three above assembled: what a bench holds.
@@ -25,7 +25,7 @@
   #                           for injection, not a bench (it has no toolchain)
   #   - workbench-bundle.nix  the whole workbench as an unpackable tree, for
   #                           self-managed installs on hosts without nix
-  #   - exec-bundle.nix       the executor + workbench closures as a mountable
+  #   - cli-bundle.nix       the executor + workbench closures as a mountable
   #                           tree + manifest
   #   - tools-bundle.nix      the tools closure, same standalone form
   #   - gui-image.nix         the deployed web bundle behind caddy
@@ -80,7 +80,7 @@
           # The self-managed install for a host with no nix: closure, both
           # manifests, and a generated `activate`. Tar it to distribute.
           workbench-bundle = import ./nix/workbench-bundle.nix { inherit pkgs buildRevision; };
-          exec-bundle = import ./nix/exec-bundle.nix { inherit pkgs buildRevision; };
+          cli-bundle = import ./nix/cli-bundle.nix { inherit pkgs buildRevision; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
           # The workbench closure as an image to derive from — not a workbench you can
           # run on its own: it carries no toolchain.

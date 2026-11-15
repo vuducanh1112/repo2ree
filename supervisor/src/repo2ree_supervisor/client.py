@@ -48,7 +48,7 @@ class WorkbenchClient(Protocol):
     def exec_simple(self, workbench_id: str, argv: list[str], timeout: int = 60, *, ree_id: str) -> None:
         """Run an executor subcommand in the bench, discarding output.
 
-        ``argv`` is the ``repo2ree-exec`` subcommand argv *without* the executor
+        ``argv`` is the ``ree`` subcommand argv *without* the executor
         binary — the serving backend prepends the bench's entry point."""
         ...
 

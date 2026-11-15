@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from repo2ree_protocol.frames import LogFrame, SpanFrame
 from repo2ree_protocol.result import ActionResult
-from repo2ree_workbench.executor_frames import executor_line_to_frame, parse_action_result
+from repo2ree_workbench.cli_events import cli_line_to_frame, parse_action_result
 
 
 def test_executor_line_parses_log_span_and_plain_text() -> None:
-    assert executor_line_to_frame('{"type":"log","stream":"stdout","level":"info","message":"hello"}') == LogFrame(
+    assert cli_line_to_frame('{"type":"log","stream":"stdout","level":"info","message":"hello"}') == LogFrame(
         stream="stdout", level="info", message="hello"
     )
-    assert executor_line_to_frame('{"type":"span","payload":"encoded"}') == SpanFrame(payload="encoded")
-    assert executor_line_to_frame("not-json") == LogFrame(stream="system", level="info", message="not-json")
-    assert executor_line_to_frame('{"type":"future"}') == LogFrame(
+    assert cli_line_to_frame('{"type":"span","payload":"encoded"}') == SpanFrame(payload="encoded")
+    assert cli_line_to_frame("not-json") == LogFrame(stream="system", level="info", message="not-json")
+    assert cli_line_to_frame('{"type":"future"}') == LogFrame(
         stream="system", level="info", message='{"type":"future"}'
     )
 

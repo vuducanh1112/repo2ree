@@ -3,7 +3,7 @@
 This is the highest-fidelity tier below the API: a real ``repo2ree_workbench``
 process serves a store on this host, dials an in-test control-plane WebSocket,
 holds it open, and the ``CommandDispatcher`` drives one REE in it through
-``WsWorkbenchClient`` over the production transport. Real ``repo2ree-exec``
+``WsWorkbenchClient`` over the production transport. Real ``ree``
 executors, real core handlers on the REE's real directory in the store, the
 real ``Frame`` stream over the socket, files offered and uploaded over real
 HTTP beside it, and the real ``ActionResult``.

@@ -8,7 +8,7 @@ requires-python = "~=3.13.0"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
+members = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "cli", "workbench", "assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview", "testbed", "repoview"]
 
 [dependency-groups]
 dev = [
@@ -86,7 +86,7 @@ source = [
     "core/src/repo2ree_core",
     "supervisor/src/repo2ree_supervisor",
     "api/src/repo2ree_api",
-    "executor/src/repo2ree_executor",
+    "cli/src/repo2ree_cli",
     "workbench/src/repo2ree_workbench",
 ]
 omit = [
@@ -107,7 +107,7 @@ src = [
     "core/src",
     "supervisor/src",
     "api/src",
-    "executor/src",
+    "cli/src",
     "workbench/src",
     "assurance/checker/src",
     "assurance/traceview/src",
@@ -250,7 +250,7 @@ root_packages = [
     "repo2ree_api",
     "repo2ree_authoring",
     "repo2ree_core",
-    "repo2ree_executor",
+    "repo2ree_cli",
     "repo2ree_protocol",
     "repo2ree_ree",
     "repo2ree_supervisor",
@@ -270,7 +270,7 @@ type = "layers"
 layers = [
     "repo2ree_api",
     "repo2ree_supervisor",
-    "repo2ree_workbench : repo2ree_executor",
+    "repo2ree_workbench : repo2ree_cli",
     "repo2ree_core",
     "repo2ree_authoring : repo2ree_telemetry",
     "repo2ree_protocol",
@@ -300,7 +300,7 @@ type = "forbidden"
 source_modules = ["repo2ree_api"]
 forbidden_modules = [
     "repo2ree_core",
-    "repo2ree_executor",
+    "repo2ree_cli",
     "repo2ree_workbench",
 ]
 
@@ -320,7 +320,7 @@ type = "forbidden"
 source_modules = ["repo2ree_supervisor"]
 forbidden_modules = [
     "repo2ree_core",
-    "repo2ree_executor",
+    "repo2ree_cli",
     "repo2ree_workbench",
 ]
 
@@ -485,7 +485,7 @@ mypy_path = [
     "core/src",
     "supervisor/src",
     "api/src",
-    "executor/src",
+    "cli/src",
     "workbench/src",
     "assurance/checker/src",
     "assurance/traceview/src",
@@ -542,7 +542,7 @@ no_implicit_reexport = false
 
 
 [tool.repo2ree.workspace]
-backend = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "executor", "workbench"]
+backend = ["ree", "protocol", "telemetry", "authoring", "core", "supervisor", "api", "cli", "workbench"]
 assurance = ["assurance/checker", "assurance/dossier", "assurance/collector", "assurance/traceview"]
 tooling = ["testbed", "repoview"]
 

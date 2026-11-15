@@ -64,7 +64,7 @@ pkgs.dockerTools.buildLayeredImage {
       "WORKBENCH_STATE_DIR=/var/lib/repo2ree-workbench"
       "PYTHONDONTWRITEBYTECODE=1"
       "PYTHONUNBUFFERED=1"
-      "REPO2REE_EXEC_BUNDLE=/opt/repo2ree/exec-bundle"
+      "REPO2REE_CLI_BUNDLE=/opt/repo2ree/cli-bundle"
       "REPO2REE_TOOLS_BUNDLE=/opt/repo2ree/tools-bundle"
     ]
     ++ pkgs.lib.mapAttrsToList (name: value: "${name}=${value}") workbench.toolEnv;

@@ -2,7 +2,7 @@
 
 These are the phases of reproducing an REE — acquire the source, assemble a
 clean workspace, build the experiment environment, test the activation, run experiments. They are
-the single source of truth for the run vocabulary so ``repo2ree-exec --help`` and
+the single source of truth for the run vocabulary so ``ree --help`` and
 ``sh run.sh --help`` expose the same verbs and one-line summaries and cannot
 drift.
 

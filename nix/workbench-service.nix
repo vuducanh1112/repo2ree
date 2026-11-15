@@ -1,10 +1,10 @@
 # ----------------------------------------------------------------
 # The workbench service: `repo2ree-workbench` and its interpreter.
 #
-# A definition module like ./ree-executor.nix, not a flake package. The
+# A definition module like ./ree-cli.nix, not a flake package. The
 # workbench is never shipped as an image of its own: the provider injects
 # this closure into each bench it allocates (./provider-image.nix), and
-# ./exec-bundle.nix carries it for hosts that provision by hand.
+# ./cli-bundle.nix carries it for hosts that provision by hand.
 #
 # It is deliberately substrate-free — the protocol and telemetry and nothing
 # else, no docker, no core, no executor — which is what lets the same binary run
