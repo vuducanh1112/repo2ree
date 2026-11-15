@@ -26,11 +26,11 @@ from repo2ree_ree.reproducibility import ReproducibilityReport
 
 def handle_cross_check_sbom(
     *,
+    layout: ReeLayout,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")

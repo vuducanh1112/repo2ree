@@ -21,7 +21,6 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ReeLayo
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_ree(Ree())
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
 
 
@@ -63,6 +62,7 @@ def test_local_git_download_remove_and_reacquire(
         run_id="source-first",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     assert acquired.status == "succeeded"
@@ -72,7 +72,7 @@ def test_local_git_download_remove_and_reacquire(
     assert first_receipt is not None
     assert first_receipt.resolved_revision == first_revision
 
-    removed = remove_source.handle_remove_source(log=lambda *args: None, is_canceled=lambda: False)
+    removed = remove_source.handle_remove_source(log=lambda *args: None, is_canceled=lambda: False, layout=layout)
     assert removed.status == "succeeded"
     assert store.read_ree().subject.receipts.source is None
     assert not layout.snapshot_archive.exists()
@@ -88,6 +88,7 @@ def test_local_git_download_remove_and_reacquire(
         run_id="source-second",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     assert reacquired.status == "succeeded"
@@ -113,6 +114,7 @@ def test_staged_zip_upload_is_snapshotted_extracted_and_committed(
         run_id="source-upload",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     assert result.status == "succeeded"

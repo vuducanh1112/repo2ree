@@ -10,17 +10,18 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.execution import runners
-from repo2ree_core.execution.runners import RUNNER_VARIABLE, ContainerScriptRunner, LocalScriptRunner, current_runner
-
-
-@pytest.fixture(autouse=True)
-def _fresh() -> None:
-    runners.current_runner.cache_clear()
+from repo2ree_core.execution.runners import (
+    RUNNER_VARIABLE,
+    ContainerScriptRunner,
+    LocalScriptRunner,
+    RefusedScriptRunner,
+    runner_from_environment,
+)
 
 
 def test_told_nothing_the_script_runs_on_the_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(RUNNER_VARIABLE, raising=False)
-    assert isinstance(current_runner(), LocalScriptRunner)
+    assert isinstance(runner_from_environment(), LocalScriptRunner)
 
 
 def test_a_container_workbench_runs_the_ree_image(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,21 +29,29 @@ def test_a_container_workbench_runs_the_ree_image(monkeypatch: pytest.MonkeyPatc
         RUNNER_VARIABLE,
         json.dumps({"backend": "container", "engine": "podman", "image": "python:3.12", "script_engine": "socket"}),
     )
-    runner = current_runner()
+    runner = runner_from_environment()
     assert isinstance(runner, ContainerScriptRunner)
     assert (runner.engine, runner.image, runner.script_engine) == ("podman", "python:3.12", "socket")
 
 
 def test_a_container_workbench_refuses_an_ree_that_declares_no_image(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(RUNNER_VARIABLE, json.dumps({"backend": "container"}))
+    runner = runner_from_environment()
+    assert isinstance(runner, RefusedScriptRunner)
     with pytest.raises(RuntimeError, match="declares no image"):
-        current_runner()
+        runner.probe(Path(), ["true"], seconds=1)
 
 
 def test_a_workbench_refusal_stops_the_script_with_its_reason(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(RUNNER_VARIABLE, json.dumps({"backend": "host", "refused": "cannot run them in python:3.12"}))
-    with pytest.raises(RuntimeError, match=r"cannot run them in python:3\.12"):
-        current_runner()
+    runner = runner_from_environment()
+    for use in (
+        lambda: runner.run(Path(), ["true"], log=lambda *_: None, is_canceled=lambda: False),
+        lambda: runner.probe(Path(), ["true"], seconds=1),
+        lambda: runner.observe(None),
+    ):
+        with pytest.raises(RuntimeError, match=r"cannot run them in python:3\.12"):
+            use()
 
 
 @pytest.mark.parametrize(

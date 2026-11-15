@@ -191,7 +191,7 @@ def build_sequence(
                 builder.message(
                     span.start, "supervisor", "workbench", operation or span.name, "span", detail=milliseconds(span)
                 )
-        elif span.service == "exec" and span.name.startswith("executor."):
+        elif span.service == "cli" and span.name.startswith("executor."):
             builder.message(span.start, "workbench", "executor", "start ree", "span", detail=span.name)
             builder.activate("executor", span.start, span.end, span.name)
             for mark in span.events:
@@ -199,7 +199,7 @@ def build_sequence(
                     label = f"completed · {mark.attributes.get('repo2ree.status')}"
                     detail = f"exit {mark.attributes.get('repo2ree.exit_code')}"
                     builder.message(mark.at, "executor", "workbench", label, "span", detail=detail)
-        elif span.service == "exec" and span.name.startswith("command."):
+        elif span.service == "cli" and span.name.startswith("command."):
             builder.activate("core", span.start, span.end, f"{span.name} · capture_command")
             _capture(
                 builder,
@@ -212,7 +212,7 @@ def build_sequence(
                 files,
             )
             captured = True
-        elif span.service == "exec" and span.name == "process.exec":
+        elif span.service == "cli" and span.name == "process.exec":
             detail = f"exit {span.attribute('repo2ree.exit_code')} · {milliseconds(span)}"
             builder.note(span.start, "executor", f"$ {span.attribute('repo2ree.exec.argv')}", "span", detail=detail)
     _staging(builder, staged)
@@ -277,7 +277,7 @@ def _staging(builder: _Builder, staged: list[Span]) -> None:
 
 def _command(builder: _Builder, spans: SpanIndex, span: Span, operation: str) -> None:
     builder.activate("workbench", span.start, span.end, operation)
-    executor = next((c for c in spans.children(span) if c.service == "exec"), None)
+    executor = next((c for c in spans.children(span) if c.service == "cli"), None)
     if executor is not None and executor.start - span.start > QUIET:
         label = f"{(executor.start - span.start) * 1000:.0f} ms without spans"
         builder.note(

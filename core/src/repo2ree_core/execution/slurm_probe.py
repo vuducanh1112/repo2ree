@@ -10,10 +10,9 @@ A probe that cannot run says so (``failed``), which inference reads as unknown, 
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Callable
 from pathlib import Path
 
-from repo2ree_core.execution.runners import ProbeResult, ScriptRunner, current_runner
+from repo2ree_core.execution.runners import ProbeResult, ScriptRunner
 from repo2ree_protocol.inference import SlurmPartition, SlurmProbe
 
 PROBE_SECONDS = 20.0
@@ -78,7 +77,7 @@ class RunnerSlurmProbe:
     def __init__(
         self,
         workspace: Path,
-        runner: Callable[[], ScriptRunner] = current_runner,
+        runner: ScriptRunner,
         seconds: float = PROBE_SECONDS,
     ) -> None:
         self._workspace = workspace
@@ -95,7 +94,7 @@ class RunnerSlurmProbe:
         if not self._workspace.is_dir():
             return SlurmProbe(status="failed", detail=f"no workspace at {self._workspace} to probe from")
         try:
-            result = self._runner().probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
+            result = self._runner.probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
         except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
             return SlurmProbe(status="failed", detail=str(error))
         return observed(result, self._seconds)

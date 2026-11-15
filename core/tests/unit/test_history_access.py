@@ -5,6 +5,7 @@ import subprocess
 import zipfile
 
 from repo2ree_core.bundle.download import materialized_ree_download
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.history import open_history
@@ -14,18 +15,20 @@ from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinition
 from repo2ree_protocol.tools import find_tool
 
 
-def _patch(name):
+def _patch(layout: ReeLayout, name):
     return run_command(
-        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": name})), log=lambda *args: None
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": name})),
+        log=lambda *args: None,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
 
 def test_read_history_orders_attempts_and_preserves_legacy_records(tmp_path, monkeypatch):
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="first")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-    first = _patch("second")
-    _patch("second")
+    first = _patch(layout, "second")
+    _patch(layout, "second")
     records = read_operation_history(layout).operations
     assert [record.sequence for record in records] == [2, 1]
     assert records[0].before_snapshot_id != records[0].after_snapshot_id
@@ -45,8 +48,7 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
 
     layout = ReeLayout(root=tmp_path / "ree")
     initial = initialize_ree(layout, name="before").snapshot_id
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-    _patch("after")
+    _patch(layout, "after")
     review = layout.review("review-1")
     with open_history(review) as history:
         review.overlay_file("ree-scripts/build_experiment_environment.sh").parent.mkdir(parents=True)
@@ -79,12 +81,12 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
 
     destination = ReeLayout(root=tmp_path / "destination")
     destination_initial = initialize_ree(destination, name="blank").snapshot_id
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: destination))
     destination.upload_staging_file("download").write_bytes(payload)
     result = handle_load_ree_bundle(
         LoadReeBundleArgs(upload_token="download", archive_name="download.zip"),  # noqa: S106 — local staging identifier
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=destination,
     )
     assert result.status == "succeeded"
     assert json.loads(destination.manifest.read_bytes())["subject"]["definition"]["name"] == "after"
@@ -110,8 +112,7 @@ def test_export_holds_lock_only_while_staging(tmp_path):
 def test_ordinary_git_commit_body_does_not_hide_operation_evidence(tmp_path, monkeypatch):
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="before")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-    result = _patch("after")
+    result = _patch(layout, "after")
     with open_history(layout) as history:
         history.git("commit", "--allow-empty", "-m", "Manual inspection", "-m", "A normal human commit message.")
     records = read_operation_history(layout).operations

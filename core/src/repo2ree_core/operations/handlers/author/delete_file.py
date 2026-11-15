@@ -26,6 +26,7 @@ from repo2ree_ree.reserved_paths import RESERVED_LAUNCH_SCRIPT, is_overlay_path,
 def handle_delete_file(
     args: DeleteFileArgs,
     *,
+    layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
@@ -43,7 +44,6 @@ def handle_delete_file(
             "validation", f"{args.path} is a step's run script; undeclare the step instead of deleting it"
         )
 
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")

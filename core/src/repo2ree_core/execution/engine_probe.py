@@ -11,11 +11,10 @@ A probe that cannot run says so (``failed``), which inference reads as unknown, 
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Callable
 from pathlib import Path
 from typing import get_args
 
-from repo2ree_core.execution.runners import ProbeResult, ScriptRunner, current_runner
+from repo2ree_core.execution.runners import ProbeResult, ScriptRunner
 from repo2ree_protocol.inference import ContainerEngine, ContainerEnginesProbe, EngineObservation
 
 PROBE_SECONDS = 20.0
@@ -98,7 +97,7 @@ class RunnerEngineProbe:
     def __init__(
         self,
         workspace: Path,
-        runner: Callable[[], ScriptRunner] = current_runner,
+        runner: ScriptRunner,
         seconds: float = PROBE_SECONDS,
     ) -> None:
         self._workspace = workspace
@@ -115,7 +114,7 @@ class RunnerEngineProbe:
         if not self._workspace.is_dir():
             return ContainerEnginesProbe(status="failed", detail=f"no workspace at {self._workspace} to probe from")
         try:
-            result = self._runner().probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
+            result = self._runner.probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
         except (RuntimeError, OSError, ValueError, subprocess.SubprocessError) as error:
             # The runner refused (an REE that declares no image where scripts run in containers), or the
             # engine could not start the probe: where the scripts would run is unknown, so are its engines.

@@ -27,7 +27,6 @@ def _workbench(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_ree(ree or Ree())
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
 
 
@@ -103,6 +102,7 @@ def test_successful_acquisition_commits_definition_and_one_receipt(
         run_id="source-1",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
     )
 
     committed = store.read_ree()
@@ -134,6 +134,7 @@ def test_failed_execution_commits_neither_definition_nor_receipt(
         run_id="source-failed",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
     )
 
     committed = store.read_ree()
@@ -164,6 +165,7 @@ def test_identity_validation_failure_commits_no_source_evidence(
         run_id="source-mismatch",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
     )
 
     committed = store.read_ree()
@@ -201,6 +203,7 @@ def test_materialization_failure_happens_after_source_commit(
         run_id="source-materialize-failed",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
     )
 
     committed = store.read_ree()
@@ -233,6 +236,7 @@ def test_dirty_source_slot_rejects_acquisition_before_execution(
         run_id="source-dirty",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     assert result.status == "failed"
@@ -263,6 +267,7 @@ def test_upload_acquisition_commits_archive_source_type(
         run_id="source-upload",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     committed = store.read_ree()

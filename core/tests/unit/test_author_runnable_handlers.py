@@ -7,6 +7,7 @@ import pytest
 from repo2ree_core.digests import digest_output_paths
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, RunnableRunOutputs
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.handlers.author import activation_test, run_experiment, runnable
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -159,7 +160,6 @@ def _workbench(
     store.workspace.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
     store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.write_ree(ree or _ree())
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
 
 
@@ -199,6 +199,8 @@ def test_activation_runs_alone_and_commits_exact_input_receipt(
         run_id="activation-1",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
+        runner=LocalScriptRunner(),
     )
 
     receipt = store.read_ree().subject.receipts.activation
@@ -226,6 +228,8 @@ def test_native_activation_has_no_experiment_environment_binding(
         run_id="activation-native",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
+        runner=LocalScriptRunner(),
     )
 
     receipt = store.read_ree().subject.receipts.activation
@@ -250,6 +254,8 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
         run_id="experiment-1",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
     receipt = store.read_ree().subject.receipts.experiments.get(_EXPERIMENT_NAME)
@@ -300,6 +306,8 @@ def test_an_experiment_runs_only_while_the_activation_is_current(
         run_id="experiment-unactivated",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=store.layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "failed"
@@ -323,6 +331,8 @@ def test_unsuccessful_attempt_commits_no_receipt(
         run_id="activation-unsuccessful",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == status
@@ -358,6 +368,8 @@ def test_activation_preconditions_reject_invalid_evidence_before_execution(
         run_id="activation-rejected",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=store.layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "failed"
@@ -387,6 +399,8 @@ def test_changed_script_is_rejected_before_execution(
         run_id="activation-stale-script",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "failed"
@@ -414,6 +428,8 @@ def test_unknown_experiment_is_rejected_before_execution(
         run_id="experiment-missing",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "failed"
@@ -439,6 +455,8 @@ def test_revision_conflict_does_not_select_the_new_receipt(
         run_id="activation-conflict",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "failed"

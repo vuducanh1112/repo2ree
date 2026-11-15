@@ -77,10 +77,10 @@ class _ProgressLogger:
 def handle_seal_ree(
     args: SealReeArgs,
     *,
+    layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
 
     try:
         outputs = seal_ree(

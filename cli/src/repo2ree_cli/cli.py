@@ -3,25 +3,24 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import signal
 import sys
-import threading
 from pathlib import Path
-from typing import Any, TextIO, get_args
+from typing import Any, get_args
 
 import click
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.doctor import run_doctor
 from repo2ree_core.evidence.review.store import load_reviews
+from repo2ree_core.execution.runners import runner_from_environment
 from repo2ree_core.operations.capture import settle_interrupted
-from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes as _read_ree_file_bytes
 from repo2ree_core.operations.read_models.ree_document import get_ree_document as _get_ree_document
+from repo2ree_core.operations.session import request_cancel, run_session
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import HistoryCaptureError
-from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.reproduction.commands import (
     BUILD_EXPERIMENT_ENVIRONMENT,
@@ -40,7 +39,6 @@ from repo2ree_protocol.command import (
     command_adapter,
 )
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.queries import (
     BUILD_ARCHIVE,
     GET_HISTORY,
@@ -53,65 +51,17 @@ from repo2ree_protocol.queries import (
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.workbench_environment import EnvironmentBackend
-from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.log import configure_logging as _configure_logging
 from repo2ree_telemetry.relay import setup_relay_tracing
-from repo2ree_telemetry.spans import (
-    CommandSpanAttrs,
-    attach_remote_context,
-    detach_context,
-    record_command_status,
-    record_exit_code,
-    record_failure,
-    record_result_boundary,
-    record_result_evidence,
-)
-
-tracer = get_tracer(__name__)
 
 # ================================================
 # Logging
 # ================================================
 
 
-def _write_run_log_frame(
-    run_log: TextIO | None, run_id: str | None, frame: dict[str, Any], context: ExecutionContext | None = None
-) -> None:
-    """Append one self-describing NDJSON frame to the run log.
-
-    Every frame names its own ``type`` and the run it belongs to, so a reader
-    can filter lines without tracking position and without reading the file
-    name — ``jq 'select(.type == "command")'`` over any concatenation of run
-    logs is the whole parse. ``run_id`` is what joins a frame to the span that
-    covered the same work and to the receipt it produced; the ``Command`` itself
-    does not carry one, so it has to be stamped here.
-    """
-    if run_log is None:
-        return
-    run_log.write(
-        json.dumps({"run_id": run_id, "context": context.model_dump(mode="json") if context else None, **frame}) + "\n"
-    )
-    run_log.flush()
-
-
-def _make_log_sink(
-    run_log: TextIO | None, run_id: str | None = None, context: ExecutionContext | None = None
-) -> LogSink:
-    """Return a LogSink that emits NDJSON to stderr (and optionally a run log file).
-
-    The two destinations carry the same event in deliberately different shapes.
-    stderr is the wire protocol the supervisor parses, so it stays exactly as it
-    has been. The file copy is stamped with ``run_id`` like every other frame,
-    because a run log is read on its own — often concatenated with others — and
-    a line that cannot say which run it belongs to is not much of a record.
-    """
-
-    def _log(stream: str, level: str, message: str) -> None:
-        event = {"type": "log", "stream": stream, "level": level, "message": message}
-        click.echo(json.dumps(event), file=sys.stderr)
-        _write_run_log_frame(run_log, run_id, event, context)
-
-    return _log
+def _stderr_sink(stream: str, level: str, message: str) -> None:
+    """One log event as an NDJSON line on stderr: the wire protocol the workbench parses."""
+    click.echo(json.dumps({"type": "log", "stream": stream, "level": level, "message": message}), file=sys.stderr)
 
 
 # ================================================
@@ -139,7 +89,7 @@ def main() -> None:
     # The supervisor sets TRACE_RELAY when it wants spans; they ride the stderr
     # NDJSON stream back to it (this process has no path to the collector).
     if os.environ.get("TRACE_RELAY"):
-        setup_relay_tracing("ree", sys.stderr)
+        setup_relay_tracing("repo2ree-cli", sys.stderr)
     cli()
 
 
@@ -201,103 +151,21 @@ def execute_cmd(action_source: str, run_id: str | None, execution_context: str |
 
 
 def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContext | None = None) -> None:
-    """Run a validated Command envelope, streaming NDJSON and emitting the result.
+    """Run a validated Command in this REE: NDJSON log frames on stderr, one ActionResult line on stdout.
 
-    Shared by ``execute`` (the machine path, host → workbench) and the
-    first-class reproduction subcommands (``build-experiment-environment``, ``test-activation``,
-    ``experiment``, ``materialize-workspace``) so they all log, persist, and
-    signal failure identically. Exits non-zero on failure or cancellation.
+    Exits non-zero on failure or cancellation.
     """
-    context = context or ExecutionContext.new()
-    run_id = run_id or f"manual-{context.attempt_id}"
-    run_log: TextIO | None = None
-    cancel_marker: Path | None = None
-    if run_id is not None:
-        layout = ReeLayout.in_workbench()
-        # Review commands stream their logs into their own attempt namespace so
-        # reviewer evidence never lands in the author's runs/. Recognised by the
-        # arg they all carry, so a new review step needs no branch here.
-        review_id = getattr(cmd.args, "review_id", None)
-        evidence_layout: ReeLayout | ReviewLayout = layout.review(review_id) if review_id else layout
-        evidence_layout.runs.mkdir(parents=True, exist_ok=True)
-        run_log = evidence_layout.run_log(run_id).open("a", encoding="utf-8")
-        cancel_marker = layout.run_cancel_marker(run_id)
-    # SIGTERM asks for the same cooperative stop as the marker: whoever signals the executor
-    # gets its script stopped, the REE rolled back, and the attempt captured, not abandoned.
-    terminated = threading.Event()
-    on_term = signal.getsignal(signal.SIGTERM)
-    handling = threading.current_thread() is threading.main_thread()
-    if handling:
-        signal.signal(signal.SIGTERM, lambda _signum, _frame: terminated.set())
-
-    def is_canceled() -> bool:
-        return terminated.is_set() or (cancel_marker is not None and cancel_marker.exists())
-
-    # The command as it arrived, whole and untruncated. Its counterpart on the
-    # way out is the result frame below, and the two together are the complete
-    # contract of one operation — the same pair the command span carries as
-    # `repo2ree.arg.*` / `repo2ree.output.*`, but there summarized to fit a
-    # span (strings elided, payloads reduced to a size) and here kept entire.
-    # Joined to that span, and to the receipt the operation files, by run_id.
-    _write_run_log_frame(
-        run_log,
-        run_id,
-        {
-            "type": "command",
-            "operation": str(cmd.operation),
-            "command": cmd.model_dump(mode="json"),
-            "context": context.model_dump(mode="json"),
-        },
+    result = run_session(
+        cmd,
+        layout=ReeLayout.in_workbench(),
+        runner=runner_from_environment(),
+        emit=_stderr_sink,
+        run_id=run_id,
+        context=context,
+        traceparent=os.environ.get("TRACEPARENT"),
     )
-
-    # Attach the dispatcher's trace context (forwarded via TRACEPARENT) so this
-    # process's spans hang under the host-side dispatch span.
-    ctx_token = attach_remote_context(os.environ.get("TRACEPARENT"))
-    try:
-        log = _make_log_sink(run_log, run_id, context)
-        # The executor process itself, as one span. Without it a trace steps
-        # straight from the supervisor's `docker exec` into core's command span
-        # and the process boundary is nowhere in the picture — which also means
-        # the interpreter start-up before this line is charged to the dispatch
-        # that was waiting on it, with nothing to attribute it to. Opened here
-        # rather than at the CLI entry point because this is the first moment a
-        # command exists to name.
-        with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
-            CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
-            result = run_command(
-                cmd,
-                log=log,
-                run_id=run_id,
-                is_canceled=is_canceled,
-                context=context,
-            )
-            record_exit_code(span, result.exit_code)
-            record_failure(span, result.failure)
-            record_command_status(span, result.status)
-            record_result_evidence(span, result)
-            record_result_boundary(span, "executor.completed", result)
-        # stdout stays the wire protocol, byte for byte: one bare ActionResult
-        # line is what the dispatcher parses. The run log gets the same value
-        # wrapped in a named frame, which only the file needs.
-        click.echo(result.model_dump_json())
-        _write_run_log_frame(
-            run_log,
-            run_id,
-            {"type": "result", "operation": str(cmd.operation), "result": result.model_dump(mode="json")},
-            context,
-        )
-    finally:
-        if handling:
-            signal.signal(signal.SIGTERM, on_term)
-        detach_context(ctx_token)
-        if run_log is not None:
-            run_log.close()
-        # Each run clears its own marker so cancellation correctness never
-        # depends on run ids being globally unique: a stale marker left behind
-        # would otherwise cancel a later run that happened to reuse the id.
-        if cancel_marker is not None:
-            cancel_marker.unlink(missing_ok=True)
-
+    # stdout stays the wire protocol, byte for byte: one bare ActionResult line is what the dispatcher parses.
+    click.echo(result.model_dump_json())
     if result.status != "succeeded":
         sys.exit(1)
 
@@ -306,9 +174,7 @@ def _run_command_envelope(cmd: Any, run_id: str | None, context: ExecutionContex
 @click.option("--run-id", required=True, help="The action run id to cancel.")
 def cancel_run_cmd(run_id: str) -> None:
     """Mark a running command envelope as canceled inside the workbench."""
-    layout = ReeLayout.in_workbench()
-    layout.runs.mkdir(parents=True, exist_ok=True)
-    layout.run_cancel_marker(run_id).touch()
+    request_cancel(ReeLayout.in_workbench(), run_id)
     click.echo(json.dumps({"status": "cancel_requested", "run_id": run_id}))
 
 
@@ -330,7 +196,7 @@ def settle_attempt_cmd(
     result = settle_interrupted(
         layout=ReeLayout.in_workbench(),
         attempt_id=attempt_id,
-        log=_make_log_sink(None, None),
+        log=_stderr_sink,
         cmd=cmd,
         run_id=run_id,
         context=context,

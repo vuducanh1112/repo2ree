@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.handlers.author.build_experiment_environment import handle_build_experiment_environment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -58,12 +59,12 @@ def test_build_experiment_environment_script_runs_and_commits_the_produced_exper
         ),
     )
     store.write_ree(ree)
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-
     result = handle_build_experiment_environment(
         run_id="build-local",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "succeeded"

@@ -91,7 +91,6 @@ def _workbench(
     store.ensure_dirs()
     store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.write_ree(ree or _ree())
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
 
 
@@ -101,11 +100,9 @@ def _successful_scan(_experiment_environment: Path, output: Path, **_kwargs: obj
     return ScanOutcome(returncode=0, tool_version="1.2.3")
 
 
-def _run() -> ActionResult:
+def _run(layout: ReeLayout) -> ActionResult:
     return generate_sbom.handle_generate_sbom(
-        run_id="sbom-1",
-        log=lambda *args: None,
-        is_canceled=lambda: False,
+        run_id="sbom-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
     )
 
 
@@ -116,7 +113,7 @@ def test_success_commits_inline_receipt_and_publishes_document(
     layout, store = _workbench(tmp_path, monkeypatch)
     monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", _successful_scan)
 
-    result = _run()
+    result = _run(layout)
 
     receipt = store.read_ree().subject.receipts.sbom
     assert result.status == "succeeded"
@@ -157,7 +154,7 @@ def test_invalid_scan_result_preserves_existing_document_and_commits_no_receipt(
 
     monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
 
-    result = _run()
+    result = _run(layout)
 
     assert result.status == "failed"
     assert result.failure is not None
@@ -181,7 +178,7 @@ def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
 
     monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
 
-    result = _run()
+    result = _run(layout)
 
     assert result.status == "canceled"
     assert layout.sbom.read_bytes() == b"old sbom"
@@ -223,9 +220,7 @@ def test_preconditions_reject_invalid_experiment_environment_evidence_before_sca
     monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
 
     result = generate_sbom.handle_generate_sbom(
-        run_id="sbom-rejected",
-        log=lambda *args: None,
-        is_canceled=lambda: False,
+        run_id="sbom-rejected", log=lambda *args: None, is_canceled=lambda: False, layout=layout
     )
 
     assert result.status == "failed"
@@ -248,7 +243,7 @@ def test_revision_conflict_does_not_select_the_new_receipt(
 
     monkeypatch.setattr(generate_sbom, "save_ree", conflict)
 
-    result = _run()
+    result = _run(layout)
 
     assert result.status == "failed"
     assert result.failure is not None

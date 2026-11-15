@@ -40,15 +40,15 @@ from repo2ree_ree.review import EvidenceBasis, ReviewAcquireSourceReceipt
 def handle_review_acquire_source(
     args: ReviewAcquireSourceArgs,
     *,
+    layout: ReeLayout,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    ree_layout = ReeLayout.in_workbench()
-    review_layout = ree_layout.review(args.review_id)
+    review_layout = layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    ree = require_ree_baseline(ree_layout, log=log)
+    ree = require_ree_baseline(layout, log=log)
     if isinstance(ree, ActionResult):
         return ree
 
@@ -68,12 +68,12 @@ def handle_review_acquire_source(
     if is_canceled():
         return stop("canceled", "canceled before source acquisition")
 
-    basis = resolve_basis(args.basis, available=_available_bases(ree, ree_layout))
+    basis = resolve_basis(args.basis, available=_available_bases(ree, layout))
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
 
     review_layout.root.mkdir(parents=True, exist_ok=True)
-    _stage_acquisition(ree_layout, review_layout, ree, basis=basis, log=log)
+    _stage_acquisition(layout, review_layout, ree, basis=basis, log=log)
     command = ["sh", str(review_layout.acquire_script)]
     source_of = "the recorded origin" if basis == "independent" else "the REE's own snapshot"
     log("system", "info", f"review {args.review_id}: acquiring source from {source_of} into {review_layout.upstream}")

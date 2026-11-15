@@ -16,6 +16,7 @@ from typing import Any
 
 from repo2ree_core.execution.experiment.run import run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
+from repo2ree_core.execution.runners import LocalScriptRunner
 
 # ================================================
 # Helpers
@@ -63,6 +64,7 @@ def _run(workspace: Path, runnable: RunnableSpec, *, run_id: str = "r1"):
         run_id=run_id,
         log=log,
         is_canceled=lambda: False,
+        runner=LocalScriptRunner(),
     )
     return outcome, msgs
 

@@ -115,7 +115,6 @@ def _workbench(
     store.overlay.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE)
     store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE)
     store.write_ree(ree or _ree())
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout, store
 
 
@@ -139,6 +138,7 @@ def test_definition_patch_hydrates_experiment_script_identity(
         ),
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     definition = store.read_ree().subject.definition
@@ -171,7 +171,9 @@ def test_a_definition_patch_never_changes_the_source(
 
     def patch(change: dict[str, object]) -> str:
         args = PatchReeDefinitionArgs(patch=change, expected_version=str(revision_of(store.read_ree())))
-        return handle_patch_ree_definition(args, log=lambda *args: None, is_canceled=lambda: False).status
+        return handle_patch_ree_definition(
+            args, log=lambda *args: None, is_canceled=lambda: False, layout=store.layout
+        ).status
 
     assert patch({"source": source}) == "failed"
     assert store.read_ree().subject.definition.source == acquired
@@ -189,7 +191,7 @@ def test_a_definition_patch_never_leaves_the_ree_without_a_name(
     before = store.read_ree().subject.definition.name
     args = PatchReeDefinitionArgs(patch={"name": name}, expected_version=str(revision_of(store.read_ree())))
 
-    result = handle_patch_ree_definition(args, log=lambda *args: None, is_canceled=lambda: False)
+    result = handle_patch_ree_definition(args, log=lambda *args: None, is_canceled=lambda: False, layout=_layout)
 
     assert result.failure is not None
     assert (result.status, result.failure.category) == ("failed", "validation")
@@ -207,6 +209,7 @@ def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
         WriteFileArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, content=changed),
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
     )
     updated = store.read_ree().subject.definition.experiment_environment
 
@@ -219,6 +222,7 @@ def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
         DeleteFileArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=_layout,
     )
     assert delete_result.status == "failed"
     assert store.read_ree().subject.definition.experiment_environment == updated
@@ -233,9 +237,7 @@ def test_hardware_observation_commits_receipt_without_rewriting_declaration(
     monkeypatch.setattr(generate_hbom, "generate_hbom", lambda: observed)
 
     result = generate_hbom.handle_generate_hbom(
-        run_id="hardware-1",
-        log=lambda *args: None,
-        is_canceled=lambda: False,
+        run_id="hardware-1", log=lambda *args: None, is_canceled=lambda: False, layout=_layout
     )
 
     persisted = store.read_ree()
@@ -259,9 +261,7 @@ def test_cross_check_commits_inline_receipt_and_preserves_evaluation_report(
     store.write_ree(ree)
 
     result = cross_check_sbom.handle_cross_check_sbom(
-        run_id="cross-check-1",
-        log=lambda *args: None,
-        is_canceled=lambda: False,
+        run_id="cross-check-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
     )
 
     receipt = store.read_ree().subject.receipts.sbom_cross_check

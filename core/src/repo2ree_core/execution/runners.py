@@ -13,7 +13,6 @@ import os
 import subprocess
 import uuid
 from dataclasses import dataclass
-from functools import cache
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -240,20 +239,40 @@ def _inspect(engine: str, image: str) -> tuple[str, str] | None:
     return (image_id, digest) if image_id.startswith("sha256:") and digest.startswith("sha256:") else None
 
 
-@cache
-def current_runner() -> ScriptRunner:
-    """The runner this executor process was told to use; on the host when told nothing."""
+@dataclass(frozen=True)
+class RefusedScriptRunner:
+    """Where an REE's scripts cannot run here, and why: every use raises the reason, so only a step that runs a
+    script or probes where one would run fails, and a step that runs none never learns of it."""
+
+    reason: str
+
+    def run(
+        self, workspace: Path, argv: list[str], *, log: LogSink, is_canceled: CancelCheck
+    ) -> StreamingProcessResult:
+        raise RuntimeError(self.reason)
+
+    def probe(self, workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
+        raise RuntimeError(self.reason)
+
+    def observe(self, declared: WorkbenchEnvironment | None) -> WorkbenchEnvironmentObservation:
+        raise RuntimeError(self.reason)
+
+
+def runner_from_environment() -> ScriptRunner:
+    """The runner the workbench chose for this process (``REPO2REE_SCRIPT_RUNNER``); on the host when it chose none."""
     stated = os.environ.get(RUNNER_VARIABLE, "").strip()
     if not stated:
         return LocalScriptRunner()
     choice = json.loads(stated)
     if refused := choice.get("refused"):
-        raise RuntimeError(refused)
+        return RefusedScriptRunner(refused)
     if choice.get("backend") != "container":
         return LocalScriptRunner()
     image = choice.get("image") or ""
     if not image:
-        raise RuntimeError("this workbench runs scripts in a container, and the REE declares no image to run them in")
+        return RefusedScriptRunner(
+            "this workbench runs scripts in a container, and the REE declares no image to run them in"
+        )
     mapped = choice.get("engine_path")
     return ContainerScriptRunner(
         engine=choice.get("engine") or "docker",
@@ -276,6 +295,7 @@ def run_workspace_script(
     *,
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
+    runner: ScriptRunner,
     activate_rel: str | None = None,
     launch: Launch | None = None,
 ) -> StepOutcome:
@@ -317,7 +337,6 @@ def run_workspace_script(
                 record_span_facts(span, {"script.error": "activate script not found"})
                 return StepOutcome("failed", 1)
             cmd = ["sh", activate_rel, *cmd]
-        runner = current_runner()
         record: Path | None = None
         if launch is not None:
             if isinstance(runner, ContainerScriptRunner):

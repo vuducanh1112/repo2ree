@@ -40,10 +40,10 @@ from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 def handle_load_ree_bundle(
     args: LoadReeBundleArgs,
     *,
+    layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
     # Loading replaces everything the REE holds, so a sealed REE refuses it as it refuses any edit.
     store = ReeDirectory(layout)
     if store.manifest_exists() and store.read_ree().seal is not None:

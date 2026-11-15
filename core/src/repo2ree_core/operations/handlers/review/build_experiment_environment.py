@@ -28,7 +28,7 @@ from repo2ree_core.execution.process import (
     format_command,
     run_streaming_process,
 )
-from repo2ree_core.execution.runners import run_workspace_script
+from repo2ree_core.execution.runners import ScriptRunner, run_workspace_script
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
     launch_digest,
@@ -58,15 +58,16 @@ from repo2ree_ree.review import EvidenceBasis, ExperimentEnvironmentComparison, 
 def handle_review_build_experiment_environment(
     args: ReviewBuildExperimentEnvironmentArgs,
     *,
+    layout: ReeLayout,
+    runner: ScriptRunner,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    ree_layout = ReeLayout.in_workbench()
-    review_layout = ree_layout.review(args.review_id)
+    review_layout = layout.review(args.review_id)
     timer = OperationTimer.start()
 
-    ree = require_ree_baseline(ree_layout, log=log)
+    ree = require_ree_baseline(layout, log=log)
     if isinstance(ree, ActionResult):
         return ree
 
@@ -97,7 +98,7 @@ def handle_review_build_experiment_environment(
     if halted is not None:
         return halted
 
-    store = ReeDirectory(ree_layout)
+    store = ReeDirectory(layout)
     experiment_environment_definition = ree.subject.definition.experiment_environment
     if experiment_environment_definition is None or experiment_environment_definition.artifact_path is None:
         return stop("failed", "The author baseline declares no experiment environment artifact to certify")
@@ -107,7 +108,7 @@ def handle_review_build_experiment_environment(
     basis = resolve_basis(
         args.basis,
         available=_available_bases(
-            ree_layout, review_layout, has_bundled_experiment_environment=bundled_experiment_environment is not None
+            layout, review_layout, has_bundled_experiment_environment=bundled_experiment_environment is not None
         ),
     )
     if basis is None:
@@ -117,7 +118,7 @@ def handle_review_build_experiment_environment(
     #    recipe, merged by the script the author's workbench runs. Both bases
     #    need it — it is what activation and the experiments run *in*.
     try:
-        _stage_author_overlay(ree_layout, review_layout)
+        _stage_author_overlay(layout, review_layout)
     except OSError as exc:
         return stop("failed", f"could not stage the author overlay: {exc}")
 
@@ -159,6 +160,7 @@ def handle_review_build_experiment_environment(
             RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             log=log,
             is_canceled=is_canceled,
+            runner=runner,
             launch=launch,
         )
         launched = outcome.launched
@@ -178,7 +180,7 @@ def handle_review_build_experiment_environment(
 
     comparison = _certify(
         ree,
-        ree_layout,
+        layout,
         review_layout,
         experiment_environment_abs=experiment_environment_abs,
         experiment_environment_path=experiment_environment_path,

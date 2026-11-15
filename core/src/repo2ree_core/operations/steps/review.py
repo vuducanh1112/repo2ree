@@ -25,6 +25,7 @@ from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_run
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.execution.runners import ScriptRunner
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
@@ -458,6 +459,8 @@ class ReviewRun:
 def open_review_run(
     step: ReviewRunnableStep,
     *,
+    layout: ReeLayout,
+    runner: ScriptRunner,
     review_id: str,
     run_id: str,
     log: LogSink,
@@ -469,11 +472,10 @@ def open_review_run(
     unchanged — every refusal below has already settled the attempt's record and
     said why.
     """
-    ree_layout = ReeLayout.in_workbench()
-    review_layout = ree_layout.review(review_id)
+    review_layout = layout.review(review_id)
     timer = OperationTimer.start()
 
-    ree = require_ree_baseline(ree_layout, log=log)
+    ree = require_ree_baseline(layout, log=log)
     if isinstance(ree, ActionResult):
         return ree
 
@@ -539,12 +541,13 @@ def open_review_run(
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
+        runner=runner,
     )
     if outcome.status == "canceled" or is_canceled():
         return started.stop("canceled", f"{step.subject} was canceled")
 
     return ReviewRun(
-        ree_layout=ree_layout,
+        ree_layout=layout,
         review_layout=review_layout,
         step=started,
         timer=timer,

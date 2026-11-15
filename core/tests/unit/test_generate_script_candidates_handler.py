@@ -1,8 +1,8 @@
 """Unit coverage for the generate_script_candidates operations handler.
 
-Points ``ReeLayout.in_workbench`` at a tmp root (the seam the other handler
-tests use) and exercises the precondition guard, the read-only success path, and
-that inference reads the immutable upstream tree.
+Runs the handler against an REE in a tmp root and exercises the precondition
+guard, the read-only success path, and that inference reads the immutable
+upstream tree.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from scriptinfer_helpers import FixedEngines
 
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.handlers.author import generate_script_candidates as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -21,7 +22,7 @@ from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTarget
 @pytest.fixture(autouse=True)
 def _docker_machine(monkeypatch: pytest.MonkeyPatch) -> None:
     """These tests never probe the machine they run on: its scripts can use Docker alone."""
-    monkeypatch.setattr(handler, "engine_probe", lambda _layout: FixedEngines("docker"))
+    monkeypatch.setattr(handler, "engine_probe", lambda _layout, _runner: FixedEngines("docker"))
 
 
 def _silent_log(*_: object) -> None:
@@ -35,7 +36,6 @@ def _never_canceled() -> bool:
 def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 
@@ -55,7 +55,11 @@ def _args(*kinds: str) -> GenerateScriptCandidatesArgs:
 def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
     result = handler.handle_generate_script_candidates(
-        GenerateScriptCandidatesArgs(targets=[]), log=_silent_log, is_canceled=_never_canceled
+        GenerateScriptCandidatesArgs(targets=[]),
+        log=_silent_log,
+        is_canceled=_never_canceled,
+        layout=ReeLayout(root=tmp_path),
+        runner=LocalScriptRunner(),
     )
     assert result.status == "failed"
     assert result.failure is not None
@@ -66,7 +70,11 @@ def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.Mo
     _store_at(tmp_path, monkeypatch)  # ensure_dirs does not create upstream
     (tmp_path / "upstream").rmdir() if (tmp_path / "upstream").is_dir() else None
     result = handler.handle_generate_script_candidates(
-        _args("build_experiment_environment"), log=_silent_log, is_canceled=_never_canceled
+        _args("build_experiment_environment"),
+        log=_silent_log,
+        is_canceled=_never_canceled,
+        layout=ReeLayout(root=tmp_path),
+        runner=LocalScriptRunner(),
     )
     assert result.status == "failed"
     assert result.failure is not None
@@ -77,7 +85,11 @@ def test_build_success_returns_report(tmp_path: Path, monkeypatch: pytest.Monkey
     _store_at(tmp_path, monkeypatch)
     _seed_upstream(tmp_path, {"Dockerfile": "FROM x\n", "main.py": "y"})
     result = handler.handle_generate_script_candidates(
-        _args("build_experiment_environment"), log=_silent_log, is_canceled=_never_canceled
+        _args("build_experiment_environment"),
+        log=_silent_log,
+        is_canceled=_never_canceled,
+        layout=ReeLayout(root=tmp_path),
+        runner=LocalScriptRunner(),
     )
     assert result.status == "succeeded"
     report = result.outputs
@@ -96,7 +108,11 @@ def test_inference_ignores_overlay_generated_output(tmp_path: Path, monkeypatch:
     overlay_dockerfile.parent.mkdir(parents=True, exist_ok=True)
     overlay_dockerfile.write_text("FROM x\n")
     result = handler.handle_generate_script_candidates(
-        _args("build_experiment_environment"), log=_silent_log, is_canceled=_never_canceled
+        _args("build_experiment_environment"),
+        log=_silent_log,
+        is_canceled=_never_canceled,
+        layout=ReeLayout(root=tmp_path),
+        runner=LocalScriptRunner(),
     )
     assert result.status == "succeeded"
     assert result.outputs["results"][0]["status"] == "not_inferred"

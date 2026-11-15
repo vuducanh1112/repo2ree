@@ -8,6 +8,7 @@ import pytest
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.bundle.repository_restore import restore_repository
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -31,7 +32,6 @@ from repo2ree_ree.workbench_environment import WorkbenchEnvironment
 def _sealed(tmp_path, monkeypatch):
     layout = ReeLayout(root=tmp_path / "author")
     initialize_ree(layout, name="offline")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     # Result files exercise optional bulk payloads without requiring Docker.
     (layout.results / "experiment").mkdir(parents=True)
     payload = b"binary\0result" * 4096
@@ -45,6 +45,8 @@ def _sealed(tmp_path, monkeypatch):
             )
         ),
         log=lambda *args: None,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
     assert result.status == "succeeded", result
     assert result.history is not None
@@ -72,7 +74,6 @@ def test_seal_export_offline_checkout_and_load_preserve_history(tmp_path, monkey
     assert (exported / "results/experiment/data.bin").read_bytes() == payload
     destination = ReeLayout(root=tmp_path / "destination")
     initialize_ree(destination, name="blank")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: destination))
     destination.upload_staging_file("offline").write_bytes(data)
     loaded = run_command(
         LoadReeBundleCommand(
@@ -82,6 +83,8 @@ def test_seal_export_offline_checkout_and_load_preserve_history(tmp_path, monkey
             )
         ),
         log=lambda *args: None,
+        layout=destination,
+        runner=LocalScriptRunner(),
     )
     assert loaded.status == "succeeded", loaded
     records = read_operation_history(destination).operations
@@ -157,7 +160,6 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
 ):
     layout = ReeLayout(root=tmp_path / "author")
     initialize_ree(layout, name="selection")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     store = ReeDirectory(layout)
     ree = store.read_ree()
     definition = ree.subject.definition
@@ -187,6 +189,8 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
             )
         ),
         log=lambda *args: None,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
     assert result.status == "succeeded", result
     with materialized_ree_download(layout) as archive, zipfile.ZipFile(archive) as zipped:
@@ -204,7 +208,6 @@ def test_a_draft_that_declares_no_workbench_environment_keeps_the_one_its_ree_wa
         bundle = archive.read_bytes()
     destination = ReeLayout(root=tmp_path / "destination")
     initialize_ree(destination, name="blank")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: destination))
     created = WorkbenchEnvironment(oci="docker.io/library/docker:29-dind")
     patched = run_command(
         PatchReeDefinitionCommand(
@@ -213,6 +216,8 @@ def test_a_draft_that_declares_no_workbench_environment_keeps_the_one_its_ree_wa
             )
         ),
         log=lambda *args: None,
+        layout=destination,
+        runner=LocalScriptRunner(),
     )
     assert patched.status == "succeeded", patched
     destination.upload_staging_file("hello").write_bytes(bundle)
@@ -221,6 +226,8 @@ def test_a_draft_that_declares_no_workbench_environment_keeps_the_one_its_ree_wa
     loaded = run_command(
         LoadReeBundleCommand(args=LoadReeBundleArgs(upload_token="hello", archive_name="ree.zip")),  # noqa: S106
         log=lambda stream, level, message: lines.append(message),
+        layout=destination,
+        runner=LocalScriptRunner(),
     )
 
     assert loaded.status == "succeeded", loaded

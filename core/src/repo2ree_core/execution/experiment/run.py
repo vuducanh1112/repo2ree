@@ -28,7 +28,7 @@ from repo2ree_core.execution.process import (
     CancelCheck,
     StepOutcome,
 )
-from repo2ree_core.execution.runners import run_workspace_script
+from repo2ree_core.execution.runners import ScriptRunner, run_workspace_script
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_ree.paths import validate_relative_path
@@ -78,6 +78,7 @@ def _run_script(
     script_rel: str | None,
     log: LogSink,
     is_canceled: CancelCheck,
+    runner: ScriptRunner,
     activate_rel: str | None = None,
     launch: Launch | None = None,
 ) -> StepOutcome:
@@ -85,7 +86,7 @@ def _run_script(
     if script_rel is not None:
         validate_relative_path(script_rel)
     return run_workspace_script(
-        workspace, script_rel, log=log, is_canceled=is_canceled, activate_rel=activate_rel, launch=launch
+        workspace, script_rel, log=log, is_canceled=is_canceled, runner=runner, activate_rel=activate_rel, launch=launch
     )
 
 
@@ -102,6 +103,7 @@ def run_runnable(
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
+    runner: ScriptRunner,
 ) -> ExperimentRunOutcome:
     """Run *runnable*'s run script, then its verify script when declared.
 
@@ -122,7 +124,13 @@ def run_runnable(
         with tracer.start_as_current_span("runnable.run") as span:
             ScriptSpanAttrs(path=runnable.run_script or runnable.activate_script).apply(span)
             run_outcome = _run_script(
-                workspace, runnable.run_script or None, log, is_canceled, runnable.activate_script, runnable.launch
+                workspace,
+                runnable.run_script or None,
+                log,
+                is_canceled,
+                runner,
+                runnable.activate_script,
+                runnable.launch,
             )
             record_exit_code(span, run_outcome.exit_code)
     except Exception as exc:  # noqa: BLE001 — the experiment's own failure is the result being recorded, not an error to raise
@@ -151,7 +159,9 @@ def run_runnable(
     try:
         with tracer.start_as_current_span("runnable.verify") as span:
             ScriptSpanAttrs(path=runnable.verify_script).apply(span)
-            verify_outcome = _run_script(workspace, runnable.verify_script, log, is_canceled, launch=runnable.launch)
+            verify_outcome = _run_script(
+                workspace, runnable.verify_script, log, is_canceled, runner, launch=runnable.launch
+            )
             record_exit_code(span, verify_outcome.exit_code)
     except Exception as exc:  # noqa: BLE001 — a failed verify is a verdict this function returns, not an exception it propagates
         log("system", "error", f"Verify failed: {exc}")

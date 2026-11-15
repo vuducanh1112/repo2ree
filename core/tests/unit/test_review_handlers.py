@@ -9,6 +9,7 @@ import pytest
 
 from repo2ree_core.evidence.review.records import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record, write_review_record
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.handlers.review import (
     acquire_source,
     activation_test,
@@ -141,8 +142,6 @@ def _workbench(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_ree(_author_ree(launch))
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-
     review = layout.review(_REVIEW_ID)
     review.workspace.mkdir(parents=True)
     files = {
@@ -183,12 +182,14 @@ def _workbench(
     return layout
 
 
-def _activate():
+def _activate(layout: ReeLayout):
     return activation_test.handle_review_activation_test(
         ReviewActivationTestArgs(review_id=_REVIEW_ID),
         run_id="review-activation",
         log=lambda *_: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
 
@@ -239,13 +240,12 @@ def test_source_review_reads_definition_and_author_receipt(
             )
         )
     )
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-
     result = acquire_source.handle_review_acquire_source(
         ReviewAcquireSourceArgs(review_id=_REVIEW_ID, basis="independent"),
         run_id="review-source",
         log=lambda *_: None,
         is_canceled=lambda: False,
+        layout=layout,
     )
 
     assert result.status == "succeeded"
@@ -271,7 +271,6 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
             )
         )
     )
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     review = layout.review(_REVIEW_ID)
     review.upstream.mkdir(parents=True)
     record = with_step(
@@ -287,6 +286,8 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
         run_id="review-build",
         log=lambda *_: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "succeeded"
@@ -302,7 +303,7 @@ def test_failed_activation_is_completed_review_evidence(
 ) -> None:
     layout = _workbench(tmp_path, monkeypatch, activate=b"#!/bin/sh\nexit 7\n")
 
-    result = _activate()
+    result = _activate(layout)
 
     assert result.status == "succeeded"
     assert result.outputs["outcome"]["verdict"] == "failed"
@@ -318,13 +319,15 @@ def test_experiment_uses_definition_and_author_receipt_baseline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout = _workbench(tmp_path, monkeypatch)
-    assert _activate().outputs["outcome"]["verdict"] == "passed"
+    assert _activate(layout).outputs["outcome"]["verdict"] == "passed"
 
     result = run_experiment.handle_review_run_experiment(
         ReviewRunExperimentArgs(review_id=_REVIEW_ID, experiment_name=_EXPERIMENT_NAME),
         run_id="review-experiment",
         log=lambda *_: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
     assert result.status == "succeeded"
@@ -341,7 +344,7 @@ def test_an_experiment_run_through_another_activate_script_is_inconclusive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout = _workbench(tmp_path, monkeypatch)
-    assert _activate().outputs["outcome"]["verdict"] == "passed"
+    assert _activate(layout).outputs["outcome"]["verdict"] == "passed"
     (layout.review(_REVIEW_ID).workspace / RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT).write_bytes(
         b'#!/bin/sh\necho elsewhere\nexec "$@"\n'
     )
@@ -351,6 +354,8 @@ def test_an_experiment_run_through_another_activate_script_is_inconclusive(
         run_id="review-experiment",
         log=lambda *_: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
     comparison = result.outputs["comparison"]
@@ -365,12 +370,14 @@ _LAUNCH = (
 )
 
 
-def _experiment() -> dict[str, Any]:
+def _experiment(layout: ReeLayout) -> dict[str, Any]:
     result = run_experiment.handle_review_run_experiment(
         ReviewRunExperimentArgs(review_id=_REVIEW_ID, experiment_name=_EXPERIMENT_NAME),
         run_id="review-experiment",
         log=lambda *_: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
     assert result.status == "succeeded"
     return result.outputs
@@ -386,12 +393,12 @@ def test_a_review_launches_the_authors_scripts_through_the_authors_launch_with_i
         launch=_LAUNCH,
         reviewer_launch=ReviewLaunch(options=(LaunchOption("--partition=short"),)),
     )
-    activation = _activate().outputs["receipt"]
+    activation = _activate(layout).outputs["receipt"]
     assert activation["launch_script_digest"] == digest_bytes(_LAUNCH)
     assert activation["launched"]["slurm_job_id"] == "4711"
     assert (layout.review(_REVIEW_ID).workspace / "options.txt").read_text() == "--partition=short"
 
-    outputs = _experiment()
+    outputs = _experiment(layout)
     assert outputs["receipt"]["launched"]["slurm_job_id"] == "4711"
     # The author's receipt ran under no launch, the review under the author's: shown side by side, deciding nothing.
     assert outputs["comparison"]["expected_launch_script_digest"] is None
@@ -404,18 +411,18 @@ def test_a_review_that_chose_native_runs_the_authors_scripts_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout = _workbench(tmp_path, monkeypatch, launch=_LAUNCH, reviewer_launch=ReviewLaunch(mode="native"))
-    activation = _activate().outputs["receipt"]
+    activation = _activate(layout).outputs["receipt"]
     assert (activation["launch_script_digest"], activation["launched"]) == (None, None)
     assert not (layout.review(_REVIEW_ID).workspace / "options.txt").exists()
-    assert _experiment()["comparison"]["verdict"] == "reproduced"
+    assert _experiment(layout)["comparison"]["verdict"] == "reproduced"
 
 
 def test_a_review_does_not_launch_through_a_copy_that_is_not_the_authors_launch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _workbench(tmp_path, monkeypatch, launch=_LAUNCH, reviewer_copy=_LAUNCH + b"# edited\n")
-    result = _activate()
+    layout = _workbench(tmp_path, monkeypatch, launch=_LAUNCH, reviewer_copy=_LAUNCH + b"# edited\n")
+    result = _activate(layout)
     assert result.status == "failed"
     assert result.failure is not None
     assert "cannot launch the author's scripts" in result.failure.message

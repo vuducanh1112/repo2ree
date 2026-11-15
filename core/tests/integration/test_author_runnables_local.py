@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -85,18 +86,20 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
         ),
     )
     store.write_ree(ree)
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-
     activation_result = handle_activation_test(
         run_id="activation-local",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
     experiment_result = handle_run_experiment(
         RunExperimentArgs(experiment_name=name),
         run_id="experiment-local",
         log=lambda *args: None,
         is_canceled=lambda: False,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
     assert activation_result.status == "succeeded"

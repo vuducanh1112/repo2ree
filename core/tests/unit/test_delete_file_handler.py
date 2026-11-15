@@ -1,9 +1,8 @@
 """Unit coverage for the delete_file operations handler.
 
-The handler runs inside the workbench against the fixed ``/ree`` layout; these
-tests point ``ReeLayout.in_workbench`` at a tmp root (the same seam the other
-handler tests use) and exercise the three outcomes: restore-from-upstream,
-remove-entirely, and the guard paths, including the refused run scripts.
+Runs the handler against an REE in a tmp root and exercises the three outcomes:
+restore-from-upstream, remove-entirely, and the guard paths, including the
+refused run scripts.
 """
 
 from __future__ import annotations
@@ -40,13 +39,14 @@ def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     store.write_ree(Ree(subject=ReeSubject(definition=ReeDefinition(name="demo"))))
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 
 def test_invalid_path_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
-    result = handler.handle_delete_file(DeleteFileArgs(path="../escape"), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(
+        DeleteFileArgs(path="../escape"), log=_silent_log, is_canceled=_never_canceled, layout=ReeLayout(root=tmp_path)
+    )
     assert result.status == "failed"
     assert result.exit_code == 1
 
@@ -65,7 +65,9 @@ def test_a_run_script_is_never_deleted(tmp_path: Path, monkeypatch: pytest.Monke
     store = _store_at(tmp_path, monkeypatch)
     store.overlay.write_bytes(path, b"#!/bin/sh\n")
     store.workspace.write_bytes(path, b"#!/bin/sh\n")
-    result = handler.handle_delete_file(DeleteFileArgs(path=path), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(
+        DeleteFileArgs(path=path), log=_silent_log, is_canceled=_never_canceled, layout=store.layout
+    )
     assert result.status == "failed"
     assert result.failure is not None
     assert result.failure.category == "validation"
@@ -79,14 +81,18 @@ def test_a_verify_script_can_be_deleted(tmp_path: Path, monkeypatch: pytest.Monk
     store = _store_at(tmp_path, monkeypatch)
     store.overlay.write_bytes(path, b"#!/bin/sh\n")
     store.workspace.write_bytes(path, b"#!/bin/sh\n")
-    result = handler.handle_delete_file(DeleteFileArgs(path=path), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(
+        DeleteFileArgs(path=path), log=_silent_log, is_canceled=_never_canceled, layout=store.layout
+    )
     assert result.status == "succeeded"
     assert not store.overlay.is_file(path)
 
 
 def test_missing_file_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
-    result = handler.handle_delete_file(DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(
+        DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled, layout=ReeLayout(root=tmp_path)
+    )
     assert result.status == "failed"
 
 
@@ -98,7 +104,9 @@ def test_upstream_file_is_restored(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     store.overlay.write_bytes(VERIFY, b"local edit")
     store.workspace.write_bytes(VERIFY, b"local edit")
 
-    result = handler.handle_delete_file(DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(
+        DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled, layout=store.layout
+    )
     assert result.status == "succeeded"
     assert not store.overlay.is_file(VERIFY)
     assert store.workspace.read_bytes(VERIFY) == b"upstream body"
@@ -111,7 +119,10 @@ def test_stale_etag_conflicts_without_deleting(tmp_path: Path, monkeypatch: pyte
     stale = f"sha256:{hashlib.sha256(b'stale body').hexdigest()}"
 
     result = handler.handle_delete_file(
-        DeleteFileArgs(path=VERIFY, expected_etag=stale), log=_silent_log, is_canceled=_never_canceled
+        DeleteFileArgs(path=VERIFY, expected_etag=stale),
+        log=_silent_log,
+        is_canceled=_never_canceled,
+        layout=store.layout,
     )
 
     assert result.status == "failed"
@@ -126,7 +137,10 @@ def test_matching_etag_deletes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     current = f"sha256:{hashlib.sha256(b'current body').hexdigest()}"
 
     result = handler.handle_delete_file(
-        DeleteFileArgs(path=VERIFY, expected_etag=current), log=_silent_log, is_canceled=_never_canceled
+        DeleteFileArgs(path=VERIFY, expected_etag=current),
+        log=_silent_log,
+        is_canceled=_never_canceled,
+        layout=store.layout,
     )
 
     assert result.status == "succeeded"
@@ -140,7 +154,9 @@ def test_overlay_only_file_is_removed(tmp_path: Path, monkeypatch: pytest.Monkey
     store.overlay.write_bytes(VERIFY, b"created here")
     store.workspace.write_bytes(VERIFY, b"created here")
 
-    result = handler.handle_delete_file(DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled)
+    result = handler.handle_delete_file(
+        DeleteFileArgs(path=VERIFY), log=_silent_log, is_canceled=_never_canceled, layout=store.layout
+    )
     assert result.status == "succeeded"
     assert not store.workspace.is_file(VERIFY)
     assert not store.overlay.is_file(VERIFY)

@@ -8,8 +8,7 @@ import pytest
 
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
-from repo2ree_core.execution import runners
-from repo2ree_core.execution.runners import RUNNER_VARIABLE
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.handlers.author import build_experiment_environment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -29,12 +28,6 @@ from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SC
 _NOW = parse_utc_instant("2026-11-13T00:00:00Z")
 _BUILD = b"#!/bin/sh\nprintf '%s' \"${SLURM_JOB_ID:-direct}\" > runtime.tar\n"
 _LAUNCH = b'#!/bin/sh\nSLURM_JOB_ID=4711\nexport SLURM_JOB_ID\nexec "$@"\n'
-
-
-@pytest.fixture(autouse=True)
-def _on_the_host(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(RUNNER_VARIABLE, raising=False)
-    runners.current_runner.cache_clear()
 
 
 def _launch(body: bytes = _LAUNCH) -> LaunchDefinition:
@@ -72,13 +65,12 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launch: LaunchDe
         tree.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
         tree.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH)
     store.write_ree(_ree(launch))
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return store
 
 
-def _build() -> str:
+def _build(layout: ReeLayout) -> str:
     result = build_experiment_environment.handle_build_experiment_environment(
-        run_id="build-1", log=lambda *_args: None, is_canceled=lambda: False
+        run_id="build-1", log=lambda *_args: None, is_canceled=lambda: False, layout=layout, runner=LocalScriptRunner()
     )
     return result.status
 
@@ -87,7 +79,7 @@ def test_a_build_runs_through_the_declared_launch_and_its_receipt_says_where(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     store = _workbench(tmp_path, monkeypatch, _launch())
-    assert _build() == "succeeded"
+    assert _build(store.layout) == "succeeded"
     assert store.workspace.read_bytes("runtime.tar") == b"4711"
     receipt = store.read_ree().subject.receipts.experiment_environment
     assert receipt is not None
@@ -98,7 +90,7 @@ def test_a_build_runs_through_the_declared_launch_and_its_receipt_says_where(
 
 def test_an_ree_without_a_launch_runs_its_build_directly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     store = _workbench(tmp_path, monkeypatch, None)
-    assert _build() == "succeeded"
+    assert _build(store.layout) == "succeeded"
     assert store.workspace.read_bytes("runtime.tar") == b"direct"
     receipt = store.read_ree().subject.receipts.experiment_environment
     assert receipt is not None
@@ -110,7 +102,7 @@ def test_a_launch_script_edited_since_it_was_declared_stops_the_build(
 ) -> None:
     store = _workbench(tmp_path, monkeypatch, _launch())
     store.workspace.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH + b"# edited\n")
-    assert _build() == "failed"
+    assert _build(store.layout) == "failed"
     assert store.read_ree().subject.receipts.experiment_environment is None
 
 
@@ -130,7 +122,7 @@ def test_a_step_that_ran_under_another_launch_is_stale(
     after: LaunchDefinition | None,
 ) -> None:
     store = _workbench(tmp_path, monkeypatch, before)
-    assert _build() == "succeeded"
+    assert _build(store.layout) == "succeeded"
     ree = store.read_ree()
     assert audit(ree).experiment_environment.evidence == "current"
     relaunched = replace_definition(ree, ree.subject.definition.model_copy(update={"launch": after}))

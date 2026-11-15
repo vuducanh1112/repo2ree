@@ -27,11 +27,11 @@ _REPORT_PATH = ArtifactPath(f"{ARTIFACTS_DIRNAME}/{REPRODUCIBILITY_REPORT_FILENA
 def handle_evaluate_dependency_score(
     args: EvaluateDependencyScoreArgs,
     *,
+    layout: ReeLayout,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")

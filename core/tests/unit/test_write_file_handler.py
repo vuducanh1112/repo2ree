@@ -1,7 +1,6 @@
 """Unit coverage for the write_file operations handler's optimistic-concurrency guard.
 
-Same seam as the delete_file handler tests: ``ReeLayout.in_workbench`` is
-pointed at a tmp root and the handler runs for real against it.
+The handler runs for real against an REE in a tmp root.
 """
 
 from __future__ import annotations
@@ -38,7 +37,6 @@ def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
     store.write_ree(Ree(subject=ReeSubject(definition=ReeDefinition(name="demo"))))
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 
@@ -52,6 +50,7 @@ def test_matching_etag_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         ),
         log=_silent_log,
         is_canceled=_never_canceled,
+        layout=store.layout,
     )
 
     assert result.status == "succeeded"
@@ -68,6 +67,7 @@ def test_stale_etag_conflicts_without_writing(tmp_path: Path, monkeypatch: pytes
         ),
         log=_silent_log,
         is_canceled=_never_canceled,
+        layout=store.layout,
     )
 
     assert result.status == "failed"
@@ -84,6 +84,7 @@ def test_expected_etag_against_missing_file_conflicts(tmp_path: Path, monkeypatc
         WriteFileArgs(path=UNWRITTEN, content="body", expected_etag=_etag(b"anything")),
         log=_silent_log,
         is_canceled=_never_canceled,
+        layout=ReeLayout(root=tmp_path),
     )
 
     assert result.status == "failed"
@@ -95,9 +96,7 @@ def test_no_expected_etag_skips_the_guard(tmp_path: Path, monkeypatch: pytest.Mo
     store = _store_at(tmp_path, monkeypatch)
 
     result = handler.handle_write_file(
-        WriteFileArgs(path=UNWRITTEN, content="body"),
-        log=_silent_log,
-        is_canceled=_never_canceled,
+        WriteFileArgs(path=UNWRITTEN, content="body"), log=_silent_log, is_canceled=_never_canceled, layout=store.layout
     )
 
     assert result.status == "succeeded"

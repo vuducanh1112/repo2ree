@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import platform
 from pathlib import Path
 
 import pytest
 
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
-from repo2ree_core.execution import runners
 from repo2ree_core.execution.launch import RECORD_PREFIX, Launch, declared_launch
-from repo2ree_core.execution.runners import RUNNER_VARIABLE, run_workspace_script
+from repo2ree_core.execution.runners import ContainerScriptRunner, LocalScriptRunner, run_workspace_script
 from repo2ree_protocol.frames import LogSink
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import LaunchDefinition
@@ -29,12 +27,6 @@ exec "$@"
 """
 
 
-@pytest.fixture(autouse=True)
-def _on_the_host(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(RUNNER_VARIABLE, raising=False)
-    runners.current_runner.cache_clear()
-
-
 def _quiet() -> LogSink:
     return lambda *_args: None
 
@@ -50,7 +42,11 @@ def _workspace(root: Path) -> Path:
 def test_a_launched_script_runs_inside_the_launch_and_the_step_learns_where(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     outcome = run_workspace_script(
-        workspace, "ree-scripts/step.sh", log=_quiet(), launch=Launch(script=RESERVED_LAUNCH_SCRIPT)
+        workspace,
+        "ree-scripts/step.sh",
+        log=_quiet(),
+        launch=Launch(script=RESERVED_LAUNCH_SCRIPT),
+        runner=LocalScriptRunner(),
     )
     assert outcome.status == "succeeded"
     assert (workspace / "ran-in.txt").read_text() == "4711\n"
@@ -67,13 +63,13 @@ def test_a_launched_script_runs_inside_the_launch_and_the_step_learns_where(tmp_
 def test_a_reviewers_options_reach_the_launch_script(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
     launch = Launch(script=RESERVED_LAUNCH_SCRIPT, options=(LaunchOption("--partition=short"), LaunchOption("-c4")))
-    run_workspace_script(workspace, "ree-scripts/step.sh", log=_quiet(), launch=launch)
+    run_workspace_script(workspace, "ree-scripts/step.sh", log=_quiet(), launch=launch, runner=LocalScriptRunner())
     assert (workspace / "launch-options.txt").read_text() == "--partition=short -c4\n"
 
 
 def test_without_a_launch_a_script_runs_directly_and_records_nowhere(tmp_path: Path) -> None:
     workspace = _workspace(tmp_path)
-    outcome = run_workspace_script(workspace, "ree-scripts/step.sh", log=_quiet())
+    outcome = run_workspace_script(workspace, "ree-scripts/step.sh", log=_quiet(), runner=LocalScriptRunner())
     assert outcome.status == "succeeded"
     assert (workspace / "ran-in.txt").read_text() == "none\n"
     assert outcome.launched is None
@@ -83,17 +79,23 @@ def test_a_launch_that_never_runs_the_command_records_nowhere(tmp_path: Path) ->
     workspace = _workspace(tmp_path)
     (workspace / RESERVED_LAUNCH_SCRIPT).write_text("exit 0\n")
     outcome = run_workspace_script(
-        workspace, "ree-scripts/step.sh", log=_quiet(), launch=Launch(script=RESERVED_LAUNCH_SCRIPT)
+        workspace,
+        "ree-scripts/step.sh",
+        log=_quiet(),
+        launch=Launch(script=RESERVED_LAUNCH_SCRIPT),
+        runner=LocalScriptRunner(),
     )
     assert outcome.launched is None
     assert not (workspace / "ran-in.txt").exists()
 
 
-def test_a_launch_is_refused_where_scripts_run_in_a_container(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv(RUNNER_VARIABLE, json.dumps({"backend": "container", "image": "python:3.12"}))
-    runners.current_runner.cache_clear()
+def test_a_launch_is_refused_where_scripts_run_in_a_container(tmp_path: Path) -> None:
     outcome = run_workspace_script(
-        _workspace(tmp_path), "ree-scripts/step.sh", log=_quiet(), launch=Launch(script=RESERVED_LAUNCH_SCRIPT)
+        _workspace(tmp_path),
+        "ree-scripts/step.sh",
+        log=_quiet(),
+        launch=Launch(script=RESERVED_LAUNCH_SCRIPT),
+        runner=ContainerScriptRunner(engine="docker", image="python:3.12"),
     )
     assert outcome.status == "failed"
 

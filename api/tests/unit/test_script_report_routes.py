@@ -3,6 +3,7 @@
 import pytest
 
 from repo2ree_api.deps import command_dispatcher
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.layout import ReeLayout
@@ -15,11 +16,10 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
     initialize_ree(layout, name="reports")
     layout.upstream.mkdir(exist_ok=True)
     (layout.upstream / "Dockerfile").write_text("FROM python:3.13-slim\n")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     outputs = {}
 
     def dispatch(handle, command, run_id, log):
-        result = run_command(command, run_id=run_id, log=log)
+        result = run_command(command, run_id=run_id, log=log, layout=layout, runner=LocalScriptRunner())
         assert result.history is not None
         assert result.history.capture_status == "captured"
         outputs.update(result.model_dump(mode="json")["outputs"])

@@ -18,13 +18,13 @@ from repo2ree_protocol.result import ActionResult
 def handle_lint_scripts(
     args: LintScriptsArgs,
     *,
+    layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
     if not args.targets:
         return ActionResult.failed("validation", "no lint targets requested")
 
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     ree = store.read_ree() if store.manifest_exists() else None
     declarations = ScriptDeclarations.from_definition(ree.subject.definition if ree else None)

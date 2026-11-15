@@ -18,7 +18,7 @@ from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_run
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import current_runner
+from repo2ree_core.execution.runners import ScriptRunner
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -44,12 +44,13 @@ RunnableDefinition = ActivateExperimentEnvironmentDefinition | ExperimentDefinit
 def handle_runnable_operation(
     kind: RunnableKind,
     *,
+    layout: ReeLayout,
+    runner: ScriptRunner,
     experiment_name: str = "",
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
@@ -77,6 +78,7 @@ def handle_runnable_operation(
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
+        runner=runner,
     )
     outputs = _outputs(outcome, experiment_environment_path)
     if outcome.status == "canceled":
@@ -114,7 +116,7 @@ def handle_runnable_operation(
         experiment_environment_digest=experiment_environment_digest,
         produced_output_digest=produced_output_digest,
         activate_experiment_environment_script_digest=activation.activate_experiment_environment_script_digest,
-        workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
+        workbench_environment=runner.observe(ree.subject.definition.workbench_environment),
         launch_script_digest=_launch_digest(ree),
         launched=outcome.launched,
     )

@@ -10,13 +10,16 @@ command with required args does not need fixture upkeep here.
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
 from pydantic import BaseModel
 
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations import dispatch as rc
+from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
@@ -61,6 +64,8 @@ _ROUTES: list[tuple[type[BaseModel], str]] = [
 ]
 
 _ALL_HANDLERS = [name for _, name in _ROUTES]
+# No REE at this root: capture steps aside, and the stubbed handlers never read it.
+_NO_REE = ReeLayout(root=Path("/nonexistent-ree"))
 
 
 def _null_log() -> LogSink:
@@ -87,7 +92,9 @@ def test_routes_to_its_handler(
     operation = command_cls.model_fields["operation"].default
     cmd = command_cls.model_construct(operation=operation, args=object())
 
-    result = rc.run_command(cast(Command, cmd), log=_null_log(), is_canceled=lambda: False)
+    result = rc.run_command(
+        cast(Command, cmd), log=_null_log(), is_canceled=lambda: False, layout=_NO_REE, runner=LocalScriptRunner()
+    )
 
     assert result.status == "succeeded"
     assert called == [handler_name]
@@ -111,7 +118,9 @@ def test_cancel_before_start_never_reaches_the_handler(
     operation = command_cls.model_fields["operation"].default
     cmd = command_cls.model_construct(operation=operation, args=object())
 
-    result = rc.run_command(cast(Command, cmd), log=_null_log(), is_canceled=lambda: True)
+    result = rc.run_command(
+        cast(Command, cmd), log=_null_log(), is_canceled=lambda: True, layout=_NO_REE, runner=LocalScriptRunner()
+    )
 
     assert result.status == "canceled"
     assert called == []
@@ -120,7 +129,7 @@ def test_cancel_before_start_never_reaches_the_handler(
 def test_unknown_command_raises() -> None:
     bogus = SimpleNamespace(operation="not_a_real_operation")
     with pytest.raises(ValueError, match="Unhandled command operation"):
-        rc.run_command(bogus, log=_null_log())  # type: ignore[arg-type]
+        rc.run_command(bogus, log=_null_log(), layout=_NO_REE, runner=LocalScriptRunner())  # type: ignore[arg-type]
 
 
 # ================================================
@@ -140,7 +149,7 @@ def _run_id_seen_by_handler(monkeypatch: pytest.MonkeyPatch, run_id: str | None)
         monkeypatch.setattr(rc, name, _recorder)
 
     cmd = BuildExperimentEnvironmentCommand.model_construct(operation="build_experiment_environment", args=object())
-    rc.run_command(cast(Command, cmd), log=_null_log(), run_id=run_id)
+    rc.run_command(cast(Command, cmd), log=_null_log(), run_id=run_id, layout=_NO_REE, runner=LocalScriptRunner())
     return seen[0]
 
 

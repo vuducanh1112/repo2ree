@@ -8,6 +8,7 @@ from typing import get_args
 import pytest
 
 from repo2ree_core.domain.ree.transitions import revision_of
+from repo2ree_core.execution.runners import LocalScriptRunner
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.initialize import initialize_ree
@@ -33,22 +34,23 @@ def git(layout, *args):
 def ree(tmp_path, monkeypatch):
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="before")
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
     return layout
 
 
-def patch(name="after", *, expected_version="", cancel=None):
+def patch(layout: ReeLayout, name="after", *, expected_version="", cancel=None):
     return dispatch.run_command(
         PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": name}, expected_version=expected_version)),
         run_id="patch-run",
         log=lambda *args: None,
         is_canceled=cancel,
+        layout=layout,
+        runner=LocalScriptRunner(),
     )
 
 
 def test_patch_captures_files_parent_and_run(ree):
     initial = git(ree, "rev-parse", "HEAD")
-    result = patch()
+    result = patch(ree)
     assert result.status == "succeeded"
     history = result.history.model_dump()
     assert history["before_snapshot_id"] == initial
@@ -71,7 +73,7 @@ def test_patch_captures_files_parent_and_run(ree):
 
 
 def test_invocation_identity_distinguishes_repeated_run_labels_and_explicit_retries(ree):
-    first, second = patch(), patch()
+    first, second = patch(ree), patch(ree)
     assert first.context.attempt_id != second.context.attempt_id
     assert first.context.operation_id != second.context.operation_id
     retry = ExecutionContext.new(operation_id=first.context.operation_id)
@@ -80,6 +82,8 @@ def test_invocation_identity_distinguishes_repeated_run_labels_and_explicit_retr
         context=retry,
         run_id="patch-run",
         log=lambda *args: None,
+        layout=ree,
+        runner=LocalScriptRunner(),
     )
     assert result.context == retry
     assert result.history is not None
@@ -93,12 +97,14 @@ def test_invocation_identity_distinguishes_repeated_run_labels_and_explicit_retr
 
 
 def test_duplicate_attempt_cannot_execute_or_overwrite_its_published_outcome(ree):
-    first = patch()
+    first = patch(ree)
     head = git(ree, "rev-parse", "HEAD")
     repeated = dispatch.run_command(
         PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "duplicate"})),
         context=first.context,
         log=lambda *args: None,
+        layout=ree,
+        runner=LocalScriptRunner(),
     )
     assert repeated.status == "failed"
     assert repeated.failure is not None
@@ -116,13 +122,13 @@ def test_index_refresh_failure_does_not_reverse_published_success(ree, monkeypat
         return real_git(self, *args, **kwargs)
 
     monkeypatch.setattr(GitHistory, "git", fail_index)
-    first = patch()
+    first = patch(ree)
     assert first.status == "succeeded"
     assert first.history.after_snapshot_id == git(ree, "rev-parse", "HEAD")
     record = read_operation_history(ree).operations[0]
     assert record.result is not None
     assert record.result.status == "succeeded"
-    assert patch().status == "succeeded"
+    assert patch(ree).status == "succeeded"
 
 
 def test_process_death_after_publication_is_reconciled_from_commit(ree, monkeypatch):
@@ -134,7 +140,7 @@ def test_process_death_after_publication_is_reconciled_from_commit(ree, monkeypa
 
     monkeypatch.setattr(GitHistory, "commit_operation", interrupted)
     with pytest.raises(KeyboardInterrupt):
-        patch()
+        patch(ree)
     pending = next((ree.git_dir / "repo2ree" / "operations").glob("*.json"))
     assert json.loads(pending.read_text())["capture_status"] == "pending"
     record = read_operation_history(ree).operations[0]
@@ -149,10 +155,10 @@ def test_process_death_after_publication_is_reconciled_from_commit(ree, monkeypa
 
 def test_noop_and_conflict_each_create_operation_commits(ree):
     original = str(revision_of(ReeDirectory(ree).read_ree()))
-    assert patch("before").history.changed is False
+    assert patch(ree, "before").history.changed is False
     assert git(ree, "rev-list", "--count", "HEAD") == "2"
-    assert patch().status == "succeeded"
-    result = patch("other", expected_version=original)
+    assert patch(ree).status == "succeeded"
+    result = patch(ree, "other", expected_version=original)
     assert result.status == "failed"
     assert result.failure.category == "conflict"
     assert result.history.changed is False
@@ -161,14 +167,14 @@ def test_noop_and_conflict_each_create_operation_commits(ree):
 
 def test_preexisting_changes_have_separate_observation(ree):
     ree.overlay_file("external.txt").write_text("unrecorded")
-    result = patch()
+    result = patch(ree)
     before = result.history.before_snapshot_id
     assert git(ree, "show", "-s", "--format=%s", before) == "observe_existing_ree"
     assert git(ree, "diff", "--name-only", before, result.history.after_snapshot_id) == "ree.json"
 
 
 def test_cancel_before_handler_is_journaled(ree):
-    assert patch(cancel=lambda: True).status == "canceled"
+    assert patch(ree, cancel=lambda: True).status == "canceled"
     assert git(ree, "rev-list", "--count", "HEAD") == "2"
 
 
@@ -183,7 +189,7 @@ def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mut
         return real_capture(self, **kwargs)
 
     monkeypatch.setattr(GitHistory, method, failing_capture)
-    result = patch()
+    result = patch(ree)
     assert result.status == "failed"
     assert result.failure.retryable is False
     assert result.history.capture_status == "failed"
@@ -193,7 +199,7 @@ def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mut
     assert git(ree, "rev-list", "--count", "HEAD") == "1"
     monkeypatch.setattr(GitHistory, method, real_capture)
     # A retry does the work itself, and nothing is observed between the attempts.
-    retry = patch()
+    retry = patch(ree)
     assert retry.history.changed is True
     assert git(ree, "log", "-1", "--format=%s", "HEAD^") != "observe_existing_ree"
 
@@ -212,7 +218,7 @@ def pending_record(layout, attempt_id):
 
 def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
-    patch("observed")  # A clean tree, so the before-snapshot reuses the head and takes no lock.
+    patch(ree, "observed")  # A clean tree, so the before-snapshot reuses the head and takes no lock.
     head = git(ree, "rev-parse", "HEAD")
 
     def handler(*args, **kwargs):
@@ -222,7 +228,7 @@ def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, 
         return ActionResult(status="succeeded")
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
-    result = patch()
+    result = patch(ree)
 
     assert (result.status, result.failure.details["code"]) == ("failed", "history_capture_failed")
     assert "rolled back to how the attempt found them" in result.failure.message
@@ -242,7 +248,7 @@ def test_a_capture_that_fails_before_the_handler_runs_nothing(ree, monkeypatch):
     ran = []
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", lambda *args, **kwargs: ran.append(True))
 
-    result = patch()
+    result = patch(ree)
 
     assert (result.status, result.history.operation_status, ran) == ("failed", "not_started", [])
     assert "nothing ran" in result.failure.message
@@ -260,7 +266,7 @@ def test_a_record_that_cannot_be_written_before_the_handler_ends_the_attempt(ree
         real_write(path, value)
 
     monkeypatch.setattr("repo2ree_core.operations.capture.write_json_atomic", write_once)
-    result = patch()
+    result = patch(ree)
 
     assert result.history.capture_status == "failed"
     assert ReeDirectory(ree).read_ree().subject.definition.name == "before"
@@ -271,7 +277,7 @@ def test_a_rollback_that_fails_too_is_said(ree, monkeypatch):
     monkeypatch.setattr(GitHistory, "commit_operation", lambda self, **kwargs: (_ for _ in ()).throw(OSError("full")))
     monkeypatch.setattr(GitHistory, "restore", lambda self, snapshot: (_ for _ in ()).throw(OSError("full")))
 
-    result = patch()
+    result = patch(ree)
 
     assert result.history.capture_status == "failed"
     assert "could not be rolled back" in result.failure.message
@@ -289,7 +295,7 @@ def test_partial_change_captured_with_original_outcome(ree, monkeypatch, outcome
         return ActionResult(status="canceled")
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
-    result = patch()
+    result = patch(ree)
     expected = "failed" if outcome == "exception" else outcome
     assert result.status == expected
     assert result.history.changed is True
@@ -311,7 +317,7 @@ def test_a_canceled_attempt_is_rolled_back_before_it_is_captured(ree, monkeypatc
         return ActionResult(status="canceled")
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
-    result = patch()
+    result = patch(ree)
     assert result.status == "canceled"
     assert result.history.capture_status == "captured"
     assert result.history.changed is False
@@ -326,7 +332,7 @@ def test_a_canceled_attempt_is_rolled_back_before_it_is_captured(ree, monkeypatc
 def test_concurrent_patches_check_revision_under_capture_lock(ree):
     original = str(revision_of(ReeDirectory(ree).read_ree()))
     with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(lambda name: patch(name, expected_version=original), ["one", "two"]))
+        results = list(pool.map(lambda name: patch(ree, name, expected_version=original), ["one", "two"]))
     assert sorted(result.status for result in results) == ["failed", "succeeded"]
     assert git(ree, "rev-list", "--count", "HEAD") == "3"
 
@@ -340,7 +346,7 @@ def operation_record(layout, result):
 
 
 def test_noop_cancel_and_failure_each_have_command_record(ree):
-    results = [patch("before"), patch(cancel=lambda: True), patch(expected_version="stale")]
+    results = [patch(ree, "before"), patch(ree, cancel=lambda: True), patch(ree, expected_version="stale")]
     records = [operation_record(ree, result) for result in results]
     assert len({record["attempt_id"] for record in records}) == 3
     assert [record["operation_status"] for record in records] == ["succeeded", "canceled", "failed"]
@@ -355,13 +361,17 @@ def test_noop_cancel_and_failure_each_have_command_record(ree):
 def test_executor_bookkeeping_does_not_create_observation(ree):
     from repo2ree_protocol.command import LintScriptsArgs, LintScriptsCommand
 
-    patch()
+    patch(ree)
     ree.run_log("patch-run").write_text('{"type":"result"}\n')
     ree.run_cancel_marker("unrelated").touch()
     ree.upload_staging_file("upload").write_bytes(b"pending")
     (ree.root / "unknown.txt").write_text("outside defined state")
     result = dispatch.run_command(
-        LintScriptsCommand(args=LintScriptsArgs(targets=[])), run_id="lint", log=lambda *args: None
+        LintScriptsCommand(args=LintScriptsArgs(targets=[])),
+        run_id="lint",
+        log=lambda *args: None,
+        layout=ree,
+        runner=LocalScriptRunner(),
     )
     assert result.history is not None
     assert result.history.changed is False
@@ -375,11 +385,16 @@ def test_write_delete_capture_scripts_and_command_bytes(ree):
     script = "ree-scripts/experiments/demo.verify.sh"
     content = "#!/bin/sh\ntest -s result.txt\n"
     command = WriteFileCommand(args=WriteFileArgs(path=script, content=content))
-    result = dispatch.run_command(command, log=lambda *args: None)
+    result = dispatch.run_command(command, log=lambda *args: None, layout=ree, runner=LocalScriptRunner())
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == command.model_dump(mode="json")
     assert git(ree, "show", f"HEAD:overlay/{script}") == content.strip()
-    result = dispatch.run_command(DeleteFileCommand(args=DeleteFileArgs(path=script)), log=lambda *args: None)
+    result = dispatch.run_command(
+        DeleteFileCommand(args=DeleteFileArgs(path=script)),
+        log=lambda *args: None,
+        layout=ree,
+        runner=LocalScriptRunner(),
+    )
     assert result.status == "succeeded"
     assert script not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
 
@@ -389,9 +404,17 @@ def test_the_overlay_takes_only_the_rees_scripts(ree, path):
     from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
 
     written = dispatch.run_command(
-        WriteFileCommand(args=WriteFileArgs(path=path, content="x\n")), log=lambda *args: None
+        WriteFileCommand(args=WriteFileArgs(path=path, content="x\n")),
+        log=lambda *args: None,
+        layout=ree,
+        runner=LocalScriptRunner(),
     )
-    deleted = dispatch.run_command(DeleteFileCommand(args=DeleteFileArgs(path=path)), log=lambda *args: None)
+    deleted = dispatch.run_command(
+        DeleteFileCommand(args=DeleteFileArgs(path=path)),
+        log=lambda *args: None,
+        layout=ree,
+        runner=LocalScriptRunner(),
+    )
     for result in (written, deleted):
         assert result.status == "failed"
         assert result.failure is not None
@@ -405,7 +428,7 @@ def test_process_death_leaves_pending_attempt(ree, monkeypatch):
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", interrupted)
     with pytest.raises(KeyboardInterrupt):
-        patch()
+        patch(ree)
     records = list((ree.git_dir / "repo2ree" / "operations").glob("*.json"))
     record = json.loads(records[0].read_text())
     assert record["capture_status"] == "pending"
@@ -444,7 +467,7 @@ def test_every_command_records_inputs_and_selected_scope(ree, monkeypatch, comma
 
     monkeypatch.setattr(dispatch, "_dispatch", execute)
     monkeypatch.setattr(dispatch, "validate_outputs", lambda *_args: None)
-    result = dispatch.run_command(cmd, log=lambda *args: None)
+    result = dispatch.run_command(cmd, log=lambda *args: None, layout=ree, runner=LocalScriptRunner())
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == cmd.model_dump(mode="json")
     assert git(scope, "show", "HEAD:overlay/operation.txt") == cmd.operation
@@ -486,7 +509,7 @@ def _die_mid_handler(ree, monkeypatch):
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
     with pytest.raises(KeyboardInterrupt):
-        patch()
+        patch(ree)
     monkeypatch.undo()
     return read_operation_history(ree).operations[0].attempt_id
 
@@ -537,7 +560,7 @@ def test_an_attempt_lost_before_its_capture_fails_its_capture_and_rolls_back(ree
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
     monkeypatch.setattr(GitHistory, "commit_operation", die)
     with pytest.raises(KeyboardInterrupt):
-        patch()
+        patch(ree)
     monkeypatch.undo()
     attempt = read_operation_history(ree).operations[0].attempt_id
 

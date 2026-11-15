@@ -18,6 +18,7 @@ from repo2ree_core.evidence.review.records import review_receipt_envelope, with_
 from repo2ree_core.evidence.review.store import write_review_experiment_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.execution.runners import ScriptRunner
 from repo2ree_core.operations.steps.review import (
     CertifiedExperimentEnvironment,
     ReviewRunnableStep,
@@ -93,12 +94,16 @@ def _step(experiment_name: str) -> ReviewRunnableStep:
 def handle_review_run_experiment(
     args: ReviewRunExperimentArgs,
     *,
+    layout: ReeLayout,
+    runner: ScriptRunner,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
     opened = open_review_run(
         _step(args.experiment_name),
+        layout=layout,
+        runner=runner,
         review_id=args.review_id,
         run_id=run_id,
         log=log,

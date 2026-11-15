@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-import repo2ree_cli.cli as cli_module
+import repo2ree_core.operations.session as session_module
 import repo2ree_core.persistence.layout as layout_mod
 from repo2ree_cli.cli import cli
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -250,16 +250,17 @@ def test_execute_observes_existing_cancel_marker(initialized_ree: Path) -> None:
     assert action_result.status == "canceled"
 
 
-def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
-    initialized_ree: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("stop", [signal.SIGTERM, signal.SIGINT])
+def test_a_stop_signal_cancels_the_run_cooperatively_and_the_handler_is_restored(
+    initialized_ree: Path, monkeypatch: pytest.MonkeyPatch, stop: signal.Signals
 ) -> None:
-    def interrupted(cmd, *, log, run_id, is_canceled, context):
+    def interrupted(cmd, *, layout, runner, log, run_id, is_canceled, context):
         assert not is_canceled()
-        os.kill(os.getpid(), signal.SIGTERM)  # As the workbench escalates a cancel the run did not observe.
+        os.kill(os.getpid(), stop)  # As the workbench escalates a cancel, or a person presses Ctrl-C.
         return ActionResult(status="canceled" if is_canceled() else "succeeded")
 
-    monkeypatch.setattr(cli_module, "run_command", interrupted)
-    before = signal.getsignal(signal.SIGTERM)
+    monkeypatch.setattr(session_module, "run_command", interrupted)
+    before = signal.getsignal(stop)
     cmd = WriteFileCommand(
         args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="echo build\n")
     )
@@ -267,7 +268,7 @@ def test_sigterm_cancels_the_run_cooperatively_and_the_handler_is_restored(
     result = runner.invoke(cli, ["execute", "--action", "-", "--run-id", "run-1"], input=cmd.model_dump_json())
 
     assert ActionResult.model_validate_json(result.stdout.strip()).status == "canceled"
-    assert signal.getsignal(signal.SIGTERM) is before
+    assert signal.getsignal(stop) is before
 
 
 def test_execute_clears_cancel_marker_after_run(initialized_ree: Path) -> None:

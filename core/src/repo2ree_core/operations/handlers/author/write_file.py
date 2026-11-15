@@ -24,6 +24,7 @@ from repo2ree_ree.reserved_paths import is_overlay_path
 def handle_write_file(
     args: WriteFileArgs,
     *,
+    layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
@@ -36,7 +37,6 @@ def handle_write_file(
         log("system", "error", f"not one of the REE's scripts: {args.path}")
         return ActionResult.failed("validation", f"{args.path} is not one of the REE's scripts")
 
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")

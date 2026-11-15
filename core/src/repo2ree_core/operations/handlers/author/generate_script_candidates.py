@@ -17,6 +17,7 @@ from repo2ree_core.author_recipes.inference import infer_scripts
 from repo2ree_core.author_recipes.inference.machine import EngineProbe, MachineInputs, SlurmProbeSource
 from repo2ree_core.execution.engine_probe import RunnerEngineProbe
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.execution.runners import ScriptRunner
 from repo2ree_core.execution.slurm_probe import RunnerSlurmProbe
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_experiment_environment_inputs
@@ -27,26 +28,27 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 
 
-def engine_probe(layout: ReeLayout) -> EngineProbe:
+def engine_probe(layout: ReeLayout, runner: ScriptRunner) -> EngineProbe:
     """The probe of the engines this REE's scripts can use, run from its workspace when first asked."""
-    return RunnerEngineProbe(layout.workspace)
+    return RunnerEngineProbe(layout.workspace, runner)
 
 
-def slurm_probe(layout: ReeLayout) -> SlurmProbeSource:
+def slurm_probe(layout: ReeLayout, runner: ScriptRunner) -> SlurmProbeSource:
     """The probe of whether Slurm can launch this REE's scripts, run from its workspace when first asked."""
-    return RunnerSlurmProbe(layout.workspace)
+    return RunnerSlurmProbe(layout.workspace, runner)
 
 
 def handle_generate_script_candidates(
     args: GenerateScriptCandidatesArgs,
     *,
+    layout: ReeLayout,
+    runner: ScriptRunner,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
     if not args.targets:
         return ActionResult.failed("validation", "no inference targets requested")
 
-    layout = ReeLayout.in_workbench()
     upstream = layout.upstream
     if not upstream.is_dir():
         log("system", "error", "no acquired source to infer from")
@@ -71,7 +73,7 @@ def handle_generate_script_candidates(
             selectors,
             definition=definition,
             experiment_environment_inputs=experiment_environment_inputs,
-            machine=MachineInputs(engines=engine_probe(layout), slurm=slurm_probe(layout)),
+            machine=MachineInputs(engines=engine_probe(layout, runner), slurm=slurm_probe(layout, runner)),
             source_snapshot_digest=snapshot_digest,
         )
     except ValueError as exc:

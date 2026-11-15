@@ -1,8 +1,8 @@
 """Unit coverage for the lint_scripts operations handler.
 
-Points ``ReeLayout.in_workbench`` at a tmp root (the seam the other handler
-tests use) and covers the validation guard, reading scripts out of the overlay,
-and the distinction between a script that is absent and one that is empty.
+Runs the handler against an REE in a tmp root and covers the validation guard,
+reading scripts out of the overlay, and the distinction between a script that is
+absent and one that is empty.
 """
 
 from __future__ import annotations
@@ -30,7 +30,6 @@ def _never_canceled() -> bool:
 def _store_at(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ReeDirectory:
     store = ReeDirectory(ReeLayout(root=tmp_path))
     store.ensure_dirs()
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: ReeLayout(root=tmp_path)))
     return store
 
 
@@ -44,13 +43,13 @@ def _args(*kinds: str) -> LintScriptsArgs:
     return LintScriptsArgs(targets=[ScriptTargetSelectorArg.model_validate({"kind": k}) for k in kinds])
 
 
-def _run(args: LintScriptsArgs) -> ActionResult:
-    return handler.handle_lint_scripts(args, log=_silent_log, is_canceled=_never_canceled)
+def _run(layout: ReeLayout, args: LintScriptsArgs) -> ActionResult:
+    return handler.handle_lint_scripts(args, log=_silent_log, is_canceled=_never_canceled, layout=layout)
 
 
 def test_no_targets_is_a_validation_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
-    result = _run(LintScriptsArgs(targets=[]))
+    result = _run(ReeLayout(root=tmp_path), LintScriptsArgs(targets=[]))
     assert result.status == "failed"
 
 
@@ -62,7 +61,7 @@ def test_a_written_script_is_read_from_the_overlay_and_reported_on(
         tmp_path, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "#!/usr/bin/env sh\nset -eu\ndocker build .\n"
     )
 
-    result = _run(_args("build_experiment_environment"))
+    result = _run(ReeLayout(root=tmp_path), _args("build_experiment_environment"))
 
     assert result.status == "succeeded"
     (report,) = result.outputs["reports"]
@@ -75,7 +74,7 @@ def test_an_unwritten_script_is_listed_rather_than_reported_on(tmp_path: Path, m
     # to tell an author, so an absent script never becomes an empty report.
     _store_at(tmp_path, monkeypatch)
 
-    result = _run(_args("build_experiment_environment"))
+    result = _run(ReeLayout(root=tmp_path), _args("build_experiment_environment"))
 
     assert result.status == "succeeded"
     assert result.outputs["reports"] == []
@@ -91,14 +90,14 @@ def test_lint_needs_no_acquired_source(tmp_path: Path, monkeypatch: pytest.Monke
         upstream.rmdir()
     _write_overlay(tmp_path, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "set -eu\n")
 
-    assert _run(_args("build_experiment_environment")).status == "succeeded"
+    assert _run(ReeLayout(root=tmp_path), _args("build_experiment_environment")).status == "succeeded"
 
 
 def test_an_experiment_target_without_a_name_is_a_validation_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _store_at(tmp_path, monkeypatch)
-    result = _run(_args("experiment_run"))
+    result = _run(ReeLayout(root=tmp_path), _args("experiment_run"))
     assert result.status == "failed"
 
 
@@ -106,6 +105,9 @@ def test_a_canceled_run_reports_canceled(tmp_path: Path, monkeypatch: pytest.Mon
     _store_at(tmp_path, monkeypatch)
     _write_overlay(tmp_path, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "set -eu\n")
     result = handler.handle_lint_scripts(
-        _args("build_experiment_environment"), log=_silent_log, is_canceled=lambda: True
+        _args("build_experiment_environment"),
+        log=_silent_log,
+        is_canceled=lambda: True,
+        layout=ReeLayout(root=tmp_path),
     )
     assert result.status == "canceled"

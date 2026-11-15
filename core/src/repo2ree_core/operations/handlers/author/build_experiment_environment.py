@@ -8,7 +8,7 @@ from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.launch import declared_launch
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.runners import current_runner, run_workspace_script
+from repo2ree_core.execution.runners import ScriptRunner, run_workspace_script
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -25,11 +25,12 @@ from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt
 
 def handle_build_experiment_environment(
     *,
+    layout: ReeLayout,
+    runner: ScriptRunner,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
@@ -59,6 +60,7 @@ def handle_build_experiment_environment(
         str(build.build_experiment_environment_script_path),
         log=log,
         is_canceled=is_canceled,
+        runner=runner,
         launch=launch,
     )
     if outcome.status == "canceled":
@@ -94,7 +96,7 @@ def handle_build_experiment_environment(
         workspace_drift=workspace_drift,
         artifact_path=experiment_environment_path,
         produced_artifact_digest=produced_artifact_digest,
-        workbench_environment=current_runner().observe(ree.subject.definition.workbench_environment),
+        workbench_environment=runner.observe(ree.subject.definition.workbench_environment),
         launch_script_digest=_launch_digest(ree),
         launched=outcome.launched,
     )

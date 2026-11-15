@@ -82,13 +82,7 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
     )
     fake_syft.chmod(0o755)
     monkeypatch.setenv("REPO2REE_TOOL_SYFT", str(fake_syft))
-    monkeypatch.setattr(ReeLayout, "in_workbench", classmethod(lambda cls: layout))
-
-    result = handle_generate_sbom(
-        run_id="sbom-local",
-        log=lambda *args: None,
-        is_canceled=lambda: False,
-    )
+    result = handle_generate_sbom(run_id="sbom-local", log=lambda *args: None, is_canceled=lambda: False, layout=layout)
 
     assert result.status == "succeeded", result.model_dump(mode="json")
     assert layout.sbom.is_file()

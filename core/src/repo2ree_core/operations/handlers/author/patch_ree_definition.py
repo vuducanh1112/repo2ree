@@ -18,10 +18,10 @@ from repo2ree_protocol.result import ActionResult
 def handle_patch_ree_definition(
     args: PatchReeDefinitionArgs,
     *,
+    layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    layout = ReeLayout.in_workbench()
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
