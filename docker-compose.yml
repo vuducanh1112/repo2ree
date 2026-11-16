@@ -3,8 +3,9 @@
 #
 # The workbench holds the host's Docker socket and starts every job container
 # through it, so this is a trusted demo: an REE's scripts may reach the host
-# engine (--script-engine socket), which is what lets the Docker REEs build
-# images. The backend stays a pure control plane with no Docker access.
+# engine (REPO2REE_SCRIPT_ENGINE=socket), which is what lets the Docker REEs
+# build images.
+# The backend stays a pure control plane with no Docker access.
 #
 # store-init registers the demo store on the backend's state and writes a fresh
 # token for the workbench to a volume only the two share; the workbench reads it
@@ -67,23 +68,18 @@ services:
       - repo2ree-workbench
       - --store
       - ${REPO2REE_STORE_ID:-demo}=${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}
-      - --backend
-      - container
-      - --script-engine
-      - socket
       - --connect
       - ws://backend:8000/workbench/connect
       - --token-file
       - /tokens/${REPO2REE_STORE_ID:-demo}
-      # The images an REE created in the store may declare, the first the default.
-      - --image
-      - ${REPO2REE_STORE_IMAGE:-docker.io/library/python:3.12-slim}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}:${REPO2REE_STORE_DIR:-/var/lib/repo2ree/store}
       - repo2ree-store-tokens:/tokens:ro
       - repo2ree-workbench-state:/var/lib/repo2ree-workbench
     environment:
+      # A script in an REE's container may reach the host's engine: the Docker REEs build images with it.
+      REPO2REE_SCRIPT_ENGINE: socket
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
 

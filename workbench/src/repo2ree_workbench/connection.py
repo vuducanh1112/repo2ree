@@ -18,11 +18,10 @@ import queue
 import socket
 import threading
 import time
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from functools import partial
-from typing import Literal
 from uuid import uuid4
 
 import websockets
@@ -39,13 +38,13 @@ from repo2ree_protocol.frames import (
     SpanFrame,
     UnavailableFrame,
 )
+from repo2ree_protocol.machine import MachineFacts
 from repo2ree_protocol.result import Failure
 from repo2ree_protocol.workbench import (
     CancelRequest,
     CancelRunRequest,
     FollowRunRequest,
     StartRunRequest,
-    WorkbenchCapabilities,
     WorkbenchHello,
     WorkbenchRequest,
     WorkbenchWsMessage,
@@ -186,14 +185,12 @@ async def run_workbench(
     span_relay: SpanRelay | None = None,
     build: BuildInfo | None = None,
     executor_build: BuildInfo | None = None,
-    capabilities: WorkbenchCapabilities | None = None,
-    backend: Literal["host", "container"] = "host",
-    images: Sequence[str] = (),
+    machine: MachineFacts | None = None,
 ) -> None:
     """Dial the control plane and serve requests, reconnecting on drop.
 
-    The hello carries what the service serves (its store, its slots), the images it offers the
-    store's new REEs, and what it offers the scripts it runs (``capabilities``).
+    The hello carries what the service serves (its store, its slots) and how its machine runs the
+    REEs' scripts (``machine``, as ``ree machine`` reports it).
 
     ``span_relay``, when given, is pointed at each live socket so this
     workbench's own spans leave over the connection it already holds.
@@ -207,10 +204,8 @@ async def run_workbench(
         build=component_build,
         executor_build=executor_build or BuildInfo(),
         store_id=service.store_id,
-        backend=backend,
-        images=list(images),
         slots=service.slots,
-        capabilities=capabilities or WorkbenchCapabilities(),
+        machine=machine or MachineFacts(),
         # Minted once per process: reconnects reuse it, so the control plane can
         # tell this instance reconnecting from another instance claiming its id.
         nonce=uuid4().hex,

@@ -440,6 +440,14 @@ def build_info_cmd() -> None:
     click.echo(current_build("repo2ree-cli").model_dump_json())
 
 
+@cli.command("machine")
+def machine_cmd() -> None:
+    """Print how this machine runs an REE's scripts: the engine it enters an image with, the first of docker,
+    podman and apptainer on its PATH, and whether a script in a container may reach that engine
+    (REPO2REE_SCRIPT_ENGINE=socket)."""
+    click.echo(Machine.from_environment().facts().model_dump_json())
+
+
 @cli.command("doctor")
 @click.pass_obj
 def doctor_cmd(invocation: Invocation) -> None:

@@ -80,7 +80,7 @@ def running_stack(state: Path, logs: Path) -> Iterator[Stack]:
     token = _store_token(environment)
     workbench = [
         *(sys.executable, "-m", "repo2ree_workbench"),
-        *("--store", f"{STORE_ID}={state / 'store'}", "--backend", "host"),
+        *("--store", f"{STORE_ID}={state / 'store'}"),
         *("--token", token, "--connect", f"ws://127.0.0.1:{port}/workbench/connect"),
         *(("--tools-bundle", str(TOOLS_BUNDLE)) if tools_present() else ()),
     ]

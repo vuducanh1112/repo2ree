@@ -1,4 +1,4 @@
-import type { Lab } from "@core/lab/Lab";
+import { describeMachine, type Lab } from "@core/lab/Lab";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LabCell.module.css";
 
@@ -15,19 +15,15 @@ interface LabCellProps {
  */
 export function LabCell({ lab, selected, onSelect }: LabCellProps) {
   const name = lab.label;
-  const onHost = lab.backend === "host";
-  // A container lab with no images has nothing a new REE could declare, so it takes none.
-  const available = lab.available && (onHost || lab.images.length > 0);
+  const available = lab.available;
   const what =
     lab.description ||
     (lab.status === "offline"
       ? "Its workbench is away; its REEs wait for it."
-      : onHost
-        ? "Runs each REE's scripts on its own machine."
-        : "Runs each REE's scripts in a container from its image.");
-  const meta = onHost
-    ? "its own machine"
-    : `${lab.images.length} image${lab.images.length === 1 ? "" : "s"}`;
+      : lab.machine?.engine === "none"
+        ? "Runs each REE's scripts on its own machine; it has no engine for an image."
+        : "Runs each REE's scripts in the image it declares, or on its own machine.");
+  const meta = describeMachine(lab.machine);
 
   return (
     <button

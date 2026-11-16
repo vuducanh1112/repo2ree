@@ -29,7 +29,8 @@ workbench_id = "str"
 # Minted per workbench process: the same id with a new nonce is another process, not a reconnect.
 nonce = "str"
 store_id = "str"
-backend = { type = "str", required_in = ["connected"] }
+# The engine its machine enters an REE's image with, as ``ree machine`` says.
+engine = { type = "str", required_in = ["connected"] }
 slots = { type = "int", required_in = ["connected"] }
 version = "str?"
 # The WebSocket close code, when the socket ended with one.

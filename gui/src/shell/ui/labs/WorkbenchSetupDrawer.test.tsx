@@ -23,21 +23,7 @@ const lab: Lab = {
   id: "lab-1",
   label: "lab-host",
   description: "",
-  backend: "container",
-  images: [
-    {
-      id: "standard",
-      ref: "docker.io/library/docker:29-dind",
-      label: "Standard (docker)",
-      description: "Lean docker-in-docker bench.",
-    },
-    {
-      id: "python",
-      ref: "docker.io/library/python:3.11-slim",
-      label: "Python 3.11",
-      description: "",
-    },
-  ],
+  machine: { engine: "docker" },
   status: "connected",
   available: true,
 };
@@ -76,10 +62,7 @@ describe("WorkbenchSetupDrawer", () => {
 
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
-    // Nothing was picked, so nothing is asserted: a blank image lets the lab
-    // resolve its own default, which is the entry the selector already shows
-    // as chosen. Sending its ref instead would pin whatever the catalog held
-    // when this drawer happened to load.
+    // No image typed: the REE declares none, and its scripts run on the lab's own machine.
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith({
         name: "REE",
@@ -91,7 +74,7 @@ describe("WorkbenchSetupDrawer", () => {
     expect(await screen.findByText("Lab online — seating the specimen")).toBeInTheDocument();
   });
 
-  it("shows every entry's ref, and sends the one the author picks", async () => {
+  it("sends the image the author types as the working environment", async () => {
     const user = userEvent.setup();
     const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
     const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
@@ -108,20 +91,10 @@ describe("WorkbenchSetupDrawer", () => {
       }),
     });
 
-    // Every ref is on screen before anything is committed — the whole catalog
-    // at once, not one entry at a time behind a closed control. It is the base
-    // of everything this REE will later claim to reproduce.
-    expect(screen.getByText("docker.io/library/docker:29-dind")).toBeInTheDocument();
-    expect(screen.getByText("docker.io/library/python:3.11-slim")).toBeInTheDocument();
-
-    // The lab's first entry reads as chosen before the author picks anything,
-    // because that is what a blank image resolves to server-side.
-    expect(screen.getByRole("button", { name: /Standard \(docker\)/ })).toHaveAttribute(
-      "aria-pressed",
-      "true",
+    await user.type(
+      screen.getByLabelText("Working environment image"),
+      " docker.io/library/python:3.11-slim ",
     );
-
-    await user.click(screen.getByRole("button", { name: /Python 3\.11/ }));
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
     await waitFor(() =>
@@ -131,35 +104,6 @@ describe("WorkbenchSetupDrawer", () => {
           image: "docker.io/library/python:3.11-slim",
         }),
       ),
-    );
-  });
-
-  it("asks for no image at a store lab that runs scripts on its own machine", async () => {
-    const user = userEvent.setup();
-    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const listRunLogs = vi
-      .fn()
-      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
-
-    renderWithShell(
-      <WorkbenchSetupDrawer lab={{ ...lab, backend: "host", images: [] }} loadRequested={false} />,
-      {
-        route: "/lab-location",
-        reeId: "active",
-        services: fakeApiServices({ ree: { createRee }, runs: { getRun, listRunLogs } }),
-      },
-    );
-
-    expect(screen.queryByText("Base image")).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
-
-    await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith({
-        name: "REE",
-        store_id: "lab-1",
-        image: "",
-      }),
     );
   });
 

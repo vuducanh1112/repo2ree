@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from repo2ree_testbed.stack.docker import engine_path, first_network, own_container
+from repo2ree_testbed.stack.docker import first_network, own_container
 from repo2ree_testbed.stack.environments import Environment
-from repo2ree_testbed.stack.store_images import STORE_IMAGES
 
 # Each compute location is a workbench serving a store of REEs, admitted with that store's token.
 # Where a store's workbench runs the author's scripts:
@@ -63,6 +62,12 @@ def store_id(index: int) -> str:
     return f"lab-{index}"
 
 
+def machine_variables(backend: Backend) -> dict[str, str]:
+    """What ``ree`` reads from a store's machine: on a container store the Docker REEs build and run images, so a
+    script in a container reaches the machine's engine."""
+    return {"REPO2REE_SCRIPT_ENGINE": "socket"} if backend == "container" else {}
+
+
 def locations(
     deployment: Deployment, api_url: str, control_state: Path, token: str, store_tokens: dict[int, str]
 ) -> list[Service]:
@@ -80,17 +85,13 @@ def locations(
                 "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
                 "WORKBENCH_SLOTS": "2",
                 "WORKBENCH_TOOLS_BUNDLE": str(deployment.tools_bundle),
-                "WORKBENCH_BACKEND": deployment.backend,
-                # The Docker REEs build and run images: their scripts reach the host's engine.
-                "WORKBENCH_SCRIPT_ENGINE": "socket",
-                "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
+                **machine_variables(deployment.backend),
                 # Job containers carry the run's label, so its cleanup removes what a fault left.
                 "REPO2REE_RESOURCE_OWNER": token,
                 "WORKBENCH_STATE_DIR": str(state),
                 "REPO2REE_CLI_PATH": "ree",
             },
-            # A container store offers the images the tests create REEs from.
-            tuple(arg for ref in STORE_IMAGES for arg in ("--image", ref)) if deployment.backend == "container" else (),
+            (),
         )
         services.append(service)
     return services

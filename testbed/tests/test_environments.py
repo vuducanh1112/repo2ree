@@ -34,11 +34,6 @@ def test_a_machine_with_services_starts_as_root_and_is_told_the_user() -> None:
     assert any(part.startswith("REPO2REE_ENVIRONMENT_USER=") for part in command("docker"))
 
 
-def test_a_machine_names_the_engine_its_scripts_run_with() -> None:
-    assert "WORKBENCH_ENGINE=podman" in command("podman")
-    assert not any(part.startswith("WORKBENCH_ENGINE=") for part in command("slurm"))
-
-
 def test_a_machines_scratch_volume_carries_its_owner_for_cleanup() -> None:
     mount = "type=volume,source=run-1-scratch-0,target=/var/lib/docker,volume-label=repo2ree.resource-owner=run"
 

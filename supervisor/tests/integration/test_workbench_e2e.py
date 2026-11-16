@@ -204,7 +204,7 @@ def workbench(
     logs.mkdir(parents=True, exist_ok=True)
     command = [
         *(sys.executable, "-m", "repo2ree_workbench", "--name", "e2e-workbench"),
-        *("--store", f"{STORE_ID}={tmp_path / 'store'}", "--backend", "host"),
+        *("--store", f"{STORE_ID}={tmp_path / 'store'}"),
         *("--connect", f"ws://127.0.0.1:{port}/workbench/connect", "--tools-bundle", str(_TOOLS_BUNDLE)),
     ]
     with (logs / "workbench.log").open("w") as log:

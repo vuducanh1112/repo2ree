@@ -174,7 +174,7 @@ def test_the_seal_carries_the_working_environments_image_when_asked(
     )
     assert declared.status == "succeeded", declared
 
-    sealed = _run(layout, SealReeCommand(args=SealReeArgs(working_environment_included=True)), Machine(engine="docker"))
+    sealed = _run(layout, SealReeCommand(args=SealReeArgs(working_environment_included=True)), Machine())
 
     assert sealed.status == "succeeded", sealed
     ree = ReeDirectory(layout).read_ree()

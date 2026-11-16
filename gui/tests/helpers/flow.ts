@@ -371,13 +371,11 @@ export async function provisionWorkbench(page: Page, options?: { imageRef?: stri
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  // A store offers its images by ref; one that runs scripts on its host offers none, and the
-  // REE declares the host.
+  // The REE declares the image its scripts run in; at a store that runs them on its own machine
+  // it declares none.
   const image = options?.imageRef;
   if (image && STORE_BACKEND === "container") {
-    // Playwright's default name matching is substring and case-insensitive, so the
-    // ref alone reaches the card without a regex its metacharacters would break.
-    await setup.getByRole("button", { name: image }).click();
+    await setup.getByLabel("Working environment image").fill(image);
   }
   // A network run in every project: the host pulls the bench image the first time it sees it.
   await runToEnd(page, () => setup.getByRole("button", { name: /Provision workbench/i }).click(), {

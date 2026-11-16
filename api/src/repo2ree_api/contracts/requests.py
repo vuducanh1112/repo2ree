@@ -44,11 +44,10 @@ class ReeCreatePayload(StrictRequestModel):
     """
 
     name: str | None = None
-    # The store to create the REE in; its workbench serves it from then on. The REE starts out
-    # declaring one of the images the store offers, or its host when it offers none, and the
-    # author declares another like any field.
+    # The store to create the REE in; its workbench serves it from then on.
     store_id: str = Field(min_length=1)
-    # The image the REE declares, one the store offers; blank is the store's first.
+    # The OCI image the REE's scripts run in (its working environment); blank declares none, so they run on the
+    # store's machine. The author declares another like any field.
     image: str = ""
 
 

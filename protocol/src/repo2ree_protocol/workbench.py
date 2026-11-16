@@ -22,24 +22,12 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import Frame
+from repo2ree_protocol.machine import MachineFacts
 from repo2ree_protocol.queries import BundleQuery, InitRee, Query
 
 # ================================================
 # Identity
 # ================================================
-
-
-class WorkbenchCapabilities(BaseModel):
-    """What a workbench offers the scripts it runs, so REEs that need it can be sent there."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    arch: str = ""
-    # Whether a container engine is installed beside the workbench.
-    container_engine: bool = False
-    # The engine a script can reach: none, the host's (its socket), or one nested in the bench.
-    script_engine: Literal["none", "socket", "nested"] = "none"
-    gpus: int = Field(default=0, ge=0)
 
 
 class WorkbenchHello(BaseModel):
@@ -61,13 +49,10 @@ class WorkbenchHello(BaseModel):
     executor_build: BuildInfo = Field(default_factory=BuildInfo)
     # The store this workbench serves: a directory of REEs, one per ree_id.
     store_id: str
-    # Where it runs the author's scripts: on its own host, or in a container from the REE's image.
-    backend: Literal["host", "container"] = "host"
-    # The images a container backend offers an REE created in its store, the first the default.
-    images: list[str] = Field(default_factory=list)
     # How many actions it runs at once; queries do not count.
     slots: int = Field(default=1, ge=1)
-    capabilities: WorkbenchCapabilities = Field(default_factory=WorkbenchCapabilities)
+    # How its machine runs the store's REEs' scripts, as ``ree machine`` reports it.
+    machine: MachineFacts = Field(default_factory=MachineFacts)
     # Random per-process token: the same workbench_id arriving with a different
     # nonce is a distinct workbench *instance* (a duplicate or takeover), not a
     # reconnect of the one already known.

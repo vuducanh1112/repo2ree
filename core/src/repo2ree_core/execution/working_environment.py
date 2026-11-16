@@ -12,9 +12,11 @@ places a job, and the job enters the image on the node it landed on.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import os
 import platform
+import re
 import shutil
 import subprocess
 import uuid
@@ -24,6 +26,7 @@ from typing import Literal, Protocol
 
 from repo2ree_core.execution.process import CancelCheck, StreamingProcessResult, run_streaming_process
 from repo2ree_protocol.frames import LogSink
+from repo2ree_protocol.machine import EngineName, MachineFacts, ScriptEngineAccess
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.working_environment import (
     HostFingerprint,
@@ -32,24 +35,14 @@ from repo2ree_ree.working_environment import (
     WorkingEnvironmentObservation,
 )
 
-# How this machine enters an OCI image: an engine, or none at all.
-EngineName = Literal["docker", "podman", "apptainer", "none"]
-# Whether a script in a container may reach the host's engine through its socket.
-ScriptEngineAccess = Literal["none", "socket"]
-# Whether this machine runs an REE's scripts on itself, for an REE that declares no image.
-HostScripts = Literal["allowed", "refused"]
-
-ENGINE_VARIABLE = "REPO2REE_ENGINE"
 SCRIPT_ENGINE_VARIABLE = "REPO2REE_SCRIPT_ENGINE"
-ENGINE_PATH_VARIABLE = "REPO2REE_ENGINE_PATH"
 JOB_OWNER_VARIABLE = "REPO2REE_JOB_OWNER"
-HOST_SCRIPTS_VARIABLE = "REPO2REE_HOST_SCRIPTS"
 # The label naming whose job a container is: the store its workbench serves.
 JOB_OWNER_LABEL = "repo2ree.job-owner"
 # The label naming the execution a job belongs to, so a restarted workbench keeps the ones it adopts.
 JOB_EXECUTION_LABEL = "repo2ree.job-execution"
 EXECUTION_VARIABLE = "REPO2REE_EXECUTION"
-# The engines looked for on PATH, in order, when the machine names none.
+# The engines looked for on PATH, in order.
 _DETECTED: tuple[EngineName, ...] = ("docker", "podman", "apptainer")
 # The engines that can save an image into a bundle.
 _SAVING: tuple[Literal["docker", "podman"], ...] = ("docker", "podman")
@@ -164,9 +157,6 @@ class ContainerEntry:
     declared: WorkingEnvironment
     bundled: Path | None = None
     script_engine: ScriptEngineAccess = "none"
-    # Where the engine finds this machine's files, when it does not see them where this process does (a workbench
-    # in a container beside the host's engine): (local prefix, engine prefix).
-    engine_path: tuple[str, str] | None = None
     owner: str = ""
     _image: str | None = None
     _digest: str | None = None
@@ -270,12 +260,15 @@ class ContainerEntry:
             log("system", "warn", f"could not give the workspace back to {user}: {handed.stderr.strip()[:200]}")
 
     def _engine_side(self, path: Path) -> str:
-        """``path`` as the engine sees it; the job still sees it at ``path``."""
-        if self.engine_path is None:
-            return str(path)
-        local, engine = self.engine_path
-        relative = path.relative_to(local) if path.is_relative_to(local) else None
-        return str(Path(engine) / relative) if relative is not None else str(path)
+        """``path`` as the engine sees it; the job still sees it at ``path``.
+
+        They differ when this process runs in a container beside the engine (a workbench in a container, a dev
+        container): the engine knows the workspace by the source of the mount it reaches this container through.
+        """
+        for local, source in _own_mounts(self.engine):
+            if path == Path(local) or path.is_relative_to(local):
+                return str(Path(source) / path.relative_to(local))
+        return str(path)
 
     def observe(self) -> WorkingEnvironmentObservation:
         return WorkingEnvironmentObservation(
@@ -323,46 +316,30 @@ class ApptainerEntry:
 
 @dataclass(frozen=True)
 class Machine:
-    """How this machine enters a working environment, as its environment says."""
+    """How this machine enters a working environment: with the first engine it has.
 
-    # None: the first engine found on PATH when an image is to be entered.
-    engine: EngineName | None = None
+    The REE says what its scripts run in, and ``ree`` does that; it refuses only what this machine cannot do.
+    """
+
+    # Whether a script in a container may reach the engine, for the builds that still run it themselves.
     script_engine: ScriptEngineAccess = "none"
-    engine_path: tuple[str, str] | None = None
     owner: str = ""
-    host_scripts: HostScripts = "allowed"
 
     @classmethod
     def from_environment(cls) -> Machine:
-        engine = os.environ.get(ENGINE_VARIABLE, "").strip()
         script_engine = os.environ.get(SCRIPT_ENGINE_VARIABLE, "").strip() or "none"
-        host_scripts = os.environ.get(HOST_SCRIPTS_VARIABLE, "").strip() or "allowed"
-        local, separator, remote = os.environ.get(ENGINE_PATH_VARIABLE, "").strip().partition("=")
-        if engine not in ("", "docker", "podman", "apptainer", "none"):
-            raise ValueError(f"{ENGINE_VARIABLE} names no engine: {engine!r}")
         if script_engine not in ("none", "socket"):
             raise ValueError(f"{SCRIPT_ENGINE_VARIABLE} is none or socket, not {script_engine!r}")
-        if host_scripts not in ("allowed", "refused"):
-            raise ValueError(f"{HOST_SCRIPTS_VARIABLE} is allowed or refused, not {host_scripts!r}")
         return cls(
-            engine=engine or None,  # type: ignore[arg-type]
             script_engine=script_engine,  # type: ignore[arg-type]
-            engine_path=(local, remote) if separator and local and remote else None,
             owner=os.environ.get(JOB_OWNER_VARIABLE, "").strip(),
-            host_scripts=host_scripts,  # type: ignore[arg-type]
         )
 
     def enter(self, declared: WorkingEnvironment | None, *, bundled: Path | None = None) -> Entry:
         """How a step enters ``declared`` here; ``bundled`` is the image the REE carries, when it carries one."""
         if declared is None:
-            if self.host_scripts == "refused":
-                return RefusedEntry(
-                    "this machine runs no REE's scripts on itself: declare the OCI image they run in "
-                    "(the working environment)"
-                )
             return HostEntry()
-        detected: EngineName = next((name for name in _DETECTED if shutil.which(name)), "none")
-        engine = self.engine if self.engine is not None else detected
+        engine = detected_engine()
         if engine == "apptainer":
             if not declared.pinned:
                 return RefusedEntry(
@@ -370,26 +347,26 @@ class Machine:
                 )
             return ApptainerEntry(declared, bundled)
         if engine == "docker" or engine == "podman":
-            return ContainerEntry(
-                engine,
-                declared,
-                bundled=bundled,
-                script_engine=self.script_engine,
-                engine_path=self.engine_path,
-                owner=self.owner,
-            )
+            return ContainerEntry(engine, declared, bundled=bundled, script_engine=self.script_engine, owner=self.owner)
         return RefusedEntry(f"this machine has no container engine to run the REE's scripts in {declared.oci}")
+
+    def facts(self) -> MachineFacts:
+        """How this machine runs an REE's scripts, and what it offers them."""
+        return MachineFacts(
+            arch=platform.machine(), engine=detected_engine(), script_engine=self.script_engine, gpus=_gpu_count()
+        )
 
     def engine_for_saving(self) -> Literal["docker", "podman"] | None:
         """The engine that can save an image into a bundle here; None when there is none."""
-        if self.engine in ("docker", "podman"):
-            return self.engine
-        if self.engine is None:
-            return next((name for name in _SAVING if shutil.which(name)), None)
-        return None
+        return next((name for name in _SAVING if shutil.which(name)), None)
 
 
 HOST_MACHINE = Machine()
+
+
+def detected_engine() -> EngineName:
+    """The engine this machine enters an image with: the first of docker, podman and apptainer on its PATH."""
+    return next((name for name in _DETECTED if shutil.which(name)), "none")
 
 
 def save_image(machine: Machine, declared: WorkingEnvironment, target: Path, log: LogSink) -> None:
@@ -459,3 +436,57 @@ def _inspect(engine: str, image: str) -> tuple[str, str] | None:
         image_id = f"sha256:{image_id}"
     digest = repo_digest.rpartition("@")[2] or image_id
     return (image_id, digest) if image_id.startswith("sha256:") and digest.startswith("sha256:") else None
+
+
+def _own_mounts(engine: str) -> tuple[tuple[str, str], ...]:
+    """Where this process's container mounts what, as ``(destination, engine-side source)``; none outside one."""
+    if not (Path("/.dockerenv").exists() or Path("/run/.containerenv").exists()):
+        return ()
+    # Asked once per engine binary: the answer is the engine's, so another binary of the same name asks again.
+    return _mounts_seen_by(shutil.which(engine) or engine)
+
+
+@functools.cache
+def _mounts_seen_by(engine: str) -> tuple[tuple[str, str], ...]:
+    container = _own_container_id() or os.environ.get("HOSTNAME", "")
+    if not container:
+        return ()
+    try:
+        inspected = subprocess.run(
+            [engine, "inspect", container, "--format", "{{range .Mounts}}{{.Destination}}={{.Source}};{{end}}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ()
+    if inspected.returncode != 0:
+        return ()
+    pairs = (mount.partition("=") for mount in inspected.stdout.strip().split(";") if mount)
+    # The deepest mount first, so a path under a nested mount maps through that one.
+    return tuple(sorted(((local, source) for local, _, source in pairs), key=lambda pair: -len(pair[0])))
+
+
+def _own_container_id() -> str | None:
+    """This container's id, as the engine names it, from where its hostname file is mounted from."""
+    try:
+        lines = Path("/proc/self/mountinfo").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        found = re.search(r"/containers/([0-9a-f]{64})/", line)
+        if found:
+            return found.group(1)
+    return None
+
+
+def _gpu_count() -> int:
+    """NVIDIA GPUs, as ``nvidia-smi -L`` lists them; none where it is absent or does not answer."""
+    if shutil.which("nvidia-smi") is None:
+        return 0
+    try:
+        listed = subprocess.run(["nvidia-smi", "-L"], check=False, capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return 0
+    return sum(1 for line in listed.stdout.splitlines() if line.startswith("GPU ")) if listed.returncode == 0 else 0

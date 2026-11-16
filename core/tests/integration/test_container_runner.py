@@ -3,7 +3,6 @@ recorded."""
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
 import threading
@@ -33,23 +32,6 @@ def tmp_path() -> Iterator[Path]:  # Shadows pytest's: the engine must see it.
     shutil.rmtree(path, ignore_errors=True)
 
 
-def _engine_path(engine: str) -> tuple[str, str] | None:
-    """Where the engine sees this checkout, when this process runs in a container beside it."""
-    container = os.environ.get("HOSTNAME", "")
-    if not container or not Path("/.dockerenv").is_file():
-        return None
-    mounts = subprocess.run(
-        [engine, "inspect", container, "--format", "{{range .Mounts}}{{.Destination}}={{.Source}};{{end}}"],
-        capture_output=True,
-        text=True,
-    ).stdout
-    for mount in filter(None, mounts.split(";")):
-        local, _, source = mount.partition("=")
-        if SCRATCH.is_relative_to(local):
-            return local, source
-    return None
-
-
 @pytest.fixture
 def engine() -> str:
     docker = shutil.which("docker")
@@ -59,9 +41,7 @@ def engine() -> str:
 
 
 def _entry(engine: str, script_engine: Literal["none", "socket"] = "none") -> ContainerEntry:
-    return ContainerEntry(
-        "docker", WorkingEnvironment(oci=IMAGE), script_engine=script_engine, engine_path=_engine_path(engine)
-    )
+    return ContainerEntry("docker", WorkingEnvironment(oci=IMAGE), script_engine=script_engine)
 
 
 def _run(

@@ -24,7 +24,6 @@ from repo2ree_testbed.faults import FAULTS_URL
 from repo2ree_testbed.python_coverage import CoverageRoot, render
 from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
-from repo2ree_testbed.stack.docker import engine_path
 from repo2ree_testbed.stack.environments import (
     DNS_VARIABLE,
     MACHINE_CONTAINER_VARIABLE,
@@ -363,7 +362,6 @@ class E2EStack:
             "WORKBENCH_ID": f"rival-{index}",
             "WORKBENCH_STATE_DIR": str(state),
             "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
-            "WORKBENCH_ENGINE_PATH": engine_path(state / "store"),
         }
         self.rivals[index] = self.launch(command, rival, log)
 

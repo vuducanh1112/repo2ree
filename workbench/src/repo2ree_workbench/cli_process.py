@@ -13,10 +13,10 @@ import shutil
 import subprocess
 import tempfile
 from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.machine import MachineFacts
 from repo2ree_telemetry.spans import current_traceparent
 
 # An REE id names a directory in the store: one path segment, nothing a shell or a path could misread.
@@ -30,62 +30,39 @@ def ree_directory(store: Path, ree_id: str) -> Path:
     return store / ree_id
 
 
-@dataclass(frozen=True)
-class ScriptBackend:
-    """How this workbench's machine enters an REE's working environment, as ``ree`` reads it from its environment.
+# Whose jobs the containers of an REE's scripts are: the store this workbench serves, so what a killed workbench
+# left running can be found and removed.
+JOB_OWNER_VARIABLE = "REPO2REE_JOB_OWNER"
+JOB_OWNER_LABEL = "repo2ree.job-owner"
+JOB_EXECUTION_LABEL = "repo2ree.job-execution"
 
-    ``ree`` enters the image an REE declares; the workbench says only what this machine offers: on ``host``, no
-    engine, so an REE that declares an image is refused; on ``container``, the engine, and no scripts on the host
-    itself, so an REE that declares none is refused.
-    """
 
-    backend: str = "host"
-    engine: str = "docker"
-    # The engine a script can reach: none, or the host's (its socket).
-    script_engine: str = "none"
-    engine_path: tuple[str, str] | None = None
-    # Whose jobs its containers are: the store this workbench serves.
-    owner: str = ""
-
-    def environment(self) -> dict[str, str]:
-        if self.backend != "container":
-            return {"REPO2REE_ENGINE": "none", "REPO2REE_HOST_SCRIPTS": "allowed"}
-        machine = {
-            "REPO2REE_ENGINE": self.engine,
-            "REPO2REE_HOST_SCRIPTS": "refused",
-            "REPO2REE_SCRIPT_ENGINE": self.script_engine,
-            "REPO2REE_JOB_OWNER": self.owner,
-        }
-        if self.engine_path is not None:
-            machine["REPO2REE_ENGINE_PATH"] = "=".join(self.engine_path)
-        return machine
-
-    def remove_leftover_jobs(self, keep: frozenset[str] = frozenset()) -> None:
-        """Remove the jobs of this store no running executor awaits: all but those of the executions in ``keep``."""
-        if self.backend != "container" or not self.owner:
-            return
-        listed = subprocess.run(
-            [
-                self.engine,
-                "ps",
-                "-a",
-                "--filter",
-                f"label=repo2ree.job-owner={self.owner}",
-                "--format",
-                '{{.ID}} {{.Label "repo2ree.job-execution"}}',
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        leftovers = []
-        for line in listed.stdout.splitlines():
-            container, _, execution = line.strip().partition(" ")
-            if container and execution.strip() not in keep:
-                leftovers.append(container)
-        if leftovers:
-            subprocess.run([self.engine, "rm", "-f", *leftovers], check=False, capture_output=True, timeout=120)
+def remove_leftover_jobs(engine: str, owner: str, keep: frozenset[str] = frozenset()) -> None:
+    """Remove the jobs of the store ``owner`` names that no running executor awaits: all but those in ``keep``."""
+    if engine not in ("docker", "podman") or not owner or shutil.which(engine) is None:
+        return
+    listed = subprocess.run(
+        [
+            engine,
+            "ps",
+            "-a",
+            "--filter",
+            f"label={JOB_OWNER_LABEL}={owner}",
+            "--format",
+            f'{{{{.ID}}}} {{{{.Label "{JOB_EXECUTION_LABEL}"}}}}',
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    leftovers = []
+    for line in listed.stdout.splitlines():
+        container, _, execution = line.strip().partition(" ")
+        if container and execution.strip() not in keep:
+            leftovers.append(container)
+    if leftovers:
+        subprocess.run([engine, "rm", "-f", *leftovers], check=False, capture_output=True, timeout=120)
 
 
 class LocalCli:
@@ -97,14 +74,14 @@ class LocalCli:
         cli_path: str = "ree",
         *,
         environment: dict[str, str] | None = None,
-        scripts: ScriptBackend | None = None,
+        owner: str = "",
     ) -> None:
         self.root = root.resolve()
         self.cli_path = cli_path
         # What every executor is started with besides this process's own environment (the tools).
         self.tools = environment or {}
-        # How this machine enters an REE's working environment; None: as ree finds it.
-        self.scripts = scripts
+        # Whose jobs the containers of the REEs' scripts are: the store; none labels them.
+        self.owner = owner
 
     def ree_root(self, ree_id: str) -> Path:
         """The root an REE's commands run against: its directory in the store."""
@@ -117,8 +94,8 @@ class LocalCli:
 
     def environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
         environment = {**os.environ, **self.tools}
-        if self.scripts is not None:
-            environment.update(self.scripts.environment())
+        if self.owner:
+            environment[JOB_OWNER_VARIABLE] = self.owner
         environment.update(extra or {})
         if traceparent := current_traceparent():
             environment["TRACEPARENT"] = traceparent
@@ -140,6 +117,23 @@ class LocalCli:
         except (OSError, subprocess.SubprocessError, ValueError):
             pass
         return BuildInfo()
+
+    def machine(self) -> MachineFacts:
+        """How this machine runs the REEs' scripts, as the executor reports it; nothing known when it cannot say."""
+        try:
+            result = subprocess.run(
+                [self.cli_path, "machine"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=self.environment(self.root),
+            )
+            if result.returncode == 0:
+                return MachineFacts.model_validate_json(result.stdout)
+        except (OSError, subprocess.SubprocessError, ValueError):
+            pass
+        return MachineFacts()
 
     def at(self, root: Path, argv: list[str]) -> list[str]:
         """The command line that runs ``argv`` against the REE at ``root``."""

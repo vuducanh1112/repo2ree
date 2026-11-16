@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m repo2ree_assurance_checker generate-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:3638f8764a978e4c5f43717983bff8a4de0569af271e20dcdd49bcb11f0d0b2f",
+  "x-vocabulary": "sha256:1900e9c42e31a3656f9ccdb860043a87e9354b8cd02035474e2a1bae40594514",
   "type": "object",
   "properties": {
     "v": {
@@ -1496,14 +1496,14 @@
         "facts": {
           "type": "object",
           "properties": {
-            "backend": {
-              "type": "string"
-            },
             "close_code": {
               "type": [
                 "integer",
                 "null"
               ]
+            },
+            "engine": {
+              "type": "string"
             },
             "nonce": {
               "type": "string"
@@ -1559,14 +1559,14 @@
               "facts": {
                 "type": "object",
                 "properties": {
-                  "backend": {
-                    "type": "string"
-                  },
                   "close_code": {
                     "type": [
                       "integer",
                       "null"
                     ]
+                  },
+                  "engine": {
+                    "type": "string"
                   },
                   "nonce": {
                     "type": "string"
@@ -1598,7 +1598,7 @@
                   }
                 },
                 "required": [
-                  "backend",
+                  "engine",
                   "slots"
                 ]
               }
@@ -1624,14 +1624,14 @@
               "facts": {
                 "type": "object",
                 "properties": {
-                  "backend": {
-                    "type": "string"
-                  },
                   "close_code": {
                     "type": [
                       "integer",
                       "null"
                     ]
+                  },
+                  "engine": {
+                    "type": "string"
                   },
                   "nonce": {
                     "type": "string"

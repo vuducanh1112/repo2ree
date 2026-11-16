@@ -201,7 +201,7 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
         assert not any(path.startswith("ree/workspace/") for path in paths)
 
 
-def test_a_draft_that_declares_no_working_environment_keeps_the_one_its_ree_was_created_with(tmp_path, monkeypatch):
+def test_a_loaded_draft_runs_where_it_declares_not_where_its_ree_was_created(tmp_path, monkeypatch):
     author = ReeLayout(root=tmp_path / "author")
     initialize_ree(author, name="undeclared")
     with materialized_ree_download(author) as archive:
@@ -233,5 +233,5 @@ def test_a_draft_that_declares_no_working_environment_keeps_the_one_its_ree_was_
     assert loaded.status == "succeeded", loaded
     ree = ReeDirectory(destination).read_ree()
     assert ree.subject.definition.name == "undeclared"
-    assert ree.subject.definition.working_environment == created
-    assert any("declares no working environment" in line for line in lines)
+    # It declares no image, so it runs on the machine: the REE says where, not the REE it was loaded into.
+    assert ree.subject.definition.working_environment is None

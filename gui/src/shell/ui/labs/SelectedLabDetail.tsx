@@ -1,5 +1,5 @@
 import { revisionLabel } from "@core/build/buildInfo";
-import type { Lab } from "@core/lab/Lab";
+import { describeMachine, type Lab } from "@core/lab/Lab";
 import styles from "./SelectedLabDetail.module.css";
 
 interface SelectedLabDetailProps {
@@ -22,11 +22,9 @@ export function SelectedLabDetail({ lab }: SelectedLabDetailProps) {
     );
   }
 
-  const onHost = lab.backend === "host";
   const facts: [string, string][] = [
     ["LOCATION", lab.id],
-    ["SCRIPTS RUN", lab.backend === null ? "—" : onHost ? "on its machine" : "in containers"],
-    ["IMAGES", onHost ? "—" : String(lab.images.length)],
+    ["SCRIPTS RUN", describeMachine(lab.machine)],
     ["WORKBENCH REV", revisionLabel(lab.build?.revision)],
   ];
 

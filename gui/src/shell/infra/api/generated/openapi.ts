@@ -2961,6 +2961,34 @@ export interface components {
             wrapper_depth: number;
         };
         /**
+         * MachineFacts
+         * @description How this machine runs an REE's scripts, and what it offers them.
+         */
+        MachineFacts: {
+            /**
+             * Arch
+             * @default
+             */
+            arch: string;
+            /**
+             * Engine
+             * @default none
+             * @enum {string}
+             */
+            engine: "docker" | "podman" | "apptainer" | "none";
+            /**
+             * Script Engine
+             * @default none
+             * @enum {string}
+             */
+            script_engine: "none" | "socket";
+            /**
+             * Gpus
+             * @default 0
+             */
+            gpus: number;
+        };
+        /**
          * MachineLevel
          * @enum {integer}
          */
@@ -4442,16 +4470,12 @@ export interface components {
             connected: boolean;
             /** Workbench Id */
             workbench_id?: string | null;
-            /** Backend */
-            backend?: ("host" | "container") | null;
-            /** Images */
-            images?: string[];
             /**
              * Slots
              * @default 0
              */
             slots: number;
-            capabilities?: components["schemas"]["WorkbenchCapabilities"] | null;
+            machine?: components["schemas"]["MachineFacts"] | null;
             build?: components["schemas"]["BuildInfo"] | null;
         };
         /** StrategyLeafNode */
@@ -4648,33 +4672,6 @@ export interface components {
              * @default python
              */
             interpreter: string;
-        };
-        /**
-         * WorkbenchCapabilities
-         * @description What a workbench offers the scripts it runs, so REEs that need it can be sent there.
-         */
-        WorkbenchCapabilities: {
-            /**
-             * Arch
-             * @default
-             */
-            arch: string;
-            /**
-             * Container Engine
-             * @default false
-             */
-            container_engine: boolean;
-            /**
-             * Script Engine
-             * @default none
-             * @enum {string}
-             */
-            script_engine: "none" | "socket" | "nested";
-            /**
-             * Gpus
-             * @default 0
-             */
-            gpus: number;
         };
         /** WorkbenchList */
         WorkbenchList: {

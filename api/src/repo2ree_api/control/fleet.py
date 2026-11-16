@@ -19,16 +19,16 @@ import asyncio
 import logging
 from concurrent.futures import Future
 from datetime import UTC, datetime
-from typing import Literal
 
 from fastapi import APIRouter, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.deps import span_sink, store_registry, workbench_connections, workbench_transfers
 from repo2ree_protocol.build import BuildInfo
-from repo2ree_protocol.workbench import WorkbenchCapabilities, WorkbenchHello, workbench_hello_adapter
+from repo2ree_protocol.machine import MachineFacts
+from repo2ree_protocol.workbench import WorkbenchHello, workbench_hello_adapter
 from repo2ree_ree.instant import format_utc_instant
 from repo2ree_supervisor import (
     StoreClaimedError,
@@ -163,12 +163,9 @@ class StoreSummary(BaseModel):
     # Whether a workbench serves the store now; its REEs are reachable only then.
     connected: bool
     workbench_id: str | None = None
-    backend: Literal["host", "container"] | None = None
-    # The images a new REE in the store may declare, the first the default; none while it runs
-    # scripts on its host, or while no workbench serves it.
-    images: list[str] = Field(default_factory=list)
     slots: int = 0
-    capabilities: WorkbenchCapabilities | None = None
+    # How the serving workbench's machine runs the store's REEs' scripts; unknown while none serves it.
+    machine: MachineFacts | None = None
     build: BuildInfo | None = None
 
 
@@ -214,10 +211,8 @@ def list_stores() -> StoreList:
                 label=record.label or record.store_id,
                 connected=hello is not None,
                 workbench_id=hello.workbench_id if hello else None,
-                backend=hello.backend if hello else None,
-                images=list(hello.images) if hello else [],
                 slots=hello.slots if hello else 0,
-                capabilities=hello.capabilities if hello else None,
+                machine=hello.machine if hello else None,
                 build=hello.build if hello else None,
             )
         )

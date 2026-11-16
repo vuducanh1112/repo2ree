@@ -20,7 +20,6 @@ from typing import Literal
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.stack.docker import first_network, networks, own_container
 from repo2ree_testbed.stack.process import capture, fetch_json, reachable, run, wait_until
-from repo2ree_testbed.stack.store_images import STORE_IMAGES
 from repo2ree_testbed.stack.workbench_cleanup import cleanup
 
 ATTACHMENT_FILE = ROOT / "test-artifacts/state/image-stack-caller-network"
@@ -70,7 +69,6 @@ class ImageStack:
         return {
             "REPO2REE_STORE_ID": f"lab-{index}",
             "REPO2REE_STORE_DIR": f"{STORE_ROOT}/lab-{index}",
-            "REPO2REE_STORE_IMAGE": ",".join(STORE_IMAGES),
         }
 
     @staticmethod

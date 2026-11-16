@@ -304,8 +304,7 @@ const visualRee = {
   ],
 };
 
-// The stores REEs are kept in, and the images each offers a new REE. The ref is
-// what the author's REE declares its scripts run in.
+// The stores REEs are kept in, and how each one's machine runs an REE's scripts.
 const stores = {
   stores: [
     {
@@ -313,9 +312,13 @@ const stores = {
       label: "Oslo lab",
       connected: true,
       workbench_id: "wb-3c1f90",
-      backend: "container",
-      images: ["docker.io/library/python:3.12-slim"],
       slots: 2,
+      machine: {
+        arch: "x86_64",
+        engine: "docker",
+        script_engine: "none",
+        gpus: 0,
+      },
       build: workbenchBuild,
     },
     {
@@ -323,9 +326,13 @@ const stores = {
       label: "Zurich lab",
       connected: true,
       workbench_id: "wb-91d2e4",
-      backend: "container",
-      images: ["docker.io/library/docker:29-dind"],
       slots: 2,
+      machine: {
+        arch: "x86_64",
+        engine: "podman",
+        script_engine: "none",
+        gpus: 1,
+      },
       build: workbenchBuild,
     },
   ],

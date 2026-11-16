@@ -15,9 +15,9 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from repo2ree_api import store_admin
-from repo2ree_api.control import rees
 from repo2ree_api.deps import ree_registry, store_registry, workbench_connections
 from repo2ree_api.settings import service_settings
+from repo2ree_protocol.machine import MachineFacts
 from repo2ree_protocol.workbench import WorkbenchHello
 from repo2ree_supervisor import StoreRegistry
 from repo2ree_telemetry.behaviour import close_journal, open_journal
@@ -38,13 +38,9 @@ def _served(store_id: str) -> str | None:
     return served
 
 
-def _hello(store_id: str, token: str, workbench_id: str = "wb-store", images: tuple[str, ...] = ()) -> str:
+def _hello(store_id: str, token: str, workbench_id: str = "wb-store", machine: MachineFacts | None = None) -> str:
     return WorkbenchHello(
-        workbench_id=workbench_id,
-        store_id=store_id,
-        enrollment_token=token,
-        backend="container" if images else "host",
-        images=list(images),
+        workbench_id=workbench_id, store_id=store_id, enrollment_token=token, machine=machine or MachineFacts()
     ).model_dump_json()
 
 
@@ -175,38 +171,17 @@ def test_an_older_token_starting_with_a_dash_can_still_be_named(
     assert store_admin.main(["revoke", "--", "-bjpLJnZ"]) == 1
 
 
-def test_a_served_store_offers_its_workbench_images_and_refuses_others(client: TestClient, lab: str) -> None:
+def test_a_served_store_says_how_its_machine_runs_scripts(client: TestClient, lab: str) -> None:
     token = store_registry.mint_token(lab)
+    machine = MachineFacts(arch="x86_64", engine="podman", script_engine="socket", gpus=2)
 
     with client.websocket_connect("/workbench/connect") as socket:
-        socket.send_text(_hello(lab, token, "wb-images", ("python:3.12", "docker:29")))
-        assert _served(lab) == "wb-images"
+        socket.send_text(_hello(lab, token, "wb-machine", machine))
+        assert _served(lab) == "wb-machine"
         stores = {store["store_id"]: store for store in client.get("/api/v1/stores").json()["stores"]}
-        refused = client.post("/api/v1/rees", json={"name": "x", "store_id": lab, "image": "ubuntu:24.04"})
 
-    assert (stores[lab]["label"], stores[lab]["connected"], stores[lab]["backend"]) == ("A lab", True, "container")
-    assert stores[lab]["images"] == ["python:3.12", "docker:29"]
-    assert refused.status_code == 422
-    assert "python:3.12, docker:29" in refused.json()["error"]["message"]
-
-
-@pytest.mark.parametrize(
-    ("offered", "requested", "declared"),
-    [
-        (("python:3.12", "docker:29"), "", "python:3.12"),
-        (("python:3.12", "docker:29"), "docker:29", "docker:29"),
-        ((), "", None),
-    ],
-)
-def test_a_new_ree_in_a_store_declares_the_image_asked_for_its_first_or_its_host(
-    offered: tuple[str, ...], requested: str, declared: str | None
-) -> None:
-    assert rees._store_image(offered, requested) == declared
-
-
-def test_a_store_refuses_an_image_it_stopped_offering() -> None:
-    with pytest.raises(ValueError, match="does not offer"):
-        rees._store_image(("python:3.12",), "docker:29")
+    assert (stores[lab]["label"], stores[lab]["connected"]) == ("A lab", True)
+    assert stores[lab]["machine"] == machine.model_dump()
 
 
 @pytest.fixture

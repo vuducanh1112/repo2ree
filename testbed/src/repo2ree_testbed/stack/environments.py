@@ -12,9 +12,7 @@ from typing import Literal
 from repo2ree_testbed.stack.docker import engine_side
 
 # What the stack gives a workbench it runs from source, and the machine's image already holds.
-_SOURCE_ONLY = frozenset(
-    {"REPO2REE_CLI_PATH", "WORKBENCH_ENGINE_PATH", "WORKBENCH_SCRIPT_ENGINE", "WORKBENCH_TOOLS_BUNDLE"}
-)
+_SOURCE_ONLY = frozenset({"REPO2REE_CLI_PATH", "REPO2REE_SCRIPT_ENGINE", "WORKBENCH_TOOLS_BUNDLE"})
 
 
 class EnvironmentName(StrEnum):
@@ -95,8 +93,7 @@ def machine_command(
         command += ["--mount", f"type=volume,{volume}"]
     for path in mounts:
         command += ["--volume", f"{engine_side(path)}:{path}"]
-    merged = {**variables, **({"WORKBENCH_ENGINE": environment.engine} if environment.engine else {})}
-    for variable, value in merged.items():
+    for variable, value in variables.items():
         if variable not in _SOURCE_ONLY:
             command += ["--env", f"{variable}={value}"]
     return [*command, environment.image, *command_on_machine]

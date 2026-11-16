@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_workbench.cli_process import LocalCli, ScriptBackend
+from repo2ree_protocol.machine import MachineFacts
+from repo2ree_workbench.cli_process import LocalCli, remove_leftover_jobs
 from repo2ree_workbench.tools import tool_environment
 
 
@@ -106,29 +107,30 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
     assert tool_environment(None) == {}
 
 
-def test_a_container_workbench_tells_ree_its_engine_and_runs_no_scripts_on_its_host(
+def test_a_workbench_labels_its_store_s_jobs_and_says_nothing_else_of_where_scripts_run(
     fake_executor: Path, tmp_path: Path
 ) -> None:
-    scripts = ScriptBackend("container", "podman", "socket", ("/repo2ree", "/home/me/repo2ree"), owner="/store")
-    executor = LocalCli(tmp_path / "store", str(fake_executor), scripts=scripts)
+    labelled = LocalCli(tmp_path / "store", str(fake_executor), owner="/store").environment(tmp_path / "store")
+    assert labelled["REPO2REE_JOB_OWNER"] == "/store"
 
-    environment = executor.environment(executor.root)
-
-    assert {name: environment[name] for name in scripts.environment()} == {
-        "REPO2REE_ENGINE": "podman",
-        "REPO2REE_HOST_SCRIPTS": "refused",
-        "REPO2REE_SCRIPT_ENGINE": "socket",
-        "REPO2REE_JOB_OWNER": "/store",
-        "REPO2REE_ENGINE_PATH": "/repo2ree=/home/me/repo2ree",
-    }
+    bare = LocalCli(tmp_path / "root", str(fake_executor)).environment(tmp_path / "root")
+    # How the machine runs an REE's scripts is ree's to read from the machine's own environment.
+    assert not {"REPO2REE_JOB_OWNER", "REPO2REE_SCRIPT_ENGINE"} & set(bare) - set(os.environ)
 
 
-def test_a_host_workbench_tells_ree_it_has_no_engine() -> None:
-    assert ScriptBackend("host").environment() == {"REPO2REE_ENGINE": "none", "REPO2REE_HOST_SCRIPTS": "allowed"}
+def test_a_workbench_reports_the_machine_as_ree_says_it_and_nothing_when_ree_cannot_say(tmp_path: Path) -> None:
+    ree = tmp_path / "ree"
+    ree.write_text('#!/bin/sh\necho \'{"arch": "x86_64", "engine": "podman", "script_engine": "socket"}\'\n')
+    ree.chmod(ree.stat().st_mode | stat.S_IXUSR)
+    assert LocalCli(tmp_path / "store", str(ree)).machine() == MachineFacts(
+        arch="x86_64", engine="podman", script_engine="socket"
+    )
+    assert LocalCli(tmp_path / "store", str(tmp_path / "missing")).machine() == MachineFacts()
 
 
-def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -> None:
-    engine = tmp_path / "engine"
+def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "bin").mkdir()
+    engine = tmp_path / "bin" / "docker"
     removed = tmp_path / "removed"
     engine.write_text(
         "#!/bin/sh\n"
@@ -138,15 +140,14 @@ def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path) -
         "esac\n"
     )
     engine.chmod(engine.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}:{os.environ['PATH']}")
 
-    ScriptBackend("container", str(engine), owner="store").remove_leftover_jobs(frozenset({"a1"}))
-
+    remove_leftover_jobs("docker", "store", frozenset({"a1"}))
     assert removed.read_text().split() == ["-f", "c2", "c3"]
 
-
-def test_a_bench_set_up_for_one_ree_says_nothing_of_where_scripts_run(fake_executor: Path, tmp_path: Path) -> None:
-    executor = LocalCli(tmp_path / "root", str(fake_executor))
-    assert "REPO2REE_ENGINE" not in executor.environment(executor.root)
+    removed.unlink()
+    remove_leftover_jobs("none", "store", frozenset())
+    assert not removed.exists()
 
 
 def test_a_second_workbench_process_cannot_hold_a_held_store(tmp_path: Path) -> None:

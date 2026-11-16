@@ -95,15 +95,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
     id: "lab-oslo",
     label: "lab-oslo-01",
     description: "",
-    backend: "container",
-    images: [
-      {
-        id: "standard",
-        ref: "docker.io/library/docker:29-dind",
-        label: "Standard (docker)",
-        description: "",
-      },
-    ],
+    machine: { engine: "docker" },
     status: "connected",
     available: true,
     ...overrides,
@@ -185,10 +177,9 @@ describe("choosing a lab", () => {
 
     expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
     // The operator facts a cell has no room for. Where the lab runs scripts is
-    // one of them; nothing here claims what its images supply, because nothing knows.
+    // one of them; nothing here claims what an image supplies, because nothing knows.
     expect(screen.getByText("SCRIPTS RUN")).toBeInTheDocument();
-    expect(screen.getByText("in containers")).toBeInTheDocument();
-    expect(screen.getByText("IMAGES")).toBeInTheDocument();
+    expect(screen.getAllByText("images with docker").length).toBeGreaterThan(0);
   });
 
   it("arms the only connected lab, so a single-lab install is one click", () => {

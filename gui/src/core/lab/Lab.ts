@@ -8,26 +8,24 @@ export interface Lab {
   id: string;
   label: string;
   description: string;
-  /**
-   * Where its workbench runs each REE's scripts: in a fresh container from the image the REE
-   * declares, or on its own machine. Unknown while no workbench serves the lab.
-   */
-  backend: "container" | "host" | null;
-  /** The images a new REE here may declare, the first the default. Empty on a host lab. */
-  images: WorkbenchImage[];
+  /** How its machine runs each REE's scripts. Unknown while no workbench serves the lab. */
+  machine: LabMachine | null;
   status: LabStatus;
   available: boolean;
   /** The serving workbench's build, while one serves the lab. */
   build?: { version?: string; revision?: string };
 }
 
-// One image a lab offers. `ref` is what the REE declares; the rest names the entry in the
-// picker.
-export interface WorkbenchImage {
-  id: string;
-  ref: string;
-  label: string;
-  description: string;
+// How a lab's machine runs an REE's scripts, as `ree machine` reports it there.
+export interface LabMachine {
+  /** The engine it enters the image an REE declares with; "none" when it has none. */
+  engine: "docker" | "podman" | "apptainer" | "none";
+}
+
+/** How the lab runs scripts, in a few words: in an REE's image, or only on its own machine. */
+export function describeMachine(machine: LabMachine | null): string {
+  if (!machine) return "—";
+  return machine.engine === "none" ? "its own machine only" : `images with ${machine.engine}`;
 }
 
 // Stable display order: by label, then id. Pure; returns a new array.

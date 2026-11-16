@@ -32,15 +32,7 @@ class WorkbenchConfig:
     store_root: Path
     otlp_endpoint: str | None = None
     telemetry: TelemetryMode = "off"
-    backend: Literal["host", "container"] = "host"
     slots: int = 1
-    # For the container backend: the engine it runs scripts with, the engine a script may reach
-    # (none, or the host's socket), and where the engine finds this workbench's files ("LOCAL=ENGINE").
-    engine: str = "docker"
-    script_engine: Literal["none", "socket"] = "none"
-    engine_path: tuple[str, str] | None = None
-    # For the container backend: the images it offers an REE created in its store, the first the default.
-    images: tuple[str, ...] = ()
     # The tools bundle the executor takes git, curl, syft and the rest from, when not the host's.
     tools_bundle: Path | None = None
 
@@ -62,10 +54,6 @@ class WorkbenchEnvironment(BaseSettings):
     WORKBENCH_STORE: str = ""
     WORKBENCH_SLOTS: int = 1
     WORKBENCH_TOOLS_BUNDLE: Path | None = None
-    WORKBENCH_BACKEND: Literal["host", "container"] = "host"
-    WORKBENCH_ENGINE: str = "docker"
-    WORKBENCH_SCRIPT_ENGINE: Literal["none", "socket"] = "none"
-    WORKBENCH_ENGINE_PATH: str = ""
 
     @field_validator("WORKBENCH_TELEMETRY", mode="before")
     @classmethod
@@ -108,15 +96,6 @@ def _resolve_telemetry(
     return "off"
 
 
-def _engine_path(value: str) -> tuple[str, str] | None:
-    if not value:
-        return None
-    local, separator, engine = value.partition("=")
-    if not separator or not local or not engine:
-        raise SystemExit(f"repo2ree-workbench: --engine-path takes LOCAL=ENGINE, not {value!r}")
-    return local, engine
-
-
 def _store(value: str) -> tuple[str, Path]:
     store_id, separator, path = value.partition("=")
     if not separator or not store_id.strip() or not path.strip():
@@ -138,26 +117,6 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         required=not environment.WORKBENCH_STORE,
         help="ID=PATH: serve the store ID, a directory of REEs",
     )
-    # Where the author's scripts run: on this host, or in a fresh container from the REE's image.
-    parser.add_argument("--backend", choices=("host", "container"), default=environment.WORKBENCH_BACKEND)
-    parser.add_argument("--engine", default=environment.WORKBENCH_ENGINE, help="container: docker or podman")
-    parser.add_argument(
-        "--script-engine",
-        choices=("none", "socket"),
-        default=environment.WORKBENCH_SCRIPT_ENGINE,
-        help="container: whether a script may reach the host engine",
-    )
-    parser.add_argument(
-        "--engine-path", default=environment.WORKBENCH_ENGINE_PATH, help="container: LOCAL=ENGINE path prefixes"
-    )
-    parser.add_argument(
-        "--image",
-        dest="images",
-        action="append",
-        default=[],
-        metavar="REF",
-        help="container: images a new REE in the store may run in (comma-separated or repeated; first is default)",
-    )
     parser.add_argument("--slots", type=int, default=environment.WORKBENCH_SLOTS, help="actions run at once")
     parser.add_argument(
         "--tools-bundle", type=Path, default=environment.WORKBENCH_TOOLS_BUNDLE, help="the tools the executor runs"
@@ -166,9 +125,6 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
     store_id, store_root = _store(args.store)
     if args.slots < 1:
         parser.error("--slots must be at least 1")
-    images = tuple(dict.fromkeys(ref.strip() for value in args.images for ref in value.split(",") if ref.strip()))
-    if images and args.backend != "container":
-        parser.error("--image offers images to the store's REEs, so it needs --backend container")
     explicit_id = args.name
     if explicit_id:
         workbench_id = explicit_id
@@ -183,13 +139,8 @@ def load_config(argv: Sequence[str] = ()) -> WorkbenchConfig:
         cli_path=environment.REPO2REE_CLI_PATH,
         store_id=store_id,
         store_root=store_root,
-        backend=args.backend,
         slots=args.slots,
         tools_bundle=args.tools_bundle,
-        engine=args.engine,
-        script_engine=args.script_engine,
-        engine_path=_engine_path(args.engine_path),
-        images=images,
         otlp_endpoint=otlp_endpoint,
         telemetry=_resolve_telemetry(otlp_endpoint, environment.WORKBENCH_TELEMETRY, environment.TRACE_FILE),
     )

@@ -31,7 +31,13 @@ class Session:
     def connect(self) -> None:
         hello = self._hello
         self._move(
-            "opened", "connected", {"backend": hello.backend, "slots": hello.slots, "version": hello.version or None}
+            "opened",
+            "connected",
+            {
+                "engine": hello.machine.engine,
+                "slots": hello.slots,
+                "version": hello.version or None,
+            },
         )
 
     def lose(self, reason: events.WorkbenchSessionReason, close_code: int | None = None) -> None:

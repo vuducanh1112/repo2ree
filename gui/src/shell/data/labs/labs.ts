@@ -12,9 +12,7 @@ function mapLab(wire: StoreSummary): Lab {
     id: wire.store_id,
     label: wire.label,
     description: "",
-    backend: wire.backend ?? null,
-    // The ref is the image's name: it is what the REE declares, and what a reviewer reruns in.
-    images: (wire.images ?? []).map((ref) => ({ id: ref, ref, label: ref, description: "" })),
+    machine: wire.machine ? { engine: wire.machine.engine ?? "none" } : null,
     status: wire.connected ? "connected" : "offline",
     available: wire.connected,
     build: wire.build ?? undefined,
@@ -26,7 +24,7 @@ function mapLab(wire: StoreSummary): Lab {
 const LABS_REFETCH_MS = 5000;
 
 // The stores registered here, kept fresh by polling. Backs the fleet-management pane. Each
-// carries the images it offers, so this is one call.
+// carries how its machine runs scripts, so this is one call.
 export function useLabs() {
   const { reeApi } = useApiServices();
   return useQuery({

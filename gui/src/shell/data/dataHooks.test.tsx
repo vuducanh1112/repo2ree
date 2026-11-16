@@ -21,11 +21,15 @@ describe("shell data hooks", () => {
           label: "z-host",
           connected: true,
           workbench_id: "wb-b",
-          backend: "container",
-          images: ["docker.io/library/docker:29-dind"],
           slots: 2,
+          machine: {
+            arch: "x86_64",
+            engine: "docker",
+            script_engine: "none",
+            gpus: 0,
+          },
         },
-        { store_id: "a", label: "a-host", connected: false, images: [], slots: 0 },
+        { store_id: "a", label: "a-host", connected: false, slots: 0 },
       ],
     });
     const listScriptTemplates = vi.fn().mockResolvedValue({
@@ -60,7 +64,10 @@ describe("shell data hooks", () => {
     await waitFor(() => expect(result.current.templates.isSuccess).toBe(true));
     expect(result.current.labs.data?.map((lab) => lab.label)).toEqual(["a-host", "z-host"]);
     expect(result.current.labs.data?.map((lab) => lab.available)).toEqual([false, true]);
-    expect(result.current.labs.data?.[1]?.images[0]?.ref).toBe("docker.io/library/docker:29-dind");
+    expect(result.current.labs.data?.[1]?.machine).toEqual({
+      engine: "docker",
+    });
+    expect(result.current.labs.data?.[0]?.machine).toBeNull();
     expect(result.current.labs.data?.map((lab) => lab.status)).toEqual(["offline", "connected"]);
   });
 

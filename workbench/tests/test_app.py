@@ -6,6 +6,7 @@ import pytest
 
 import repo2ree_workbench.app as app_module
 from repo2ree_protocol.build import BuildInfo
+from repo2ree_protocol.machine import MachineFacts
 from repo2ree_workbench.config import WorkbenchConfig
 from repo2ree_workbench.service import WorkbenchService
 
@@ -46,6 +47,9 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
         def build_info(self) -> BuildInfo:
             return BuildInfo(revision="executor-test-revision")
 
+        def machine(self) -> MachineFacts:
+            return MachineFacts(engine="podman", script_engine="socket")
+
     monkeypatch.setattr(app_module, "LocalCli", lambda *args, **kwargs: Executor())
 
     async def run_workbench(*args: object, **kwargs: object) -> None:
@@ -60,6 +64,8 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
     kwargs = workbench_args[3]
     assert isinstance(kwargs, dict)
     assert kwargs["enrollment_token"] == opaque
+    # How the machine runs scripts is what ree said, passed along in the hello.
+    assert kwargs["machine"] == MachineFacts(engine="podman", script_engine="socket")
     service = workbench_args[1]
     assert isinstance(service, WorkbenchService)
     assert service.store_id == "lab-1"

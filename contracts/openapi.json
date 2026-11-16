@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says what each store's workbench offers (`backend`,\n   `images`, `capabilities`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for or the store's first, or the store's host if it offers none,\n   and starts with scripts that suit that environment.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says how each store's machine runs an REE's scripts\n   (`machine`: the engine it enters an image with, and whether it runs scripts on\n   itself). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for as its working environment, or none, and starts with scripts\n   that suit it.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -12738,6 +12738,44 @@
         ],
         "title": "LogicalRootObservation"
       },
+      "MachineFacts": {
+        "properties": {
+          "arch": {
+            "type": "string",
+            "title": "Arch",
+            "default": ""
+          },
+          "engine": {
+            "type": "string",
+            "enum": [
+              "docker",
+              "podman",
+              "apptainer",
+              "none"
+            ],
+            "title": "Engine",
+            "default": "none"
+          },
+          "script_engine": {
+            "type": "string",
+            "enum": [
+              "none",
+              "socket"
+            ],
+            "title": "Script Engine",
+            "default": "none"
+          },
+          "gpus": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Gpus",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "MachineFacts",
+        "description": "How this machine runs an REE's scripts, and what it offers them."
+      },
       "MachineLevel": {
         "type": "integer",
         "enum": [
@@ -16754,37 +16792,15 @@
             ],
             "title": "Workbench Id"
           },
-          "backend": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "host",
-                  "container"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Backend"
-          },
-          "images": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Images"
-          },
           "slots": {
             "type": "integer",
             "title": "Slots",
             "default": 0
           },
-          "capabilities": {
+          "machine": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WorkbenchCapabilities"
+                "$ref": "#/components/schemas/MachineFacts"
               },
               {
                 "type": "null"
@@ -17260,39 +17276,6 @@
         ],
         "title": "VenvExperimentEnvironmentContract",
         "description": "A packed Python virtual environment as the experiment environment substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
-      },
-      "WorkbenchCapabilities": {
-        "properties": {
-          "arch": {
-            "type": "string",
-            "title": "Arch",
-            "default": ""
-          },
-          "container_engine": {
-            "type": "boolean",
-            "title": "Container Engine",
-            "default": false
-          },
-          "script_engine": {
-            "type": "string",
-            "enum": [
-              "none",
-              "socket",
-              "nested"
-            ],
-            "title": "Script Engine",
-            "default": "none"
-          },
-          "gpus": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Gpus",
-            "default": 0
-          }
-        },
-        "type": "object",
-        "title": "WorkbenchCapabilities",
-        "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there."
       },
       "WorkbenchList": {
         "properties": {

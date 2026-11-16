@@ -265,7 +265,7 @@ class Recorder:
             assert target is not None
             facts: dict[str, Any] = {"workbench_id": f"bench-{key}", "nonce": f"n-{key}", "store_id": store}
             if target == "connected":
-                facts |= {"backend": "container", "slots": 1}
+                facts |= {"engine": "docker", "slots": 1}
             if target in {"refused", "lost"}:
                 facts["reason"] = reason
             self.positions[source] = self.positions.get(source, 0) + 1

@@ -59,14 +59,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
     """Create the REE in ``store_id``; the workbench serving the store must be connected."""
     if store_registry.get(store_id) is None:
         raise HTTPException(status_code=404, detail=f"Store {store_id} not found")
-    requested = payload.image.strip()
-    offered = _store_images(store_id)
-    # A store not served now fails the run as unavailable; one served refuses an image it does not offer.
-    if requested and offered is not None and requested not in offered:
-        choices = ", ".join(offered) or "none: its workbench runs scripts on its host"
-        raise HTTPException(
-            status_code=422, detail=f"Store {store_id} does not offer image {requested!r}; it offers {choices}"
-        )
+    image = payload.image.strip() or None
 
     def _runner(rid: str, run_id: str) -> ActionResult:
         def _log_run(stream: str, level: str, message: str) -> None:
@@ -76,7 +69,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
         ree_registry.create(rid, name, store_id)
         try:
             handle = require_handle(rid)
-            command_dispatcher.init_ree(handle, name, _store_image(_store_images(store_id) or (), requested))
+            command_dispatcher.init_ree(handle, name, image)
         except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
             ree_registry.delete(rid)
             detail = exc.detail if isinstance(exc, HTTPException) else exc
@@ -89,21 +82,6 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
 
     run_state = start_provisioning_run(ree_id=ree_id, request_payload=payload.model_dump(), runner=_runner)
     return RunSummary.model_validate(run_summary(run_state))
-
-
-def _store_images(store_id: str) -> tuple[str, ...] | None:
-    """The images the workbench serving ``store_id`` offers, or None while none serves it."""
-    for bench in workbench_connections.list_workbenches():
-        if bench.store_id == store_id:
-            return bench.images
-    return None
-
-
-def _store_image(offered: tuple[str, ...], requested: str) -> str | None:
-    """The image a new REE in a store runs its scripts in: the one asked for or the store's first; none on its host."""
-    if requested and requested not in offered:
-        raise ValueError(f"the store does not offer image {requested!r}")
-    return requested or next(iter(offered), None)
 
 
 def _provisioned_document(handle: ReeRoute) -> dict[str, Any]:

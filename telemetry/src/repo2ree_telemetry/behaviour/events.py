@@ -117,7 +117,7 @@ class WorkbenchSessionFacts(TypedDict, total=False):
     workbench_id: str
     nonce: str
     store_id: str
-    backend: str
+    engine: str
     slots: int
     version: str | None
     reason: WorkbenchSessionReason

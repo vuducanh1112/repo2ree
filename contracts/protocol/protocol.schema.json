@@ -5433,6 +5433,44 @@
       "title": "LogicalRootObservation",
       "type": "object"
     },
+    "MachineFacts": {
+      "description": "How this machine runs an REE's scripts, and what it offers them.",
+      "properties": {
+        "arch": {
+          "default": "",
+          "title": "Arch",
+          "type": "string"
+        },
+        "engine": {
+          "default": "none",
+          "enum": [
+            "docker",
+            "podman",
+            "apptainer",
+            "none"
+          ],
+          "title": "Engine",
+          "type": "string"
+        },
+        "script_engine": {
+          "default": "none",
+          "enum": [
+            "none",
+            "socket"
+          ],
+          "title": "Script Engine",
+          "type": "string"
+        },
+        "gpus": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gpus",
+          "type": "integer"
+        }
+      },
+      "title": "MachineFacts",
+      "type": "object"
+    },
     "ManifestQuery": {
       "additionalProperties": false,
       "description": "Print the REE's record (ree.json).",
@@ -9489,39 +9527,6 @@
       "title": "VersionConflictOutputs",
       "type": "object"
     },
-    "WorkbenchCapabilities": {
-      "description": "What a workbench offers the scripts it runs, so REEs that need it can be sent there.",
-      "properties": {
-        "arch": {
-          "default": "",
-          "title": "Arch",
-          "type": "string"
-        },
-        "container_engine": {
-          "default": false,
-          "title": "Container Engine",
-          "type": "boolean"
-        },
-        "script_engine": {
-          "default": "none",
-          "enum": [
-            "none",
-            "socket",
-            "nested"
-          ],
-          "title": "Script Engine",
-          "type": "string"
-        },
-        "gpus": {
-          "default": 0,
-          "minimum": 0,
-          "title": "Gpus",
-          "type": "integer"
-        }
-      },
-      "title": "WorkbenchCapabilities",
-      "type": "object"
-    },
     "WorkbenchHello": {
       "description": "The workbench's first message after dialing in: its identity plus the\nself-reported facts the control plane surfaces in its fleet view. Kept small\nand additive — new fields must default so an older workbench still parses,\nand unknown fields are *ignored* (unlike the frames) so an older control\nplane still accepts a newer workbench's hello.",
       "properties": {
@@ -9554,30 +9559,14 @@
           "title": "Store Id",
           "type": "string"
         },
-        "backend": {
-          "default": "host",
-          "enum": [
-            "host",
-            "container"
-          ],
-          "title": "Backend",
-          "type": "string"
-        },
-        "images": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Images",
-          "type": "array"
-        },
         "slots": {
           "default": 1,
           "minimum": 1,
           "title": "Slots",
           "type": "integer"
         },
-        "capabilities": {
-          "$ref": "#/$defs/WorkbenchCapabilities"
+        "machine": {
+          "$ref": "#/$defs/MachineFacts"
         },
         "nonce": {
           "default": "",
