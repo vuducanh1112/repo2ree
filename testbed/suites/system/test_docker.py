@@ -20,12 +20,10 @@ FIXTURE = INSTANT_DOCKER
 FAILING_DOCKER_BUILD = f"""#!/usr/bin/env sh
 set -eu
 CONTEXT=$(mktemp -d)
-cp /bin/busybox "$CONTEXT/busybox"
-cp /lib/ld-musl-*.so.1 "$CONTEXT/"
+cp -L "$(command -v busybox)" "$CONTEXT/busybox"
 cat > "$CONTEXT/Dockerfile" <<'DOCKERFILE'
 FROM scratch
 COPY busybox /bin/busybox
-COPY ld-musl-* /lib/
 RUN ["/bin/busybox", "sh", "-c", "echo step failing >&2; exit 3"]
 DOCKERFILE
 docker build -t failing-build "$CONTEXT"

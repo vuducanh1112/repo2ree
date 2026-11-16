@@ -1,7 +1,4 @@
 # A machine: a normal distribution with the workbench closure beside it in /nix/store.
-#
-# Not a Nix image: a machine has /usr/bin/env, a dynamic loader and its own Python, and an
-# author's scripts rely on them.
 {
   pkgs,
   buildRevision,
@@ -10,28 +7,8 @@
 let
   workbench = import ../../nix/workbench.nix { inherit pkgs buildRevision; };
 
-  # The digest names every platform; the image differs by architecture, so its hash does too.
-  platforms = {
-    aarch64-linux = {
-      arch = "arm64";
-      hash = "sha256-9eUhxerUTE3ALtacyb3Ps9uDCoIjs4a1LFo4mALdcLw=";
-    };
-    x86_64-linux = {
-      arch = "amd64";
-      hash = "sha256-urZhYUdNm81I3wpwdEbKwBoLvEf59TBc/m+HKwWDH+g=";
-    };
-  };
-  platform = platforms.${pkgs.stdenv.hostPlatform.system};
-
-  # Debian with Python, the same pin as the images a store offers (store_images.py).
-  debianWithPython = pkgs.dockerTools.pullImage {
-    imageName = "python";
-    imageDigest = "sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534";
-    inherit (platform) arch hash;
-    os = "linux";
-    finalImageName = "python";
-    finalImageTag = "3.11-slim";
-  };
+  # The same pin as the workbench image's base and the images the testbed pins (store_images.py).
+  debianWithPython = import ../../nix/debian-with-python.nix { inherit pkgs; };
 
   # What every machine that starts as root does first: it knows the user the testbed runs as, and
   # `run_as` drops to that user, as whoever logs in to the machine is not root.

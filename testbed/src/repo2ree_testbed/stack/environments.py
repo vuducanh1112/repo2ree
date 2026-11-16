@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Literal
 
 from repo2ree_testbed.stack.docker import engine_side
+from repo2ree_testbed.stack.process import capture
 
 # What the stack gives a workbench it runs from source, and the machine's image already holds.
 _SOURCE_ONLY = frozenset({"REPO2REE_CLI_PATH", "WORKBENCH_TOOLS_BUNDLE"})
@@ -19,19 +20,19 @@ class EnvironmentName(StrEnum):
     BARE = "bare"
     DOCKER = "docker"
     PODMAN = "podman"
-    PODMAN_HOST = "podman-host"
     SLURM = "slurm"
 
 
 DNS_VARIABLE = "REPO2REE_ENVIRONMENT_DNS"
+# The image a workbench runs in, as the machine reports it to the steps' receipts.
+REPORTED_IMAGE_VARIABLE = "REPO2REE_IMAGE"
 
 
 @dataclass(frozen=True)
 class Environment:
     name: EnvironmentName
-    # Where a workbench on this machine runs the author's scripts, and with which engine.
-    backend: Literal["container", "host"]
-    engine: str = ""
+    # The container engine the machine offers its scripts, if any.
+    engine: Literal["docker", "podman", ""] = ""
     # Starts services as root, which then drop to the user; what else it may do, a daemon needs.
     privileged: bool = False
     # Directories its services write to that the image's own layers cannot hold.
@@ -45,23 +46,24 @@ class Environment:
     def image(self) -> str:
         return f"repo2ree-environment-{self.name}:local"
 
+    def reported_image(self) -> str:
+        """The machine's image by its ref and local image id: it is loaded, never pulled, so it has no repo digest."""
+        return f"{self.image}@{capture(['docker', 'image', 'inspect', '--format', '{{.Id}}', self.image], check=True)}"
+
 
 ENVIRONMENTS: dict[EnvironmentName, Environment] = {
     environment.name: environment
     for environment in (
-        Environment(EnvironmentName.BARE, "host"),
+        Environment(EnvironmentName.BARE),
         Environment(
             EnvironmentName.DOCKER,
-            "container",
             engine="docker",
             privileged=True,
             scratch=("/var/lib/docker",),
             nested_daemon=True,
         ),
-        Environment(EnvironmentName.PODMAN, "container", engine="podman", privileged=True),
-        # The same machine, its workbench running scripts on it: an REE's own scripts call Podman.
-        Environment(EnvironmentName.PODMAN_HOST, "host", privileged=True),
-        Environment(EnvironmentName.SLURM, "host", privileged=True, parallel=False),
+        Environment(EnvironmentName.PODMAN, engine="podman", privileged=True),
+        Environment(EnvironmentName.SLURM, privileged=True, parallel=False),
     )
 }
 
@@ -75,6 +77,7 @@ def machine_command(
     owner: str,
     network: str,
     mounts: Sequence[Path],
+    reported_image: str,
 ) -> list[str]:
     """The command that runs ``command_on_machine`` on ``environment``, in the foreground.
 
@@ -96,6 +99,7 @@ def machine_command(
     for variable, value in variables.items():
         if variable not in _SOURCE_ONLY:
             command += ["--env", f"{variable}={value}"]
+    command += ["--env", f"{REPORTED_IMAGE_VARIABLE}={reported_image}"]
     return [*command, environment.image, *command_on_machine]
 
 

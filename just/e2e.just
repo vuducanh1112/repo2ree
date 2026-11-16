@@ -49,7 +49,7 @@ _load-environment name: _stage-nix-sources
 check-environment name: (_load-environment name)
     python -m repo2ree_testbed environment {{ quote(name) }}
 
-# Run the golden path on one machine a workbench is installed on (bare, docker, podman, podman-host, slurm), not gated.
+# Run the golden path on one machine a workbench is installed on (bare, docker, podman, slurm), not gated.
 [group('E2E tests')]
 test-e2e-environment name: (_load-environment name)
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/environments/run_environment_suite.py") }} --tier e2e-environment-{{ name }} --environment {{ quote(name) }} --per-test --exit-on tests
@@ -101,7 +101,7 @@ test-showcase jobs=E2E_JOBS *select: (_tier-showcase jobs select) (assess-behavi
     python -m scripts.gates.tiers certify --tier showcase --if-eligible
 
 [private]
-_tier-showcase jobs *select: build-e2e-bundles
+_tier-showcase jobs *select: build-e2e-bundles (_load-environment "bare") (_load-environment "docker")
     python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
@@ -130,7 +130,7 @@ machine +args:
 
 # Record the narrated browser demo: the Python Docker showcase scenario, captioned and paced, with video.
 [group('Demos')]
-demo-gui: build-e2e-bundles (_source-stack-playwright "demo-gui" "1")
+demo-gui: build-e2e-bundles (_load-environment "docker") (_source-stack-playwright "demo-gui" "1")
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]

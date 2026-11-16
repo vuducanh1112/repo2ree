@@ -9,7 +9,9 @@ hand when trying the app — so it lives at the repository root rather than insi
 The projects the suites author REEs from. Each folder holds `source/`, an
 ordinary source tree with no REE metadata or receipts that the suites pack as an
 upload, and `recipe/`, the scripts that run it which the suites do not write as
-script inference proposes them. Which scripts those are, and what each project
+script inference proposes them. Every recipe has a
+`check_working_environment.sh`, stating what its scripts need of the machine they run on;
+the suites run it before the build. Which scripts those are, and what each project
 needs deployed, is in `testbed/src/repo2ree_testbed/showcases.py`. The real-world projects pin what they fetch: base images by
 digest, Python packages by hash.
 
@@ -33,11 +35,11 @@ runtimes, and this runtime is a packed venv.
 
 ### `instant_docker/`
 
-The instant project for a bench with its own Docker daemon, the product's
-default. Its Dockerfile builds `FROM scratch`: the recipe's build copies the
-bench's busybox and musl loader into the build context, so the bench's daemon
-runs a real `docker build` (with a `RUN` step) and `docker run`, pulling and
-downloading nothing. It prints the same output as `instant/`.
+The instant project for a machine with a Docker daemon whose paths are the
+machine's own. Its Dockerfile builds `FROM scratch`: the recipe's build copies the
+machine's static `busybox` into the build context, so the daemon runs a real
+`docker build` (with a `RUN` step) and `docker run`, pulling and downloading
+nothing. Its check asks for both. It prints the same output as `instant/`.
 
 ### `slurm/`
 
@@ -57,8 +59,8 @@ Submission and container entry are the author's own. Run by `just test-e2e-slurm
 
 ### `podman/`
 
-A project built and run with rootless Podman, on a machine where the workbench
-runs scripts directly (`podman-host`) and Podman is the only engine they can
+A project built and run with rootless Podman, on a machine where
+`ree` runs scripts directly (`podman`) and Podman is the only engine they can
 use. Script inference probes that, so its build is `podman build` on the
 `Containerfile`, which pins its Python base image by digest, saved as the
 experiment environment, and its activation loads that image and runs each
@@ -87,20 +89,16 @@ app loads back (workbench step → "Load REE bundle", or `POST
 
 ### `ree-hello-world.zip`
 
-The REE the Python hello-world demo authors
-(`gui/tests/demo/ree-create-python-hello-world.spec.ts`), carrying its real
-author evidence: the frozen source snapshot, the four overlay scripts, the SBOM,
-the reproducibility report, the captured experiment result, and the six author
-receipts from that run.
+The REE the Python Docker showcase authors, authored through `ree` on the
+testbed's `docker` machine (`testbed/environments/docker`), carrying its real
+author evidence: the source snapshot, the overlay scripts with the project's
+check of the working environment, the SBOM, the reproducibility report, the
+captured experiment result, and the author receipts from that run, which report
+the machine's image.
 
-Two deliberate differences from what the demo downloaded:
-
-- **Unsealed.** The seal stamps are stripped, so loading it yields an editable
-  REE rather than a read-only artifact.
-- **No runtime artifact.** The demo's `runtime.tar` is a 327 MB Docker image
-  export, too large to version, so it is dropped and the manifest records
-  `runtime_included: false` with the runtime path pointing back at its workspace
-  location. Loading the bundle and building the runtime reproduces it.
+It is sealed with its source and results but not its experiment environment:
+that is a Docker image export of hundreds of MB, too large to version. Loading
+the bundle and building the experiment environment reproduces it.
 
 Its source was acquired by upload, so the manifest carries a `swhid` but no
 origin URL. A source review of this REE therefore reports that the author
@@ -108,11 +106,7 @@ baseline has no independently acquirable origin — the honest verdict for an
 upload-acquired source, and the reason a review fixture with a URL origin is
 still worth adding.
 
-It is the baseline the reviewer suite reviews
-(`gui/tests/showcase/review.spec.ts`). That is what its two omissions
-buy: with no runtime artifact the build step has to genuinely rebuild from the
-author's recipe, and unsealed means the review runs against an ordinary REE
-rather than a frozen one. Because its receipts come from a real earlier run,
-they also exercise evidence the current code did not write — one of them
-predates the `verify_exit_code` field, and the experiment review has to read the
-author's claim out of `status` instead.
+It is the baseline the reviewer suites review
+(`gui/tests/showcase/review.spec.ts` and the Python Docker review showcase). With
+no experiment environment, the review's build has to rebuild it from the
+author's recipe.

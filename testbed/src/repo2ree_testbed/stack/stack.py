@@ -269,6 +269,7 @@ class E2EStack:
                     owner=self.layout.run_token,
                     network=network,
                     mounts=(state, *telemetry),
+                    reported_image=machine.reported_image(),
                 )
                 launch = (installed, self.environment, log)
             else:
@@ -419,7 +420,6 @@ class E2EStack:
             **self.environment,
             **served.environment(),
             FAULTS_URL: self.injector.url,
-            # Where the stores run scripts, for tests of one backend only.
         }
         if (machine := self.deployment.environment) is not None:
             # The first store's machine, for a client that works on it as its user does: the CLI showcases.

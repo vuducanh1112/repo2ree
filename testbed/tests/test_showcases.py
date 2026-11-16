@@ -12,6 +12,7 @@ from repo2ree_testbed.showcases import (
     API_FEATURES,
     API_SUITE,
     API_TIER,
+    CHECK,
     CLI_TIER,
     FEATURES,
     FEATURES_ENVIRONMENT,
@@ -28,6 +29,7 @@ from repo2ree_testbed.showcases import (
     api_suites,
     api_test,
     environments_in_use,
+    gui_machines,
     machine_of,
 )
 from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
@@ -91,7 +93,7 @@ def test_one_run_holds_every_api_showcase_and_the_features() -> None:
     assert set(environments_in_use()) == {
         EnvironmentName.BARE,
         EnvironmentName.DOCKER,
-        EnvironmentName.PODMAN_HOST,
+        EnvironmentName.PODMAN,
         EnvironmentName.SLURM,
     }
 
@@ -125,3 +127,16 @@ def test_the_cli_tier_runs_the_same_tests_through_its_own_runner() -> None:
     assert (api[1], cli[1]) == (str(RUNNERS["api"]), str(RUNNERS["cli"]))
     assert all(runner.is_file() for runner in RUNNERS.values())
     assert cli[2:4] == ["--tier", CLI_TIER]
+
+
+def test_every_project_checks_what_its_scripts_need() -> None:
+    for project in ALL_PROJECTS:
+        assert project.recipe(CHECK).startswith("#!/usr/bin/env sh\n"), project.name
+
+
+def test_a_browser_spec_whose_scripts_call_docker_runs_on_a_machine_with_a_daemon_of_its_own() -> None:
+    placed = gui_machines()
+    assert all(spec.is_file() for spec in placed)
+    assert placed[GUI_SUITE / "python-docker.spec.ts"] == EnvironmentName.DOCKER
+    assert placed[GUI_SUITE / "java-maven.spec.ts"] == EnvironmentName.DOCKER
+    assert placed[GUI_SUITE.parent / "e2e-instant/docker-authoring.spec.ts"] == EnvironmentName.DOCKER

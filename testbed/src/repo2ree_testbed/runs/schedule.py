@@ -84,7 +84,6 @@ class SuiteRun:
             tree=self.tree if self.tree and provenance.clean_tree() == self.tree else "",
             parameters={
                 "compute_locations": self.deployment.compute_locations,
-                **({} if self.placed else {"backend": self.deployment.backend}),
                 **({"environment": self.deployment.environment.name} if self.deployment.environment else {}),
             },
             platform=provenance.platform(),
@@ -141,8 +140,7 @@ class SuiteRun:
         """The run's deployment, on the machine the test names if it names one."""
         if case.environment is None:
             return self.deployment
-        machine = ENVIRONMENTS[case.environment]
-        return replace(self.deployment, environment=machine, backend=machine.backend)
+        return replace(self.deployment, environment=ENVIRONMENTS[case.environment])
 
     def one_at_a_time(self, machine: EnvironmentName | None) -> AbstractContextManager[object]:
         lock = self.machines.get(machine) if machine is not None else None

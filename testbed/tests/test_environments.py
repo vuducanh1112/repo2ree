@@ -16,6 +16,7 @@ def command(name: str) -> list[str]:
         owner="run",
         network="lab",
         mounts=(Path("/state"),),
+        reported_image="repo2ree-environment-bare:local@sha256:0",
     )
 
 
@@ -25,6 +26,10 @@ def test_a_workbench_installed_on_a_machine_gets_only_what_the_machine_lacks() -
     assert "WORKBENCH_STORE=lab-1=/state/store" in bare
     assert not any("WORKBENCH_TOOLS_BUNDLE" in part for part in bare)
     assert bare[-3:] == [ENVIRONMENTS[EnvironmentName.BARE].image, "repo2ree-workbench", "--flag"]
+
+
+def test_a_machine_reports_the_image_its_workbench_runs_in() -> None:
+    assert "REPO2REE_IMAGE=repo2ree-environment-bare:local@sha256:0" in command("bare")
 
 
 def test_a_machine_with_services_starts_as_root_and_is_told_the_user() -> None:
@@ -47,13 +52,10 @@ def test_a_check_runs_a_container_where_the_machine_has_an_engine() -> None:
     assert "podman run --rm" in probe(ENVIRONMENTS[EnvironmentName.PODMAN])
 
 
-@pytest.mark.parametrize(
-    ("name", "backend"), [("bare", "host"), ("docker", "container"), ("podman", "container"), ("slurm", "host")]
-)
-def test_a_machine_says_where_its_scripts_run(name: str, backend: str) -> None:
+@pytest.mark.parametrize("name", ["bare", "docker", "podman", "slurm"])
+def test_a_run_installs_its_workbenches_on_the_machine_it_names(name: str) -> None:
     args = ["--script", "suite.py", "--tier", f"e2e-environment-{name}", "--environment", name]
 
     deployment = parse(args).deployment
 
     assert deployment.environment == ENVIRONMENTS[EnvironmentName(name)]
-    assert deployment.backend == backend

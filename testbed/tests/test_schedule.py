@@ -83,7 +83,6 @@ def test_a_test_that_names_its_machine_is_deployed_there(tmp_path: Path, monkeyp
     run = suite_run(tmp_path, monkeypatch)
     placed = run.deployment_of(TestCase("t", "t", ("t",), EnvironmentName.SLURM))
     assert placed.environment == ENVIRONMENTS[EnvironmentName.SLURM]
-    assert placed.backend == ENVIRONMENTS[EnvironmentName.SLURM].backend
     assert placed.tier == run.deployment.tier
     assert run.deployment_of(TestCase("t", "t", ("t",))) == run.deployment
 

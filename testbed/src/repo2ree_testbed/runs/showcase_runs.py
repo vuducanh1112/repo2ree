@@ -26,6 +26,7 @@ from repo2ree_testbed.showcases import (
     Workflow,
     api_test,
     environments_in_use,
+    gui_machines,
 )
 from repo2ree_testbed.stack.environments import EnvironmentName
 
@@ -153,11 +154,15 @@ def showcases(found: _Found) -> tuple[Showcase, ...]:
     return tuple(listed)
 
 
+def browser_machines() -> set[EnvironmentName]:
+    return {machine for spec, machine in gui_machines().items() if spec.is_relative_to(GUI_SUITE)}
+
+
 def showcase_runs(runs: Path) -> ShowcaseRuns:
     browser = ShowcaseTier(
         tier=BROWSER_TIER,
         surface="browser",
-        environments=(),
+        environments=tuple(environment for environment in EnvironmentName if environment in browser_machines()),
         recipe="just test-showcase",
         run=named(newest(BROWSER_TIER, runs)),
     )

@@ -114,12 +114,28 @@ class SbomReceipt(_Response):
     sbom_path: str | None = None
 
 
+class WorkingEnvironment(_Response):
+    container: bool
+    reported_image: str | None = None
+
+
+class WorkingEnvironmentCheckReceipt(_Response):
+    working_environment: WorkingEnvironment
+
+
+class ExperimentEnvironmentReceipt(_Response):
+    working_environment: WorkingEnvironment | None = None
+
+
 class ExperimentReceipt(_Response):
     launched: Launched | None = None
+    working_environment: WorkingEnvironment | None = None
 
 
 class Receipts(_Response):
     source: SourceReceipt | None = None
+    working_environment_check: WorkingEnvironmentCheckReceipt | None = None
+    experiment_environment: ExperimentEnvironmentReceipt | None = None
     sbom: SbomReceipt | None = None
     experiments: dict[str, ExperimentReceipt] = Field(default_factory=dict)
 

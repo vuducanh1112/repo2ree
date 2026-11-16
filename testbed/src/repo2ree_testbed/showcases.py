@@ -51,6 +51,7 @@ class ShowcaseName(StrEnum):
 Workflow = Literal["authoring", "review"]
 ExpectedVerdict = Literal["identical", "reproduced", "different"]
 RecipeScript = Literal[
+    "check_working_environment.sh",
     "build_experiment_environment.sh",
     "activate_experiment_environment.sh",
     "launch.sh",
@@ -62,8 +63,10 @@ PROJECTS = ROOT / "examples/projects"
 API_SUITE = ROOT / "testbed/suites/showcase"
 API_FEATURES = API_SUITE / "features"
 GUI_SUITE = ROOT / "gui/tests/showcase"
+GUI_INSTANT = ROOT / "gui/tests/e2e-instant"
 SOURCE = "source"
 RESULT = "result.txt"
+CHECK: RecipeScript = "check_working_environment.sh"
 BUILD: RecipeScript = "build_experiment_environment.sh"
 ACTIVATE: RecipeScript = "activate_experiment_environment.sh"
 LAUNCH: RecipeScript = "launch.sh"
@@ -116,6 +119,10 @@ class Project:
     @property
     def watch(self) -> RunWatch:
         return QUIET_NETWORK_RUN if self.network else INSTANT_RUN
+
+    @property
+    def check_script(self) -> str:
+        return f"ree-scripts/{CHECK}"
 
     @property
     def experiment_script(self) -> str:
@@ -255,7 +262,7 @@ SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
     ShowcaseName.JAVA_MAVEN: ShowcaseConfig(JAVA_MAVEN, EnvironmentName.DOCKER),
     ShowcaseName.NOTEBOOK: ShowcaseConfig(NOTEBOOK, EnvironmentName.BARE),
     ShowcaseName.PLOTTING: ShowcaseConfig(PLOTTING, EnvironmentName.BARE),
-    ShowcaseName.PODMAN: ShowcaseConfig(PODMAN, EnvironmentName.PODMAN_HOST),
+    ShowcaseName.PODMAN: ShowcaseConfig(PODMAN, EnvironmentName.PODMAN),
     ShowcaseName.PYTHON_DOCKER: ShowcaseConfig(PYTHON_DOCKER, EnvironmentName.DOCKER),
     ShowcaseName.PYTHON_VENV: ShowcaseConfig(PYTHON_VENV, EnvironmentName.BARE),
     ShowcaseName.SLURM: ShowcaseConfig(SLURM, EnvironmentName.SLURM),
@@ -273,9 +280,21 @@ GUI_SHOWCASES: dict[ShowcaseName, dict[Workflow, str]] = {
 }
 
 
+def gui_machines() -> dict[Path, EnvironmentName]:
+    """The machine each browser spec runs on that names one: a showcase's on its showcase's, and the instant Docker
+    project's on one whose Docker daemon sees the paths its scripts do."""
+    placed = {
+        GUI_SUITE / spec: SHOWCASES[name].environment
+        for name, specs in GUI_SHOWCASES.items()
+        for spec in specs.values()
+    }
+    return placed | {GUI_INSTANT / "docker-authoring.spec.ts": EnvironmentName.DOCKER}
+
+
 class FeatureName(StrEnum):
     ORIGINS = "origins"
     ROUTING = "routing"
+    WORKING_ENVIRONMENT = "working_environment"
 
 
 @dataclass(frozen=True)
@@ -289,6 +308,7 @@ class FeatureTests:
 FEATURES: dict[FeatureName, FeatureTests] = {
     FeatureName.ORIGINS: FeatureTests(API_FEATURES / "test_origins.py", "origins.spec.ts"),
     FeatureName.ROUTING: FeatureTests(None, "routing.spec.ts"),
+    FeatureName.WORKING_ENVIRONMENT: FeatureTests(API_FEATURES / "test_working_environment.py", None),
 }
 
 

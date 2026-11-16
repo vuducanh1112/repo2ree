@@ -201,16 +201,25 @@ class CliClient:
         [result] = InferenceReport.model_validate(self._outputs(ree_id, "infer", "--target", target)).results
         return result
 
-    def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
-        """Declare the experiment environment, ask inference for its build, and build with ``script``, else as the
-        project writes it; a project that launches its scripts declares its launch first."""
-        self._patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
+    def check_working_environment(self, ree_id: str, fixture: Project) -> Run:
+        """Write the project's check of what its scripts need, and run it through the launch the project declares."""
         if fixture.launches:
             rule = fixture.rule("launch.sh")
             self._write(
                 ree_id, LAUNCH_SCRIPT, self._proposed(ree_id, "launch", rule) if rule else fixture.recipe("launch.sh")
             )
             self._patch(ree_id, {"launch": {}})
+        self._write(ree_id, fixture.check_script, fixture.recipe("check_working_environment.sh"))
+        return self._step(ree_id, "check-working-environment")
+
+    def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
+        """Check the working environment as the project does, declare the experiment environment, ask inference for
+        its build, and build with ``script``, else as the project writes it; a project that launches its scripts
+        declares its launch before the check. A check that fails is the step's result, and nothing is built."""
+        checked = self.check_working_environment(ree_id, fixture)
+        if checked.status != "succeeded":
+            return checked
+        self._patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
         proposed = self.infer(ree_id, "build_experiment_environment")
         rule = fixture.rule("build_experiment_environment.sh")
         if script is None:

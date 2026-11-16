@@ -14,9 +14,10 @@ from typing import IO, Literal, get_args
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.runs.prune import prune
 from repo2ree_testbed.runs.schedule import PerTest, Schedule, SuiteRun, WholeSuite
+from repo2ree_testbed.showcases import gui_machines
 from repo2ree_testbed.stack.clients import Client, Playwright, Script
 from repo2ree_testbed.stack.environments import ENVIRONMENTS
-from repo2ree_testbed.stack.services import Backend, Deployment
+from repo2ree_testbed.stack.services import Deployment
 
 type ExitOn = Literal["tests", "run"]
 
@@ -77,15 +78,9 @@ def parse(argv: list[str] | None = None) -> Invocation:
         help="tests: exit 1 when a test failed; run: only when the run broke (the assurance gate judges the tests)",
     )
     parser.add_argument(
-        "--backend",
-        choices=get_args(Backend.__value__),
-        default="container",
-        help="run the author's scripts in a container from each REE's image, or on the store's host",
-    )
-    parser.add_argument(
         "--environment",
         choices=sorted(ENVIRONMENTS),
-        help="install each store's workbench on this machine, whose scripts run where the machine runs them",
+        help="install each store's workbench on this machine, where it runs the REEs' scripts",
     )
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
     parser.add_argument("--cli-bundle", type=Path, default=ROOT / "dist/bundles/cli")
@@ -106,7 +101,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         parser.error("--script needs --tier <name> to say which tier it measures")
     client: Client
     if args.project:
-        playwright = Playwright(args.project)
+        playwright = Playwright(args.project, gui_machines())
         if (complaint := playwright.accepts()) is not None:
             print(complaint, file=sys.stderr, end="")
             parser.error(f"refusing to start the stack: playwright rejected --project={args.project}")
@@ -117,7 +112,6 @@ def parse(argv: list[str] | None = None) -> Invocation:
     deployment = Deployment(
         tier=args.project or args.tier,
         compute_locations=args.compute_locations,
-        backend=environment.backend if environment else args.backend,
         environment=environment,
         state_root=args.state_root,
         cli_bundle=args.cli_bundle,

@@ -65,6 +65,7 @@ class Client(Protocol):
     def declare_experiment(self, ree_id: str, fixture: Project) -> None: ...
     def evaluate(self, ree_id: str, *, watch: RunWatch = ...) -> Run: ...
     def infer(self, ree_id: str, kind: ScriptKind, *, experiment: str | None = ...) -> InferenceResult: ...
+    def check_working_environment(self, ree_id: str, fixture: Project) -> Run: ...
     def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = ...) -> Run: ...
     def generate_sbom(self, ree_id: str, *, watch: RunWatch = ...) -> Run: ...
     def cross_check_sbom(self, ree_id: str, *, watch: RunWatch = ...) -> Run: ...
@@ -152,9 +153,20 @@ class ApiClient:
         [result] = InferenceReport.model_validate(response).results
         return result
 
+    def check_working_environment(self, ree_id: str, fixture: Project) -> Run:
+        """Write the project's check of what its scripts need, and run it through the launch the project declares."""
+        if fixture.launches:
+            self.api.declare_launch(ree_id, fixture)
+        self.api.write(ree_id, fixture.check_script, fixture.recipe("check_working_environment.sh"))
+        return self._stage(ree_id, "check-working-environment", watch=fixture.watch)
+
     def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
-        """Declare the experiment environment, ask inference for its build, and build with ``script``, else as the
-        project writes it: what inference proposed by the project's rule, or the recipe's."""
+        """Check the working environment as the project does, declare the experiment environment, ask inference for
+        its build, and build with ``script``, else as the project writes it: what inference proposed by the project's
+        rule, or the recipe's. A check that fails is the step's result, and nothing is built."""
+        checked = self.check_working_environment(ree_id, fixture)
+        if checked.status != "succeeded":
+            return checked
         artifact = ExperimentEnvironmentPatch(artifact_path=fixture.experiment_environment_path)
         self._patch(ree_id, DefinitionPatch(experiment_environment=artifact))
         proposed = self.infer(ree_id, "build_experiment_environment")

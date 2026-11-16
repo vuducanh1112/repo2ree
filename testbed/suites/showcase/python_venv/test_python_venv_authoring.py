@@ -8,9 +8,11 @@ from system_client import RESULT
 from typed_client import Client, NewRee
 
 from repo2ree_testbed.api_models import InferenceDag, InferenceRule
-from repo2ree_testbed.showcases import PYTHON_VENV
+from repo2ree_testbed.showcases import PYTHON_VENV, SHOWCASES, ShowcaseName
+from repo2ree_testbed.stack.environments import ENVIRONMENTS
 
 F = PYTHON_VENV
+MACHINE = ENVIRONMENTS[SHOWCASES[ShowcaseName.PYTHON_VENV].environment]
 
 
 def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, new_ree: NewRee) -> None:
@@ -26,6 +28,11 @@ def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, ne
 
     run = client.build_experiment_environment(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
+    receipts = client.ree(ree_id).subject.receipts
+    assert receipts.working_environment_check is not None
+    checked = receipts.working_environment_check.working_environment
+    assert checked.container
+    assert (checked.reported_image or "").startswith(f"{MACHINE.image}@sha256:")
 
     activate = client.infer(ree_id, "activate_experiment_environment").first_body()
     assert "tar -xzf" in activate

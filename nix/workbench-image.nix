@@ -2,11 +2,11 @@
 # Workbench image — a store's workbench, run beside a host's container engine.
 #
 # The listener serves one store (--store ID=PATH); ree runs each REE's scripts
-# in this container, with the Docker CLI beside the workbench, the executor and
-# the handler tools. An REE whose scripts build images reaches the host engine
-# through its socket mounted into this container. Whatever else the REEs' checks
-# ask for is the deployer's to add, in an image built from this one. ree finds where the
-# host engine sees the store from this container's own mounts.
+# in this container: Debian with Python (debian-with-python.nix), the workbench,
+# the executor and the handler tools beside it in /nix/store, and a Docker CLI.
+# An REE whose scripts build images reaches the host engine through its socket
+# mounted into this container. Whatever else the REEs' checks ask for is the
+# deployer's to add, in an image built from this one.
 #
 #   docker run -v /var/run/docker.sock:/var/run/docker.sock \
 #     -v /srv/rees:/srv/rees repo2ree-workbench \
@@ -26,29 +26,16 @@
 
 let
   workbench = import ./workbench.nix { inherit pkgs buildRevision; };
+  debianWithPython = import ./debian-with-python.nix { inherit pkgs; };
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "repo2ree-workbench";
   # "local" marks never-pushed local builds; published channels (edge, commit
   # shas) are minted at push time by the publishing recipes.
   tag = "local";
+  fromImage = debianWithPython;
 
-  contents = [
-    workbench.service.bin
-    workbench.executor.bin
-    # A static busybox: the shell and coreutils the handlers' scripts expect.
-    workbench.executor.pause
-    workbench.tools.binDir
-    workbench.bundleRefDir
-    # The engine client each REE's job containers are started with, through the host's socket.
-    pkgs.docker-client
-
-    # TLS roots for the outbound wss:// control link.
-    pkgs.cacert
-  ];
-
-  # Scratch space: generated venvs build under /tmp, as on any host.
-  extraCommands = "mkdir -p tmp && chmod 1777 tmp";
+  contents = [ workbench.bundleRefDir ];
 
   config = {
     Labels = {
@@ -56,7 +43,15 @@ pkgs.dockerTools.buildLayeredImage {
     };
     Cmd = [ "${workbench.service.bin}/bin/repo2ree-workbench" ];
     Env = [
-      "PATH=/bin"
+      "PATH=${
+        pkgs.lib.makeBinPath [
+          workbench.service.bin
+          workbench.executor.bin
+          workbench.tools.binDir
+          pkgs.docker-client
+          (import ./busybox-command.nix { inherit pkgs; })
+        ]
+      }:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
       "WORKBENCH_STATE_DIR=/var/lib/repo2ree-workbench"
       "PYTHONDONTWRITEBYTECODE=1"
       "PYTHONUNBUFFERED=1"

@@ -372,17 +372,15 @@ def run() -> None:
     health = call("GET", "/")
     check(health.get("status") == "online", "service not online")
 
-    # Creation names a store and one of the images it offers; the REE declares that image as what
-    # its scripts run in. A store whose workbench runs scripts on its own machine offers none.
+    # Creation names a store; the REE's scripts run wherever that store's workbench runs them.
     stores = [store for store in call("GET", "/api/v1/stores")["stores"] if store["connected"]]
     check(stores, "no workbench serves a store")
     store = stores[0]
     store_id = store["store_id"]
-    note(f"store {store_id!r} runs scripts {'in containers' if store['backend'] == 'container' else 'on its host'}")
-    image = store["images"][0] if store["images"] else ""
-    if image:
-        note(f"the REE declares the store's first image, {image}")
-    created = call("POST", "/api/v1/rees", {"name": "workbench-authored-ree", "store_id": store_id, "image": image})
+    machine = store.get("machine") or {}
+    where = "in a container" if machine.get("container") else "on its host"
+    note(f"store {store_id!r} runs scripts {where} ({machine.get('arch') or 'unknown arch'})")
+    created = call("POST", "/api/v1/rees", {"name": "workbench-authored-ree", "store_id": store_id})
     ree_id = created["ree_id"]
     check(ree_id, "no ree_id in create response")
     note(f"creation runs in the background as {created['run_id']}")

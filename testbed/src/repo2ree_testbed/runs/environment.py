@@ -39,6 +39,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         owner=owner,
         network=workbench_host()[1],
         mounts=(),
+        reported_image=environment.reported_image(),
     )
     try:
         status = subprocess.run(command, check=False, timeout=SETUP_SECONDS).returncode

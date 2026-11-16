@@ -143,10 +143,6 @@ test.describe("REE pipeline", () => {
       await expect(
         main(page).getByRole("heading", { name: "Build Experiment Environment", exact: true }),
       ).toBeVisible();
-      // The bench declared what the build runs in: its image, pinned by digest.
-      await expect(main(page).getByText(/@?sha256:[0-9a-f]{64}$/)).toBeVisible();
-      await expect(main(page).getByText("Working environment not pinned")).toHaveCount(0);
-
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);
       // The project carries both a Dockerfile and a requirements.txt, so both

@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
 
 from repo2ree_testbed.stack.docker import first_network, own_container
 from repo2ree_testbed.stack.environments import Environment
 
 # Each compute location is a workbench serving a store of REEs, admitted with that store's token.
-# Where a store's workbench runs the author's scripts:
-type Backend = Literal["container", "host"]
 
 
 @dataclass(frozen=True)
@@ -21,7 +18,6 @@ class Deployment:
     state_root: Path
     cli_bundle: Path
     tools_bundle: Path
-    backend: Backend = "container"
     # The machine each store's workbench is installed on; without one, it runs from source here.
     environment: Environment | None = None
 

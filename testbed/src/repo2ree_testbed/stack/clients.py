@@ -8,7 +8,7 @@ import shlex
 import subprocess
 import tempfile
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Protocol
 from xml.etree import ElementTree
@@ -115,6 +115,8 @@ class _Listing(BaseModel):
 @dataclass(frozen=True)
 class Playwright:
     project: str
+    # The machine each spec that names one runs on, by its path.
+    machines: Mapping[Path, EnvironmentName] = field(default_factory=dict)
 
     @property
     def suite(self) -> str:
@@ -131,7 +133,8 @@ class Playwright:
                 location = f"{(listing.config.root / spec.file).relative_to(GUI)}:{spec.line}"
                 stem = Path(spec.file).name.removesuffix(".spec.ts")
                 name = " > ".join([spec.file, *titles, spec.title])
-                found.append(TestCase(name, slug(stem, *titles, spec.title), (location,)))
+                machine = self.machines.get(listing.config.root / spec.file)
+                found.append(TestCase(name, slug(stem, *titles, spec.title), (location,), machine))
             for child in suite.suites:
                 walk(child, [*titles, child.title] if child.title and not child.title.endswith(".ts") else titles)
 
