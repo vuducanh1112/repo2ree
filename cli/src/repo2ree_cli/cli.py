@@ -1,8 +1,9 @@
-"""``ree``: every command on an REE, for a person at a terminal and for a workbench alike.
+"""``ree``: every command on an REE, for a person at a terminal, an agent, and a workbench alike.
 
-Each command is a verb (``repo2ree_protocol.verbs``) run through core's session against the REE at ``-C`` or,
-without it, the nearest one above the current directory. A person reads the run as plain lines; ``--json`` is the
-machine form a workbench reads: NDJSON log events on stderr and the result as one JSON line on stdout.
+Each command runs against the REE at ``-C`` or, without it, the nearest one at or above the current directory, and
+ends in one result (``ActionResult``): a person reads it as plain lines, and ``--json`` prints it as one JSON line on
+stdout, with the run's log events as NDJSON on stderr. ``cat``, ``bundle`` and ``completion`` print what they are
+asked for instead. The exit status says how it ended (``EXIT_CODES``).
 """
 
 from __future__ import annotations
@@ -14,40 +15,73 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn
+from typing import Any, NoReturn, cast
 from uuid import uuid4
 
 import click
+from click.shell_completion import get_completion_class
 from pydantic import BaseModel
 
 from repo2ree_authoring.lint import CONTRACT_ONLY, lint_script
 from repo2ree_authoring.targets import resolve_target
 from repo2ree_authoring.templates import script_template_catalog
+from repo2ree_cli import render
+from repo2ree_cli.models import (
+    CancelRequested,
+    Initialized,
+    ReviewRun,
+    ScriptEdited,
+    ScriptWritten,
+    StepRun,
+    Waited,
+)
+from repo2ree_cli.options import TARGET, Spelling, read_stdin
+from repo2ree_cli.schema import ReeCommand, describe
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.doctor import run_doctor
+from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.execution.working_environment import machine_facts
 from repo2ree_core.operations.capture import settle_interrupted
+from repo2ree_core.operations.handlers.author.file_concurrency import workspace_content_etag
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.read_models.files import read_ree_file_bytes
-from repo2ree_core.operations.read_models.ree_document import get_ree_document, get_ree_steps
+from repo2ree_core.operations.read_models.ree_document import get_ree_document, get_ree_status, get_ree_steps
 from repo2ree_core.operations.session import request_cancel, run_session
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
-from repo2ree_protocol.argv import ArgvError, describe_args, reads_stdin
+from repo2ree_core.persistence.run_lock import running_run, wait_until_free
 from repo2ree_protocol.build import current_build
-from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
+    Command,
+    DeleteFileCommand,
+    GenerateScriptCandidatesCommand,
     LoadReeBundleCommand,
+    PatchReeDefinitionCommand,
+    ReviewAcquireSourceArgs,
+    ReviewAcquireSourceCommand,
+    ReviewActivationTestCommand,
+    ReviewBuildExperimentEnvironmentCommand,
+    ReviewRunExperimentCommand,
+    ScriptTargetSelectorArg,
     SealReeCommand,
+    TargetKind,
+    WriteFileArgs,
+    WriteFileCommand,
     command_adapter,
 )
+from repo2ree_protocol.document import ReeStatusReport, WorkbenchReeDocument
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
+from repo2ree_protocol.history import OperationHistory
+from repo2ree_protocol.inference import InferenceReport
+from repo2ree_protocol.machine import MachineFacts
+from repo2ree_protocol.outputs import OUTPUTS
 from repo2ree_protocol.queries import (
+    REPLIES,
     BundleQuery,
     CatQuery,
     InitRee,
@@ -57,27 +91,44 @@ from repo2ree_protocol.queries import (
     ReviewsQuery,
     ShowQuery,
     TemplatesQuery,
-    query_from_argv,
     verb_of,
 )
-from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.verbs import REVIEW, SUMMARIES, VERBS, from_argv
+from repo2ree_protocol.result import ActionResult, FailureCategory
+from repo2ree_protocol.verbs import REVIEW, SUMMARIES, VERBS
 from repo2ree_ree.layout import REE_MANIFEST
+from repo2ree_ree.review import ReviewSet
 from repo2ree_telemetry.log import configure_logging
 from repo2ree_telemetry.relay import setup_relay_tracing
 
-# The exit status of a run that was canceled, as a shell reports one stopped by SIGINT.
-CANCELED = 130
-# The exit status of a command refused for what was asked, as for a command line that spells none.
+SUCCEEDED = 0
+FAILED = 1
+# A command refused for what was asked, as for a command line that spells none.
 REFUSED = 2
-_REFUSALS = ("validation", "precondition", "conflict")
+# A run that was canceled, as a shell reports one stopped by SIGINT.
+CANCELED = 130
+_REFUSALS: tuple[FailureCategory, ...] = ("validation", "precondition", "conflict")
+EXIT_CODES = {
+    SUCCEEDED: "succeeded",
+    FAILED: "failed: a script, a process or ree itself (execution, timeout, unavailable, internal)",
+    REFUSED: "refused for what was asked: a usage error, or validation, precondition or conflict",
+    CANCELED: "canceled",
+}
 # Where a staged archive comes from on the command line; the commands themselves name it by its upload token.
 ARCHIVE_OPTION = "--archive"
 
 
+# ================================================
+# The invocation, and how a result ends it
+# ================================================
+
+
+class NoReeError(Exception):
+    """The command needs an REE, and there is none where it looked."""
+
+
 @dataclass(frozen=True)
 class Invocation:
-    """What the options before the verb say: the REE, the output form, and the run's identity."""
+    """What the options before the command say: the REE, the output form, and the run's identity."""
 
     ree: Path | None
     machine: bool
@@ -98,9 +149,30 @@ class Invocation:
     def sink(self) -> LogSink:
         return _ndjson_sink if self.machine else _plain_sink
 
+    def identity(self, step: int | None = None) -> tuple[ExecutionContext, str]:
+        """The context and run id of a run; ``step`` numbers it among the commands one invocation runs."""
+        if step is None:
+            context = self.context or ExecutionContext.new()
+            return context, self.run_id or f"manual-{context.attempt_id}"
+        context = ExecutionContext.new()
+        return context, f"{self.run_id}.{step}" if self.run_id else f"manual-{context.attempt_id}"
 
-class NoReeError(Exception):
-    """The command needs an REE, and there is none where it looked."""
+    def run(
+        self, cmd: Command, layout: ReeLayout, *, identity: tuple[ExecutionContext, str] | None = None
+    ) -> ActionResult:
+        """Run ``cmd`` in its own session, as the run ``identity`` names, by default the invocation's."""
+        context, run_id = identity or self.identity()
+        if self.machine:
+            started = {"type": "started", "run_id": run_id, "operation": str(cmd.operation)}
+            click.echo(json.dumps(started), err=True)
+        return run_session(
+            cmd,
+            layout=layout,
+            emit=self.sink(),
+            run_id=run_id,
+            context=context,
+            traceparent=os.environ.get("TRACEPARENT"),
+        )
 
 
 def nearest_ree(start: Path) -> Path | None:
@@ -119,7 +191,93 @@ def _plain_sink(stream: str, level: str, message: str) -> None:
         click.echo(message, err=True)
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+def _invocation() -> Invocation:
+    return click.get_current_context().find_object(Invocation)  # type: ignore[return-value]
+
+
+def finish(
+    invocation: Invocation,
+    words: str,
+    result: ActionResult,
+    *,
+    render_with: Callable[[dict[str, Any]], str] | None = None,
+    ran: bool = False,
+) -> NoReturn:
+    """Print ``result`` as the invocation asks and exit with the status it calls for.
+
+    ``ran`` says a command ran, whose outcome a person is told on stderr beside its outputs.
+    """
+    if invocation.machine:
+        click.echo(result.model_dump_json())
+    else:
+        if result.status == "succeeded" and result.outputs:
+            text = render_with(result.outputs) if render_with else render.outputs(result.outputs)
+            if text:
+                click.echo(text)
+        if result.failure is not None:
+            click.echo(click.style(f"{words} failed: {result.failure.message}", fg="red"), err=True)
+            if result.failure.category == "precondition" and (hint := _hint(invocation)):
+                click.echo(hint, err=True)
+        elif ran or result.status == "canceled":
+            click.echo(click.style(f"{words} {result.status}", dim=True), err=True)
+    sys.exit(exit_code(result))
+
+
+def exit_code(result: ActionResult) -> int:
+    if result.status == "succeeded":
+        return SUCCEEDED
+    if result.status == "canceled":
+        return CANCELED
+    return REFUSED if result.failure and result.failure.category in _REFUSALS else FAILED
+
+
+def refuse(invocation: Invocation, words: str, category: FailureCategory, message: str) -> NoReturn:
+    finish(invocation, words, ActionResult.failed(category, message, origin="executor"))
+
+
+def answer(invocation: Invocation, words: str, outputs: BaseModel | dict[str, Any], **kwargs: Any) -> NoReturn:
+    """End a command that ran nothing in the REE with what it found."""
+    data = outputs.model_dump(mode="json") if isinstance(outputs, BaseModel) else outputs
+    finish(invocation, words, ActionResult(status="succeeded", outputs=data), **kwargs)
+
+
+def _hint(invocation: Invocation) -> str | None:
+    try:
+        return render.next_hint(get_ree_steps(invocation.layout()))
+    except (NoReeError, FileNotFoundError):
+        return None
+
+
+def _layout_or_refuse(invocation: Invocation, words: str) -> ReeLayout:
+    try:
+        return invocation.layout()
+    except NoReeError as exc:
+        refuse(invocation, words, "precondition", str(exc))
+
+
+# ================================================
+# The command line
+# ================================================
+
+
+class ReeGroup(click.Group):
+    """The command group: under ``--json`` a usage error is a refused result too, so an agent reads one shape."""
+
+    def invoke(self, ctx: click.Context) -> Any:
+        try:
+            return super().invoke(ctx)
+        except click.UsageError as exc:
+            if not ctx.params.get("machine"):
+                raise
+            failed = ActionResult.failed("validation", exc.format_message(), origin="executor")
+            click.echo(failed.model_dump_json())
+            ctx.exit(REFUSED)
+
+
+_EPILOG = "\b\nExit status:\n" + "\n".join(f"  {code:>3}  {meaning}" for code, meaning in EXIT_CODES.items())
+
+
+@click.group(cls=ReeGroup, context_settings={"help_option_names": ["-h", "--help"]}, epilog=_EPILOG)
 @click.option(
     "-C",
     "ree",
@@ -131,13 +289,16 @@ def _plain_sink(stream: str, level: str, message: str) -> None:
     "--json",
     "machine",
     is_flag=True,
-    help="Log events as NDJSON on stderr and the result as one JSON line on stdout.",
+    help="Print the result as one JSON line on stdout, and the run's log as NDJSON on stderr.",
 )
-@click.option("--run-id", default=None, help="The run's id, which names its log in runs/.")
-@click.option("--context", default=None, help="The run's invocation identity, as JSON.")
+@click.option("--run-id", default=None, hidden=True, help="The run's id, which names its log in runs/.")
+@click.option("--context", default=None, hidden=True, help="The run's invocation identity, as JSON.")
 @click.pass_context
 def cli(ctx: click.Context, ree: Path | None, machine: bool, run_id: str | None, context: str | None) -> None:
-    """repo2ree: author, run, seal and review reproducible execution environments (REEs)."""
+    """repo2ree: author, run, seal and review reproducible execution environments (REEs).
+
+    Start with `ree init`, then `ree status` says where the REE stands and what to run next.
+    """
     ctx.obj = Invocation(
         ree=ree.resolve() if ree else None,
         machine=machine,
@@ -158,35 +319,238 @@ def main() -> None:
     cli()
 
 
-# ================================================
-# Commands
-# ================================================
+@cli.group(REVIEW)
+def review() -> None:
+    """Review a sealed REE: reproduce its steps in a review of their own and compare them with the author's.
+
+    `ree review all` runs every step. A step names its review with --review-id; without it, `acquire-source` opens a
+    new review and the other steps continue the newest one.
+    """
 
 
-def _run(invocation: Invocation, verb: tuple[str, ...], command: type[BaseModel], words: list[str]) -> None:
+# ================================================
+# Commands that run in the REE
+# ================================================
+
+Params = dict[str, Any]
+Handler = Callable[[Invocation, tuple[str, ...], type[BaseModel], Spelling, Params], None]
+
+
+def _args_of(command: type[BaseModel]) -> type[BaseModel]:
+    return cast(type[BaseModel], command.model_fields["args"].annotation)
+
+
+def _run_verb(
+    invocation: Invocation,
+    words: tuple[str, ...],
+    command: type[BaseModel],
+    spelling: Spelling,
+    params: Params,
+    **filled: Any,
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    args = spelling.build(params, read_stdin(spelling.model), **filled)
+    _run_and_finish(invocation, words, command.model_validate({"args": args}), layout)  # type: ignore[arg-type]
+
+
+def _run_and_finish(invocation: Invocation, words: tuple[str, ...], cmd: Command, layout: ReeLayout) -> NoReturn:
+    finish(invocation, " ".join(words), invocation.run(cmd, layout), render_with=_RENDERS.get(type(cmd)), ran=True)
+
+
+# What a person is shown of a command's outputs where all of them would be too much.
+_RENDERS: dict[type[BaseModel], Callable[[dict[str, Any]], str]] = {
+    AcquireSourceCommand: lambda outputs: f"source: {outputs.get('source_type')}, {outputs.get('swhid')}",
+    PatchReeDefinitionCommand: lambda outputs: f"revision {outputs.get('revision')}",
+}
+
+
+def _acquire_source(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    filled: dict[str, Any] = {}
+    if params["archive"] is not None:
+        filled = {**_staged(layout, params["archive"]), "mode": "upload"}
+    elif params["origin_url"]:
+        filled = {"mode": "download"}
+    elif params["mode"] is None:
+        raise click.UsageError(f"give {ARCHIVE_OPTION} PATH or --origin-url URL")
+    args = spelling.build(params, None, **filled)
+    _run_and_finish(invocation, words, AcquireSourceCommand.model_validate({"args": args}), layout)
+
+
+def _load_bundle(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    if params["archive"] is None and params["upload_token"] is None:
+        raise click.UsageError(f"give {ARCHIVE_OPTION} PATH")
+    filled = _staged(layout, params["archive"]) if params["archive"] is not None else {}
+    args = spelling.build(params, None, **filled)
+    _run_and_finish(invocation, words, LoadReeBundleCommand.model_validate({"args": args}), layout)
+
+
+def _staged(layout: ReeLayout, archive: Path) -> dict[str, str]:
+    """The archive staged in the REE, as the command names it: its upload token and file name."""
+    token = uuid4().hex
+    staged = layout.upload_staging_file(token)
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(archive, staged)
+    return {"upload_token": token, "archive_name": archive.name}
+
+
+def _script_path(word: str) -> str:
+    """A script named by its path in the REE, or by its ``KIND[:EXPERIMENT]``."""
     try:
-        layout = invocation.layout()
-    except NoReeError as exc:
-        _report(invocation, " ".join(verb), ActionResult.failed("precondition", str(exc)))
+        return resolve_target(TARGET.convert(word, None, None)).path
+    except click.BadParameter:
+        return word
+
+
+def _on_script(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    _run_verb(invocation, words, command, spelling, {**params, "path": _script_path(params["path"])})
+
+
+def _define(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    patch = _definition_patch(layout, params)
+    if patch is None:
+        _run_verb(invocation, words, command, spelling, params)
         return
-    if command in (AcquireSourceCommand, LoadReeBundleCommand):
-        words = _staged(layout, command, words)
-    stdin = click.get_binary_stream("stdin").read() if reads_stdin(_args_of(command)) else None
-    try:
-        cmd = from_argv([*verb, *words], stdin)
-    except (ArgvError, ValueError) as exc:
-        raise click.UsageError(str(exc)) from exc
-    if isinstance(cmd, SealReeCommand) and not _sealing_confirmed(invocation, layout):
-        raise click.Abort
-    result = run_session(
-        cmd,
-        layout=layout,
-        emit=invocation.sink(),
-        run_id=invocation.run_id,
-        context=invocation.context,
-        traceparent=os.environ.get("TRACEPARENT"),
+    revision = str(revision_of(ReeDirectory(layout).read_ree()))
+    args = spelling.build(params, json.dumps(patch).encode(), expected_version=revision)
+    _run_and_finish(invocation, words, PatchReeDefinitionCommand.model_validate({"args": args}), layout)
+
+
+_DEFINE_OPTIONS: list[click.Parameter] = [
+    click.Option(["--name"], help="The REE's name."),
+    click.Option(["--version", "catalog_version"], help="The REE's version, as its catalog entry gives it."),
+    click.Option(["--description"], help="What the REE reproduces, in a sentence."),
+    click.Option(["--website"], help="Where the work the REE reproduces is published."),
+    click.Option(["--keyword", "keywords"], multiple=True, help="A keyword of the catalog entry; repeated."),
+    click.Option(["--artifact-path"], help="Where the build leaves the experiment environment, in the workspace."),
+    click.Option(["--launch/--no-launch", "launch"], default=None, help="Run every script through launch.sh, or not."),
+    click.Option(["--experiment"], help="Declare, or redeclare, the experiment NAME, once its run script is written."),
+    click.Option(["--output", "outputs"], multiple=True, help="A path the --experiment produces; repeated."),
+    click.Option(["--remove-experiment"], multiple=True, help="Remove the experiment NAME from the definition."),
+]
+_DEFINE_FIELDS = (
+    "name",
+    "catalog_version",
+    "description",
+    "website",
+    "keywords",
+    "artifact_path",
+    "launch",
+    "experiment",
+    "outputs",
+    "remove_experiment",
+)
+
+
+def _definition_patch(layout: ReeLayout, params: Params) -> dict[str, Any] | None:
+    """The patch the definition options spell, over the definition as it is; None when none is given."""
+    if all(params[name] in (None, ()) for name in _DEFINE_FIELDS):
+        return None
+    if params["outputs"] and not params["experiment"]:
+        raise click.UsageError("--output names a path of the --experiment it follows")
+    current = ReeDirectory(layout).read_ree().subject.definition
+    patch: dict[str, Any] = {}
+    if params["name"] is not None:
+        patch["name"] = params["name"]
+    catalog = {
+        "version": params["catalog_version"],
+        "description": params["description"],
+        "website": params["website"],
+        "keywords": list(params["keywords"]) or None,
+    }
+    if any(value is not None for value in catalog.values()):
+        given = {key: value for key, value in catalog.items() if value is not None}
+        patch["catalog"] = {**current.catalog.model_dump(mode="json"), **given}
+    if params["artifact_path"] is not None:
+        patch["experiment_environment"] = {"artifact_path": params["artifact_path"]}
+    if params["launch"] is not None:
+        patch["launch"] = {} if params["launch"] else None
+    if params["experiment"] or params["remove_experiment"]:
+        removed = {params["experiment"], *params["remove_experiment"]}
+        experiments = [
+            {"name": item.name, "output_paths": [str(path) for path in item.output_paths]}
+            for item in current.experiments
+            if item.name not in removed
+        ]
+        if params["experiment"]:
+            experiments.append({"name": params["experiment"], "output_paths": list(params["outputs"])})
+        patch["experiments"] = experiments
+    return patch
+
+
+def _infer(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    joined = " ".join(words)
+    layout = _layout_or_refuse(invocation, joined)
+    if params["write"] and len(params["targets"]) != 1:
+        raise click.UsageError("--write writes one script: give one --target")
+    if params["rule"] and not params["write"]:
+        raise click.UsageError("--rule picks the proposal --write writes")
+    args = spelling.build(params, None)
+    infer = GenerateScriptCandidatesCommand.model_validate({"args": args})
+    inferred = invocation.run(infer, layout, identity=invocation.identity(1) if params["write"] else None)
+
+    def shown(outputs: dict[str, Any]) -> str:
+        report = InferenceReport.model_validate(outputs)
+        return render.inference(
+            report, {item.target.path: _overlay_text(layout, item.target.path) for item in report.results}
+        )
+
+    if not params["write"] or inferred.status != "succeeded":
+        finish(invocation, joined, inferred, render_with=shown)
+    [result] = InferenceReport.model_validate(inferred.outputs).results
+    proposals = [
+        candidate
+        for candidate in result.candidates
+        if candidate.body is not None and params["rule"] in (None, candidate.inference_rule)
+    ]
+    if not proposals:
+        if not invocation.machine:
+            click.echo(shown(inferred.outputs))
+        rule = f" by rule {params['rule']}" if params["rule"] else ""
+        refuse(invocation, joined, "precondition", f"inference proposes no script for {result.target.path}{rule}")
+    chosen = proposals[0]
+    content = cast(str, chosen.body)
+    write = WriteFileCommand(args=WriteFileArgs(path=chosen.target.path, content=content))
+    written = invocation.run(write, layout, identity=invocation.identity(2))
+    if written.status != "succeeded":
+        finish(invocation, joined, written, ran=True)
+    outputs = ScriptWritten(path=chosen.target.path, rule=chosen.inference_rule, candidate_id=chosen.candidate_id)
+    finish(
+        invocation,
+        joined,
+        written.model_copy(update={"outputs": outputs.model_dump(mode="json")}),
+        render_with=lambda _outputs: f"wrote {outputs.path} as rule {outputs.rule} proposes it",
+        ran=True,
     )
-    _report(invocation, " ".join(verb), result)
+
+
+def _overlay_text(layout: ReeLayout, path: str) -> str | None:
+    file = layout.overlay_file(path)
+    try:
+        return file.read_text(encoding="utf-8") if file.is_file() else None
+    except UnicodeDecodeError:
+        return None
+
+
+def _seal(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    if not _sealing_confirmed(invocation, layout):
+        raise click.Abort
+    _run_verb(invocation, words, command, spelling, params)
 
 
 def _at_terminal() -> bool:
@@ -204,97 +568,447 @@ def _sealing_confirmed(invocation: Invocation, layout: ReeLayout) -> bool:
     return click.confirm("Sealing freezes this REE: it takes no edit after it. Seal it?", err=True)
 
 
-def _report(invocation: Invocation, verb: str, result: ActionResult) -> None:
-    if invocation.machine:
-        # One bare ActionResult line on stdout: what the workbench reads.
-        click.echo(result.model_dump_json())
-    else:
-        if result.outputs:
-            click.echo(json.dumps(result.outputs, indent=2))
-        why = f": {result.failure.message}" if result.failure else ""
-        click.echo(f"{verb} {result.status}{why}", err=True)
-    if result.status == "canceled":
-        sys.exit(CANCELED)
-    if result.status != "succeeded":
-        sys.exit(REFUSED if result.failure and result.failure.category in _REFUSALS else 1)
+def _new_review_id() -> str:
+    return f"review-{uuid4().hex[:12]}"
 
 
-def _staged(layout: ReeLayout, command: type[BaseModel], words: list[str]) -> list[str]:
-    """``--archive PATH`` as the command takes it: the file staged in the REE, named by an upload token."""
-    if ARCHIVE_OPTION not in words:
-        return words
-    at = words.index(ARCHIVE_OPTION)
-    if at + 1 >= len(words):
-        raise click.UsageError(f"{ARCHIVE_OPTION} needs a path")
-    archive = Path(words[at + 1])
-    if not archive.is_file():
-        raise click.UsageError(f"no file {archive}")
-    token = uuid4().hex
-    staged = layout.upload_staging_file(token)
-    staged.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(archive, staged)
-    rest = [*words[:at], *words[at + 2 :], "--upload-token", token, "--archive-name", archive.name]
-    if command is AcquireSourceCommand and "--mode" not in rest:
-        rest += ["--mode", "upload"]
-    return rest
+def _newest_review(invocation: Invocation, words: str, layout: ReeLayout) -> str:
+    reviews = load_reviews(layout).reviews
+    if not reviews:
+        refuse(invocation, words, "precondition", "no review yet: open one with `ree review acquire-source`")
+    return reviews[0].review_id
 
 
-def _args_of(command: type[BaseModel]) -> type[BaseModel]:
-    return command.model_fields["args"].annotation  # type: ignore[return-value]
+def _review_step(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    if params["review_id"] is None:
+        opening = command is ReviewAcquireSourceCommand
+        params = {
+            **params,
+            "review_id": _new_review_id() if opening else _newest_review(invocation, " ".join(words), layout),
+        }
+    _run_verb(invocation, words, command, spelling, params)
 
 
-def _verb(verb: tuple[str, ...], command: type[BaseModel]) -> click.Command:
-    args = _args_of(command)
+_HANDLERS: dict[type[BaseModel], Handler] = {
+    AcquireSourceCommand: _acquire_source,
+    LoadReeBundleCommand: _load_bundle,
+    WriteFileCommand: _on_script,
+    DeleteFileCommand: _on_script,
+    PatchReeDefinitionCommand: _define,
+    GenerateScriptCandidatesCommand: _infer,
+    SealReeCommand: _seal,
+    ReviewAcquireSourceCommand: _review_step,
+    ReviewBuildExperimentEnvironmentCommand: _review_step,
+    ReviewActivationTestCommand: _review_step,
+    ReviewRunExperimentCommand: _review_step,
+}
+_REVIEW_ID = ("review_id",)
+# Required fields the command line fills when they are not given.
+_OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
+    AcquireSourceCommand: ("mode",),
+    LoadReeBundleCommand: ("upload_token", "archive_name"),
+    ReviewAcquireSourceCommand: _REVIEW_ID,
+    ReviewBuildExperimentEnvironmentCommand: _REVIEW_ID,
+    ReviewActivationTestCommand: _REVIEW_ID,
+    ReviewRunExperimentCommand: _REVIEW_ID,
+}
+# Fields a workbench passes and a person does not.
+_STAGED = ("upload_token", "archive_name")
+_HIDDEN: dict[type[BaseModel], tuple[str, ...]] = {AcquireSourceCommand: _STAGED, LoadReeBundleCommand: _STAGED}
+_ARCHIVE = click.Option(
+    [ARCHIVE_OPTION, "archive"],
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
+    help="The archive to take, staged in the REE.",
+)
+_EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
+    AcquireSourceCommand: [_ARCHIVE],
+    LoadReeBundleCommand: [_ARCHIVE],
+    PatchReeDefinitionCommand: _DEFINE_OPTIONS,
+    GenerateScriptCandidatesCommand: [
+        click.Option(["--write"], is_flag=True, help="Write the proposed script, for one --target."),
+        click.Option(["--rule"], default=None, help="With --write, the rule whose proposal to write."),
+    ],
+}
+# What a command's help adds to its summary.
+_MORE: dict[type[BaseModel], str] = {
+    WriteFileCommand: "The script is read on stdin: `ree write build_experiment_environment < build.sh`.",
+    PatchReeDefinitionCommand: (
+        "Give the options for the common fields, or pipe a JSON patch of the definition's top-level fields on stdin."
+    ),
+    GenerateScriptCandidatesCommand: "Shows each proposal against the script as it is written.",
+}
+
+
+def _verb_command(command: type[BaseModel], words: tuple[str, ...]) -> click.Command:
+    spelling = Spelling(_args_of(command), optional=_OPTIONAL.get(command, ()), hidden=_HIDDEN.get(command, ()))
+    handler = _HANDLERS.get(command, _run_verb)
+
+    def callback(**params: Any) -> None:
+        handler(_invocation(), words, command, spelling, params)
+
+    operation = str(command.model_fields["operation"].default)
     summary = SUMMARIES[command]
-    usage = "\n".join(f"  {line}" for line in describe_args(args))
-    if command in (AcquireSourceCommand, LoadReeBundleCommand):
-        usage += f"\n  {ARCHIVE_OPTION} PATH, staged as the upload"
-
-    @click.pass_obj
-    def callback(invocation: Invocation, words: tuple[str, ...]) -> None:
-        _run(invocation, verb, command, list(words))
-
-    return click.Command(
-        verb[-1],
+    return ReeCommand(
+        words[-1],
         callback=callback,
-        params=[click.Argument(["words"], nargs=-1, type=click.UNPROCESSED)],
-        context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False},
-        help=f"{summary}\n\n\b\nArguments:\n{usage}" if usage else summary,
-        add_help_option=True,
+        params=[*_EXTRA.get(command, []), *spelling.params],
+        help=f"{summary}.\n\n{_MORE[command]}" if command in _MORE else summary,
+        short_help=summary,
+        words=words,
+        outputs=ScriptWritten if command is GenerateScriptCandidatesCommand else OUTPUTS[operation],
+        spelling=spelling,
+        runs=True,
     )
 
 
-@cli.group(REVIEW)
-def review() -> None:
-    """Review a sealed REE: reproduce its steps in an attempt of their own and compare them with the author's."""
-
-
 for _command, _words in VERBS.items():
-    (review if _words[0] == REVIEW else cli).add_command(_verb(_words, _command))
+    (review if _words[0] == REVIEW else cli).add_command(_verb_command(_command, _words))
 
 
-@cli.command("cancel")
-@click.argument("run_id")
-@click.pass_obj
-def cancel_cmd(invocation: Invocation, run_id: str) -> None:
-    """Ask the run RUN_ID to stop: it rolls the REE back and is captured as canceled."""
-    request_cancel(_layout(invocation), run_id)
-    click.echo(json.dumps({"status": "cancel_requested", "run_id": run_id}))
+@review.command(
+    "all",
+    cls=ReeCommand,
+    words=(REVIEW, "all"),
+    outputs=ReviewRun,
+    runs=True,
+    params=Spelling(ReviewAcquireSourceArgs, optional=_REVIEW_ID).params,
+)
+def review_all(**params: Any) -> None:
+    """Review every step: the source, the experiment environment, the activation and each experiment.
+
+    Stops at the first step that does not succeed. --basis applies to the source and the build.
+    """
+    invocation = _invocation()
+    words = "review all"
+    layout = _layout_or_refuse(invocation, words)
+    opened = cast(
+        ReviewAcquireSourceArgs,
+        Spelling(ReviewAcquireSourceArgs, optional=_REVIEW_ID).build(params, None, review_id=_new_review_id()),
+    )
+    review_id = opened.review_id
+    experiments = [item.name for item in ReeDirectory(layout).read_ree().subject.definition.experiments]
+    commands: list[tuple[list[str], Command]] = [
+        (["review", "acquire-source"], ReviewAcquireSourceCommand(args=opened)),
+        (
+            ["review", "build-experiment-environment"],
+            ReviewBuildExperimentEnvironmentCommand.model_validate(
+                {"args": {"review_id": review_id, "basis": opened.basis}}
+            ),
+        ),
+        (["review", "test-activation"], ReviewActivationTestCommand.model_validate({"args": {"review_id": review_id}})),
+        *(
+            (
+                ["review", "experiment", name],
+                ReviewRunExperimentCommand.model_validate({"args": {"review_id": review_id, "experiment_name": name}}),
+            )
+            for name in experiments
+        ),
+    ]
+    steps: list[StepRun] = []
+    last = ActionResult(status="succeeded")
+    for number, (step_words, cmd) in enumerate(commands, start=1):
+        if not invocation.machine:
+            click.echo(click.style(f"ree {' '.join(step_words)}", bold=True), err=True)
+        identity = invocation.identity(number)
+        last = invocation.run(cmd, layout, identity=identity)
+        run_id = identity[1]
+        steps.append(StepRun(words=step_words, run_id=run_id, status=last.status))
+        if last.status != "succeeded":
+            break
+    record = next((item for item in load_reviews(layout).reviews if item.review_id == review_id), None)
+    outputs = ReviewRun(review_id=review_id, steps=steps, review=record)
+    finish(
+        invocation,
+        words,
+        last.model_copy(update={"outputs": outputs.model_dump(mode="json")}),
+        render_with=lambda _outputs: render.review(record) if record else review_id,
+        ran=True,
+    )
 
 
-@cli.command("settle")
+# ================================================
+# Reads, and init
+# ================================================
+
+
+def _read_command(
+    model: type[BaseModel],
+    answer_read: Callable[[Invocation, BaseModel], None],
+    *,
+    hidden: bool = False,
+    optional: tuple[str, ...] = (),
+) -> click.Command:
+    spelling = Spelling(model, optional=optional)
+
+    def callback(**params: Any) -> None:
+        invocation = _invocation()
+        stdin = read_stdin(model)
+        answer_read(invocation, spelling.build(params, stdin, **_filled(model, invocation)))
+
+    summary = (model.__doc__ or "").strip()
+    return ReeCommand(
+        verb_of(model),
+        callback=callback,
+        params=spelling.params,
+        help=summary,
+        short_help=summary.split("\n")[0],
+        hidden=hidden,
+        words=(verb_of(model),),
+        outputs=REPLIES.get(model, Initialized if model is InitRee else None),
+        spelling=spelling,
+        stdout="bytes" if model in (CatQuery, BundleQuery) else "result",
+    )
+
+
+def _filled(model: type[BaseModel], invocation: Invocation) -> dict[str, Any]:
+    if model is InitRee:
+        return {"name": (invocation.ree or Path.cwd()).name}
+    return {}
+
+
+def _init(invocation: Invocation, read: BaseModel) -> None:
+    root = invocation.ree or Path.cwd()
+    try:
+        result = initialize_ree(ReeLayout(root=root), name=cast(InitRee, read).name)
+    except HistoryCaptureError as exc:
+        refuse(invocation, "init", "precondition", str(exc))
+    initialized = Initialized(root=str(root), state=result.status, snapshot_id=result.snapshot_id)
+    answer(
+        invocation,
+        "init",
+        initialized,
+        render_with=lambda _outputs: f"{result.status.replace('_', ' ')} {root}\nnext: ree status",
+    )
+
+
+def _reading(
+    words: str,
+    read: Callable[[ReeLayout, BaseModel], BaseModel | dict[str, Any]],
+    render_with: Callable[[dict[str, Any]], str] | None = None,
+) -> Callable[[Invocation, BaseModel], None]:
+    """Answer a read of the REE with what ``read`` finds, rendered for a person by ``render_with``."""
+
+    def answer_read(invocation: Invocation, query: BaseModel) -> None:
+        layout = _layout_or_refuse(invocation, words)
+        try:
+            found = read(layout, query)
+        except FileNotFoundError as exc:
+            refuse(invocation, words, "precondition", str(exc))
+        answer(invocation, words, found, render_with=render_with)
+
+    return answer_read
+
+
+def _bytes(words: str, write: Callable[[ReeLayout, BaseModel], None]) -> Callable[[Invocation, BaseModel], None]:
+    """Answer a read whose answer is bytes on stdout; a refusal is a result, as any other."""
+
+    def answer_read(invocation: Invocation, query: BaseModel) -> None:
+        layout = _layout_or_refuse(invocation, words)
+        try:
+            write(layout, query)
+        except FileNotFoundError as exc:
+            refuse(invocation, words, "validation", f"not found: {exc}")
+        except (ValueError, RuntimeError) as exc:
+            refuse(invocation, words, "validation", str(exc))
+
+    return answer_read
+
+
+def _write_bundle(layout: ReeLayout, _query: BaseModel) -> None:
+    with materialized_ree_download(layout) as path, path.open("rb") as archive:
+        shutil.copyfileobj(archive, sys.stdout.buffer, length=1024 * 1024)
+
+
+def _write_file(layout: ReeLayout, query: BaseModel) -> None:
+    path = cast(CatQuery, query).path
+    try:
+        data = read_ree_file_bytes(layout, path)
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(path) from exc
+    sys.stdout.buffer.write(data)
+
+
+def _lint_draft(invocation: Invocation, read: BaseModel) -> None:
+    query = cast(LintDraftQuery, read)
+    report = lint_script(
+        resolve_target(query.target), query.source, declarations=query.declarations, tiers=CONTRACT_ONLY
+    )
+    answer(invocation, "lint-draft", report)
+
+
+def _templates(invocation: Invocation, _read: BaseModel) -> None:
+    catalog = script_template_catalog()
+    answer(
+        invocation,
+        "templates",
+        catalog,
+        render_with=lambda outputs: render.templates(type(catalog).model_validate(outputs)),
+    )
+
+
+_READS: list[click.Command] = [
+    _read_command(InitRee, _init, optional=("name",)),
+    _read_command(
+        ShowQuery,
+        _reading(
+            "show",
+            lambda layout, query: get_ree_document(layout, include_content=not cast(ShowQuery, query).summary),
+            lambda outputs: render.document(WorkbenchReeDocument.model_validate(outputs)),
+        ),
+    ),
+    _read_command(
+        ReviewsQuery,
+        _reading(
+            "reviews",
+            lambda layout, _query: load_reviews(layout),
+            lambda outputs: render.reviews(ReviewSet.model_validate(outputs)),
+        ),
+    ),
+    _read_command(
+        LogQuery,
+        _reading(
+            "log",
+            lambda layout, _query: read_operation_history(layout),
+            lambda outputs: render.history(OperationHistory.model_validate(outputs)),
+        ),
+    ),
+    _read_command(
+        ManifestQuery,
+        _reading("manifest", lambda layout, _query: ReeDirectory(layout).read_manifest_json()),
+        hidden=True,
+    ),
+    _read_command(CatQuery, _bytes("cat", _write_file)),
+    _read_command(BundleQuery, _bytes("bundle", _write_bundle)),
+    _read_command(TemplatesQuery, _templates),
+    _read_command(LintDraftQuery, _lint_draft, hidden=True),
+]
+for _read in _READS:
+    cli.add_command(_read)
+
+
+# ================================================
+# Authoring
+# ================================================
+
+
+@cli.command("status", cls=ReeCommand, words=("status",), outputs=ReeStatusReport)
+def status_cmd() -> None:
+    """Show where the REE stands: each step, its evidence, and what to run next."""
+    invocation = _invocation()
+    layout = _layout_or_refuse(invocation, "status")
+    report = get_ree_status(layout)
+    answer(
+        invocation, "status", report, render_with=lambda outputs: render.status(type(report).model_validate(outputs))
+    )
+
+
+@cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True)
+@click.argument("script", type=TARGET)
+def edit_cmd(script: ScriptTargetSelectorArg) -> None:
+    """Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.
+
+    A script not written yet starts from its default template. The edit is written only if the script did not change
+    meanwhile.
+    """
+    invocation = _invocation()
+    layout = _layout_or_refuse(invocation, "edit")
+    if invocation.machine or not _at_terminal():
+        refuse(invocation, "edit", "validation", "edit needs a terminal: write a script with `ree write`")
+    store = ReeDirectory(layout)
+    if store.read_ree().seal is not None:
+        refuse(invocation, "edit", "precondition", "a sealed REE takes no edits")
+    path = resolve_target(script).path
+    before = _overlay_text(layout, path)
+    edited = click.edit(before if before is not None else _template(script.kind), extension=".sh", require_save=True)
+    if edited is None or edited == before:
+        answer(
+            invocation, "edit", ScriptEdited(path=path, changed=False), render_with=lambda _outputs: f"{path} unchanged"
+        )
+    etag = workspace_content_etag(store, path) or ""
+    write = WriteFileCommand(args=WriteFileArgs(path=path, content=edited, expected_etag=etag))
+    written = invocation.run(write, layout)
+    outputs = ScriptEdited(path=path, changed=True).model_dump(mode="json")
+    finish(
+        invocation,
+        "edit",
+        written.model_copy(update={"outputs": outputs}) if written.status == "succeeded" else written,
+        render_with=lambda _outputs: f"wrote {path}",
+        ran=True,
+    )
+
+
+def _template(kind: TargetKind) -> str:
+    catalog = script_template_catalog()
+    entries = {
+        "build_experiment_environment": catalog.build_experiment_environment.templates,
+        "activate_experiment_environment": catalog.activate_experiment_environment.templates,
+        "launch": catalog.launch.templates,
+        "check_working_environment": catalog.check_working_environment.templates,
+        "experiment_run": catalog.experiment.templates,
+        "experiment_verify": catalog.verify,
+    }[kind]
+    return next((entry.body for entry in entries if entry.is_default), entries[0].body if entries else "")
+
+
+# ================================================
+# Runs
+# ================================================
+
+
+@cli.command("wait", cls=ReeCommand, words=("wait",), outputs=Waited)
+@click.option("--timeout", type=float, default=None, help="Give up after this many seconds.")
+def wait_cmd(timeout: float | None) -> None:
+    """Wait until no command runs in the REE."""
+    invocation = _invocation()
+    layout = _layout_or_refuse(invocation, "wait")
+    try:
+        held_by = wait_until_free(layout, timeout=timeout)
+    except TimeoutError as exc:
+        refuse(invocation, "wait", "timeout", str(exc))
+    answer(
+        invocation,
+        "wait",
+        Waited(held_by=held_by),
+        render_with=lambda _outputs: f"run {held_by} ended" if held_by else "no command was running",
+    )
+
+
+@cli.command("cancel", cls=ReeCommand, words=("cancel",), outputs=CancelRequested)
+@click.argument("run_id", required=False)
+def cancel_cmd(run_id: str | None) -> None:
+    """Ask the run RUN_ID, by default the one running, to stop: it rolls the REE back and is captured as canceled."""
+    invocation = _invocation()
+    layout = _layout_or_refuse(invocation, "cancel")
+    run_id = run_id or running_run(layout)
+    if run_id is None:
+        refuse(invocation, "cancel", "precondition", "no command is running in this REE")
+    request_cancel(layout, run_id)
+    answer(
+        invocation, "cancel", CancelRequested(run_id=run_id), render_with=lambda _outputs: f"asked run {run_id} to stop"
+    )
+
+
+@cli.command("settle", hidden=True)
 @click.argument("attempt_id")
 @click.option("--command", "command_file", type=Path, default=None, help="The command it was started with, as JSON.")
-@click.pass_obj
-def settle_cmd(invocation: Invocation, attempt_id: str, command_file: Path | None) -> None:
+def settle_cmd(attempt_id: str, command_file: Path | None) -> None:
     """Settle ATTEMPT_ID, whose process ended without reporting, and print how it ended.
 
     With its command, an attempt never recorded is recorded as having begun nothing. Prints nothing when the REE
     holds no such attempt and no command is given.
     """
+    invocation = _invocation()
+    try:
+        layout = invocation.layout()
+    except NoReeError as exc:
+        click.echo(str(exc), err=True)
+        sys.exit(FAILED)
     cmd = command_adapter.validate_json(command_file.read_text(encoding="utf-8")) if command_file else None
     result = settle_interrupted(
-        layout=_layout(invocation),
+        layout=layout,
         attempt_id=attempt_id,
         log=invocation.sink(),
         cmd=cmd,
@@ -306,176 +1020,75 @@ def settle_cmd(invocation: Invocation, attempt_id: str, command_file: Path | Non
 
 
 # ================================================
-# Reading an REE
+# This machine, and ree itself
 # ================================================
 
 
-def _fail(message: str) -> NoReturn:
-    click.echo(json.dumps({"error": message}), err=True)
-    sys.exit(1)
-
-
-def _layout(invocation: Invocation) -> ReeLayout:
-    """The REE a read is of; none there fails the read."""
-    try:
-        return invocation.layout()
-    except NoReeError as exc:
-        _fail(str(exc))
-
-
-def _init(invocation: Invocation, read: InitRee) -> None:
-    layout = ReeLayout(root=invocation.ree or Path.cwd())
-    try:
-        result = initialize_ree(layout, name=read.name)
-    except HistoryCaptureError as exc:
-        _fail(str(exc))
-    click.echo(json.dumps({"status": result.status, "snapshot_id": result.snapshot_id}))
-
-
-def _manifest(invocation: Invocation, _read: ManifestQuery) -> None:
-    store = ReeDirectory(_layout(invocation))
-    click.echo(json.dumps(store.read_manifest_json()))
-
-
-def _show(invocation: Invocation, read: ShowQuery) -> None:
-    try:
-        result = get_ree_document(_layout(invocation), include_content=not read.summary)
-    except FileNotFoundError as exc:
-        _fail(str(exc))
-    click.echo(result.model_dump_json())
-
-
-def _reviews(invocation: Invocation, _read: ReviewsQuery) -> None:
-    click.echo(load_reviews(_layout(invocation)).model_dump_json())
-
-
-def _log(invocation: Invocation, _read: LogQuery) -> None:
-    click.echo(read_operation_history(_layout(invocation)).model_dump_json())
-
-
-def _bundle(invocation: Invocation, _read: BundleQuery) -> None:
-    try:
-        with materialized_ree_download(_layout(invocation)) as path, path.open("rb") as archive:
-            shutil.copyfileobj(archive, sys.stdout.buffer, length=1024 * 1024)
-    except (FileNotFoundError, RuntimeError) as exc:
-        _fail(str(exc))
-
-
-def _cat(invocation: Invocation, read: CatQuery) -> None:
-    try:
-        data = read_ree_file_bytes(_layout(invocation), read.path)
-    except FileNotFoundError:
-        _fail(f"not found: {read.path}")
-    except ValueError as exc:
-        _fail(str(exc))
-    sys.stdout.buffer.write(data)
-
-
-def _templates(_invocation: Invocation, _read: TemplatesQuery) -> None:
-    click.echo(script_template_catalog().model_dump_json())
-
-
-def _lint_draft(_invocation: Invocation, read: LintDraftQuery) -> None:
-    report = lint_script(resolve_target(read.target), read.source, declarations=read.declarations, tiers=CONTRACT_ONLY)
-    click.echo(report.model_dump_json())
-
-
-_ANSWERS: dict[type[BaseModel], Callable[[Invocation, Any], None]] = {
-    InitRee: _init,
-    ManifestQuery: _manifest,
-    ShowQuery: _show,
-    ReviewsQuery: _reviews,
-    LogQuery: _log,
-    BundleQuery: _bundle,
-    CatQuery: _cat,
-    TemplatesQuery: _templates,
-    LintDraftQuery: _lint_draft,
-}
-
-
-def _read(model: type[BaseModel]) -> click.Command:
-    """The command that answers a read (or runs ``init``), parsed by the model a workbench is sent."""
-    verb = verb_of(model)
-    usage = "\n".join(f"  {line}" for line in describe_args(model))
-    summary = (model.__doc__ or "").strip()
-
-    @click.pass_obj
-    def callback(invocation: Invocation, words: tuple[str, ...]) -> None:
-        stdin = click.get_binary_stream("stdin").read() if reads_stdin(model) else None
-        try:
-            read = query_from_argv([verb, *words], stdin)
-        except (ArgvError, ValueError) as exc:
-            raise click.UsageError(str(exc)) from exc
-        _ANSWERS[model](invocation, read)
-
-    return click.Command(
-        verb,
-        callback=callback,
-        params=[click.Argument(["words"], nargs=-1, type=click.UNPROCESSED)],
-        context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False},
-        help=f"{summary}\n\n\b\nArguments:\n{usage}" if usage else summary,
-        add_help_option=True,
-    )
-
-
-for _model in _ANSWERS:
-    cli.add_command(_read(_model))
-
-
-# ================================================
-# Authoring
-# ================================================
-
-
-_MARKS = {"complete": "✓", "ready": "·", "blocked": "✗"}
-
-
-@cli.command("steps")
-@click.pass_obj
-def steps_cmd(invocation: Invocation) -> None:
-    """Show where the REE stands on each authoring step, and what to do next."""
-    try:
-        steps = get_ree_steps(_layout(invocation))
-    except FileNotFoundError as exc:
-        _fail(str(exc))
-    click.echo(steps.model_dump_json() if invocation.machine else _describe_steps(steps))
-
-
-def _describe_steps(steps: ReeSteps) -> str:
-    labels = {step.key: step.label for step in steps.steps}
-    done = {step.key for step in steps.steps if step.status == "complete"}
-    lines = []
-    for step in steps.steps:
-        mark = "→" if step.key == steps.next else _MARKS[step.status]
-        line = f"{mark} {step.order:>2} {step.label}"
-        if step.status == "blocked":
-            line += f"  (needs {', '.join(labels[key] for key in step.requires if key not in done)})"
-        lines.append(line)
-    following = next((step for step in steps.steps if step.key == steps.next), None)
-    if following is not None:
-        lines += ["", f"next: {following.label}, with " + " or ".join(f"ree {words}" for words in following.commands)]
-    elif len(done) == len(steps.steps):
-        lines += ["", "every step is complete"]
-    return "\n".join(lines)
-
-
-@cli.command("build-info")
+@cli.command("build-info", hidden=True)
 def build_info_cmd() -> None:
     """Print this command line's build identity."""
-    click.echo(current_build("repo2ree-cli").model_dump_json())
+    answer(_invocation(), "build-info", current_build("repo2ree-cli"))
 
 
-@cli.command("machine")
+@cli.command("machine", cls=ReeCommand, words=("machine",), outputs=MachineFacts)
 def machine_cmd() -> None:
     """Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container."""
-    click.echo(machine_facts().model_dump_json())
+    answer(_invocation(), "machine", machine_facts())
 
 
 @cli.command("doctor")
-@click.pass_obj
-def doctor_cmd(invocation: Invocation) -> None:
+def doctor_cmd() -> None:
     """Report what this machine offers an REE: a writable REE directory, the container engine, the tools.
 
     ``ok`` covers only what is required; the rest is for whoever runs the REE to judge.
     """
-    click.echo(json.dumps(run_doctor(invocation.ree or nearest_ree(Path.cwd()) or Path.cwd())))
+    invocation = _invocation()
+    answer(invocation, "doctor", run_doctor(invocation.ree or nearest_ree(Path.cwd()) or Path.cwd()))
+
+
+@cli.command("schema", cls=ReeCommand, words=("schema",), stdout="schema")
+@click.argument("words", nargs=-1)
+def schema_cmd(words: tuple[str, ...]) -> None:
+    """Describe every command, or the one WORDS names, as data: its arguments, its stdin and its outputs.
+
+    What an agent reads to learn ree; the exit statuses and failure categories come with it.
+    """
+    invocation = _invocation()
+    try:
+        described = describe(cli, words, EXIT_CODES)
+    except LookupError as exc:
+        refuse(invocation, "schema", "validation", str(exc))
+    click.echo(json.dumps(described, indent=None if invocation.machine else 2))
+
+
+@cli.command("completion", cls=ReeCommand, words=("completion",), stdout="script")
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+def completion_cmd(shell: str) -> None:
+    """Print the completion script for SHELL: `eval "$(ree completion bash)"`."""
+    completion = get_completion_class(shell)
+    if completion is None:
+        raise click.UsageError(f"no completion for {shell}")
+    click.echo(completion(cli, {}, "ree", "_REE_COMPLETE").source())
+
+
+def read_back(argv: list[str], stdin: bytes | None = None) -> BaseModel:
+    """The command or read an argv after ``ree`` spells, as ``ree`` parses it: the inverse of ``to_argv``."""
+    context = click.Context(cli)
+    command: click.Command = cli
+    rest = list(argv)
+    name = "ree"
+    while isinstance(command, click.Group):
+        found, sub, rest = command.resolve_command(context, rest)
+        if sub is None or found is None:
+            raise click.UsageError(f"no command {argv!r}")
+        name, command = found, sub
+    spelling = cast(ReeCommand, command).spelling
+    if spelling is None:
+        raise click.UsageError(f"{name} spells no command")
+    args = spelling.build(command.make_context(name, rest, parent=context).params, stdin)
+    words = cast(ReeCommand, command).words
+    verb = next((command_type for command_type, spelled in VERBS.items() if spelled == words), None)
+    return args if verb is None else verb.model_validate({"args": args})
+
+
+__all__ = ["cli", "main", "nearest_ree", "read_back"]

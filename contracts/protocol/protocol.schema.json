@@ -343,6 +343,7 @@
       "description": "Acquire a REE source from an origin or a staged upload.\n\nAn REE holds at most one source, and acquisition is only legal into an\nempty slot. There is no replace: a source already there is the author's,\nand giving it up is a separate act they perform with ``remove_source``.\nAcquiring into an occupied slot is a precondition failure, never a reset —\na reset here would erase every condition the acquisition could refuse on,\nwhich is exactly how a sealed REE used to get silently unsealed.",
       "properties": {
         "mode": {
+          "description": "download fetches --origin-url; upload takes an archive staged in the REE.",
           "enum": [
             "download",
             "upload"
@@ -352,6 +353,7 @@
         },
         "origin_url": {
           "default": "",
+          "description": "Where to download the source from.",
           "title": "Origin Url",
           "type": "string"
         },
@@ -370,20 +372,24 @@
             }
           ],
           "default": null,
+          "description": "What the origin serves; by default read off the URL.",
           "title": "Source Type"
         },
         "revision": {
           "default": "",
+          "description": "The git commit, branch or tag; by default the origin's HEAD.",
           "title": "Revision",
           "type": "string"
         },
         "upload_token": {
           "default": "",
+          "description": "The staged archive's token.",
           "title": "Upload Token",
           "type": "string"
         },
         "archive_name": {
           "default": "",
+          "description": "The staged archive's file name.",
           "title": "Archive Name",
           "type": "string"
         }
@@ -1647,6 +1653,7 @@
           "type": "string"
         },
         "path": {
+          "description": "The file's path in the REE.",
           "title": "Path",
           "type": "string"
         }
@@ -2448,11 +2455,13 @@
       "description": "Remove <path> from /ree/overlay/ and restore from upstream or remove from workspace.",
       "properties": {
         "path": {
+          "description": "The script's path in the REE, or its KIND[:EXPERIMENT].",
           "title": "Path",
           "type": "string"
         },
         "expected_etag": {
           "default": "",
+          "description": "Delete only if the script is still this digest (sha256:...), as `ree status` reports it.",
           "title": "Expected Etag",
           "type": "string"
         }
@@ -2748,6 +2757,7 @@
       "properties": {
         "strict": {
           "default": false,
+          "description": "Count an unpinned dependency as a failure.",
           "title": "Strict",
           "type": "boolean"
         }
@@ -4385,6 +4395,7 @@
       "description": "Read-only inference of author-facing shell scripts.\n\nSynchronous and always recomputed from the current upstream tree, intent,\npolicy, and DAG version; it persists nothing and never writes. Writing a\nchosen candidate stays on the existing ``write_file`` path.",
       "properties": {
         "targets": {
+          "description": "The scripts to propose, each KIND[:EXPERIMENT].",
           "items": {
             "$ref": "#/$defs/ScriptTargetSelectorArg"
           },
@@ -4948,6 +4959,7 @@
           "type": "string"
         },
         "name": {
+          "description": "The REE's name.",
           "title": "Name",
           "type": "string"
         }
@@ -5097,6 +5109,7 @@
           "type": "string"
         },
         "kind": {
+          "description": "The script's kind.",
           "enum": [
             "build_experiment_environment",
             "activate_experiment_environment",
@@ -5118,6 +5131,7 @@
             }
           ],
           "default": null,
+          "description": "The experiment the script is for.",
           "title": "Experiment Name"
         },
         "experiment_environment_path": {
@@ -5130,9 +5144,11 @@
             }
           ],
           "default": null,
+          "description": "The experiment environment's path the script is checked against.",
           "title": "Experiment Environment Path"
         },
         "source": {
+          "description": "The draft script.",
           "title": "Source",
           "type": "string"
         }
@@ -5190,6 +5206,7 @@
       "description": "Targets for read-only checks of persisted REE scripts.",
       "properties": {
         "targets": {
+          "description": "The scripts to check, each KIND[:EXPERIMENT].",
           "items": {
             "$ref": "#/$defs/ScriptTargetSelectorArg"
           },
@@ -5266,10 +5283,12 @@
       "description": "Restore an uploaded REE bundle from /ree/upload-staging/<upload_token>.bin.\n\nThe bundle is a previously downloaded REE ZIP (sealed or draft). Loading it\nreplaces the whole REE — intent, session, snapshot, overlay, artifacts,\nresults, and author receipts — with what the bundle recorded.",
       "properties": {
         "upload_token": {
+          "description": "The staged bundle's token.",
           "title": "Upload Token",
           "type": "string"
         },
         "archive_name": {
+          "description": "The staged bundle's file name.",
           "title": "Archive Name",
           "type": "string"
         }
@@ -5940,11 +5959,13 @@
       "properties": {
         "patch": {
           "additionalProperties": true,
+          "description": "The definition's top-level fields to replace, as JSON.",
           "title": "Patch",
           "type": "object"
         },
         "expected_version": {
           "default": "",
+          "description": "Change only if the REE is still at this revision, as `ree status` reports it.",
           "title": "Expected Version",
           "type": "string"
         }
@@ -6757,11 +6778,13 @@
       "description": "Acquire the author-pinned source into one isolated review attempt.",
       "properties": {
         "review_id": {
+          "description": "The review, an attempt of its own beside the REE.",
           "title": "Review Id",
           "type": "string"
         },
         "basis": {
           "default": "auto",
+          "description": "independent fetches the recorded origin; bundled extracts the REE's own snapshot; auto takes independent where the REE allows it.",
           "enum": [
             "auto",
             "independent",
@@ -6771,7 +6794,8 @@
           "type": "string"
         },
         "launch": {
-          "$ref": "#/$defs/ReviewLaunch"
+          "$ref": "#/$defs/ReviewLaunch",
+          "description": "How every script of the review is launched: the author's launch with the reviewer's options, or natively."
         }
       },
       "required": [
@@ -7061,6 +7085,7 @@
       "description": "Probe the experiment environment an attempt certified, inside that attempt's workspace.\n\nNo ``basis``: activation runs *in* the workspace the build step left behind\nand cannot tell how the experiment environment got there — deliberately, so the author's\nscripts run unchanged on either basis. What the resulting pass is worth is\ntherefore not this step's to choose; it is inherited from the bases the\nsource and build steps already settled (see ``reviews.attempt_basis``).",
       "properties": {
         "review_id": {
+          "description": "The review, an attempt of its own beside the REE.",
           "title": "Review Id",
           "type": "string"
         }
@@ -7117,16 +7142,19 @@
       "description": "Rebuild the experiment environment inside an existing review attempt and certify it.\n\nJoins an attempt the source step already created rather than opening a new\none: the build is reproduced from *that* attempt's independently acquired\nsource, and its verdict is only meaningful next to that source verdict.",
       "properties": {
         "review_id": {
+          "description": "The review, an attempt of its own beside the REE.",
           "title": "Review Id",
           "type": "string"
         },
         "prune_workspace": {
           "default": false,
+          "description": "Reclaim the review's workspace after the build; the review then ends there.",
           "title": "Prune Workspace",
           "type": "boolean"
         },
         "basis": {
           "default": "auto",
+          "description": "independent runs the author's build over the review's source; bundled certifies the experiment environment the REE ships; auto takes independent where it can.",
           "enum": [
             "auto",
             "independent",
@@ -7668,10 +7696,12 @@
       "description": "Reproduce one named experiment inside an attempt whose experiment environment came up.\n\nOne experiment per command, mirroring the author's ``run_experiment``: each\nreproduction gets its own run, its own log, and its own receipt, and a\nreviewer who cares about one experiment should not have to sit through the\nothers. Running them all is the caller issuing this command in sequence.\n\nNo ``basis``, for the same reason activation takes none: the experiment runs\nin the workspace the build left behind and inherits what that evidence is\nworth.",
       "properties": {
         "review_id": {
+          "description": "The review, an attempt of its own beside the REE.",
           "title": "Review Id",
           "type": "string"
         },
         "experiment_name": {
+          "description": "The experiment to reproduce.",
           "title": "Experiment Name",
           "type": "string"
         }
@@ -7814,6 +7844,7 @@
       "additionalProperties": false,
       "properties": {
         "experiment_name": {
+          "description": "The experiment, as the definition names it.",
           "title": "Experiment Name",
           "type": "string"
         }
@@ -8468,16 +8499,19 @@
       "properties": {
         "source_included": {
           "default": true,
+          "description": "Carry the source snapshot.",
           "title": "Source Included",
           "type": "boolean"
         },
         "experiment_environment_included": {
           "default": true,
+          "description": "Carry the experiment environment.",
           "title": "Experiment Environment Included",
           "type": "boolean"
         },
         "results_included": {
           "default": true,
+          "description": "Carry the experiments' results.",
           "title": "Results Included",
           "type": "boolean"
         }
@@ -8554,6 +8588,7 @@
         },
         "summary": {
           "default": false,
+          "description": "Leave out the files' contents.",
           "title": "Summary",
           "type": "boolean"
         }
@@ -9760,15 +9795,18 @@
       "description": "Write content into /ree/overlay/<path> and mirror to /ree/workspace/<path>.",
       "properties": {
         "path": {
+          "description": "The script's path in the REE, or its KIND[:EXPERIMENT].",
           "title": "Path",
           "type": "string"
         },
         "content": {
+          "description": "The script.",
           "title": "Content",
           "type": "string"
         },
         "expected_etag": {
           "default": "",
+          "description": "Write only if the script is still this digest (sha256:...), as `ree status` reports it.",
           "title": "Expected Etag",
           "type": "string"
         }

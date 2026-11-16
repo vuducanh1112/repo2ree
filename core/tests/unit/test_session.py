@@ -9,9 +9,10 @@ import pytest
 
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
-from repo2ree_core.operations.session import RUN_LOCK, request_cancel, run_session
+from repo2ree_core.operations.session import request_cancel, run_session
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
+from repo2ree_core.persistence.run_lock import RUN_LOCK
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
 
 

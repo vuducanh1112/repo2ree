@@ -37,12 +37,19 @@ class ReviewAcquireSourceArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: Annotated[str, POSITIONAL]
+    review_id: Annotated[str, Field(description="The review, an attempt of its own beside the REE.")]
     # ``independent`` fetches the recorded origin; ``bundled`` extracts the REE's
     # own snapshot.tar.gz, which is what makes a bundle-only REE reviewable.
-    basis: ReviewBasis = "auto"
-    # How every script of the attempt is launched: the author's launch, with the reviewer's options, or directly.
-    launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
+    basis: ReviewBasis = Field(
+        default="auto",
+        description="independent fetches the recorded origin; bundled extracts the REE's own snapshot; "
+        "auto takes independent where the REE allows it.",
+    )
+    launch: ReviewLaunch = Field(
+        default_factory=ReviewLaunch,
+        description="How every script of the review is launched: the author's launch with the reviewer's options, "
+        "or natively.",
+    )
 
 
 class ReviewAcquireSourceCommand(BaseModel):
@@ -62,18 +69,24 @@ class ReviewBuildExperimentEnvironmentArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: Annotated[str, POSITIONAL]
+    review_id: Annotated[str, Field(description="The review, an attempt of its own beside the REE.")]
     # Activation and the experiments run *in* the workspace this step leaves
     # behind, and on an ``independent`` basis the experiment environment exists nowhere else —
     # so reclaiming it here would end the attempt at the build. Off by default
     # for that reason; a reviewer who wants only a build verdict passes true and
     # keeps the evidence it rests on (receipts, the reviewer's SBOM, the
     # comparison), which is kept regardless.
-    prune_workspace: bool = False
+    prune_workspace: bool = Field(
+        default=False, description="Reclaim the review's workspace after the build; the review then ends there."
+    )
     # ``independent`` runs the author's build script over the reviewer's own
     # source; ``bundled`` certifies the experiment environment artifact the REE already ships
     # instead of building one, for baselines whose build cannot run here.
-    basis: ReviewBasis = "auto"
+    basis: ReviewBasis = Field(
+        default="auto",
+        description="independent runs the author's build over the review's source; bundled certifies the "
+        "experiment environment the REE ships; auto takes independent where it can.",
+    )
 
 
 class ReviewBuildExperimentEnvironmentCommand(BaseModel):
@@ -95,7 +108,7 @@ class ReviewActivationTestArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: Annotated[str, POSITIONAL]
+    review_id: Annotated[str, Field(description="The review, an attempt of its own beside the REE.")]
 
 
 class ReviewActivationTestCommand(BaseModel):
@@ -120,8 +133,8 @@ class ReviewRunExperimentArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    review_id: Annotated[str, POSITIONAL]
-    experiment_name: Annotated[str, POSITIONAL]
+    review_id: Annotated[str, Field(description="The review, an attempt of its own beside the REE.")]
+    experiment_name: Annotated[str, POSITIONAL, Field(description="The experiment to reproduce.")]
 
 
 class ReviewRunExperimentCommand(BaseModel):
@@ -157,15 +170,17 @@ class AcquireSourceArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    mode: Literal["download", "upload"]
-    origin_url: str = ""
-    source_type: Literal["git", "tarball", "zip"] | None = None
-    # The git ref to fetch: a user-supplied commit, branch, or tag. Empty means
-    # the origin's default branch HEAD. The concrete commit it resolves to is
-    # observed off the acquired tree and recorded on the source receipt.
-    revision: str = ""
-    upload_token: str = ""
-    archive_name: str = ""
+    mode: Literal["download", "upload"] = Field(
+        description="download fetches --origin-url; upload takes an archive staged in the REE."
+    )
+    origin_url: str = Field(default="", description="Where to download the source from.")
+    source_type: Literal["git", "tarball", "zip"] | None = Field(
+        default=None, description="What the origin serves; by default read off the URL."
+    )
+    # The concrete commit it resolves to is observed off the acquired tree and recorded on the source receipt.
+    revision: str = Field(default="", description="The git commit, branch or tag; by default the origin's HEAD.")
+    upload_token: str = Field(default="", description="The staged archive's token.")
+    archive_name: str = Field(default="", description="The staged archive's file name.")
 
 
 class AcquireSourceCommand(BaseModel):
@@ -185,8 +200,8 @@ class LoadReeBundleArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    upload_token: str
-    archive_name: str
+    upload_token: str = Field(description="The staged bundle's token.")
+    archive_name: str = Field(description="The staged bundle's file name.")
 
 
 class LoadReeBundleCommand(BaseModel):
@@ -201,13 +216,14 @@ class WriteFileArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    path: Annotated[str, POSITIONAL]
-    content: Annotated[str, STDIN]
-    # Optimistic-concurrency guard: "sha256:<hex>" of the workspace file the
-    # caller last read. The handler verifies it against the current bytes right
-    # before writing — inside the per-REE dispatch serialization — so the
-    # compare-and-write is atomic. Empty/omitted skips the check.
-    expected_etag: str = ""
+    path: Annotated[str, POSITIONAL, Field(description="The script's path in the REE, or its KIND[:EXPERIMENT].")]
+    content: Annotated[str, STDIN, Field(description="The script.")]
+    # The handler verifies it against the current bytes right before writing, under the REE's lock, so the
+    # compare-and-write is atomic.
+    expected_etag: str = Field(
+        default="",
+        description="Write only if the script is still this digest (sha256:...), as `ree status` reports it.",
+    )
 
 
 class WriteFileCommand(BaseModel):
@@ -222,9 +238,11 @@ class DeleteFileArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    path: Annotated[str, POSITIONAL]
-    # Same optimistic-concurrency guard as WriteFileArgs.expected_etag.
-    expected_etag: str = ""
+    path: Annotated[str, POSITIONAL, Field(description="The script's path in the REE, or its KIND[:EXPERIMENT].")]
+    expected_etag: str = Field(
+        default="",
+        description="Delete only if the script is still this digest (sha256:...), as `ree status` reports it.",
+    )
 
 
 class DeleteFileCommand(BaseModel):
@@ -239,10 +257,11 @@ class PatchReeDefinitionArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    patch: Annotated[dict[str, Any], STDIN]
-    # Checked in the execution plane immediately before the mutation. Keeping
-    # this in the command makes compare-and-write atomic under per-REE dispatch.
-    expected_version: str = ""
+    patch: Annotated[dict[str, Any], STDIN, Field(description="The definition's top-level fields to replace, as JSON.")]
+    # Checked immediately before the mutation, under the REE's lock, so the compare-and-write is atomic.
+    expected_version: str = Field(
+        default="", description="Change only if the REE is still at this revision, as `ree status` reports it."
+    )
 
 
 class PatchReeDefinitionCommand(BaseModel):
@@ -305,7 +324,7 @@ class CrossCheckSbomCommand(BaseModel):
 class EvaluateDependencyScoreArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    strict: bool = False
+    strict: bool = Field(default=False, description="Count an unpinned dependency as a failure.")
 
 
 class EvaluateDependencyScoreCommand(BaseModel):
@@ -318,7 +337,7 @@ class EvaluateDependencyScoreCommand(BaseModel):
 class RunExperimentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    experiment_name: Annotated[str, POSITIONAL]
+    experiment_name: Annotated[str, POSITIONAL, Field(description="The experiment, as the definition names it.")]
 
 
 class RunExperimentCommand(BaseModel):
@@ -427,7 +446,7 @@ class GenerateScriptCandidatesArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    targets: list[ScriptTargetSelectorArg]
+    targets: list[ScriptTargetSelectorArg] = Field(description="The scripts to propose, each KIND[:EXPERIMENT].")
 
 
 class GenerateScriptCandidatesCommand(BaseModel):
@@ -442,7 +461,7 @@ class LintScriptsArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    targets: list[ScriptTargetSelectorArg]
+    targets: list[ScriptTargetSelectorArg] = Field(description="The scripts to check, each KIND[:EXPERIMENT].")
 
 
 class LintScriptsCommand(BaseModel):
@@ -458,9 +477,9 @@ class SealReeArgs(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    source_included: bool = True
-    experiment_environment_included: bool = True
-    results_included: bool = True
+    source_included: bool = Field(default=True, description="Carry the source snapshot.")
+    experiment_environment_included: bool = Field(default=True, description="Carry the experiment environment.")
+    results_included: bool = Field(default=True, description="Carry the experiments' results.")
 
 
 class SealReeCommand(BaseModel):

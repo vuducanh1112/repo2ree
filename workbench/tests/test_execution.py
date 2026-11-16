@@ -25,7 +25,8 @@ def fake_executor(tmp_path: Path) -> Path:
         "  query) printf query-result ;;\n"
         "  echo) cat ;;\n"
         "  fail) echo failed >&2; exit 7 ;;\n"
-        '  build-info) printf \'%s\\n\' \'{"version":"0.1.0","revision":"executor-revision"}\' ;;\n'
+        "  build-info) printf '%s\\n' "
+        '\'{"status":"succeeded","outputs":{"version":"0.1.0","revision":"executor-revision"}}\' ;;\n'
         "  *) exit 0 ;;\n"
         "esac\n"
     )
@@ -109,7 +110,8 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
 
 def test_a_workbench_reports_the_machine_as_ree_says_it_and_nothing_when_ree_cannot_say(tmp_path: Path) -> None:
     ree = tmp_path / "ree"
-    ree.write_text('#!/bin/sh\necho \'{"arch": "x86_64", "gpus": 2, "container": true}\'\n')
+    answer = '{"status": "succeeded", "outputs": {"arch": "x86_64", "gpus": 2, "container": true}}'
+    ree.write_text(f"#!/bin/sh\n[ \"$1\" = --json ] && echo '{answer}'\n")
     ree.chmod(ree.stat().st_mode | stat.S_IXUSR)
     assert LocalCli(tmp_path / "store", str(ree)).machine() == MachineFacts(arch="x86_64", gpus=2, container=True)
     assert LocalCli(tmp_path / "store", str(tmp_path / "missing")).machine() == MachineFacts()

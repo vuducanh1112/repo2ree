@@ -1,9 +1,8 @@
 """Every command as the words a caller runs: a ``ree`` verb, its arguments, and its stdin.
 
 The command line is the one interface into an REE, for a person at a terminal as much as for a workbench, so a
-``Command`` and its argv are two spellings of one value. ``to_argv`` writes the argv a caller runs and
-``from_argv`` reads it back; both follow from the command models (``repo2ree_protocol.argv``), so
-``from_argv(*to_argv(cmd)) == cmd`` for every command, and the spellings cannot drift apart.
+``Command`` and its argv are two spellings of one value. ``to_argv`` writes the argv a caller runs; ``ree`` reads it
+back with options generated from the same command models (``repo2ree_cli.options``), so the spellings cannot drift.
 
 The steps an REE's reproduction shares with its bundle's ``run.sh`` keep the names they have there
 (``materialize-workspace``, ``build-experiment-environment``, ``test-activation``, ``experiment``).
@@ -11,11 +10,11 @@ The steps an REE's reproduction shares with its bundle's ``run.sh`` keep the nam
 
 from __future__ import annotations
 
-from typing import cast, get_args
+from typing import get_args
 
 from pydantic import BaseModel
 
-from repo2ree_protocol.argv import ArgvError, decode_args, encode_args
+from repo2ree_protocol.argv import encode_args
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     ActivationTestCommand,
@@ -78,7 +77,7 @@ SUMMARIES: dict[type[BaseModel], str] = {
     LintScriptsCommand: "Check the REE's scripts",
     WriteFileCommand: "Write one of the REE's scripts from stdin",
     DeleteFileCommand: "Delete one of the REE's scripts",
-    PatchReeDefinitionCommand: "Change the REE's definition by a JSON patch on stdin",
+    PatchReeDefinitionCommand: "Declare the REE's name, catalog entry, experiment environment and experiments",
     MaterializeWorkspaceCommand: "Assemble a clean workspace from the source and the REE overlay",
     CheckWorkingEnvironmentCommand: "Run the REE's check script in its working environment",
     BuildExperimentEnvironmentCommand: "Build the experiment environment from the REE build script",
@@ -95,8 +94,6 @@ SUMMARIES: dict[type[BaseModel], str] = {
     ReviewRunExperimentCommand: "Reproduce one experiment in the review and compare it with the author's",
 }
 
-COMMANDS: dict[tuple[str, ...], type[BaseModel]] = {verb: command for command, verb in VERBS.items()}
-
 
 def command_types() -> tuple[type[BaseModel], ...]:
     """Every member of the ``Command`` union."""
@@ -107,14 +104,3 @@ def to_argv(cmd: Command) -> tuple[list[str], bytes | None]:
     """The argv after ``ree`` that runs ``cmd``, and what it reads on stdin."""
     words, stdin = encode_args(cmd.args)
     return [*VERBS[type(cmd)], *words], stdin
-
-
-def from_argv(argv: list[str], stdin: bytes | None = None) -> Command:
-    """The command an argv after ``ree`` spells, reading ``stdin`` for the field that is read from it."""
-    for length in (2, 1):
-        command = COMMANDS.get(tuple(argv[:length]))
-        if command is not None:
-            args_model = cast(type[BaseModel], command.model_fields["args"].annotation)
-            args = decode_args(args_model, argv[length:], stdin)
-            return command.model_validate({"args": args})  # type: ignore[return-value]
-    raise ArgvError(f"no command {' '.join(argv[:2])!r}")

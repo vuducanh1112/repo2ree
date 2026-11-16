@@ -6,7 +6,6 @@ against the directory of the REE the request names.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import shutil
@@ -14,9 +13,11 @@ import subprocess
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from repo2ree_protocol.build import BuildInfo
 from repo2ree_protocol.machine import MachineFacts
+from repo2ree_protocol.result import ActionResult
 from repo2ree_telemetry.spans import current_traceparent
 
 # An REE id names a directory in the store: one path segment, nothing a shell or a path could misread.
@@ -28,6 +29,20 @@ def ree_directory(store: Path, ree_id: str) -> Path:
     if not _REE_ID.fullmatch(ree_id) or ree_id in {".", ".."}:
         raise ValueError(f"not an REE id: {ree_id!r}")
     return store / ree_id
+
+
+def _outputs(stdout: str) -> dict[str, Any]:
+    """The outputs of the one result line ``ree --json`` prints."""
+    return ActionResult.model_validate_json(stdout).outputs
+
+
+def _failure(stdout: bytes) -> str | None:
+    """Why a ``ree --json`` read failed, as its result line says; None when it printed none."""
+    try:
+        failure = ActionResult.model_validate_json(stdout).failure
+    except ValueError:
+        return None
+    return failure.message if failure else None
 
 
 class LocalCli:
@@ -65,7 +80,7 @@ class LocalCli:
         """Ask the configured executor to identify itself, tolerating older binaries."""
         try:
             result = subprocess.run(
-                [self.cli_path, "build-info"],
+                [self.cli_path, "--json", "build-info"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -73,7 +88,7 @@ class LocalCli:
                 env=self.environment(self.root),
             )
             if result.returncode == 0:
-                return BuildInfo.model_validate(json.loads(result.stdout))
+                return BuildInfo.model_validate(_outputs(result.stdout))
         except (OSError, subprocess.SubprocessError, ValueError):
             pass
         return BuildInfo()
@@ -82,7 +97,7 @@ class LocalCli:
         """The machine the REEs' scripts run on, as the executor reports it; nothing known when it cannot say."""
         try:
             result = subprocess.run(
-                [self.cli_path, "machine"],
+                [self.cli_path, "--json", "machine"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -90,7 +105,7 @@ class LocalCli:
                 env=self.environment(self.root),
             )
             if result.returncode == 0:
-                return MachineFacts.model_validate_json(result.stdout)
+                return MachineFacts.model_validate(_outputs(result.stdout))
         except (OSError, subprocess.SubprocessError, ValueError):
             pass
         return MachineFacts()
@@ -127,7 +142,7 @@ class LocalCli:
             env=self.environment(root),
         )
         if result.returncode:
-            detail = result.stderr.decode(errors="replace").strip() or "(no stderr)"
+            detail = _failure(result.stdout) or result.stderr.decode(errors="replace").strip() or "(no stderr)"
             raise RuntimeError(f"executor query {argv!r} failed (exit {result.returncode}): {detail}")
         view = memoryview(result.stdout)
         for offset in range(0, len(view), 256 * 1024):

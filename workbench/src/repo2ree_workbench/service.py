@@ -5,11 +5,13 @@ Every request names its REE, and the REE's directory in the store is where its c
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from pathlib import Path
 
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.queries import BundleQuery, InitRee, Query, query_argv
+from repo2ree_protocol.queries import REPLIES, BundleQuery, InitRee, Query, query_argv
+from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import WorkbenchJournal, WorkbenchJournalList
 from repo2ree_telemetry.behaviour import journal_file, journal_files, positions, records_after
 from repo2ree_workbench.cli_process import LocalCli
@@ -53,9 +55,12 @@ class WorkbenchService:
         self._executor.run(root, argv, timeout)
 
     def exec_query_stream(self, query: Query, timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
-        """The stdout of the ``ree`` read that answers ``query``."""
+        """The answer to ``query``: the bytes ``ree`` writes for it, or the outputs of its one result line."""
         argv, stdin = query_argv(query)
-        return self._executor.exec_query_stream(argv, timeout, ree_id=ree_id, stdin=stdin)
+        if REPLIES[type(query)] is None:
+            return self._executor.exec_query_stream(argv, timeout, ree_id=ree_id, stdin=stdin)
+        output = b"".join(self._executor.exec_query_stream(["--json", *argv], timeout, ree_id=ree_id, stdin=stdin))
+        return iter((json.dumps(ActionResult.model_validate_json(output).outputs).encode(),))
 
     def exec_query_to_file(self, query: BundleQuery, target: Path, timeout: int = 600, *, ree_id: str) -> None:
         argv, _stdin = query_argv(query)

@@ -1,4 +1,4 @@
-"""``ree steps``, ``ree templates`` and ``ree lint-draft``: what an author is told and offered."""
+"""``ree templates`` and ``ree lint-draft``: what an author is offered."""
 
 from __future__ import annotations
 
@@ -7,8 +7,9 @@ from pathlib import Path
 from click.testing import CliRunner, Result
 
 from repo2ree_cli.cli import cli
-from repo2ree_protocol.catalog import ReeSteps, ScriptTemplateCatalog
+from repo2ree_protocol.catalog import ScriptTemplateCatalog
 from repo2ree_protocol.lint import LintReport
+from repo2ree_protocol.result import ActionResult
 
 runner = CliRunner()
 
@@ -18,43 +19,25 @@ def ree(tmp_path: Path, *words: str, input: str | None = None) -> Result:  # noq
 
 
 def draft(tmp_path: Path, source: str, *words: str) -> LintReport:
-    result = ree(tmp_path, "lint-draft", *(words or ("experiment_run", "--experiment-name", "figure-3")), input=source)
+    words = words or ("experiment_run", "--experiment-name", "figure-3")
+    result = runner.invoke(cli, ["-C", str(tmp_path), "--json", "lint-draft", *words], input=source)
     assert result.exit_code == 0, result.output
-    return LintReport.model_validate_json(result.stdout)
-
-
-def test_steps_tells_a_person_what_to_do_next(tmp_path: Path) -> None:
-    assert ree(tmp_path, "init", "--name", "demo").exit_code == 0
-
-    result = ree(tmp_path, "steps")
-
-    assert result.exit_code == 0, result.output
-    assert "→  1 Source Acquisition" in result.stdout
-    assert "(needs Build Experiment Environment)" in result.stdout
-    assert result.stdout.rstrip().endswith("next: Source Acquisition, with ree acquire-source")
-
-
-def test_steps_answers_a_workbench_in_json(tmp_path: Path) -> None:
-    assert ree(tmp_path, "init", "--name", "demo").exit_code == 0
-
-    result = ree(tmp_path, "--json", "steps")
-
-    assert result.exit_code == 0, result.output
-    steps = ReeSteps.model_validate_json(result.stdout)
-    assert steps.next == "source"
-    assert {step.key: step.status for step in steps.steps}["sbom"] == "blocked"
-
-
-def test_steps_needs_an_ree(tmp_path: Path) -> None:
-    assert ree(tmp_path, "steps").exit_code == 1
+    return LintReport.model_validate(ActionResult.model_validate_json(result.stdout).outputs)
 
 
 def test_templates_prints_the_catalog(tmp_path: Path) -> None:
+    result = ree(tmp_path, "--json", "templates")
+
+    assert result.exit_code == 0, result.output
+    catalog = ScriptTemplateCatalog.model_validate(ActionResult.model_validate_json(result.stdout).outputs)
+    assert catalog.build_experiment_environment.templates[0].is_default
+
+
+def test_a_person_reads_the_templates_by_where_each_belongs(tmp_path: Path) -> None:
     result = ree(tmp_path, "templates")
 
     assert result.exit_code == 0, result.output
-    catalog = ScriptTemplateCatalog.model_validate_json(result.stdout)
-    assert catalog.build_experiment_environment.templates[0].is_default
+    assert "ree-scripts/build_experiment_environment.sh" in result.stdout.splitlines()
 
 
 def test_a_draft_is_checked_against_its_reserved_path(tmp_path: Path) -> None:

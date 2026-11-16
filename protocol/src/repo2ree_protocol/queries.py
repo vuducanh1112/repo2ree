@@ -1,9 +1,9 @@
 """Every read of an REE, and its creation, as the words a caller runs.
 
 A read is a typed value, as a command is: the workbench is sent one, not an argv, and spells it as the ``ree`` argv
-that answers it (``query_argv``), which the command line reads back (``query_from_argv``). Both follow from the
-models (``repo2ree_protocol.argv``), so the spellings cannot drift, and what a workbench is sent can only be a read.
-Each read names the model its answer on stdout is (``REPLIES``); ``cat`` and ``bundle`` answer with bytes.
+that answers it (``query_argv``), which the command line reads back with options generated from the same models.
+What a workbench is sent can only be a read. Each read names the model of its answer (``REPLIES``), the outputs of
+the one result line ``ree --json`` prints; ``cat`` and ``bundle`` answer with bytes.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import Annotated, Literal, cast, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from repo2ree_protocol.argv import POSITIONAL, STDIN, VERB, ArgvError, decode_args, encode_args
+from repo2ree_protocol.argv import POSITIONAL, STDIN, VERB, encode_args
 from repo2ree_protocol.catalog import ScriptTemplateCatalog
 from repo2ree_protocol.command import ScriptTargetSelectorArg, TargetKind
 from repo2ree_protocol.document import WorkbenchReeDocument
@@ -36,8 +36,7 @@ class ShowQuery(_Query):
     """Print the REE as a document: its definition, evidence, audit, steps and files."""
 
     query: Annotated[Literal["show"], VERB] = "show"
-    # Leave out the files' contents.
-    summary: bool = False
+    summary: bool = Field(default=False, description="Leave out the files' contents.")
 
 
 class ReviewsQuery(_Query):
@@ -56,7 +55,7 @@ class CatQuery(_Query):
     """Write the bytes of PATH, a file anywhere in the REE, to stdout."""
 
     query: Annotated[Literal["cat"], VERB] = "cat"
-    path: Annotated[str, POSITIONAL]
+    path: Annotated[str, POSITIONAL, Field(description="The file's path in the REE.")]
 
 
 class BundleQuery(_Query):
@@ -75,12 +74,12 @@ class LintDraftQuery(_Query):
     """Check the unsaved script on stdin as the REE's KIND script, by the checks that run no process."""
 
     query: Annotated[Literal["lint-draft"], VERB] = "lint-draft"
-    kind: Annotated[TargetKind, POSITIONAL]
-    # The experiment the script is for.
-    experiment_name: str | None = None
-    # The experiment environment's path the script is checked against.
-    experiment_environment_path: str | None = None
-    source: Annotated[str, STDIN]
+    kind: Annotated[TargetKind, POSITIONAL, Field(description="The script's kind.")]
+    experiment_name: str | None = Field(default=None, description="The experiment the script is for.")
+    experiment_environment_path: str | None = Field(
+        default=None, description="The experiment environment's path the script is checked against."
+    )
+    source: Annotated[str, STDIN, Field(description="The draft script.")]
 
     @model_validator(mode="after")
     def _names_its_target(self) -> LintDraftQuery:
@@ -120,7 +119,7 @@ class InitRee(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     init: Annotated[Literal["init"], VERB] = "init"
-    name: str
+    name: str = Field(description="The REE's name.")
 
 
 def query_types() -> tuple[type[BaseModel], ...]:
@@ -137,12 +136,3 @@ def query_argv(query: BaseModel) -> tuple[list[str], bytes | None]:
     """The argv after ``ree`` that answers ``query`` (or runs ``init``), and what it reads on stdin."""
     words, stdin = encode_args(query)
     return [verb_of(type(query)), *words], stdin
-
-
-def query_from_argv(argv: list[str], stdin: bytes | None = None) -> BaseModel:
-    """The read (or ``init``) an argv after ``ree`` spells."""
-    models: tuple[type[BaseModel], ...] = (*query_types(), InitRee)
-    for model in models:
-        if argv[:1] == [verb_of(model)]:
-            return decode_args(model, argv[1:], stdin)
-    raise ArgvError(f"no read {argv[:1]!r}")

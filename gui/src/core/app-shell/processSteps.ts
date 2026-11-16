@@ -105,7 +105,7 @@ export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, Eviden
 };
 
 // The authoring step each page does. Whether it is done is the REE's own word
-// (the document's `steps`, what `ree steps` prints), so a reload, a second tab or
+// (the document's `steps`, what `ree status` prints), so a reload, a second tab or
 // a person at a terminal all see the same thing.
 const AUTHORING_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, AuthoringStepKey>>> = {
   [PAGE.SOURCE]: "source",

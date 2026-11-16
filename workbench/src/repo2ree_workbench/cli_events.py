@@ -17,6 +17,9 @@ def cli_line_to_frame(line: str) -> Frame | None:
         return LogFrame(stream=event["stream"], level=event["level"], message=event["message"])
     if event.get("type") == "span":
         return SpanFrame(payload=event["payload"])
+    if event.get("type") == "started":
+        # The run's id, which the workbench named itself.
+        return None
     return LogFrame(stream="system", level="info", message=line)
 
 

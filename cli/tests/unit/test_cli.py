@@ -7,6 +7,7 @@ These tests drive the real command line, real handlers and a real REE tree in a 
 
 from __future__ import annotations
 
+import fcntl
 import io
 import json
 import os
@@ -24,19 +25,18 @@ from repo2ree_cli.cli import CANCELED, REFUSED, cli
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
+from repo2ree_core.persistence.run_lock import RUN_LOCK
 from repo2ree_core.reproduction.commands import REPRODUCTION_COMMANDS
 from repo2ree_protocol.command import (
     ActivationTestCommand,
     BuildExperimentEnvironmentCommand,
     MaterializeWorkspaceCommand,
     RunExperimentCommand,
-    SealReeArgs,
-    SealReeCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.queries import InitRee, query_types, verb_of
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.verbs import SUMMARIES, VERBS, from_argv
+from repo2ree_protocol.verbs import SUMMARIES, VERBS
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 BUILD_SCRIPT = RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
@@ -53,6 +53,13 @@ def machine(root: Path, *words: str, input: str | bytes | None = None) -> Result
 
 def _stderr_events(result: Result) -> list[dict]:  # type: ignore[type-arg]
     return [json.loads(line) for line in result.stderr.splitlines() if line.strip()]
+
+
+def outputs(result: Result) -> dict:  # type: ignore[type-arg]
+    """The outputs of the one result line ``--json`` prints, which must have succeeded."""
+    answered = ActionResult.model_validate_json(result.stdout)
+    assert answered.status == "succeeded", result.output
+    return answered.outputs
 
 
 @pytest.fixture
@@ -75,17 +82,17 @@ def initialized(root: Path) -> Path:
 def test_build_info_reports_injected_revision(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REPO2REE_BUILD_REVISION", "cli-revision")
 
-    result = runner.invoke(cli, ["build-info"])
+    result = runner.invoke(cli, ["--json", "build-info"])
 
     assert result.exit_code == 0
-    assert json.loads(result.output)["revision"] == "cli-revision"
+    assert outputs(result)["revision"] == "cli-revision"
 
 
 def test_init_bootstraps_tree_and_metadata(root: Path) -> None:
-    result = ree(root, "init", "--name", "demo")
+    result = machine(root, "init", "--name", "demo")
     assert result.exit_code == 0
-    assert json.loads(result.output)["status"] == "initialised"
-    assert json.loads(result.output)["snapshot_id"]
+    assert outputs(result)["state"] == "initialised"
+    assert outputs(result)["snapshot_id"]
 
     layout = ReeLayout(root=root)
     assert layout.workspace.is_dir()
@@ -101,19 +108,27 @@ def test_init_bootstraps_tree_and_metadata(root: Path) -> None:
 def test_init_is_idempotent(initialized: Path) -> None:
     before = ReeLayout(root=initialized).manifest.read_text()
 
-    result = ree(initialized, "init", "--name", "demo")
+    result = machine(initialized, "init", "--name", "demo")
     assert result.exit_code == 0
-    assert json.loads(result.output)["status"] == "already_initialised"
+    assert outputs(result)["state"] == "already_initialised"
     assert ReeLayout(root=initialized).manifest.read_text() == before
 
 
 def test_init_reports_capture_failure(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("repo2ree_core.persistence.history.find_tool", lambda name: None)
     result = ree(root, "init", "--name", "demo")
-    assert result.exit_code == 1
+    assert result.exit_code == REFUSED
     assert result.stdout == ""
-    assert "Git is required" in json.loads(result.stderr)["error"]
+    assert "init failed: Git is required" in result.stderr
     assert not root.exists()
+
+
+def test_init_names_the_ree_after_its_directory(root: Path) -> None:
+    result = ree(root, "init")
+
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == [f"initialised {root}", "next: ree status"]
+    assert ReeDirectory(ReeLayout(root=root)).read_ree().subject.definition.name == "ree"
 
 
 def test_init_seeds_scripts_that_need_no_container_engine_and_a_check_that_passes(root: Path) -> None:
@@ -128,16 +143,20 @@ def test_init_seeds_scripts_that_need_no_container_engine_and_a_check_that_passe
 
 
 def test_machine_says_what_ree_runs_on() -> None:
-    result = runner.invoke(cli, ["machine"])
+    result = runner.invoke(cli, ["--json", "machine"])
 
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["arch"]
+    assert outputs(result)["arch"]
 
 
-def test_manifest_before_init_exits_nonzero(root: Path) -> None:
-    result = ree(root, "manifest")
-    assert result.exit_code == 1
-    assert json.loads(result.stderr) == {"error": f"no REE at {root}: create one with `ree -C {root} init`"}
+def test_a_read_before_init_is_refused(root: Path) -> None:
+    result = machine(root, "show")
+
+    assert result.exit_code == REFUSED
+    refused = ActionResult.model_validate_json(result.stdout)
+    assert refused.failure is not None
+    assert refused.failure.category == "precondition"
+    assert refused.failure.message == f"no REE at {root}: create one with `ree -C {root} init`"
 
 
 def test_a_command_outside_any_ree_is_refused_and_leaves_nothing_behind(
@@ -163,9 +182,9 @@ def test_a_workbench_reads_the_refusal_of_a_command_on_no_ree(root: Path) -> Non
 
 
 def test_manifest_prints_the_record(initialized: Path) -> None:
-    result = ree(initialized, "manifest")
+    result = machine(initialized, "manifest")
     assert result.exit_code == 0
-    assert json.loads(result.output)["subject"]["definition"]["name"] == "demo"
+    assert outputs(result)["subject"]["definition"]["name"] == "demo"
 
 
 def test_without_c_the_nearest_ree_above_the_current_directory_is_the_one(
@@ -174,10 +193,10 @@ def test_without_c_the_nearest_ree_above_the_current_directory_is_the_one(
     (initialized / "workspace" / "deep").mkdir(parents=True)
     monkeypatch.chdir(initialized / "workspace" / "deep")
 
-    result = runner.invoke(cli, ["manifest"])
+    result = runner.invoke(cli, ["--json", "manifest"])
 
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output)["subject"]["definition"]["name"] == "demo"
+    assert outputs(result)["subject"]["definition"]["name"] == "demo"
 
 
 # ================================================
@@ -193,10 +212,10 @@ def test_a_command_writes_its_result_to_stdout_and_its_logs_to_stderr(initialize
     layout = ReeLayout(root=initialized)
     assert layout.overlay_file(BUILD_SCRIPT).read_text() == "echo build\n"
     assert layout.workspace_file(BUILD_SCRIPT).read_text() == "echo build\n"
-    # stderr is NDJSON log events only: the workbench parses every line.
+    # stderr is NDJSON events only, the run's id first: the workbench parses every line.
     events = _stderr_events(result)
-    assert events
-    assert all(event["type"] == "log" for event in events)
+    assert events[0] == {"type": "started", "run_id": "run-1", "operation": "write_file"}
+    assert all(event["type"] == "log" for event in events[1:])
     frames = [json.loads(line) for line in layout.run_log("run-1").read_text().splitlines()]
     assert {frame["type"] for frame in frames} == {"command", "log", "result"}
 
@@ -239,10 +258,22 @@ def test_the_run_log_records_the_whole_command_and_result_untruncated(initialize
     assert frames.index(result_frame) == len(frames) - 1
 
 
-def test_words_that_spell_no_command_are_a_usage_error(initialized: Path) -> None:
+def test_words_that_spell_no_command_are_refused_as_a_result_under_json(initialized: Path) -> None:
     result = machine(initialized, "seal", "--no-such-option")
-    assert result.exit_code == 2
-    assert "takes no option --no-such-option" in result.output
+
+    assert result.exit_code == REFUSED
+    refused = ActionResult.model_validate_json(result.stdout)
+    assert refused.failure is not None
+    assert refused.failure.category == "validation"
+    assert "No such option: --no-such-option" in refused.failure.message
+
+
+def test_a_person_is_shown_a_usage_error_with_the_usage(initialized: Path) -> None:
+    result = ree(initialized, "review", "acquire-source", "--basis", "nope")
+
+    assert result.exit_code == REFUSED
+    assert "review acquire-source [OPTIONS]" in result.stderr
+    assert "'nope' is not one of 'auto', 'independent', 'bundled'" in result.stderr
 
 
 def test_a_failing_command_still_reports_its_result(initialized: Path) -> None:
@@ -269,10 +300,41 @@ def test_a_refused_command_exits_refused(initialized: Path) -> None:
 
 
 def test_cancel_writes_the_cancel_marker(initialized: Path) -> None:
-    result = ree(initialized, "cancel", "run-1")
+    result = machine(initialized, "cancel", "run-1")
     assert result.exit_code == 0, result.output
-    assert json.loads(result.output) == {"status": "cancel_requested", "run_id": "run-1"}
+    assert outputs(result) == {"run_id": "run-1"}
     assert ReeLayout(root=initialized).run_cancel_marker("run-1").is_file()
+
+
+def test_cancel_without_a_run_asks_the_running_one_and_refuses_when_none_runs(initialized: Path) -> None:
+    assert ree(initialized, "cancel").exit_code == REFUSED
+    layout = ReeLayout(root=initialized)
+    with (layout.git_dir / RUN_LOCK).open("w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        held.write("run-busy")
+        held.flush()
+
+        result = ree(initialized, "cancel")
+
+    assert result.exit_code == 0, result.output
+    assert result.stdout.strip() == "asked run run-busy to stop"
+    assert layout.run_cancel_marker("run-busy").is_file()
+
+
+def test_wait_returns_at_once_when_nothing_runs_and_gives_up_after_its_timeout(initialized: Path) -> None:
+    assert outputs(machine(initialized, "wait")) == {"held_by": None}
+    with (ReeLayout(root=initialized).git_dir / RUN_LOCK).open("w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        held.write("run-busy")
+        held.flush()
+
+        result = machine(initialized, "wait", "--timeout", "0.2")
+
+    assert result.exit_code == 1
+    failure = ActionResult.model_validate_json(result.stdout).failure
+    assert failure is not None
+    assert failure.category == "timeout"
+    assert "run-busy" in failure.message
 
 
 def test_a_canceled_run_exits_canceled_and_clears_its_marker(initialized: Path) -> None:
@@ -385,24 +447,27 @@ def test_cat_reads_outside_the_workspace(initialized: Path) -> None:
     assert result.stdout_bytes == b"snapshot"
 
 
-def test_cat_of_a_missing_file_exits_nonzero(initialized: Path) -> None:
+def test_cat_of_a_missing_file_is_refused(initialized: Path) -> None:
     result = ree(initialized, "cat", "missing.txt")
-    assert result.exit_code == 1
-    assert "not found" in json.loads(result.stderr)["error"]
+    assert result.exit_code == REFUSED
+    assert result.stdout == ""
+    assert "cat failed: not found: missing.txt" in result.stderr
 
 
-def test_cat_refuses_a_path_out_of_the_ree(initialized: Path) -> None:
-    result = ree(initialized, "cat", "../outside")
-    assert result.exit_code == 1
-    assert json.loads(result.stderr)["error"] == "Invalid REE file path"
+def test_cat_refuses_a_path_out_of_the_ree_as_a_result_under_json(initialized: Path) -> None:
+    result = machine(initialized, "cat", "../outside")
+    assert result.exit_code == REFUSED
+    failure = ActionResult.model_validate_json(result.stdout).failure
+    assert failure is not None
+    assert failure.message == "Invalid REE file path"
 
 
 def test_show_reflects_workspace_files(initialized: Path) -> None:
     assert machine(initialized, "write", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
 
-    result = ree(initialized, "show")
+    result = machine(initialized, "show")
     assert result.exit_code == 0
-    document = json.loads(result.output)
+    document = outputs(result)
     # The command line knows only its REE's directory, not where a control plane keeps it.
     assert "ree_id" not in document
     assert any(f.get("path") == "ree-scripts/experiments/hello.sh" for f in document["workspace_files"])
@@ -411,13 +476,32 @@ def test_show_reflects_workspace_files(initialized: Path) -> None:
 def test_show_summary_omits_inline_file_content(initialized: Path) -> None:
     assert machine(initialized, "write", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
 
-    result = ree(initialized, "show", "--summary")
+    result = machine(initialized, "show", "--summary")
 
     assert result.exit_code == 0
-    document = json.loads(result.output)
+    document = outputs(result)
     assert document["workspace_files"]
     assert all(file["content"] is None for file in document["workspace_files"])
     assert all(file["content"] is None for file in document["ree_files"])
+
+
+def test_a_person_reads_the_ree_as_a_summary(initialized: Path) -> None:
+    result = ree(initialized, "show")
+
+    assert result.exit_code == 0, result.output
+    assert result.stdout.startswith("demo (draft)\n")
+    assert "source: none" in result.stdout
+    assert "  activation: missing" in result.stdout
+
+
+def test_a_person_reads_the_log_one_attempt_a_line(initialized: Path) -> None:
+    assert ree(initialized, "write", BUILD_SCRIPT, input="echo build\n").exit_code == 0
+
+    result = ree(initialized, "log")
+
+    assert result.exit_code == 0, result.output
+    [line] = [line for line in result.stdout.splitlines() if "write_file" in line]
+    assert "succeeded" in line
 
 
 def test_bundle_before_seal_writes_a_draft_bundle(initialized: Path) -> None:
@@ -438,13 +522,6 @@ def test_every_read_a_workbench_can_be_sent_is_a_command() -> None:
 # ================================================
 # seal
 # ================================================
-
-
-def test_a_bare_seal_includes_the_source_the_experiment_environment_and_the_results() -> None:
-    assert from_argv(["seal"]) == SealReeCommand(
-        args=SealReeArgs(source_included=True, experiment_environment_included=True, results_included=True)
-    )
-    assert from_argv(["seal", "--no-results-included"]) == SealReeCommand(args=SealReeArgs(results_included=False))
 
 
 def test_a_person_at_a_terminal_confirms_a_seal_seeing_what_is_not_complete(

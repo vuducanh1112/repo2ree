@@ -2,7 +2,7 @@
 
 A step is ``complete`` when the REE's own records say so: a receipt the audit
 finds ``current``, or a declaration the definition holds. Nothing an author ran
-but the REE did not record counts, so every reader — ``ree steps``, the API, the
+but the REE did not record counts, so every reader — ``ree status``, the API, the
 GUI — gets the same answer from the same REE.
 """
 

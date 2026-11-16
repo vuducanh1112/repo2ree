@@ -9,19 +9,19 @@ What the caller sees of the run is its own ``emit``; the run log is the record.
 
 from __future__ import annotations
 
-import fcntl
 import json
 import signal
 import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import IO, Any, TextIO
+from typing import Any, TextIO
 
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
+from repo2ree_core.persistence.run_lock import holding_ree
 from repo2ree_protocol.command import Command, WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
@@ -40,9 +40,6 @@ from repo2ree_telemetry.spans import (
 )
 
 tracer = get_tracer(__name__)
-
-# Held by the process running a command in the REE, beside the history lock a capture takes; it names the run.
-RUN_LOCK = "repo2ree.run.lock"
 
 _STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT)
 
@@ -88,7 +85,7 @@ def run_session(
                     "context": context.model_dump(mode="json"),
                 },
             )
-            with _run_lock(layout, run_id) as holder:
+            with holding_ree(layout, run_id) as holder:
                 if holder is not None:
                     message = f"another command is running in this REE (run {holder}); wait for it, or cancel it"
                     log("system", "error", message)
@@ -137,39 +134,6 @@ def _run_held(
         record_result_evidence(span, result)
         record_result_boundary(span, "executor.completed", result)
     return result
-
-
-@contextmanager
-def _run_lock(layout: ReeLayout, run_id: str) -> Iterator[str | None]:
-    """Hold the REE for this run; yields None once held, or the run id of the one holding it.
-
-    The kernel releases the lock with the process that held it, however that process ended, so an REE is never
-    left held by a run that is gone, and an attempt found pending while the lock is held is one that ended.
-    """
-    path = layout.git_dir / RUN_LOCK
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a+", encoding="utf-8") as lock:
-        if not _try_lock(lock):
-            lock.seek(0)
-            yield lock.read().strip() or "unknown"
-            return
-        lock.seek(0)
-        lock.truncate()
-        lock.write(run_id)
-        lock.flush()
-        try:
-            yield None
-        finally:
-            lock.truncate(0)
-            fcntl.flock(lock, fcntl.LOCK_UN)
-
-
-def _try_lock(lock: IO[str]) -> bool:
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        return False
-    return True
 
 
 def request_cancel(layout: ReeLayout, run_id: str) -> None:

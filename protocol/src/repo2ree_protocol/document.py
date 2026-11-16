@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_protocol.audit import ReeAudit
 from repo2ree_protocol.catalog import ReeSteps
+from repo2ree_protocol.command import TargetKind
 from repo2ree_protocol.files import ReeFile, WorkspaceFile
 from repo2ree_ree.model import Ree, ReeStatus
 
@@ -17,3 +18,29 @@ class WorkbenchReeDocument(BaseModel):
     steps: ReeSteps
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
+
+
+class ScriptState(BaseModel):
+    """One of the REE's scripts: where it is and, when it is written, the digest a guarded write names."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    kind: TargetKind
+    experiment_name: str | None = None
+    path: str
+    etag: str | None = None
+
+
+class ReeStatusReport(BaseModel):
+    """Where an REE stands, in one read: its steps, its evidence, its scripts, and the revision a guarded change
+    names; and the run holding it, if one is."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str
+    status: ReeStatus
+    revision: str
+    running: str | None = None
+    steps: ReeSteps
+    audit: ReeAudit
+    scripts: list[ScriptState] = Field(default_factory=list)

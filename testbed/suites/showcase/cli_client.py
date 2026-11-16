@@ -19,24 +19,23 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from pydantic import BaseModel, ConfigDict, Field
 from typed_client import Client, NewRee, Reproduction
 
 from repo2ree_testbed.api_models import (
     AcquirableSourceType,
     Audit,
-    CatalogPatch,
     Cpu,
     DefinitionPatch,
-    ExperimentPatch,
     HardwarePatch,
     InferenceReport,
     InferenceResult,
-    InferenceRule,
     Ree,
     Review,
     ReviewBasis,
     ReviewSet,
     Run,
+    RunStatus,
     ScriptKind,
 )
 from repo2ree_testbed.run_watch import INSTANT_RUN, RunWatch
@@ -51,7 +50,6 @@ from repo2ree_testbed.stack.environments import (
 )
 
 BUILD_SCRIPT = "ree-scripts/build_experiment_environment.sh"
-ACTIVATE_SCRIPT = "ree-scripts/activate_experiment_environment.sh"
 LAUNCH_SCRIPT = "ree-scripts/launch.sh"
 # Long enough for a build that pulls and compiles: the command line waits for its step, as a person does.
 STEP_SECONDS = 3600
@@ -59,6 +57,15 @@ STEP_SECONDS = 3600
 
 class CliError(AssertionError):
     pass
+
+
+class Result(BaseModel):
+    """The one line ``ree --json`` prints: how the command ended and what it found."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    status: RunStatus
+    outputs: dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -97,44 +104,37 @@ class CliClient:
 
     # ---- running ree ----------------------------------------------------------
 
-    def _step(self, ree_id: str, *words: str, stdin: bytes | None = None) -> Run:
-        """Run one command of the REE's and keep what it logged; the run its result reports."""
+    def _result(self, ree_id: str, *words: str, stdin: bytes | None = None) -> tuple[str, Result]:
+        """Run one command of the REE's and keep what it logged; its run and its one result line."""
         run_id = f"cli-{uuid4().hex[:12]}"
         done = self.machine.ree(self.root(ree_id), "--json", "--run-id", run_id, *words, stdin=stdin)
         self._logs[run_id] = _lines(done.stderr)
         try:
-            result = json.loads(done.stdout.decode().strip().splitlines()[-1])
+            return run_id, Result.model_validate_json(done.stdout.decode().strip().splitlines()[-1])
         except (IndexError, ValueError) as exc:
             raise CliError(f"ree {' '.join(words)} wrote no result (exit {done.status}):\n{done.stderr}") from exc
-        return Run(run_id=run_id, status=result["status"])
 
-    def _succeed(self, ree_id: str, *words: str, stdin: bytes | None = None) -> Run:
-        run = self._step(ree_id, *words, stdin=stdin)
-        if run.status != "succeeded":
-            raise CliError(f"ree {' '.join(words)} ended {run.status}\n{self._logs[run.run_id]}")
-        return run
+    def _step(self, ree_id: str, *words: str, stdin: bytes | None = None) -> Run:
+        run_id, result = self._result(ree_id, *words, stdin=stdin)
+        return Run(run_id=run_id, status=result.status)
 
-    def _read(self, ree_id: str, *words: str) -> bytes:
+    def _outputs(self, ree_id: str, *words: str, stdin: bytes | None = None) -> dict[str, Any]:
+        run_id, result = self._result(ree_id, *words, stdin=stdin)
+        if result.status != "succeeded":
+            raise CliError(f"ree {' '.join(words)} ended {result.status}\n{self._logs[run_id]}")
+        return result.outputs
+
+    def _bytes(self, ree_id: str, *words: str) -> bytes:
         done = self.machine.ree(self.root(ree_id), *words)
         if done.status != 0:
             raise CliError(f"ree {' '.join(words)} exited {done.status}: {done.stderr}")
         return done.stdout
 
-    def _outputs(self, ree_id: str, *words: str) -> dict[str, Any]:
-        run_id = f"cli-{uuid4().hex[:12]}"
-        done = self.machine.ree(self.root(ree_id), "--json", "--run-id", run_id, *words)
-        self._logs[run_id] = _lines(done.stderr)
-        result = json.loads(done.stdout.decode().strip().splitlines()[-1])
-        if result["status"] != "succeeded":
-            raise CliError(f"ree {' '.join(words)} ended {result['status']}\n{self._logs[run_id]}")
-        return dict(result["outputs"])
-
     def _write(self, ree_id: str, path: str, content: str) -> None:
-        self._succeed(ree_id, "write", "--", path, stdin=content.encode())
+        self._outputs(ree_id, "write", path, stdin=content.encode())
 
-    def _patch(self, ree_id: str, patch: DefinitionPatch | dict[str, Any]) -> None:
-        body = patch.model_dump(exclude_none=True) if isinstance(patch, DefinitionPatch) else patch
-        self._succeed(ree_id, "define", stdin=json.dumps(body).encode())
+    def _write_proposed(self, ree_id: str, target: str, rule: str) -> None:
+        self._outputs(ree_id, "infer", "--target", target, "--write", "--rule", rule)
 
     def _staged(self, data: bytes, name: str) -> Path:
         staged = self.machine.workdir / "uploads" / uuid4().hex / name
@@ -142,14 +142,9 @@ class CliClient:
         staged.write_bytes(data)
         return staged
 
-    def _proposed(self, ree_id: str, kind: ScriptKind, rule: InferenceRule | str) -> str:
-        return self.infer(ree_id, kind).body_of(InferenceRule(rule))
-
     def create(self, name: str) -> str:
         ree_id = f"{name[:40]}-{uuid4().hex[:8]}"
-        done = self.machine.ree(self.root(ree_id), "init", "--name", name)
-        if done.status != 0:
-            raise CliError(f"ree init exited {done.status}: {done.stderr}")
+        self._outputs(ree_id, "init", "--name", name)
         return ree_id
 
     # ---- the Client the showcases use -------------------------------------------
@@ -158,10 +153,10 @@ class CliClient:
         return self._logs.get(run.run_id, "")
 
     def ree(self, ree_id: str) -> Ree:
-        return Ree.model_validate(json.loads(self._read(ree_id, "show", "--summary"))["ree"])
+        return Ree.model_validate(self._outputs(ree_id, "show", "--summary")["ree"])
 
     def audit(self, ree_id: str) -> Audit:
-        return Audit.model_validate(json.loads(self._read(ree_id, "show", "--summary"))["audit"])
+        return Audit.model_validate(self._outputs(ree_id, "show", "--summary")["audit"])
 
     def exists(self, ree_id: str) -> bool:
         return (self.root(ree_id) / "ree.json").is_file()
@@ -171,27 +166,26 @@ class CliClient:
 
     def upload_source(self, ree_id: str, fixture: Project) -> None:
         archive = self._staged(fixture.archive(), fixture.upload_name)
-        self._succeed(ree_id, "acquire-source", "--archive", str(archive))
+        self._outputs(ree_id, "acquire-source", "--archive", str(archive))
 
     def fetch_source(self, ree_id: str, origin_url: str, source_type: AcquirableSourceType) -> Run:
-        return self._step(
-            ree_id, "acquire-source", "--mode", "download", "--origin-url", origin_url, "--source-type", source_type
-        )
+        return self._step(ree_id, "acquire-source", "--origin-url", origin_url, "--source-type", source_type)
 
     def declare_name(self, ree_id: str, name: str) -> None:
-        self._patch(ree_id, DefinitionPatch(name=name))
+        self._outputs(ree_id, "define", "--name", name)
 
     def declare_catalog(self, ree_id: str, *, version: str, description: str) -> None:
-        self._patch(ree_id, DefinitionPatch(catalog=CatalogPatch(version=version, description=description)))
+        self._outputs(ree_id, "define", "--version", version, "--description", description)
 
     def declare_cpu(self, ree_id: str, model: str, cpu: Cpu) -> None:
-        self._patch(ree_id, DefinitionPatch(hardware=HardwarePatch(cpus={model: cpu})))
+        patch = DefinitionPatch(hardware=HardwarePatch(cpus={model: cpu})).model_dump(exclude_none=True)
+        self._outputs(ree_id, "define", stdin=json.dumps(patch).encode())
 
     def declare_experiment(self, ree_id: str, fixture: Project) -> None:
         self._write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
         self._write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
-        experiment = ExperimentPatch(name=fixture.experiment, output_paths=fixture.outputs)
-        self._patch(ree_id, DefinitionPatch(experiments=(experiment,)))
+        outputs = [word for path in fixture.outputs for word in ("--output", str(path))]
+        self._outputs(ree_id, "define", "--experiment", fixture.experiment, *outputs)
 
     def evaluate(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "evaluate")
@@ -205,10 +199,11 @@ class CliClient:
         """Write the project's check of what its scripts need, and run it through the launch the project declares."""
         if fixture.launches:
             rule = fixture.rule("launch.sh")
-            self._write(
-                ree_id, LAUNCH_SCRIPT, self._proposed(ree_id, "launch", rule) if rule else fixture.recipe("launch.sh")
-            )
-            self._patch(ree_id, {"launch": {}})
+            if rule:
+                self._write_proposed(ree_id, "launch", rule)
+            else:
+                self._write(ree_id, LAUNCH_SCRIPT, fixture.recipe("launch.sh"))
+            self._outputs(ree_id, "define", "--launch")
         self._write(ree_id, fixture.check_script, fixture.recipe("check_working_environment.sh"))
         return self._step(ree_id, "check-working-environment")
 
@@ -219,14 +214,15 @@ class CliClient:
         checked = self.check_working_environment(ree_id, fixture)
         if checked.status != "succeeded":
             return checked
-        self._patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
-        proposed = self.infer(ree_id, "build_experiment_environment")
+        self._outputs(ree_id, "define", "--artifact-path", fixture.experiment_environment_path)
+        self.infer(ree_id, "build_experiment_environment")
         rule = fixture.rule("build_experiment_environment.sh")
-        if script is None:
-            script = proposed.body_of(rule) if rule else fixture.recipe("build_experiment_environment.sh")
-        self._write(ree_id, BUILD_SCRIPT, script)
+        if script is None and rule:
+            self._write_proposed(ree_id, "build_experiment_environment", rule)
+        else:
+            self._write(ree_id, BUILD_SCRIPT, script or fixture.recipe("build_experiment_environment.sh"))
         if fixture.rule("activate_experiment_environment.sh") is None:
-            self._write(ree_id, ACTIVATE_SCRIPT, fixture.recipe("activate_experiment_environment.sh"))
+            self._write(ree_id, "activate_experiment_environment", fixture.recipe("activate_experiment_environment.sh"))
         return self._step(ree_id, "build-experiment-environment")
 
     def generate_sbom(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
@@ -236,10 +232,9 @@ class CliClient:
         return self._step(ree_id, "sbom-check")
 
     def activate(self, ree_id: str, fixture: Project) -> Run:
-        proposed = self.infer(ree_id, "activate_experiment_environment")
         rule = fixture.rule("activate_experiment_environment.sh")
         if rule:
-            self._write(ree_id, ACTIVATE_SCRIPT, proposed.body_of(rule))
+            self._write_proposed(ree_id, "activate_experiment_environment", rule)
         return self._step(ree_id, "test-activation")
 
     def run_experiment(self, ree_id: str, fixture: Project) -> Run:
@@ -250,8 +245,8 @@ class CliClient:
 
     def author(self, ree_id: str, fixture: Project) -> None:
         self.upload_source(ree_id, fixture)
-        self._succeed(ree_id, "evaluate")
-        self._succeed(ree_id, "hbom")
+        self._outputs(ree_id, "evaluate")
+        self._outputs(ree_id, "hbom")
         for label, run in (
             ("build_experiment_environment", lambda: self.build_experiment_environment(ree_id, fixture)),
             ("activation", lambda: self.activate(ree_id, fixture)),
@@ -266,18 +261,17 @@ class CliClient:
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(self._read(ree_id, "bundle"))
+        target.write_bytes(self._bytes(ree_id, "bundle"))
         return target
 
     def load(self, ree_id: str, bundle: bytes) -> None:
-        self._succeed(ree_id, "load-bundle", "--archive", str(self._staged(bundle, "ree.zip")))
+        self._outputs(ree_id, "load-bundle", "--archive", str(self._staged(bundle, "ree.zip")))
 
     def review_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        # The command line names the review it opens; the API names one for its caller.
-        return self._step(ree_id, "review", "acquire-source", "--basis", basis, "--", f"review-{uuid4().hex[:12]}")
+        return self._step(ree_id, "review", "acquire-source", "--basis", basis)
 
     def reviews(self, ree_id: str) -> tuple[Review, ...]:
-        return ReviewSet.model_validate(json.loads(self._read(ree_id, "reviews"))).reviews
+        return ReviewSet.model_validate(self._outputs(ree_id, "reviews")).reviews
 
     def review(self, ree_id: str, review_id: str) -> Review:
         return next(review for review in self.reviews(ree_id) if review.review_id == review_id)
@@ -285,13 +279,13 @@ class CliClient:
     def review_build_experiment_environment(
         self, ree_id: str, review_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN
     ) -> Run:
-        return self._step(ree_id, "review", "build-experiment-environment", "--basis", basis, "--", review_id)
+        return self._step(ree_id, "review", "build-experiment-environment", "--basis", basis, "--review-id", review_id)
 
     def review_activation(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "review", "test-activation", "--", review_id)
+        return self._step(ree_id, "review", "test-activation", "--review-id", review_id)
 
     def review_experiment(self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "review", "experiment", "--", review_id, experiment)
+        return self._step(ree_id, "review", "experiment", "--review-id", review_id, experiment)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
         """Author and seal ``fixture``, and reproduce it in a second REE."""

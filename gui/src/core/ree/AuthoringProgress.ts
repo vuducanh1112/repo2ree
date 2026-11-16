@@ -1,6 +1,6 @@
 // Where the REE stands on each authoring step, as its own records say. The REE
 // document carries it (`steps`); the shell reads it rather than deriving it, so
-// the GUI says what `ree steps` says.
+// the GUI says what `ree status` says.
 
 export const AUTHORING_STEP_KEYS = [
   "source",

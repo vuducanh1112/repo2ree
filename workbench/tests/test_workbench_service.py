@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_protocol.queries import InitRee, LintDraftQuery
+from repo2ree_protocol.queries import CatQuery, InitRee, LintDraftQuery
 from repo2ree_workbench.executions import Identity, _Live
 from repo2ree_workbench.service import WorkbenchService
 
@@ -19,7 +19,10 @@ class _Backend:
         self, argv: list[str], timeout: int = 30, *, ree_id: str, stdin: bytes | None = None
     ) -> Iterator[bytes]:
         self.calls.append(f"query {' '.join(argv)} < {stdin!r}")
-        yield b"result"
+        if argv[0] == "--json":
+            yield b'{"status": "succeeded", "outputs": {"answer": 1}}'
+        else:
+            yield b"bytes"
 
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
         self.calls.append(argv[0])
@@ -41,15 +44,17 @@ def test_service_routes_every_execution_operation_for_the_ree_it_names(tmp_path:
 
     service.init_ree(InitRee(name="demo"), ree_id="ree-1")
     draft = LintDraftQuery(kind="launch", source="set -eu\n")
-    assert list(service.exec_query_stream(draft, ree_id="ree-1")) == [b"result"]
+    assert list(service.exec_query_stream(draft, ree_id="ree-1")) == [b'{"answer": 1}']
+    assert list(service.exec_query_stream(CatQuery(path="ree.json"), ree_id="ree-1")) == [b"bytes"]
     service.cancel_run("run-1", ree_id="ree-1")
     service.copy_in("source", "/ree/dest", ree_id="ree-1")
     service.delete_ree("ree-1")
 
-    # The service spells each read as the ree argv that answers it.
+    # The service spells each read as the ree argv that answers it: the outputs of its result, or its bytes.
     assert backend.calls == [
         "init",
-        "query lint-draft -- launch < b'set -eu\\n'",
+        "query --json lint-draft -- launch < b'set -eu\\n'",
+        "query cat -- ree.json < None",
         "cancel",
         "copy_in",
         "delete_ree",
