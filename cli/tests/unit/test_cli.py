@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner, Result
 
+import repo2ree_cli.cli as cli_module
 import repo2ree_core.operations.session as session_module
 from repo2ree_cli.cli import CANCELED, REFUSED, cli
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -29,11 +30,13 @@ from repo2ree_protocol.command import (
     BuildExperimentEnvironmentCommand,
     MaterializeWorkspaceCommand,
     RunExperimentCommand,
+    SealReeArgs,
+    SealReeCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.queries import InitRee, query_types, verb_of
 from repo2ree_protocol.result import ActionResult
-from repo2ree_protocol.verbs import SUMMARIES, VERBS
+from repo2ree_protocol.verbs import SUMMARIES, VERBS, from_argv
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 BUILD_SCRIPT = RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
@@ -134,7 +137,29 @@ def test_machine_says_what_ree_runs_on() -> None:
 def test_manifest_before_init_exits_nonzero(root: Path) -> None:
     result = ree(root, "manifest")
     assert result.exit_code == 1
-    assert json.loads(result.stderr) == {"error": "not initialised"}
+    assert json.loads(result.stderr) == {"error": f"no REE at {root}: create one with `ree -C {root} init`"}
+
+
+def test_a_command_outside_any_ree_is_refused_and_leaves_nothing_behind(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(cli, ["evaluate"])
+
+    assert result.exit_code == REFUSED
+    assert f"evaluate failed: no REE at or above {tmp_path}" in result.stderr
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_workbench_reads_the_refusal_of_a_command_on_no_ree(root: Path) -> None:
+    result = machine(root, "evaluate")
+
+    assert result.exit_code == REFUSED
+    refused = ActionResult.model_validate_json(result.stdout)
+    assert refused.failure is not None
+    assert refused.failure.category == "precondition"
+    assert not root.exists()
 
 
 def test_manifest_prints_the_record(initialized: Path) -> None:
@@ -408,3 +433,41 @@ def test_bundle_before_seal_writes_a_draft_bundle(initialized: Path) -> None:
 
 def test_every_read_a_workbench_can_be_sent_is_a_command() -> None:
     assert {*(verb_of(read) for read in query_types()), verb_of(InitRee)} <= set(cli.commands)
+
+
+# ================================================
+# seal
+# ================================================
+
+
+def test_a_bare_seal_includes_the_source_the_experiment_environment_and_the_results() -> None:
+    assert from_argv(["seal"]) == SealReeCommand(
+        args=SealReeArgs(source_included=True, experiment_environment_included=True, results_included=True)
+    )
+    assert from_argv(["seal", "--no-results-included"]) == SealReeCommand(args=SealReeArgs(results_included=False))
+
+
+def test_a_person_at_a_terminal_confirms_a_seal_seeing_what_is_not_complete(
+    initialized: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli_module, "_at_terminal", lambda: True)
+
+    declined = ree(initialized, "seal", input="n\n")
+
+    assert declined.exit_code == 1
+    assert "Not complete: Source Acquisition" in declined.stderr
+    assert ReeDirectory(ReeLayout(root=initialized)).read_ree().seal is None
+
+    confirmed = ree(initialized, "seal", input="y\n")
+
+    assert confirmed.exit_code == 0, confirmed.output
+    assert ReeDirectory(ReeLayout(root=initialized)).read_ree().seal is not None
+
+
+def test_a_workbench_seals_without_being_asked(initialized: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli_module, "_at_terminal", lambda: True)
+
+    result = machine(initialized, "seal")
+
+    assert result.exit_code == 0, result.output
+    assert ActionResult.model_validate_json(result.stdout).status == "succeeded"

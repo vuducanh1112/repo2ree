@@ -24,7 +24,7 @@ def handle_patch_ree_definition(
 ) -> ActionResult:
     store = ReeDirectory(layout)
     if not store.manifest_exists():
-        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+        return ActionResult.failed("precondition", "no REE here: run `ree init` first")
     try:
         ree = load_ree(layout, store)
         before_revision = revision_of(ree)

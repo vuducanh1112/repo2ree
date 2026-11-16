@@ -1,19 +1,21 @@
 """One command run against an REE, as every caller runs it: a person at a terminal, or a workbench.
 
 The session keeps the command's run log (``runs/<run_id>.ndjson``: the command, every log line, the result) and
-stops it cooperatively on SIGTERM, SIGINT or the run's cancel marker. Before the command starts, it settles any
-attempt a process that ended without reporting left behind, and records the scripts the author edited in place.
+stops it cooperatively on SIGTERM, SIGINT or the run's cancel marker. One command runs in an REE at a time: a
+second one, from any caller, is refused while the first runs. Before the command starts, it settles any attempt a
+process that ended without reporting left behind, and records the scripts the author edited in place.
 What the caller sees of the run is its own ``emit``; the run log is the record.
 """
 
 from __future__ import annotations
 
+import fcntl
 import json
 import signal
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, TextIO
+from typing import IO, Any, TextIO
 
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
@@ -38,6 +40,9 @@ from repo2ree_telemetry.spans import (
 )
 
 tracer = get_tracer(__name__)
+
+# Held by the process running a command in the REE, beside the history lock a capture takes; it names the run.
+RUN_LOCK = "repo2ree.run.lock"
 
 _STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT)
 
@@ -83,25 +88,13 @@ def run_session(
                     "context": context.model_dump(mode="json"),
                 },
             )
-            settle_leftover_attempts(layout, log=log)
-            pick_up_authored_edits(layout, log=log)
-            # The process itself, as one span, so a trace shows the process boundary between whoever started
-            # it and core's command span.
-            with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
-                CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
-                result = run_command(
-                    cmd,
-                    layout=layout,
-                    log=log,
-                    run_id=run_id,
-                    is_canceled=is_canceled,
-                    context=context,
-                )
-                record_exit_code(span, result.exit_code)
-                record_failure(span, result.failure)
-                record_command_status(span, result.status)
-                record_result_evidence(span, result)
-                record_result_boundary(span, "executor.completed", result)
+            with _run_lock(layout, run_id) as holder:
+                if holder is not None:
+                    message = f"another command is running in this REE (run {holder}); wait for it, or cancel it"
+                    log("system", "error", message)
+                    result = ActionResult.failed("conflict", message)
+                else:
+                    result = _run_held(cmd, layout, log, run_id, is_canceled, context)
             _frame(
                 run_log,
                 run_id,
@@ -115,6 +108,70 @@ def run_session(
         cancel_marker.unlink(missing_ok=True)
 
 
+def _run_held(
+    cmd: Command,
+    layout: ReeLayout,
+    log: LogSink,
+    run_id: str,
+    is_canceled: Callable[[], bool],
+    context: ExecutionContext,
+) -> ActionResult:
+    """The command, run while this process alone runs one in the REE."""
+    settle_leftover_attempts(layout, log=log)
+    pick_up_authored_edits(layout, log=log)
+    # The process itself, as one span, so a trace shows the process boundary between whoever started
+    # it and core's command span.
+    with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
+        CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
+        result = run_command(
+            cmd,
+            layout=layout,
+            log=log,
+            run_id=run_id,
+            is_canceled=is_canceled,
+            context=context,
+        )
+        record_exit_code(span, result.exit_code)
+        record_failure(span, result.failure)
+        record_command_status(span, result.status)
+        record_result_evidence(span, result)
+        record_result_boundary(span, "executor.completed", result)
+    return result
+
+
+@contextmanager
+def _run_lock(layout: ReeLayout, run_id: str) -> Iterator[str | None]:
+    """Hold the REE for this run; yields None once held, or the run id of the one holding it.
+
+    The kernel releases the lock with the process that held it, however that process ended, so an REE is never
+    left held by a run that is gone, and an attempt found pending while the lock is held is one that ended.
+    """
+    path = layout.git_dir / RUN_LOCK
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as lock:
+        if not _try_lock(lock):
+            lock.seek(0)
+            yield lock.read().strip() or "unknown"
+            return
+        lock.seek(0)
+        lock.truncate()
+        lock.write(run_id)
+        lock.flush()
+        try:
+            yield None
+        finally:
+            lock.truncate(0)
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def _try_lock(lock: IO[str]) -> bool:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return False
+    return True
+
+
 def request_cancel(layout: ReeLayout, run_id: str) -> None:
     """Ask the run ``run_id`` in this REE to stop: it rolls the REE back and captures its attempt as canceled."""
     layout.runs.mkdir(parents=True, exist_ok=True)
@@ -124,8 +181,8 @@ def request_cancel(layout: ReeLayout, run_id: str) -> None:
 def settle_leftover_attempts(layout: ReeLayout, *, log: LogSink) -> list[ActionResult]:
     """Settle every attempt a process began in this REE and never reported on, before anything else runs.
 
-    An attempt still running holds the REE's history lock, which settling takes too, so a live one is waited
-    for and then answers as it settled; only an attempt whose process is gone is rolled back.
+    Called under the run lock, so no other process is running a command here, and an attempt still pending is one
+    whose process is gone: it is rolled back.
     """
     if not layout.manifest.is_file():
         return []

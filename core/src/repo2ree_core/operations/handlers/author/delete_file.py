@@ -51,7 +51,7 @@ def handle_delete_file(
 
     store = ReeDirectory(layout)
     if not store.manifest_exists():
-        return ActionResult.failed("precondition", "metadata not found — was init-ree run?")
+        return ActionResult.failed("precondition", "no REE here: run `ree init` first")
     try:
         ree = load_ree(layout, store)
         if ree.seal is not None:

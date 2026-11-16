@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 
 import pytest
 
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
-from repo2ree_core.operations.session import request_cancel, run_session
+from repo2ree_core.operations.session import RUN_LOCK, request_cancel, run_session
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
@@ -76,3 +77,28 @@ def test_an_attempt_a_dead_process_left_is_settled_before_the_next_command_runs(
     assert records[lost.attempt_id].capture_status == "captured"
     assert records[lost.attempt_id].operation_status == "interrupted"
     assert ree.overlay_file("kept.txt").read_text() == "before"
+
+
+def test_a_command_is_refused_while_another_runs_in_the_ree_and_settles_nothing(ree, monkeypatch):
+    def dies(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", dies)
+    with pytest.raises(KeyboardInterrupt):
+        _run(ree, "lost", run_id="run-lost")
+    monkeypatch.undo()
+    with (ree.git_dir / RUN_LOCK).open("w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        held.write("run-busy")
+        held.flush()
+        lines: list[str] = []
+
+        result = _run(ree, "after", run_id="run-2", lines=lines)
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "conflict"
+    assert "run-busy" in result.failure.message
+    assert lines == [result.failure.message]
+    assert [record.capture_status for record in read_operation_history(ree).operations] == ["pending"]
+    assert _run(ree, "after", run_id="run-3").status == "succeeded"

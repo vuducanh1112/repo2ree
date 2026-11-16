@@ -8464,19 +8464,20 @@
     },
     "SealReeArgs": {
       "additionalProperties": false,
+      "description": "What the sealed REE carries besides its scripts and evidence: by default everything it holds, so that a\nbundle reproduces offline; ``--no-source-included`` and the like leave a part out.",
       "properties": {
         "source_included": {
-          "default": false,
+          "default": true,
           "title": "Source Included",
           "type": "boolean"
         },
         "experiment_environment_included": {
-          "default": false,
+          "default": true,
           "title": "Experiment Environment Included",
           "type": "boolean"
         },
         "results_included": {
-          "default": false,
+          "default": true,
           "title": "Results Included",
           "type": "boolean"
         }
@@ -8496,9 +8497,9 @@
         "args": {
           "$ref": "#/$defs/SealReeArgs",
           "default": {
-            "source_included": false,
-            "experiment_environment_included": false,
-            "results_included": false
+            "source_included": true,
+            "experiment_environment_included": true,
+            "results_included": true
           }
         }
       },

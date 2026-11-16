@@ -453,11 +453,14 @@ class LintScriptsCommand(BaseModel):
 
 
 class SealReeArgs(BaseModel):
+    """What the sealed REE carries besides its scripts and evidence: by default everything it holds, so that a
+    bundle reproduces offline; ``--no-source-included`` and the like leave a part out."""
+
     model_config = ConfigDict(extra="forbid")
 
-    source_included: bool = False
-    experiment_environment_included: bool = False
-    results_included: bool = False
+    source_included: bool = True
+    experiment_environment_included: bool = True
+    results_included: bool = True
 
 
 class SealReeCommand(BaseModel):

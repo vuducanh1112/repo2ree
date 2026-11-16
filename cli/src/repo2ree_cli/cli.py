@@ -42,6 +42,7 @@ from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     LoadReeBundleCommand,
+    SealReeCommand,
     command_adapter,
 )
 from repo2ree_protocol.execution import ExecutionContext
@@ -84,15 +85,27 @@ class Invocation:
     context: ExecutionContext | None
 
     def layout(self) -> ReeLayout:
-        return ReeLayout(root=self.ree or nearest_ree(Path.cwd()))
+        """The REE at ``-C`` or, without it, the nearest one at or above the current directory."""
+        if self.ree is not None:
+            if not (self.ree / REE_MANIFEST).is_file():
+                raise NoReeError(f"no REE at {self.ree}: create one with `ree -C {self.ree} init`")
+            return ReeLayout(root=self.ree)
+        found = nearest_ree(Path.cwd())
+        if found is None:
+            raise NoReeError(f"no REE at or above {Path.cwd()}: create one with `ree init`, or name one with -C")
+        return ReeLayout(root=found)
 
     def sink(self) -> LogSink:
         return _ndjson_sink if self.machine else _plain_sink
 
 
-def nearest_ree(start: Path) -> Path:
-    """The nearest directory at or above ``start`` that holds an REE; ``start`` itself when none does."""
-    return next((path for path in (start, *start.parents) if (path / REE_MANIFEST).is_file()), start)
+class NoReeError(Exception):
+    """The command needs an REE, and there is none where it looked."""
+
+
+def nearest_ree(start: Path) -> Path | None:
+    """The nearest directory at or above ``start`` that holds an REE."""
+    return next((path for path in (start, *start.parents) if (path / REE_MANIFEST).is_file()), None)
 
 
 def _ndjson_sink(stream: str, level: str, message: str) -> None:
@@ -151,7 +164,11 @@ def main() -> None:
 
 
 def _run(invocation: Invocation, verb: tuple[str, ...], command: type[BaseModel], words: list[str]) -> None:
-    layout = invocation.layout()
+    try:
+        layout = invocation.layout()
+    except NoReeError as exc:
+        _report(invocation, " ".join(verb), ActionResult.failed("precondition", str(exc)))
+        return
     if command in (AcquireSourceCommand, LoadReeBundleCommand):
         words = _staged(layout, command, words)
     stdin = click.get_binary_stream("stdin").read() if reads_stdin(_args_of(command)) else None
@@ -159,6 +176,8 @@ def _run(invocation: Invocation, verb: tuple[str, ...], command: type[BaseModel]
         cmd = from_argv([*verb, *words], stdin)
     except (ArgvError, ValueError) as exc:
         raise click.UsageError(str(exc)) from exc
+    if isinstance(cmd, SealReeCommand) and not _sealing_confirmed(invocation, layout):
+        raise click.Abort
     result = run_session(
         cmd,
         layout=layout,
@@ -168,6 +187,21 @@ def _run(invocation: Invocation, verb: tuple[str, ...], command: type[BaseModel]
         traceparent=os.environ.get("TRACEPARENT"),
     )
     _report(invocation, " ".join(verb), result)
+
+
+def _at_terminal() -> bool:
+    return sys.stdin.isatty()
+
+
+def _sealing_confirmed(invocation: Invocation, layout: ReeLayout) -> bool:
+    """A person at a terminal confirms a seal, which no command undoes, seeing which steps are not complete."""
+    if invocation.machine or not _at_terminal():
+        return True
+    steps = get_ree_steps(layout).steps
+    open_steps = [step.label for step in steps if step.key != "seal" and step.status != "complete"]
+    if open_steps:
+        click.echo(f"Not complete: {', '.join(open_steps)}.", err=True)
+    return click.confirm("Sealing freezes this REE: it takes no edit after it. Seal it?", err=True)
 
 
 def _report(invocation: Invocation, verb: str, result: ActionResult) -> None:
@@ -244,7 +278,7 @@ for _command, _words in VERBS.items():
 @click.pass_obj
 def cancel_cmd(invocation: Invocation, run_id: str) -> None:
     """Ask the run RUN_ID to stop: it rolls the REE back and is captured as canceled."""
-    request_cancel(invocation.layout(), run_id)
+    request_cancel(_layout(invocation), run_id)
     click.echo(json.dumps({"status": "cancel_requested", "run_id": run_id}))
 
 
@@ -260,7 +294,7 @@ def settle_cmd(invocation: Invocation, attempt_id: str, command_file: Path | Non
     """
     cmd = command_adapter.validate_json(command_file.read_text(encoding="utf-8")) if command_file else None
     result = settle_interrupted(
-        layout=invocation.layout(),
+        layout=_layout(invocation),
         attempt_id=attempt_id,
         log=invocation.sink(),
         cmd=cmd,
@@ -281,6 +315,14 @@ def _fail(message: str) -> NoReturn:
     sys.exit(1)
 
 
+def _layout(invocation: Invocation) -> ReeLayout:
+    """The REE a read is of; none there fails the read."""
+    try:
+        return invocation.layout()
+    except NoReeError as exc:
+        _fail(str(exc))
+
+
 def _init(invocation: Invocation, read: InitRee) -> None:
     layout = ReeLayout(root=invocation.ree or Path.cwd())
     try:
@@ -291,31 +333,29 @@ def _init(invocation: Invocation, read: InitRee) -> None:
 
 
 def _manifest(invocation: Invocation, _read: ManifestQuery) -> None:
-    store = ReeDirectory(invocation.layout())
-    if not store.manifest_exists():
-        _fail("not initialised")
+    store = ReeDirectory(_layout(invocation))
     click.echo(json.dumps(store.read_manifest_json()))
 
 
 def _show(invocation: Invocation, read: ShowQuery) -> None:
     try:
-        result = get_ree_document(invocation.layout(), include_content=not read.summary)
+        result = get_ree_document(_layout(invocation), include_content=not read.summary)
     except FileNotFoundError as exc:
         _fail(str(exc))
     click.echo(result.model_dump_json())
 
 
 def _reviews(invocation: Invocation, _read: ReviewsQuery) -> None:
-    click.echo(load_reviews(invocation.layout()).model_dump_json())
+    click.echo(load_reviews(_layout(invocation)).model_dump_json())
 
 
 def _log(invocation: Invocation, _read: LogQuery) -> None:
-    click.echo(read_operation_history(invocation.layout()).model_dump_json())
+    click.echo(read_operation_history(_layout(invocation)).model_dump_json())
 
 
 def _bundle(invocation: Invocation, _read: BundleQuery) -> None:
     try:
-        with materialized_ree_download(invocation.layout()) as path, path.open("rb") as archive:
+        with materialized_ree_download(_layout(invocation)) as path, path.open("rb") as archive:
             shutil.copyfileobj(archive, sys.stdout.buffer, length=1024 * 1024)
     except (FileNotFoundError, RuntimeError) as exc:
         _fail(str(exc))
@@ -323,7 +363,7 @@ def _bundle(invocation: Invocation, _read: BundleQuery) -> None:
 
 def _cat(invocation: Invocation, read: CatQuery) -> None:
     try:
-        data = read_ree_file_bytes(invocation.layout(), read.path)
+        data = read_ree_file_bytes(_layout(invocation), read.path)
     except FileNotFoundError:
         _fail(f"not found: {read.path}")
     except ValueError as exc:
@@ -395,7 +435,7 @@ _MARKS = {"complete": "✓", "ready": "·", "blocked": "✗"}
 def steps_cmd(invocation: Invocation) -> None:
     """Show where the REE stands on each authoring step, and what to do next."""
     try:
-        steps = get_ree_steps(invocation.layout())
+        steps = get_ree_steps(_layout(invocation))
     except FileNotFoundError as exc:
         _fail(str(exc))
     click.echo(steps.model_dump_json() if invocation.machine else _describe_steps(steps))
@@ -438,4 +478,4 @@ def doctor_cmd(invocation: Invocation) -> None:
 
     ``ok`` covers only what is required; the rest is for whoever runs the REE to judge.
     """
-    click.echo(json.dumps(run_doctor(invocation.layout().root)))
+    click.echo(json.dumps(run_doctor(invocation.ree or nearest_ree(Path.cwd()) or Path.cwd())))

@@ -261,8 +261,7 @@ class CliClient:
             assert done.status == "succeeded", f"{label} ended {done.status}\n{self.logs(ree_id, done)}"
 
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        included = ("--source-included", "--experiment-environment-included", "--results-included")
-        return self._step(ree_id, "seal", *included)
+        return self._step(ree_id, "seal")
 
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"
