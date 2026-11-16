@@ -22,12 +22,7 @@ describe("shell data hooks", () => {
           connected: true,
           workbench_id: "wb-b",
           slots: 2,
-          machine: {
-            arch: "x86_64",
-            engine: "docker",
-            script_engine: "none",
-            gpus: 0,
-          },
+          machine: { arch: "x86_64", gpus: 0, container: true, reported_image: "python:3.12" },
         },
         { store_id: "a", label: "a-host", connected: false, slots: 0 },
       ],
@@ -65,7 +60,9 @@ describe("shell data hooks", () => {
     expect(result.current.labs.data?.map((lab) => lab.label)).toEqual(["a-host", "z-host"]);
     expect(result.current.labs.data?.map((lab) => lab.available)).toEqual([false, true]);
     expect(result.current.labs.data?.[1]?.machine).toEqual({
-      engine: "docker",
+      arch: "x86_64",
+      gpus: 0,
+      reportedImage: "python:3.12",
     });
     expect(result.current.labs.data?.[0]?.machine).toBeNull();
     expect(result.current.labs.data?.map((lab) => lab.status)).toEqual(["offline", "connected"]);

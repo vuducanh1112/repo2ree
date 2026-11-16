@@ -2,8 +2,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
 
 HOURS = np.arange(10, dtype=float)
 MEASURED = np.array([2.1, 3.9, 6.2, 7.8, 10.1, 12.2, 13.8, 16.1, 18.0, 19.9])
@@ -15,8 +15,7 @@ def main() -> None:
 
     with open("fit.csv", "w", encoding="utf-8") as table:
         table.write("hour,measured,fitted\n")
-        for hour, measured, value in zip(HOURS, MEASURED, fitted, strict=True):
-            table.write(f"{hour:.0f},{measured:.1f},{value:.4f}\n")
+        table.writelines(f"{hour:.0f},{measured:.1f},{value:.4f}\n" for hour, measured, value in zip(HOURS, MEASURED, fitted, strict=True))
 
     figure, axes = plt.subplots(figsize=(8, 6), dpi=100)
     axes.scatter(HOURS, MEASURED, label="measured")

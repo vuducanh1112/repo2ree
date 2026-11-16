@@ -6,7 +6,6 @@ import json
 
 import pytest
 
-from repo2ree_core.execution.working_environment import HOST_MACHINE
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.session import request_cancel, run_session
@@ -31,7 +30,7 @@ def _run(ree: ReeLayout, name: str, *, run_id: str = "run-1", lines: list[str] |
         if lines is not None:
             lines.append(message)
 
-    return run_session(_rename(name), layout=ree, machine=HOST_MACHINE, emit=emit, run_id=run_id)
+    return run_session(_rename(name), layout=ree, emit=emit, run_id=run_id)
 
 
 def test_the_run_log_holds_the_command_its_lines_and_its_result(ree):

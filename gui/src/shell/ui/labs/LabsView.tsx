@@ -1,4 +1,4 @@
-import type { Lab } from "@core/lab/Lab";
+import { describeMachine, type Lab } from "@core/lab/Lab";
 import { useLabs } from "@shell/data/labs/labs";
 import { Ic } from "../shared/components/Icon";
 import styles from "./LabsView.module.css";
@@ -72,7 +72,7 @@ function HeaderRow() {
     <div className={styles.row} data-kind="head">
       <div className={styles.headCell}>Location</div>
       <div className={styles.headCell}>Location ID</div>
-      <div className={styles.headCell}>Image engine</div>
+      <div className={styles.headCell}>Machine</div>
       <div className={styles.headCell}>Availability</div>
     </div>
   );
@@ -90,7 +90,7 @@ function LabRow({ lab }: { lab: Lab }) {
       <div className={styles.cell} data-flavor="code">
         {lab.id}
       </div>
-      <div className={styles.cell}>{lab.machine?.engine ?? "—"}</div>
+      <div className={styles.cell}>{describeMachine(lab.machine)}</div>
       <div className={styles.uptime}>
         <span aria-hidden className={styles.uptimeDot} />
         <span className={styles.cell}>{lab.available ? "available" : lab.status}</span>

@@ -14,7 +14,7 @@ F = PYTHON_VENV
 
 
 def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, new_ree: NewRee) -> None:
-    ree_id = new_ree(image=F.image)
+    ree_id = new_ree()
     client.upload_source(ree_id, F)
     assert client.evaluate(ree_id, watch=F.watch).status == "succeeded"
 

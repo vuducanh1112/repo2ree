@@ -7,7 +7,6 @@ import pytest
 from repo2ree_core.digests import digest_output_paths
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, RunnableRunOutputs
-from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.author import activation_test, run_experiment, runnable
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -200,7 +199,6 @@ def test_activation_runs_alone_and_commits_exact_input_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     receipt = store.read_ree().subject.receipts.activation
@@ -229,7 +227,6 @@ def test_native_activation_has_no_experiment_environment_binding(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     receipt = store.read_ree().subject.receipts.activation
@@ -255,7 +252,6 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
     receipt = store.read_ree().subject.receipts.experiments.get(_EXPERIMENT_NAME)
@@ -267,7 +263,7 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     assert receipt.run_script_digest == digest_bytes(_EXPERIMENT_SCRIPT)
     assert receipt.verify_script_digest == digest_bytes(_EXPERIMENT_VERIFY)
     assert receipt.working_environment is not None
-    assert receipt.working_environment.declared is None
+    assert receipt.working_environment.host.arch
     assert receipt.produced_output_digest == digest_output_paths(
         layout.workspace,
         ["outputs/result.txt"],
@@ -307,7 +303,6 @@ def test_an_experiment_runs_only_while_the_activation_is_current(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=store.layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -332,7 +327,6 @@ def test_unsuccessful_attempt_commits_no_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == status
@@ -369,7 +363,6 @@ def test_activation_preconditions_reject_invalid_evidence_before_execution(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=store.layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -400,7 +393,6 @@ def test_changed_script_is_rejected_before_execution(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -429,7 +421,6 @@ def test_unknown_experiment_is_rejected_before_execution(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -456,7 +447,6 @@ def test_revision_conflict_does_not_select_the_new_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"

@@ -95,7 +95,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
     id: "lab-oslo",
     label: "lab-oslo-01",
     description: "",
-    machine: { engine: "docker" },
+    machine: { arch: "x86_64", gpus: 1, reportedImage: null },
     status: "connected",
     available: true,
     ...overrides,
@@ -177,9 +177,9 @@ describe("choosing a lab", () => {
 
     expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
     // The operator facts a cell has no room for. Where the lab runs scripts is
-    // one of them; nothing here claims what an image supplies, because nothing knows.
-    expect(screen.getByText("SCRIPTS RUN")).toBeInTheDocument();
-    expect(screen.getAllByText("images with docker").length).toBeGreaterThan(0);
+    // one of them; nothing here claims what its toolchain supplies: the REE's check says what it needs.
+    expect(screen.getByText("MACHINE")).toBeInTheDocument();
+    expect(screen.getAllByText("x86_64, 1 GPU").length).toBeGreaterThan(0);
   });
 
   it("arms the only connected lab, so a single-lab install is one click", () => {

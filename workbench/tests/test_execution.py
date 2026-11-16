@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_protocol.machine import MachineFacts
-from repo2ree_workbench.cli_process import LocalCli, remove_leftover_jobs
+from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.tools import tool_environment
 
 
@@ -107,47 +107,12 @@ def test_the_tools_a_bundle_names_reach_every_executor(fake_executor: Path, tmp_
     assert tool_environment(None) == {}
 
 
-def test_a_workbench_labels_its_store_s_jobs_and_says_nothing_else_of_where_scripts_run(
-    fake_executor: Path, tmp_path: Path
-) -> None:
-    labelled = LocalCli(tmp_path / "store", str(fake_executor), owner="/store").environment(tmp_path / "store")
-    assert labelled["REPO2REE_JOB_OWNER"] == "/store"
-
-    bare = LocalCli(tmp_path / "root", str(fake_executor)).environment(tmp_path / "root")
-    # How the machine runs an REE's scripts is ree's to read from the machine's own environment.
-    assert not {"REPO2REE_JOB_OWNER", "REPO2REE_SCRIPT_ENGINE"} & set(bare) - set(os.environ)
-
-
 def test_a_workbench_reports_the_machine_as_ree_says_it_and_nothing_when_ree_cannot_say(tmp_path: Path) -> None:
     ree = tmp_path / "ree"
-    ree.write_text('#!/bin/sh\necho \'{"arch": "x86_64", "engine": "podman", "script_engine": "socket"}\'\n')
+    ree.write_text('#!/bin/sh\necho \'{"arch": "x86_64", "gpus": 2, "container": true}\'\n')
     ree.chmod(ree.stat().st_mode | stat.S_IXUSR)
-    assert LocalCli(tmp_path / "store", str(ree)).machine() == MachineFacts(
-        arch="x86_64", engine="podman", script_engine="socket"
-    )
+    assert LocalCli(tmp_path / "store", str(ree)).machine() == MachineFacts(arch="x86_64", gpus=2, container=True)
     assert LocalCli(tmp_path / "store", str(tmp_path / "missing")).machine() == MachineFacts()
-
-
-def test_leftover_jobs_go_but_those_of_adopted_executions_stay(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (tmp_path / "bin").mkdir()
-    engine = tmp_path / "bin" / "docker"
-    removed = tmp_path / "removed"
-    engine.write_text(
-        "#!/bin/sh\n"
-        'case "$1" in\n'
-        "  ps) printf 'c1 a1\\nc2 a2\\nc3 \\n' ;;\n"
-        f'  rm) shift; echo "$@" > {removed} ;;\n'
-        "esac\n"
-    )
-    engine.chmod(engine.stat().st_mode | stat.S_IXUSR)
-    monkeypatch.setenv("PATH", f"{tmp_path / 'bin'}:{os.environ['PATH']}")
-
-    remove_leftover_jobs("docker", "store", frozenset({"a1"}))
-    assert removed.read_text().split() == ["-f", "c2", "c3"]
-
-    removed.unlink()
-    remove_leftover_jobs("none", "store", frozenset())
-    assert not removed.exists()
 
 
 def test_a_second_workbench_process_cannot_hold_a_held_store(tmp_path: Path) -> None:

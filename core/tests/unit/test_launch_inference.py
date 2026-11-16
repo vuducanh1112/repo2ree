@@ -107,7 +107,7 @@ def test_a_slurm_time_limit_is_read_in_minutes(limit: str | None, minutes: int |
 
 
 def _result(stdout: str, returncode: int | None = 0, stderr: str = "") -> ProbeResult:
-    return ProbeResult(runner="host", image=None, returncode=returncode, stdout=stdout, stderr=stderr)
+    return ProbeResult(returncode=returncode, stdout=stdout, stderr=stderr)
 
 
 def test_the_probe_reads_the_controller_and_its_partitions() -> None:

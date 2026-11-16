@@ -295,7 +295,6 @@ export class ReeApi {
     opts: {
       includeSource: boolean;
       includeExperimentEnvironment: boolean;
-      includeWorkingEnvironment: boolean;
       includeResults: boolean;
     },
   ): Promise<RunSummary> {
@@ -304,7 +303,6 @@ export class ReeApi {
       body: JSON.stringify({
         include_source: opts.includeSource,
         include_experiment_environment: opts.includeExperimentEnvironment,
-        include_working_environment: opts.includeWorkingEnvironment,
         include_results: opts.includeResults,
       }),
     });

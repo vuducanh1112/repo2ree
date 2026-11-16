@@ -4,7 +4,6 @@ import {
   commandScript,
   EXPERIMENT_OUTPUT_FILE,
   generateScript,
-  LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   openPort,
   provisionWorkbench,
@@ -76,7 +75,7 @@ test.describe("REE pip pipeline", () => {
   }) => {
     await test.step("provision a python:slim workbench", async () => {
       await startReeCreation(page);
-      await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+      await provisionWorkbench(page);
     });
 
     await test.step("upload source tarball", async () => {

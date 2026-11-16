@@ -87,7 +87,7 @@ def test_a_session_is_opened_connected_and_lost_once(journal_dir: Path) -> None:
         "workbench_id": "wb-1",
         "nonce": "n-1",
         "store_id": "lab-1",
-        "engine": "none",
+        "arch": "",
         "slots": 2,
         "version": "1.2.3",
     }

@@ -59,7 +59,6 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
     """Create the REE in ``store_id``; the workbench serving the store must be connected."""
     if store_registry.get(store_id) is None:
         raise HTTPException(status_code=404, detail=f"Store {store_id} not found")
-    image = payload.image.strip() or None
 
     def _runner(rid: str, run_id: str) -> ActionResult:
         def _log_run(stream: str, level: str, message: str) -> None:
@@ -69,7 +68,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
         ree_registry.create(rid, name, store_id)
         try:
             handle = require_handle(rid)
-            command_dispatcher.init_ree(handle, name, image)
+            command_dispatcher.init_ree(handle, name)
         except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
             ree_registry.delete(rid)
             detail = exc.detail if isinstance(exc, HTTPException) else exc

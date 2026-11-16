@@ -62,12 +62,6 @@ def store_id(index: int) -> str:
     return f"lab-{index}"
 
 
-def machine_variables(backend: Backend) -> dict[str, str]:
-    """What ``ree`` reads from a store's machine: on a container store the Docker REEs build and run images, so a
-    script in a container reaches the machine's engine."""
-    return {"REPO2REE_SCRIPT_ENGINE": "socket"} if backend == "container" else {}
-
-
 def locations(
     deployment: Deployment, api_url: str, control_state: Path, token: str, store_tokens: dict[int, str]
 ) -> list[Service]:
@@ -85,9 +79,6 @@ def locations(
                 "WORKBENCH_STORE": f"{store_id(index)}={state / 'store'}",
                 "WORKBENCH_SLOTS": "2",
                 "WORKBENCH_TOOLS_BUNDLE": str(deployment.tools_bundle),
-                **machine_variables(deployment.backend),
-                # Job containers carry the run's label, so its cleanup removes what a fault left.
-                "REPO2REE_RESOURCE_OWNER": token,
                 "WORKBENCH_STATE_DIR": str(state),
                 "REPO2REE_CLI_PATH": "ree",
             },

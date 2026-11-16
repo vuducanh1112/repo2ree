@@ -1721,10 +1721,6 @@ export interface components {
              * @enum {string}
              */
             status: "probed" | "failed" | "not_probed";
-            /** Runner */
-            runner?: ("host" | "container") | null;
-            /** Image */
-            image?: string | null;
             /** Engines */
             engines?: components["schemas"]["EngineObservation"][];
             /**
@@ -2785,11 +2781,6 @@ export interface components {
              * @default
              */
             kernel: string;
-            /**
-             * Container Engine
-             * @default
-             */
-            container_engine: string;
         };
         /**
          * ImageCommandBinding
@@ -2962,7 +2953,8 @@ export interface components {
         };
         /**
          * MachineFacts
-         * @description How this machine runs an REE's scripts, and what it offers them.
+         * @description The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider
+         *     says it runs in.
          */
         MachineFacts: {
             /**
@@ -2971,22 +2963,17 @@ export interface components {
              */
             arch: string;
             /**
-             * Engine
-             * @default none
-             * @enum {string}
-             */
-            engine: "docker" | "podman" | "apptainer" | "none";
-            /**
-             * Script Engine
-             * @default none
-             * @enum {string}
-             */
-            script_engine: "none" | "socket";
-            /**
              * Gpus
              * @default 0
              */
             gpus: number;
+            /**
+             * Container
+             * @default false
+             */
+            container: boolean;
+            /** Reported Image */
+            reported_image?: string | null;
         };
         /**
          * MachineLevel
@@ -3284,11 +3271,6 @@ export interface components {
             name?: string | null;
             /** Store Id */
             store_id: string;
-            /**
-             * Image
-             * @default
-             */
-            image: string;
         };
         /** ReeDefinition */
         "ReeDefinition-Input": {
@@ -3301,7 +3283,6 @@ export interface components {
             source?: components["schemas"]["SourceDefinition"] | null;
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
-            working_environment?: components["schemas"]["WorkingEnvironment"] | null;
             check_working_environment?: components["schemas"]["CheckWorkingEnvironmentDefinition"] | null;
             launch?: components["schemas"]["LaunchDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
@@ -3322,7 +3303,6 @@ export interface components {
             source?: components["schemas"]["SourceDefinition"] | null;
             experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
             activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
-            working_environment?: components["schemas"]["WorkingEnvironment"] | null;
             check_working_environment?: components["schemas"]["CheckWorkingEnvironmentDefinition"] | null;
             launch?: components["schemas"]["LaunchDefinition"] | null;
             hardware?: components["schemas"]["HardwareDefinition"] | null;
@@ -3468,12 +3448,6 @@ export interface components {
              * @default false
              */
             include_experiment_environment: boolean;
-            /**
-             * Include Working Environment
-             * @description Save the working environment's OCI image into the sealed archive, so a review needs no registry.
-             * @default false
-             */
-            include_working_environment: boolean;
             /**
              * Include Results
              * @description Put everything under results/ in the sealed archive.
@@ -4196,10 +4170,8 @@ export interface components {
          * ScriptTemplateEntry
          * @description One named starter-template variant for an REE-owned script.
          *
-         *     Every catalog section lists these; one entry per environment carries
-         *     ``is_default`` (for the seeded scripts it is the content a fresh REE in that
-         *     environment starts with). ``working_environment`` is the kind of working environment a variant
-         *     suits, or null for one that suits any.
+         *     Every catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the
+         *     content a fresh REE starts with).
          */
         ScriptTemplateEntry: {
             /** Key */
@@ -4212,8 +4184,6 @@ export interface components {
             body: string;
             /** Is Default */
             is_default: boolean;
-            /** Working Environment */
-            working_environment?: ("host" | "container") | null;
         };
         /**
          * ScriptValidation
@@ -4317,10 +4287,6 @@ export interface components {
              * @enum {string}
              */
             status: "probed" | "failed" | "not_probed";
-            /** Runner */
-            runner?: ("host" | "container") | null;
-            /** Image */
-            image?: string | null;
             /** State */
             state?: ("absent" | "unreachable" | "usable") | null;
             /** Srun Path */
@@ -4707,33 +4673,19 @@ export interface components {
              */
             status: string;
         };
-        /** WorkingEnvironment */
-        WorkingEnvironment: {
-            /** Oci */
-            oci: string;
-        };
         /**
          * WorkingEnvironmentObservation
-         * @description What a step ran in: the declaration it ran under, and what was there.
+         * @description Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in.
          */
         WorkingEnvironmentObservation: {
-            declared?: components["schemas"]["WorkingEnvironment"] | null;
+            host: components["schemas"]["HostFingerprint"];
             /**
-             * Backend
-             * @enum {string}
+             * Container
+             * @default false
              */
-            backend: "host" | "container";
-            /** Image Digest */
-            image_digest?: string | null;
-            /** Image Source */
-            image_source?: ("engine" | "bundle") | null;
-            host?: components["schemas"]["HostFingerprint"] | null;
-            /**
-             * Script Engine
-             * @default none
-             * @enum {string}
-             */
-            script_engine: "none" | "socket" | "nested";
+            container: boolean;
+            /** Reported Image */
+            reported_image?: string | null;
         };
         /** WorkspaceDrift */
         WorkspaceDrift: {

@@ -3,7 +3,7 @@
 The stack under a CLI showcase starts its store's machine as for any showcase; this client works beside the
 workbench there, never through it: each step is a ``ree`` command on that machine, against an REE in a directory
 the machine and this process share. What a step printed is its log, and its result is the one line ``--json``
-writes. A CLI REE declares no bench image: ``ree`` runs an REE's scripts on the machine it runs on.
+writes. ``ree`` runs an REE's scripts on the machine it runs on.
 """
 
 from __future__ import annotations
@@ -287,13 +287,13 @@ class CliClient:
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
         """Author and seal ``fixture``, and reproduce it in a second REE."""
-        author = new_ree("review-author", image=fixture.image)
+        author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)
         assert sealed.status == "succeeded", self.logs(author, sealed)
         archive = self.archive(author, "review-baseline")
 
-        reviewer = new_ree("reviewer", image=fixture.image)
+        reviewer = new_ree("reviewer")
         self.load(reviewer, archive.read_bytes())
 
         source = self.review_source(reviewer, "auto", watch=fixture.watch)
@@ -343,8 +343,7 @@ def new_ree(client: CliClient, request: pytest.FixtureRequest) -> Iterator[Calla
     created: list[str] = []
     label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
 
-    def create(name: str = label, *, image: str | None = None) -> str:
-        # The image a store's REE would declare is the store's to run scripts in; ree runs them where it runs.
+    def create(name: str = label) -> str:
         ree_id = client.create(name[:40])
         created.append(ree_id)
         return ree_id

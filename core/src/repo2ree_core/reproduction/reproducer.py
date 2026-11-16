@@ -67,7 +67,6 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
 )
-from repo2ree_ree.working_environment import WorkingEnvironment
 
 # ================================================
 # Constants
@@ -193,7 +192,6 @@ def reproducer_entries(
     source_type: str = "",
     revision: str = "",
     swhid: str = "",
-    working_environment: WorkingEnvironment | None = None,
     launch_script: str | None = None,
     check_script: str | None = None,
 ) -> list[tuple[str, bytes]]:
@@ -218,8 +216,10 @@ def reproducer_entries(
     )
     acquire_sh = build_acquire_sh(origin_url=origin_url, source_type=source_type, revision=revision, swhid=swhid)
     materialize_sh = build_materialize_sh()
-    reproducing_md = _replace_layout_tokens(_REPRODUCING_MD.replace("@@LAUNCH@@", _launch_text(launch_script))).replace(
-        "@@ENVIRONMENT@@", _working_environment_text(working_environment)
+    reproducing_md = _replace_layout_tokens(
+        _REPRODUCING_MD.replace("@@LAUNCH@@", _launch_text(launch_script)).replace(
+            "@@ENVIRONMENT@@", _working_environment_text(check_script)
+        )
     )
     reproducing_md = assert_no_placeholders(reproducing_md, artifact=BUNDLE_REPRODUCER_README_ENTRY_PATH)
     return [
@@ -230,18 +230,14 @@ def reproducer_entries(
     ]
 
 
-def _working_environment_text(working_environment: WorkingEnvironment | None) -> str:
-    """What the REE says its scripts run in, for a reader about to run them."""
-    if working_environment is None:
-        return (
-            "The author declared no working environment: the scripts ran directly on their machine, and run here "
-            "in whatever shell runs `run.sh`."
-        )
-    pin = "" if working_environment.pinned else " It is not pinned by digest, so what it names may have moved since."
-    bundled = " The bundle carries the image when the author included it: `docker load -i ree/working-environment.tar`."
+def _working_environment_text(check_script: str | None) -> str:
+    """What the scripts need from the machine that runs them, for a reader about to run them."""
+    if not check_script:
+        return "The scripts run in whatever shell runs `run.sh`; the author left no check of what they need."
     return (
-        f"The author's scripts ran in the OCI image `{working_environment.oci}`.{pin} `run.sh` does not enter it: "
-        f"run `run.sh` inside it, with this directory mounted at the same path.{bundled}"
+        f"The scripts run in whatever shell runs `run.sh`. What they need from it is the author's check, "
+        f"`{check_script}` (in `ree/@@OVERLAY_DIRNAME@@/`): `sh run.sh check-working-environment` runs it alone, and "
+        "`sh run.sh all` runs it first."
     )
 
 

@@ -420,7 +420,6 @@ class E2EStack:
             **served.environment(),
             FAULTS_URL: self.injector.url,
             # Where the stores run scripts, for tests of one backend only.
-            "E2E_STORE_BACKEND": self.deployment.backend,
         }
         if (machine := self.deployment.environment) is not None:
             # The first store's machine, for a client that works on it as its user does: the CLI showcases.

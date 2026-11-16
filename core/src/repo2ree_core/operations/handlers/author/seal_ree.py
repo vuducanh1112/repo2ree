@@ -5,7 +5,6 @@ import time
 from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.working_environment import Machine
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.time_utils import utc_now_instant
@@ -79,7 +78,6 @@ def handle_seal_ree(
     args: SealReeArgs,
     *,
     layout: ReeLayout,
-    machine: Machine,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
@@ -90,9 +88,6 @@ def handle_seal_ree(
             source_included=args.source_included,
             experiment_environment_included=args.experiment_environment_included,
             results_included=args.results_included,
-            working_environment_included=args.working_environment_included,
-            machine=machine,
-            log=log,
             sealed_at=utc_now_instant(),
             progress=_ProgressLogger(log),
             is_canceled=is_canceled,

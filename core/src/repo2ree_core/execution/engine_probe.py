@@ -1,7 +1,7 @@
 """Which container engines a script run for an REE can use, probed where its scripts run.
 
 The probe is a small POSIX shell script run in the REE's working environment, so it sees what a build script
-would: the same PATH, user, image, mounts and engine socket. For each engine it asks the engine itself, not
+would: the same PATH, user and engine socket. For each engine it asks the engine itself, not
 the client's presence: ``docker version`` names the server that answers, which may be Podman behind a socket,
 and ``podman info`` exercises its storage and rootless setup. It writes nothing.
 
@@ -14,7 +14,7 @@ import subprocess
 from pathlib import Path
 from typing import get_args
 
-from repo2ree_core.execution.working_environment import Entry, ProbeResult, WorkingEnvironmentUnavailableError, probe
+from repo2ree_core.execution.working_environment import ProbeResult, probe
 from repo2ree_protocol.inference import ContainerEngine, ContainerEnginesProbe, EngineObservation
 
 PROBE_SECONDS = 20.0
@@ -82,26 +82,24 @@ def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> ContainerEn
         why = f"no answer within {seconds:.0f}s" if result.returncode is None else f"exit {result.returncode}"
         first = next(iter(result.stderr.splitlines()), "")
         detail = f"{why}: {first}" if first else why
-        return ContainerEnginesProbe(status="failed", detail=detail, runner=result.runner, image=result.image)
+        return ContainerEnginesProbe(status="failed", detail=detail)
     engines = [
         seen.get(engine)
         or EngineObservation(engine=engine, state="unreachable", detail=f"no answer within {seconds:.0f}s")
         for engine in ENGINES
     ]
-    return ContainerEnginesProbe(status="probed", engines=engines, runner=result.runner, image=result.image)
+    return ContainerEnginesProbe(status="probed", engines=engines)
 
 
 class RunnerEngineProbe:
-    """Probes through the REE's working environment the first time it is asked, and answers the same after."""
+    """Probes where ree runs the first time it is asked, and answers the same after."""
 
     def __init__(
         self,
         workspace: Path,
-        entry: Entry,
         seconds: float = PROBE_SECONDS,
     ) -> None:
         self._workspace = workspace
-        self._entry = entry
         self._seconds = seconds
         self._seen: ContainerEnginesProbe | None = None
 
@@ -114,15 +112,13 @@ class RunnerEngineProbe:
         if not self._workspace.is_dir():
             return ContainerEnginesProbe(status="failed", detail=f"no workspace at {self._workspace} to probe from")
         try:
-            result = probe(self._entry, self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
+            result = probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
         except (
-            WorkingEnvironmentUnavailableError,
             RuntimeError,
             OSError,
             ValueError,
             subprocess.SubprocessError,
         ) as error:
-            # The runner refused (an REE that declares no image where scripts run in containers), or the
-            # engine could not start the probe: where the scripts would run is unknown, so are its engines.
+            # The probe could not start: where the scripts would run is unknown, so are its engines.
             return ContainerEnginesProbe(status="failed", detail=str(error))
         return observed(result, self._seconds)

@@ -8,7 +8,7 @@ export interface Lab {
   id: string;
   label: string;
   description: string;
-  /** How its machine runs each REE's scripts. Unknown while no workbench serves the lab. */
+  /** The machine it runs each REE's scripts on. Unknown while no workbench serves the lab. */
   machine: LabMachine | null;
   status: LabStatus;
   available: boolean;
@@ -16,16 +16,19 @@ export interface Lab {
   build?: { version?: string; revision?: string };
 }
 
-// How a lab's machine runs an REE's scripts, as `ree machine` reports it there.
+// The machine a lab runs REEs' scripts on, as `ree machine` reports it there.
 export interface LabMachine {
-  /** The engine it enters the image an REE declares with; "none" when it has none. */
-  engine: "docker" | "podman" | "apptainer" | "none";
+  arch: string;
+  gpus: number;
+  /** The image its provider says it runs in, when it says. */
+  reportedImage: string | null;
 }
 
-/** How the lab runs scripts, in a few words: in an REE's image, or only on its own machine. */
+/** The lab's machine, in a few words. */
 export function describeMachine(machine: LabMachine | null): string {
   if (!machine) return "—";
-  return machine.engine === "none" ? "its own machine only" : `images with ${machine.engine}`;
+  const gpus = machine.gpus > 0 ? `, ${machine.gpus} GPU${machine.gpus === 1 ? "" : "s"}` : "";
+  return `${machine.arch || "unknown"}${gpus}${machine.reportedImage ? `, in ${machine.reportedImage}` : ""}`;
 }
 
 // Stable display order: by label, then id. Pure; returns a new array.

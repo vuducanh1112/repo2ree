@@ -1,8 +1,7 @@
-"""How a step runs one of the REE's scripts: launched, entered into the working environment, and activated.
+"""How a step runs one of the REE's scripts: launched and activated, where ``ree`` runs.
 
 The command is composed outside in: the REE's launch (a scheduler, or nothing), the recorder of where the launch put
-it, the entry into the working environment (``working_environment.Entry``), the activation, and the script. It runs
-from the workspace, as a process of this one, so a launch places a job and the job enters the image where it landed.
+it, the activation, and the script. It runs from the workspace, as a process of this one.
 """
 
 from __future__ import annotations
@@ -10,8 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from repo2ree_core.execution.launch import Launch, launched_command, read_launched
-from repo2ree_core.execution.process import CancelCheck, StepOutcome, format_argv
-from repo2ree_core.execution.working_environment import Entry, WorkingEnvironmentUnavailableError, run_in
+from repo2ree_core.execution.process import CancelCheck, StepOutcome, format_argv, run_streaming_process
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionStatus
 from repo2ree_ree.paths import resolve_within
@@ -33,7 +31,6 @@ def run_workspace_script(
     *,
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
-    entry: Entry,
     activate_rel: str | None = None,
     launch: Launch | None = None,
 ) -> StepOutcome:
@@ -41,11 +38,11 @@ def run_workspace_script(
 
     The single execution path shared by the lifecycle runner
     (``experiment/run.py``) and the build/activation/check handlers: the script
-    runs in the REE's working environment, through its launch when it declares
-    one. Running from the workspace root lets authors reference
-    project files by their workspace-relative paths regardless of where REE keeps
-    its own scripts; wrapper scripts are POSIX ``sh`` while project scripts that
-    need bash or their own directory (e.g. ``docker build .``) invoke it
+    runs where ``ree`` runs, through the REE's launch when it declares one.
+    Running from the workspace root lets authors reference project files by their
+    workspace-relative paths regardless of where REE keeps its own scripts;
+    wrapper scripts are POSIX ``sh`` while project scripts that need bash or their
+    own directory (e.g. ``docker build .``) invoke it
     explicitly. Scripts that resolve outside the workspace are rejected.
 
     With no ``script_rel`` the activation runs alone, around a command that does nothing. With a ``launch``, the
@@ -75,19 +72,12 @@ def run_workspace_script(
                 record_span_facts(span, {"script.error": "activate script not found"})
                 return StepOutcome("failed", 1)
             cmd = ["sh", activate_rel, *cmd]
-        try:
-            entry.prepare(log)
-            cmd = entry.command(workspace, cmd)
-        except WorkingEnvironmentUnavailableError as error:
-            log("system", "error", str(error))
-            record_span_facts(span, {"script.error": "working environment unavailable"})
-            return StepOutcome("failed", 1)
         record: Path | None = None
         if launch is not None:
             cmd, record = launched_command(workspace, launch, cmd)
         log("system", "info", f"$ {format_argv(cmd)}")
 
-        result = run_in(entry, workspace, cmd, log=log, is_canceled=is_canceled)
+        result = run_streaming_process(cmd, log=log, cwd=workspace, is_canceled=is_canceled)
         launched = read_launched(record) if record is not None else None
         if launched is not None:
             where = f"{launched.node}" + (f", Slurm job {launched.slurm_job_id}" if launched.slurm_job_id else "")

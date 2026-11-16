@@ -105,15 +105,14 @@ it again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed
 `canceled`). Definition and file edits, reads, and generating script candidates
 are synchronous. A REE is authored end to end in this order:
 
-1. Discover: `listStores` says how each store's machine runs an REE's scripts
-   (`machine`: the engine it enters an image with, and whether it runs scripts on
-   itself). `listReeSteps` gives the steps, their prerequisites,
+1. Discover: `listStores` says which machine each store's workbench runs an REE's
+   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,
    where the REE stands on each and which is next, and the operations that
    advance each. `listScriptTemplates` gives the starter
    scripts and where they belong.
-2. `createRee` — create the REE in a store; await the returned run. It declares the
-   image you ask for as its working environment, or none, and starts with scripts
-   that suit it.
+2. `createRee` — create the REE in a store; await the returned run. It starts with
+   starter scripts, and a check of the working environment that passes as it comes:
+   edit it to say what the scripts need from the store's machine.
 3. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
    `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned
    `upload_url`, relative to this API), then `completeSourceUpload`; await the

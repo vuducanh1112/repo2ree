@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:546c99eead29e6f431741036d6b5a433436aa0f849a32fe3eea909717727b872",
+    "ree_digest": "sha256:d86c147549374362d14c2b3b3083d0f7553c0cfd25b4cb2fd1fd52768afb740d",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -159,9 +159,6 @@
         "origin_url": "https://example.org/maximal.git",
         "requested_ref": "v1.0",
         "source_type": "git"
-      },
-      "working_environment": {
-        "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     },
     "receipts": {
@@ -185,19 +182,13 @@
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "started_at": "2026-10-01T08:16:00.000000Z",
         "working_environment": {
-          "backend": "container",
-          "declared": {
-            "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-          },
+          "container": true,
           "host": {
             "arch": "x86_64",
-            "container_engine": "Docker 29.0.1",
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
           },
-          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "image_source": "engine",
-          "script_engine": "socket"
+          "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         }
       },
       "evaluation": {
@@ -240,19 +231,13 @@
         "snapshot_digest": "sha256:16a0eeb0791b6c92451fd284dd9f599e0a7dbe7f6ebea6e2d2d06c7f74aec112",
         "started_at": "2026-10-01T08:03:00.000000Z",
         "working_environment": {
-          "backend": "container",
-          "declared": {
-            "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-          },
+          "container": true,
           "host": {
             "arch": "x86_64",
-            "container_engine": "Docker 29.0.1",
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
           },
-          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "image_source": "engine",
-          "script_engine": "socket"
+          "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         },
         "workspace_drift": {
           "changed_path_count": 1,
@@ -287,19 +272,13 @@
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:9d857334e6e25dcf53029f53c78c2ace419ade06f7eea07957e2002931ea6b38",
           "working_environment": {
-            "backend": "container",
-            "declared": {
-              "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-            },
+            "container": true,
             "host": {
               "arch": "x86_64",
-              "container_engine": "Docker 29.0.1",
               "kernel": "6.12.5",
               "os": "Debian GNU/Linux 12"
             },
-            "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "image_source": "engine",
-            "script_engine": "socket"
+            "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           }
         }
       },
@@ -446,19 +425,13 @@
         "schema_version": 1,
         "started_at": "2026-10-01T08:05:00.000000Z",
         "working_environment": {
-          "backend": "container",
-          "declared": {
-            "oci": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-          },
+          "container": true,
           "host": {
             "arch": "x86_64",
-            "container_engine": "Docker 29.0.1",
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
           },
-          "image_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-          "image_source": "engine",
-          "script_engine": "socket"
+          "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         }
       }
     },

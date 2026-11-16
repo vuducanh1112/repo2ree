@@ -1,10 +1,9 @@
 # Self-contained local demo: GUI + backend + one store, served by a workbench
 # that runs each REE's scripts in a container from the image the REE declares.
 #
-# The workbench holds the host's Docker socket and starts every job container
-# through it, so this is a trusted demo: an REE's scripts may reach the host
-# engine (REPO2REE_SCRIPT_ENGINE=socket), which is what lets the Docker REEs
-# build images.
+# The workbench holds the host's Docker socket, so this is a trusted demo: an
+# REE's scripts run in the workbench's container and may reach the host engine,
+# which is what lets the Docker REEs build images.
 # The backend stays a pure control plane with no Docker access.
 #
 # store-init registers the demo store on the backend's state and writes a fresh
@@ -78,8 +77,6 @@ services:
       - repo2ree-store-tokens:/tokens:ro
       - repo2ree-workbench-state:/var/lib/repo2ree-workbench
     environment:
-      # A script in an REE's container may reach the host's engine: the Docker REEs build images with it.
-      REPO2REE_SCRIPT_ENGINE: socket
       OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
 

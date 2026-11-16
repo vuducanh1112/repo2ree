@@ -9,7 +9,7 @@ from repo2ree_protocol.build import current_build
 from repo2ree_telemetry.bootstrap import TracerProvider, otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_telemetry.log import configure_logging
 from repo2ree_telemetry.relay import setup_relayed_span_export
-from repo2ree_workbench.cli_process import LocalCli, remove_leftover_jobs
+from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.config import load_config
 from repo2ree_workbench.connection import SpanRelay, run_workbench
 from repo2ree_workbench.journal import store_journal
@@ -42,18 +42,13 @@ def main(argv: Sequence[str] = ()) -> None:
             instance_id=config.workbench_id,
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
-    # The store's directory names it on this machine: two stores may share an id elsewhere.
-    owner = str(config.store_root)
-    executor = LocalCli(
-        config.store_root, config.cli_path, environment=tool_environment(config.tools_bundle), owner=owner
-    )
-    # How this machine runs the REEs' scripts is ree's to say, from the machine's environment.
+    executor = LocalCli(config.store_root, config.cli_path, environment=tool_environment(config.tools_bundle))
+    # The machine the REEs' scripts run on is ree's to say.
     machine = executor.machine()
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
     try:
         with store_journal(config.store_root, config.store_id):
-            adopted = service.executions.reconcile()
-            remove_leftover_jobs(machine.engine, owner, frozenset(adopted))
+            service.executions.reconcile()
             asyncio.run(
                 run_workbench(
                     config.api_ws_url,

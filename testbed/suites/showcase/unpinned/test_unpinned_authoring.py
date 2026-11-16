@@ -16,7 +16,7 @@ def test_the_build_takes_the_latest_upstream_release_and_the_authors_result_pass
     client: Client, new_ree: NewRee
 ) -> None:
     publish(F, "1.0")
-    ree_id = new_ree(image=F.image)
+    ree_id = new_ree()
     author(client, ree_id, F)
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"

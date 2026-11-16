@@ -9,7 +9,5 @@
 export interface InclusionOpts {
   includeSource: boolean;
   includeExperimentEnvironment: boolean;
-  /** The working environment's OCI image, saved into the archive so a review needs no registry. */
-  includeWorkingEnvironment: boolean;
   includeResults: boolean;
 }

@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from repo2ree_protocol.audit import EvidenceStatus, ExperimentAudit, PayloadStatus, ReeAudit, StepAudit
 from repo2ree_ree.model import Ree, ReeDefinition, ReeReceipts
 from repo2ree_ree.primitives import Digest, RunId
-from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
 # ================================================
 # Audit Inputs
@@ -207,8 +206,6 @@ def _audit_working_environment_check_step(subject: _Subject) -> StepAudit:
             reasons.append("the check was removed")
         elif receipt.check_working_environment_script_digest != declared.check_working_environment_script_digest:
             reasons.append("check script changed")
-        if _working_environment_changed(subject, receipt.working_environment):
-            reasons.append("working environment changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
     return _step(
@@ -231,8 +228,6 @@ def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
                 reasons.append("build experiment environment script changed")
             if receipt.artifact_path != build.artifact_path:
                 reasons.append("experiment environment artifact path changed")
-        if _working_environment_changed(subject, receipt.working_environment):
-            reasons.append("working environment changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
     return _step(
@@ -247,11 +242,6 @@ def _launch_changed(subject: _Subject, ran_under: Digest | None) -> bool:
     """Whether the step ran under another launch than the one the REE declares, or none where it declares one."""
     declared = subject.definition.launch
     return ran_under != (declared.launch_script_digest if declared else None)
-
-
-def _working_environment_changed(subject: _Subject, observed: WorkingEnvironmentObservation | None) -> bool:
-    """Whether the working environment the REE declares is not the one the step ran under."""
-    return (observed.declared if observed else None) != subject.definition.working_environment
 
 
 def _experiment_environment_is_declared(subject: _Subject) -> bool:
@@ -317,8 +307,6 @@ def _audit_activation_step(subject: _Subject) -> StepAudit:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
             reasons.append("source snapshot changed")
         reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
-        if _working_environment_changed(subject, receipt.working_environment):
-            reasons.append("working environment changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
         if (
@@ -356,8 +344,6 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
             if receipt.verify_script_digest != experiment.verify_script_digest:
                 reasons.append("experiment verification script changed")
             reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
-            if _working_environment_changed(subject, receipt.working_environment):
-                reasons.append("working environment changed")
             if _launch_changed(subject, receipt.launch_script_digest):
                 reasons.append("launch script changed")
             if (

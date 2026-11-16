@@ -76,8 +76,8 @@ def test_a_declared_field_no_file_joins_is_paired_with_the_receipt_field_that_re
     pairs = set(drawn().pairs)
     assert Pair("experiments", "name", "experiments", "experiment_name", "field") in pairs
     assert Pair("source", "origin_url", "source", "origin_url", "field") in pairs
-    for receipt in ("experiment_environment", "activation", "experiments"):
-        assert Pair("working_environment", None, receipt, "working_environment", "section") in pairs
+    # Where a step ran is observed, not declared: nothing in the definition pairs with it.
+    assert not [pair for pair in pairs if pair.receipt_field == "working_environment"]
     # The hardware observation repeats no field by name, but holds the declaration's very fields.
     assert Pair("hardware", None, "hardware_observation", "observation", "same fields") in pairs
     # A field every receipt carries joins nothing.

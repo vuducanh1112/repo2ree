@@ -17,11 +17,7 @@ export interface ReeRunsClient {
    * ``image`` is the image the REE declares its scripts run in, one the store
    * offers; blank is the store's first, or its own machine when it offers none.
    */
-  createWorkspace(
-    name?: string,
-    storeId?: string,
-    image?: string,
-  ): Promise<{ reeId: string; run: ReeRun }>;
+  createWorkspace(name?: string, storeId?: string): Promise<{ reeId: string; run: ReeRun }>;
   /**
    * Make an REE be a downloaded REE bundle — the counterpart of the ree-archive
    * download. Uploads the bundle's bytes, then starts the background run that
@@ -54,12 +50,8 @@ export interface ReeRunsClient {
 
 export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
   return {
-    async createWorkspace(name = "REE", storeId = "", image = "") {
-      const run = await runtime.reeApi.createRee({
-        name,
-        store_id: storeId.trim(),
-        image: image.trim(),
-      });
+    async createWorkspace(name = "REE", storeId = "") {
+      const run = await runtime.reeApi.createRee({ name, store_id: storeId.trim() });
       return { reeId: run.ree_id, run: mapRun(run) };
     },
     async loadReeBundle(id, bundle) {

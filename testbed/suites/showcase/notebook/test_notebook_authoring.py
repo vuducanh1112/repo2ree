@@ -15,7 +15,7 @@ PNG = b"\x89PNG\r\n\x1a\n"
 
 
 def test_an_executed_notebook_its_figure_and_its_result_are_sealed(client: Client, new_ree: NewRee) -> None:
-    ree_id = new_ree(image=F.image)
+    ree_id = new_ree()
     client.author(ree_id, F)
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"

@@ -414,9 +414,6 @@ class ContainerEnginesProbe(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: Literal["probed", "failed", "not_probed"]
-    runner: Literal["host", "container"] | None = None
-    # The REE's image the probe ran in, on a workbench that runs scripts in containers.
-    image: str | None = None
     engines: list[EngineObservation] = Field(default_factory=list)
     detail: str = ""
 
@@ -455,8 +452,6 @@ class SlurmProbe(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: Literal["probed", "failed", "not_probed"]
-    runner: Literal["host", "container"] | None = None
-    image: str | None = None
     state: SlurmState | None = None
     srun_path: str | None = None
     version: str | None = None

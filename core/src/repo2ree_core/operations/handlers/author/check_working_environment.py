@@ -8,7 +8,7 @@ from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_re
 from repo2ree_core.execution.launch import declared_launch
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.execution.runners import run_workspace_script
-from repo2ree_core.execution.working_environment import Entry, WorkingEnvironmentUnavailableError
+from repo2ree_core.execution.working_environment import observe_working_environment
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -42,7 +42,6 @@ def declared_check(ree: Ree, layout: ReeLayout) -> CheckWorkingEnvironmentDefini
 def handle_check_working_environment(
     *,
     layout: ReeLayout,
-    entry: Entry,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -65,9 +64,7 @@ def handle_check_working_environment(
     before_revision = revision_of(ree)
     script = str(declared.check_working_environment_script_path)
     timer = OperationTimer.start()
-    outcome = run_workspace_script(
-        layout.workspace, script, log=log, is_canceled=is_canceled, entry=entry, launch=launch
-    )
+    outcome = run_workspace_script(layout.workspace, script, log=log, is_canceled=is_canceled, launch=launch)
     outputs = RunnableOperationOutputs(subject_name="working environment", exit_code=outcome.exit_code)
     if outcome.status == "canceled":
         log("system", "warn", f"{_LABEL} canceled")
@@ -81,10 +78,7 @@ def handle_check_working_environment(
             exit_code=exit_code,
             outputs=outputs.model_dump(mode="json", exclude_none=True),
         )
-    try:
-        observed = entry.observe()
-    except WorkingEnvironmentUnavailableError as exc:
-        return ActionResult.failed("internal", str(exc))
+    observed = observe_working_environment()
     timing = timer.finish()
     launch_definition = ree.subject.definition.launch
     receipt = CheckWorkingEnvironmentReceipt(

@@ -1,5 +1,4 @@
 import { PAGE } from "@core/app-shell/pages";
-import type { WorkingEnvironment } from "@core/ree/ReeSpec";
 import {
   buildFooterHint,
   buildRunStatusLabel,
@@ -35,7 +34,6 @@ import styles from "./BuildExperimentEnvironmentPage.module.css";
 import {
   ExperimentEnvironmentArtifactCard,
   ReservedBuildExperimentEnvironmentScriptCard,
-  WorkingEnvironmentCard,
 } from "./sections";
 
 const BUILD_PAGE_COLOR = stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
@@ -61,23 +59,6 @@ function BuildRunControls({
       onRun={onRun}
       onCancel={onCancel}
     />
-  );
-}
-
-/** What every script runs in: the build, the activation, and the experiments. */
-function WorkingEnvironmentBadges({
-  workingEnvironment,
-}: {
-  workingEnvironment: WorkingEnvironment | null;
-}) {
-  if (!workingEnvironment) return <Badge tone="info">Runs on the lab's own machine</Badge>;
-  return (
-    <>
-      <Badge tone="info" flavor="code">
-        {workingEnvironment.oci}
-      </Badge>
-      {!workingEnvironment.pinned && <Badge tone="warning">Working environment not pinned</Badge>}
-    </>
   );
 }
 
@@ -226,7 +207,6 @@ export function PageBuildExperimentEnvironment({
                 {scriptPath}
               </Badge>
             )}
-            <WorkingEnvironmentBadges workingEnvironment={ree.spec.workingEnvironment} />
             <Badge tone={runDone && !runFailed ? "success" : "warning"}>{statusLabel}</Badge>
             {badge && <OutcomeBadge outcome={badge} />}
           </>
@@ -256,12 +236,6 @@ export function PageBuildExperimentEnvironment({
             subtitle="Name the path the build script writes its experiment environment to. The build refuses to run until it is declared, and fails if nothing lands there."
           />
           <div className={styles.section}>
-            <WorkingEnvironmentCard
-              workingEnvironment={ree.spec.workingEnvironment}
-              onWorkingEnvironmentChange={(workingEnvironment) =>
-                onReeSpecChange?.((current) => ({ ...current, workingEnvironment }))
-              }
-            />
             <ExperimentEnvironmentArtifactCard
               experimentEnvironmentPath={experimentEnvironmentPath}
               experimentEnvironmentSize={experimentEnvironmentSize}

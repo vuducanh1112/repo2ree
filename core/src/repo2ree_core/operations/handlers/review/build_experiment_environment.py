@@ -29,7 +29,6 @@ from repo2ree_core.execution.process import (
     run_streaming_process,
 )
 from repo2ree_core.execution.runners import run_workspace_script
-from repo2ree_core.execution.working_environment import Entry
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
     launch_digest,
@@ -60,7 +59,6 @@ def handle_review_build_experiment_environment(
     args: ReviewBuildExperimentEnvironmentArgs,
     *,
     layout: ReeLayout,
-    entry: Entry,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -146,7 +144,6 @@ def handle_review_build_experiment_environment(
             str(check.check_working_environment_script_path),
             log=log,
             is_canceled=is_canceled,
-            entry=entry,
             launch=check_launch,
         )
         if checked.status == "canceled" or is_canceled():
@@ -184,7 +181,6 @@ def handle_review_build_experiment_environment(
             RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             log=log,
             is_canceled=is_canceled,
-            entry=entry,
             launch=launch,
         )
         launched = outcome.launched

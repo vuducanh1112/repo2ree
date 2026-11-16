@@ -36,7 +36,6 @@ ACQUIRE_SCRIPT = "acquire_source.sh"
 MATERIALIZE_SCRIPT = "materialize_workspace.sh"
 MATERIALIZE_MARKER = ".workspace.materialized.json"
 SNAPSHOT = "snapshot.tar.gz"
-WORKING_ENVIRONMENT_ARCHIVE = "working-environment.tar"
 UPSTREAM = "upstream"
 OVERLAY = "overlay"
 ARTIFACTS = "artifacts"
@@ -231,12 +230,6 @@ REE_TREE = _directory(
     _file(MATERIALIZE_SCRIPT, "repo2ree", "git", "Derives workspace/ from upstream/ and overlay/."),
     _file(MATERIALIZE_MARKER, "repo2ree", "git", "What workspace/ was last materialized from, for drift checks."),
     _file(SNAPSHOT, "acquired", "lfs", "The frozen upstream archive."),
-    _file(
-        WORKING_ENVIRONMENT_ARCHIVE,
-        "produced",
-        "lfs",
-        "The working environment's OCI image, saved by the seal when it is included; a review loads it.",
-    ),
     _directory(UPSTREAM, "derived", "never", "The snapshot, extracted; read only."),
     _directory(OVERLAY, "authored", "git", "The author's files, laid over upstream/ in the workspace.", _SCRIPTS),
     _directory(

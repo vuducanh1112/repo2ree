@@ -1976,34 +1976,6 @@
           "title": "Status",
           "type": "string"
         },
-        "runner": {
-          "anyOf": [
-            {
-              "enum": [
-                "host",
-                "container"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Runner"
-        },
-        "image": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image"
-        },
         "engines": {
           "items": {
             "$ref": "#/$defs/EngineObservation"
@@ -4743,11 +4715,6 @@
           "default": "",
           "title": "Kernel",
           "type": "string"
-        },
-        "container_engine": {
-          "default": "",
-          "title": "Container Engine",
-          "type": "string"
         }
       },
       "required": [
@@ -4972,7 +4939,7 @@
     },
     "InitRee": {
       "additionalProperties": false,
-      "description": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.\n\nWith --oci, every script runs in that OCI image, and the REE starts with the scripts that suit one; without,\nthey run on the machine that runs each step.",
+      "description": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
       "properties": {
         "init": {
           "const": "init",
@@ -4983,19 +4950,6 @@
         "name": {
           "title": "Name",
           "type": "string"
-        },
-        "oci": {
-          "anyOf": [
-            {
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Oci"
         }
       },
       "required": [
@@ -5434,31 +5388,11 @@
       "type": "object"
     },
     "MachineFacts": {
-      "description": "How this machine runs an REE's scripts, and what it offers them.",
+      "description": "The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider\nsays it runs in.",
       "properties": {
         "arch": {
           "default": "",
           "title": "Arch",
-          "type": "string"
-        },
-        "engine": {
-          "default": "none",
-          "enum": [
-            "docker",
-            "podman",
-            "apptainer",
-            "none"
-          ],
-          "title": "Engine",
-          "type": "string"
-        },
-        "script_engine": {
-          "default": "none",
-          "enum": [
-            "none",
-            "socket"
-          ],
-          "title": "Script Engine",
           "type": "string"
         },
         "gpus": {
@@ -5466,6 +5400,23 @@
           "minimum": 0,
           "title": "Gpus",
           "type": "integer"
+        },
+        "container": {
+          "default": false,
+          "title": "Container",
+          "type": "boolean"
+        },
+        "reported_image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reported Image"
         }
       },
       "title": "MachineFacts",
@@ -6294,17 +6245,6 @@
           "anyOf": [
             {
               "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "working_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkingEnvironment"
             },
             {
               "type": "null"
@@ -8401,7 +8341,7 @@
     },
     "ScriptTemplateEntry": {
       "additionalProperties": false,
-      "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``working_environment`` is the kind of working environment a variant\nsuits, or null for one that suits any.",
+      "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the\ncontent a fresh REE starts with).",
       "properties": {
         "key": {
           "title": "Key",
@@ -8422,22 +8362,6 @@
         "is_default": {
           "title": "Is Default",
           "type": "boolean"
-        },
-        "working_environment": {
-          "anyOf": [
-            {
-              "enum": [
-                "host",
-                "container"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Working Environment"
         }
       },
       "required": [
@@ -8563,11 +8487,6 @@
           "title": "Experiment Environment Included",
           "type": "boolean"
         },
-        "working_environment_included": {
-          "default": false,
-          "title": "Working Environment Included",
-          "type": "boolean"
-        },
         "results_included": {
           "default": false,
           "title": "Results Included",
@@ -8591,7 +8510,6 @@
           "default": {
             "source_included": false,
             "experiment_environment_included": false,
-            "working_environment_included": false,
             "results_included": false
           }
         }
@@ -8745,34 +8663,6 @@
           ],
           "title": "Status",
           "type": "string"
-        },
-        "runner": {
-          "anyOf": [
-            {
-              "enum": [
-                "host",
-                "container"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Runner"
-        },
-        "image": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image"
         },
         "state": {
           "anyOf": [
@@ -9780,99 +9670,34 @@
       "title": "WorkbenchWsRequest",
       "type": "object"
     },
-    "WorkingEnvironment": {
-      "additionalProperties": false,
-      "properties": {
-        "oci": {
-          "minLength": 1,
-          "title": "Oci",
-          "type": "string"
-        }
-      },
-      "required": [
-        "oci"
-      ],
-      "title": "WorkingEnvironment",
-      "type": "object"
-    },
     "WorkingEnvironmentObservation": {
       "additionalProperties": false,
-      "description": "What a step ran in: the declaration it ran under, and what was there.",
+      "description": "Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in.",
       "properties": {
-        "declared": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkingEnvironment"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "backend": {
-          "enum": [
-            "host",
-            "container"
-          ],
-          "title": "Backend",
-          "type": "string"
-        },
-        "image_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image Digest",
-          "x-digest-of": {
-            "covers": "outside"
-          }
-        },
-        "image_source": {
-          "anyOf": [
-            {
-              "enum": [
-                "engine",
-                "bundle"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image Source"
-        },
         "host": {
+          "$ref": "#/$defs/HostFingerprint"
+        },
+        "container": {
+          "default": false,
+          "title": "Container",
+          "type": "boolean"
+        },
+        "reported_image": {
           "anyOf": [
             {
-              "$ref": "#/$defs/HostFingerprint"
+              "minLength": 1,
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
-          "default": null
-        },
-        "script_engine": {
-          "default": "none",
-          "enum": [
-            "none",
-            "socket",
-            "nested"
-          ],
-          "title": "Script Engine",
-          "type": "string"
+          "default": null,
+          "title": "Reported Image"
         }
       },
       "required": [
-        "backend"
+        "host"
       ],
       "title": "WorkingEnvironmentObservation",
       "type": "object"

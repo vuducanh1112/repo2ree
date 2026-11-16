@@ -25,7 +25,6 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
 )
-from repo2ree_ree.working_environment import EnvironmentBackend
 
 
 @dataclass(frozen=True)
@@ -34,10 +33,8 @@ class InitializationResult:
     snapshot_id: str
 
 
-def initialize_ree(
-    layout: ReeLayout, *, name: str, working_environment: EnvironmentBackend = "host"
-) -> InitializationResult:
-    """Create the REE, starting with the scripts that suit the kind of ``working_environment`` it will declare.
+def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
+    """Create the REE with its starter scripts.
 
     Preserve existing files on retry, including after a failed first capture.
 
@@ -50,7 +47,7 @@ def initialize_ree(
         existing = store.manifest_exists()
         if not existing:
             store.ensure_dirs()
-            store.ensure_reserved_overlay_scripts(working_environment)
+            store.ensure_reserved_overlay_scripts()
             build = store.overlay.absolute(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
             activate = store.overlay.absolute(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
             check = store.overlay.absolute(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)

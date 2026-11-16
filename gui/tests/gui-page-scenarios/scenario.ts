@@ -313,12 +313,7 @@ const stores = {
       connected: true,
       workbench_id: "wb-3c1f90",
       slots: 2,
-      machine: {
-        arch: "x86_64",
-        engine: "docker",
-        script_engine: "none",
-        gpus: 0,
-      },
+      machine: { arch: "x86_64", gpus: 0, container: true, reported_image: null },
       build: workbenchBuild,
     },
     {
@@ -327,12 +322,7 @@ const stores = {
       connected: true,
       workbench_id: "wb-91d2e4",
       slots: 2,
-      machine: {
-        arch: "x86_64",
-        engine: "podman",
-        script_engine: "none",
-        gpus: 1,
-      },
+      machine: { arch: "x86_64", gpus: 1, container: false, reported_image: null },
       build: workbenchBuild,
     },
   ],

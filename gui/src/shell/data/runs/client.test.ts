@@ -82,16 +82,13 @@ describe("nextRunLogCursor", () => {
 describe("createReeRunsClient", () => {
   it("creates a named REE in a store and trims its inputs", async () => {
     const { client, reeApi } = harness();
-    await expect(
-      client.createWorkspace("Demo", " lab-1 ", " docker.io/library/docker:29-dind "),
-    ).resolves.toMatchObject({
+    await expect(client.createWorkspace("Demo", " lab-1 ")).resolves.toMatchObject({
       reeId: "ree-1",
       run: { runId: "run-1", status: "succeeded" },
     });
     expect(reeApi.createRee).toHaveBeenCalledWith({
       name: "Demo",
       store_id: "lab-1",
-      image: "docker.io/library/docker:29-dind",
     });
   });
 

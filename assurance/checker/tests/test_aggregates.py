@@ -92,12 +92,13 @@ def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_i
     assert "activation_test" in allowed("receipt", "experiment", "current", "stale")
 
 
-def test_what_runs_in_the_working_environment_rests_on_it() -> None:
-    # The author's scripts run in the declared working environment: changing it changes what their receipts prove.
-    for name in ("experiment_environment", "activation", "experiment"):
-        assert "definition.working_environment" in ree().receipts[name].rests_on
-    assert "patch_ree_definition" in allowed("receipt", "experiment_environment", "current", "stale")
-    assert allowed("field", "definition.working_environment", CREATED, "unset") == {"initialize_ree"}
+def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch() -> None:
+    # The REE declares no working environment: its check says what the scripts need, and what ran it is the launch.
+    assert ree().receipts["working_environment_check"].rests_on == (
+        "definition.check_working_environment",
+        "definition.launch",
+    )
+    assert "definition.working_environment" not in ree().fields
 
 
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:

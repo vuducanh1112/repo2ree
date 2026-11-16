@@ -457,8 +457,6 @@ class SealReeArgs(BaseModel):
 
     source_included: bool = False
     experiment_environment_included: bool = False
-    # The working environment's OCI image, saved into the bundle, so a review needs no registry to run it.
-    working_environment_included: bool = False
     results_included: bool = False
 
 

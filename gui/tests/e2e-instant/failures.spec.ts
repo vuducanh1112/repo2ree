@@ -5,7 +5,6 @@ import {
   instantHelloWorld,
   instantRecipe,
   keepReeArchive,
-  LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   provisionWorkbench,
   releaseWorkbench,
@@ -32,7 +31,7 @@ test.describe("Instant failures", () => {
   test("a failing build is shown with its log, and a fixed script builds", async ({ page }) => {
     await test.step("provision and upload", async () => {
       await startReeCreation(page);
-      await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+      await provisionWorkbench(page);
       await uploadSource(page, instantHelloWorld());
       await runEvaluate(page);
     });

@@ -14,7 +14,7 @@ BUNDLE = ROOT / "examples/rees/ree-hello-world.zip"
 def test_a_reviewer_reproduces_another_authors_source_experiment_environment_activation_and_result(
     client: Client, new_ree: NewRee
 ) -> None:
-    reviewer = new_ree("reviewer", image=F.image)
+    reviewer = new_ree("reviewer")
     client.load(reviewer, BUNDLE.read_bytes())
 
     refused = client.review_source(reviewer, "independent", watch=F.watch)

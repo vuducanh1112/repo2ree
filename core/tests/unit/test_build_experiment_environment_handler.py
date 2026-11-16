@@ -6,7 +6,6 @@ import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.process import StepOutcome
-from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.author import build_experiment_environment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -83,7 +82,7 @@ def test_successful_build_commits_one_inline_receipt(
     monkeypatch.setattr(build_experiment_environment, "run_workspace_script", _successful_build(layout))
 
     result = build_experiment_environment.handle_build_experiment_environment(
-        run_id="build-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout, entry=HostEntry()
+        run_id="build-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
     )
 
     receipt = store.read_ree().subject.receipts.experiment_environment
@@ -95,9 +94,9 @@ def test_successful_build_commits_one_inline_receipt(
     assert receipt.artifact_path == "runtime.tar"
     assert receipt.produced_artifact_digest == digest_bytes(b"experiment_environment")
     assert receipt.workspace_drift.status == "unknown"
-    # What the build ran in: here no workbench states it, so the executor's own host.
+    # What the build ran in: the host ree runs on.
     assert receipt.working_environment is not None
-    assert receipt.working_environment.backend == "host"
+    assert receipt.working_environment.host.arch
 
 
 def test_failed_build_process_commits_no_receipt(
@@ -116,7 +115,6 @@ def test_failed_build_process_commits_no_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -142,7 +140,6 @@ def test_successful_exit_without_declared_artifact_commits_no_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -180,7 +177,6 @@ def test_build_preconditions_reject_incomplete_or_sealed_ree(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=store.layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -210,7 +206,6 @@ def test_changed_build_experiment_environment_script_is_rejected_before_executio
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -236,7 +231,6 @@ def test_revision_conflict_does_not_select_the_new_receipt(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"
@@ -265,7 +259,6 @@ def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "failed"

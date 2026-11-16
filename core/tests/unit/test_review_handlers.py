@@ -9,7 +9,6 @@ import pytest
 
 from repo2ree_core.evidence.review.records import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record, write_review_record
-from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.review import (
     acquire_source,
     activation_test,
@@ -191,7 +190,6 @@ def _activate(layout: ReeLayout):
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
 
@@ -289,7 +287,6 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "succeeded"
@@ -338,7 +335,6 @@ def test_a_review_runs_the_authors_check_before_anything_else_runs_there(
         log=lambda _stream, _level, message: lines.append(message),
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
     assert result.status == status
@@ -378,7 +374,6 @@ def test_experiment_uses_definition_and_author_receipt_baseline(
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
     assert result.status == "succeeded"
@@ -406,7 +401,6 @@ def test_an_experiment_run_through_another_activate_script_is_inconclusive(
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
 
     comparison = result.outputs["comparison"]
@@ -428,7 +422,6 @@ def _experiment(layout: ReeLayout) -> dict[str, Any]:
         log=lambda *_: None,
         is_canceled=lambda: False,
         layout=layout,
-        entry=HostEntry(),
     )
     assert result.status == "succeeded"
     return result.outputs

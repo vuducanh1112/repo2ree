@@ -23,19 +23,13 @@ from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 from repo2ree_testbed.showcases import INSTANT, SOURCE, Project, RecipeScript
 from repo2ree_testbed.showcases import RESULT as RESULT
-from repo2ree_testbed.stack.store_images import PYTHON_SLIM_IMAGE
 
 ROOT = Path(__file__).resolve().parents[3]
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
 ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/activate_experiment_environment.sh"
 LAUNCH_SCRIPT = "ree-scripts/launch.sh"
 
-# A bench without a Docker daemon: the base image is the experiment environment environment.
-# Same pin as the GUI suite's lightweight bench (gui/tests/helpers/flow.ts).
-LIGHTWEIGHT_IMAGE = PYTHON_SLIM_IMAGE
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
-# Where a store runs the scripts of the REEs it keeps: in a container from each REE's image, or on its host.
-STORE_BACKEND = os.environ.get("E2E_STORE_BACKEND", "container")
 
 
 # The instant project's names, as most suites use it.
@@ -141,11 +135,9 @@ class Api:
             raise ApiError("no workbench serves a store")
         return str(served[0])
 
-    def create(self, name: str, *, image: str | None = LIGHTWEIGHT_IMAGE, location: str | None = None) -> str:
-        """A new REE in a store (the first served, or ``location``), declaring ``image`` from the store's
-        offer, or its host when the store runs scripts there."""
-        store = {"name": name, "store_id": location or self.store()}
-        created = self.post("/api/v1/rees", {**store, "image": image} if STORE_BACKEND == "container" else store)
+    def create(self, name: str, *, location: str | None = None) -> str:
+        """A new REE in a store: the first served, or ``location``."""
+        created = self.post("/api/v1/rees", {"name": name, "store_id": location or self.store()})
         ree_id = str(created["ree_id"])
         provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
         if provisioned["status"] != "succeeded":

@@ -30,41 +30,6 @@ def ree_directory(store: Path, ree_id: str) -> Path:
     return store / ree_id
 
 
-# Whose jobs the containers of an REE's scripts are: the store this workbench serves, so what a killed workbench
-# left running can be found and removed.
-JOB_OWNER_VARIABLE = "REPO2REE_JOB_OWNER"
-JOB_OWNER_LABEL = "repo2ree.job-owner"
-JOB_EXECUTION_LABEL = "repo2ree.job-execution"
-
-
-def remove_leftover_jobs(engine: str, owner: str, keep: frozenset[str] = frozenset()) -> None:
-    """Remove the jobs of the store ``owner`` names that no running executor awaits: all but those in ``keep``."""
-    if engine not in ("docker", "podman") or not owner or shutil.which(engine) is None:
-        return
-    listed = subprocess.run(
-        [
-            engine,
-            "ps",
-            "-a",
-            "--filter",
-            f"label={JOB_OWNER_LABEL}={owner}",
-            "--format",
-            f'{{{{.ID}}}} {{{{.Label "{JOB_EXECUTION_LABEL}"}}}}',
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    leftovers = []
-    for line in listed.stdout.splitlines():
-        container, _, execution = line.strip().partition(" ")
-        if container and execution.strip() not in keep:
-            leftovers.append(container)
-    if leftovers:
-        subprocess.run([engine, "rm", "-f", *leftovers], check=False, capture_output=True, timeout=120)
-
-
 class LocalCli:
     """Run executor processes locally, each against one REE of the store."""
 
@@ -74,14 +39,11 @@ class LocalCli:
         cli_path: str = "ree",
         *,
         environment: dict[str, str] | None = None,
-        owner: str = "",
     ) -> None:
         self.root = root.resolve()
         self.cli_path = cli_path
         # What every executor is started with besides this process's own environment (the tools).
         self.tools = environment or {}
-        # Whose jobs the containers of the REEs' scripts are: the store; none labels them.
-        self.owner = owner
 
     def ree_root(self, ree_id: str) -> Path:
         """The root an REE's commands run against: its directory in the store."""
@@ -94,8 +56,6 @@ class LocalCli:
 
     def environment(self, root: Path, extra: dict[str, str] | None = None) -> dict[str, str]:
         environment = {**os.environ, **self.tools}
-        if self.owner:
-            environment[JOB_OWNER_VARIABLE] = self.owner
         environment.update(extra or {})
         if traceparent := current_traceparent():
             environment["TRACEPARENT"] = traceparent
@@ -119,7 +79,7 @@ class LocalCli:
         return BuildInfo()
 
     def machine(self) -> MachineFacts:
-        """How this machine runs the REEs' scripts, as the executor reports it; nothing known when it cannot say."""
+        """The machine the REEs' scripts run on, as the executor reports it; nothing known when it cannot say."""
         try:
             result = subprocess.run(
                 [self.cli_path, "machine"],

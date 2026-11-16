@@ -11,34 +11,21 @@ interface InclusionRow {
   tintLine: string;
   tintInk: string;
   onToggle: () => void;
-  /** What the row says when there is nothing to include. */
-  unavailable?: string;
 }
 
 interface SealBundleContentsProps {
   sourceAvailable: boolean;
   experimentEnvironmentAvailable: boolean;
   resultsAvailable: boolean;
-  workingEnvironmentAvailable: boolean;
   includeSource: boolean;
   includeExperimentEnvironment: boolean;
   includeResults: boolean;
-  includeWorkingEnvironment: boolean;
   onToggleSource: () => void;
   onToggleExperimentEnvironment: () => void;
   onToggleResults: () => void;
-  onToggleWorkingEnvironment: () => void;
 }
 
-function Row({
-  label,
-  available,
-  included,
-  tintLine,
-  tintInk,
-  onToggle,
-  unavailable = "Not in workspace",
-}: InclusionRow) {
+function Row({ label, available, included, tintLine, tintInk, onToggle }: InclusionRow) {
   const on = available && included;
   return (
     <div
@@ -49,7 +36,7 @@ function Row({
       <div className={styles.inclusionLabels}>
         <span className={styles.inclusionName}>{label}</span>
         <span className={styles.inclusionState}>
-          {!available ? unavailable : on ? "Bundled into the archive" : "Excluded"}
+          {!available ? "Not in workspace" : on ? "Bundled into the archive" : "Excluded"}
         </span>
       </div>
       <div className={styles.inclusionControl}>
@@ -74,15 +61,12 @@ export function SealBundleContents({
   sourceAvailable,
   experimentEnvironmentAvailable,
   resultsAvailable,
-  workingEnvironmentAvailable,
   includeSource,
   includeExperimentEnvironment,
   includeResults,
-  includeWorkingEnvironment,
   onToggleSource,
   onToggleExperimentEnvironment,
   onToggleResults,
-  onToggleWorkingEnvironment,
 }: SealBundleContentsProps) {
   return (
     <div className={styles.inclusion}>
@@ -101,15 +85,6 @@ export function SealBundleContents({
         tintLine={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT)}
         tintInk={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, "ink")}
         onToggle={onToggleExperimentEnvironment}
-      />
-      <Row
-        label="Working environment image"
-        available={workingEnvironmentAvailable}
-        included={includeWorkingEnvironment}
-        tintLine={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT)}
-        tintInk={stageTone(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, "ink")}
-        onToggle={onToggleWorkingEnvironment}
-        unavailable="No image declared: the scripts run on the lab's own machine"
       />
       <Row
         label="Results"

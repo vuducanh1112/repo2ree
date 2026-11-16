@@ -12,7 +12,6 @@ import {
   type ReeExperiment,
   type ReeRunnable,
   type ReeSpec,
-  type WorkingEnvironment,
 } from "./ReeSpec";
 import {
   mapRawReeAudit,
@@ -111,13 +110,6 @@ function mapRawRunnable(raw: Record<string, unknown>): ReeRunnable {
 // Mapper
 // ================================================
 
-function mapRawWorkingEnvironment(value: unknown): WorkingEnvironment | null {
-  if (!value || typeof value !== "object") return null;
-  const raw = value as Record<string, unknown>;
-  if (typeof raw.oci !== "string") return null;
-  return { oci: raw.oci, pinned: raw.oci.includes("@sha256:") };
-}
-
 export function mapRawReeIntentToSlices({
   reeIntent,
   reeSession,
@@ -148,7 +140,6 @@ export function mapRawReeIntentToSlices({
       sourceType: (intent.source_type as ReeSpec["sourceType"]) || "",
       resolvedRevision: String(intent.revision ?? ""),
       experimentEnvironmentPath: String(intent.experiment_environment_path ?? ""),
-      workingEnvironment: mapRawWorkingEnvironment(intent.working_environment),
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),
       experiments,

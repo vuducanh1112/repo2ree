@@ -2,18 +2,16 @@
 # Workbench image — a store's workbench, run beside a host's container engine.
 #
 # The listener serves one store (--store ID=PATH); ree runs each REE's scripts
-# in a fresh container from the image the REE declares, started through the
-# host engine's socket mounted into this container, or in this container when
-# the REE declares none. So it carries the Docker CLI beside the workbench, the
-# executor and the handler tools, and no toolchain of its own: the REE's image
-# is the toolchain. ree finds where the
+# in this container, with the Docker CLI beside the workbench, the executor and
+# the handler tools. An REE whose scripts build images reaches the host engine
+# through its socket mounted into this container. Whatever else the REEs' checks
+# ask for is the deployer's to add, in an image built from this one. ree finds where the
 # host engine sees the store from this container's own mounts.
 #
 #   docker run -v /var/run/docker.sock:/var/run/docker.sock \
 #     -v /srv/rees:/srv/rees repo2ree-workbench \
 #     repo2ree-workbench --store lab=/srv/rees --connect wss://… --token-file /run/token
-#
-# Set REPO2REE_SCRIPT_ENGINE=socket to let a script reach the host engine.
+
 #
 # For a host that already has its toolchain and runs scripts on itself, use
 # .#workbench (nix hosts) or .#workbench-bundle (everything else).

@@ -218,7 +218,7 @@
       "error": "timestamp must be timezone-aware"
     },
     {
-      "name": "an OCI image environment that names an empty image",
+      "name": "a working environment that reports an empty image",
       "patch": [
         {
           "op": "remove",
@@ -226,7 +226,7 @@
         },
         {
           "op": "replace",
-          "path": "/subject/definition/working_environment/oci",
+          "path": "/subject/receipts/activation/working_environment/reported_image",
           "value": ""
         }
       ],

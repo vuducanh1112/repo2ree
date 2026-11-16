@@ -17,7 +17,6 @@ from typing import Any, cast
 import pytest
 from pydantic import BaseModel
 
-from repo2ree_core.execution.working_environment import HOST_MACHINE
 from repo2ree_core.operations import dispatch as rc
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
@@ -92,9 +91,7 @@ def test_routes_to_its_handler(
     operation = command_cls.model_fields["operation"].default
     cmd = command_cls.model_construct(operation=operation, args=object())
 
-    result = rc.run_command(
-        cast(Command, cmd), log=_null_log(), is_canceled=lambda: False, layout=_NO_REE, machine=HOST_MACHINE
-    )
+    result = rc.run_command(cast(Command, cmd), log=_null_log(), is_canceled=lambda: False, layout=_NO_REE)
 
     assert result.status == "succeeded"
     assert called == [handler_name]
@@ -118,9 +115,7 @@ def test_cancel_before_start_never_reaches_the_handler(
     operation = command_cls.model_fields["operation"].default
     cmd = command_cls.model_construct(operation=operation, args=object())
 
-    result = rc.run_command(
-        cast(Command, cmd), log=_null_log(), is_canceled=lambda: True, layout=_NO_REE, machine=HOST_MACHINE
-    )
+    result = rc.run_command(cast(Command, cmd), log=_null_log(), is_canceled=lambda: True, layout=_NO_REE)
 
     assert result.status == "canceled"
     assert called == []
@@ -129,7 +124,7 @@ def test_cancel_before_start_never_reaches_the_handler(
 def test_unknown_command_raises() -> None:
     bogus = SimpleNamespace(operation="not_a_real_operation")
     with pytest.raises(ValueError, match="Unhandled command operation"):
-        rc.run_command(bogus, log=_null_log(), layout=_NO_REE, machine=HOST_MACHINE)  # type: ignore[arg-type]
+        rc.run_command(bogus, log=_null_log(), layout=_NO_REE)  # type: ignore[arg-type]
 
 
 # ================================================
@@ -149,7 +144,7 @@ def _run_id_seen_by_handler(monkeypatch: pytest.MonkeyPatch, run_id: str | None)
         monkeypatch.setattr(rc, name, _recorder)
 
     cmd = BuildExperimentEnvironmentCommand.model_construct(operation="build_experiment_environment", args=object())
-    rc.run_command(cast(Command, cmd), log=_null_log(), run_id=run_id, layout=_NO_REE, machine=HOST_MACHINE)
+    rc.run_command(cast(Command, cmd), log=_null_log(), run_id=run_id, layout=_NO_REE)
     return seen[0]
 
 

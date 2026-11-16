@@ -94,7 +94,6 @@ describe("toReePatchFromSlices", () => {
         network: {},
         extra_info: {},
       },
-      working_environment: null,
     });
   });
 
@@ -135,21 +134,6 @@ describe("toReePatchFromSlices", () => {
       evaluationState: {},
     });
     expect(patch.experiment_environment).toEqual({ artifact_path: null });
-  });
-
-  it("sends the image the scripts run in, or none for the lab's own machine", () => {
-    const slices = { workspaceSourceState: {}, artifactStatus: {}, evaluationState: {} };
-    const declared = toReePatchFromSlices({
-      ...slices,
-      reeSpec: {
-        ...createEmptyReeSpec(),
-        workingEnvironment: { oci: "python:3.12", pinned: false },
-      },
-    });
-    expect(declared.working_environment).toEqual({ oci: "python:3.12" });
-
-    const host = toReePatchFromSlices({ ...slices, reeSpec: createEmptyReeSpec() });
-    expect(host.working_environment).toBeNull();
   });
 
   it("sends sizes in bytes and bandwidth in Mbps, as the sealed format records them", () => {

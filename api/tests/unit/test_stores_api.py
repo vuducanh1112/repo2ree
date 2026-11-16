@@ -173,7 +173,7 @@ def test_an_older_token_starting_with_a_dash_can_still_be_named(
 
 def test_a_served_store_says_how_its_machine_runs_scripts(client: TestClient, lab: str) -> None:
     token = store_registry.mint_token(lab)
-    machine = MachineFacts(arch="x86_64", engine="podman", script_engine="socket", gpus=2)
+    machine = MachineFacts(arch="x86_64", gpus=2, container=True, reported_image="python:3.12")
 
     with client.websocket_connect("/workbench/connect") as socket:
         socket.send_text(_hello(lab, token, "wb-machine", machine))

@@ -25,17 +25,6 @@ import { stepShot } from "../screenshot";
 // live at the repository root rather than under this suite.
 const EXAMPLES_DIR = path.resolve(__dirname, "../../../examples");
 
-/**
- * Fast provider-managed bench for scenarios that do not need a Docker daemon.
- * The provider injects the executor and source-handling tools into this image.
- */
-export const LIGHTWEIGHT_WORKBENCH_IMAGE =
-  process.env.PYTHON_SLIM_IMAGE ??
-  "docker.io/library/python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534";
-
-/** Where a store runs the author's scripts: in a container from the REE's image, or on its host. */
-const STORE_BACKEND = process.env.E2E_STORE_BACKEND ?? "container";
-
 /** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
   return packedProject("python_docker");
@@ -366,17 +355,11 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
  * (the live lab), so this resolves there and then dives into the Source node so
  * the rest of the walkthrough continues from the docked authoring drawer.
  */
-export async function provisionWorkbench(page: Page, options?: { imageRef?: string }) {
+export async function provisionWorkbench(page: Page) {
   await stepShot(page, "provision-workbench", "before");
   // Setup is the drawer the lab picker opens, so scope to it rather than to a
   // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  // The REE declares the image its scripts run in; at a store that runs them on its own machine
-  // it declares none.
-  const image = options?.imageRef;
-  if (image && STORE_BACKEND === "container") {
-    await setup.getByLabel("Working environment image").fill(image);
-  }
   // A network run in every project: the host pulls the bench image the first time it sees it.
   await runToEnd(page, () => setup.getByRole("button", { name: /Provision workbench/i }).click(), {
     watch: NETWORK_RUN,

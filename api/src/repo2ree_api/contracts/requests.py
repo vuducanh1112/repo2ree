@@ -46,9 +46,6 @@ class ReeCreatePayload(StrictRequestModel):
     name: str | None = None
     # The store to create the REE in; its workbench serves it from then on.
     store_id: str = Field(min_length=1)
-    # The OCI image the REE's scripts run in (its working environment); blank declares none, so they run on the
-    # store's machine. The author declares another like any field.
-    image: str = ""
 
 
 class ReeDefinitionPatchPayload(StrictRequestModel):
@@ -110,9 +107,5 @@ class ReeSealPayload(StrictRequestModel):
     include_source: bool = Field(default=False, description="Put the source snapshot in the sealed archive.")
     include_experiment_environment: bool = Field(
         default=False, description="Put the declared experiment environment artifact in the sealed archive."
-    )
-    include_working_environment: bool = Field(
-        default=False,
-        description="Save the working environment's OCI image into the sealed archive, so a review needs no registry.",
     )
     include_results: bool = Field(default=False, description="Put everything under results/ in the sealed archive.")

@@ -34,7 +34,7 @@ docker save failing-build -o {FIXTURE.experiment_environment_path}
 
 
 def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[..., str]) -> None:
-    ree_id = new_ree(image=FIXTURE.image)
+    ree_id = new_ree()
     api.author(ree_id, FIXTURE)
 
     audit = api.audit(ree_id)
@@ -53,7 +53,7 @@ def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[
 
 
 def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) -> None:
-    ree_id = new_ree(image=FIXTURE.image)
+    ree_id = new_ree()
     api.acquire(ree_id, FIXTURE)
     api.succeed(ree_id, "evaluate")
 
@@ -69,14 +69,14 @@ def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callab
 
 
 def test_reviewer_reproduces_a_sealed_docker_ree(api: Api, new_ree: Callable[..., str]) -> None:
-    author = new_ree("docker-review-author", image=FIXTURE.image)
+    author = new_ree("docker-review-author")
     api.author(author, FIXTURE)
     assert api.seal(author)["status"] == "succeeded"
     archive = api.keep_archive(author, "docker-review-baseline")
     assert archive is not None
     data = archive.read_bytes()
 
-    reviewer = new_ree("docker-reviewer", image=FIXTURE.image)
+    reviewer = new_ree("docker-reviewer")
     upload = api.post(
         f"/api/v1/rees/{reviewer}/ree:upload-init",
         {"file_name": "ree.zip", "size": len(data), "content_type": "application/zip"},

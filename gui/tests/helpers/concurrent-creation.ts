@@ -3,7 +3,6 @@ import { expect, test } from "./fixtures";
 import {
   cleanupWorkbench,
   connectedLabCount,
-  LIGHTWEIGHT_WORKBENCH_IMAGE,
   main,
   provideMetadata,
   provisionWorkbench,
@@ -66,8 +65,8 @@ export async function twoConcurrentCreations(
     });
 
     await test.step("provision a workbench for each session", async () => {
-      const provisionA = () => provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
-      const provisionB = () => provisionWorkbench(pageB, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+      const provisionA = () => provisionWorkbench(page);
+      const provisionB = () => provisionWorkbench(pageB);
 
       // A store's workbench serves both REEs, or each its own: either way creation is
       // only a directory and a declaration, so both run at once.

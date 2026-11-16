@@ -19,7 +19,7 @@ CPU = Cpu(vendor="Intel", cores_per_cpu=24)
 
 
 def test_provision_through_seal_offline_reproduction_and_release(client: Client, new_ree: NewRee) -> None:
-    ree_id = new_ree(image=F.image)
+    ree_id = new_ree()
 
     client.upload_source(ree_id, F)
     source = client.ree(ree_id).subject.receipts.source

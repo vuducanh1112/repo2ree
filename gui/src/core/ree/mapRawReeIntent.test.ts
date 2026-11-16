@@ -70,27 +70,6 @@ describe("mapRawReeIntentToSlices", () => {
     ]);
   });
 
-  it("maps the declared working environment, and whether its image is pinned", () => {
-    const pinned = `docker.io/library/python@sha256:${"a".repeat(64)}`;
-    const image = mapRawReeIntentToSlices({
-      reeIntent: {
-        working_environment: { oci: pinned },
-      },
-      fallbackName: "demo",
-    }).reeSpec.workingEnvironment;
-    expect(image).toEqual({ oci: pinned, pinned: true });
-
-    const tagged = mapRawReeIntentToSlices({
-      reeIntent: { working_environment: { oci: "python:3.12" } },
-      fallbackName: "demo",
-    }).reeSpec.workingEnvironment;
-    expect(tagged?.pinned).toBe(false);
-
-    expect(
-      mapRawReeIntentToSlices({ reeIntent: {}, fallbackName: "demo" }).reeSpec.workingEnvironment,
-    ).toBeNull();
-  });
-
   it("reads source_included and experiment_environment_included from session", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {},

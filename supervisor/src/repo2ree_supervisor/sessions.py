@@ -34,7 +34,7 @@ class Session:
             "opened",
             "connected",
             {
-                "engine": hello.machine.engine,
+                "arch": hello.machine.arch,
                 "slots": hello.slots,
                 "version": hello.version or None,
             },

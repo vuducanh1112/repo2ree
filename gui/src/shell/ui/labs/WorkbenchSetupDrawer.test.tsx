@@ -23,7 +23,7 @@ const lab: Lab = {
   id: "lab-1",
   label: "lab-host",
   description: "",
-  machine: { engine: "docker" },
+  machine: { arch: "x86_64", gpus: 1, reportedImage: null },
   status: "connected",
   available: true,
 };
@@ -62,49 +62,14 @@ describe("WorkbenchSetupDrawer", () => {
 
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
-    // No image typed: the REE declares none, and its scripts run on the lab's own machine.
     await waitFor(() =>
       expect(createRee).toHaveBeenCalledWith({
         name: "REE",
         store_id: "lab-1",
-        image: "",
       }),
     );
     expect(await screen.findByText("image ready")).toBeInTheDocument();
     expect(await screen.findByText("Lab online — seating the specimen")).toBeInTheDocument();
-  });
-
-  it("sends the image the author types as the working environment", async () => {
-    const user = userEvent.setup();
-    const createRee = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const getRun = vi.fn().mockResolvedValue(wireRun("provision-1"));
-    const listRunLogs = vi
-      .fn()
-      .mockResolvedValue({ entries: [], next_cursor: null, has_more: false });
-
-    renderWithShell(<WorkbenchSetupDrawer lab={lab} loadRequested={false} />, {
-      route: "/lab-location",
-      reeId: "active",
-      services: fakeApiServices({
-        ree: { createRee },
-        runs: { getRun, listRunLogs },
-      }),
-    });
-
-    await user.type(
-      screen.getByLabelText("Working environment image"),
-      " docker.io/library/python:3.11-slim ",
-    );
-    await user.click(screen.getByRole("button", { name: "Provision workbench" }));
-
-    await waitFor(() =>
-      expect(createRee).toHaveBeenCalledWith(
-        expect.objectContaining({
-          store_id: "lab-1",
-          image: "docker.io/library/python:3.11-slim",
-        }),
-      ),
-    );
   });
 
   it("requires and restores a selected REE bundle for the load workflow", async () => {

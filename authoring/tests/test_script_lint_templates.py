@@ -75,11 +75,9 @@ def test_a_verify_template_says_only_that_it_is_unedited(name: str) -> None:
     assert set(_lint_template(name, "experiment_verify")) <= {"unedited_placeholder"}
 
 
-def test_a_fresh_ree_starts_with_scripts_that_suit_its_environment() -> None:
-    assert "docker build" in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "container")
-    assert "docker" not in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
-    assert "docker run" in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "container")
-    assert "docker" not in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "host")
+def test_a_fresh_ree_starts_with_scripts_that_need_no_container_engine() -> None:
+    assert "docker" not in reserved_script_template(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
+    assert "docker" not in reserved_script_template(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
 
 
 def test_every_template_is_covered_by_a_case_above() -> None:

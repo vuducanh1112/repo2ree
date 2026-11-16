@@ -19,13 +19,8 @@ from repo2ree_ree.reserved_paths import (
 
 def _assert_entries_match(entries: list[ScriptTemplateEntry], expected_keys: list[str]) -> None:
     assert [entry.key for entry in entries] == expected_keys
-    # Each environment has exactly one explicit default: its first entry, per the catalogs' ordering.
-    first: dict[str | None, str] = {}
-    for entry in entries:
-        first.setdefault(entry.working_environment, entry.key)
-    assert [entry.is_default for entry in entries] == [
-        first[entry.working_environment] == entry.key for entry in entries
-    ]
+    # The first entry is the default, and the only one.
+    assert [entry.is_default for entry in entries] == [index == 0 for index in range(len(entries))]
     for entry in entries:
         assert entry.label
         assert entry.description
@@ -37,16 +32,16 @@ def test_the_catalog_names_every_script_kind_and_where_it_belongs() -> None:
     catalog = script_template_catalog()
 
     # Build and activate carry the seeded reserved paths and their named
-    # template variants (docker first, as the default a fresh REE is seeded with).
+    # template variants (venv first, the default a fresh REE is seeded with).
     assert catalog.build_experiment_environment.path == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     _assert_entries_match(catalog.build_experiment_environment.templates, [t.key for t in build_templates()])
-    assert catalog.build_experiment_environment.templates[0].key == "docker"
+    assert catalog.build_experiment_environment.templates[0].key == "venv"
     assert catalog.activate_experiment_environment.path == RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT
     _assert_entries_match(
         catalog.activate_experiment_environment.templates,
         [t.key for t in activate_experiment_environment_templates()],
     )
-    assert catalog.activate_experiment_environment.templates[0].key == "docker"
+    assert catalog.activate_experiment_environment.templates[0].key == "venv"
 
     # Experiment templates state the path convention and the run variants.
     experiment = catalog.experiment
@@ -59,10 +54,10 @@ def test_the_catalog_names_every_script_kind_and_where_it_belongs() -> None:
     _assert_entries_match(catalog.verify, [t.key for t in verify_templates()])
 
 
-def test_a_host_environment_has_templates_that_need_no_container_engine() -> None:
+def test_the_default_templates_need_no_container_engine() -> None:
     catalog = script_template_catalog()
 
     for section in (catalog.build_experiment_environment, catalog.activate_experiment_environment):
-        [host] = [entry for entry in section.templates if entry.working_environment == "host"]
-        assert host.is_default
-        assert "docker" not in host.body
+        default = section.templates[0]
+        assert default.is_default
+        assert "docker" not in default.body

@@ -31,7 +31,6 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_LAUNCH_SCRIPT,
 )
-from repo2ree_ree.working_environment import WorkingEnvironment
 
 
 def test_reproducer_entries_are_run_sh_scripts_and_readme():
@@ -58,17 +57,15 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
     assert RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT.encode() in entries["run.sh"]
 
 
-def test_the_readme_says_what_the_scripts_ran_in():
-    def readme(environment: WorkingEnvironment | None) -> str:
-        return dict(reproducer_entries(working_environment=environment))["REPRODUCING.md"].decode()
+def test_the_readme_points_at_the_check_of_what_the_scripts_need():
+    def readme(check: str | None) -> str:
+        return dict(reproducer_entries(check_script=check))["REPRODUCING.md"].decode()
 
-    assert "declared no working environment" in readme(None)
-    pinned = WorkingEnvironment(oci="python:3.12@sha256:" + "a" * 64)
-    text = readme(pinned)
-    assert f"`{pinned.oci}`" in text
-    assert "not pinned" not in text
-    assert "not pinned" in readme(WorkingEnvironment(oci="python:3.12"))
-    assert "directly on their machine" in readme(None)
+    assert "left no check" in readme(None)
+    text = readme(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
+    assert f"`{RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT}`" in text
+    assert "sh run.sh check-working-environment" in text
+    assert "@@" not in text
 
 
 def test_reproducer_sh_is_deterministic_for_equal_inputs():

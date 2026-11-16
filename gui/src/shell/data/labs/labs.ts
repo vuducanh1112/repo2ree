@@ -12,7 +12,13 @@ function mapLab(wire: StoreSummary): Lab {
     id: wire.store_id,
     label: wire.label,
     description: "",
-    machine: wire.machine ? { engine: wire.machine.engine ?? "none" } : null,
+    machine: wire.machine
+      ? {
+          arch: wire.machine.arch ?? "",
+          gpus: wire.machine.gpus ?? 0,
+          reportedImage: wire.machine.reported_image ?? null,
+        }
+      : null,
     status: wire.connected ? "connected" : "offline",
     available: wire.connected,
     build: wire.build ?? undefined,

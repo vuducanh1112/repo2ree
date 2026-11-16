@@ -42,8 +42,6 @@ CANCEL_KILL_SECONDS = 5.0
 POLL_SECONDS = 0.5
 # Endings kept for a follow that comes late, before their directories go.
 KEPT_SECONDS = 7 * 24 * 3600
-# The executor's container jobs carry their execution, so a restarted workbench keeps the adopted ones'.
-EXECUTION_VARIABLE = "REPO2REE_EXECUTION"
 # Runs the executor with its command on stdin, its result and log in files, and its exit status
 # written once it ends. It outlives the SIGTERM a cancel sends the executor's process group, so it
 # lives to write it, without passing the executor a signal it ignores.
@@ -173,7 +171,7 @@ class Executions:
         process = subprocess.Popen(
             argv,
             cwd=directory,
-            env=self._executor.environment(root, {**env, EXECUTION_VARIABLE: attempt_id}),
+            env=self._executor.environment(root, env),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says how each store's machine runs an REE's scripts\n   (`machine`: the engine it enters an image with, and whether it runs scripts on\n   itself). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It declares the\n   image you ask for as its working environment, or none, and starts with scripts\n   that suit it.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   starter scripts, and a check of the working environment that passes as it comes:\n   edit it to say what the scripts need from the store's machine.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -9525,32 +9525,6 @@
             ],
             "title": "Status"
           },
-          "runner": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "host",
-                  "container"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Runner"
-          },
-          "image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image"
-          },
           "engines": {
             "items": {
               "$ref": "#/components/schemas/EngineObservation"
@@ -12316,11 +12290,6 @@
             "type": "string",
             "title": "Kernel",
             "default": ""
-          },
-          "container_engine": {
-            "type": "string",
-            "title": "Container Engine",
-            "default": ""
           }
         },
         "additionalProperties": false,
@@ -12745,36 +12714,32 @@
             "title": "Arch",
             "default": ""
           },
-          "engine": {
-            "type": "string",
-            "enum": [
-              "docker",
-              "podman",
-              "apptainer",
-              "none"
-            ],
-            "title": "Engine",
-            "default": "none"
-          },
-          "script_engine": {
-            "type": "string",
-            "enum": [
-              "none",
-              "socket"
-            ],
-            "title": "Script Engine",
-            "default": "none"
-          },
           "gpus": {
             "type": "integer",
             "minimum": 0.0,
             "title": "Gpus",
             "default": 0
+          },
+          "container": {
+            "type": "boolean",
+            "title": "Container",
+            "default": false
+          },
+          "reported_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reported Image"
           }
         },
         "type": "object",
         "title": "MachineFacts",
-        "description": "How this machine runs an REE's scripts, and what it offers them."
+        "description": "The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider\nsays it runs in."
       },
       "MachineLevel": {
         "type": "integer",
@@ -13471,11 +13436,6 @@
             "type": "string",
             "minLength": 1,
             "title": "Store Id"
-          },
-          "image": {
-            "type": "string",
-            "title": "Image",
-            "default": ""
           }
         },
         "additionalProperties": false,
@@ -13520,16 +13480,6 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ActivateExperimentEnvironmentDefinition"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "working_environment": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WorkingEnvironment"
               },
               {
                 "type": "null"
@@ -13613,16 +13563,6 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ActivateExperimentEnvironmentDefinition"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "working_environment": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WorkingEnvironment"
               },
               {
                 "type": "null"
@@ -14069,12 +14009,6 @@
             "type": "boolean",
             "title": "Include Experiment Environment",
             "description": "Put the declared experiment environment artifact in the sealed archive.",
-            "default": false
-          },
-          "include_working_environment": {
-            "type": "boolean",
-            "title": "Include Working Environment",
-            "description": "Save the working environment's OCI image into the sealed archive, so a review needs no registry.",
             "default": false
           },
           "include_results": {
@@ -16143,21 +16077,6 @@
           "is_default": {
             "type": "boolean",
             "title": "Is Default"
-          },
-          "working_environment": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "host",
-                  "container"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Working Environment"
           }
         },
         "additionalProperties": false,
@@ -16170,7 +16089,7 @@
           "is_default"
         ],
         "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; one entry per environment carries\n``is_default`` (for the seeded scripts it is the content a fresh REE in that\nenvironment starts with). ``working_environment`` is the kind of working environment a variant\nsuits, or null for one that suits any."
+        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the\ncontent a fresh REE starts with)."
       },
       "ScriptValidation": {
         "properties": {
@@ -16371,32 +16290,6 @@
               "not_probed"
             ],
             "title": "Status"
-          },
-          "runner": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "host",
-                  "container"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Runner"
-          },
-          "image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image"
           },
           "state": {
             "anyOf": [
@@ -17373,98 +17266,36 @@
         ],
         "title": "WorkbenchSummary"
       },
-      "WorkingEnvironment": {
-        "properties": {
-          "oci": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Oci"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "oci"
-        ],
-        "title": "WorkingEnvironment"
-      },
       "WorkingEnvironmentObservation": {
         "properties": {
-          "declared": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WorkingEnvironment"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "host": {
+            "$ref": "#/components/schemas/HostFingerprint"
           },
-          "backend": {
-            "type": "string",
-            "enum": [
-              "host",
-              "container"
-            ],
-            "title": "Backend"
+          "container": {
+            "type": "boolean",
+            "title": "Container",
+            "default": false
           },
-          "image_digest": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Image Digest",
-            "x-digest-of": {
-              "covers": "outside"
-            }
-          },
-          "image_source": {
+          "reported_image": {
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "engine",
-                  "bundle"
-                ]
+                "minLength": 1
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Image Source"
-          },
-          "host": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/HostFingerprint"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "script_engine": {
-            "type": "string",
-            "enum": [
-              "none",
-              "socket",
-              "nested"
-            ],
-            "title": "Script Engine",
-            "default": "none"
+            "title": "Reported Image"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "backend"
+          "host"
         ],
         "title": "WorkingEnvironmentObservation",
-        "description": "What a step ran in: the declaration it ran under, and what was there."
+        "description": "Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in."
       },
       "WorkspaceDrift": {
         "properties": {

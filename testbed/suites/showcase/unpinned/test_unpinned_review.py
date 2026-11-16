@@ -32,14 +32,14 @@ def test_a_rebuild_after_an_upstream_release_is_different_and_the_sealed_experim
     client: Client, new_ree: NewRee
 ) -> None:
     publish(F, "1.0")
-    authored = new_ree("review-author", image=F.image)
+    authored = new_ree("review-author")
     author(client, authored, F)
     assert client.seal(authored, watch=F.watch).status == "succeeded"
     archive = client.archive(authored, "review-baseline")
 
     publish(F, "2.0")
 
-    reviewer = new_ree("reviewer", image=F.image)
+    reviewer = new_ree("reviewer")
     client.load(reviewer, archive.read_bytes())
 
     rebuilt = reviewed(client, reviewer, "auto")

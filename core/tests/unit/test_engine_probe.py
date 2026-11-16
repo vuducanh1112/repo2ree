@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.execution.engine_probe import RunnerEngineProbe, observed, parse
-from repo2ree_core.execution.working_environment import HostEntry, ProbeResult, RefusedEntry
+from repo2ree_core.execution.working_environment import ProbeResult
 
 NO_DAEMON = "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
 
@@ -37,7 +37,7 @@ def engines(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def _probe(workspace: Path, seconds: float = 10) -> RunnerEngineProbe:
     workspace.mkdir(exist_ok=True)
-    return RunnerEngineProbe(workspace, entry=HostEntry(), seconds=seconds)
+    return RunnerEngineProbe(workspace, seconds=seconds)
 
 
 def test_an_engine_that_answers_is_usable_and_one_that_cannot_reach_its_daemon_is_not(
@@ -47,7 +47,6 @@ def test_an_engine_that_answers_is_usable_and_one_that_cannot_reach_its_daemon_i
     _engine(engines, "podman", "echo 'Podman Engine|5.2.0|true'")
     seen = _probe(tmp_path / "workspace").probe()
     assert seen.status == "probed"
-    assert seen.runner == "host"
     docker, podman = seen.engines
     assert (docker.state, docker.detail) == ("unreachable", NO_DAEMON)
     assert docker.client_path == str(engines / "docker")
@@ -87,18 +86,9 @@ def test_the_machine_is_probed_once(tmp_path: Path, engines: Path) -> None:
     assert counter.read_text() == "x\n"
 
 
-def test_a_runner_that_refuses_leaves_the_engines_unknown(tmp_path: Path) -> None:
-    refusing = RefusedEntry("this workbench runs scripts in a container, and the REE declares no image to run them in")
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    seen = RunnerEngineProbe(workspace, entry=refusing).probe()
-    assert (seen.status, seen.engines) == ("failed", [])
-    assert "declares no image" in seen.detail
-
-
 def test_a_probe_that_printed_nothing_leaves_the_engines_unknown() -> None:
-    seen = observed(ProbeResult(runner="container", image="img", returncode=127, stdout="", stderr="sh: not found\n"))
-    assert (seen.status, seen.detail, seen.image) == ("failed", "exit 127: sh: not found", "img")
+    seen = observed(ProbeResult(returncode=127, stdout="", stderr="sh: not found\n"))
+    assert (seen.status, seen.detail) == ("failed", "exit 127: sh: not found")
 
 
 def test_lines_the_probe_does_not_know_are_ignored() -> None:

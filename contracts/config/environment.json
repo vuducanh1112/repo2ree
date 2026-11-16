@@ -295,13 +295,6 @@
         "type": "string"
       }
     },
-    "E2E_STORE_BACKEND": {
-      "kind": "internal",
-      "owner": "playwright",
-      "schema": {
-        "type": "string"
-      }
-    },
     "E2E_SYSTEM_PYTEST_ARGS": {
       "kind": "internal",
       "owner": "testbed",
@@ -547,8 +540,8 @@
         "type": "string"
       }
     },
-    "REPO2REE_JOB_OWNER": {
-      "kind": "internal",
+    "REPO2REE_IMAGE": {
+      "kind": "runtime",
       "owner": "executor",
       "schema": {
         "type": "string"
@@ -585,20 +578,6 @@
     "REPO2REE_NETWORK": {
       "kind": "deployment",
       "owner": "compose",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_RESOURCE_OWNER": {
-      "kind": "internal",
-      "owner": "core",
-      "schema": {
-        "type": "string"
-      }
-    },
-    "REPO2REE_SCRIPT_ENGINE": {
-      "kind": "runtime",
-      "owner": "executor",
       "schema": {
         "type": "string"
       }

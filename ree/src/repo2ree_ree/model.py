@@ -43,7 +43,6 @@ from repo2ree_ree.reserved_paths import (
     experiment_verify_script_path,
     is_overlay_path,
 )
-from repo2ree_ree.working_environment import WorkingEnvironment
 
 CURRENT_SCHEMA_VERSION: Literal[1] = 1
 
@@ -180,8 +179,6 @@ class ReeDefinition(_DomainModel):
     source: SourceDefinition | None = None
     experiment_environment: ExperimentEnvironmentDefinition | None = None
     activate_experiment_environment: ActivateExperimentEnvironmentDefinition | None = None
-    # The OCI image every script runs in; None runs them on the machine that runs the step.
-    working_environment: WorkingEnvironment | None = None
     # The author's check that the working environment offers what the scripts need; every REE starts with one.
     check_working_environment: CheckWorkingEnvironmentDefinition | None = None
     # None runs every script directly; with a launch, each runs through it.

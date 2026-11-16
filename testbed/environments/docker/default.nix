@@ -8,6 +8,4 @@ machine {
     pkgs.procps
   ];
   entrypoint = ./entrypoint.sh;
-  # A script in an REE's container reaches this machine's daemon: the Docker REEs build and run images.
-  variables.REPO2REE_SCRIPT_ENGINE = "socket";
 }

@@ -1488,11 +1488,6 @@
           "default": "",
           "title": "Kernel",
           "type": "string"
-        },
-        "container_engine": {
-          "default": "",
-          "title": "Container Engine",
-          "type": "string"
         }
       },
       "required": [
@@ -1861,17 +1856,6 @@
           "anyOf": [
             {
               "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "working_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkingEnvironment"
             },
             {
               "type": "null"
@@ -2432,99 +2416,34 @@
       "title": "StorageDefinition",
       "type": "object"
     },
-    "WorkingEnvironment": {
-      "additionalProperties": false,
-      "properties": {
-        "oci": {
-          "minLength": 1,
-          "title": "Oci",
-          "type": "string"
-        }
-      },
-      "required": [
-        "oci"
-      ],
-      "title": "WorkingEnvironment",
-      "type": "object"
-    },
     "WorkingEnvironmentObservation": {
       "additionalProperties": false,
-      "description": "What a step ran in: the declaration it ran under, and what was there.",
+      "description": "Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in.",
       "properties": {
-        "declared": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/WorkingEnvironment"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "backend": {
-          "enum": [
-            "host",
-            "container"
-          ],
-          "title": "Backend",
-          "type": "string"
-        },
-        "image_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image Digest",
-          "x-digest-of": {
-            "covers": "outside"
-          }
-        },
-        "image_source": {
-          "anyOf": [
-            {
-              "enum": [
-                "engine",
-                "bundle"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Image Source"
-        },
         "host": {
+          "$ref": "#/$defs/HostFingerprint"
+        },
+        "container": {
+          "default": false,
+          "title": "Container",
+          "type": "boolean"
+        },
+        "reported_image": {
           "anyOf": [
             {
-              "$ref": "#/$defs/HostFingerprint"
+              "minLength": 1,
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
-          "default": null
-        },
-        "script_engine": {
-          "default": "none",
-          "enum": [
-            "none",
-            "socket",
-            "nested"
-          ],
-          "title": "Script Engine",
-          "type": "string"
+          "default": null,
+          "title": "Reported Image"
         }
       },
       "required": [
-        "backend"
+        "host"
       ],
       "title": "WorkingEnvironmentObservation",
       "type": "object"

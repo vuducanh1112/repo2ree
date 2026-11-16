@@ -20,9 +20,7 @@ export function LabCell({ lab, selected, onSelect }: LabCellProps) {
     lab.description ||
     (lab.status === "offline"
       ? "Its workbench is away; its REEs wait for it."
-      : lab.machine?.engine === "none"
-        ? "Runs each REE's scripts on its own machine; it has no engine for an image."
-        : "Runs each REE's scripts in the image it declares, or on its own machine.");
+      : "Runs each REE's scripts on its own machine.");
   const meta = describeMachine(lab.machine);
 
   return (

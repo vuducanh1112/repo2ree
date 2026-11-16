@@ -6,8 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from repo2ree_ree.working_environment import EnvironmentBackend
-
 ReeStepKey = Literal[
     "source",
     "metadata",
@@ -56,10 +54,8 @@ class ReeSteps(BaseModel):
 class ScriptTemplateEntry(BaseModel):
     """One named starter-template variant for an REE-owned script.
 
-    Every catalog section lists these; one entry per environment carries
-    ``is_default`` (for the seeded scripts it is the content a fresh REE in that
-    environment starts with). ``working_environment`` is the kind of working environment a variant
-    suits, or null for one that suits any.
+    Every catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the
+    content a fresh REE starts with).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -69,7 +65,6 @@ class ScriptTemplateEntry(BaseModel):
     description: str
     body: str
     is_default: bool
-    working_environment: EnvironmentBackend | None = None
 
 
 class BuildExperimentEnvironmentScriptTemplates(BaseModel):

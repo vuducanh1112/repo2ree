@@ -458,13 +458,12 @@ class CommandDispatcher:
         with us (see ``WorkbenchClient.copy_in``)."""
         self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)
 
-    def init_ree(self, handle: ReeRoute, name: str, oci: str | None = None) -> None:
-        """Create the REE in the store its workbench serves, its scripts in the image ``oci``, or on its host with
-        none; refused where one is already."""
+    def init_ree(self, handle: ReeRoute, name: str) -> None:
+        """Create the REE in the store its workbench serves; refused where one is already."""
         with self._locks(handle.ree_id):
             self._workbench.init_ree(
                 handle.workbench_id,
-                InitRee(name=name, oci=oci),
+                InitRee(name=name),
                 ree_id=handle.ree_id,
             )
 

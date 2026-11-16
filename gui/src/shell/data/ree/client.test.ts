@@ -45,7 +45,6 @@ describe("createReeClient", () => {
     await client.sealRee("ree-1", {
       includeSource: true,
       includeExperimentEnvironment: false,
-      includeWorkingEnvironment: false,
       includeResults: true,
     });
     await expect(client.getReeArchive("ree-1")).resolves.toMatchObject({ fileName: "ree.zip" });

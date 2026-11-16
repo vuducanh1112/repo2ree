@@ -13,7 +13,7 @@ PNG = b"\x89PNG\r\n\x1a\n"
 
 
 def test_a_figure_and_its_table_are_sealed_beside_the_summary(client: Client, new_ree: NewRee) -> None:
-    ree_id = new_ree(image=F.image)
+    ree_id = new_ree()
     client.author(ree_id, F)
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"

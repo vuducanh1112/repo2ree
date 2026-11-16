@@ -12,7 +12,7 @@ F = CONDA
 
 
 def test_a_conda_environment_is_built_activated_run_and_sealed(client: Client, new_ree: NewRee) -> None:
-    ree_id = new_ree(image=F.image)
+    ree_id = new_ree()
     client.author(ree_id, F)
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"

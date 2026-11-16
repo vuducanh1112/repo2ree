@@ -40,7 +40,6 @@ describe("createReeEditorCommands", () => {
     commands.onSeal({
       includeSource: true,
       includeExperimentEnvironment: false,
-      includeWorkingEnvironment: false,
       includeResults: true,
     });
     commands.onDownloadRee();

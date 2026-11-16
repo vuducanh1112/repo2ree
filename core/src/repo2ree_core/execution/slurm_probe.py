@@ -13,7 +13,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from repo2ree_core.execution.working_environment import Entry, ProbeResult, WorkingEnvironmentUnavailableError, probe
+from repo2ree_core.execution.working_environment import ProbeResult, probe
 from repo2ree_protocol.inference import SlurmPartition, SlurmProbe
 
 PROBE_SECONDS = 20.0
@@ -41,18 +41,15 @@ def _partition(line: str) -> SlurmPartition | None:
 
 def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> SlurmProbe:
     """What a finished probe says about Slurm; one that printed nothing it recognises knows nothing."""
-    runner, image = result.runner, result.image
     lines = result.stdout.splitlines()
     head = lines[0].split("\t") if lines else []
     state = head[0] if head else ""
     if state == "absent":
-        return SlurmProbe(status="probed", state="absent", runner=runner, image=image)
+        return SlurmProbe(status="probed", state="absent")
     if state in ("usable", "unreachable") and len(head) >= 2:
         detail = head[2] if len(head) > 2 else ""
         if state == "unreachable":
-            return SlurmProbe(
-                status="probed", state="unreachable", srun_path=head[1], detail=detail, runner=runner, image=image
-            )
+            return SlurmProbe(status="probed", state="unreachable", srun_path=head[1], detail=detail)
         partitions = [
             found
             for line in lines[1:]
@@ -64,25 +61,21 @@ def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> SlurmProbe:
             srun_path=head[1],
             version=detail or None,
             partitions=partitions,
-            runner=runner,
-            image=image,
         )
     why = f"no answer within {seconds:.0f}s" if result.returncode is None else f"exit {result.returncode}"
     first = next(iter(result.stderr.splitlines()), "")
-    return SlurmProbe(status="failed", detail=f"{why}: {first}" if first else why, runner=runner, image=image)
+    return SlurmProbe(status="failed", detail=f"{why}: {first}" if first else why)
 
 
 class RunnerSlurmProbe:
-    """Probes through the REE's working environment the first time it is asked, and answers the same after."""
+    """Probes where ree runs the first time it is asked, and answers the same after."""
 
     def __init__(
         self,
         workspace: Path,
-        entry: Entry,
         seconds: float = PROBE_SECONDS,
     ) -> None:
         self._workspace = workspace
-        self._entry = entry
         self._seconds = seconds
         self._seen: SlurmProbe | None = None
 
@@ -95,9 +88,8 @@ class RunnerSlurmProbe:
         if not self._workspace.is_dir():
             return SlurmProbe(status="failed", detail=f"no workspace at {self._workspace} to probe from")
         try:
-            result = probe(self._entry, self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
+            result = probe(self._workspace, ["sh", "-c", PROBE_SCRIPT], seconds=self._seconds)
         except (
-            WorkingEnvironmentUnavailableError,
             RuntimeError,
             OSError,
             ValueError,

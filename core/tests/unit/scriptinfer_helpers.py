@@ -165,7 +165,6 @@ class FixedEngines:
         self.asked += 1
         return ContainerEnginesProbe(
             status="probed",
-            runner="host",
             engines=[
                 EngineObservation(engine=engine, state="usable" if engine in self.usable else "absent")
                 for engine in get_args(ContainerEngine)

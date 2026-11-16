@@ -7,7 +7,6 @@ import {
   instantHelloWorld,
   instantRecipe,
   keepReeArchive,
-  LIGHTWEIGHT_WORKBENCH_IMAGE,
   openPort,
   provisionWorkbench,
   releaseWorkbench,
@@ -30,7 +29,7 @@ test.describe("Instant authoring", () => {
   test("authors, seals and downloads the instant project", async ({ page }) => {
     await test.step("provision a bench without a Docker daemon", async () => {
       await startReeCreation(page);
-      await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+      await provisionWorkbench(page);
     });
 
     await test.step("upload the project", async () => {

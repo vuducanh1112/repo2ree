@@ -1,7 +1,6 @@
 import { expect, test } from "../helpers/fixtures";
 import {
   downloadSource,
-  LIGHTWEIGHT_WORKBENCH_IMAGE,
   openReviewConsole,
   provisionWorkbench,
   reproduceSource,
@@ -20,7 +19,7 @@ import { E2E_GIT_ORIGIN_URL, E2E_TARBALL_ORIGIN_URL } from "../helpers/origins";
 test.describe("Source acquisition page", () => {
   test("git origin URL is fetched into the workspace and its commit resolved", async ({ page }) => {
     await startReeCreation(page);
-    await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+    await provisionWorkbench(page);
 
     const clearSource = await downloadSource(page, {
       url: E2E_GIT_ORIGIN_URL,
@@ -52,7 +51,7 @@ test.describe("Tarball origin", () => {
   test("a tarball origin is fetched into the workspace", async ({ page }) => {
     test.skip(!E2E_TARBALL_ORIGIN_URL, "this stack serves no tarball origin");
     await startReeCreation(page);
-    await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+    await provisionWorkbench(page);
 
     const clearSource = await downloadSource(page, {
       url: E2E_TARBALL_ORIGIN_URL,
@@ -78,7 +77,7 @@ test.describe("Review source", () => {
     page,
   }) => {
     await startReeCreation(page);
-    await provisionWorkbench(page, { imageRef: LIGHTWEIGHT_WORKBENCH_IMAGE });
+    await provisionWorkbench(page);
     // Upload-acquired source has no origin to re-fetch, so a reviewable REE
     // needs the download path.
     await downloadSource(page, { url: E2E_GIT_ORIGIN_URL, sourceType: "git" });

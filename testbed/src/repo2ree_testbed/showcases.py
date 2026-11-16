@@ -16,8 +16,7 @@ from typing import Literal, get_args
 from repo2ree_testbed.api_models import InferenceRule
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.run_watch import INSTANT_RUN, QUIET_NETWORK_RUN, RunWatch
-from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
-from repo2ree_testbed.stack.store_images import DOCKER_IMAGE, PYTHON_SLIM_IMAGE
+from repo2ree_testbed.stack.environments import EnvironmentName
 
 
 class ProjectName(StrEnum):
@@ -84,8 +83,6 @@ CLI_TIER = "showcase-cli"
 @dataclass(frozen=True)
 class Project:
     name: ProjectName
-    # The bench image its REEs declare, on a machine that runs scripts in containers; None runs them on the machine.
-    image: str | None
     experiment_environment_path: str
     experiment: str
     verdict: ExpectedVerdict = "identical"
@@ -141,14 +138,12 @@ class Project:
 
 INSTANT = Project(
     name=ProjectName.INSTANT,
-    image=PYTHON_SLIM_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-hello",
     inferred=PIP_BUILD,
 )
 INSTANT_DOCKER = Project(
     name=ProjectName.INSTANT_DOCKER,
-    image=DOCKER_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime-image.tar",
     experiment="instant-docker-hello",
     # Inference proposes `docker build` of the project as it stands; the recipe also
@@ -156,14 +151,12 @@ INSTANT_DOCKER = Project(
 )
 APPTAINER = Project(
     name=ProjectName.APPTAINER,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime.sif",
     experiment="instant-apptainer-hello",
     inferred=SLURM_LAUNCH,
 )
 PYTHON_DOCKER = Project(
     name=ProjectName.PYTHON_DOCKER,
-    image=DOCKER_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="python-hello",
     network=True,
@@ -171,7 +164,6 @@ PYTHON_DOCKER = Project(
 )
 PYTHON_VENV = Project(
     name=ProjectName.PYTHON_VENV,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="python-pip-hello",
     network=True,
@@ -179,7 +171,6 @@ PYTHON_VENV = Project(
 )
 JAVA_MAVEN = Project(
     name=ProjectName.JAVA_MAVEN,
-    image=DOCKER_IMAGE,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="java-hello",
     network=True,
@@ -187,7 +178,6 @@ JAVA_MAVEN = Project(
 )
 PODMAN = Project(
     name=ProjectName.PODMAN,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime.tar",
     experiment="podman-hello",
     network=True,
@@ -195,14 +185,12 @@ PODMAN = Project(
 )
 SLURM = Project(
     name=ProjectName.SLURM,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-slurm-hello",
     inferred=(*VENV, *SLURM_LAUNCH),
 )
 STOCHASTIC = Project(
     name=ProjectName.STOCHASTIC,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="instant-stochastic-pi",
     verdict="reproduced",
@@ -210,14 +198,12 @@ STOCHASTIC = Project(
 )
 CONDA = Project(
     name=ProjectName.CONDA,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-conda.tar.gz",
     experiment="conda-numpy",
     network=True,
 )
 NOTEBOOK = Project(
     name=ProjectName.NOTEBOOK,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="notebook-decay-rate",
     # The executed notebook records when each of its cells ran, so no rerun repeats its bytes.
@@ -228,7 +214,6 @@ NOTEBOOK = Project(
 )
 PLOTTING = Project(
     name=ProjectName.PLOTTING,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="plotting-linear-fit",
     network=True,
@@ -237,7 +222,6 @@ PLOTTING = Project(
 )
 UNPINNED = Project(
     name=ProjectName.UNPINNED,
-    image=None,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="unpinned-mean-kelvin",
     verdict="different",
@@ -314,11 +298,6 @@ def _refusals() -> list[str]:
     for name, config in SHOWCASES.items():
         if config.project.name.value != name.value:
             refusals.append(f"{name} runs the project {config.project.name}")
-        containers = ENVIRONMENTS[config.environment].backend == "container"
-        if containers and config.project.image is None:
-            refusals.append(f"{name} runs in containers on {config.environment} and declares no bench image")
-        if not containers and config.project.image is not None:
-            refusals.append(f"{name} runs directly on {config.environment} and declares a bench image")
     return refusals
 
 

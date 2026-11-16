@@ -48,7 +48,7 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
             return BuildInfo(revision="executor-test-revision")
 
         def machine(self) -> MachineFacts:
-            return MachineFacts(engine="podman", script_engine="socket")
+            return MachineFacts(arch="aarch64", gpus=1)
 
     monkeypatch.setattr(app_module, "LocalCli", lambda *args, **kwargs: Executor())
 
@@ -65,7 +65,7 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
     assert isinstance(kwargs, dict)
     assert kwargs["enrollment_token"] == opaque
     # How the machine runs scripts is what ree said, passed along in the hello.
-    assert kwargs["machine"] == MachineFacts(engine="podman", script_engine="socket")
+    assert kwargs["machine"] == MachineFacts(arch="aarch64", gpus=1)
     service = workbench_args[1]
     assert isinstance(service, WorkbenchService)
     assert service.store_id == "lab-1"

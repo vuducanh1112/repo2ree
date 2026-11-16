@@ -29,7 +29,6 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
     opts: {
       includeSource: boolean;
       includeExperimentEnvironment: boolean;
-      includeWorkingEnvironment: boolean;
       includeResults: boolean;
     },
   ): Promise<RunSummary>;

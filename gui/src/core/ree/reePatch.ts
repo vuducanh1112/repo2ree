@@ -12,7 +12,6 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   experiment_environment: Record<string, unknown>;
   experiments: Array<Record<string, unknown>>;
   hardware: Record<string, unknown>;
-  working_environment?: Record<string, unknown> | null;
 }
 
 interface ReePatchSlices {
@@ -108,9 +107,5 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     experiment_environment: { artifact_path: reeSpec.experimentEnvironmentPath || null },
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hardware: serializeHbom(reeSpec.hardwareDescription),
-    // None declared is a declaration too: the scripts run on the machine that runs each step.
-    working_environment: reeSpec.workingEnvironment
-      ? { oci: reeSpec.workingEnvironment.oci }
-      : null,
   };
 }

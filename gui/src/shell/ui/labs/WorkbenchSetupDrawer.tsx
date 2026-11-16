@@ -11,7 +11,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { CollapsibleLogCard } from "../app-shell/components/CollapsibleLogCard";
 import { Button } from "../shared/components/Button";
-import { Input } from "../shared/components/FormControl";
 import { Ic } from "../shared/components/Icon";
 import { Notice } from "../shared/components/Notice";
 import styles from "./WorkbenchSetupDrawer.module.css";
@@ -24,13 +23,11 @@ interface WorkbenchSetupDrawerProps {
 }
 
 /**
- * Everything between choosing a lab and having a workbench: the working environment, what
+ * Everything between choosing a lab and having a workbench: what
  * the bench starts with, and the run that brings it online. It lives in the
  * canvas's drawer because that is what the drawer is for — the surface where
  * one chosen thing is configured and acted on.
- *
- * The image is typed, not picked from a list: it is what every script of this REE
- * runs in, and what a reviewer reruns them in, so it is the author's to name.
+
  */
 export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawerProps) {
   const navigate = useNavigate();
@@ -39,10 +36,6 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry | null>(null);
-  // The OCI image the REE's scripts run in: its working environment. Blank declares none, so they
-  // run on the lab's own machine.
-  const [image, setImage] = useState("");
-  const chosenRef = image.trim();
   // An REE can start blank or be a downloaded bundle restored onto the bench.
   // The bundle is chosen here rather than on the landing screen because the
   // load runs on the workbench this step provisions.
@@ -56,22 +49,15 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
     // after these on every poll update.
     const preamble: LogLine[] = [
       { type: "info", msg: "Powering up the workbench…", ts: startedTs },
-      {
-        type: "out",
-        msg: chosenRef
-          ? `Working environment: ${chosenRef}`
-          : "Working environment: the lab's own machine",
-        ts: startedTs,
-      },
       { type: "out", msg: `Location: ${lab.label}`, ts: startedTs },
     ];
     setLog({ lines: preamble, ts: startedTs });
     try {
       // The REE's display name is owned by the Metadata page; provision with a
       // neutral default and let the user rename it there. Provisioning runs in
-      // the background so the image pull streams live — observeReeRun tails the
+      // the background so its log streams live — observeReeRun tails the
       // run's log feed into this drawer until it finishes.
-      const { reeId, run } = await runsClient.createWorkspace("REE", lab.id, chosenRef);
+      const { reeId, run } = await runsClient.createWorkspace("REE", lab.id);
       const result = await observeReeRun(queryClient, runsClient, {
         reeId,
         runId: run.runId,
@@ -131,17 +117,6 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
       <p className={styles.lede}>
         The REE is kept at <b>{lab.label}</b> for its whole life.
       </p>
-
-      <SectionLabel icon={Ic.layers(14)}>Working environment</SectionLabel>
-      <Input
-        type="text"
-        aria-label="Working environment image"
-        value={image}
-        placeholder="An OCI image, or blank for the lab's own machine"
-        onChange={(event) => setImage(event.target.value)}
-        disabled={loading}
-        flavor="code"
-      />
 
       <SectionLabel icon={Ic.package(14)}>Contents</SectionLabel>
       <BundleChoice

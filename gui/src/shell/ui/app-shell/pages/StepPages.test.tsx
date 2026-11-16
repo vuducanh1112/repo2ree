@@ -64,65 +64,6 @@ describe("major step page workflows", () => {
     );
   });
 
-  it.each([
-    ["names a pinned image", { oci: "python@sha256:abc", pinned: true }, ["python@sha256:abc"], []],
-    [
-      "warns that a tag can move",
-      { oci: "python:3.12", pinned: false },
-      ["python:3.12", "Working environment not pinned"],
-      [],
-    ],
-    [
-      "says when the scripts run on the lab's own machine",
-      null,
-      ["Runs on the lab's own machine"],
-      ["Working environment not pinned"],
-    ],
-  ] as const)("the build header %s", async (_name, workingEnvironment, shown, hidden) => {
-    renderWithShell(
-      <PageBuildExperimentEnvironment
-        {...createStepPageProps("build_experiment_environment", {
-          ree: {
-            ...exampleEditorRee,
-            spec: {
-              ...exampleEditorRee.spec,
-              workingEnvironment,
-            },
-          },
-        })}
-      />,
-      { reeId: "ree-1", services: catalogServices() },
-    );
-
-    for (const text of shown) expect(await screen.findByText(text)).toBeInTheDocument();
-    for (const text of hidden) expect(screen.queryByText(text)).toBeNull();
-  });
-
-  it("declares the image the build runs in, or the lab's own machine", async () => {
-    const user = userEvent.setup();
-    const onReeSpecChange = vi.fn();
-    const workingEnvironment = { oci: "", pinned: false };
-    renderWithShell(
-      <PageBuildExperimentEnvironment
-        {...createStepPageProps("build_experiment_environment", {
-          ree: { ...exampleEditorRee, spec: { ...exampleEditorRee.spec, workingEnvironment } },
-          onReeSpecChange,
-        })}
-      />,
-      { reeId: "ree-1", services: catalogServices() },
-    );
-    const lastUpdate = () =>
-      onReeSpecChange.mock.calls.at(-1)?.[0](createEmptyReeSpec()).workingEnvironment;
-
-    fireEvent.change(await screen.findByLabelText("Working environment image"), {
-      target: { value: "python@sha256:abc" },
-    });
-    expect(lastUpdate()).toEqual({ oci: "python@sha256:abc", pinned: true });
-
-    await user.click(screen.getByLabelText("The lab's own machine"));
-    expect(lastUpdate()).toBeNull();
-  });
-
   // The generated build script writes to the path the REE declares, and falls
   // back to its own default when there is none — so a generated candidate always
   // reports where it writes. Filling an empty declaration from that is the rest

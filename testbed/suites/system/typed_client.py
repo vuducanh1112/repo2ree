@@ -39,7 +39,7 @@ from repo2ree_testbed.showcases import Project
 
 
 class NewRee(Protocol):
-    def __call__(self, name: str = ..., *, image: str | None = ...) -> str: ...
+    def __call__(self, name: str = ...) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -239,13 +239,13 @@ class ApiClient:
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
         """Author and seal ``fixture``, and reproduce it in a second REE."""
-        author = new_ree("review-author", image=fixture.image)
+        author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)
         assert sealed.status == "succeeded", self.logs(author, sealed)
         archive = self.archive(author, "review-baseline")
 
-        reviewer = new_ree("reviewer", image=fixture.image)
+        reviewer = new_ree("reviewer")
         self.load(reviewer, archive.read_bytes())
 
         source = self.review_source(reviewer, "auto", watch=fixture.watch)

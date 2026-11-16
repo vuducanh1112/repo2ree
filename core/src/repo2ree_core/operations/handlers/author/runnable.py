@@ -18,7 +18,7 @@ from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_run
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
-from repo2ree_core.execution.working_environment import Entry
+from repo2ree_core.execution.working_environment import observe_working_environment
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -45,7 +45,6 @@ def handle_runnable_operation(
     kind: RunnableKind,
     *,
     layout: ReeLayout,
-    entry: Entry,
     experiment_name: str = "",
     run_id: str,
     log: LogSink,
@@ -78,7 +77,6 @@ def handle_runnable_operation(
         run_id=run_id,
         log=log,
         is_canceled=is_canceled,
-        entry=entry,
     )
     outputs = _outputs(outcome, experiment_environment_path)
     if outcome.status == "canceled":
@@ -116,7 +114,7 @@ def handle_runnable_operation(
         experiment_environment_digest=experiment_environment_digest,
         produced_output_digest=produced_output_digest,
         activate_experiment_environment_script_digest=activation.activate_experiment_environment_script_digest,
-        working_environment=entry.observe(),
+        working_environment=observe_working_environment(),
         launch_script_digest=_launch_digest(ree),
         launched=outcome.launched,
     )

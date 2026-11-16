@@ -56,9 +56,6 @@ export function SealContent({
     experimentEnvironmentAvailable,
   );
   const [includeResults, setIncludeResults] = React.useState(resultsAvailable);
-  // The image is the REE's only when it declares one; saving it is opt-in, since an image is large.
-  const workingEnvironmentAvailable = ree.spec.workingEnvironment !== null;
-  const [includeWorkingEnvironment, setIncludeWorkingEnvironment] = React.useState(false);
 
   // Default the seal-time choices to whatever is available; the user can opt out
   // inline before sealing. Availability can change while authoring, so keep the
@@ -107,8 +104,6 @@ export function SealContent({
                   includeSource: sourceAvailable && includeSource,
                   includeExperimentEnvironment:
                     experimentEnvironmentAvailable && includeExperimentEnvironment,
-                  includeWorkingEnvironment:
-                    workingEnvironmentAvailable && includeWorkingEnvironment,
                   includeResults: resultsAvailable && includeResults,
                 })
               }
@@ -156,15 +151,12 @@ export function SealContent({
                 sourceAvailable={sourceAvailable}
                 experimentEnvironmentAvailable={experimentEnvironmentAvailable}
                 resultsAvailable={resultsAvailable}
-                workingEnvironmentAvailable={workingEnvironmentAvailable}
                 includeSource={includeSource}
                 includeExperimentEnvironment={includeExperimentEnvironment}
                 includeResults={includeResults}
-                includeWorkingEnvironment={includeWorkingEnvironment}
                 onToggleSource={() => setIncludeSource((v) => !v)}
                 onToggleExperimentEnvironment={() => setIncludeExperimentEnvironment((v) => !v)}
                 onToggleResults={() => setIncludeResults((v) => !v)}
-                onToggleWorkingEnvironment={() => setIncludeWorkingEnvironment((v) => !v)}
               />
             </GlassSubPanel>
           </>

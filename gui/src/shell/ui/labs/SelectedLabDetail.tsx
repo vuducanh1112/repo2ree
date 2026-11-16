@@ -24,7 +24,7 @@ export function SelectedLabDetail({ lab }: SelectedLabDetailProps) {
 
   const facts: [string, string][] = [
     ["LOCATION", lab.id],
-    ["SCRIPTS RUN", describeMachine(lab.machine)],
+    ["MACHINE", describeMachine(lab.machine)],
     ["WORKBENCH REV", revisionLabel(lab.build?.revision)],
   ];
 

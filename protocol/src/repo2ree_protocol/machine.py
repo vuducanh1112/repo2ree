@@ -1,28 +1,22 @@
-"""How a machine runs an REE's scripts, as ``ree machine`` reports it.
+"""The machine ``ree`` runs an REE's scripts on, as ``ree machine`` reports it.
 
-The REE declares what its scripts run in (``definition.working_environment``): an image, or the machine itself. The
-machine only enters it: with the first engine it has, and, for now, letting a script in a container reach that
-engine where it is told to. A workbench reports this for the store it serves.
+An REE states what its scripts need in its check; whoever provides the compute runs ``ree`` somewhere that passes
+it. A workbench reports the machine it runs on for the store it serves.
 """
 
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field
-
-# How this machine enters an OCI image: an engine, or none at all.
-EngineName = Literal["docker", "podman", "apptainer", "none"]
-# Whether a script in a container may reach the machine's engine through its socket.
-ScriptEngineAccess = Literal["none", "socket"]
 
 
 class MachineFacts(BaseModel):
-    """How this machine runs an REE's scripts, and what it offers them."""
+    """The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider
+    says it runs in."""
 
     model_config = ConfigDict(extra="ignore")
 
     arch: str = ""
-    engine: EngineName = "none"
-    script_engine: ScriptEngineAccess = "none"
     gpus: int = Field(default=0, ge=0)
+    container: bool = False
+    # The image the compute provider says ree runs in (REPO2REE_IMAGE): reported, not observed.
+    reported_image: str | None = None

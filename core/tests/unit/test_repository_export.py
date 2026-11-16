@@ -8,7 +8,6 @@ import pytest
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.bundle.repository_restore import restore_repository
-from repo2ree_core.execution.working_environment import HOST_MACHINE
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -19,14 +18,11 @@ from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.command import (
     LoadReeBundleArgs,
     LoadReeBundleCommand,
-    PatchReeDefinitionArgs,
-    PatchReeDefinitionCommand,
     SealReeArgs,
     SealReeCommand,
 )
 from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.model import CapturePolicy
-from repo2ree_ree.working_environment import WorkingEnvironment
 
 
 def _sealed(tmp_path, monkeypatch):
@@ -46,7 +42,6 @@ def _sealed(tmp_path, monkeypatch):
         ),
         log=lambda *args: None,
         layout=layout,
-        machine=HOST_MACHINE,
     )
     assert result.status == "succeeded", result
     assert result.history is not None
@@ -84,7 +79,6 @@ def test_seal_export_offline_checkout_and_load_preserve_history(tmp_path, monkey
         ),
         log=lambda *args: None,
         layout=destination,
-        machine=HOST_MACHINE,
     )
     assert loaded.status == "succeeded", loaded
     records = read_operation_history(destination).operations
@@ -190,7 +184,6 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
         ),
         log=lambda *args: None,
         layout=layout,
-        machine=HOST_MACHINE,
     )
     assert result.status == "succeeded", result
     with materialized_ree_download(layout) as archive, zipfile.ZipFile(archive) as zipped:
@@ -199,39 +192,3 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
         assert ("ree/artifacts/runtime.tar" in paths) == experiment_environment_included
         assert ("ree/results/data" in paths) == results_included
         assert not any(path.startswith("ree/workspace/") for path in paths)
-
-
-def test_a_loaded_draft_runs_where_it_declares_not_where_its_ree_was_created(tmp_path, monkeypatch):
-    author = ReeLayout(root=tmp_path / "author")
-    initialize_ree(author, name="undeclared")
-    with materialized_ree_download(author) as archive:
-        bundle = archive.read_bytes()
-    destination = ReeLayout(root=tmp_path / "destination")
-    initialize_ree(destination, name="blank")
-    created = WorkingEnvironment(oci="docker.io/library/docker:29-dind")
-    patched = run_command(
-        PatchReeDefinitionCommand(
-            args=PatchReeDefinitionArgs(
-                patch={"working_environment": created.model_dump(mode="json")}, expected_version=""
-            )
-        ),
-        log=lambda *args: None,
-        layout=destination,
-        machine=HOST_MACHINE,
-    )
-    assert patched.status == "succeeded", patched
-    destination.upload_staging_file("hello").write_bytes(bundle)
-    lines: list[str] = []
-
-    loaded = run_command(
-        LoadReeBundleCommand(args=LoadReeBundleArgs(upload_token="hello", archive_name="ree.zip")),  # noqa: S106
-        log=lambda stream, level, message: lines.append(message),
-        layout=destination,
-        machine=HOST_MACHINE,
-    )
-
-    assert loaded.status == "succeeded", loaded
-    ree = ReeDirectory(destination).read_ree()
-    assert ree.subject.definition.name == "undeclared"
-    # It declares no image, so it runs on the machine: the REE says where, not the REE it was loaded into.
-    assert ree.subject.definition.working_environment is None

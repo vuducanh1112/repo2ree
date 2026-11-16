@@ -23,7 +23,6 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       source_type: source?.source_type,
       revision: sourceReceipt?.resolved_revision ?? source?.requested_ref,
       experiment_environment_path: definition?.experiment_environment?.artifact_path,
-      working_environment: definition?.working_environment,
       sbom: receipts?.sbom?.sbom_path,
       swhid: sourceReceipt?.observed_swhid,
       experiments: (definition?.experiments ?? []).map((experiment) => ({

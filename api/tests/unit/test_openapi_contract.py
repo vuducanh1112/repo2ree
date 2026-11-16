@@ -95,10 +95,9 @@ def test_creation_and_source_acquisition_are_separate_contracts() -> None:
     create_ref = create_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     create_schema = schema["components"]["schemas"][create_ref.rsplit("/", 1)[-1]]
 
-    # Creation names a place (a store, and one of the images it offers), and nothing else:
-    # no package, command, resource request, or claim about what the image supplies may
-    # enter here. What else the REE's scripts need is declared afterwards, like any field.
-    assert set(create_schema["properties"]) == {"name", "store_id", "image"}
+    # Creation names a place (a store), and nothing else: no image, package, command or resource
+    # request may enter here. What the REE's scripts need is its check, written afterwards.
+    assert set(create_schema["properties"]) == {"name", "store_id"}
 
     acquire_operation = schema["paths"]["/api/v1/rees/{ree_id}/source:acquire"]["post"]
     acquire_ref = acquire_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]

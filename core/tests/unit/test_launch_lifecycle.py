@@ -8,7 +8,6 @@ import pytest
 
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
-from repo2ree_core.execution.working_environment import HostEntry
 from repo2ree_core.operations.handlers.author import build_experiment_environment
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -70,7 +69,7 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launch: LaunchDe
 
 def _build(layout: ReeLayout) -> str:
     result = build_experiment_environment.handle_build_experiment_environment(
-        run_id="build-1", log=lambda *_args: None, is_canceled=lambda: False, layout=layout, entry=HostEntry()
+        run_id="build-1", log=lambda *_args: None, is_canceled=lambda: False, layout=layout
     )
     return result.status
 
