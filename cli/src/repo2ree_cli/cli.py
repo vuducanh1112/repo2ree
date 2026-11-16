@@ -38,7 +38,6 @@ from repo2ree_cli.models import (
 from repo2ree_cli.options import TARGET, Spelling, read_stdin
 from repo2ree_cli.schema import ReeCommand, describe
 from repo2ree_core.bundle.download import materialized_ree_download
-from repo2ree_core.doctor import run_doctor
 from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.execution.working_environment import machine_facts
@@ -1034,16 +1033,6 @@ def build_info_cmd() -> None:
 def machine_cmd() -> None:
     """Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container."""
     answer(_invocation(), "machine", machine_facts())
-
-
-@cli.command("doctor")
-def doctor_cmd() -> None:
-    """Report what this machine offers an REE: a writable REE directory, the container engine, the tools.
-
-    ``ok`` covers only what is required; the rest is for whoever runs the REE to judge.
-    """
-    invocation = _invocation()
-    answer(invocation, "doctor", run_doctor(invocation.ree or nearest_ree(Path.cwd()) or Path.cwd()))
 
 
 @cli.command("schema", cls=ReeCommand, words=("schema",), stdout="schema")

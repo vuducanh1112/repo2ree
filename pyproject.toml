@@ -424,7 +424,7 @@ layers = [
     "operations",
     "bundle",
     "evidence",
-    "analysis : doctor : execution : reproduction : source_repo",
+    "analysis : execution : reproduction : source_repo",
     "workspace",
     "persistence",
     "author_recipes",

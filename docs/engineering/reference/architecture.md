@@ -158,7 +158,6 @@ At provision time, the provider injects two versioned bundles:
   content-addressed volume.
 - Tools such as `syft`, `git`, `curl`, and `tar`, plus TLS roots.
 
-The provider then verifies the workbench contract with `repo2ree-exec doctor`.
 Executor and tools versions follow the provider, not the environment image. Any
 image that keeps a process alive and provides a writable `/ree` can serve as a
 workbench.

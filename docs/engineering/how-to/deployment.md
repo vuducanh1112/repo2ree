@@ -247,9 +247,8 @@ If workbench provisioning fails, check:
 - The configured workbench env image can be pulled by the Docker daemon the
   provider uses.
 - The host supports privileged containers.
-- The provisioning run's log: the provider streams the pull, the bundle-volume
-  populate, and the `repo2ree-exec doctor` capability probe into it — a bench
-  that violates the contract fails there with a specific message.
+- The provisioning run's log: the provider streams the pull and the
+  bundle-volume populate into it.
 - Workbench logs with `docker logs repo2ree-wb-{ree_id}`.
 - Nested Docker logs inside the workbench at `/var/log/dockerd.log`.
 

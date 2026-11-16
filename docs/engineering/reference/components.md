@@ -68,14 +68,14 @@ from, and neither imports a transport or telemetry.
 | **protocol** | the typed `Command` / `ActionResult` / `LogFrame` envelope + (de)serialization (`command_adapter`), each operation's outputs and each executor query, **and** the two wire schemas: execution (`WorkbenchWsRequest` / `WorkbenchWsMessage` / `WorkbenchRef`) and capacity (`ProviderWsRequest` / `ProviderWsMessage`). Schema in `contracts/protocol/`. | ree | everywhere |
 | **telemetry** | tracing, metrics, and logging bootstrap; the executor and workbench span relays; the behaviour journals the assurance checker reads. | protocol | everywhere |
 | **authoring** | script lint, target resolution, script templates, and the authoring step catalog. The bench lints saved scripts with it; the API lints drafts with no bench to ask. | protocol, ree | host **and** bench |
-| **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`), the `doctor` bench probe, and the workspace/REE/`/ree`-tree operations. Pure library; **no CLI framework deps**. | ree, protocol, authoring, telemetry | **bench only** |
+| **core** | does the actual work — the command handlers (`build-runtime`, `generate-sbom`, `evaluate`, `run-experiment`) and the workspace/REE/`/ree`-tree operations. Pure library; **no CLI framework deps**. | ree, protocol, authoring, telemetry | **bench only** |
 | **supervisor** | the control plane: REE **lifecycle** (provision / teardown) expressed as capacity calls, the **registry** (`ree_id → workbench + opaque location`), single-use **enrollment**, and the **dispatch** that sends commands to a workbench and streams logs/results back. Two seams with different authority — `ProviderClient` and `WorkbenchClient`. Never executes a command, and never touches a container runtime, itself. | ree, protocol, telemetry | host only |
 
 ### The compute side (two deployables)
 
 | package | responsibility | depends on | deployed |
 |---|---|---|---|
-| **provider** (`repo2ree-provider-docker`) | owns the container runtime on its host (`DockerIsolation` behind an `IsolationBackend` protocol). Dials the control plane on a **capacity-only** socket. Creates volumes and benches, injects the executor + tools closures, mints the opaque `WorkbenchRef`, runs the `doctor` probe, and starts `repo2ree-workbench` inside each bench with a single-use enrollment token. Never receives an REE command. | protocol, telemetry, docker-support | its own host (holds the docker socket) |
+| **provider** (`repo2ree-provider-docker`) | owns the container runtime on its host (`DockerIsolation` behind an `IsolationBackend` protocol). Dials the control plane on a **capacity-only** socket. Creates volumes and benches, injects the executor + tools closures, mints the opaque `WorkbenchRef`, and starts `repo2ree-workbench` inside each bench with a single-use enrollment token. Never receives an REE command. | protocol, telemetry, docker-support | its own host (holds the docker socket) |
 | **workbench** (`repo2ree-workbench`) | the service resident *inside* each bench. Dials the control plane on its own **execution-only** socket, enrolls against one allocation, decodes typed commands, starts one short-lived executor per command (`LocalExecutor`), streams frames, and moves files. Deliberately substrate-free; cannot create or destroy anything. | protocol, telemetry | inside each bench |
 | **docker-support** | the shared Docker CLI wrapper and reference encoding. No process authority of its own. | protocol, telemetry | with the provider |
 
@@ -346,7 +346,7 @@ ree/tests/           unit: format fixtures, canonical JSON, seals, the schema
 protocol/tests/      unit: envelope + frame (de)serialization round-trips, the schema
 telemetry/tests/     unit: tracing, span relay, logging, behaviour journals
 authoring/tests/     unit: script lint rules, templates, the step catalog
-core/tests/          unit + integration: command handlers, /ree ops, doctor, tooling
+core/tests/          unit + integration: command handlers, /ree ops, tooling
 provider/tests/      unit: DockerIsolation lifecycle, injection, and probe logic
 workbench/tests/     unit: connection, dispatch, executor frames, transfers
 supervisor/tests/    unit: registry; manager/dispatch w/ both clients faked
@@ -371,8 +371,8 @@ The package split is now largely real:
   single-use enrollment, and the separate `ProviderClient` / `WorkbenchClient`
   seams — it dispatches over the wire and touches no runtime.
 - **Done:** `provider/` holds the runtime host: the `IsolationBackend` protocol,
-  its sole `DockerIsolation` impl (bench lifecycle, executor injection, the
-  `doctor` probe), and its capacity WebSocket loop.
+  its sole `DockerIsolation` impl (bench lifecycle, executor injection), and
+  its capacity WebSocket loop.
 - **Done:** `workbench/` holds the in-bench service: its execution WebSocket
   loop, the dispatcher, chunked transfers, and `LocalExecutor`. It contains no
   provisioning code, and the import contracts enforce that.
