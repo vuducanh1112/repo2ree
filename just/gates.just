@@ -20,11 +20,11 @@ _require-current-commit-gate:
 # tests itself). With `select` (parts of test ids) it
 # runs only those tests, which the gate never asks for and never certifies.
 [private]
-_tier-gui-instant jobs exit_on *select:
+_tier-gui-instant jobs exit_on *select: (_load-environment "docker")
     python -m repo2ree_testbed e2e --project e2e-gui-instant --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
-_tier-system jobs exit_on *select:
+_tier-system jobs exit_on *select: (_load-environment "docker")
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/system/run_system_suite.py") }} --tier e2e-system --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
