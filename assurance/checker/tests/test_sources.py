@@ -20,6 +20,7 @@ from repo2ree_assurance_checker.sources import (
     history_head,
     load_evidence,
     pending_records,
+    read_git_history,
     read_journals,
     record_digest,
     recorded_phases,
@@ -240,8 +241,8 @@ GIT_ENVIRONMENT = {
 }
 
 
-def captured_repository(root: Path, *attempts: str) -> list[str]:
-    """An REE history with one capture commit per attempt; returns the commit ids."""
+def captured_repository(root: Path, *attempts: str, ree_id: str | None = "ree-1") -> list[str]:
+    """An REE history with one capture commit per attempt, each naming ``ree_id``; returns the commit ids."""
     assert GIT is not None
     environment = {**os.environ, **GIT_ENVIRONMENT}
     subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True, env=environment)
@@ -249,7 +250,7 @@ def captured_repository(root: Path, *attempts: str) -> list[str]:
     for attempt in attempts:
         record = {
             "attempt_id": attempt,
-            "context": {"ree_id": "ree-1"},
+            "context": {"ree_id": ree_id},
             "command": {"operation": "x"},
             "operation_status": "succeeded",
         }
@@ -386,3 +387,18 @@ def test_an_unpublished_record_is_named_by_the_digest_of_its_bytes(tmp_path: Pat
     assert problems == []
     assert records == [({"attempt_id": "a1", "capture_status": "failed"}, record_digest(content))]
     assert record_digest(content) == "sha256:" + hashlib.sha256(content).hexdigest()
+
+
+def test_an_ree_no_control_plane_named_is_named_by_the_history_it_was_collected_under(tmp_path: Path) -> None:
+    assert GIT is not None
+    captured_repository(tmp_path / "unnamed", "a1", "a2", ree_id=None)
+    captured_repository(tmp_path / "named", "b1", ree_id="ree-1")
+
+    unnamed = read_git_history(tmp_path / "unnamed", "demo-1", GIT, ree="demo-1")
+    named = read_git_history(tmp_path / "named", "elsewhere", GIT, ree="elsewhere")
+    nameless = read_git_history(tmp_path / "unnamed", "demo-1", GIT)
+
+    assert {event.partition for event in unnamed.events} == {"demo-1"}
+    assert unnamed.sources[0].partitions == frozenset({"demo-1"})
+    assert {event.partition for event in named.events} == {"ree-1"}
+    assert {event.partition for event in nameless.events} == {None}

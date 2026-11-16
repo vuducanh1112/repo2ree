@@ -658,11 +658,19 @@ def scope_files(
 
 
 def read_git_history(
-    repository: Path, label: str, executable: str = "git", *, author: bool = True, scope: str = ""
+    repository: Path,
+    label: str,
+    executable: str = "git",
+    *,
+    author: bool = True,
+    scope: str = "",
+    ree: str | None = None,
 ) -> Evidence:
     """One REE history as one source: its attempts, its files, and for an author's REE its document and receipts.
 
     ``scope`` is where the history sits under the REE root, such as ``reviews/<id>/``; its files' paths carry it.
+    An REE no control plane named, one ``ree`` ran in where no control plane was, has no id in its attempts: it is
+    ``ree``, the name its history was collected under.
     """
     source_id = f"git:{label}"
     problems: list[str] = []
@@ -696,6 +704,9 @@ def read_git_history(
         events.extend(attempt_events(source_id, position, record, None, locator, digest=digest))
         problems.extend(problem for problem in [recorded_phases(record, None)[1]] if problem)
     ree_ids = {event.partition for event in events if event.partition is not None}
+    if not ree_ids and ree is not None and events:
+        events = [event.model_copy(update={"partition": ree}) for event in events]
+        ree_ids = {ree}
     if author and len(ree_ids) == 1:
         found_events, changes, file_changes, found = ree_events(
             executable, repository, source_id, label, next(iter(ree_ids)), commits
