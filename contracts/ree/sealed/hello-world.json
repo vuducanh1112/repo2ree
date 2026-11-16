@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:1ac32f8761b6f3893e6d680c97159264a07079ea54495cb4449c0fd14fa9ba49",
+    "ree_digest": "sha256:1b61dce9068f1c728f7466fb63a4f36de008b7f74b90a94fe0300725090b457e",
     "sealed_at": "2026-11-12T15:07:46.116803Z"
   },
   "subject": {
@@ -165,8 +165,7 @@
             "arch": "aarch64",
             "kernel": "6.12.5-linuxkit",
             "os": "Debian GNU/Linux 13 (trixie)"
-          },
-          "reported_image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
+          }
         }
       },
       "evaluation": {
@@ -208,8 +207,7 @@
             "arch": "aarch64",
             "kernel": "6.12.5-linuxkit",
             "os": "Debian GNU/Linux 13 (trixie)"
-          },
-          "reported_image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
+          }
         },
         "workspace_drift": {
           "changed_path_count": 0,
@@ -241,8 +239,7 @@
               "arch": "aarch64",
               "kernel": "6.12.5-linuxkit",
               "os": "Debian GNU/Linux 13 (trixie)"
-            },
-            "reported_image": "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515"
+            }
           }
         }
       },

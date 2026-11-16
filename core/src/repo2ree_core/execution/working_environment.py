@@ -7,7 +7,6 @@ says what its scripts need; each step records where they ran.
 
 from __future__ import annotations
 
-import os
 import platform
 import shutil
 import subprocess
@@ -17,8 +16,6 @@ from pathlib import Path
 from repo2ree_protocol.machine import MachineFacts
 from repo2ree_ree.working_environment import HostFingerprint, WorkingEnvironmentObservation
 
-# The image the compute provider runs ree in, as it reports it; ree cannot see an image from inside it.
-REPORTED_IMAGE_VARIABLE = "REPO2REE_IMAGE"
 _OS_RELEASE = Path("/etc/os-release")
 
 
@@ -32,17 +29,13 @@ class ProbeResult:
 
 
 def observe_working_environment() -> WorkingEnvironmentObservation:
-    """Where this step's scripts run: this host, whether it is a container, and the image the provider reports."""
-    return WorkingEnvironmentObservation(
-        host=host_fingerprint(), container=in_container(), reported_image=_reported_image()
-    )
+    """Where this step's scripts run: this host, and whether it is a container."""
+    return WorkingEnvironmentObservation(host=host_fingerprint(), container=in_container())
 
 
 def machine_facts() -> MachineFacts:
     """The machine ree runs on, as ``ree machine`` reports it."""
-    return MachineFacts(
-        arch=platform.machine(), gpus=_gpu_count(), container=in_container(), reported_image=_reported_image()
-    )
+    return MachineFacts(arch=platform.machine(), gpus=_gpu_count(), container=in_container())
 
 
 def host_fingerprint() -> HostFingerprint:
@@ -62,10 +55,6 @@ def probe(workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
     except subprocess.TimeoutExpired as expired:
         return ProbeResult(None, _text(expired.stdout), _text(expired.stderr))
     return ProbeResult(done.returncode, done.stdout, done.stderr)
-
-
-def _reported_image() -> str | None:
-    return os.environ.get(REPORTED_IMAGE_VARIABLE, "").strip() or None
 
 
 def _text(output: str | bytes | None) -> str:

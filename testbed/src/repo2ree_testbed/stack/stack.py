@@ -269,7 +269,6 @@ class E2EStack:
                     owner=self.layout.run_token,
                     network=network,
                     mounts=(state, *telemetry),
-                    reported_image=machine.reported_image(),
                 )
                 launch = (installed, self.environment, log)
             else:

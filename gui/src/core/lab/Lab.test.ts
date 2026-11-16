@@ -7,7 +7,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
     id: "a1",
     label: "Worker",
     description: "",
-    machine: { arch: "x86_64", gpus: 1, reportedImage: null },
+    machine: { arch: "x86_64", gpus: 1 },
     status: "connected",
     available: true,
     ...overrides,

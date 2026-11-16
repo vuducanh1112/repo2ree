@@ -427,8 +427,7 @@ def build_info_cmd() -> None:
 
 @cli.command("machine")
 def machine_cmd() -> None:
-    """Print the machine ree runs an REE's scripts on: its architecture and GPUs, whether it is a container, and
-    the image the provider says it runs in (REPO2REE_IMAGE)."""
+    """Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container."""
     click.echo(machine_facts().model_dump_json())
 
 

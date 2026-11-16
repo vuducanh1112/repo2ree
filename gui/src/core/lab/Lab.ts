@@ -20,15 +20,13 @@ export interface Lab {
 export interface LabMachine {
   arch: string;
   gpus: number;
-  /** The image its provider says it runs in, when it says. */
-  reportedImage: string | null;
 }
 
 /** The lab's machine, in a few words. */
 export function describeMachine(machine: LabMachine | null): string {
   if (!machine) return "—";
   const gpus = machine.gpus > 0 ? `, ${machine.gpus} GPU${machine.gpus === 1 ? "" : "s"}` : "";
-  return `${machine.arch || "unknown"}${gpus}${machine.reportedImage ? `, in ${machine.reportedImage}` : ""}`;
+  return `${machine.arch || "unknown"}${gpus}`;
 }
 
 // Stable display order: by label, then id. Pure; returns a new array.

@@ -2418,7 +2418,7 @@
     },
     "WorkingEnvironmentObservation": {
       "additionalProperties": false,
-      "description": "Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in.",
+      "description": "Where a step's scripts ran: the host as the step saw it, and whether that was a container.",
       "properties": {
         "host": {
           "$ref": "#/$defs/HostFingerprint"
@@ -2427,19 +2427,6 @@
           "default": false,
           "title": "Container",
           "type": "boolean"
-        },
-        "reported_image": {
-          "anyOf": [
-            {
-              "minLength": 1,
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Reported Image"
         }
       },
       "required": [

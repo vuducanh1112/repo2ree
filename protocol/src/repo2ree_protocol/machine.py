@@ -10,13 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class MachineFacts(BaseModel):
-    """The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider
-    says it runs in."""
+    """The machine ``ree`` runs on: its architecture and GPUs, and whether it is a container."""
 
     model_config = ConfigDict(extra="ignore")
 
     arch: str = ""
     gpus: int = Field(default=0, ge=0)
     container: bool = False
-    # The image the compute provider says ree runs in (REPO2REE_IMAGE): reported, not observed.
-    reported_image: str | None = None

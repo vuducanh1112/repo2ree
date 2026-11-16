@@ -2953,8 +2953,7 @@ export interface components {
         };
         /**
          * MachineFacts
-         * @description The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider
-         *     says it runs in.
+         * @description The machine ``ree`` runs on: its architecture and GPUs, and whether it is a container.
          */
         MachineFacts: {
             /**
@@ -2972,8 +2971,6 @@ export interface components {
              * @default false
              */
             container: boolean;
-            /** Reported Image */
-            reported_image?: string | null;
         };
         /**
          * MachineLevel
@@ -4675,7 +4672,7 @@ export interface components {
         };
         /**
          * WorkingEnvironmentObservation
-         * @description Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in.
+         * @description Where a step's scripts ran: the host as the step saw it, and whether that was a container.
          */
         WorkingEnvironmentObservation: {
             host: components["schemas"]["HostFingerprint"];
@@ -4684,8 +4681,6 @@ export interface components {
              * @default false
              */
             container: boolean;
-            /** Reported Image */
-            reported_image?: string | null;
         };
         /** WorkspaceDrift */
         WorkspaceDrift: {

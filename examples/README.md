@@ -93,8 +93,7 @@ The REE the Python Docker showcase authors, authored through `ree` on the
 testbed's `docker` machine (`testbed/environments/docker`), carrying its real
 author evidence: the source snapshot, the overlay scripts with the project's
 check of the working environment, the SBOM, the reproducibility report, the
-captured experiment result, and the author receipts from that run, which report
-the machine's image.
+captured experiment result, and the author receipts from that run.
 
 It is sealed with its source and results but not its experiment environment:
 that is a Docker image export of hundreds of MB, too large to version. Loading

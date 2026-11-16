@@ -23,7 +23,7 @@ const lab: Lab = {
   id: "lab-1",
   label: "lab-host",
   description: "",
-  machine: { arch: "x86_64", gpus: 1, reportedImage: null },
+  machine: { arch: "x86_64", gpus: 1 },
   status: "connected",
   available: true,
 };

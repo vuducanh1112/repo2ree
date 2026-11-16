@@ -540,13 +540,6 @@
         "type": "string"
       }
     },
-    "REPO2REE_IMAGE": {
-      "kind": "runtime",
-      "owner": "executor",
-      "schema": {
-        "type": "string"
-      }
-    },
     "REPO2REE_JUNIT_DIR": {
       "kind": "internal",
       "owner": "testbed",

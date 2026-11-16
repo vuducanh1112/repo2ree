@@ -16,7 +16,6 @@ function mapLab(wire: StoreSummary): Lab {
       ? {
           arch: wire.machine.arch ?? "",
           gpus: wire.machine.gpus ?? 0,
-          reportedImage: wire.machine.reported_image ?? null,
         }
       : null,
     status: wire.connected ? "connected" : "offline",

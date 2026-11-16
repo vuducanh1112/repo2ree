@@ -1,4 +1,4 @@
-"""Where a step's scripts ran, as ``ree`` observes it: the host, whether it is a container, the reported image."""
+"""Where a step's scripts ran, as ``ree`` observes it: the host, and whether it is a container."""
 
 from __future__ import annotations
 
@@ -12,15 +12,12 @@ from repo2ree_core.execution.runners import run_workspace_script
 from repo2ree_ree.reserved_paths import RESERVED_LAUNCH_SCRIPT
 
 
-def test_a_step_records_the_host_and_the_image_its_provider_reports(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(we.REPORTED_IMAGE_VARIABLE, raising=False)
+def test_a_step_records_the_host_and_the_machine_its_architecture(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(we, "in_container", lambda: True)
     observed = we.observe_working_environment()
     assert observed.host.arch
-    assert observed.reported_image is None
-
-    monkeypatch.setenv(we.REPORTED_IMAGE_VARIABLE, f"python:3.12@sha256:{'a' * 64}")
-    assert we.observe_working_environment().reported_image == f"python:3.12@sha256:{'a' * 64}"
-    assert we.machine_facts().reported_image == f"python:3.12@sha256:{'a' * 64}"
+    assert observed.container
+    assert we.machine_facts().arch == observed.host.arch
 
 
 def test_a_step_knows_it_runs_in_a_container_as_the_engine_marks_one(monkeypatch: pytest.MonkeyPatch) -> None:

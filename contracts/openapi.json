@@ -12724,22 +12724,11 @@
             "type": "boolean",
             "title": "Container",
             "default": false
-          },
-          "reported_image": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reported Image"
           }
         },
         "type": "object",
         "title": "MachineFacts",
-        "description": "The machine ``ree`` runs on: its architecture and GPUs, whether it is a container, and the image the provider\nsays it runs in."
+        "description": "The machine ``ree`` runs on: its architecture and GPUs, and whether it is a container."
       },
       "MachineLevel": {
         "type": "integer",
@@ -17275,18 +17264,6 @@
             "type": "boolean",
             "title": "Container",
             "default": false
-          },
-          "reported_image": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reported Image"
           }
         },
         "additionalProperties": false,
@@ -17295,7 +17272,7 @@
           "host"
         ],
         "title": "WorkingEnvironmentObservation",
-        "description": "Where a step's scripts ran: the host as the step saw it, and the image the provider reported running it in."
+        "description": "Where a step's scripts ran: the host as the step saw it, and whether that was a container."
       },
       "WorkspaceDrift": {
         "properties": {

@@ -95,7 +95,7 @@ function lab(overrides: Partial<Lab> = {}): Lab {
     id: "lab-oslo",
     label: "lab-oslo-01",
     description: "",
-    machine: { arch: "x86_64", gpus: 1, reportedImage: null },
+    machine: { arch: "x86_64", gpus: 1 },
     status: "connected",
     available: true,
     ...overrides,

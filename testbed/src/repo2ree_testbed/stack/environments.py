@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Literal
 
 from repo2ree_testbed.stack.docker import engine_side
-from repo2ree_testbed.stack.process import capture
 
 # What the stack gives a workbench it runs from source, and the machine's image already holds.
 _SOURCE_ONLY = frozenset({"REPO2REE_CLI_PATH", "WORKBENCH_TOOLS_BUNDLE"})
@@ -24,8 +23,6 @@ class EnvironmentName(StrEnum):
 
 
 DNS_VARIABLE = "REPO2REE_ENVIRONMENT_DNS"
-# The image a workbench runs in, as the machine reports it to the steps' receipts.
-REPORTED_IMAGE_VARIABLE = "REPO2REE_IMAGE"
 
 
 @dataclass(frozen=True)
@@ -45,10 +42,6 @@ class Environment:
     @property
     def image(self) -> str:
         return f"repo2ree-environment-{self.name}:local"
-
-    def reported_image(self) -> str:
-        """The machine's image by its ref and local image id: it is loaded, never pulled, so it has no repo digest."""
-        return f"{self.image}@{capture(['docker', 'image', 'inspect', '--format', '{{.Id}}', self.image], check=True)}"
 
 
 ENVIRONMENTS: dict[EnvironmentName, Environment] = {
@@ -77,7 +70,6 @@ def machine_command(
     owner: str,
     network: str,
     mounts: Sequence[Path],
-    reported_image: str,
 ) -> list[str]:
     """The command that runs ``command_on_machine`` on ``environment``, in the foreground.
 
@@ -99,7 +91,6 @@ def machine_command(
     for variable, value in variables.items():
         if variable not in _SOURCE_ONLY:
             command += ["--env", f"{variable}={value}"]
-    command += ["--env", f"{REPORTED_IMAGE_VARIABLE}={reported_image}"]
     return [*command, environment.image, *command_on_machine]
 
 

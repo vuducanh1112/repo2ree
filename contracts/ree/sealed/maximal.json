@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:d86c147549374362d14c2b3b3083d0f7553c0cfd25b4cb2fd1fd52768afb740d",
+    "ree_digest": "sha256:36bd792f47bffbebfeae7d11dd8a211f903adcb9677aab4c46fd1ceadbffbf3c",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -39,16 +39,16 @@
         "contributors": [
           {
             "affiliation_identifier": "https://ror.org/01y9bpm73",
-            "affiliation_name": "Universit\u00e4t G\u00f6ttingen",
+            "affiliation_name": "Universität Göttingen",
             "identifier": "https://orcid.org/0000-0002-1825-0097",
-            "name": "J\u00fcrgen M\u00fcller"
+            "name": "Jürgen Müller"
           }
         ],
         "corresponding_author_identifier": "https://orcid.org/0000-0002-1825-0097",
         "description": "An REE that sets every field the v1 format declares.",
         "keywords": [
           "reproducibility",
-          "\u00fcberall"
+          "überall"
         ],
         "version": "1.2.3",
         "website": "https://example.org/maximal"
@@ -96,7 +96,7 @@
         "extra_info": {
           "rack": "R-07",
           "rack_power_w": 16000,
-          "site": "G\u00f6ttingen"
+          "site": "Göttingen"
         },
         "gpus": {
           "NVIDIA H100": {
@@ -187,8 +187,7 @@
             "arch": "x86_64",
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
-          },
-          "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
         }
       },
       "evaluation": {
@@ -236,8 +235,7 @@
             "arch": "x86_64",
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
-          },
-          "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
         },
         "workspace_drift": {
           "changed_path_count": 1,
@@ -277,8 +275,7 @@
               "arch": "x86_64",
               "kernel": "6.12.5",
               "os": "Debian GNU/Linux 12"
-            },
-            "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
           }
         }
       },
@@ -302,7 +299,7 @@
           "extra_info": {
             "rack": "R-07",
             "rack_power_w": 16000,
-            "site": "G\u00f6ttingen"
+            "site": "Göttingen"
           },
           "gpus": {
             "NVIDIA H100": {
@@ -430,8 +427,7 @@
             "arch": "x86_64",
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
-          },
-          "reported_image": "docker.io/library/python:3.12-slim@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
         }
       }
     },

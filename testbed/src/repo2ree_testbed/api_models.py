@@ -116,7 +116,6 @@ class SbomReceipt(_Response):
 
 class WorkingEnvironment(_Response):
     container: bool
-    reported_image: str | None = None
 
 
 class WorkingEnvironmentCheckReceipt(_Response):

@@ -216,21 +216,6 @@
         }
       ],
       "error": "timestamp must be timezone-aware"
-    },
-    {
-      "name": "a working environment that reports an empty image",
-      "patch": [
-        {
-          "op": "remove",
-          "path": "/seal"
-        },
-        {
-          "op": "replace",
-          "path": "/subject/receipts/activation/working_environment/reported_image",
-          "value": ""
-        }
-      ],
-      "error": "String should have at least 1 character"
     }
   ]
 }
