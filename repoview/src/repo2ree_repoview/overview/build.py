@@ -8,7 +8,7 @@ generated architecture, domain, specification, and recipe diagrams (reports/diag
 the assurance-gate receipt's tests assessed and drawn again (reports/behaviour/). Beside them
 it reads the gates' receipts, the coverage and excuses of the last
 assurance-gate receipt, how long the recipes took (logs/just/), the environment contract,
-and the OpenAPI contract, and lays them out page by page.
+and the interface contracts (contracts/), and lays them out page by page.
 
 The overview is a bundle bound to one commit: whatever it shows from outside the tree
 (test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
@@ -26,16 +26,17 @@ from pathlib import Path
 
 from repo2ree_repoview.diagrams.recipes import read_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
-from repo2ree_repoview.overview.contracts import Environment, OpenApi
+from repo2ree_repoview.overview.contracts import CliSchema, Environment, OpenApi
 from repo2ree_repoview.overview.exports import EXPORTS, Operations, ShowcaseRuns, Spec, Zones
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
-from repo2ree_repoview.overview.pages.api import page_api
 from repo2ree_repoview.overview.pages.architecture import page_architecture
 from repo2ree_repoview.overview.pages.configuration import page_configuration
+from repo2ree_repoview.overview.pages.contracts import page_contracts
 from repo2ree_repoview.overview.pages.coverage import SHOWCASES, page_coverage, page_showcase_coverage
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
+from repo2ree_repoview.overview.pages.interfaces import INTERFACES, page_api, page_cli, page_interfaces
 from repo2ree_repoview.overview.pages.operations import page_operations
 from repo2ree_repoview.overview.pages.receipts import page_receipts
 from repo2ree_repoview.overview.pages.recipes import page_recipes
@@ -165,6 +166,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     bundle.write(
         "inputs/timings.json", timings.model_dump_json(indent=2), str(LOGS.relative_to(ROOT)), Origin(kind="timings")
     )
+    cli, api = CliSchema.read(), OpenApi.read()
     pages = [
         page_zones(zones),
         page_gates(receipt, excused, bundle, evidence, verdicts),
@@ -197,17 +199,23 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
             for name, aggregate in spec.aggregates.items()
         ),
         page_architecture(bundle),
+        page_interfaces(cli, api),
+        page_contracts(bundle),
         page_recipes(recipes, bundle, timings),
         page_configuration(Environment.read()),
-        page_api(OpenApi.read()),
     ]
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
     for page in everything:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")
-    subpages = showcase_ree_pages(showcases, showcase_records)
-    for page in subpages:
-        (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now, SHOWCASES), encoding="utf-8")
+    # Each subpage, with the page it belongs to marked in the sidebar.
+    subpages = [
+        *((page, SHOWCASES) for page in showcase_ree_pages(showcases, showcase_records)),
+        (page_cli(cli), INTERFACES),
+        (page_api(api), INTERFACES),
+    ]
+    for page, parent in subpages:
+        (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now, parent), encoding="utf-8")
     (bundle.root / f"{FRAME}.html").write_text(shell(everything, now), encoding="utf-8")
     (bundle.root / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
     if output is None:

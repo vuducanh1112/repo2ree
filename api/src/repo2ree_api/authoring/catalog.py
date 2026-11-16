@@ -47,6 +47,9 @@ class ReeStepCatalog(BaseModel):
     next: ReeStepKey | None = None
 
 
+# Where the contract carries ``_STEP_ACTIONS``, on ``listReeSteps``.
+STEP_ACTIONS_EXTENSION = "x-repo2ree-step-actions"
+
 # The HTTP binding: which public operations advance each step. Lives in the API
 # layer, not core — operationIds are a contract concern. A step may expose more
 # than one call (an alternate path, or an init/commit pair); order is
@@ -71,6 +74,8 @@ _STEP_ACTIONS: dict[ReeStepKey, list[str]] = {
     operation_id="listReeSteps",
     response_model=ReeStepCatalog,
     responses=ERROR_RESPONSES,
+    # The same join, in the contract, so a reader of the contract alone can tell which operations advance a step.
+    openapi_extra={STEP_ACTIONS_EXTENSION: _STEP_ACTIONS},
 )
 def list_ree_steps(ree_id: str) -> ReeStepCatalog:
     """Each authoring step, ordered, with its prerequisites, where the REE stands on

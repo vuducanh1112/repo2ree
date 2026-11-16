@@ -1,8 +1,11 @@
-"""``ree schema``: every command as data, read off the command line itself, for an agent to learn ``ree`` by.
+"""``ree schema``: the command line as data, read off the command line itself, for an agent to learn ``ree`` by.
 
 Each command says the words that run it, its options and arguments, what it reads on stdin, what it prints (one
-result, bytes, or a script) and the model of its result's outputs. The exit statuses, the failure categories and the
-result and event shapes come with them.
+result, bytes, or a script), the protocol operations it runs, and the model of its result's outputs.
+The exit statuses, the failure categories, the result and event shapes, and the authoring steps with the commands
+that advance each come with them. Every model is defined once, under ``$defs``.
+
+The same document is committed as ``contracts/cli/cli.schema.json`` (``python -m repo2ree_cli.export_schema``).
 """
 
 from __future__ import annotations
@@ -14,9 +17,11 @@ import click
 from pydantic import TypeAdapter
 
 from repo2ree_cli.options import TARGET, Spelling
+from repo2ree_protocol.catalog import ReeStep
 from repo2ree_protocol.result import ActionResult, FailureCategory
 
 Stdout = Literal["result", "bytes", "script", "schema"]
+_RESULT = "result"
 
 
 class ReeCommand(click.Command):
@@ -29,6 +34,7 @@ class ReeCommand(click.Command):
         outputs: Any = None,
         spelling: Spelling | None = None,
         runs: bool = False,
+        operations: Sequence[str] = (),
         stdout: Stdout = "result",
         **kwargs: Any,
     ) -> None:
@@ -37,6 +43,7 @@ class ReeCommand(click.Command):
         self.outputs = outputs
         self.spelling = spelling
         self.runs = runs
+        self.operations = tuple(operations)
         self.stdout: Stdout = stdout
 
 
@@ -47,49 +54,73 @@ _EVENTS = {
 }
 
 
-def describe(group: click.Group, words: Sequence[str], exit_codes: Mapping[int, str]) -> dict[str, Any]:
+def describe(
+    group: click.Group, words: Sequence[str], exit_codes: Mapping[int, str], steps: Sequence[ReeStep]
+) -> dict[str, Any]:
     """Every command of ``group``, or the one ``words`` names, with what is common to them all."""
-    commands = list(_commands(group, ()))
+    commands = _commands(group, ())
     if words:
-        matching = [entry for entry in commands if entry["words"] == list(words)]
-        if not matching:
+        commands = [command for command in commands if command.words == tuple(words)]
+        if not commands:
             raise LookupError(f"no command {' '.join(words)!r}")
-        commands = matching
+    adapters: list[tuple[str, Literal["validation"], TypeAdapter[Any]]] = [
+        (_RESULT, "validation", TypeAdapter(ActionResult))
+    ]
+    adapters += [
+        (" ".join(command.words), "validation", TypeAdapter(command.outputs))
+        for command in commands
+        if command.outputs is not None
+    ]
+    schemas, definitions = TypeAdapter.json_schemas(adapters)
     return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:repo2ree:cli",
         "exit_codes": {str(code): meaning for code, meaning in exit_codes.items()},
         "failure_categories": list(get_args(FailureCategory)),
-        "result": ActionResult.model_json_schema(),
+        "result": schemas[(_RESULT, "validation")],
         "events": _EVENTS,
-        "commands": commands,
+        "steps": [
+            {
+                "key": step.key,
+                "order": step.order,
+                "label": step.label,
+                "requires": step.requires,
+                "commands": step.commands,
+            }
+            for step in steps
+        ],
+        "commands": [_command(command, schemas.get((" ".join(command.words), "validation"))) for command in commands],
+        "$defs": definitions.get("$defs", {}),
     }
 
 
-def _commands(group: click.Group, prefix: tuple[str, ...]) -> list[dict[str, Any]]:
-    entries: list[dict[str, Any]] = []
+def _commands(group: click.Group, prefix: tuple[str, ...]) -> list[ReeCommand]:
+    found: list[ReeCommand] = []
     for name in sorted(group.commands):
         command = group.commands[name]
         if command.hidden:
             continue
         if isinstance(command, click.Group):
-            entries += _commands(command, (*prefix, name))
+            found += _commands(command, (*prefix, name))
+        elif isinstance(command, ReeCommand):
+            found.append(command)
         else:
-            entries.append(_command(command, (*prefix, name)))
-    return entries
+            raise TypeError(f"{' '.join((*prefix, name))} is no ReeCommand: give it its words and outputs")
+    return found
 
 
-def _command(command: click.Command, words: tuple[str, ...]) -> dict[str, Any]:
-    ree = command if isinstance(command, ReeCommand) else None
-    entry: dict[str, Any] = {
-        "words": list(words),
+def _command(command: ReeCommand, outputs: Any) -> dict[str, Any]:
+    return {
+        "words": list(command.words),
         "summary": command.get_short_help_str(limit=200),
         "help": command.help or "",
-        "runs": bool(ree and ree.runs),
+        "runs": command.runs,
+        "operations": list(command.operations),
         "params": [_param(param) for param in command.params if not getattr(param, "hidden", False)],
-        "stdin": _stdin(ree.spelling) if ree and ree.spelling else None,
-        "stdout": ree.stdout if ree else "result",
-        "outputs": TypeAdapter(ree.outputs).json_schema() if ree and ree.outputs is not None else None,
+        "stdin": _stdin(command.spelling) if command.spelling else None,
+        "stdout": command.stdout,
+        "outputs": outputs,
     }
-    return entry
 
 
 def _param(param: click.Parameter) -> dict[str, Any]:

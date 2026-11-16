@@ -38,6 +38,7 @@ from repo2ree_cli.models import (
 from repo2ree_cli.options import TARGET, Spelling, read_stdin
 from repo2ree_cli.schema import ReeCommand, describe
 from repo2ree_core.bundle.download import materialized_ree_download
+from repo2ree_core.domain.ree.steps import REE_STEPS
 from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.evidence.review.store import load_reviews
 from repo2ree_core.execution.working_environment import machine_facts
@@ -657,9 +658,12 @@ def _verb_command(command: type[BaseModel], words: tuple[str, ...]) -> click.Com
         help=f"{summary}.\n\n{_MORE[command]}" if command in _MORE else summary,
         short_help=summary,
         words=words,
-        outputs=ScriptWritten if command is GenerateScriptCandidatesCommand else OUTPUTS[operation],
+        outputs=OUTPUTS[operation] | ScriptWritten
+        if command is GenerateScriptCandidatesCommand
+        else OUTPUTS[operation],
         spelling=spelling,
         runs=True,
+        operations=(operation, "write_file") if command is GenerateScriptCandidatesCommand else (operation,),
     )
 
 
@@ -673,6 +677,12 @@ for _command, _words in VERBS.items():
     words=(REVIEW, "all"),
     outputs=ReviewRun,
     runs=True,
+    operations=(
+        "review_acquire_source",
+        "review_build_experiment_environment",
+        "review_activation_test",
+        "review_run_experiment",
+    ),
     params=Spelling(ReviewAcquireSourceArgs, optional=_REVIEW_ID).params,
 )
 def review_all(**params: Any) -> None:
@@ -904,7 +914,7 @@ def status_cmd() -> None:
     )
 
 
-@cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True)
+@cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True, operations=("write_file",))
 @click.argument("script", type=TARGET)
 def edit_cmd(script: ScriptTargetSelectorArg) -> None:
     """Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.
@@ -1044,7 +1054,7 @@ def schema_cmd(words: tuple[str, ...]) -> None:
     """
     invocation = _invocation()
     try:
-        described = describe(cli, words, EXIT_CODES)
+        described = describe(cli, words, EXIT_CODES, REE_STEPS)
     except LookupError as exc:
         refuse(invocation, "schema", "validation", str(exc))
     click.echo(json.dumps(described, indent=None if invocation.machine else 2))

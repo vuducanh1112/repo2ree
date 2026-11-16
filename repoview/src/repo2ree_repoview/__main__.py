@@ -13,6 +13,7 @@ COMMANDS = {
     "gate-verifications": "repo2ree_repoview.overview.receipt",
     "spec-diagrams": "repo2ree_repoview.overview.spec_diagrams",
     "ree-anatomy": "repo2ree_repoview.diagrams.ree",
+    "contract-graphs": "repo2ree_repoview.diagrams.contracts",
 }
 
 

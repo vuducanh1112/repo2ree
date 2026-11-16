@@ -31,6 +31,7 @@ REPORTS_DIR := "reports"
 DIAGRAM_DIR := REPORTS_DIR + "/diagrams"
 JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 REE_ANATOMY := DIAGRAM_DIR + "/ree/anatomy.svg"
+CONTRACT_GRAPHS := DIAGRAM_DIR + "/contracts"
 # Records the commit each generated diagram or metric came from (repo2ree_repoview stamp).
 STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --manifest " + DIAGRAM_DIR + "/manifest.json"
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
@@ -62,7 +63,7 @@ _require-clean-tree:
 
 # Generate every architecture, domain, specification, REE anatomy, and recipe graph diagram.
 [group('Diagrams')]
-generate-diagrams: generate-architecture-diagrams generate-spec-diagrams generate-just-recipe-graph generate-ree-anatomy
+generate-diagrams: generate-architecture-diagrams generate-spec-diagrams generate-just-recipe-graph generate-ree-anatomy generate-contract-graphs
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
 # Run every generated tree's own prune and list what no one owns (scripts/generated.toml); `--dry-run`, `--remove-unclaimed`.
@@ -100,3 +101,12 @@ generate-just-recipe-graph: export-just-recipes
 generate-ree-anatomy:
     python -m repo2ree_repoview ree-anatomy -o {{ quote(REE_ANATOMY) }}
     {{ STAMP_DIAGRAMS }} --by generate-ree-anatomy {{ quote(REE_ANATOMY) }}
+
+# Draw the committed JSON contracts (contracts/) as graphs of their models, one drawing per entry point each names.
+[group('Diagrams')]
+generate-contract-graphs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    written=$(python -m repo2ree_repoview contract-graphs -o {{ quote(CONTRACT_GRAPHS) }})
+    mapfile -t drawings <<< "$written"
+    {{ STAMP_DIAGRAMS }} --by generate-contract-graphs "${drawings[@]}"

@@ -1,6 +1,6 @@
-# Regenerate every committed contract: the API and its GUI TypeScript view, the REE document, the protocol, and the behaviour events.
+# Regenerate every committed contract: the API and its GUI TypeScript view, the command line, the REE document, the protocol, and the behaviour events.
 [group('Contracts')]
-generate-contracts: generate-api-types generate-ree-schema generate-protocol-schema generate-behaviour-schema
+generate-contracts: generate-api-types generate-cli-schema generate-ree-schema generate-protocol-schema generate-behaviour-schema
 
 # Regenerate the committed OpenAPI contract.
 [group('Contracts')]
@@ -16,6 +16,11 @@ generate-api-types: generate-openapi
 [group('Contracts')]
 generate-ree-schema:
     python -m repo2ree_ree.export_schema
+
+# Regenerate the committed command-line contract: every `ree` command, its options, stdin and outputs, as `ree schema` prints it.
+[group('Contracts')]
+generate-cli-schema:
+    python -m repo2ree_cli.export_schema
 
 # Regenerate the committed protocol schema: messages, per-operation outputs, and queries.
 [group('Contracts')]

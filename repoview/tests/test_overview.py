@@ -84,7 +84,8 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
         for name in (
             *("index", "zones", "assurance-gate", "receipts", "operations", "vocabulary", "specification", "coverage"),
             "showcase-gate",
-            *("ree", "architecture", "just-recipes", "configuration", "api"),
+            *("ree", "architecture", "interfaces", "interfaces-cli", "interfaces-api", "contracts"),
+            *("just-recipes", "configuration"),
             # The frame its bundled evidence is shown in.
             "evidence",
         )

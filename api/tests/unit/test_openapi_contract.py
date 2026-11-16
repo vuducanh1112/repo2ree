@@ -9,8 +9,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from repo2ree_api.authoring.catalog import STEP_ACTIONS_EXTENSION
 from repo2ree_api.export_openapi import CONTRACT_PATH, openapi_document
 from repo2ree_api.main import app
+from repo2ree_core.domain.ree.steps import REE_STEPS
 
 HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
 
@@ -104,3 +106,13 @@ def test_creation_and_source_acquisition_are_separate_contracts() -> None:
     acquire_schema = schema["components"]["schemas"][acquire_ref.rsplit("/", 1)[-1]]
 
     assert {"origin_url", "source_type", "revision"} <= set(acquire_schema["properties"])
+
+
+def test_the_contract_says_which_operations_advance_each_authoring_step() -> None:
+    schema = app.openapi()
+    operation_ids = {operation["operationId"] for _path, _method, operation in _operations(schema)}
+    step_actions = schema["paths"]["/api/v1/rees/{ree_id}/ree-steps"]["get"][STEP_ACTIONS_EXTENSION]
+
+    assert list(step_actions) == [step.key for step in REE_STEPS]
+    assert all(actions for actions in step_actions.values())
+    assert {action for actions in step_actions.values() for action in actions} <= operation_ids
