@@ -204,7 +204,7 @@ COPIED = (
     "dossier/stores",
 )
 REFERENCED = ("dossier/rees", "dossier/telemetry", "artifacts")
-REPORTED = ("verification", "traces")
+REPORTED = ("verification", "traces", "session")
 
 
 @dataclass(frozen=True)

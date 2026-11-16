@@ -8,11 +8,16 @@ writes. ``ree`` runs an REE's scripts on the machine it runs on.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
+import shutil
 import subprocess
+import time
+import warnings
 from collections.abc import Callable, Iterator
+from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -38,6 +43,7 @@ from repo2ree_testbed.api_models import (
     RunStatus,
     ScriptKind,
 )
+from repo2ree_testbed.cli_session import LOG_LINES, CliCommand, append, kept_result, kept_stdin, session_file
 from repo2ree_testbed.run_watch import INSTANT_RUN, RunWatch
 from repo2ree_testbed.showcases import Project
 from repo2ree_testbed.stack.environments import (
@@ -97,6 +103,11 @@ class CliClient:
 
     machine: Machine
     archive_dir: Path
+    # Where each REE's histories are kept before the REE is removed: the evidence the behaviour check reads, as
+    # no control plane serves an REE this client runs ree in.
+    kept_dir: Path
+    # Where every command the test runs is written down, as it typed it and as ree answered (cli_session).
+    session: Path | None = None
     _logs: dict[str, str] = field(default_factory=dict)
 
     def root(self, ree_id: str) -> Path:
@@ -107,7 +118,7 @@ class CliClient:
     def _result(self, ree_id: str, *words: str, stdin: bytes | None = None) -> tuple[str, Result]:
         """Run one command of the REE's and keep what it logged; its run and its one result line."""
         run_id = f"cli-{uuid4().hex[:12]}"
-        done = self.machine.ree(self.root(ree_id), "--json", "--run-id", run_id, *words, stdin=stdin)
+        done = self._ree(ree_id, ("--json", "--run-id", run_id, *words), stdin, run_id)
         self._logs[run_id] = _lines(done.stderr)
         try:
             return run_id, Result.model_validate_json(done.stdout.decode().strip().splitlines()[-1])
@@ -124,8 +135,33 @@ class CliClient:
             raise CliError(f"ree {' '.join(words)} ended {result.status}\n{self._logs[run_id]}")
         return result.outputs
 
+    def _ree(self, ree_id: str, words: tuple[str, ...], stdin: bytes | None = None, run_id: str | None = None) -> Done:
+        """Run one ``ree`` command against the REE, and add it to the test's session as it was typed and answered."""
+        started = time.time()
+        done = self.machine.ree(self.root(ree_id), *words, stdin=stdin)
+        if self.session is not None:
+            printed = done.stdout.decode(errors="replace").strip().splitlines()
+            result, result_bytes = kept_result(printed[-1]) if "--json" in words and printed else (None, 0)
+            text, stdin_bytes = kept_stdin(stdin)
+            command = CliCommand(
+                ree=ree_id,
+                words=tuple(word for word in words if word != "--json" and word != "--run-id" and word != run_id),
+                run_id=run_id,
+                stdin=text,
+                stdin_bytes=stdin_bytes,
+                exit=done.status,
+                result=result,
+                result_bytes=result_bytes,
+                stdout_bytes=0 if result is not None else len(done.stdout),
+                log=tuple(_log(done.stderr)[-LOG_LINES:]),
+                started=started,
+                finished=time.time(),
+            )
+            append(self.session, command)
+        return done
+
     def _bytes(self, ree_id: str, *words: str) -> bytes:
-        done = self.machine.ree(self.root(ree_id), *words)
+        done = self._ree(ree_id, words)
         if done.status != 0:
             raise CliError(f"ree {' '.join(words)} exited {done.status}: {done.stderr}")
         return done.stdout
@@ -143,9 +179,32 @@ class CliClient:
         return staged
 
     def create(self, name: str) -> str:
+        """Create an REE, and its kept folder: one with no history in it is an REE whose history went unkept."""
         ree_id = f"{name[:40]}-{uuid4().hex[:8]}"
+        (self.kept_dir / ree_id).mkdir(parents=True, exist_ok=True)
         self._outputs(ree_id, "init", "--name", name)
         return ree_id
+
+    def _keep(self, ree_id: str) -> None:
+        """Copy the REE's histories, its own and each review's, into its kept folder, each under its history lock.
+
+        LFS payloads stay out: the history commits their pointers, which is all the check reads. A copy that fails
+        leaves the folder empty, so the REE is listed as unkept rather than as a history cut short.
+        """
+        root, kept = self.root(ree_id), self.kept_dir / ree_id
+        scopes = [root, *sorted(path for path in (root / "reviews").glob("*") if (path / ".git").is_dir())]
+        try:
+            with ExitStack() as locks:
+                for scope in scopes:
+                    if (lock := scope / ".git/repo2ree.lock").is_file():
+                        fcntl.flock(locks.enter_context(lock.open("rb")), fcntl.LOCK_EX)
+                for scope in scopes:
+                    target = kept / scope.relative_to(root) / ".git"
+                    shutil.copytree(scope / ".git", target, symlinks=True, ignore=_without_lfs, dirs_exist_ok=True)
+        except OSError as exc:
+            shutil.rmtree(kept, ignore_errors=True)
+            kept.mkdir(parents=True, exist_ok=True)
+            warnings.warn(f"the history of {ree_id} was not kept: {exc}", stacklevel=2)
 
     # ---- the Client the showcases use -------------------------------------------
 
@@ -162,6 +221,7 @@ class CliClient:
         return (self.root(ree_id) / "ree.json").is_file()
 
     def release(self, ree_id: str) -> None:
+        self._keep(ree_id)
         subprocess.run(["rm", "-rf", str(self.root(ree_id))], check=False)
 
     def upload_source(self, ree_id: str, fixture: Project) -> None:
@@ -312,8 +372,13 @@ class CliClient:
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)
 
 
-def _lines(stderr: str) -> str:
-    """The NDJSON log events a command wrote, as ``[level] message`` lines, its last 30 as the API keeps them."""
+def _without_lfs(directory: str, names: list[str]) -> list[str]:
+    """What a copy of a history leaves out: the LFS payload store beside the history."""
+    return ["lfs"] if Path(directory).name == ".git" and "lfs" in names else []
+
+
+def _log(stderr: str) -> list[str]:
+    """The NDJSON log events a command wrote, as ``[level] message`` lines."""
     lines = []
     for line in stderr.splitlines():
         try:
@@ -323,10 +388,16 @@ def _lines(stderr: str) -> str:
             continue
         if isinstance(event, dict) and event.get("type") == "log":
             lines.append(f"[{event.get('level')}] {event.get('message')}")
-    return "\n".join(lines[-30:])
+    return lines
+
+
+def _lines(stderr: str) -> str:
+    """The log a command wrote, its last 30 lines as the API keeps them."""
+    return "\n".join(_log(stderr)[-30:])
 
 
 ARCHIVE_DIR = Path(os.environ.get("E2E_ARCHIVE_DIR", "test-artifacts/python/showcase-cli/archives"))
+KEPT_REE_DIR = Path(os.environ.get("E2E_KEPT_REE_DIR", "test-artifacts/python/showcase-cli/kept-rees"))
 
 
 @pytest.fixture(scope="session")
@@ -336,12 +407,13 @@ def client() -> Client:
         os.environ[MACHINE_CONTAINER_VARIABLE],
         Path(os.environ[MACHINE_WORKDIR_VARIABLE]),
     )
-    return CliClient(machine, ARCHIVE_DIR)
+    return CliClient(machine, ARCHIVE_DIR, KEPT_REE_DIR, session_file())
 
 
 @pytest.fixture
 def new_ree(client: CliClient, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
-    """Create REEs on demand on the test's machine; each is bundled, then removed, when the test ends."""
+    """Create REEs on demand on the test's machine; each is bundled, its histories kept, then removed, when the test
+    ends."""
     created: list[str] = []
     label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
 

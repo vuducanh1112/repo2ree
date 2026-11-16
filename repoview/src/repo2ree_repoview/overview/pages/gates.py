@@ -29,6 +29,8 @@ def evidence_links(bundle: Bundle, directory: str | None, origin: str = SLUG) ->
         label = "trace" if len(traces) == 1 else f"traces · {len(traces)} REEs"
         shown = in_frame(f"{directory}/traces/{(whole or traces[0]).name}", origin)
         links.append(f'<a href="{esc(shown)}">{label}</a>')
+    if (bundle.root / directory / "session/index.html").is_file():
+        links.append(f'<a href="{esc(in_frame(f"{directory}/session/index.html", origin))}">session</a>')
     return " · ".join(links) or '<span class="muted">none</span>'
 
 

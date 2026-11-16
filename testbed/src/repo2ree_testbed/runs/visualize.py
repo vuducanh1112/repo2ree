@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from repo2ree_testbed.records import RunRecord, RunTest, read
+from repo2ree_testbed.runs import session
 from repo2ree_testbed.runs.assess import COLLECTED, REPORTS, choosing, chosen, failed_command, is_run, run_of, tool
 from repo2ree_testbed.runs.failed_command import FailedCommand
 
@@ -84,6 +85,7 @@ def write_test_index(directory: Path, evidence: Path, test: RunTest, failed: Fai
         body.append(f"<pre>{html.escape(failed.stderr_tail)}</pre>")
 
     pages = [("Assurance report", path) for path in links(directory, directory, "verification/assurance.html")]
+    pages += [("CLI session", path) for path in links(directory, directory, "session/index.html")]
     pages += [(f"Behaviour trace {path.stem}", path) for path in links(directory, directory, "traces/*.html")]
     pages += [
         (f"Provenance {path.name.split('.')[0]}", path)
@@ -148,6 +150,7 @@ def draw(verification: Path, traces: Path, logs: Path, dossier: Path | None = No
 def visualize_test(evidence: Path, test: RunTest, report: Path) -> str:
     """Draw the test whose evidence is in ``evidence`` from its report, and write its page there."""
     drawn = bool(test.rees) and draw(report / "verification", report / "traces", report / "logs", evidence / "dossier")
+    session.draw(evidence, report / "session", test.name)
     write_test_index(report, evidence, test, failed_command(evidence, test))
     return "drawn" if drawn else "no REE" if not test.rees else "not drawn"
 

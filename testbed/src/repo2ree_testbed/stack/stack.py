@@ -75,6 +75,11 @@ class Layout:
         return self.directory / "artifacts"
 
     @property
+    def kept_rees(self) -> Path:
+        """Where a client that runs ``ree`` itself keeps each REE's histories, one folder per REE it created."""
+        return self.directory / "artifacts/kept-rees"
+
+    @property
     def telemetry(self) -> Path | None:
         return None if self.collector else self.dossier / "telemetry"
 
@@ -129,6 +134,7 @@ class E2EStack:
             "REPO2REE_BUILD_REVISION": revision,
             "VITE_BUILD_REVISION": os.environ.get("VITE_BUILD_REVISION", revision),
             "E2E_ARCHIVE_DIR": str(layout.archives),
+            "E2E_KEPT_REE_DIR": str(layout.kept_rees),
             "E2E_TEST_DIR": str(layout.directory),
         }
         self.coverage_dir = run_dir() / "python/coverage/data" / deployment.tier
@@ -499,6 +505,8 @@ class E2EStack:
         command = [*self.collect(), "--control-plane", self.api_url, "--skip-owners"]
         for folder in (self.layout.archives, *self.client.archive_dirs(self.layout.output)):
             command += ["--archives-in", str(folder)]
+        if self.layout.kept_rees.is_dir():
+            command += ["--kept-rees", str(self.layout.kept_rees)]
         subprocess.run(command, cwd=ROOT, check=False)
 
     def collect_stopped(self) -> bool:

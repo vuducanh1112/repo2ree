@@ -165,6 +165,36 @@ def kept_archives(directory: Path, control_plane: ControlPlane, folders: list[Pa
     return [_served_copy(directory, control_plane, path, served[sha]) for sha, path in copies.items()]
 
 
+def kept_rees(directory: Path, folder: Path) -> list[DossierSource]:
+    """REEs a client ran ``ree`` in itself, with no control plane between them, as the client kept their histories.
+
+    The client keeps a folder for every REE it creates, as it creates it, and copies the REE's histories into it
+    (its own ``.git``, and each review's) before it removes the REE. A folder with no history in it is an REE the
+    client created and kept nothing of: it is listed as unavailable, so a verdict cannot pass over it.
+    """
+    if not folder.is_dir():
+        return []
+    return [_kept(directory, root) for root in sorted(path for path in folder.iterdir() if path.is_dir())]
+
+
+def _kept(directory: Path, root: Path) -> DossierSource:
+    name = root.name if not (directory / REES / root.name).exists() else f"{root.name}-kept"
+    origin = f"{root} (kept by the client that ran ree in it)"
+    source = DossierSource(kind="git", path=f"{REES}/{name}/ree", origin=origin, name=name)
+    if not SAFE_NAME.fullmatch(root.name):
+        return _list(directory, _failed(source.model_copy(update={"path": REES}), f"not an REE id: {root.name!r}"))
+    if not (root / ".git").is_dir():
+        problem = "the client created this REE and kept no history of it"
+        return _list(directory, source.model_copy(update={"status": "unavailable", "problem": problem}))
+
+    def gather() -> DossierSource:
+        with _staged(directory, f"{REES}/{name}") as staging:
+            shutil.copytree(root, staging / "ree", symlinks=True)
+        return source
+
+    return _collect(directory, source, gather)
+
+
 def download_archive(directory: Path, control_plane: ControlPlane, ree_id: str) -> DossierSource:
     """Download an REE through the control plane, as its owner would, and list it with its cut."""
     path = f"/api/v1/rees/{ree_id}/ree-archive"

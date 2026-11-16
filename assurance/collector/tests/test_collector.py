@@ -22,6 +22,7 @@ from repo2ree_assurance_collector.collector import (
     collect_control_plane,
     download_archive,
     kept_archives,
+    kept_rees,
     spans,
     start,
     stopped_owners,
@@ -405,3 +406,32 @@ def test_the_cli_takes_store_journals_beside_the_owners(tmp_path: Path) -> None:
     assert sorted(source.path for source in read_dossier(directory).sources) == ["journal", "store-journals/lab-1"]
     with pytest.raises(SystemExit):
         main([str(directory), "--journal-dir", str(journals), "--store-journal-dir", f"../lab={store}"])
+
+
+def test_rees_a_client_kept_are_collected_and_one_it_kept_nothing_of_is_listed(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    start(directory)
+    kept = tmp_path / "kept"
+    (kept / "ree-a" / ".git").mkdir(parents=True)
+    (kept / "ree-a" / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
+    (kept / "ree-a" / "reviews" / "review-1" / ".git").mkdir(parents=True)
+    (kept / "ree-b").mkdir()
+
+    collected = kept_rees(directory, kept)
+
+    assert [(source.name, source.status) for source in collected] == [("ree-a", "recorded"), ("ree-b", "unavailable")]
+    assert (directory / "rees/ree-a/ree/.git/HEAD").read_text() == "ref: refs/heads/main\n"
+    assert (directory / "rees/ree-a/ree/reviews/review-1/.git").is_dir()
+    assert collected[1].problem == "the client created this REE and kept no history of it"
+    assert [source.name for source in read_dossier(directory).sources] == ["ree-a", "ree-b"]
+
+
+def test_an_ree_a_client_kept_nothing_of_leaves_the_verdict_no_evidence_to_pass_on(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    start(directory)
+    (tmp_path / "kept" / "ree-b").mkdir(parents=True)
+    kept_rees(directory, tmp_path / "kept")
+
+    evidence = load_dossier(directory)
+
+    assert any("kept no history of it" in problem for problem in evidence.problems)

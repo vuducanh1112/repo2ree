@@ -177,13 +177,16 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     [show] = runner.ran(SHOW)
     assert show.startswith("cd repo2ree || exit 1; tail -n +1 -f test-artifacts/machine-job/log & shown=$!")
     assert "while ! test -f test-artifacts/machine-job/exit && " in show
-    # What it wrote since it started, its run, the receipt, and its timings alike, comes straight from the clone on the
-    # host into this checkout, leaving experiment environment tarballs and archives there; then the job is fetched.
+    # What it wrote since it started, its run, the receipt, and its timings alike, empty folders too, comes straight
+    # from the clone on the host into this checkout, leaving experiment environment tarballs, archives and kept REE
+    # histories there; then the job is fetched.
     [(fetch, unpack)] = runner.piped
     assert _on_host(fetch) == (
-        "cd repo2ree && { find test-artifacts .receipts logs -type f -cnewer test-artifacts/machine-job/command"
+        "cd repo2ree && { find test-artifacts .receipts logs \\( -type f -o -type d -empty \\)"
+        " -cnewer test-artifacts/machine-job/command"
         " ! -path 'test-artifacts/machine-job/*' ! -name '*.tar' ! -name '*.tar.gz' ! -name '*.tgz'"
-        " ! -path '*/artifacts/archives/*' ! -path '*/artifacts/*/ree*.zip' 2>/dev/null || true; }"
+        " ! -path '*/artifacts/archives/*' ! -path '*/artifacts/*/ree*.zip' ! -path '*/artifacts/kept-rees/*'"
+        " 2>/dev/null || true; }"
         " | tar -cf - -T -"
     )
     assert runner.ran("mkdir test-artifacts/machine-job/fetching") == [

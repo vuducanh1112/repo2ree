@@ -72,6 +72,8 @@ SLIM_EXCLUDES = (
     # The REE archives a GUI test kept (helpers/flow.ts keepReeArchive): their histories are in the
     # dossier already, and the machine keeps the archives, which carry every experiment environment payload.
     "! -path '*/artifacts/*/ree*.zip'",
+    # The REE histories a CLI test kept: the dossier holds a copy of each already.
+    "! -path '*/artifacts/kept-rees/*'",
 )
 # What every command on a remote machine runs in: the clone's .envrc, as here, with the venv it syncs.
 SHELL = ("direnv", "exec", ".")
@@ -338,8 +340,11 @@ class Machine:
 
     @property
     def _written(self) -> str:
-        """Lists the files the job wrote: under test-artifacts/, .receipts/, and logs/, changed since it started."""
-        tests = " ".join(["-type f", f"-cnewer {JOB}/command", f"! -path '{JOB}/*'", *SLIM_EXCLUDES])
+        """Lists the files, and the empty folders, the job wrote under test-artifacts/, .receipts/, and logs/ since it
+        started."""
+        # An empty folder comes back too: a dossier can list a source that is rightly empty.
+        kinds = r"\( -type f -o -type d -empty \)"
+        tests = " ".join([kinds, f"-cnewer {JOB}/command", f"! -path '{JOB}/*'", *SLIM_EXCLUDES])
         return f"{{ find test-artifacts .receipts logs {tests} 2>/dev/null || true; }}"
 
     @property

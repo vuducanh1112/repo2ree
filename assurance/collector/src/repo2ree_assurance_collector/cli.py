@@ -3,6 +3,7 @@
   python -m repo2ree_assurance_collector DIR [--control-plane URL]
       [--archives-in FOLDER]...  REE archives clients downloaded and kept there
       [--ree ID]...              REEs to download now, as their owner would
+      [--kept-rees FOLDER]       REEs a client ran ree in itself, one folder each with the histories it kept
       [--skip-owners]            leave the owners' journals and state to a later export
       [--journal-dir DIR [--runs-dir DIR]]
                                  the owners' journals and state, exported after they stopped
@@ -32,6 +33,7 @@ from repo2ree_assurance_collector.collector import (
     download_archive,
     finish,
     kept_archives,
+    kept_rees,
     record_deployment,
     spans,
     start,
@@ -49,6 +51,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--control-plane", help="The API's base URL")
     parser.add_argument("--archives-in", type=Path, action="append", default=[], help="Where clients kept archives")
     parser.add_argument("--ree", action="append", default=[], help="Download this REE's archive (repeatable)")
+    parser.add_argument(
+        "--kept-rees", type=Path, help="REEs a client ran ree in itself: one folder each, with the histories it kept"
+    )
     parser.add_argument("--skip-owners", action="store_true", help="Do not fetch journals and state now")
     parser.add_argument("--journal-dir", type=Path, help="The owners' journal directory, after they stopped")
     parser.add_argument("--runs-dir", type=Path, help="The run store's directory, after its owner stopped")
@@ -92,6 +97,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             record_deployment(args.directory, control_plane)
         else:
             collected += collect_control_plane(args.directory, control_plane)
+    collected += kept_rees(args.directory, args.kept_rees) if args.kept_rees else []
     if args.journal_dir is not None:
         collected += stopped_owners(args.directory, journals=args.journal_dir, runs=args.runs_dir)
         collected += stopped_stores(args.directory, stores)

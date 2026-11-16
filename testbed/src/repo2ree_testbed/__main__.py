@@ -13,6 +13,7 @@ COMMANDS = {
     "workbench-cleanup": "repo2ree_testbed.stack.workbench_cleanup",
     "assess": "repo2ree_testbed.runs.assess",
     "visualize": "repo2ree_testbed.runs.visualize",
+    "session": "repo2ree_testbed.runs.session",
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
     "machine": "repo2ree_testbed.runs.machine",
