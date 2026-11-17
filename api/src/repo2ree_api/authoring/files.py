@@ -14,7 +14,7 @@ from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, Worksp
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
+from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
 from repo2ree_protocol.outputs import NoOutputs
 from repo2ree_ree.digest import digest_bytes
 
@@ -73,24 +73,3 @@ def _write_file(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutati
         # ``workspace_content_etag``, which digests the stored bytes the same
         # way — one shared helper so the compare cannot drift across processes.
         return FileMutationResponse(etag=digest_bytes(payload.content.encode()))
-
-
-@files_router.delete(
-    "/api/v1/rees/{ree_id}/files/content",
-    operation_id="deleteReeFile",
-    response_model=FileMutationResponse,
-    responses=ERROR_RESPONSES,
-)
-def delete_workspace_file_content_route(
-    ree_id: str,
-    path: str = Query(...),
-    if_match: str | None = Query(None),
-) -> FileMutationResponse:
-    with author_api_action("delete_file", ree_id, path=path):
-        handle = require_handle(ree_id)
-        with ree_command_span("delete-file", ree_id):
-            cmd = DeleteFileCommand(args=DeleteFileArgs(path=path, expected_etag=if_match or ""))
-            NoOutputs.model_validate(
-                dispatch_or_fail(handle, cmd, "delete-file", "Workbench delete_file failed").outputs
-            )
-            return FileMutationResponse()

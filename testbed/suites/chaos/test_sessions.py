@@ -133,9 +133,9 @@ class Session:
         return self.stage("activation-test")
 
     def experiment(self) -> str:
+        self.patch({"experiments": [{"name": EXPERIMENT, "output_paths": [RESULT]}]})
         self.write(EXPERIMENT_SCRIPT, recipe("experiment.sh"))
         self.write(EXPERIMENT_VERIFY, recipe("experiment.verify.sh"))
-        self.patch({"experiments": [{"name": EXPERIMENT, "output_paths": [RESULT]}]})
         return self.stage(f"experiments/{EXPERIMENT}:run")
 
     def seal(self) -> str:

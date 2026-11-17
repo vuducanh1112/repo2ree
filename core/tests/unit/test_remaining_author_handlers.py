@@ -8,12 +8,11 @@ import pytest
 from repo2ree_core.domain.ree.envelope import ReceiptEnvelopeFields
 from repo2ree_core.domain.ree.transitions import commit_receipt, revision_of
 from repo2ree_core.operations.handlers.author import cross_check_sbom, generate_hbom
-from repo2ree_core.operations.handlers.author.delete_file import handle_delete_file
 from repo2ree_core.operations.handlers.author.patch_ree_definition import handle_patch_ree_definition
 from repo2ree_core.operations.handlers.author.write_file import handle_write_file
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.command import DeleteFileArgs, PatchReeDefinitionArgs, WriteFileArgs
+from repo2ree_protocol.command import PatchReeDefinitionArgs, WriteFileArgs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM, CPUDefinition
 from repo2ree_ree.model import (
@@ -218,13 +217,13 @@ def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
     assert updated.build_experiment_environment_script_digest == digest_bytes(changed.encode())
     assert updated.build_experiment_environment_script_size == len(changed.encode())
 
-    delete_result = handle_delete_file(
-        DeleteFileArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+    undeclared = handle_patch_ree_definition(
+        PatchReeDefinitionArgs(patch={"experiment_environment": None}),
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
     )
-    assert delete_result.status == "failed"
+    assert undeclared.status == "failed"
     assert store.read_ree().subject.definition.experiment_environment == updated
 
 

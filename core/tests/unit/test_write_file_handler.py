@@ -15,10 +15,14 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import WriteFileArgs
 from repo2ree_ree.model import Ree, ReeDefinition, ReeSubject
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
+from repo2ree_ree.reserved_paths import (
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
+    experiment_run_script_path,
+)
 
-# A script no REE starts with: an experiment's, authored before it is declared.
-UNWRITTEN = experiment_run_script_path("hello")
+# A fixed script with no file yet: the launch of an REE from before every REE had one.
+UNWRITTEN = RESERVED_LAUNCH_SCRIPT
 
 
 def _never_canceled() -> bool:
@@ -101,3 +105,17 @@ def test_no_expected_etag_skips_the_guard(tmp_path: Path, monkeypatch: pytest.Mo
 
     assert result.status == "succeeded"
     assert store.workspace.read_bytes(UNWRITTEN) == b"body"
+
+
+def test_an_undeclared_experiments_script_is_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store = _store_at(tmp_path, monkeypatch)
+    path = experiment_run_script_path("hello")
+
+    result = handler.handle_write_file(
+        WriteFileArgs(path=path, content="body"), log=_silent_log, is_canceled=_never_canceled, layout=store.layout
+    )
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert "declare its experiment first" in result.failure.message
+    assert not store.overlay.is_file(path)

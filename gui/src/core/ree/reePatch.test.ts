@@ -83,6 +83,7 @@ describe("toReePatchFromSlices", () => {
       experiments: [
         {
           name: "benchmark",
+          run_script_path: "ree-scripts/experiments/benchmark.sh",
           output_paths: ["results/benchmark.json"],
         },
       ],

@@ -1,7 +1,5 @@
 interface WorkspaceFilePersistencePlan {
-  normalizedPreviousPath?: string;
   normalizedPath: string;
-  shouldDeletePrevious: boolean;
   successMessage: string;
 }
 
@@ -19,17 +17,11 @@ function sanitizeDownloadName(name: string): string {
   return name.replace(/\\/g, "_");
 }
 
-export function planWorkspaceFilePersistence(
-  previousPath: string | undefined,
-  path: string,
-): WorkspaceFilePersistencePlan {
-  const normalizedPreviousPath = (previousPath || "").trim() || undefined;
+export function planWorkspaceFilePersistence(path: string): WorkspaceFilePersistencePlan {
   const normalizedPath = path.trim();
 
   return {
-    normalizedPreviousPath,
     normalizedPath,
-    shouldDeletePrevious: !!normalizedPreviousPath && normalizedPreviousPath !== normalizedPath,
     successMessage: `Saved ${normalizedPath} to workspace`,
   };
 }

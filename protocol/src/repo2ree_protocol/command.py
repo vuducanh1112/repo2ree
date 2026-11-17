@@ -233,25 +233,6 @@ class WriteFileCommand(BaseModel):
     args: WriteFileArgs
 
 
-class DeleteFileArgs(BaseModel):
-    """Remove <path> from /ree/overlay/ and restore from upstream or remove from workspace."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: Annotated[str, POSITIONAL, Field(description="The script's path in the REE, or its KIND[:EXPERIMENT].")]
-    expected_etag: str = Field(
-        default="",
-        description="Delete only if the script is still this digest (sha256:...), as `ree status` reports it.",
-    )
-
-
-class DeleteFileCommand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    operation: Literal["delete_file"] = "delete_file"
-    args: DeleteFileArgs
-
-
 class PatchReeDefinitionArgs(BaseModel):
     """Apply a top-level patch to the portable REE definition."""
 
@@ -499,7 +480,6 @@ Command = Annotated[
     | AcquireSourceCommand
     | LoadReeBundleCommand
     | WriteFileCommand
-    | DeleteFileCommand
     | PatchReeDefinitionCommand
     | RemoveSourceCommand
     | BuildExperimentEnvironmentCommand

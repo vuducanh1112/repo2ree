@@ -57,7 +57,6 @@ from repo2ree_protocol.build import current_build
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     Command,
-    DeleteFileCommand,
     GenerateScriptCandidatesCommand,
     LoadReeBundleCommand,
     PatchReeDefinitionCommand,
@@ -617,7 +616,6 @@ _HANDLERS: dict[type[BaseModel], Handler] = {
     AcquireSourceCommand: _acquire_source,
     LoadReeBundleCommand: _load_bundle,
     WriteFileCommand: _on_script,
-    DeleteFileCommand: _on_script,
     PatchReeDefinitionCommand: _define,
     GenerateScriptCandidatesCommand: _infer,
     SealReeCommand: _seal,

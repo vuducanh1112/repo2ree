@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   starter scripts, and a check of the working environment that passes as it comes:\n   edit it to say what the scripts need from the store's machine.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `generateScriptCandidates` with its name\n   scaffolds the run script, which refuses to run until you fill in the command;\n   `writeReeFile` writes that and a verify script;\n   `patchReeDefinition` declares the experiment, which needs its run script to\n   exist; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   every script it has: starter build and activate scripts, a launch that runs each\n   script directly, and a check of the working environment that passes as it comes.\n   `writeReeFile` overwrites a script; none is ever deleted.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `patchReeDefinition` declares it, which\n   gives it a starter run script and a verify script that passes; removing or\n   renaming it takes its scripts with it. `generateScriptCandidates` with its name\n   proposes a run script; `writeReeFile` writes that and, if the experiment checks\n   its result, the verify script; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -2979,162 +2979,6 @@
             }
           }
         },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FileMutationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or operation precondition",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "REE, run, file, or artifact not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Version or idempotency conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "Upload exceeds the configured size limit",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "415": {
-            "description": "Request body is not application/json",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Request validation failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "502": {
-            "description": "Workbench returned an invalid upstream response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Compute provider or workbench unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          },
-          "507": {
-            "description": "Upload staging capacity exhausted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorEnvelope"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "rees",
-          "files"
-        ],
-        "summary": "Delete Workspace File Content Route",
-        "operationId": "deleteReeFile",
-        "parameters": [
-          {
-            "name": "ree_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Ree Id"
-            }
-          },
-          {
-            "name": "path",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Path"
-            }
-          },
-          {
-            "name": "if_match",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "If Match"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -11701,17 +11545,6 @@
               }
             ],
             "title": "Updated At"
-          },
-          "deleted_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deleted At"
           },
           "etag": {
             "anyOf": [

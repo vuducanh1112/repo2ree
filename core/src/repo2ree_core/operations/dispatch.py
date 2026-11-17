@@ -12,7 +12,6 @@ from repo2ree_core.operations.handlers.author.activation_test import handle_acti
 from repo2ree_core.operations.handlers.author.build_experiment_environment import handle_build_experiment_environment
 from repo2ree_core.operations.handlers.author.check_working_environment import handle_check_working_environment
 from repo2ree_core.operations.handlers.author.cross_check_sbom import handle_cross_check_sbom
-from repo2ree_core.operations.handlers.author.delete_file import handle_delete_file
 from repo2ree_core.operations.handlers.author.evaluate_dependency_score import (
     handle_evaluate_dependency_score,
 )
@@ -45,7 +44,6 @@ from repo2ree_protocol.command import (
     CheckWorkingEnvironmentCommand,
     Command,
     CrossCheckSbomCommand,
-    DeleteFileCommand,
     EvaluateDependencyScoreCommand,
     GenerateHbomCommand,
     GenerateSbomCommand,
@@ -182,8 +180,6 @@ def _dispatch(
         return handle_load_ree_bundle(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, WriteFileCommand):
         return handle_write_file(cmd.args, layout=layout, log=log, is_canceled=cancel)
-    if isinstance(cmd, DeleteFileCommand):
-        return handle_delete_file(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, PatchReeDefinitionCommand):
         return handle_patch_ree_definition(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, AcquireSourceCommand):

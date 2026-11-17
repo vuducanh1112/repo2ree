@@ -609,11 +609,7 @@ def run() -> None:
     ok("the activation enters the experiment environment and hands over")
 
     chapter("11. Infer the experiment scaffold, then run it")
-    note("declare a named experiment; naming it settles its run-script path, and its declared output is sealed")
-    # A definition binds authored bytes, so seed the conventional script paths
-    # before declaring the experiment. Inference replaces the run scaffold below.
-    put_file(ree_id, experiment_run_script_path, "#!/bin/sh\nexit 0\n")
-    put_file(ree_id, experiment_verify_script_path, EXPERIMENT_VERIFY_SCRIPT)
+    note("declare a named experiment: it gets a starter run script and a verify script that passes")
     experiment_declared = call(
         "PATCH",
         f"/api/v1/rees/{ree_id}/definition",
@@ -633,6 +629,7 @@ def run() -> None:
         settled_run_script == experiment_run_script_path,
         "experiment run-script path did not settle to the discovered pattern",
     )
+    put_file(ree_id, experiment_verify_script_path, EXPERIMENT_VERIFY_SCRIPT)
     note("infer the experiment scaffold (gated on the declaration above), then author its scientific command")
     experiment_report = generate_scripts(ree_id, [{"kind": "experiment_run", "experiment_name": EXPERIMENT_NAME}])
     summarize_decision(experiment_report, "experiment_run", EXPERIMENT_NAME)

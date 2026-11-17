@@ -376,15 +376,4 @@ export class ReeApi {
       body: JSON.stringify({ target, source, declarations }),
     });
   }
-
-  async deleteFileContent(reeId: ReeId, path: string): Promise<FileMutationResponse> {
-    const searchParams = new URLSearchParams({ path });
-    return this.client.request<FileMutationResponse>(
-      endpoints.reeFileContent(reeId),
-      {
-        method: "DELETE",
-      },
-      searchParams,
-    );
-  }
 }

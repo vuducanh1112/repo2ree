@@ -223,18 +223,18 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     filmstrip.frame(ree_id, "activation")
 
     # --- experiment: the runnable the REE exists to reproduce ------------
-    _put_file(
-        client,
-        ree_id,
-        EXPERIMENT_SCRIPT,
-        f"#!/bin/sh\nset -eu\nmkdir -p results\necho 'experiment output' > {EXPERIMENT_OUTPUT}\n",
-    )
     definition = _patch_definition(
         client,
         ree_id,
         {"experiments": [{"name": EXPERIMENT_NAME, "output_paths": [EXPERIMENT_OUTPUT]}]},
     )
     assert [item["name"] for item in definition["experiments"]] == [EXPERIMENT_NAME]
+    _put_file(
+        client,
+        ree_id,
+        EXPERIMENT_SCRIPT,
+        f"#!/bin/sh\nset -eu\nmkdir -p results\necho 'experiment output' > {EXPERIMENT_OUTPUT}\n",
+    )
     filmstrip.frame(ree_id, "declare experiment")
     _stage(client, ree_id, f"experiments/{EXPERIMENT_NAME}:run", {}, what="experiment")
 

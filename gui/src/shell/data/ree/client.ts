@@ -22,7 +22,6 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   getRee(id: ReeId | string, signal?: AbortSignal): Promise<ReeProject<TFile, TRee>>;
   updateFile(id: ReeId | string, path: string, content: string): Promise<void>;
   updateReeIntent(id: ReeId | string, intentPatch: ReeIntentPatch): Promise<void>;
-  deleteFile(id: ReeId | string, path: string): Promise<void>;
   getReeFileBytes(id: ReeId | string, path: string): Promise<ArrayBuffer>;
   sealRee(
     id: ReeId | string,
@@ -56,10 +55,6 @@ export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode,
       await runtime.reeApi.patchReeDefinition(reeId, {
         definition_patch: intentPatch as ReeDefinitionPatchPayload["definition_patch"],
       });
-    },
-    async deleteFile(id, path) {
-      const reeId = requireReeId(runtime, id);
-      await runtime.reeApi.deleteFileContent(reeId, path);
     },
     async getReeFileBytes(id, path) {
       const reeId = requireReeId(runtime, id);

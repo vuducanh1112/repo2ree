@@ -13,8 +13,6 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     CheckWorkingEnvironmentCommand,
     Command,
-    DeleteFileArgs,
-    DeleteFileCommand,
     PatchReeDefinitionArgs,
     PatchReeDefinitionCommand,
     RemoveSourceCommand,
@@ -99,10 +97,11 @@ def test_every_ree_starts_with_a_check_that_passes_and_its_step_still_to_do(tmp_
 def test_an_undeclared_check_is_refused(tmp_path: Path) -> None:
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="unchecked")
-    undeclared = _run(
-        layout, PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"check_working_environment": None}))
-    )
-    assert undeclared.status == "succeeded", undeclared
+    store = ReeDirectory(layout)
+    ree = store.read_ree()
+    # Only an REE from before every REE had its check declares none.
+    definition = ree.subject.definition.model_copy(update={"check_working_environment": None})
+    store.write_ree(ree.model_copy(update={"subject": ree.subject.model_copy(update={"definition": definition})}))
 
     result = _check(layout)
 
@@ -126,11 +125,14 @@ def test_editing_the_check_leaves_it_stale_and_removing_the_source_keeps_it(tmp_
     assert audit(ree).working_environment_check.reasons == ("check script changed",)
 
 
-def test_the_declared_check_cannot_be_deleted(tmp_path: Path) -> None:
+def test_the_declared_check_cannot_be_undeclared(tmp_path: Path) -> None:
     layout = _declared(tmp_path)
 
-    result = _run(layout, DeleteFileCommand(args=DeleteFileArgs(path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)))
+    result = _run(
+        layout, PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"check_working_environment": None}))
+    )
 
     assert result.status == "failed"
     assert result.failure is not None
-    assert "undeclare the check" in result.failure.message
+    assert "every REE has its check script" in result.failure.message
+    assert ReeDirectory(layout).read_ree().subject.definition.check_working_environment is not None

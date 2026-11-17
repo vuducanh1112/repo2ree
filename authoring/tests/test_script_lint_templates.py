@@ -52,7 +52,9 @@ def _lint_template(name: str, kind: TargetKind) -> tuple[str, ...]:
         ("activate_experiment_environment_venv.sh", "activate_experiment_environment"),
         ("experiment_run.sh", "experiment_run"),
         ("launch_slurm.sh", "launch"),
+        ("launch_direct.sh", "launch"),
         ("check_working_environment.sh", "check_working_environment"),
+        ("verify_none.sh", "experiment_verify"),
     ],
 )
 def test_a_run_or_build_template_lints_clean(name: str, kind: TargetKind) -> None:
@@ -89,7 +91,9 @@ def test_every_template_is_covered_by_a_case_above() -> None:
         "activate_experiment_environment_venv.sh",
         "experiment_run.sh",
         "launch_slurm.sh",
+        "launch_direct.sh",
         "check_working_environment.sh",
+        "verify_none.sh",
         "verify_stdout_contains.sh",
         "verify_stdout_regex.sh",
         "verify_numeric_tolerance.sh",

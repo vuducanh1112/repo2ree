@@ -16,16 +16,9 @@ export function useWorkspaceFilePersistence({
   const reeId = useReeId();
   const reeClient = useReeClient();
 
-  const persistWorkspaceFile = async (
-    previousPath: string | undefined,
-    path: string,
-    content: string,
-  ): Promise<void> => {
+  const persistWorkspaceFile = async (path: string, content: string): Promise<void> => {
     try {
-      const plan = planWorkspaceFilePersistence(previousPath, path);
-      if (plan.shouldDeletePrevious) {
-        await reeClient.deleteFile(reeId, plan.normalizedPreviousPath || "");
-      }
+      const plan = planWorkspaceFilePersistence(path);
       await reeClient.updateFile(reeId, plan.normalizedPath, content);
       await refreshWorkspaceFiles();
       showToast(plan.successMessage, "success");

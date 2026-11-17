@@ -39,9 +39,9 @@ def test_rewriting_or_deleting_a_script_makes_what_it_ran_stale(api: Api, new_re
     api.write(ree_id, EXPERIMENT_SCRIPT, recipe("experiment.sh") + "# touched\n")
     assert standing(api, ree_id)[f"experiment:{EXPERIMENT}"] == "stale"
     api.succeed(ree_id, f"experiments/{EXPERIMENT}:run")
-    api.request("DELETE", f"/api/v1/rees/{ree_id}/files/content", params={"path": EXPERIMENT_VERIFY})
-    deleted = standing(api, ree_id)
-    assert (deleted["activation"], deleted[f"experiment:{EXPERIMENT}"]) == ("current", "stale")
+    api.write(ree_id, EXPERIMENT_VERIFY, "#!/usr/bin/env sh\nset -eu\nexit 0\n")
+    unchecked = standing(api, ree_id)
+    assert (unchecked["activation"], unchecked[f"experiment:{EXPERIMENT}"]) == ("current", "stale")
 
 
 def test_removing_the_source_clears_the_evidence_made_from_it(api: Api, new_ree: Callable[..., str]) -> None:

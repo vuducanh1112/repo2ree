@@ -5,12 +5,8 @@ import { createShellWrapper } from "../../../../../tests/support/renderApp";
 import { useWorkspaceFilePersistence } from "./useWorkspaceFilePersistence";
 
 describe("useWorkspaceFilePersistence", () => {
-  it("renames, saves, refreshes, and reports success in order", async () => {
+  it("saves, refreshes, and reports success in order", async () => {
     const calls: string[] = [];
-    const deleteFileContent = vi.fn(async () => {
-      calls.push("delete");
-      return {};
-    });
     const putFileContent = vi.fn(async () => {
       calls.push("update");
       return {};
@@ -22,17 +18,16 @@ describe("useWorkspaceFilePersistence", () => {
     const showToast = vi.fn(() => calls.push("toast"));
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { deleteFileContent, putFileContent } }),
+      services: fakeApiServices({ ree: { putFileContent } }),
     });
     const { result } = renderHook(
       () => useWorkspaceFilePersistence({ refreshWorkspaceFiles, showToast }),
       { wrapper: Wrapper },
     );
 
-    await act(() => result.current.persistWorkspaceFile(" old.txt ", " new.txt ", "hello"));
+    await act(() => result.current.persistWorkspaceFile(" new.txt ", "hello"));
 
-    expect(calls).toEqual(["delete", "update", "refresh", "toast"]);
-    expect(deleteFileContent).toHaveBeenCalledWith("ree-1", "old.txt");
+    expect(calls).toEqual(["update", "refresh", "toast"]);
     expect(putFileContent).toHaveBeenCalledWith("ree-1", {
       path: "new.txt",
       content: "hello",
@@ -53,7 +48,7 @@ describe("useWorkspaceFilePersistence", () => {
       { wrapper: Wrapper },
     );
 
-    await act(() => result.current.persistWorkspaceFile(undefined, "script.sh", "exit 0"));
+    await act(() => result.current.persistWorkspaceFile("script.sh", "exit 0"));
 
     expect(refreshWorkspaceFiles).not.toHaveBeenCalled();
     expect(showToast).toHaveBeenCalledWith("Failed to save script.sh: disk full", "error");

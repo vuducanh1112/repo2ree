@@ -8,7 +8,6 @@ function harness() {
   const reeApi = {
     putFileContent: vi.fn().mockResolvedValue({}),
     patchReeDefinition: vi.fn().mockResolvedValue({}),
-    deleteFileContent: vi.fn().mockResolvedValue({}),
     getReeFileBytes: vi.fn().mockResolvedValue(new ArrayBuffer(2)),
     sealRee: vi.fn().mockResolvedValue({ ree_id: "ree-1" }),
     getReeArchive: vi.fn().mockResolvedValue({ bytes: new ArrayBuffer(1), fileName: "ree.zip" }),
@@ -38,7 +37,6 @@ describe("createReeClient", () => {
       experiments: [],
       hardware: {},
     });
-    await client.deleteFile("ree-1", "old.txt");
     await expect(client.getReeFileBytes("ree-1", "result.txt")).resolves.toBeInstanceOf(
       ArrayBuffer,
     );

@@ -208,7 +208,6 @@ OUTPUTS: dict[str, Any] = {
     "acquire_source": AcquireSourceOutputs,
     "load_ree_bundle": LoadReeBundleOutputs,
     "write_file": NoOutputs | VersionConflictOutputs,
-    "delete_file": NoOutputs | VersionConflictOutputs,
     "patch_ree_definition": PatchReeDefinitionOutputs | VersionConflictOutputs,
     "remove_source": NoOutputs,
     "build_experiment_environment": BuildExperimentEnvironmentOutputs | BuildExperimentEnvironmentFailureOutputs,

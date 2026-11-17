@@ -359,8 +359,7 @@ export interface paths {
          */
         put: operations["writeReeFile"];
         post?: never;
-        /** Delete Workspace File Content Route */
-        delete: operations["deleteReeFile"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2539,8 +2538,6 @@ export interface components {
         FileMutationResponse: {
             /** Updated At */
             updated_at?: string | null;
-            /** Deleted At */
-            deleted_at?: string | null;
             /** Etag */
             etag?: string | null;
         };
@@ -7030,121 +7027,6 @@ export interface operations {
                 "application/json": components["schemas"]["WorkspaceFileContentPayload"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FileMutationResponse"];
-                };
-            };
-            /** @description Invalid request or operation precondition */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description REE, run, file, or artifact not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Version or idempotency conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload exceeds the configured size limit */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request body is not application/json */
-            415: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Request validation failed */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Workbench returned an invalid upstream response */
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Compute provider or workbench unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Upload staging capacity exhausted */
-            507: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    deleteReeFile: {
-        parameters: {
-            query: {
-                path: string;
-                if_match?: string | null;
-            };
-            header?: never;
-            path: {
-                ree_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

@@ -2,16 +2,14 @@
 
 Each template is a dedicated ``.sh`` file shipped inside this package — the
 single source of truth for the starter content authors (human or workbench) work
-from. The build, activate and check templates are seeded into the overlay at REE
-creation (``ReeDirectory.ensure_reserved_overlay_scripts``); the launch template is not, since an REE without a
-launch script runs its scripts directly; the per-experiment run
-and verify templates cannot be seeded (their paths only exist once an
-experiment is named), so ``ree templates`` prints them for clients to prefill from.
+from. Every script an REE has starts as the first template of its kind: the build, activate, launch and check
+scripts when the REE is created (``ReeDirectory.ensure_reserved_overlay_scripts``), an experiment's run and verify
+scripts when the experiment is declared.
 
 Every script kind carries a catalog of named :class:`ScriptTemplate` variants,
 one per standard case, so new strategies (a nix build, …) slot in as further
-entries. The first variant is the default, and for the seeded scripts it is the
-content a fresh REE starts with: one that needs no container engine.
+entries. The first variant is the default a script starts as: one that needs no container engine, and for the
+launch, check and verify scripts one that passes everything through.
 
 Leaf module like ``reserved_paths``: it imports nothing from
 ``repo2ree_core``, so any layer can load templates without an import cycle.
@@ -61,7 +59,7 @@ class ScriptTemplate:
 
 
 def reserved_script_template(reserved_path: str) -> str:
-    """Return the default starter template for a seeded reserved script path: the first of its catalog.
+    """The script a fixed script of the REE starts as: the first of its catalog.
 
     Catalogs are keyed by the script's file name, so the lookup is stable
     under renames of the reserved directory itself.
@@ -70,6 +68,7 @@ def reserved_script_template(reserved_path: str) -> str:
         "build_experiment_environment.sh": build_templates,
         "activate_experiment_environment.sh": activate_experiment_environment_templates,
         "check_working_environment.sh": check_working_environment_templates,
+        "launch.sh": launch_templates,
     }
     templates = catalogs[reserved_path.rsplit("/", 1)[-1]]()
     return templates[0].body
@@ -118,8 +117,14 @@ def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def launch_templates() -> tuple[ScriptTemplate, ...]:
-    """The launch-script templates, one per launcher. An REE with no launch script runs its scripts directly."""
+    """The launch-script templates, one per launcher; the first runs every script directly."""
     return (
+        ScriptTemplate(
+            key="direct",
+            label="Direct",
+            description="Run each of the REE's scripts directly, where the runner puts it.",
+            body=_template("launch_direct.sh"),
+        ),
         ScriptTemplate(
             key="slurm",
             label="Slurm job step",
@@ -162,9 +167,15 @@ def verify_templates() -> tuple[ScriptTemplate, ...]:
     Verify scripts are plain POSIX sh, run from the workspace root after the
     run script, with nothing injected into their environment; the exit code is
     the verdict (0 = the declared validation passed). A later reproduction
-    compares a fresh validated run with prior author evidence.
+    compares a fresh validated run with prior author evidence. The first checks nothing and passes.
     """
     return (
+        ScriptTemplate(
+            key="none",
+            label="No check",
+            description="Verify nothing: the experiment counts as verified whenever its run script succeeds.",
+            body=_template("verify_none.sh"),
+        ),
         ScriptTemplate(
             key="stdout-contains",
             label="Stdout contains",

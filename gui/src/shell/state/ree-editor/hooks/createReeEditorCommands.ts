@@ -21,11 +21,7 @@ interface CreateReeEditorCommandsArgs {
   runAction: (key: string, params?: GenericReeStepParams) => Promise<void>;
   runStep: <K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>) => Promise<void>;
   cancelAction: (key: string) => Promise<void>;
-  persistWorkspaceFile: (
-    previousPath: string | undefined,
-    path: string,
-    content: string,
-  ) => Promise<void>;
+  persistWorkspaceFile: (path: string, content: string) => Promise<void>;
   handleDownloadRee: () => void;
   handleSealRee: (inclusionOpts: InclusionOpts) => Promise<void>;
   handleDownloadSourceFiles: (
@@ -70,11 +66,7 @@ export interface EditorWorkflowCommands {
   onRunAction(key: string, params?: GenericReeStepParams): Promise<void>;
   onCancelAction(key: string): Promise<void>;
   onRunStep<K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>): Promise<void>;
-  onPersistWorkspaceFile(
-    previousPath: string | undefined,
-    path: string,
-    content: string,
-  ): Promise<void>;
+  onPersistWorkspaceFile(path: string, content: string): Promise<void>;
   flushReeIntent(): Promise<void>;
 }
 

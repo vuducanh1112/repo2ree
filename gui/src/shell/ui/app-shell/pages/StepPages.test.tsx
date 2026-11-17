@@ -58,7 +58,6 @@ describe("major step page workflows", () => {
     await user.type(editor, "#!/bin/sh\necho rebuilt");
     await user.click(screen.getByRole("button", { name: /Save build script/ }));
     expect(onPersistWorkspaceFile).toHaveBeenCalledWith(
-      undefined,
       "overlay/build.sh",
       expect.stringContaining("rebuilt"),
     );

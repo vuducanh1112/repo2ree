@@ -50,7 +50,7 @@ describe("createReeEditorCommands", () => {
     await commands.onRunAction("build_experiment_environment", {});
     await commands.onCancelAction("build_experiment_environment");
     await commands.onRunStep("build_experiment_environment", {});
-    await commands.onPersistWorkspaceFile(undefined, "run.sh", "echo ok");
+    await commands.onPersistWorkspaceFile("run.sh", "echo ok");
     await commands.flushReeIntent();
 
     expect(dispatch.mock.calls.map(([action]) => action.type)).toEqual([
@@ -66,7 +66,7 @@ describe("createReeEditorCommands", () => {
     expect(delegates.handleSealRee).toHaveBeenCalledOnce();
     expect(delegates.runAction).toHaveBeenCalledWith("build_experiment_environment", {});
     expect(delegates.runStep).toHaveBeenCalledWith("build_experiment_environment", {});
-    expect(delegates.persistWorkspaceFile).toHaveBeenCalledWith(undefined, "run.sh", "echo ok");
+    expect(delegates.persistWorkspaceFile).toHaveBeenCalledWith("run.sh", "echo ok");
   });
 
   it("composes functional updates against reducer-current state", () => {

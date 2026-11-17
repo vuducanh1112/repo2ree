@@ -23,11 +23,7 @@ interface UseReeStepRunsArgs {
   dispatch: React.Dispatch<AppShellAction>;
   ree: ReeEditorViewModel;
   workspaceFiles: FileTreeNode[];
-  persistWorkspaceFile: (
-    previousPath: string | undefined,
-    path: string,
-    content: string,
-  ) => Promise<void>;
+  persistWorkspaceFile: (path: string, content: string) => Promise<void>;
   refreshWorkspace: () => Promise<HydratedWorkspaceSnapshot>;
   showToast: ShowToast;
 }
@@ -62,7 +58,7 @@ export function useReeStepRuns({
   );
   const persistGeneratedWorkspaceFile = useCallback(
     (path: string, content: string) => {
-      void persistWorkspaceFile(undefined, path, content);
+      void persistWorkspaceFile(path, content);
     },
     [persistWorkspaceFile],
   );

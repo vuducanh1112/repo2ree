@@ -242,10 +242,10 @@ class CliClient:
         self._outputs(ree_id, "define", stdin=json.dumps(patch).encode())
 
     def declare_experiment(self, ree_id: str, fixture: Project) -> None:
-        self._write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
-        self._write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
         outputs = [word for path in fixture.outputs for word in ("--output", str(path))]
         self._outputs(ree_id, "define", "--experiment", fixture.experiment, *outputs)
+        self._write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
+        self._write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
 
     def evaluate(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "evaluate")

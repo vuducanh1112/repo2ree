@@ -63,7 +63,6 @@ describe("ReeApi", () => {
     });
     await api.removeSource(reeId);
     await api.putFileContent(reeId, { path: "run.sh", content: "echo ok" });
-    await api.deleteFileContent(reeId, "dir/a b.txt");
     await api.generateScriptCandidates(reeId, [{ kind: "build_experiment_environment" }]);
     await api.lintReeScripts(reeId, [{ kind: "build_experiment_environment" }]);
     await api.checkScriptDraft(reeId, { kind: "build_experiment_environment" }, "set -eu\n", {
@@ -85,20 +84,18 @@ describe("ReeApi", () => {
       ["/api/v1/rees/ree%2F1/source:acquire", "POST"],
       ["/api/v1/rees/ree%2F1/source", "DELETE"],
       ["/api/v1/rees/ree%2F1/files/content", "PUT"],
-      ["/api/v1/rees/ree%2F1/files/content", "DELETE"],
       ["/api/v1/rees/ree%2F1/script-inferences:generate", "POST"],
       ["/api/v1/rees/ree%2F1/script-lints:run", "POST"],
       ["/api/v1/rees/ree%2F1/script-lints:draft", "POST"],
       ["/api/v1/rees/ree%2F1/ree:seal", "POST"],
       ["/api/v1/rees/ree%2F1", "DELETE"],
     ]);
-    expect(client.request.mock.calls[8]?.[2].toString()).toBe("path=dir%2Fa+b.txt");
     // The draft carries only the declarations lint reads — no digest, no
     // size: an editor holds neither, and the route no longer asks.
-    expect(client.request.mock.calls[11]?.[1].body).toBe(
+    expect(client.request.mock.calls[10]?.[1].body).toBe(
       '{"target":{"kind":"build_experiment_environment"},"source":"set -eu\\n","declarations":{"experiment_environment_path":"runtime.tar"}}',
     );
-    expect(client.request.mock.calls[12]?.[1].body).toBe(
+    expect(client.request.mock.calls[11]?.[1].body).toBe(
       '{"include_source":true,"include_experiment_environment":false,"include_results":true}',
     );
   });

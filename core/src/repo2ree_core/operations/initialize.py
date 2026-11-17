@@ -16,6 +16,7 @@ from repo2ree_ree.model import (
     CapturePolicy,
     CheckWorkingEnvironmentDefinition,
     ExperimentEnvironmentDefinition,
+    LaunchDefinition,
     Ree,
     ReeDefinition,
     ReeSubject,
@@ -24,6 +25,7 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
 )
 
 
@@ -51,6 +53,7 @@ def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
             build = store.overlay.absolute(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
             activate = store.overlay.absolute(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT)
             check = store.overlay.absolute(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
+            launch = store.overlay.absolute(RESERVED_LAUNCH_SCRIPT)
             store.write_ree(
                 Ree(
                     subject=ReeSubject(
@@ -68,6 +71,10 @@ def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
                             check_working_environment=CheckWorkingEnvironmentDefinition(
                                 check_working_environment_script_digest=digest_file(check),
                                 check_working_environment_script_size=check.stat().st_size,
+                            ),
+                            launch=LaunchDefinition(
+                                launch_script_digest=digest_file(launch),
+                                launch_script_size=launch.stat().st_size,
                             ),
                         ),
                     )

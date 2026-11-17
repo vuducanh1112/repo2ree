@@ -110,11 +110,6 @@ schema does not define does not load.
 Experiment names and their derived slugs must both be unique, and an
 experiment's `output_paths` must not repeat.
 
-Verification is all-or-nothing: a verify script's path, digest, and size are
-present together or not at all. `runtime_path` is optional only because a fresh
-REE is seeded with a build script before it has a source; the build step refuses
-to run until it is declared.
-
 ### `receipts`
 
 A receipt records one operation that **succeeded**. Failed and cancelled

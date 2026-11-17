@@ -374,18 +374,30 @@ def test_executor_bookkeeping_does_not_create_observation(ree):
     assert "runs/" not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
 
 
-def test_write_delete_capture_scripts_and_command_bytes(ree):
-    from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
+def test_declaring_writing_and_removing_capture_scripts_and_command_bytes(ree):
+    from repo2ree_protocol.command import (
+        PatchReeDefinitionArgs,
+        PatchReeDefinitionCommand,
+        WriteFileArgs,
+        WriteFileCommand,
+    )
 
     script = "ree-scripts/experiments/demo.verify.sh"
     content = "#!/bin/sh\ntest -s result.txt\n"
+    declared = dispatch.run_command(
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"experiments": [{"name": "demo"}]})),
+        log=lambda *args: None,
+        layout=ree,
+    )
+    assert declared.status == "succeeded"
+    assert script in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
     command = WriteFileCommand(args=WriteFileArgs(path=script, content=content))
     result = dispatch.run_command(command, log=lambda *args: None, layout=ree)
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == command.model_dump(mode="json")
     assert git(ree, "show", f"HEAD:overlay/{script}") == content.strip()
     result = dispatch.run_command(
-        DeleteFileCommand(args=DeleteFileArgs(path=script)),
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"experiments": []})),
         log=lambda *args: None,
         layout=ree,
     )
@@ -395,22 +407,16 @@ def test_write_delete_capture_scripts_and_command_bytes(ree):
 
 @pytest.mark.parametrize("path", ["data.tmp", "project/requirements-extra.txt", "ree-scripts/helper.sh"])
 def test_the_overlay_takes_only_the_rees_scripts(ree, path):
-    from repo2ree_protocol.command import DeleteFileArgs, DeleteFileCommand, WriteFileArgs, WriteFileCommand
+    from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
 
-    written = dispatch.run_command(
+    result = dispatch.run_command(
         WriteFileCommand(args=WriteFileArgs(path=path, content="x\n")),
         log=lambda *args: None,
         layout=ree,
     )
-    deleted = dispatch.run_command(
-        DeleteFileCommand(args=DeleteFileArgs(path=path)),
-        log=lambda *args: None,
-        layout=ree,
-    )
-    for result in (written, deleted):
-        assert result.status == "failed"
-        assert result.failure is not None
-        assert result.failure.category == "validation"
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert result.failure.category == "validation"
     assert path not in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
 
 

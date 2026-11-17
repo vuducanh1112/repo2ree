@@ -1,7 +1,8 @@
 """Handler for the write_file operation.
 
-Writes one of the REE's scripts into /ree/overlay/<path> and mirrors it to
-/ree/workspace/<path>. The overlay holds the scripts and nothing else.
+Overwrites one of the REE's scripts in /ree/overlay/<path> and mirrors it to
+/ree/workspace/<path>. The overlay holds the scripts and nothing else: the fixed
+ones, and those of the declared experiments.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from __future__ import annotations
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, replace_definition, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
-from repo2ree_core.operations.handlers.author.definition_authoring import rehydrate_after_file_mutation
+from repo2ree_core.operations.handlers.author.definition_authoring import is_script_of, rehydrate_after_file_mutation
 from repo2ree_core.operations.handlers.author.file_concurrency import check_expected_etag
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -44,6 +45,8 @@ def handle_write_file(
         ree = load_ree(layout, store)
         if ree.seal is not None:
             raise ReePreconditionError("a sealed REE cannot edit authored files")
+        if not is_script_of(ree.subject.definition, args.path):
+            raise ReePreconditionError(f"{args.path} is no script of this REE: declare its experiment first")
     except ReePreconditionError as exc:
         return ActionResult.failed("precondition", str(exc))
     except Exception as exc:

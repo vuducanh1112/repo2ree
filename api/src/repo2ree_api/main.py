@@ -111,8 +111,9 @@ are synchronous. A REE is authored end to end in this order:
    advance each. `listScriptTemplates` gives the starter
    scripts and where they belong.
 2. `createRee` — create the REE in a store; await the returned run. It starts with
-   starter scripts, and a check of the working environment that passes as it comes:
-   edit it to say what the scripts need from the store's machine.
+   every script it has: starter build and activate scripts, a launch that runs each
+   script directly, and a check of the working environment that passes as it comes.
+   `writeReeFile` overwrites a script; none is ever deleted.
 3. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
    `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned
    `upload_url`, relative to this API), then `completeSourceUpload`; await the
@@ -125,11 +126,11 @@ are synchronous. A REE is authored end to end in this order:
 6. `generateScriptCandidates` also proposes the activate experiment environment script;
    `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command
    that does nothing. Experiments run only while that activation's evidence is current.
-7. For each experiment, in this order: `generateScriptCandidates` with its name
-   scaffolds the run script, which refuses to run until you fill in the command;
-   `writeReeFile` writes that and a verify script;
-   `patchReeDefinition` declares the experiment, which needs its run script to
-   exist; then `startExperiment`.
+7. For each experiment, in this order: `patchReeDefinition` declares it, which
+   gives it a starter run script and a verify script that passes; removing or
+   renaming it takes its scripts with it. `generateScriptCandidates` with its name
+   proposes a run script; `writeReeFile` writes that and, if the experiment checks
+   its result, the verify script; then `startExperiment`.
 8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,
    `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.
 9. `sealRee` — freeze the REE; await the returned run, after which `getRee` carries

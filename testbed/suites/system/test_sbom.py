@@ -40,13 +40,8 @@ def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Call
     api.succeed(ree_id, "cross-check-sbom")
     assert standing(api, ree_id) == ("current", "current", "current")
 
-    # The build is undeclared through the definition, never by deleting its script.
-    api.request(
-        "DELETE",
-        f"/api/v1/rees/{ree_id}/files/content",
-        params={"path": BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT},
-        expect=400,
-    )
+    # Every REE has its build script: it is never undeclared.
+    api.patch(ree_id, {"experiment_environment": None}, expect=400)
     assert standing(api, ree_id) == ("current", "current", "current")
     # Undeclaring the experiment environment orphans all three.
     api.patch(ree_id, {"experiment_environment": {"artifact_path": None}})

@@ -24,9 +24,6 @@ hyphens in the script slug. Use a name for the claim, such as `figure-3` or
 
 ![The experiment page with the run and verify scripts](../tutorials/assets/create-first-ree/08-experiment.png)
 
-The verify script is optional. Without one, repo2ree can record that the command
-ran, but a later review cannot decide whether the result reproduced the claim.
-
 ## Generate the run scaffold
 
 After you declare an experiment and build the runtime, select **Generate from

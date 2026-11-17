@@ -70,11 +70,7 @@ export interface PageExperimentsProps {
   // validates against the just-typed script rather than a stale draft.
   onBeforeRun: () => Promise<void>;
   // Each experiment owns a run script stored in the workspace overlay.
-  onPersistWorkspaceFile: (
-    previousPath: string | undefined,
-    path: string,
-    content: string,
-  ) => Promise<void>;
+  onPersistWorkspaceFile: (path: string, content: string) => Promise<void>;
 }
 
 export interface PageHardwareBomProps {
@@ -115,11 +111,7 @@ export interface StepPageProps {
   onGo: (key: AppShellPage) => void;
   onGoFields: () => void;
   onReeSpecChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
-  onPersistWorkspaceFile: (
-    previousPath: string | undefined,
-    path: string,
-    content: string,
-  ) => Promise<void>;
+  onPersistWorkspaceFile: (path: string, content: string) => Promise<void>;
   missing: ReeStepRequirement[];
   params: ReeStepRunParams;
   setParam: (key: string, value: ReeStepParamValue) => void;

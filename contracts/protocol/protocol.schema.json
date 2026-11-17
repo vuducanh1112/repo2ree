@@ -10,7 +10,6 @@
           "build_experiment_environment": "#/$defs/BuildExperimentEnvironmentCommand",
           "check_working_environment": "#/$defs/CheckWorkingEnvironmentCommand",
           "cross_check_sbom": "#/$defs/CrossCheckSbomCommand",
-          "delete_file": "#/$defs/DeleteFileCommand",
           "evaluate_dependency_score": "#/$defs/EvaluateDependencyScoreCommand",
           "generate_hbom": "#/$defs/GenerateHbomCommand",
           "generate_sbom": "#/$defs/GenerateSbomCommand",
@@ -54,9 +53,6 @@
         },
         {
           "$ref": "#/$defs/WriteFileCommand"
-        },
-        {
-          "$ref": "#/$defs/DeleteFileCommand"
         },
         {
           "$ref": "#/$defs/PatchReeDefinitionCommand"
@@ -184,16 +180,6 @@
       "$ref": "#/$defs/LoadReeBundleOutputs"
     },
     "write_file": {
-      "anyOf": [
-        {
-          "$ref": "#/$defs/NoOutputs"
-        },
-        {
-          "$ref": "#/$defs/VersionConflictOutputs"
-        }
-      ]
-    },
-    "delete_file": {
       "anyOf": [
         {
           "$ref": "#/$defs/NoOutputs"
@@ -2448,47 +2434,6 @@
         "result_node"
       ],
       "title": "DecisionTrace",
-      "type": "object"
-    },
-    "DeleteFileArgs": {
-      "additionalProperties": false,
-      "description": "Remove <path> from /ree/overlay/ and restore from upstream or remove from workspace.",
-      "properties": {
-        "path": {
-          "description": "The script's path in the REE, or its KIND[:EXPERIMENT].",
-          "title": "Path",
-          "type": "string"
-        },
-        "expected_etag": {
-          "default": "",
-          "description": "Delete only if the script is still this digest (sha256:...), as `ree status` reports it.",
-          "title": "Expected Etag",
-          "type": "string"
-        }
-      },
-      "required": [
-        "path"
-      ],
-      "title": "DeleteFileArgs",
-      "type": "object"
-    },
-    "DeleteFileCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "delete_file",
-          "default": "delete_file",
-          "title": "Operation",
-          "type": "string"
-        },
-        "args": {
-          "$ref": "#/$defs/DeleteFileArgs"
-        }
-      },
-      "required": [
-        "args"
-      ],
-      "title": "DeleteFileCommand",
       "type": "object"
     },
     "DeleteReeRequest": {

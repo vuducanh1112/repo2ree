@@ -1,10 +1,12 @@
-"""Hydrate authored definition identities from authoritative overlay bytes."""
+"""Hydrate authored definition identities from authoritative overlay bytes, and keep each declaration's scripts."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from repo2ree_authoring.templates import experiment_run_templates, verify_templates
 from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import ReeDefinition, SourceDefinition
@@ -13,9 +15,81 @@ from repo2ree_ree.reserved_paths import (
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     RESERVED_LAUNCH_SCRIPT,
+    RESERVED_OVERLAY_SCRIPTS,
     experiment_run_script_path,
     experiment_verify_script_path,
 )
+
+FIXED_DECLARATIONS = {
+    "experiment_environment": "build experiment environment script",
+    "activate_experiment_environment": "activate experiment environment script",
+    "launch": "launch script",
+    "check_working_environment": "check script",
+}
+
+
+@dataclass(frozen=True)
+class ExperimentScripts:
+    """The scripts a definition patch brings into being for the experiments it declares, and those it takes away.
+
+    An experiment that names the run script of one the patch removes is that one renamed: it takes its scripts along.
+    """
+
+    moved: dict[str, str]
+    seeded: dict[str, str]
+    removed: tuple[str, ...]
+
+
+def experiment_script_paths(name: str) -> tuple[str, str]:
+    return experiment_run_script_path(name), experiment_verify_script_path(name)
+
+
+def experiment_scripts(current: ReeDefinition, patch: dict[str, Any], layout: ReeLayout) -> ExperimentScripts:
+    """Each declared experiment has its run and verify scripts, starting as their defaults; a removed one has none."""
+    if "experiments" not in patch:
+        return ExperimentScripts({}, {}, ())
+    entries = [dict(raw) for raw in patch["experiments"] or []]
+    names = [str(entry.get("name") or "") for entry in entries]
+    declared = {path for name in names for path in experiment_script_paths(name)}
+    gone = {
+        experiment_run_script_path(experiment.name): experiment.name
+        for experiment in current.experiments
+        if experiment.name not in names
+    }
+    renames = [
+        (renamed, name)
+        for entry, name in zip(entries, names, strict=True)
+        if (renamed := gone.pop(str(entry.get("run_script_path") or ""), None)) is not None
+    ]
+    moved = {
+        source: target
+        for renamed, name in renames
+        for source, target in zip(experiment_script_paths(renamed), experiment_script_paths(name), strict=True)
+        if source != target and layout.overlay_file(source).is_file() and not layout.overlay_file(target).is_file()
+    }
+    run_default = experiment_run_templates()[0].body
+    verify_default = verify_templates()[0].body
+    seeded = {
+        path: verify_default if path.endswith(".verify.sh") else run_default
+        for path in sorted(declared - set(moved.values()))
+        if not layout.overlay_file(path).is_file()
+    }
+    removed = tuple(
+        sorted(
+            path
+            for experiment in current.experiments
+            for path in experiment_script_paths(experiment.name)
+            if path not in declared and path not in moved and layout.overlay_file(path).is_file()
+        )
+    )
+    return ExperimentScripts(moved, seeded, removed)
+
+
+def is_script_of(definition: ReeDefinition, path: str) -> bool:
+    """Whether the REE has the script at ``path``: a fixed one, or one of a declared experiment's."""
+    return path in RESERVED_OVERLAY_SCRIPTS or any(
+        path in experiment_script_paths(experiment.name) for experiment in definition.experiments
+    )
 
 
 def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: ReeLayout) -> ReeDefinition:
@@ -25,6 +99,9 @@ def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: Re
     # The source changes only by acquiring or removing it; a whole definition may repeat it unchanged.
     if "source" in patch and _source(patch["source"]) != current.source:
         raise ValueError("the source changes only by acquiring or removing it, not by a definition patch")
+    for field, label in FIXED_DECLARATIONS.items():
+        if field in patch and patch[field] is None and getattr(current, field) is not None:
+            raise ValueError(f"every REE has its {label}: write the script rather than undeclaring it")
     payload = current.model_dump(mode="json")
     payload.update(patch)
     definition = hydrate_definition_payload(payload, layout)

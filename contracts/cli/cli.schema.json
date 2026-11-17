@@ -1010,46 +1010,6 @@
     },
     {
       "words": [
-        "rm"
-      ],
-      "summary": "Delete one of the REE's scripts",
-      "help": "Delete one of the REE's scripts",
-      "runs": true,
-      "operations": [
-        "delete_file"
-      ],
-      "params": [
-        {
-          "name": "--expected-etag",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "Delete only if the script is still this digest (sha256:...), as `ree status` reports it.",
-          "type": "text"
-        },
-        {
-          "name": "path",
-          "kind": "argument",
-          "required": true,
-          "multiple": false,
-          "type": "text"
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "anyOf": [
-          {
-            "$ref": "#/$defs/NoOutputs"
-          },
-          {
-            "$ref": "#/$defs/VersionConflictOutputs"
-          }
-        ]
-      }
-    },
-    {
-      "words": [
         "sbom"
       ],
       "summary": "List the software in the experiment environment (SBOM)",

@@ -10,7 +10,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT_ENVIRONMENT, Api, fault
+from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT_ENVIRONMENT, LAUNCH_SCRIPT, Api, fault
 
 from repo2ree_testbed.faults import (
     CrashApi,
@@ -25,8 +25,12 @@ from repo2ree_testbed.faults import (
     UnlockHistory,
 )
 
-# A script no REE starts with: an experiment's verify script, authored before it is declared.
-UNWRITTEN_SCRIPT = "ree-scripts/experiments/unwritten.verify.sh"
+# An edit to a script every REE has, which the faults below keep from being recorded.
+EDITED_LAUNCH = '#!/usr/bin/env sh\nset -eu\n# edited\nexec "$@"\n'
+
+
+def launch_script(api: Api, ree_id: str) -> bytes:
+    return bytes(api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": LAUNCH_SCRIPT}).content)
 
 
 def build_taking(api: Api, ree_id: str, seconds: int) -> dict[str, Any]:
@@ -128,7 +132,7 @@ def test_a_command_for_a_bench_that_lost_its_connection_is_refused(api: Api, new
     fault(PartitionWorkbench(ree_id=ree_id))
     try:
         assert disconnected(api, ree_id), "the control plane still lists the partitioned workbench"
-        answer = api.write(ree_id, UNWRITTEN_SCRIPT, "#!/bin/sh\n", expect=None)
+        answer = api.write(ree_id, LAUNCH_SCRIPT, EDITED_LAUNCH, expect=None)
     finally:
         fault(HealWorkbench(ree_id=ree_id))
     assert answer.status_code == 503, answer.text
@@ -163,11 +167,12 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
     run: dict[str, Any] = api.post(f"/api/v1/rees/{ree_id}/build-experiment-environment")
     api.wait_for_status(ree_id, run["run_id"], "running")
 
+    launch_before = launch_script(api, ree_id)
     fault(LockHistory(ree_id=ree_id))
     try:
         settled = api.wait(ree_id, run, timeout=120)
         # An edit meanwhile cannot be recorded either, and is not kept.
-        refused = api.write(ree_id, UNWRITTEN_SCRIPT, "#!/bin/sh\n", expect=None)
+        refused = api.write(ree_id, LAUNCH_SCRIPT, EDITED_LAUNCH, expect=None)
     finally:
         fault(UnlockHistory(ree_id=ree_id))
 
@@ -175,6 +180,5 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
     assert settled["status"] == "failed", settled
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
     assert refused.status_code >= 400, refused.text
-    unwritten = api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": UNWRITTEN_SCRIPT}, expect=None)
-    assert unwritten.status_code == 404, unwritten.text
+    assert launch_script(api, ree_id) == launch_before
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"

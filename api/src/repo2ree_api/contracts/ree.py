@@ -131,7 +131,6 @@ class FileMutationResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     updated_at: str | None = None
-    deleted_at: str | None = None
     etag: str | None = None
 
 

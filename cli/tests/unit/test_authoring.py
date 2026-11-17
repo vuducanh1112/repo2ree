@@ -12,6 +12,7 @@ from click.testing import CliRunner, Result
 
 import repo2ree_cli.cli as cli_module
 import repo2ree_core.operations.session as session_module
+from repo2ree_authoring.templates import experiment_run_templates, verify_templates
 from repo2ree_cli.cli import REFUSED, cli
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -82,7 +83,7 @@ def test_status_gives_an_agent_the_revision_and_the_digest_of_each_script(root: 
     assert build.path == BUILD_SCRIPT
     assert build.etag is not None
     assert build.etag.startswith("sha256:")
-    assert next(script for script in report.scripts if script.kind == "launch").etag is None
+    assert all(script.etag is not None for script in report.scripts if script.kind != "experiment_verify")
 
 
 def test_a_guarded_write_names_the_digest_status_reports(root: Path) -> None:
@@ -127,19 +128,29 @@ def test_define_changes_the_fields_it_is_given_and_keeps_the_rest(root: Path) ->
     )
 
 
-def test_define_declares_an_experiment_whose_run_script_is_written(root: Path) -> None:
-    unwritten = ree(root, "define", "--experiment", "fig", "--output", "out.txt")
-    assert unwritten.exit_code == REFUSED
-    assert "is not authored" in unwritten.stderr
+def test_define_declares_an_experiment_with_its_scripts_and_removes_them_with_it(root: Path) -> None:
+    layout = ReeLayout(root=root)
+    run, verify = (
+        layout.overlay_file("ree-scripts/experiments/fig.sh"),
+        layout.overlay_file("ree-scripts/experiments/fig.verify.sh"),
+    )
+    undeclared = ree(root, "write", "experiment_run:fig", input="echo hi > out.txt\n")
+    assert undeclared.exit_code == REFUSED
+    assert "declare its experiment first" in undeclared.stderr
 
-    assert ree(root, "write", "experiment_run:fig", input="echo hi > out.txt\n").exit_code == 0
     assert ree(root, "define", "--experiment", "fig", "--output", "out.txt").exit_code == 0
+    assert (run.read_text(), verify.read_text()) == (experiment_run_templates()[0].body, verify_templates()[0].body)
+    assert ree(root, "write", "experiment_run:fig", input="echo hi > out.txt\n").exit_code == 0
     assert ree(root, "define", "--experiment", "fig", "--output", "out.csv").exit_code == 0
 
-    [experiment] = ReeDirectory(ReeLayout(root=root)).read_ree().subject.definition.experiments
+    [experiment] = ReeDirectory(layout).read_ree().subject.definition.experiments
     assert (experiment.name, [str(path) for path in experiment.output_paths]) == ("fig", ["out.csv"])
+    assert experiment.verify_script_path == "ree-scripts/experiments/fig.verify.sh"
+    assert run.read_text() == "echo hi > out.txt\n"
     assert ree(root, "define", "--remove-experiment", "fig").exit_code == 0
-    assert not ReeDirectory(ReeLayout(root=root)).read_ree().subject.definition.experiments
+    assert not ReeDirectory(layout).read_ree().subject.definition.experiments
+    assert not run.exists()
+    assert not verify.exists()
 
 
 def test_define_still_takes_a_json_patch_on_stdin(root: Path) -> None:
@@ -212,11 +223,12 @@ def test_edit_writes_what_the_editor_saved(root: Path, monkeypatch: pytest.Monke
 
     monkeypatch.setattr("click.edit", editor)
 
+    assert ree(root, "define", "--experiment", "fig").exit_code == 0
     result = ree(root, "edit", "experiment_run:fig")
 
     assert result.exit_code == 0, result.output
     assert result.stdout.strip() == "wrote ree-scripts/experiments/fig.sh"
-    assert opened[0]  # A script not written yet starts from its template.
+    assert opened[0] == experiment_run_templates()[0].body
     assert ReeLayout(root=root).overlay_file("ree-scripts/experiments/fig.sh").read_text() == "echo edited\n"
 
 
@@ -275,8 +287,8 @@ def test_acquiring_a_review_source_opens_a_review_of_its_own(root: Path, monkeyp
 
 
 def test_review_all_runs_every_step_in_one_review(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert ree(root, "write", "experiment_run:fig", input="echo hi\n").exit_code == 0
     assert ree(root, "define", "--experiment", "fig").exit_code == 0
+    assert ree(root, "write", "experiment_run:fig", input="echo hi\n").exit_code == 0
     ran = _ran(monkeypatch)
 
     result = ree(root, "--json", "review", "all", "--basis", "independent")

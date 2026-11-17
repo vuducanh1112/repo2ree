@@ -90,27 +90,6 @@ def test_file_write_conflict_from_the_workbench_maps_to_409(
     assert dispatched[0].args.expected_etag == stale
 
 
-def test_file_delete_conflict_from_the_workbench_maps_to_409(
-    client: TestClient,
-    online_ree: ReeRoute,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    stale = _etag(b"old")
-    monkeypatch.setattr(
-        command_dispatcher,
-        "dispatch_action",
-        lambda handle, command, run_id, log: _conflict_result("build.sh", stale, _etag(b"current")),
-    )
-
-    resp = client.delete(
-        f"/api/v1/rees/{online_ree.ree_id}/files/content",
-        params={"path": "build.sh", "if_match": stale},
-    )
-
-    assert resp.status_code == 409
-    assert resp.json()["error"]["code"] == "version_conflict"
-
-
 def test_file_write_returns_new_content_etag(
     client: TestClient,
     online_ree: ReeRoute,
@@ -130,13 +109,6 @@ def test_file_write_returns_new_content_etag(
     assert resp.status_code == 200
     assert resp.json()["etag"] == _etag(b"next")
     assert "history" not in resp.json()
-
-
-def test_file_delete_answers_the_mutation_and_nothing_else(client, online_ree, monkeypatch):
-    monkeypatch.setattr(command_dispatcher, "dispatch_action", lambda *args: ActionResult(status="succeeded"))
-    resp = client.delete(f"/api/v1/rees/{online_ree.ree_id}/files/content", params={"path": "build.sh"})
-    assert resp.status_code == 200
-    assert resp.json() == {"updated_at": None, "deleted_at": None, "etag": None}
 
 
 def test_workbench_command_failure_maps_to_400_with_operation_code(

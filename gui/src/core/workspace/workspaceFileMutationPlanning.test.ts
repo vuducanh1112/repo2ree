@@ -6,12 +6,11 @@ import {
 } from "./workspaceFileMutationPlanning";
 
 describe("workspaceFileMutationPlanning", () => {
-  it("plans workspace file persistence including previous-path deletion", () => {
-    const result = planWorkspaceFilePersistence(" old/name.txt ", "new/name.txt");
+  it("plans workspace file persistence at the trimmed path", () => {
+    const result = planWorkspaceFilePersistence(" new/name.txt ");
 
-    expect(result.normalizedPreviousPath).toBe("old/name.txt");
     expect(result.normalizedPath).toBe("new/name.txt");
-    expect(result.shouldDeletePrevious).toBe(true);
+    expect(result.successMessage).toBe("Saved new/name.txt to workspace");
   });
 
   it("plans workspace file download names safely", () => {

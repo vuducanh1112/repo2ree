@@ -100,8 +100,8 @@ export function PageBuildExperimentEnvironment({
 
   // Save a file to the overlay — does not change the selected build script.
   const handleSaveFile = useCallback(
-    (previousPath: string | undefined, path: string, content: string) => {
-      void onPersistWorkspaceFile?.(previousPath, path, content);
+    (path: string, content: string) => {
+      void onPersistWorkspaceFile?.(path, content);
     },
     [onPersistWorkspaceFile],
   );
@@ -109,7 +109,7 @@ export function PageBuildExperimentEnvironment({
   const handleSaveReservedBuildExperimentEnvironmentScript = useCallback(
     (content: string) => {
       if (!scriptPath) return;
-      handleSaveFile(undefined, scriptPath, content);
+      handleSaveFile(scriptPath, content);
     },
     [handleSaveFile, scriptPath],
   );
@@ -130,7 +130,7 @@ export function PageBuildExperimentEnvironment({
   const handleSaveActivateScript = useCallback(
     (content: string) => {
       if (!activatePath) return;
-      handleSaveFile(undefined, activatePath, content);
+      handleSaveFile(activatePath, content);
     },
     [handleSaveFile, activatePath],
   );

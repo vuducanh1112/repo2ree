@@ -274,9 +274,9 @@ class Api:
     def experiment(
         self, ree_id: str, *, run: str | None = None, verify: str | None = None, fixture: Project = INSTANT
     ) -> dict[str, Any]:
+        self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": list(fixture.outputs)}]})
         self.write(ree_id, fixture.experiment_script, run or fixture.recipe("experiment.sh"))
         self.write(ree_id, fixture.experiment_verify, verify or fixture.recipe("experiment.verify.sh"))
-        self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": list(fixture.outputs)}]})
         return self.stage(ree_id, f"experiments/{fixture.experiment}:run", watch=fixture.watch)
 
     def author(self, ree_id: str, fixture: Project = INSTANT) -> None:

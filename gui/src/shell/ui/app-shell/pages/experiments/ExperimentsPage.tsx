@@ -4,7 +4,6 @@ import {
   patchExperiment,
 } from "@core/ree/experimentOps";
 import { experimentIndexFromField, experimentValidation } from "@core/ree/experimentRules";
-import { planExperimentRunScriptSeed } from "@core/ree/experimentScriptSeeding";
 import type { ReeExperiment, ReeSpec } from "@core/ree/ReeSpec";
 import { findFileByWorkspacePath } from "@core/workspace/fileTreeTraversal";
 import { useScriptTemplates } from "@shell/data/scriptTemplates/catalog";
@@ -100,9 +99,12 @@ export function PageExperiments({
         runScript: scriptPath,
       }),
     );
-    // Seed the script with the suggested command as a starting point; the author
-    // adapts it to enter their runtime (e.g. wrapping it in `docker run …`).
-    void onPersistWorkspaceFile(undefined, scriptPath, suggestionTemplate(suggestion.command));
+    // The suggested command is the script's starting point; the author adapts it
+    // to enter their runtime (e.g. wrapping it in `docker run …`).
+    setSuggestedScripts((pending) => ({
+      ...pending,
+      [scriptPath]: suggestionTemplate(suggestion.command),
+    }));
     setSelectedIndex(newIndex);
     onFocusedFieldChange(`experiments[${newIndex}].name`);
   };
@@ -126,63 +128,22 @@ export function PageExperiments({
           .map((e) => e.name.trim())
           .filter(Boolean);
 
-  // Naming an experiment declares it, and a declaration names authored bytes:
-  // the backend reads the run script's digest and size off the overlay and
-  // rejects the whole definition patch when the file is not there. The quick-add
-  // path above already writes the script as it declares; this settles the same
-  // for an experiment named by hand — seed the backend's own starter template,
-  // or carry the authored script over when a rename moved its destination.
-  const runScriptSeed = (() => {
-    if (locked || !templates || selectedIndex === null) return null;
-    const experiment = experiments[selectedIndex];
-    if (!experiment) return null;
-    const { trimmedName, isDuplicateName, isInvalidName } = experimentValidation(
-      experiment,
-      otherNames,
-    );
-    // A name the backend would refuse is not worth seeding for, and two
-    // experiments sharing one would seed over each other's script.
-    if (trimmedName === "" || isDuplicateName || isInvalidName) return null;
-    const files = workspaceFiles || [];
-    const targetPath = experimentRunScriptPath(templates, experiment.name);
-    return {
-      index: selectedIndex,
-      declarePath: experiment.runScript === targetPath ? "" : targetPath,
-      write: planExperimentRunScriptSeed({
-        name: experiment.name,
-        declaredPath: experiment.runScript,
-        targetPath,
-        targetExists: !!findFileByWorkspacePath(files, targetPath),
-        declaredContent: experiment.runScript
-          ? (findFileByWorkspacePath(files, experiment.runScript)?.content ?? null)
-          : null,
-        templateBody: templates.experiment.templates.find((entry) => entry.is_default)?.body ?? "",
-      }),
-    };
-  })();
-
-  // Debounced so typing a name writes one file, not one per keystroke. The
-  // declaration is debounced too (autosave), and a patch that loses the race is
-  // retried on the next edit — the write below is itself one, since it
-  // refreshes the workspace.
-  const seedIndex = runScriptSeed?.index;
-  const seedDeclarePath = runScriptSeed?.declarePath;
-  const seedFromPath = runScriptSeed?.write?.fromPath;
-  const seedToPath = runScriptSeed?.write?.toPath;
-  const seedContent = runScriptSeed?.write?.content;
-  // Both callbacks are recreated every render, so the effect reads them through
-  // a ref; keying it on the planned write alone (all primitives) is what keeps
-  // it from rescheduling forever.
-  const seedActions = useRef({ persist: onPersistWorkspaceFile, declare: updateExperiment });
-  seedActions.current = { persist: onPersistWorkspaceFile, declare: updateExperiment };
+  // Declaring an experiment gives it its scripts, so a suggestion's command is
+  // written once the declaration has brought the run script into the workspace.
+  const [suggestedScripts, setSuggestedScripts] = useState<Record<string, string>>({});
+  const persistRef = useRef(onPersistWorkspaceFile);
+  persistRef.current = onPersistWorkspaceFile;
   useEffect(() => {
-    if (seedIndex === undefined || (!seedToPath && !seedDeclarePath)) return;
-    const timer = setTimeout(() => {
-      if (seedToPath) void seedActions.current.persist(seedFromPath, seedToPath, seedContent ?? "");
-      if (seedDeclarePath) seedActions.current.declare(seedIndex, { runScript: seedDeclarePath });
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [seedIndex, seedDeclarePath, seedFromPath, seedToPath, seedContent]);
+    const files = workspaceFiles || [];
+    const declared = Object.keys(suggestedScripts).filter((path) =>
+      findFileByWorkspacePath(files, path),
+    );
+    if (declared.length === 0) return;
+    for (const path of declared) void persistRef.current(path, suggestedScripts[path] ?? "");
+    setSuggestedScripts((pending) =>
+      Object.fromEntries(Object.entries(pending).filter(([path]) => !declared.includes(path))),
+    );
+  }, [suggestedScripts, workspaceFiles]);
 
   // Run lives here (not in the detail body) so its controls can sit in the
   // page header's top-right, while the detail body still shows the result.
@@ -258,13 +219,13 @@ export function PageExperiments({
             }
             onUpdate={(patch) => updateExperiment(selectedIndex, patch)}
             onSaveScript={(path, content) => {
-              void onPersistWorkspaceFile(undefined, path, content);
+              void onPersistWorkspaceFile(path, content);
               if (path !== selectedExperiment.runScript) {
                 updateExperiment(selectedIndex, { runScript: path });
               }
             }}
             onSaveVerifyScript={(path, content) => {
-              void onPersistWorkspaceFile(undefined, path, content);
+              void onPersistWorkspaceFile(path, content);
               if (path !== selectedExperiment.verifyScript) {
                 updateExperiment(selectedIndex, { verifyScript: path });
               }

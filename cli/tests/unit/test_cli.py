@@ -463,6 +463,7 @@ def test_cat_refuses_a_path_out_of_the_ree_as_a_result_under_json(initialized: P
 
 
 def test_show_reflects_workspace_files(initialized: Path) -> None:
+    assert machine(initialized, "define", "--experiment", "hello").exit_code == 0
     assert machine(initialized, "write", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
 
     result = machine(initialized, "show")
@@ -474,6 +475,7 @@ def test_show_reflects_workspace_files(initialized: Path) -> None:
 
 
 def test_show_summary_omits_inline_file_content(initialized: Path) -> None:
+    assert machine(initialized, "define", "--experiment", "hello").exit_code == 0
     assert machine(initialized, "write", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
 
     result = machine(initialized, "show", "--summary")

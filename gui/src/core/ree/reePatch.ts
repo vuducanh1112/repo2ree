@@ -37,9 +37,11 @@ function serializeCatalogMetadata(metadata: ReeCatalogMetadata): Record<string, 
   };
 }
 
+// The run script it was declared with names the experiment a rename came from, so its scripts move with it.
 function serializeExperiment(experiment: ReeExperiment): Record<string, unknown> {
   return {
     name: experiment.name,
+    run_script_path: experiment.runScript || null,
     output_paths: experiment.outputPaths,
   };
 }
