@@ -47,11 +47,8 @@ class FakeRunner:
         written: Sequence[str] = WRITTEN,
         codes: dict[str, int | BaseException] | None = None,
         archives: Sequence[str] = (),
-        free: Sequence[int] = (100,),
     ) -> None:
         self.archives = list(archives)
-        # The GiB free each time the disk is read, the last one from then on.
-        self.free = list(free)
         self.states = list(states)
         self.code = code
         self.written = list(written)
@@ -75,8 +72,6 @@ class FakeRunner:
                 return SSH_FAILED, ""
             state, command = self.states.pop(0) if self.states else ("fetched", "")
             return 0, f"{state}\n{command}\n"
-        if "df -BG" in argv[-1]:
-            return 0, f"{self.free.pop(0) if len(self.free) > 1 else self.free[0]}G\n"
         if "ls dist/images" in argv[-1]:
             return 0, "".join(f"{name}\n" for name in self.archives)
         if REPORT in argv[-1]:
@@ -424,22 +419,21 @@ def test_collecting_garbage_prunes_the_clone_then_bounds_dockers_cache_and_image
     assert clone < cache < images
     assert "docker builder prune -a -f --filter until=24h" in collection
     assert "docker image prune -a -f --filter until=168h" in collection
+    assert "nix-collect-garbage" in collection
 
 
-def test_collecting_garbage_refuses_while_a_job_runs_and_here() -> None:
+def test_collecting_garbage_leaves_a_machine_running_a_job_alone(capsys: pytest.CaptureFixture[str]) -> None:
     runner = FakeRunner(("running", GATE))
-    with pytest.raises(SystemExit, match="vm is running a job"):
-        Machine("vm", VM, runner).gc()
+    Machine("vm", VM, runner).gc()
     assert not runner.ran("builder prune")
-    with pytest.raises(SystemExit, match="run `just prune` here"):
-        Machine(LOCAL, MachineConfig(), FakeRunner()).gc()
+    assert "collecting nothing while it runs" in capsys.readouterr().out
 
 
-def test_tidying_prunes_a_machines_runs_to_the_newest_per_tier_once_their_results_are_here() -> None:
+def test_tidying_prunes_a_machines_runs_to_the_newest_three_per_tier_once_their_results_are_here() -> None:
     runner = FakeRunner(("fetched", SYSTEM))
     Machine("vm", VM, runner).tidy()
     [tidy] = runner.ran("repo2ree_testbed prune")
-    assert "prune --keep-runs 1 --keep-suite 1" in tidy
+    assert "prune --keep-runs 3 --keep-suite 3" in tidy
 
 
 @pytest.mark.parametrize("state", ["running", "ended"])
@@ -449,42 +443,17 @@ def test_tidying_prunes_nothing_while_a_jobs_results_are_not_here(state: str) ->
     assert not runner.ran("repo2ree_testbed prune")
 
 
-def test_making_room_collects_garbage_when_the_disk_is_short(capsys: pytest.CaptureFixture[str]) -> None:
-    runner = FakeRunner(("fetched", SYSTEM), free=(12, 60))
-    Machine("vm", VM, runner).make_room()
-
-    assert ">> vm has 12 GiB free, under 40: collecting garbage first" in capsys.readouterr().out
-    [collection] = runner.ran("builder prune")
-    assert "nix-collect-garbage" in collection
-
-
-def test_making_room_refuses_a_disk_still_short() -> None:
-    runner = FakeRunner(("none", ""), free=(12, 30))
-    with pytest.raises(SystemExit, match="vm still has only 30 GiB free, under 40"):
-        Machine("vm", VM, runner).make_room()
-
-
-def test_making_room_leaves_a_disk_with_room_or_a_running_job_alone() -> None:
-    roomy = FakeRunner(("none", ""))
-    Machine("vm", VM, roomy).make_room()
-    busy = FakeRunner(("running", GATE), free=(5,))
-    Machine("vm", VM, busy).make_room()
-    assert not roomy.ran("builder prune")
-    assert not busy.ran("builder prune")
-    assert not busy.ran("df -BG")
-
-
 def test_a_run_itself_neither_collects_garbage_nor_prunes() -> None:
-    runner = FakeRunner(("none", ""), ("ended", SYSTEM), free=(5,))
+    runner = FakeRunner(("none", ""), ("ended", SYSTEM))
     assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
-    assert not runner.ran("df -BG")
+    assert not runner.ran("builder prune")
     assert not runner.ran("repo2ree_testbed prune")
 
 
-def test_here_there_is_nothing_to_make_room_for_or_tidy() -> None:
+def test_here_there_is_nothing_to_collect_or_tidy() -> None:
     runner = FakeRunner()
     local = Machine(LOCAL, MachineConfig(), runner)
-    local.make_room()
+    local.gc()
     local.tidy()
     assert runner.calls == []
 

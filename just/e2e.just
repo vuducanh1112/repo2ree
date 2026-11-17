@@ -109,36 +109,31 @@ _tier-showcase jobs *select: build-e2e-bundles (_load-environment "bare") (_load
 
 # Run a recipe on a machine (e.g. `just on vm test-backend-integration`) and bring back what it wrote under test-artifacts/, .receipts/, and logs/.
 [group('Machines')]
-on machine +recipe: (machine-make-room machine) && (machine-tidy machine)
+on machine +recipe: (machine-gc machine) && (machine-tidy machine)
     python -m repo2ree_testbed machine run {{ quote(machine) }} {{ recipe }}
 
 # Run a recipe on a machine against the working tree, committed beside the branch (e.g. `just on-wip vm test-e2e-faults 8 test_a_paused`).
 [group('Machines')]
-on-wip machine +recipe: (machine-make-room machine) && (machine-tidy machine)
+on-wip machine +recipe: (machine-gc machine) && (machine-tidy machine)
     python -m repo2ree_testbed machine run --wip {{ quote(machine) }} {{ recipe }}
 
 # Run the assurance gate on a machine with that machine's jobs, and check its receipt holds for HEAD.
 [group('Machines')]
-gate-e2e-on machine="local" jobs="": (machine-make-room machine) && (machine-tidy machine)
+gate-e2e-on machine="local" jobs="": (machine-gc machine) && (machine-tidy machine)
     python -m repo2ree_testbed machine gate {{ quote(machine) }} {{ if jobs != "" { "--jobs " + quote(jobs) } else { "" } }}
     python -m scripts.gates.assurance_gate verify
 
-# Manage the machines: `list`; `cancel <machine>` stops its job and cleans up after it; `remove <machine>` takes its dev container down and deletes its clone. Cleaning up has recipes of its own: machine-gc, machine-make-room, machine-tidy.
+# Manage the machines: `list`; `cancel <machine>` stops its job and cleans up after it; `remove <machine>` takes its dev container down and deletes its clone. Cleaning up has recipes of its own, which every run on a machine depends on: machine-gc before it, machine-tidy after it.
 [group('Machines')]
 machine +args:
     python -m repo2ree_testbed machine {{ args }}
 
-# Collect garbage on a machine: prune its clone, its dev container's unrooted Nix store, Docker build cache unused for a day, and images unused for a week.
+# Before a run on a machine, collect garbage there: prune its clone, its dev container's unrooted Nix store, Docker build cache unused for a day, and images unused for a week.
 [group('Machines')]
 machine-gc machine:
     python -m repo2ree_testbed machine gc {{ quote(machine) }}
 
-# Before a run on a machine: collect garbage there (as machine-gc) when its disk has under 40 GiB free, and refuse it if still short.
-[group('Machines')]
-machine-make-room machine:
-    python -m repo2ree_testbed machine make-room {{ quote(machine) }}
-
-# After a run on a machine: prune its test artifacts to the newest run per tier, now that the run's results are here.
+# After a run on a machine: prune its test artifacts to the newest three runs per tier (their archives stay only there), now that the run's results are here.
 [group('Machines')]
 machine-tidy machine:
     python -m repo2ree_testbed machine tidy {{ quote(machine) }}

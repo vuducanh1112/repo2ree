@@ -26,10 +26,10 @@ machine shows it again and brings its results back before starting anything of i
 `cancel` stops the job; `remove` takes the container down and deletes the clone.
 
 A machine is kept bounded by steps of their own, which the just recipes that run on a machine
-depend on (`just machine-make-room`, `just machine-tidy`): before a job, `make-room` runs `gc`
-when the machine's disk is short of MIN_FREE_GIB, and refuses a machine still short of it rather
-than leave it to fill up mid-run; after it, `tidy` prunes its test artifacts to the newest run of
-each tier, which keeps the experiment environment tarballs and archives of the last run there.
+depend on (`just machine-gc`, `just machine-tidy`): before every job, `gc` collects what nothing
+uses, so a run starts with all the room the machine can give it; after it, `tidy` prunes its test
+artifacts to the newest MACHINE_KEEPS_RUNS of each tier, whose experiment environment tarballs and
+archives stay only there.
 """
 
 from __future__ import annotations
@@ -90,10 +90,9 @@ PROJECT = "repo2ree-dev"
 CACHE_KEPT_FOR = "24h"
 # How long `gc` keeps an image nothing runs: a week of rebuilds stays warm.
 IMAGES_KEPT_FOR = "168h"
-# What a job needs free on the machine's disk to start: a showcase tier at 8 jobs writes about 20 GiB.
-MIN_FREE_GIB = 40
-# The runs per tier a machine keeps once their results are here: the newest, with its archives.
-MACHINE_KEEPS_RUNS = 1
+# The runs per tier a machine keeps once their results are here, as many as of the overview: their
+# experiment environment tarballs and archives stay only there.
+MACHINE_KEEPS_RUNS = 3
 
 
 class Runner(Protocol):
@@ -239,14 +238,17 @@ class Machine:
         the dev container, the Nix store paths nothing roots; on the host, build cache unused for
         CACHE_KEPT_FOR and images nothing runs that are older than IMAGES_KEPT_FOR. The running dev
         container and its image stay, and so do the bundle stores, which the testbed prunes itself.
+
+        Here, a run prunes test-artifacts itself; there, a machine running a job is left alone, since
+        a run on it shows that job rather than starting one.
         """
         if not self.remote:
-            raise SystemExit(f">> {self.name} is this checkout; run `just prune` here")
-        if self.job().state == "running":
-            raise SystemExit(f">> {self.name} is running a job; let it end, or: just machine cancel {self.name}")
-        self._collect()
-
-    def _collect(self) -> None:
+            print(f">> {self.name} is this checkout; `just prune` bounds it")
+            return
+        job = self.job()
+        if job.state == "running":
+            print(f">> {self.name} is running `{job.command}`; collecting nothing while it runs")
+            return
         # A clone of a commit before `just prune` existed skips it rather than failing on it.
         steps = "just stack-clean; just clean-workbenches; just --show prune >/dev/null 2>&1 && just prune"
         clone = shlex.join([*SHELL, "bash", "-c", steps])
@@ -264,37 +266,8 @@ class Machine:
         )
         self._require(self.runner.call(self._on_host(script)), "collect garbage")
 
-    def free_gib(self) -> int:
-        """The GiB free on the machine's disk, where its clone and Docker are."""
-        read, output = self.runner.capture(self._on_host("df -BG --output=avail / | tail -n 1"))
-        self._require(read, "read its free disk")
-        return int(output.strip().rstrip("G"))
-
-    def make_room(self) -> None:
-        """Collect garbage when the disk is short of MIN_FREE_GIB, and refuse a disk still short of it.
-
-        A machine running a job is left alone: a run there shows that job rather than starting one.
-        """
-        if not self.remote:
-            return
-        job = self.job()
-        if job.state == "running":
-            print(f">> {self.name} is running `{job.command}`; leaving its disk as it is")
-            return
-        free = self.free_gib()
-        if free >= MIN_FREE_GIB:
-            return
-        print(f">> {self.name} has {free} GiB free, under {MIN_FREE_GIB}: collecting garbage first")
-        self._collect()
-        free = self.free_gib()
-        if free < MIN_FREE_GIB:
-            raise SystemExit(
-                f">> {self.name} still has only {free} GiB free, under {MIN_FREE_GIB}: free some there"
-                " (docker system df) before running on it"
-            )
-
     def tidy(self) -> None:
-        """Prune the clone's test artifacts to the newest run per tier, once the last job's results are here.
+        """Prune the clone's test artifacts to the newest runs per tier, once the last job's results are here.
 
         Here, a run prunes test-artifacts itself; there, a job running or not yet brought back keeps all.
         """
@@ -533,10 +506,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "gc", help="prune the clone's generated trees, Docker's build cache, and unused images there"
     ).add_argument("machine")
     commands.add_parser(
-        "make-room", help=f"run gc there when its disk has under {MIN_FREE_GIB} GiB free; refuse it if still short"
-    ).add_argument("machine")
-    commands.add_parser(
-        "tidy", help="prune its test artifacts to the newest run per tier, once the last job's results are here"
+        "tidy",
+        help=f"prune its test artifacts to the newest {MACHINE_KEEPS_RUNS} runs per tier once its results are here",
     ).add_argument("machine")
     commands.add_parser(
         "fetch-archives", help="bring its image archive sets (just archive-images) here, for publish-candidate"
@@ -568,9 +539,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "gc":
         machine.gc()
-        return 0
-    if args.command == "make-room":
-        machine.make_room()
         return 0
     if args.command == "tidy":
         machine.tidy()
