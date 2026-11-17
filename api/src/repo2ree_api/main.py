@@ -113,26 +113,26 @@ are synchronous. A REE is authored end to end in this order:
 2. `createRee` — create the REE in a store; await the returned run. It starts with
    every script it has: starter build and activate scripts, a launch that runs each
    script directly, and a check of the working environment that passes as it comes.
-   `writeReeFile` overwrites a script; none is ever deleted.
-3. Bring in source, either by reference (`startSourceAcquisition`) or by upload —
+   `writeScript` overwrites a script; none is ever deleted.
+3. Bring in source, either by reference (`acquireSource`) or by upload —
    `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned
    `upload_url`, relative to this API), then `completeSourceUpload`; await the
    extraction run.
 4. `getReeState` — compact durable state plus file metadata, never inline contents;
    read file bytes via `readReeFile`. Its `audit` says what is still missing and why.
-5. Build: `generateScriptCandidates` proposes a build script from the project.
-   `writeReeFile` writes it, `patchReeDefinition` declares its
-   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.
-6. `generateScriptCandidates` also proposes the activate experiment environment script;
-   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command
+5. Build: `suggestScripts` proposes a build script from the project.
+   `writeScript` writes it, `patchReeDefinition` declares its
+   `build_experiment_environment.experiment_environment_path`, then `buildExperimentEnvironment`.
+6. `suggestScripts` also proposes the activate experiment environment script;
+   `writeScript` writes it, then `activateExperimentEnvironment` runs it alone, around a command
    that does nothing. Experiments run only while that activation's evidence is current.
 7. For each experiment, in this order: `patchReeDefinition` declares it, which
    gives it a starter run script and a verify script that passes; removing or
-   renaming it takes its scripts with it. `generateScriptCandidates` with its name
-   proposes a run script; `writeReeFile` writes that and, if the experiment checks
-   its result, the verify script; then `startExperiment`.
-8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,
-   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.
+   renaming it takes its scripts with it. `suggestScripts` with its name
+   proposes a run script; `writeScript` writes that and, if the experiment checks
+   its result, the verify script; then `runExperiment`.
+8. Optionally assess: `evaluateReproducibility` / `getEvaluateReport`, `generateSbom`,
+   `crossCheckSbom`, and record catalog metadata via `patchReeDefinition`.
 9. `sealRee` — freeze the REE; await the returned run, after which `getRee` carries
    `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.
 10. `deleteRee` — delete the REE from its store.
@@ -144,9 +144,9 @@ in the new one as in step 3.
 
 1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and
    `loadReeBundle` with the archive; await the load run.
-2. `startSourceReview` opens the review and its run reproduces the source;
+2. `reviewAcquireSource` opens the review and its run reproduces the source;
    `listReviews` gives its `review_id`.
-3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each
+3. `reviewBuildExperimentEnvironment`, `reviewActivateExperimentEnvironment`, and `reviewRunExperiment` for each
    experiment; await each run. A review's `status` is about the runs so far, so run
    every step you want checked.
 4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`

@@ -23,6 +23,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
@@ -58,7 +59,8 @@ class CreateGenerateHbomRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/generate-hbom",
-    operation_id="startHbomGeneration",
+    operation_id="observeHardware",
+    openapi_extra=runs("observe_hardware"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -67,7 +69,6 @@ def create_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload)
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="hbom",
                 action="observe_hardware",
                 command=ObserveHardwareCommand(),
                 run_id_prefix="hbom",
@@ -90,7 +91,8 @@ class CreateEvaluateRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/evaluate",
-    operation_id="startEvaluate",
+    operation_id="evaluateReproducibility",
+    openapi_extra=runs("evaluate_reproducibility"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -99,7 +101,6 @@ def create_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload) -> RunSu
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="evaluate",
                 action="evaluate_reproducibility",
                 command=EvaluateReproducibilityCommand(args=EvaluateReproducibilityArgs(strict=payload.strict)),
                 run_id_prefix="evaluate",
@@ -157,7 +158,8 @@ class CreateBuildExperimentEnvironmentRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/build-experiment-environment",
-    operation_id="startBuildExperimentEnvironment",
+    operation_id="buildExperimentEnvironment",
+    openapi_extra=runs("build_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -168,7 +170,6 @@ def create_build_experiment_environment_run(
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="build_experiment_environment",
                 action="build_experiment_environment",
                 command=BuildExperimentEnvironmentCommand(),
                 run_id_prefix="build_experiment_environment",
@@ -201,7 +202,8 @@ class CreateGenerateSbomRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/generate-sbom",
-    operation_id="startSbomGeneration",
+    operation_id="generateSbom",
+    openapi_extra=runs("generate_sbom"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -210,7 +212,6 @@ def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload)
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="sbom",
                 action="generate_sbom",
                 command=GenerateSbomCommand(),
                 run_id_prefix="sbom",
@@ -233,7 +234,8 @@ class CreateCrossCheckSbomRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/cross-check-sbom",
-    operation_id="startSbomCrossCheck",
+    operation_id="crossCheckSbom",
+    openapi_extra=runs("cross_check_sbom"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -242,7 +244,6 @@ def create_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPay
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="crosscheck",
                 action="cross_check_sbom",
                 command=CrossCheckSbomCommand(args=CrossCheckSbomArgs()),
                 run_id_prefix="crosscheck",
@@ -265,7 +266,8 @@ class CreateActivationTestRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/activation-test",
-    operation_id="startActivationTest",
+    operation_id="activateExperimentEnvironment",
+    openapi_extra=runs("activate_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -274,7 +276,6 @@ def create_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayl
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="activation",
                 action="activate_experiment_environment",
                 command=ActivateExperimentEnvironmentCommand(args=ActivateExperimentEnvironmentArgs()),
                 run_id_prefix="activation",
@@ -298,7 +299,8 @@ class CreateCheckWorkingEnvironmentRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/check-working-environment",
-    operation_id="startWorkingEnvironmentCheck",
+    operation_id="checkWorkingEnvironment",
+    openapi_extra=runs("check_working_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -307,7 +309,6 @@ def create_check_working_environment_run(ree_id: str, payload: CreateCheckWorkin
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="check_working_environment",
                 action="check_working_environment",
                 command=CheckWorkingEnvironmentCommand(),
                 run_id_prefix="check",
@@ -331,7 +332,8 @@ class CreateExperimentRunPayload(CreateRunPayload):
 
 @stages_router.post(
     "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run",
-    operation_id="startExperiment",
+    operation_id="runExperiment",
+    openapi_extra=runs("run_experiment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -350,7 +352,6 @@ def create_experiment_run(
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="experiment",
                 action="run_experiment",
                 command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name)),
                 run_id_prefix="experiment",

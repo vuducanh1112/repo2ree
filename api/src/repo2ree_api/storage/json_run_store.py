@@ -111,7 +111,7 @@ class JsonRunStore:
                 return None
             status: RunStatus = current.status
             if status == "queued":
-                status = "provisioning" if current.operation == "provision" else "running"
+                status = "provisioning" if current.operation == "initialize_ree" else "running"
             updated = current.model_copy(update={"started_at": utc_now(), "status": status})
             self._write_for_run_unlocked(updated)
             _journal_transition(current, updated)

@@ -41,20 +41,20 @@ const opened = {
 describe("ReviewWorkflowPanel", () => {
   it("starts source reproduction with the explicitly selected evidence basis", async () => {
     const user = userEvent.setup();
-    const startSourceReview = vi.fn().mockResolvedValue(opened);
+    const reviewAcquireSource = vi.fn().mockResolvedValue(opened);
     renderWithShell(<ReviewWorkflowPanel experiments={[]} />, {
       reeId: "ree-1",
       services: fakeApiServices({
         ree: {
           listReviews: vi.fn().mockResolvedValue({ reviews: [] }),
-          startSourceReview,
+          reviewAcquireSource,
         },
       }),
     });
     await user.click(screen.getByRole("radio", { name: "From bundle" }));
     await user.click(screen.getByRole("button", { name: "Reproduce Source" }));
     await waitFor(() =>
-      expect(startSourceReview).toHaveBeenCalledWith("ree-1", { basis: "bundled" }),
+      expect(reviewAcquireSource).toHaveBeenCalledWith("ree-1", { basis: "bundled" }),
     );
   });
 

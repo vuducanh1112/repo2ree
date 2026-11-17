@@ -13,7 +13,7 @@ import {
 const opened = {
   run_id: "run-1",
   ree_id: "ree-1",
-  operation: "source" as const,
+  operation: "review_acquire_source" as const,
   status: "running" as const,
   created_at: "2026-01-01T00:00:00Z",
   started_at: null,
@@ -24,18 +24,18 @@ const opened = {
 
 describe("review mutations", () => {
   it("starts every review stage against the current REE", async () => {
-    const startSourceReview = vi.fn().mockResolvedValue(opened);
-    const startBuildExperimentEnvironmentReview = vi.fn().mockResolvedValue(opened);
-    const startActivationReview = vi.fn().mockResolvedValue(opened);
-    const startExperimentReview = vi.fn().mockResolvedValue(opened);
+    const reviewAcquireSource = vi.fn().mockResolvedValue(opened);
+    const reviewBuildExperimentEnvironment = vi.fn().mockResolvedValue(opened);
+    const reviewActivateExperimentEnvironment = vi.fn().mockResolvedValue(opened);
+    const reviewRunExperiment = vi.fn().mockResolvedValue(opened);
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
       services: fakeApiServices({
         ree: {
-          startSourceReview,
-          startBuildExperimentEnvironmentReview,
-          startActivationReview,
-          startExperimentReview,
+          reviewAcquireSource,
+          reviewBuildExperimentEnvironment,
+          reviewActivateExperimentEnvironment,
+          reviewRunExperiment,
         },
       }),
     });
@@ -61,20 +61,20 @@ describe("review mutations", () => {
       }),
     );
 
-    expect(startSourceReview).toHaveBeenCalledWith("ree-1", { basis: "bundled" });
-    expect(startBuildExperimentEnvironmentReview).toHaveBeenCalledWith("ree-1", "review-1", {
+    expect(reviewAcquireSource).toHaveBeenCalledWith("ree-1", { basis: "bundled" });
+    expect(reviewBuildExperimentEnvironment).toHaveBeenCalledWith("ree-1", "review-1", {
       prune_workspace: false,
       basis: "auto",
     });
-    expect(startActivationReview).toHaveBeenCalledWith("ree-1", "review-1");
-    expect(startExperimentReview).toHaveBeenCalledWith("ree-1", "review-1", "hello world");
+    expect(reviewActivateExperimentEnvironment).toHaveBeenCalledWith("ree-1", "review-1");
+    expect(reviewRunExperiment).toHaveBeenCalledWith("ree-1", "review-1", "hello world");
   });
 
   it("returns no attempt id when an older response does not expose one", async () => {
-    const startSourceReview = vi.fn().mockResolvedValue({ ...opened, outputs: {} });
+    const reviewAcquireSource = vi.fn().mockResolvedValue({ ...opened, outputs: {} });
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { startSourceReview } }),
+      services: fakeApiServices({ ree: { reviewAcquireSource } }),
     });
     const { result } = renderHook(() => useStartSourceReviewMutation(), { wrapper: Wrapper });
     await expect(act(() => result.current.mutateAsync("auto"))).resolves.toBeUndefined();

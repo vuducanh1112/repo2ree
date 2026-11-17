@@ -114,7 +114,7 @@ def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], time
 def test_start_background_rejects_unknown_ree():
     registry = _registry()
     with pytest.raises(HTTPException) as excinfo:
-        registry.start_background("nope", "source", {}, "run", lambda e, r: ActionResult(status="succeeded"))
+        registry.start_background("nope", "acquire_source", {}, "run", lambda e, r: ActionResult(status="succeeded"))
     assert excinfo.value.status_code == 404
 
 
@@ -122,7 +122,7 @@ def test_successful_run_reaches_succeeded_with_outputs():
     registry = _registry()
     run_state = registry.start_background(
         KNOWN_REE,
-        "source",
+        "acquire_source",
         {"mode": "upload"},
         "src",
         lambda e, r: ActionResult(status="succeeded", outputs={"resolved": "abc"}),
@@ -158,7 +158,7 @@ def test_run_keeps_execution_evidence_after_registry_restart(tmp_path):
     registry = _registry(root=tmp_path)
     run = registry.start_background(
         KNOWN_REE,
-        "source",
+        "acquire_source",
         {},
         "src",
         lambda e, r: ActionResult(status="succeeded", context=context, history=history, outputs={"domain": "value"}),
@@ -175,7 +175,9 @@ def test_run_keeps_execution_evidence_after_registry_restart(tmp_path):
 
 def test_run_summary_has_stable_keys():
     registry = _registry()
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ActionResult(status="succeeded"))
+    run_state = registry.start_background(
+        KNOWN_REE, "acquire_source", {}, "src", lambda e, r: ActionResult(status="succeeded")
+    )
     summary = registry.run_summary(run_state)
     assert list(summary) == [
         "run_id",
@@ -230,7 +232,7 @@ def test_idempotency_key_rejects_different_request_payload():
     registry = _registry()
     first = registry.start_background(
         KNOWN_REE,
-        "evaluate",
+        "evaluate_reproducibility",
         {"strict": False},
         "evaluate",
         lambda e, r: ActionResult(status="succeeded"),
@@ -240,7 +242,7 @@ def test_idempotency_key_rejects_different_request_payload():
     with pytest.raises(HTTPException) as excinfo:
         registry.start_background(
             KNOWN_REE,
-            "evaluate",
+            "evaluate_reproducibility",
             {"strict": True},
             "evaluate",
             lambda e, r: ActionResult(status="succeeded"),
@@ -292,7 +294,9 @@ def test_provision_run_reports_provisioning_while_working():
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    run_state = registry.start_background(KNOWN_REE, "provision", {}, "provision", _runner, require_ree_exists=False)
+    run_state = registry.start_background(
+        KNOWN_REE, "initialize_ree", {}, "provision", _runner, require_ree_exists=False
+    )
     _wait_for(registry, run_state["run_id"], frozenset({"provisioning"}))
     release.set()
     assert _wait_for(registry, run_state["run_id"], TERMINAL)["status"] == "succeeded"
@@ -309,7 +313,7 @@ def test_runner_exception_finalizes_as_failed_with_error_log():
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise RuntimeError("docker cp exploded")
 
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "acquire_source", {}, "src", _runner)
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
     assert final["outputs"] == {}
@@ -419,7 +423,7 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
             return ActionResult(status="canceled")
         return ActionResult(status="succeeded")
 
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "acquire_source", {}, "src", _runner)
     run_id = run_state["run_id"]
     _wait_for(registry, run_id, frozenset({"running"}))
 
@@ -441,7 +445,7 @@ def test_cancel_after_runner_crash_still_reports_canceled():
         release.wait(timeout=5.0)
         raise RuntimeError("interrupted")
 
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "acquire_source", {}, "src", _runner)
     registry.mark_cancel_requested(KNOWN_REE, run_state["run_id"])
     release.set()
     assert _wait_for(registry, run_state["run_id"], TERMINAL)["status"] == "canceled"
@@ -450,7 +454,9 @@ def test_cancel_after_runner_crash_still_reports_canceled():
 def test_completed_run_is_not_retroactively_canceled():
     """finalize never demotes a result that already succeeded or failed."""
     registry = _registry()
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", lambda e, r: ActionResult(status="succeeded"))
+    run_state = registry.start_background(
+        KNOWN_REE, "acquire_source", {}, "src", lambda e, r: ActionResult(status="succeeded")
+    )
     run_id = run_state["run_id"]
     _wait_for(registry, run_id, TERMINAL)
 
@@ -477,7 +483,7 @@ def test_append_log_assigns_monotonic_sequence_numbers():
         release.wait(timeout=5.0)
         return ActionResult(status="succeeded")
 
-    run_state = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    run_state = registry.start_background(KNOWN_REE, "acquire_source", {}, "src", _runner)
     run_id = run_state["run_id"]
     registry.append_log(KNOWN_REE, run_id, "stdout", "info", "one")
     registry.append_log(KNOWN_REE, run_id, "stderr", "warn", "two")
@@ -703,10 +709,10 @@ def test_failed_run_is_metered_under_its_terminal_status(instruments: _Instrumen
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise RuntimeError("docker cp exploded")
 
-    run = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    run = registry.start_background(KNOWN_REE, "acquire_source", {}, "src", _runner)
     _wait_for(registry, run["run_id"], TERMINAL)
 
-    assert instruments.runs.attributes == [{"repo2ree.operation": "source", "repo2ree.status": "failed"}]
+    assert instruments.runs.attributes == [{"repo2ree.operation": "acquire_source", "repo2ree.status": "failed"}]
 
 
 def test_run_is_metered_with_the_settled_status_not_the_proposed_one(instruments: _Instruments):
@@ -759,7 +765,7 @@ def test_a_crashed_runner_still_balances_the_active_gauge(instruments: _Instrume
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         raise RuntimeError("boom")
 
-    run = registry.start_background(KNOWN_REE, "source", {}, "src", _runner)
+    run = registry.start_background(KNOWN_REE, "acquire_source", {}, "src", _runner)
     _wait_for(registry, run["run_id"], TERMINAL)
 
     assert instruments.active.total == 0
@@ -826,7 +832,7 @@ def test_idempotency_conflict_is_metered(instruments: _Instruments):
     registry = _registry()
     first = registry.start_background(
         KNOWN_REE,
-        "evaluate",
+        "evaluate_reproducibility",
         {"strict": False},
         "evaluate",
         lambda e, r: ActionResult(status="succeeded"),
@@ -836,14 +842,14 @@ def test_idempotency_conflict_is_metered(instruments: _Instruments):
     with pytest.raises(HTTPException):
         registry.start_background(
             KNOWN_REE,
-            "evaluate",
+            "evaluate_reproducibility",
             {"strict": True},
             "evaluate",
             lambda e, r: ActionResult(status="succeeded"),
             idempotency_key="request-1",
         )
 
-    assert instruments.conflict.calls == [(1, {"repo2ree.operation": "evaluate"})]
+    assert instruments.conflict.calls == [(1, {"repo2ree.operation": "evaluate_reproducibility"})]
     assert instruments.replay.calls == []
     _wait_for(registry, first["run_id"], TERMINAL)
 
@@ -861,7 +867,7 @@ def test_a_run_following_its_command_takes_no_worker_from_the_pool():
         release.wait(5)
         return ActionResult(status="succeeded")
 
-    blocking = registry.start_background(KNOWN_REE, "source", {}, "slow", slow)
+    blocking = registry.start_background(KNOWN_REE, "acquire_source", {}, "slow", slow)
     following = registry.start_background(
         KNOWN_REE,
         "build_experiment_environment",
@@ -912,7 +918,7 @@ def test_startup_follows_on_the_runs_whose_commands_run_on_and_fails_the_rest(tm
         KNOWN_REE, "build_experiment_environment", {}, "build_experiment_environment", stuck, resumable=True
     )
     unstarted = first.start_background(KNOWN_REE, "build_experiment_environment", {}, "other", stuck, resumable=True)
-    plain = first.start_background(KNOWN_REE, "source", {}, "src", stuck)
+    plain = first.start_background(KNOWN_REE, "acquire_source", {}, "src", stuck)
     started.wait(5)
     _wait_for(first, followed["run_id"], frozenset({"running"}))
     _wait_for(first, plain["run_id"], frozenset({"running"}))

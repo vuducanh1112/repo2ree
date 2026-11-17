@@ -63,7 +63,7 @@ def test_start_source_review_dispatches_review_command(
         return {
             "run_id": "review-source-run",
             "ree_id": ree_id,
-            "operation": "source",
+            "operation": "review_acquire_source",
             "status": "queued",
             "created_at": "2026-07-24T10:00:00Z",
             "started_at": None,
@@ -81,7 +81,7 @@ def test_start_source_review_dispatches_review_command(
 
     assert response.status_code == 200
     assert captured["ree_id"] == online_ree.ree_id
-    assert captured["operation"] == "source"
+    assert captured["command"].operation == "review_acquire_source"
     command = captured["command"]
     assert isinstance(command, ReviewAcquireSourceCommand)
     assert command.args.review_id.startswith("review-")
@@ -118,7 +118,7 @@ def test_start_build_review_targets_the_named_attempt(
     )
 
     assert response.status_code == 200
-    assert captured["operation"] == "build_experiment_environment"
+    assert captured["command"].operation == "review_build_experiment_environment"
     command = captured["command"]
     assert isinstance(command, ReviewBuildExperimentEnvironmentCommand)
     # The build joins the attempt named in the path rather than opening a new one.
@@ -141,7 +141,7 @@ def test_start_activation_review_targets_the_named_attempt(
         return {
             "run_id": "review-activation-run",
             "ree_id": ree_id,
-            "operation": "activation",
+            "operation": "review_activate_experiment_environment",
             "status": "queued",
             "created_at": "2026-07-24T10:00:00Z",
             "started_at": None,
@@ -158,7 +158,7 @@ def test_start_activation_review_targets_the_named_attempt(
     )
 
     assert response.status_code == 200
-    assert captured["operation"] == "activation"
+    assert captured["command"].operation == "review_activate_experiment_environment"
     command = captured["command"]
     assert isinstance(command, ReviewActivateExperimentEnvironmentCommand)
     assert command.args.review_id == "review-one"
@@ -193,7 +193,7 @@ def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
         return {
             "run_id": "review-experiment-run",
             "ree_id": ree_id,
-            "operation": "experiment",
+            "operation": "review_run_experiment",
             "status": "queued",
             "created_at": "2026-07-24T10:00:00Z",
             "started_at": None,
@@ -210,7 +210,7 @@ def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
     )
 
     assert response.status_code == 200
-    assert captured["operation"] == "experiment"
+    assert captured["command"].operation == "review_run_experiment"
     command = captured["command"]
     assert isinstance(command, ReviewRunExperimentCommand)
     assert command.args.review_id == "review-one"
@@ -288,7 +288,7 @@ def test_a_requested_basis_reaches_the_workbench_command(
         return {
             "run_id": "review-run",
             "ree_id": ree_id,
-            "operation": kwargs["operation"],
+            "operation": kwargs["command"].operation,
             "status": "queued",
             "created_at": "2026-07-24T10:00:00Z",
             "started_at": None,

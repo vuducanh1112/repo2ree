@@ -25,6 +25,7 @@ from repo2ree_api.contracts import (
     UploadInitResponse,
     UploadStoredResponse,
 )
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.control.behaviour import journal_positions, record_archive
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import command_dispatcher, ree_index
@@ -71,6 +72,7 @@ async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Requ
 @seal_router.post(
     "/api/v1/rees/{ree_id}/ree:load",
     operation_id="loadReeBundle",
+    openapi_extra=runs("load_ree_bundle"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -86,7 +88,6 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
         upload_token=payload.upload_token,
         archive_name=payload.archive_name,
         purpose="bundle",
-        operation="ree-load",
         action="load_ree_bundle",
         run_id_prefix="ree-load",
         command=LoadReeBundleCommand(
@@ -110,6 +111,7 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
 @seal_router.post(
     "/api/v1/rees/{ree_id}/ree:seal",
     operation_id="sealRee",
+    openapi_extra=runs("seal_ree"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -123,7 +125,6 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
 
     run_state = start_single_command_run(
         ree_id,
-        operation="seal",
         action="seal_ree",
         command=SealReeCommand(
             args=SealReeArgs(

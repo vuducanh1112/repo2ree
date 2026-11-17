@@ -8,7 +8,7 @@ import { RunHud } from "./RunHud";
 
 const run = (
   runId: string,
-  operation: "source" | "build_experiment_environment",
+  operation: "acquire_source" | "build_experiment_environment",
   status: "running" | "failed",
 ) => ({
   run_id: runId,
@@ -29,7 +29,7 @@ describe("RunHud", () => {
   it("follows an active run, filters its streams, and exposes failed history", async () => {
     const user = userEvent.setup();
     const buildRun = run("build-2", "build_experiment_environment", "running");
-    const sourceRun = run("source-1", "source", "failed");
+    const sourceRun = run("source-1", "acquire_source", "failed");
     const listRuns = vi.fn().mockResolvedValue({ runs: [buildRun, sourceRun], next_cursor: null });
     const getRun = vi
       .fn()

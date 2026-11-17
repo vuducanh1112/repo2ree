@@ -15,7 +15,7 @@ export function useStartSourceReviewMutation() {
     // the console has to drive *that* attempt from the moment the POST returns,
     // and the reviews list does not carry it yet (see `selectReviewAttempt`).
     mutationFn: async (basis: ReviewBasisRequest = "auto") =>
-      openedReviewId(await runtime.reeApi.startSourceReview(reeId, { basis })),
+      openedReviewId(await runtime.reeApi.reviewAcquireSource(reeId, { basis })),
     onSuccess: invalidate,
   });
 }
@@ -48,7 +48,7 @@ export function useStartBuildExperimentEnvironmentReviewMutation() {
     mutationFn: ({ reviewId, basis = "auto" }: { reviewId: string; basis?: ReviewBasisRequest }) =>
       // The rebuilt workspace is kept: activation runs in it, and on an
       // independent basis the runtime it holds exists nowhere else.
-      runtime.reeApi.startBuildExperimentEnvironmentReview(reeId, reviewId, {
+      runtime.reeApi.reviewBuildExperimentEnvironment(reeId, reviewId, {
         prune_workspace: false,
         basis,
       }),
@@ -68,7 +68,7 @@ export function useStartActivationReviewMutation() {
 
   return useMutation({
     mutationFn: ({ reviewId }: { reviewId: string }) =>
-      runtime.reeApi.startActivationReview(reeId, reviewId),
+      runtime.reeApi.reviewActivateExperimentEnvironment(reeId, reviewId),
     onSuccess: invalidate,
   });
 }
@@ -87,7 +87,7 @@ export function useStartExperimentReviewMutation() {
 
   return useMutation({
     mutationFn: ({ reviewId, experimentName }: { reviewId: string; experimentName: string }) =>
-      runtime.reeApi.startExperimentReview(reeId, reviewId, experimentName),
+      runtime.reeApi.reviewRunExperiment(reeId, reviewId, experimentName),
     onSuccess: invalidate,
   });
 }

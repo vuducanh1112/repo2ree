@@ -76,7 +76,7 @@ def test_failed_run_summary_shape(client: TestClient, online_ree: ReeRoute, fail
     assert resp.status_code == 200
     summary = resp.json()
     assert summary["status"] == "failed"
-    assert summary["operation"] == "source"
+    assert summary["operation"] == "acquire_source"
     assert summary["ree_id"] == online_ree.ree_id
     assert summary["finished_at"] is not None
     # A failed run carries its typed failure, so a client need not read the logs
@@ -140,7 +140,7 @@ def test_list_runs_returns_summaries_newest_first(
     runs = resp.json()["runs"]
     assert [run["run_id"] for run in runs] == [second["run_id"], failed_run["run_id"]]
     for summary in runs:
-        assert summary["operation"] == "source"
+        assert summary["operation"] == "acquire_source"
         assert summary["status"] == "failed"
         # summaries carry no log feed or internal bookkeeping
         assert "logs" not in summary

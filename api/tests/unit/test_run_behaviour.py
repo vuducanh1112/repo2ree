@@ -80,7 +80,7 @@ def test_each_persisted_status_change_moves_the_action_once(tmp_path: Path, tran
 
 
 def test_runs_interrupted_by_a_restart_fail_their_action(tmp_path: Path, transitions) -> None:
-    JsonRunStore(tmp_path / "runs").create_idempotent(_run(operation="provision", action="create_ree"))
+    JsonRunStore(tmp_path / "runs").create_idempotent(_run(operation="initialize_ree", action="create_ree"))
     restarted = JsonRunStore(tmp_path / "runs")
     restarted.begin("ree-1", "build-1")
     restarted.interrupt_incomplete()

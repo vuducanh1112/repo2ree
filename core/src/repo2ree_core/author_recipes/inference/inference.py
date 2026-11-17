@@ -4,7 +4,7 @@ One scan of the immutable upstream tree feeds every requested target; each
 target is evaluated independently against its registered DAG and returns a
 complete trace even when nothing is inferred. Inference is stateless and always
 recomputes — there is no persisted report — and it never writes: it only
-produces candidate bytes a caller may later write through ``writeReeFile``.
+produces candidate bytes a caller may later write through ``writeScript``.
 """
 
 from __future__ import annotations

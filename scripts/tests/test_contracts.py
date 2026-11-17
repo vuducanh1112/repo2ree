@@ -141,3 +141,20 @@ def test_the_export_lists_every_contract_with_what_renders_it() -> None:
     openapi = next(entry for entry in document["contracts"] if entry["name"] == "openapi")
     assert openapi["rendered_by"] == "repo2ree_api.export_openapi.openapi_document"
     assert openapi["write"] == "python -m scripts.contracts write openapi"
+
+
+def test_an_operation_a_route_starts_has_a_route_named_after_it(root: Path) -> None:
+    registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
+    paths = {
+        "/build": {"post": {"operationId": "startBuild", "x-operations": ["build"]}},
+        "/run": {"post": {"operationId": "run", "x-operations": ["run"]}},
+        "/upload": {"post": {"operationId": "completeUpload", "x-operations": ["run"]}},
+        "/runs": {"get": {"operationId": "listRuns"}},
+    }
+    text = json.dumps({"paths": paths}) + "\n"
+    put(root, PurePosixPath("contracts/openapi.json"), text)
+    registry = (*registry, contract(Name.OPENAPI, PurePosixPath("contracts/openapi.json"), text))
+
+    assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
+        ("unrouted", "build: no route build declares it")
+    ]

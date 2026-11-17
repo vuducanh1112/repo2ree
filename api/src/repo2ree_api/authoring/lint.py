@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_api.authoring.inference import ScriptTargetSelectorPayload
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
@@ -44,7 +45,8 @@ class ScriptDraftPayload(BaseModel):
 
 @lint_router.post(
     "/api/v1/rees/{ree_id}/script-lints:run",
-    operation_id="lintReeScripts",
+    operation_id="lintScripts",
+    openapi_extra=runs("lint_scripts"),
     response_model=LintScriptsResponse,
     responses=ERROR_RESPONSES,
 )

@@ -86,13 +86,13 @@ describe("ScriptAnalysis", () => {
 
   it("asks the workbench once the editor is clean, and says so", async () => {
     // Only the saved path can carry the tiers that need a process.
-    const lintReeScripts = vi
+    const lintScripts = vi
       .fn()
       .mockResolvedValue({ reports: [report({ findings: [FINDING] })], missing_scripts: [] });
-    renderPanel({ dirty: false }, fakeApiServices({ ree: { lintReeScripts } }));
+    renderPanel({ dirty: false }, fakeApiServices({ ree: { lintScripts } }));
 
     expect(await screen.findByText("on the saved script")).toBeInTheDocument();
-    expect(lintReeScripts).toHaveBeenCalled();
+    expect(lintScripts).toHaveBeenCalled();
   });
 
   it("reports a failed check instead of claiming the script is clean", async () => {

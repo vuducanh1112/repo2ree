@@ -47,7 +47,7 @@ def test_seal_runs_in_background_and_relays_progress(
 
     assert response.status_code == 200, response.text
     started = response.json()
-    assert started["operation"] == "seal"
+    assert started["operation"] == "seal_ree"
     deadline = time.monotonic() + 10
     run = started
     while run["status"] not in {"succeeded", "failed", "canceled"} and time.monotonic() < deadline:

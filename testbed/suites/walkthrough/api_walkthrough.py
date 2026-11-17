@@ -32,22 +32,22 @@ in order — driven only through the public surface:
       -> listScriptTemplates (discover the reserved script paths)
       -> source:upload-init / uploadSourceBytes / source:upload-complete
       -> observeRun (extract)
-      -> getReeState -> writeReeFile / readReeFile
+      -> getReeState -> writeScript / readReeFile
       -> patchReeDefinition (metadata)
-      -> startEvaluate -> observeRun -> getEvaluateReport
-      -> generateScriptCandidates (build) -> writeReeFile (build script)
+      -> evaluateReproducibility -> observeRun -> getEvaluateReport
+      -> suggestScripts (build) -> writeScript (build script)
          -> patchReeDefinition (declare the experiment environment the build recipe produces)
-         -> startBuildExperimentEnvironment -> observeRun
+         -> buildExperimentEnvironment -> observeRun
       -> patchReeDefinition (hardware BOM)
-      -> startSbomGeneration -> observeRun -> startSbomCrossCheck -> observeRun
-      -> generateScriptCandidates (activation) -> writeReeFile (activation script) -> startActivationTest -> observeRun
-      -> patchReeDefinition (declare experiment) -> generateScriptCandidates (experiment)
-         -> writeReeFile (run + verify) -> startExperiment -> observeRun
+      -> generateSbom -> observeRun -> crossCheckSbom -> observeRun
+      -> suggestScripts (activation) -> writeScript (activation script) -> activateExperimentEnvironment -> observeRun
+      -> patchReeDefinition (declare experiment) -> suggestScripts (experiment)
+         -> writeScript (run + verify) -> runExperiment -> observeRun
       -> getReeState (the aggregate audit) -> the evaluation receipt's axes
       -> sealRee -> downloadReeArchive -> deleteRee
 
 The build, activation, and experiment recipe scripts are not hardcoded: each is
-inferred from the repository through ``generateScriptCandidates`` and its
+inferred from the repository through ``suggestScripts`` and its
 decision graph printed, then authored (the build script is complete; the
 fail-closed run scaffolds get their one ``set --`` command filled in). Those
 stages then drive a real cold Docker-in-Docker experiment environment build (pandas on
@@ -263,7 +263,7 @@ def make_source_archive() -> bytes:
 
 
 def put_file(ree_id: str, path: str, content: str) -> None:
-    """Author a workspace file (writeReeFile). Used for the REE recipe scripts —
+    """Author a workspace file (writeScript). Used for the REE recipe scripts —
     the build, activation, and experiment scripts live in the workspace and are
     referenced by path from the typed definition."""
     call("PUT", f"/api/v1/rees/{ree_id}/files/content", {"path": path, "content": content})
@@ -285,7 +285,7 @@ def run_stage(ree_id: str, method: str, path: str, payload: dict[str, Any], *, w
 # Script inference — generate the reserved recipe scripts from the repository
 # rather than hardcoding them. Inference is read-only: it proposes candidate
 # bytes and the decision graph that produced them, and writes nothing. A chosen
-# candidate becomes a script only when the author saves it via writeReeFile.
+# candidate becomes a script only when the author saves it via writeScript.
 # ------------------------------------------------------------------
 
 
@@ -484,7 +484,7 @@ def run() -> None:
     ok("reproducibility report generated")
 
     chapter("7. Infer the build script, declare what it produces, and run it")
-    note("generateScriptCandidates reads the immutable source and proposes the reserved build script — writing nothing")
+    note("suggestScripts reads the immutable source and proposes the reserved build script — writing nothing")
     build_report = generate_scripts(ree_id, [{"kind": "build_experiment_environment"}])
     summarize_decision(build_report, "build_experiment_environment")
     # The repo carries both a Dockerfile and a requirements.txt, so inference

@@ -12,7 +12,7 @@ describe("canvasActivity", () => {
   it("is empty when nothing is in flight", () => {
     const activity = canvasActivity([
       run("build_experiment_environment", "succeeded"),
-      run("experiment", "failed"),
+      run("run_experiment", "failed"),
     ]);
     expect(activity.nodeKeys.size).toBe(0);
     expect(activity.zones.size).toBe(0);
@@ -25,23 +25,20 @@ describe("canvasActivity", () => {
   });
 
   it("lights the core while an experiment runs", () => {
-    const activity = canvasActivity([run("experiment", "queued")]);
+    const activity = canvasActivity([run("run_experiment", "queued")]);
     expect([...activity.nodeKeys]).toEqual([PAGE.EXPERIMENTS]);
     expect([...activity.zones]).toEqual(["core"]);
   });
 
-  it("collapses the three archive operations onto the one archive panel", () => {
-    const activity = canvasActivity([run("zenodo", "running"), run("swh", "provisioning")]);
-    expect([...activity.nodeKeys]).toEqual([PAGE.ARCHIVE]);
-    expect([...activity.zones]).toEqual(["outer"]);
-  });
-
   it("reads the cross-check as the SBOM panel", () => {
-    expect([...canvasActivity([run("crosscheck", "running")]).nodeKeys]).toEqual([PAGE.SBOM]);
+    expect([...canvasActivity([run("cross_check_sbom", "running")]).nodeKeys]).toEqual([PAGE.SBOM]);
   });
 
   it("ignores operations that raise the lab rather than a panel", () => {
-    const activity = canvasActivity([run("provision", "running"), run("ree-load", "running")]);
+    const activity = canvasActivity([
+      run("initialize_ree", "running"),
+      run("load_ree_bundle", "running"),
+    ]);
     expect(activity.nodeKeys.size).toBe(0);
   });
 
@@ -54,8 +51,8 @@ describe("canvasActivity", () => {
   it("reports every shell that has work in it", () => {
     const activity = canvasActivity([
       run("build_experiment_environment", "running"),
-      run("experiment", "running"),
-      run("source", "running"),
+      run("run_experiment", "running"),
+      run("acquire_source", "running"),
     ]);
     expect([...activity.zones].sort()).toEqual(["core", "inner", "outer"]);
   });

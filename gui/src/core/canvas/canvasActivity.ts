@@ -5,24 +5,23 @@ import { CANVAS_NODES, type NodeZone } from "./canvasNodes";
 
 // Which panel a run in flight belongs to, so the hub can show work happening
 // where the user would go to look at it. This is the run-operation counterpart
-// of `authoringDag`'s step→page map: the two vocabularies overlap but are not
-// the same (`swh`/`zenodo`/`dataverse` are three operations behind one panel,
-// and `provision`/`ree-load` raise the lab itself rather than a station on it).
-const PAGE_BY_OPERATION: Readonly<Partial<Record<ReeRunOperation, AppShellPage>>> = {
-  source: PAGE.SOURCE,
-  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-  sbom: PAGE.SBOM,
+// of `authoringDag`'s step→page map (`initialize_ree`/`load_ree_bundle` raise
+// the lab itself rather than a station on it).
+const PAGE_BY_OPERATION: ReadonlyMap<ReeRunOperation, AppShellPage> = new Map<
+  ReeRunOperation,
+  AppShellPage
+>([
+  ["acquire_source", PAGE.SOURCE],
+  ["build_experiment_environment", PAGE.BUILD_EXPERIMENT_ENVIRONMENT],
+  ["generate_sbom", PAGE.SBOM],
   // The cross-check is the second operation on the SBOM page.
-  crosscheck: PAGE.SBOM,
-  activation: PAGE.ACTIVATION,
-  hbom: PAGE.HBOM,
-  evaluate: PAGE.EVALUATE,
-  seal: PAGE.SEAL,
-  swh: PAGE.ARCHIVE,
-  zenodo: PAGE.ARCHIVE,
-  dataverse: PAGE.ARCHIVE,
-  experiment: PAGE.EXPERIMENTS,
-};
+  ["cross_check_sbom", PAGE.SBOM],
+  ["activate_experiment_environment", PAGE.ACTIVATION],
+  ["observe_hardware", PAGE.HBOM],
+  ["evaluate_reproducibility", PAGE.EVALUATE],
+  ["seal_ree", PAGE.SEAL],
+  ["run_experiment", PAGE.EXPERIMENTS],
+]);
 
 const ZONE_BY_PAGE: ReadonlyMap<AppShellPage, NodeZone> = new Map(
   CANVAS_NODES.map((node) => [node.key, node.zone]),
@@ -60,7 +59,7 @@ export function canvasActivity(
   const nodeKeys = new Set<AppShellPage>();
   for (const run of runs) {
     if (isTerminalReeRunStatus(run.status)) continue;
-    const page = PAGE_BY_OPERATION[run.operation];
+    const page = PAGE_BY_OPERATION.get(run.operation);
     if (page) nodeKeys.add(page);
   }
   for (const page of alsoRunning) nodeKeys.add(page);

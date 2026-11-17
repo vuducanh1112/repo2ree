@@ -51,7 +51,7 @@ function useGenerateScriptForTarget(
 
   return useMutation<ScriptInferenceOutcome>({
     mutationFn: async () => {
-      const report = await runtime.reeApi.generateScriptCandidates(resolvedReeId, [
+      const report = await runtime.reeApi.suggestScripts(resolvedReeId, [
         experimentName ? { kind, experiment_name: experimentName } : { kind },
       ]);
       return {

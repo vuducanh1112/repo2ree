@@ -55,16 +55,16 @@ STEP_ACTIONS_EXTENSION = "x-repo2ree-step-actions"
 # than one call (an alternate path, or an init/commit pair); order is
 # most-direct first.
 _STEP_ACTIONS: dict[ReeStepKey, list[str]] = {
-    "source": ["startSourceAcquisition", "initializeSourceUpload", "completeSourceUpload"],
+    "source": ["acquireSource", "initializeSourceUpload", "completeSourceUpload"],
     "metadata": ["patchReeDefinition"],
-    "hbom": ["startHbomGeneration", "patchReeDefinition"],
-    "check_working_environment": ["writeReeFile", "patchReeDefinition", "startWorkingEnvironmentCheck"],
-    "evaluate": ["startEvaluate"],
-    "build_experiment_environment": ["startBuildExperimentEnvironment", "generateScriptCandidates", "writeReeFile"],
-    "sbom": ["startSbomGeneration"],
-    "crosscheck": ["startSbomCrossCheck"],
-    "activation": ["startActivationTest"],
-    "experiments": ["startExperiment", "patchReeDefinition", "generateScriptCandidates", "writeReeFile"],
+    "hbom": ["observeHardware", "patchReeDefinition"],
+    "check_working_environment": ["writeScript", "patchReeDefinition", "checkWorkingEnvironment"],
+    "evaluate": ["evaluateReproducibility"],
+    "build_experiment_environment": ["buildExperimentEnvironment", "suggestScripts", "writeScript"],
+    "sbom": ["generateSbom"],
+    "crosscheck": ["crossCheckSbom"],
+    "activation": ["activateExperimentEnvironment"],
+    "experiments": ["runExperiment", "patchReeDefinition", "suggestScripts", "writeScript"],
     "seal": ["sealRee"],
 }
 
@@ -114,7 +114,7 @@ def list_script_templates(ree_id: str) -> ScriptTemplateCatalog:
     activate experiment environment templates are the content a fresh REE in that
     environment is seeded with. The experiment templates are for scripts created on
     demand under the reserved experiments directory. For scripts fitted to the REE's
-    own project, use ``generateScriptCandidates``.
+    own project, use ``suggestScripts``.
     """
     handle = require_handle(ree_id)
     try:

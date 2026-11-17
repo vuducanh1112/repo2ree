@@ -68,7 +68,7 @@ export function useSavedScriptLint(
       savedSource,
     ),
     queryFn: async () =>
-      selectReport(await runtime.reeApi.lintReeScripts(resolvedReeId, [selector(target)]), target),
+      selectReport(await runtime.reeApi.lintScripts(resolvedReeId, [selector(target)]), target),
     enabled: options.enabled && savedSource.trim() !== "",
     staleTime: Number.POSITIVE_INFINITY,
     retry: false,

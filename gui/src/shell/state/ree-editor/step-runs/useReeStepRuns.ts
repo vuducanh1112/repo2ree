@@ -3,7 +3,7 @@ import { initialReeStepParams, mergeStepParams } from "@core/ree-steps/stepCatal
 import { createStepCommandPlanners } from "@core/ree-steps/stepCommands";
 import type { ReeStepKey, ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
-import { activeRunForOperation } from "@core/runs/stepRuns";
+import { activeRunForStep } from "@core/runs/stepRuns";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import { appShellPorts } from "@shell/app/bootstrap/appShellPorts";
 import { useReeId } from "@shell/data/apiRuntime";
@@ -43,10 +43,7 @@ export function useReeStepRuns({
   const { mutateAsync: cancelReeRun } = useCancelReeRunMutation(reeId);
   const runsQuery = useReeRunsQuery(reeId);
   const runs = runsQuery.data ?? [];
-  const getActiveRunId = useCallback(
-    (key: string) => activeRunForOperation(runs, key)?.runId,
-    [runs],
-  );
+  const getActiveRunId = useCallback((key: string) => activeRunForStep(runs, key)?.runId, [runs]);
 
   const stepCommandPlanners = useMemo(
     () =>

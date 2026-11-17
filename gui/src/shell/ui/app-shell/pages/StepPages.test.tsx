@@ -74,7 +74,7 @@ describe("major step page workflows", () => {
   ] as const)("%s", async (_name, declared, expectedCalls) => {
     const user = userEvent.setup();
     const onReeSpecChange = vi.fn();
-    const generateScriptCandidates = vi.fn().mockResolvedValue({
+    const suggestScripts = vi.fn().mockResolvedValue({
       results: [
         {
           target: { kind: "build_experiment_environment" },
@@ -113,14 +113,14 @@ describe("major step page workflows", () => {
         services: fakeApiServices({
           ree: {
             listScriptTemplates: vi.fn().mockResolvedValue(scriptTemplateCatalog),
-            generateScriptCandidates,
+            suggestScripts,
           },
         }),
       },
     );
 
     await user.click(await screen.findByRole("button", { name: /Generate from repository/ }));
-    await waitFor(() => expect(generateScriptCandidates).toHaveBeenCalled());
+    await waitFor(() => expect(suggestScripts).toHaveBeenCalled());
     await waitFor(() => expect(onReeSpecChange).toHaveBeenCalledTimes(expectedCalls));
     if (expectedCalls > 0) {
       const updater = onReeSpecChange.mock.calls[0][0];

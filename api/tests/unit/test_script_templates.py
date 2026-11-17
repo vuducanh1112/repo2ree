@@ -45,7 +45,7 @@ def test_the_steps_and_the_overview_name_operations_there_are(client: TestClient
         "next_cursor",
         "upload_url",
     }
-    assert "generateScriptCandidates" in document["info"]["description"]
+    assert "suggestScripts" in document["info"]["description"]
 
 
 def test_the_steps_are_where_the_ree_stands(client: TestClient, listed: ReeRoute) -> None:
@@ -68,9 +68,9 @@ def test_script_inference_is_how_a_step_gets_its_script(client: TestClient, list
     actions = {step["key"]: step["actions"] for step in steps}
 
     for step in ("build_experiment_environment", "experiments"):
-        assert "generateScriptCandidates" in actions[step]
+        assert "suggestScripts" in actions[step]
     # The activation runs a script the build step authors, alone: it has nothing of its own to write.
-    assert actions["activation"] == ["startActivationTest"]
+    assert actions["activation"] == ["activateExperimentEnvironment"]
 
 
 @pytest.mark.parametrize("catalog", ["ree-steps", "script-templates"])

@@ -96,7 +96,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
 
     # --- source upload: staging -> copy into the workbench -> extract ---
     run = _upload_source(client, ree_id, _project_zip(), "project.zip")
-    assert run["operation"] == "source"
+    assert run["operation"] == "acquire_source"
     assert _wait_for_run(client, ree_id, run["run_id"]) == "succeeded"
 
     # the run's log feed carried the real pipeline steps back over HTTP
@@ -129,7 +129,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
     assert resp.status_code == 200, resp.text
     seal_run = resp.json()
-    assert seal_run["operation"] == "seal"
+    assert seal_run["operation"] == "seal_ree"
     assert _wait_for_run(client, ree_id, seal_run["run_id"]) == "succeeded"
     sealed = client.get(f"/api/v1/rees/{ree_id}").json()
     assert sealed["ree"]["seal"]["ree_digest"].startswith("sha256:")

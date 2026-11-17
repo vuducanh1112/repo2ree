@@ -39,7 +39,6 @@ def test_postprocessing_retains_execution_evidence(online_ree, monkeypatch, post
     monkeypatch.setattr(orchestration, "start_background_run", start)
     orchestration.start_single_command_run(
         online_ree.ree_id,
-        operation="seal",
         action="seal_ree",
         command=SealReeCommand(),
         run_id_prefix="seal",

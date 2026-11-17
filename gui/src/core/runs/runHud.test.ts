@@ -22,20 +22,22 @@ function run(overrides: Partial<ReeRunSummary> & { runId: string }): ReeRunSumma
 }
 
 const OPERATIONS: ReeRunOperation[] = [
-  "provision",
-  "ree-load",
-  "seal",
-  "source",
+  "initialize_ree",
+  "load_ree_bundle",
+  "seal_ree",
+  "acquire_source",
   "build_experiment_environment",
-  "sbom",
-  "crosscheck",
-  "hbom",
-  "activation",
-  "evaluate",
-  "swh",
-  "zenodo",
-  "dataverse",
-  "experiment",
+  "generate_sbom",
+  "cross_check_sbom",
+  "observe_hardware",
+  "activate_experiment_environment",
+  "check_working_environment",
+  "evaluate_reproducibility",
+  "run_experiment",
+  "review_acquire_source",
+  "review_build_experiment_environment",
+  "review_activate_experiment_environment",
+  "review_run_experiment",
 ];
 
 describe("runHudTabForOperation", () => {
@@ -46,10 +48,9 @@ describe("runHudTabForOperation", () => {
     }
   });
 
-  it("collects all archive repositories under the archive tab", () => {
-    expect(runHudTabForOperation("swh")).toBe("archive");
-    expect(runHudTabForOperation("zenodo")).toBe("archive");
-    expect(runHudTabForOperation("dataverse")).toBe("archive");
+  it("puts a review's run under the tab of the operation it reproduces", () => {
+    expect(runHudTabForOperation("review_run_experiment")).toBe("experiment");
+    expect(runHudTabForOperation("review_acquire_source")).toBe("source");
   });
 });
 
@@ -61,7 +62,7 @@ describe("runsForHudTab", () => {
         operation: "build_experiment_environment",
         createdAt: "2026-01-01T09:00:00Z",
       }),
-      run({ runId: "s-1", operation: "sbom", createdAt: "2026-01-01T09:30:00Z" }),
+      run({ runId: "s-1", operation: "generate_sbom", createdAt: "2026-01-01T09:30:00Z" }),
       run({
         runId: "b-new",
         operation: "build_experiment_environment",
@@ -83,7 +84,7 @@ describe("activity selectors", () => {
     run({ runId: "live", createdAt: "2026-01-01T10:00:00Z", status: "running" }),
     run({
       runId: "bad",
-      operation: "sbom",
+      operation: "generate_sbom",
       createdAt: "2026-01-01T11:00:00Z",
       status: "failed",
     }),
@@ -180,10 +181,10 @@ describe("runTicker", () => {
   it("names the step of the newest run once everything is terminal", () => {
     expect(
       runTicker([
-        run({ runId: "old", operation: "source", createdAt: "2026-01-01T10:00:00Z" }),
+        run({ runId: "old", operation: "acquire_source", createdAt: "2026-01-01T10:00:00Z" }),
         run({
           runId: "new",
-          operation: "sbom",
+          operation: "generate_sbom",
           status: "failed",
           createdAt: "2026-01-01T11:00:00Z",
         }),
@@ -199,7 +200,7 @@ describe("runTicker", () => {
         status: "running",
         createdAt: "2026-01-01T10:00:00Z",
       }),
-      run({ runId: "done", operation: "sbom", createdAt: "2026-01-01T11:00:00Z" }),
+      run({ runId: "done", operation: "generate_sbom", createdAt: "2026-01-01T11:00:00Z" }),
     ]);
     expect(ticker).toEqual({ detail: "Build Experiment Environment · running", tone: "active" });
   });
@@ -207,7 +208,7 @@ describe("runTicker", () => {
   it("counts concurrent runs instead of naming one of them", () => {
     const ticker = runTicker([
       run({ runId: "a", operation: "build_experiment_environment", status: "running" }),
-      run({ runId: "b", operation: "sbom", status: "queued" }),
+      run({ runId: "b", operation: "generate_sbom", status: "queued" }),
     ]);
     expect(ticker).toEqual({ detail: "2 runs active", tone: "active" });
   });

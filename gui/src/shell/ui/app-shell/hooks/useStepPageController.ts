@@ -6,7 +6,7 @@ import { defaultParamsForReeStep, REE_STEPS } from "@core/ree-steps/stepCatalog"
 import { missingReeStepRequirements } from "@core/ree-steps/stepPolicies";
 import type { ReeStepRunParams } from "@core/ree-steps/stepRunParams";
 import type { ReeStepParamValue } from "@core/ree-steps/stepTypes";
-import { activeRunForOperation, latestRunForOperation } from "@core/runs/stepRuns";
+import { activeRunForStep, latestRunForStep } from "@core/runs/stepRuns";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useRunsAwaitingDocument } from "@shell/data/ree/followRuns";
 import { useReeRunsQuery } from "@shell/data/runs/queries";
@@ -98,8 +98,8 @@ export function useStepPageController({
     );
   }, [commands, missing]);
 
-  const activeRun = step ? activeRunForOperation(runs, step.key) : undefined;
-  const latestRun = step ? latestRunForOperation(runs, step.key) : undefined;
+  const activeRun = step ? activeRunForStep(runs, step.key) : undefined;
+  const latestRun = step ? latestRunForStep(runs, step.key) : undefined;
   const evidenceStep = step ? EVIDENCE_STEP_BY_PAGE[step.key] : undefined;
   const current = evidenceStep ? isAuditCurrent(ree.audit, evidenceStep) : false;
   const receiptRunId = evidenceStep ? auditReceiptRunId(ree.audit, evidenceStep) : undefined;

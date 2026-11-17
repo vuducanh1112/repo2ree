@@ -55,10 +55,10 @@ export function useReviewWorkflowModel({
   // reachable origin — and the weaker verdict, so it is never the default.
   const [basis, setBasis] = useState<ReviewBasisRequest>("auto");
   const reviews = useReviewsQuery({ enabled: active });
-  const startSourceReview = useStartSourceReviewMutation();
-  const startBuildExperimentEnvironmentReview = useStartBuildExperimentEnvironmentReviewMutation();
-  const startActivationReview = useStartActivationReviewMutation();
-  const startExperimentReview = useStartExperimentReviewMutation();
+  const reviewAcquireSource = useStartSourceReviewMutation();
+  const reviewBuildExperimentEnvironment = useStartBuildExperimentEnvironmentReviewMutation();
+  const reviewActivateExperimentEnvironment = useStartActivationReviewMutation();
+  const reviewRunExperiment = useStartExperimentReviewMutation();
   // The names a "run all" sweep still has to get through, and the one it has
   // already dispatched. Experiments share a workspace, so they must run one at
   // a time; the sweep advances on evidence (a verdict appearing) rather than on
@@ -69,16 +69,16 @@ export function useReviewWorkflowModel({
   // over the newest listed attempt because the list lags: the workbench writes
   // the record a moment after the POST returns, and every step dispatched in
   // that gap would join the *previous* attempt instead.
-  const openedReviewId = startSourceReview.data;
+  const openedReviewId = reviewAcquireSource.data;
   const { attempt, pending } = selectReviewAttempt(reviews.data, openedReviewId);
 
-  const pendingStep: ReviewStepKey | undefined = startSourceReview.isPending
+  const pendingStep: ReviewStepKey | undefined = reviewAcquireSource.isPending
     ? "source"
-    : startBuildExperimentEnvironmentReview.isPending
+    : reviewBuildExperimentEnvironment.isPending
       ? "build_experiment_environment"
-      : startActivationReview.isPending
+      : reviewActivateExperimentEnvironment.isPending
         ? "activation"
-        : startExperimentReview.isPending
+        : reviewRunExperiment.isPending
           ? "experiments"
           : // An attempt opened but not yet readable is the source step still
             // going, which also keeps every later step disabled until it lands.
@@ -96,7 +96,7 @@ export function useReviewWorkflowModel({
 
   const runExperiment = (experimentName: string) => {
     if (!attempt || !enabledSteps.has("experiments")) return;
-    startExperimentReview.mutate({ reviewId: attempt.reviewId, experimentName });
+    reviewRunExperiment.mutate({ reviewId: attempt.reviewId, experimentName });
   };
 
   // A sweep covers what has no verdict yet rather than everything declared:
@@ -129,32 +129,32 @@ export function useReviewWorkflowModel({
       setDispatched(undefined);
       return;
     }
-    if (next === dispatched || startExperimentReview.isPending) return;
+    if (next === dispatched || reviewRunExperiment.isPending) return;
     setDispatched(next);
-    startExperimentReview.mutate({ reviewId: attempt.reviewId, experimentName: next });
-  }, [sweep, attempt, dispatched, startExperimentReview]);
+    reviewRunExperiment.mutate({ reviewId: attempt.reviewId, experimentName: next });
+  }, [sweep, attempt, dispatched, reviewRunExperiment]);
 
   const invokeStep = (step: ReviewStepKey) => {
     if (!enabledSteps.has(step)) return;
-    if (step === "source") startSourceReview.mutate(basis);
+    if (step === "source") reviewAcquireSource.mutate(basis);
     // Build joins the attempt source opened; without one there is nothing to
     // build against, which is also why the DAG leaves it disabled until then.
     if (step === "build_experiment_environment" && attempt)
-      startBuildExperimentEnvironmentReview.mutate({ reviewId: attempt.reviewId, basis });
+      reviewBuildExperimentEnvironment.mutate({ reviewId: attempt.reviewId, basis });
     // Activation takes no basis: it probes whatever runtime the build left in
     // the attempt's workspace and inherits what that evidence is worth.
     if (step === "activation" && attempt)
-      startActivationReview.mutate({ reviewId: attempt.reviewId });
+      reviewActivateExperimentEnvironment.mutate({ reviewId: attempt.reviewId });
     // The graph node stands for the whole set, so it sweeps; one experiment at
     // a time is the panel's job.
     if (step === "experiments") runAllExperiments();
   };
 
   const error =
-    startSourceReview.error ??
-    startBuildExperimentEnvironmentReview.error ??
-    startActivationReview.error ??
-    startExperimentReview.error ??
+    reviewAcquireSource.error ??
+    reviewBuildExperimentEnvironment.error ??
+    reviewActivateExperimentEnvironment.error ??
+    reviewRunExperiment.error ??
     reviews.error;
 
   return {

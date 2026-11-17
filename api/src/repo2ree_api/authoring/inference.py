@@ -1,10 +1,10 @@
 """The read-only script-inference route.
 
-Binds the single synchronous ``generateScriptCandidates`` operation to the
+Binds the single synchronous ``suggestScripts`` operation to the
 workbench command of the same name. Inference scans the immutable upstream tree,
 runs the versioned decision DAGs, and returns the full ``InferenceReport`` — it
 persists nothing and writes no files. Turning a returned candidate into an
-actual script stays on the existing ``writeReeFile`` (PUT .../files/content)
+actual script stays on the existing ``writeScript`` (PUT .../files/content)
 path; there is no apply or resolve endpoint here.
 """
 
@@ -14,6 +14,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from repo2ree_api.contracts import ERROR_RESPONSES
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_protocol.command import (
@@ -64,7 +65,8 @@ class GenerateScriptCandidatesPayload(BaseModel):
 
 @inference_router.post(
     "/api/v1/rees/{ree_id}/script-inferences:generate",
-    operation_id="generateScriptCandidates",
+    operation_id="suggestScripts",
+    openapi_extra=runs("suggest_scripts"),
     response_model=InferenceReport,
     responses=ERROR_RESPONSES,
 )
@@ -73,7 +75,7 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
 
     This proposes the build script (from a Dockerfile or a requirements.txt, say)
     and scaffolds the activation and experiment scripts. Nothing is written:
-    ``writeReeFile`` is how a candidate is adopted.
+    ``writeScript`` is how a candidate is adopted.
 
     Read-only and always recomputed: every call rescans and re-runs the DAGs
     against current inputs, so it needs no idempotency key and returns the report

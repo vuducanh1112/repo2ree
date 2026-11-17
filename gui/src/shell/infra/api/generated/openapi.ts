@@ -199,7 +199,7 @@ export interface paths {
          *     activate experiment environment templates are the content a fresh REE in that
          *     environment is seeded with. The experiment templates are for scripts created on
          *     demand under the reserved experiments directory. For scripts fitted to the REE's
-         *     own project, use ``generateScriptCandidates``.
+         *     own project, use ``suggestScripts``.
          */
         get: operations["listScriptTemplates"];
         put?: never;
@@ -220,7 +220,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Acquire Source Route */
-        post: operations["startSourceAcquisition"];
+        post: operations["acquireSource"];
         delete?: never;
         options?: never;
         head?: never;
@@ -357,7 +357,7 @@ export interface paths {
          *     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
          *     the write if the file has changed since its etag was read.
          */
-        put: operations["writeReeFile"];
+        put: operations["writeScript"];
         post?: never;
         delete?: never;
         options?: never;
@@ -380,13 +380,13 @@ export interface paths {
          *
          *     This proposes the build script (from a Dockerfile or a requirements.txt, say)
          *     and scaffolds the activation and experiment scripts. Nothing is written:
-         *     ``writeReeFile`` is how a candidate is adopted.
+         *     ``writeScript`` is how a candidate is adopted.
          *
          *     Read-only and always recomputed: every call rescans and re-runs the DAGs
          *     against current inputs, so it needs no idempotency key and returns the report
          *     directly rather than a background run.
          */
-        post: operations["generateScriptCandidates"];
+        post: operations["suggestScripts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -406,7 +406,7 @@ export interface paths {
          * Lint Ree Scripts Route
          * @description Statically check persisted scripts on every available tier.
          */
-        post: operations["lintReeScripts"];
+        post: operations["lintScripts"];
         delete?: never;
         options?: never;
         head?: never;
@@ -443,7 +443,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Generate Hbom Run */
-        post: operations["startHbomGeneration"];
+        post: operations["observeHardware"];
         delete?: never;
         options?: never;
         head?: never;
@@ -460,7 +460,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Evaluate Run */
-        post: operations["startEvaluate"];
+        post: operations["evaluateReproducibility"];
         delete?: never;
         options?: never;
         head?: never;
@@ -500,7 +500,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Build Experiment Environment Run */
-        post: operations["startBuildExperimentEnvironment"];
+        post: operations["buildExperimentEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -517,7 +517,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Generate Sbom Run */
-        post: operations["startSbomGeneration"];
+        post: operations["generateSbom"];
         delete?: never;
         options?: never;
         head?: never;
@@ -534,7 +534,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Cross Check Sbom Run */
-        post: operations["startSbomCrossCheck"];
+        post: operations["crossCheckSbom"];
         delete?: never;
         options?: never;
         head?: never;
@@ -551,7 +551,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Activation Test Run */
-        post: operations["startActivationTest"];
+        post: operations["activateExperimentEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -568,7 +568,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Check Working Environment Run */
-        post: operations["startWorkingEnvironmentCheck"];
+        post: operations["checkWorkingEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -585,7 +585,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Create Experiment Run */
-        post: operations["startExperiment"];
+        post: operations["runExperiment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -805,7 +805,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Start Source Review */
-        post: operations["startSourceReview"];
+        post: operations["reviewAcquireSource"];
         delete?: never;
         options?: never;
         head?: never;
@@ -829,7 +829,7 @@ export interface paths {
          *     meaningful against the source *this* attempt fetched for itself, and the
          *     workbench rejects the command outright when that step has not settled.
          */
-        post: operations["startBuildExperimentEnvironmentReview"];
+        post: operations["reviewBuildExperimentEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -853,7 +853,7 @@ export interface paths {
          *     workspace the build left behind and inherits what that evidence is worth
          *     rather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).
          */
-        post: operations["startActivationReview"];
+        post: operations["reviewActivateExperimentEnvironment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -884,7 +884,7 @@ export interface paths {
          *     host-side resolution preflight: an unknown experiment name surfaces as a
          *     failed run carrying the workbench's own message.
          */
-        post: operations["startExperimentReview"];
+        post: operations["reviewRunExperiment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4015,7 +4015,7 @@ export interface components {
              * Operation
              * @enum {string}
              */
-            operation: "provision" | "ree-load" | "seal" | "build_experiment_environment" | "sbom" | "crosscheck" | "hbom" | "activation" | "check_working_environment" | "source" | "evaluate" | "experiment";
+            operation: "initialize_ree" | "acquire_source" | "remove_source" | "load_ree_bundle" | "patch_ree_definition" | "write_script" | "suggest_scripts" | "lint_scripts" | "evaluate_reproducibility" | "observe_hardware" | "check_working_environment" | "materialize_workspace" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "run_experiment" | "seal_ree" | "review_acquire_source" | "review_build_experiment_environment" | "review_activate_experiment_environment" | "review_run_experiment";
             /**
              * Status
              * @enum {string}
@@ -6098,7 +6098,7 @@ export interface operations {
             };
         };
     };
-    startSourceAcquisition: {
+    acquireSource: {
         parameters: {
             query?: never;
             header?: never;
@@ -7017,7 +7017,7 @@ export interface operations {
             };
         };
     };
-    writeReeFile: {
+    writeScript: {
         parameters: {
             query?: never;
             header?: never;
@@ -7133,7 +7133,7 @@ export interface operations {
             };
         };
     };
-    generateScriptCandidates: {
+    suggestScripts: {
         parameters: {
             query?: never;
             header?: never;
@@ -7249,7 +7249,7 @@ export interface operations {
             };
         };
     };
-    lintReeScripts: {
+    lintScripts: {
         parameters: {
             query?: never;
             header?: never;
@@ -7481,7 +7481,7 @@ export interface operations {
             };
         };
     };
-    startHbomGeneration: {
+    observeHardware: {
         parameters: {
             query?: never;
             header?: never;
@@ -7597,7 +7597,7 @@ export interface operations {
             };
         };
     };
-    startEvaluate: {
+    evaluateReproducibility: {
         parameters: {
             query?: never;
             header?: never;
@@ -7825,7 +7825,7 @@ export interface operations {
             };
         };
     };
-    startBuildExperimentEnvironment: {
+    buildExperimentEnvironment: {
         parameters: {
             query?: never;
             header?: never;
@@ -7941,7 +7941,7 @@ export interface operations {
             };
         };
     };
-    startSbomGeneration: {
+    generateSbom: {
         parameters: {
             query?: never;
             header?: never;
@@ -8057,7 +8057,7 @@ export interface operations {
             };
         };
     };
-    startSbomCrossCheck: {
+    crossCheckSbom: {
         parameters: {
             query?: never;
             header?: never;
@@ -8173,7 +8173,7 @@ export interface operations {
             };
         };
     };
-    startActivationTest: {
+    activateExperimentEnvironment: {
         parameters: {
             query?: never;
             header?: never;
@@ -8289,7 +8289,7 @@ export interface operations {
             };
         };
     };
-    startWorkingEnvironmentCheck: {
+    checkWorkingEnvironment: {
         parameters: {
             query?: never;
             header?: never;
@@ -8405,7 +8405,7 @@ export interface operations {
             };
         };
     };
-    startExperiment: {
+    runExperiment: {
         parameters: {
             query?: never;
             header?: never;
@@ -9658,7 +9658,7 @@ export interface operations {
             };
         };
     };
-    startSourceReview: {
+    reviewAcquireSource: {
         parameters: {
             query?: never;
             header?: never;
@@ -9774,7 +9774,7 @@ export interface operations {
             };
         };
     };
-    startBuildExperimentEnvironmentReview: {
+    reviewBuildExperimentEnvironment: {
         parameters: {
             query?: never;
             header?: never;
@@ -9891,7 +9891,7 @@ export interface operations {
             };
         };
     };
-    startActivationReview: {
+    reviewActivateExperimentEnvironment: {
         parameters: {
             query?: never;
             header?: never;
@@ -10008,7 +10008,7 @@ export interface operations {
             };
         };
     };
-    startExperimentReview: {
+    reviewRunExperiment: {
         parameters: {
             query?: never;
             header?: never;

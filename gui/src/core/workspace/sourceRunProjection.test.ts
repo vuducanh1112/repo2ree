@@ -17,7 +17,7 @@ describe("projectCurrentSourceRun", () => {
     const runs: ReeRunSummary[] = [
       {
         runId: "source-run",
-        operation: "source",
+        operation: "acquire_source",
         status: "succeeded",
         createdAt: "2026-08-27T00:00:00Z",
         outputs: {

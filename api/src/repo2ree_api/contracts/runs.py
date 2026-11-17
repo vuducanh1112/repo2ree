@@ -3,6 +3,7 @@
 ``RunStatus`` / ``RunOperation`` are part of the wire contract (they land in the
 OpenAPI schema through ``RunSummary``), so they are declared here once and
 imported by the registry and the run routes rather than re-spelled next to each.
+A run's operation is the catalogue's name for it, the one its command carries.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from repo2ree_protocol.command import OperationName
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.result import Failure, HistoryReference
 
@@ -23,20 +25,16 @@ RunStatus = Literal[
     "failed",
     "canceled",
 ]
-RunOperation = Literal[
-    "provision",
-    "ree-load",
-    "seal",
-    "build_experiment_environment",
-    "sbom",
-    "crosscheck",
-    "hbom",
-    "activation",
-    "check_working_environment",
-    "source",
-    "evaluate",
-    "experiment",
-]
+# A run carries the operation its command runs; the run that provisions a workbench runs initialize_ree.
+RunOperation = OperationName
+
+# Where a route says which operations it starts, so the contract alone names them.
+OPERATIONS_EXTENSION = "x-operations"
+
+
+def runs(*operations: OperationName) -> dict[str, Any]:
+    """The ``openapi_extra`` of a route that starts ``operations``."""
+    return {OPERATIONS_EXTENSION: list(operations)}
 
 
 class RunSummary(BaseModel):

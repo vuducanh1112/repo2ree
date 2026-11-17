@@ -13,7 +13,6 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from repo2ree_api.contracts import RunOperation
 from repo2ree_api.control.run_registry import RunRegistry
 from repo2ree_api.deps import command_dispatcher, ree_registry
 from repo2ree_api.settings import service_settings
@@ -136,7 +135,7 @@ def start_provisioning_run(
     """
     return _registry.start_background(
         ree_id,
-        "provision",
+        "initialize_ree",
         request_payload,
         "provision",
         runner,
@@ -148,7 +147,6 @@ def start_provisioning_run(
 def start_single_command_run(
     ree_id: str,
     *,
-    operation: RunOperation,
     action: AuthorApiActionName | None,
     command: Command,
     run_id_prefix: str,
@@ -221,7 +219,7 @@ def start_single_command_run(
 
     return start_background_run(
         ree_id,
-        operation,
+        command.operation,
         request_payload,
         run_id_prefix,
         _runner,

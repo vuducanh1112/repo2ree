@@ -23,6 +23,7 @@ from repo2ree_api.contracts import (
     UploadInitResponse,
     UploadStoredResponse,
 )
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
@@ -36,7 +37,8 @@ source_router = APIRouter()
 @source_router.post(
     "/api/v1/rees/{ree_id}/source:acquire",
     tags=["rees", "sources"],
-    operation_id="startSourceAcquisition",
+    operation_id="acquireSource",
+    openapi_extra=runs("acquire_source"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -50,7 +52,6 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
 
     run_state = start_single_command_run(
         ree_id,
-        operation="source",
         action="acquire_source",
         command=AcquireSourceCommand(
             args=AcquireSourceArgs(
@@ -102,6 +103,7 @@ async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Requ
     "/api/v1/rees/{ree_id}/source:upload-complete",
     tags=["rees", "sources"],
     operation_id="completeSourceUpload",
+    openapi_extra=runs("acquire_source"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -111,7 +113,6 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
         upload_token=payload.upload_token,
         archive_name=payload.archive_name,
         purpose="source",
-        operation="source",
         action="upload_source",
         run_id_prefix="source",
         command=AcquireSourceCommand(
@@ -141,6 +142,7 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
     "/api/v1/rees/{ree_id}/source",
     tags=["rees", "sources"],
     operation_id="removeSource",
+    openapi_extra=runs("remove_source"),
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )

@@ -8,7 +8,7 @@ function crossCheckRun(
   const { matched = 1, ...run } = overrides;
   return {
     runId: "crosscheck-1",
-    operation: "crosscheck",
+    operation: "cross_check_sbom",
     status: "succeeded",
     createdAt: "2026-01-01T00:00:00Z",
     finishedAt: "2026-01-01T00:00:01Z",
@@ -48,7 +48,7 @@ describe("latestCrossCheckSummary", () => {
   });
 
   it("ignores runs that are another operation, unfinished, or failed", () => {
-    expect(latestCrossCheckSummary([crossCheckRun({ operation: "sbom" })])).toBeNull();
+    expect(latestCrossCheckSummary([crossCheckRun({ operation: "generate_sbom" })])).toBeNull();
     expect(latestCrossCheckSummary([crossCheckRun({ status: "running" })])).toBeNull();
     expect(latestCrossCheckSummary([crossCheckRun({ status: "failed" })])).toBeNull();
   });

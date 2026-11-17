@@ -150,13 +150,13 @@ describe("useScriptDraftLint", () => {
 
 describe("useSavedScriptLint", () => {
   it("reduces the workbench response to this target's report", async () => {
-    const lintReeScripts = vi.fn().mockResolvedValue({
+    const lintScripts = vi.fn().mockResolvedValue({
       reports: [report("build_experiment_environment")],
       missing_scripts: [],
     });
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { lintReeScripts } }),
+      services: fakeApiServices({ ree: { lintScripts } }),
     });
 
     const { result } = renderHook(
@@ -172,10 +172,10 @@ describe("useSavedScriptLint", () => {
   });
 
   it("asks nothing while the editor is dirty", async () => {
-    const lintReeScripts = vi.fn().mockResolvedValue({ reports: [], missing_scripts: [] });
+    const lintScripts = vi.fn().mockResolvedValue({ reports: [], missing_scripts: [] });
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { lintReeScripts } }),
+      services: fakeApiServices({ ree: { lintScripts } }),
     });
 
     renderHook(
@@ -186,6 +186,6 @@ describe("useSavedScriptLint", () => {
     );
 
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(lintReeScripts).not.toHaveBeenCalled();
+    expect(lintScripts).not.toHaveBeenCalled();
   });
 });

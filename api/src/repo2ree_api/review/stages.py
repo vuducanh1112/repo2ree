@@ -15,6 +15,7 @@ from fastapi import APIRouter
 from pydantic import Field
 
 from repo2ree_api.contracts import ERROR_RESPONSES, CreateRunPayload, RunSummary
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
@@ -58,7 +59,8 @@ class CreateBuildExperimentEnvironmentReviewPayload(CreateRunPayload):
 
 @review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/source:reproduce",
-    operation_id="startSourceReview",
+    operation_id="reviewAcquireSource",
+    openapi_extra=runs("review_acquire_source"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -71,7 +73,6 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="source",
                 action=None,
                 command=command,
                 run_id_prefix="review-source",
@@ -86,7 +87,8 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
 
 @review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce",
-    operation_id="startBuildExperimentEnvironmentReview",
+    operation_id="reviewBuildExperimentEnvironment",
+    openapi_extra=runs("review_build_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -110,7 +112,6 @@ def start_build_review(
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="build_experiment_environment",
                 action=None,
                 command=command,
                 run_id_prefix="review-build",
@@ -125,7 +126,8 @@ def start_build_review(
 
 @review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce",
-    operation_id="startActivationReview",
+    operation_id="reviewActivateExperimentEnvironment",
+    openapi_extra=runs("review_activate_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -143,7 +145,6 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="activation",
                 action=None,
                 command=command,
                 run_id_prefix="review-activation",
@@ -158,7 +159,8 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
 
 @review_stages_router.post(
     "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce",
-    operation_id="startExperimentReview",
+    operation_id="reviewRunExperiment",
+    openapi_extra=runs("review_run_experiment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
@@ -188,7 +190,6 @@ def start_experiment_review(
         run_summary(
             start_single_command_run(
                 ree_id,
-                operation="experiment",
                 action=None,
                 command=command,
                 run_id_prefix="review-experiment",

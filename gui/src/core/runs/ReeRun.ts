@@ -47,35 +47,42 @@ export interface ReeRun {
   outputs?: Record<string, unknown>;
 }
 
-/** Backend run operation keys, as recorded on every run summary. */
+/** The operation a run runs, by the specification's catalogue name, as recorded on every run summary. */
 export type ReeRunOperation =
-  | "provision"
-  | "ree-load"
-  | "seal"
-  | "source"
-  | "build_experiment_environment"
-  | "sbom"
-  | "crosscheck"
-  | "hbom"
-  | "activation"
+  | "initialize_ree"
+  | "acquire_source"
+  | "remove_source"
+  | "load_ree_bundle"
+  | "patch_ree_definition"
+  | "write_script"
+  | "suggest_scripts"
+  | "lint_scripts"
+  | "evaluate_reproducibility"
+  | "observe_hardware"
   | "check_working_environment"
-  | "evaluate"
-  | "swh"
-  | "zenodo"
-  | "dataverse"
-  | "experiment";
+  | "materialize_workspace"
+  | "build_experiment_environment"
+  | "generate_sbom"
+  | "cross_check_sbom"
+  | "activate_experiment_environment"
+  | "run_experiment"
+  | "seal_ree"
+  | "review_acquire_source"
+  | "review_build_experiment_environment"
+  | "review_activate_experiment_environment"
+  | "review_run_experiment";
 
 /** The operations whose successful run files a receipt under its own run id. */
 const RECEIPT_OPERATIONS: ReadonlySet<ReeRunOperation> = new Set([
-  "source",
-  "evaluate",
-  "hbom",
+  "acquire_source",
+  "evaluate_reproducibility",
+  "observe_hardware",
   "build_experiment_environment",
-  "sbom",
-  "crosscheck",
-  "activation",
+  "generate_sbom",
+  "cross_check_sbom",
+  "activate_experiment_environment",
   "check_working_environment",
-  "experiment",
+  "run_experiment",
 ]);
 
 export function filesReceipt(operation: ReeRunOperation): boolean {

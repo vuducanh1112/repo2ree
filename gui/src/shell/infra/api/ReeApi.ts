@@ -171,7 +171,7 @@ export class ReeApi {
     return this.client.request<ReviewSetWire>(endpoints.reeReviews(reeId), { method: "GET" });
   }
 
-  async startSourceReview(
+  async reviewAcquireSource(
     reeId: ReeId | string,
     payload: CreateSourceReviewPayload,
   ): Promise<RunSummary> {
@@ -181,7 +181,7 @@ export class ReeApi {
     });
   }
 
-  async startBuildExperimentEnvironmentReview(
+  async reviewBuildExperimentEnvironment(
     reeId: ReeId | string,
     reviewId: string,
     payload: CreateBuildExperimentEnvironmentReviewPayload,
@@ -203,7 +203,7 @@ export class ReeApi {
    * whole set is this called in sequence, so each run keeps its own log,
    * receipt, and cancel point.
    */
-  async startExperimentReview(
+  async reviewRunExperiment(
     reeId: ReeId | string,
     reviewId: string,
     experimentName: string,
@@ -214,7 +214,10 @@ export class ReeApi {
     );
   }
 
-  async startActivationReview(reeId: ReeId | string, reviewId: string): Promise<RunSummary> {
+  async reviewActivateExperimentEnvironment(
+    reeId: ReeId | string,
+    reviewId: string,
+  ): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.reeActivationReview(reeId, reviewId), {
       method: "POST",
       body: JSON.stringify({}),
@@ -334,7 +337,7 @@ export class ReeApi {
    * bytes become a script only when the caller writes them via
    * {@link putFileContent}.
    */
-  async generateScriptCandidates(
+  async suggestScripts(
     reeId: ReeId | string,
     targets: ScriptTargetSelector[],
   ): Promise<InferenceReport> {
@@ -349,7 +352,7 @@ export class ReeApi {
    * run. Read-only and always recomputed; a target with no script yet comes
    * back under `missing_scripts` rather than as an empty report.
    */
-  async lintReeScripts(
+  async lintScripts(
     reeId: ReeId | string,
     targets: ScriptTargetSelector[],
   ): Promise<LintScriptsResponse> {
@@ -363,7 +366,7 @@ export class ReeApi {
    * Static checks over a script that has not been saved — the bytes in an
    * editor, with the declarations to grade them against. It reads and writes
    * nothing of the REE; the REE's workbench runs the checks. Contract tier only;
-   * the syntax and shell tiers live on {@link lintReeScripts}.
+   * the syntax and shell tiers live on {@link lintScripts}.
    */
   async checkScriptDraft(
     reeId: ReeId | string,

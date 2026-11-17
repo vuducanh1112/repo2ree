@@ -79,7 +79,7 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
 
     assert response.status_code == 200, response.text
     summary = response.json()
-    assert summary["operation"] == "ree-load"
+    assert summary["operation"] == "load_ree_bundle"
 
     run = _await_run(client, online_ree.ree_id, summary["run_id"])
     assert run["status"] == "succeeded"

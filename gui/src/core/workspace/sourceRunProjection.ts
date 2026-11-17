@@ -24,9 +24,9 @@ export function projectCurrentSourceRun(
   const run = receiptRunId
     ? runs.find((candidate) => candidate.runId === receiptRunId)
     : runs.find(
-        (candidate) => candidate.operation === "source" && candidate.status === "succeeded",
+        (candidate) => candidate.operation === "acquire_source" && candidate.status === "succeeded",
       );
-  if (!run || run.operation !== "source" || run.status !== "succeeded") {
+  if (!run || run.operation !== "acquire_source" || run.status !== "succeeded") {
     return { sourceState: {} };
   }
 

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   every script it has: starter build and activate scripts, a launch that runs each\n   script directly, and a check of the working environment that passes as it comes.\n   `writeReeFile` overwrites a script; none is ever deleted.\n3. Bring in source, either by reference (`startSourceAcquisition`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `generateScriptCandidates` proposes a build script from the project.\n   `writeReeFile` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `startBuildExperimentEnvironment`.\n6. `generateScriptCandidates` also proposes the activate experiment environment script;\n   `writeReeFile` writes it, then `startActivationTest` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `patchReeDefinition` declares it, which\n   gives it a starter run script and a verify script that passes; removing or\n   renaming it takes its scripts with it. `generateScriptCandidates` with its name\n   proposes a run script; `writeReeFile` writes that and, if the experiment checks\n   its result, the verify script; then `startExperiment`.\n8. Optionally assess: `startEvaluate` / `getEvaluateReport`, `startSbomGeneration`,\n   `startSbomCrossCheck`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `startSourceReview` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `startBuildExperimentEnvironmentReview`, `startActivationReview`, and `startExperimentReview` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   every script it has: starter build and activate scripts, a launch that runs each\n   script directly, and a check of the working environment that passes as it comes.\n   `writeScript` overwrites a script; none is ever deleted.\n3. Bring in source, either by reference (`acquireSource`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `suggestScripts` proposes a build script from the project.\n   `writeScript` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `buildExperimentEnvironment`.\n6. `suggestScripts` also proposes the activate experiment environment script;\n   `writeScript` writes it, then `activateExperimentEnvironment` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `patchReeDefinition` declares it, which\n   gives it a starter run script and a verify script that passes; removing or\n   renaming it takes its scripts with it. `suggestScripts` with its name\n   proposes a run script; `writeScript` writes that and, if the experiment checks\n   its result, the verify script; then `runExperiment`.\n8. Optionally assess: `evaluateReproducibility` / `getEvaluateReport`, `generateSbom`,\n   `crossCheckSbom`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `reviewAcquireSource` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `reviewBuildExperimentEnvironment`, `reviewActivateExperimentEnvironment`, and `reviewRunExperiment` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1638,7 +1638,7 @@
         },
         "x-repo2ree-step-actions": {
           "source": [
-            "startSourceAcquisition",
+            "acquireSource",
             "initializeSourceUpload",
             "completeSourceUpload"
           ],
@@ -1646,36 +1646,36 @@
             "patchReeDefinition"
           ],
           "hbom": [
-            "startHbomGeneration",
+            "observeHardware",
             "patchReeDefinition"
           ],
           "check_working_environment": [
-            "writeReeFile",
+            "writeScript",
             "patchReeDefinition",
-            "startWorkingEnvironmentCheck"
+            "checkWorkingEnvironment"
           ],
           "evaluate": [
-            "startEvaluate"
+            "evaluateReproducibility"
           ],
           "build_experiment_environment": [
-            "startBuildExperimentEnvironment",
-            "generateScriptCandidates",
-            "writeReeFile"
+            "buildExperimentEnvironment",
+            "suggestScripts",
+            "writeScript"
           ],
           "sbom": [
-            "startSbomGeneration"
+            "generateSbom"
           ],
           "crosscheck": [
-            "startSbomCrossCheck"
+            "crossCheckSbom"
           ],
           "activation": [
-            "startActivationTest"
+            "activateExperimentEnvironment"
           ],
           "experiments": [
-            "startExperiment",
+            "runExperiment",
             "patchReeDefinition",
-            "generateScriptCandidates",
-            "writeReeFile"
+            "suggestScripts",
+            "writeScript"
           ],
           "seal": [
             "sealRee"
@@ -1689,7 +1689,7 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic for the command line the REE's workbench runs. Each section marks the\ndefault entry for each environment with ``is_default``; the default build and\nactivate experiment environment templates are the content a fresh REE in that\nenvironment is seeded with. The experiment templates are for scripts created on\ndemand under the reserved experiments directory. For scripts fitted to the REE's\nown project, use ``generateScriptCandidates``.",
+        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic for the command line the REE's workbench runs. Each section marks the\ndefault entry for each environment with ``is_default``; the default build and\nactivate experiment environment templates are the content a fresh REE in that\nenvironment is seeded with. The experiment templates are for scripts created on\ndemand under the reserved experiments directory. For scripts fitted to the REE's\nown project, use ``suggestScripts``.",
         "operationId": "listScriptTemplates",
         "parameters": [
           {
@@ -1823,7 +1823,7 @@
           "sources"
         ],
         "summary": "Acquire Source Route",
-        "operationId": "startSourceAcquisition",
+        "operationId": "acquireSource",
         "parameters": [
           {
             "name": "ree_id",
@@ -1956,7 +1956,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "acquire_source"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/source:upload-init": {
@@ -2386,7 +2389,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "acquire_source"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/source": {
@@ -2520,7 +2526,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "remove_source"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/definition": {
@@ -2663,7 +2672,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "patch_ree_definition"
+        ]
       },
       "put": {
         "tags": [
@@ -2803,7 +2815,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "patch_ree_definition"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/files/raw": {
@@ -2957,7 +2972,7 @@
         ],
         "summary": "Put Workspace File Content Route",
         "description": "Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.\n\n``listScriptTemplates`` says where each script belongs. ``if_match`` refuses\nthe write if the file has changed since its etag was read.",
-        "operationId": "writeReeFile",
+        "operationId": "writeScript",
         "parameters": [
           {
             "name": "ree_id",
@@ -3090,7 +3105,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "write_script"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/script-inferences:generate": {
@@ -3099,8 +3117,8 @@
           "files"
         ],
         "summary": "Generate Script Candidates Route",
-        "description": "Synchronously generate candidate scripts for the requested targets, from the REE's own project.\n\nThis proposes the build script (from a Dockerfile or a requirements.txt, say)\nand scaffolds the activation and experiment scripts. Nothing is written:\n``writeReeFile`` is how a candidate is adopted.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
-        "operationId": "generateScriptCandidates",
+        "description": "Synchronously generate candidate scripts for the requested targets, from the REE's own project.\n\nThis proposes the build script (from a Dockerfile or a requirements.txt, say)\nand scaffolds the activation and experiment scripts. Nothing is written:\n``writeScript`` is how a candidate is adopted.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
+        "operationId": "suggestScripts",
         "parameters": [
           {
             "name": "ree_id",
@@ -3233,7 +3251,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "suggest_scripts"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/script-lints:run": {
@@ -3243,7 +3264,7 @@
         ],
         "summary": "Lint Ree Scripts Route",
         "description": "Statically check persisted scripts on every available tier.",
-        "operationId": "lintReeScripts",
+        "operationId": "lintScripts",
         "parameters": [
           {
             "name": "ree_id",
@@ -3376,7 +3397,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "lint_scripts"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/script-lints:draft": {
@@ -3528,7 +3552,7 @@
           "runs"
         ],
         "summary": "Create Generate Hbom Run",
-        "operationId": "startHbomGeneration",
+        "operationId": "observeHardware",
         "parameters": [
           {
             "name": "ree_id",
@@ -3661,7 +3685,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "observe_hardware"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/evaluate": {
@@ -3670,7 +3697,7 @@
           "runs"
         ],
         "summary": "Create Evaluate Run",
-        "operationId": "startEvaluate",
+        "operationId": "evaluateReproducibility",
         "parameters": [
           {
             "name": "ree_id",
@@ -3803,7 +3830,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "evaluate_reproducibility"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/evaluate/report": {
@@ -3945,7 +3975,7 @@
           "runs"
         ],
         "summary": "Create Build Experiment Environment Run",
-        "operationId": "startBuildExperimentEnvironment",
+        "operationId": "buildExperimentEnvironment",
         "parameters": [
           {
             "name": "ree_id",
@@ -4078,7 +4108,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "build_experiment_environment"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/generate-sbom": {
@@ -4087,7 +4120,7 @@
           "runs"
         ],
         "summary": "Create Generate Sbom Run",
-        "operationId": "startSbomGeneration",
+        "operationId": "generateSbom",
         "parameters": [
           {
             "name": "ree_id",
@@ -4220,7 +4253,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "generate_sbom"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/cross-check-sbom": {
@@ -4229,7 +4265,7 @@
           "runs"
         ],
         "summary": "Create Cross Check Sbom Run",
-        "operationId": "startSbomCrossCheck",
+        "operationId": "crossCheckSbom",
         "parameters": [
           {
             "name": "ree_id",
@@ -4362,7 +4398,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "cross_check_sbom"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/activation-test": {
@@ -4371,7 +4410,7 @@
           "runs"
         ],
         "summary": "Create Activation Test Run",
-        "operationId": "startActivationTest",
+        "operationId": "activateExperimentEnvironment",
         "parameters": [
           {
             "name": "ree_id",
@@ -4504,7 +4543,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "activate_experiment_environment"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/check-working-environment": {
@@ -4513,7 +4555,7 @@
           "runs"
         ],
         "summary": "Create Check Working Environment Run",
-        "operationId": "startWorkingEnvironmentCheck",
+        "operationId": "checkWorkingEnvironment",
         "parameters": [
           {
             "name": "ree_id",
@@ -4646,7 +4688,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "check_working_environment"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run": {
@@ -4655,7 +4700,7 @@
           "runs"
         ],
         "summary": "Create Experiment Run",
-        "operationId": "startExperiment",
+        "operationId": "runExperiment",
         "parameters": [
           {
             "name": "ree_id",
@@ -4797,7 +4842,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "run_experiment"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/receipts/author": {
@@ -5357,7 +5405,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "load_ree_bundle"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/ree:seal": {
@@ -5500,7 +5551,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "seal_ree"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/ree-archive": {
@@ -6215,7 +6269,7 @@
           "reviews"
         ],
         "summary": "Start Source Review",
-        "operationId": "startSourceReview",
+        "operationId": "reviewAcquireSource",
         "parameters": [
           {
             "name": "ree_id",
@@ -6348,7 +6402,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "review_acquire_source"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce": {
@@ -6358,7 +6415,7 @@
         ],
         "summary": "Start Build Review",
         "description": "Rebuild the experiment environment inside an attempt whose source was already reproduced.\n\nAddressed by review id rather than minting a new one: the build is only\nmeaningful against the source *this* attempt fetched for itself, and the\nworkbench rejects the command outright when that step has not settled.",
-        "operationId": "startBuildExperimentEnvironmentReview",
+        "operationId": "reviewBuildExperimentEnvironment",
         "parameters": [
           {
             "name": "ree_id",
@@ -6500,7 +6557,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "review_build_experiment_environment"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce": {
@@ -6510,7 +6570,7 @@
         ],
         "summary": "Start Activation Review",
         "description": "Run the author's activation alone in the experiment environment this attempt certified.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).",
-        "operationId": "startActivationReview",
+        "operationId": "reviewActivateExperimentEnvironment",
         "parameters": [
           {
             "name": "ree_id",
@@ -6652,7 +6712,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "review_activate_experiment_environment"
+        ]
       }
     },
     "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce": {
@@ -6662,7 +6725,7 @@
         ],
         "summary": "Start Experiment Review",
         "description": "Reproduce one experiment's result inside an attempt whose experiment environment came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``experiments/{name}:run``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
-        "operationId": "startExperimentReview",
+        "operationId": "reviewRunExperiment",
         "parameters": [
           {
             "name": "ree_id",
@@ -6813,7 +6876,10 @@
               }
             }
           }
-        }
+        },
+        "x-operations": [
+          "review_run_experiment"
+        ]
       }
     },
     "/api/v1/workbenches": {
@@ -15434,18 +15500,28 @@
           "operation": {
             "type": "string",
             "enum": [
-              "provision",
-              "ree-load",
-              "seal",
-              "build_experiment_environment",
-              "sbom",
-              "crosscheck",
-              "hbom",
-              "activation",
+              "initialize_ree",
+              "acquire_source",
+              "remove_source",
+              "load_ree_bundle",
+              "patch_ree_definition",
+              "write_script",
+              "suggest_scripts",
+              "lint_scripts",
+              "evaluate_reproducibility",
+              "observe_hardware",
               "check_working_environment",
-              "source",
-              "evaluate",
-              "experiment"
+              "materialize_workspace",
+              "build_experiment_environment",
+              "generate_sbom",
+              "cross_check_sbom",
+              "activate_experiment_environment",
+              "run_experiment",
+              "seal_ree",
+              "review_acquire_source",
+              "review_build_experiment_environment",
+              "review_activate_experiment_environment",
+              "review_run_experiment"
             ],
             "title": "Operation"
           },

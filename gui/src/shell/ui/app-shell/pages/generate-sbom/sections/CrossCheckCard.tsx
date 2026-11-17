@@ -25,7 +25,7 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
   const runs = runsQuery.data ?? [];
   const checking =
     startRun.isPending ||
-    runs.some((run) => run.operation === "crosscheck" && !isTerminalReeRunStatus(run.status));
+    runs.some((run) => run.operation === "cross_check_sbom" && !isTerminalReeRunStatus(run.status));
   const hasReport = !!reportQuery.data;
   // The cross-check does not land in the evaluate report: that artifact is the
   // evaluate run's own evidence, digest-pinned by its receipt, so a later run

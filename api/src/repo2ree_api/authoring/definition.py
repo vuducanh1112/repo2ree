@@ -10,6 +10,7 @@ from repo2ree_api.contracts import (
     ReeDefinitionReplacePayload,
     ReeDocument,
 )
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
@@ -21,6 +22,7 @@ definition_router = APIRouter(tags=["rees"])
 @definition_router.patch(
     "/api/v1/rees/{ree_id}/definition",
     operation_id="patchReeDefinition",
+    openapi_extra=runs("patch_ree_definition"),
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
@@ -51,6 +53,7 @@ def _patch_definition(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDoc
 @definition_router.put(
     "/api/v1/rees/{ree_id}/definition",
     operation_id="replaceReeDefinition",
+    openapi_extra=runs("patch_ree_definition"),
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )

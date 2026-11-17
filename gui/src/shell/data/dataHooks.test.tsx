@@ -135,7 +135,7 @@ describe("shell data hooks", () => {
 
   it("updates intent and runs read-only script inference", async () => {
     const patchReeDefinition = vi.fn().mockResolvedValue({});
-    const generateScriptCandidates = vi.fn().mockResolvedValue({
+    const suggestScripts = vi.fn().mockResolvedValue({
       results: [
         {
           target: { kind: "build_experiment_environment" },
@@ -152,7 +152,7 @@ describe("shell data hooks", () => {
     });
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { patchReeDefinition, generateScriptCandidates } }),
+      services: fakeApiServices({ ree: { patchReeDefinition, suggestScripts } }),
     });
     const { result } = renderHook(
       () => ({
@@ -175,7 +175,7 @@ describe("shell data hooks", () => {
     expect(patchReeDefinition).toHaveBeenCalledWith("ree-1", {
       definition_patch: expect.objectContaining({ name: "Demo" }),
     });
-    expect(generateScriptCandidates).toHaveBeenCalledWith("ree-1", [
+    expect(suggestScripts).toHaveBeenCalledWith("ree-1", [
       { kind: "build_experiment_environment" },
     ]);
     expect(result.current.generate.data?.generation).toMatchObject({

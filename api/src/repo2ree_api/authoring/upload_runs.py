@@ -20,7 +20,6 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from repo2ree_api.contracts import RunOperation
 from repo2ree_api.control.run_orchestration import (
     append_run_log,
     is_cancel_requested,
@@ -68,7 +67,6 @@ def start_staged_upload_run(
     upload_token: str,
     archive_name: str,
     purpose: str,
-    operation: RunOperation,
     action: AuthorApiActionName,
     run_id_prefix: str,
     command: Command,
@@ -99,7 +97,6 @@ def start_staged_upload_run(
             upload_token=upload_token,
             archive_name=archive_name,
             purpose=purpose,
-            operation=operation,
             action=action,
             action_id=action_id,
             run_id_prefix=run_id_prefix,
@@ -119,7 +116,6 @@ def _start(
     upload_token: str,
     archive_name: str,
     purpose: str,
-    operation: RunOperation,
     action: AuthorApiActionName,
     action_id: str,
     run_id_prefix: str,
@@ -174,7 +170,7 @@ def _start(
 
     return start_background_run(
         ree_id,
-        operation,
+        command.operation,
         request_payload,
         run_id_prefix,
         _runner,

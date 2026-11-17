@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, WorkspaceFileContentPayload
+from repo2ree_api.contracts.runs import runs
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
@@ -45,7 +46,8 @@ def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
 
 @files_router.put(
     "/api/v1/rees/{ree_id}/files/content",
-    operation_id="writeReeFile",
+    operation_id="writeScript",
+    openapi_extra=runs("write_script"),
     response_model=FileMutationResponse,
     responses=ERROR_RESPONSES,
 )

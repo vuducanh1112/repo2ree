@@ -112,7 +112,7 @@ def test_an_upload_continues_the_action_its_slot_opened(tmp_path: Path, actions:
             {
                 "run_id": "source-1",
                 "ree_id": "ree-1",
-                "operation": "source",
+                "operation": "acquire_source",
                 "status": "queued",
                 "created_at": "2026-01-01T00:00:00Z",
                 "request": {},

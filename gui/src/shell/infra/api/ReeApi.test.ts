@@ -63,8 +63,8 @@ describe("ReeApi", () => {
     });
     await api.removeSource(reeId);
     await api.putFileContent(reeId, { path: "run.sh", content: "echo ok" });
-    await api.generateScriptCandidates(reeId, [{ kind: "build_experiment_environment" }]);
-    await api.lintReeScripts(reeId, [{ kind: "build_experiment_environment" }]);
+    await api.suggestScripts(reeId, [{ kind: "build_experiment_environment" }]);
+    await api.lintScripts(reeId, [{ kind: "build_experiment_environment" }]);
     await api.checkScriptDraft(reeId, { kind: "build_experiment_environment" }, "set -eu\n", {
       experiment_environment_path: "runtime.tar",
     });
@@ -127,13 +127,13 @@ describe("ReeApi", () => {
     const reeId = asReeId("ree-1");
     await api.getEvaluateReport(reeId);
     await api.listReviews(reeId);
-    await api.startSourceReview(reeId, { basis: "auto" });
-    await api.startBuildExperimentEnvironmentReview(reeId, "review/1", {
+    await api.reviewAcquireSource(reeId, { basis: "auto" });
+    await api.reviewBuildExperimentEnvironment(reeId, "review/1", {
       basis: "auto",
       prune_workspace: false,
     });
-    await api.startActivationReview(reeId, "review/1");
-    await api.startExperimentReview(reeId, "review/1", "hello world");
+    await api.reviewActivateExperimentEnvironment(reeId, "review/1");
+    await api.reviewRunExperiment(reeId, "review/1", "hello world");
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
       "/api/v1/rees/ree-1/evaluate/report",

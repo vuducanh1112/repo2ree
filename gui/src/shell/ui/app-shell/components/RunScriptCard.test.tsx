@@ -40,7 +40,7 @@ function savedReport(findings: unknown[]) {
 }
 
 function renderCard(findings: unknown[]) {
-  const lintReeScripts = vi.fn().mockResolvedValue(savedReport(findings));
+  const lintScripts = vi.fn().mockResolvedValue(savedReport(findings));
   renderWithShell(
     <RunScriptCard
       label="Build script"
@@ -56,7 +56,7 @@ function renderCard(findings: unknown[]) {
         />
       )}
     />,
-    { reeId: "ree-1", services: fakeApiServices({ ree: { lintReeScripts } }) },
+    { reeId: "ree-1", services: fakeApiServices({ ree: { lintScripts } }) },
   );
 }
 

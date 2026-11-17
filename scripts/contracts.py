@@ -4,7 +4,8 @@ A contract is correct when its file equals what its render function returns now,
 by a recipe, by ``write``, or by hand. ``check`` holds every contract to that, and holds ``contracts/`` to holding
 nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. It holds the
 contracts to the specification's catalogue of operations too: each operation a contract names is catalogued, and
-each catalogued one is run by the `ree` command spelled as its name in kebab case.
+each catalogued one is run by the `ree` command spelled as its name in kebab case, and each one a route starts has a
+route whose operationId is its name in camel case.
 
     python -m scripts.contracts write [NAME...]   # every contract, in the order below, or the named ones
     python -m scripts.contracts check             # exit 1 on a missing, stale or unaccounted file
@@ -149,7 +150,7 @@ REGISTRY: tuple[Contract, ...] = (
     ),
 )
 
-ProblemKind = Literal["missing", "stale", "unaccounted", "uncatalogued", "unrun"]
+ProblemKind = Literal["missing", "stale", "unaccounted", "uncatalogued", "unrun", "unrouted"]
 
 
 @dataclass(frozen=True)
@@ -229,17 +230,38 @@ def operation_problems(*, registry: Sequence[Contract] = REGISTRY, root: Path = 
             Problem(cli_path, "unrun", f"{name}: no `ree {' '.join(words_of(name))}` runs it")
             for name in sorted(catalogue - run)
         )
+    if Name.OPENAPI in documents:
+        openapi_path, openapi = documents[Name.OPENAPI]
+        routes = [route for methods in openapi["paths"].values() for route in methods.values()]
+        declared = {operation for route in routes for operation in route.get("x-operations", [])}
+        routed = {
+            operation
+            for route in routes
+            for operation in route.get("x-operations", [])
+            if route["operationId"] == camel_case(operation)
+        }
+        problems.extend(
+            Problem(openapi_path, "unrouted", f"{name}: no route {camel_case(name)} declares it")
+            for name in sorted(declared - routed)
+        )
     return problems
 
 
+def camel_case(operation: str) -> str:
+    first, *rest = operation.split("_")
+    return first + "".join(word.capitalize() for word in rest)
+
+
 def _operations_named(document: object) -> set[str]:
-    """The operation names in a JSON document: an ``operation`` property's const, and an ``operations`` list's items."""
+    """The operation names in a JSON document: an ``operation`` property's values, an ``operations`` list's items."""
     named: set[str] = set()
     if isinstance(document, dict):
         properties = document.get("properties")
         operation = properties.get("operation") if isinstance(properties, dict) else None
         if isinstance(operation, dict) and isinstance(operation.get("const"), str):
             named.add(operation["const"])
+        if isinstance(operation, dict) and isinstance(operation.get("enum"), list):
+            named.update(item for item in operation["enum"] if isinstance(item, str))
         for key, value in document.items():
             if key in ("operations", "x-operations") and isinstance(value, list):
                 named.update(item for item in value if isinstance(item, str))
