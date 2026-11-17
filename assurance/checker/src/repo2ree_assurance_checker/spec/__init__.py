@@ -2,7 +2,8 @@
 
 It has two layers. The vocabulary (``vocabulary/*.toml``, with ``components.toml``) is
 the contract owners emit against: each subject's owner, key, states or messages, and
-facts with their types and where they are required. The rules (``entities/*.toml``,
+facts with their types and where they are required; and the catalogue of the operations
+core runs. The rules (``entities/*.toml``,
 ``boundaries/*.toml``, ``invariants.toml``) are what the checker holds the evidence to.
 Aggregate machines (``aggregates/*.toml``) follow every part of a document an entity
 commits; a move no edge allows violates the aggregate's rule. Only the vocabulary is published to the product
@@ -68,6 +69,7 @@ from repo2ree_assurance_checker.spec.rules import (
 )
 from repo2ree_assurance_checker.spec.vocabulary import (
     BoundaryVocabulary,
+    Catalogue,
     Component,
     EntityVocabulary,
     FactDeclaration,
@@ -84,6 +86,8 @@ class Spec(SpecModel):
     boundaries: dict[Name, BoundarySpec]
     invariants: tuple[Invariant, ...]
     aggregates: dict[Name, AggregateSpec] = Field(default_factory=dict)
+    operations: dict[Name, str] = Field(default_factory=dict)
+    review_operations: dict[Name, str] = Field(default_factory=dict)
 
     @property
     def digest(self) -> str:
@@ -264,6 +268,9 @@ def parse_spec(
     words = [parse_vocabulary(document) for document in vocabulary]
     if len({word.name for word in words}) != len(words):
         raise ValueError("vocabulary names must be unique")
+    catalogues = [word for word in words if isinstance(word, Catalogue)]
+    if len(catalogues) > 1:
+        raise ValueError(f"one operation catalogue, not {[catalogue.name for catalogue in catalogues]}")
     entity_words = {word.name: word for word in words if isinstance(word, EntityVocabulary)}
     boundary_words = {word.name: word for word in words if isinstance(word, BoundaryVocabulary)}
     machines = [MachineRules.model_validate(document) for document in entities]
@@ -300,6 +307,8 @@ def parse_spec(
             Invariant.model_validate(spell_out_groups(item, groups)) for item in invariants.get("invariant", [])
         ),
         aggregates={aggregate.name: aggregate for aggregate in aggregate_specs},
+        operations=catalogues[0].operations if catalogues else {},
+        review_operations=catalogues[0].review_operations if catalogues else {},
     )
 
 
@@ -313,6 +322,7 @@ __all__ = [
     "AggregateSpec",
     "BoundarySpec",
     "BoundaryVocabulary",
+    "Catalogue",
     "Citation",
     "CitedEntity",
     "CitedMessage",

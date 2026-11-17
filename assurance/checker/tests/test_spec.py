@@ -388,3 +388,35 @@ def test_the_author_rules_name_the_action_groups_they_mean() -> None:
     assert on_the_ree == set().union(
         *(groups[name] for name in ("source", "editing", "assistance", "evidence", "lifecycle"))
     )
+
+
+def test_the_catalogue_names_every_operation_once_and_each_review_the_operation_it_reproduces() -> None:
+    spec = load_spec()
+    assert len(spec.operations) == 17
+    assert set(spec.review_operations) == {
+        "review_acquire_source",
+        "review_build_experiment_environment",
+        "review_activate_experiment_environment",
+        "review_run_experiment",
+    }
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"review_operations": {"review_teleport": "Nothing to reproduce."}}, "review_teleport: a review operation"),
+        ({"review_operations": {"acquire_source_again": "No prefix."}}, "acquire_source_again: a review operation"),
+    ],
+)
+def test_a_review_operation_reproduces_a_catalogued_operation(change: dict[str, Any], message: str) -> None:
+    docs = documents()
+    docs.words("Operation").update(change)
+    with pytest.raises(ValidationError, match=message):
+        docs.parse()
+
+
+def test_the_specification_has_one_catalogue() -> None:
+    docs = documents()
+    docs.vocabulary.append(docs.words("Operation") | {"name": "MoreOperations"})
+    with pytest.raises(ValueError, match="one operation catalogue"):
+        docs.parse()

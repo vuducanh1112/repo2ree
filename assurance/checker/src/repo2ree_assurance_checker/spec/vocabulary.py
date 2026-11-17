@@ -153,7 +153,29 @@ class BoundaryVocabulary(SpecModel):
         }
 
 
-def parse_vocabulary(document: dict[str, Any]) -> EntityVocabulary | BoundaryVocabulary:
+REVIEW_PREFIX = "review_"
+
+
+class Catalogue(SpecModel):
+    """The commands core runs, each with what it means: on an REE, and on a review of one."""
+
+    kind: Literal["catalogue"]
+    name: Name
+    summary: str
+    operations: dict[Name, str] = Field(min_length=1)
+    review_operations: dict[Name, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def reviews_reproduce_operations(self) -> Self:
+        for name in self.review_operations:
+            if name.removeprefix(REVIEW_PREFIX) not in self.operations or not name.startswith(REVIEW_PREFIX):
+                raise ValueError(f"{name}: a review operation is {REVIEW_PREFIX!r} and the operation it reproduces")
+        return self
+
+
+def parse_vocabulary(document: dict[str, Any]) -> EntityVocabulary | BoundaryVocabulary | Catalogue:
     if document.get("kind") == "boundary":
         return BoundaryVocabulary.model_validate(document)
+    if document.get("kind") == "catalogue":
+        return Catalogue.model_validate(document)
     return EntityVocabulary.model_validate(document)
