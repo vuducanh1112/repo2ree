@@ -9,9 +9,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from repo2ree_assurance_checker.codegen import render_schema
 from repo2ree_assurance_checker.files import (
-    GENERATED_SCHEMA,
     SPEC_DIR,
     load_spec,
     read_from_root,
@@ -85,12 +83,6 @@ def test_the_checked_in_specification_is_valid() -> None:
     assert spec.boundaries["follow_run"].required == {"follow_run": ("session",), "settled": ("status",)}
     assert spec.boundaries["follow_run"].repeats
     assert spec.entities["Execution"].reconciled_by == ("adopted", "exited", "stopped", "lost")
-
-
-def test_the_published_contract_matches_the_vocabulary() -> None:
-    assert GENERATED_SCHEMA.read_text() == render_schema(load_spec()), (
-        "run `python -m repo2ree_assurance_checker generate-schema`"
-    )
 
 
 def test_the_digest_changes_with_behaviour_but_not_with_file_order() -> None:

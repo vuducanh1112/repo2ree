@@ -1,4 +1,4 @@
-"""Command line: generate the published contract, describe or export the spec, validate journals, or check evidence."""
+"""Command line: describe or export the spec, validate journals, or check evidence."""
 
 from __future__ import annotations
 
@@ -8,11 +8,10 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from repo2ree_assurance_checker.codegen import render_schema
 from repo2ree_assurance_checker.contract import journal_problems
 from repo2ree_assurance_checker.dossier import load_dossier
 from repo2ree_assurance_checker.export import export_spec
-from repo2ree_assurance_checker.files import GENERATED_SCHEMA, SPEC_DIR, load_spec, load_spec_at
+from repo2ree_assurance_checker.files import SPEC_DIR, load_spec, load_spec_at
 from repo2ree_assurance_checker.html import render_html
 from repo2ree_assurance_checker.report import render_json, render_markdown
 from repo2ree_assurance_checker.sources import combine, load_evidence
@@ -25,10 +24,6 @@ def parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="repo2ree_assurance_checker", description=__doc__)
     parser.add_argument("--spec", type=Path, default=SPEC_DIR, help="Specification directory")
     commands = parser.add_subparsers(dest="command", required=True)
-
-    generate = commands.add_parser("generate-schema", help="Write the published event schema from the vocabulary")
-    generate.add_argument("--check", action="store_true", help="Fail instead of writing when the schema is stale")
-    generate.add_argument("--output", type=Path, default=GENERATED_SCHEMA)
 
     validate = commands.add_parser(
         "validate-journal", help="Check journal files against the published contract (exit 0/1)"
@@ -95,21 +90,6 @@ def diff(spec: Spec, args: argparse.Namespace) -> int:
     return 0
 
 
-def generate(spec: Spec, args: argparse.Namespace) -> int:
-    rendered = render_schema(spec)
-    current = args.output.read_text() if args.output.exists() else None
-    if args.check:
-        if current != rendered:
-            sys.stderr.write(f"{args.output} is stale; run `python -m repo2ree_assurance_checker generate-schema`\n")
-            return 1
-        return 0
-    if current != rendered:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered)
-    sys.stdout.write(f"{args.output}: {spec.vocabulary_digest}\n")
-    return 0
-
-
 def validate_journal(spec: Spec, args: argparse.Namespace) -> int:
     files = [found for path in args.journals for found in (sorted(path.glob("*.ndjson")) if path.is_dir() else [path])]
     if not files:
@@ -151,7 +131,6 @@ COMMANDS: dict[str, Callable[[Spec, argparse.Namespace], int]] = {
     "export": export,
     "map": draw_map,
     "diff": diff,
-    "generate-schema": generate,
     "validate-journal": validate_journal,
     "check": check,
 }

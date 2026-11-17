@@ -15,8 +15,6 @@ ROOT = Path(__file__).resolve().parents[4]
 SPEC_DIR = ROOT / "assurance" / "spec"
 # Where revisions before the assurance/ layout (2026-10-23) kept the specification.
 LEGACY_SPEC_DIR = ROOT / "specifications" / "behaviour"
-CONTRACT_DIR = ROOT / "contracts" / "behaviour"
-GENERATED_SCHEMA = CONTRACT_DIR / "events.schema.json"
 
 
 def with_tree(aggregate: dict[str, Any], read: Callable[[str], str]) -> dict[str, Any]:

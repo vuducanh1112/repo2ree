@@ -12,11 +12,12 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from repo2ree_assurance_checker.cli import main
+from repo2ree_assurance_checker.codegen import render_schema
 from repo2ree_assurance_checker.contract import record_problems
-from repo2ree_assurance_checker.files import GENERATED_SCHEMA, load_spec
+from repo2ree_assurance_checker.files import load_spec
 
 SPEC = load_spec()
-SCHEMA = json.loads(GENERATED_SCHEMA.read_text())
+SCHEMA = json.loads(render_schema(SPEC))
 VALIDATOR = Draft202012Validator(SCHEMA)
 SAMPLE = {"str": "x", "str?": "x", "bool": True, "bool?": False, "int": 1, "int?": 1}
 WRONG = {"str": 1, "str?": 1, "bool": "yes", "bool?": 0, "int": True, "int?": "1"}
