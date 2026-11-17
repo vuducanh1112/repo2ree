@@ -145,10 +145,10 @@ def test_a_read_read_back_from_its_argv_is_the_read(read: type[BaseModel], data:
 
 
 def test_a_bare_seal_includes_the_source_the_experiment_environment_and_the_results() -> None:
-    assert read_back(["seal"]) == SealReeCommand(
+    assert read_back(["seal-ree"]) == SealReeCommand(
         args=SealReeArgs(source_included=True, experiment_environment_included=True, results_included=True)
     )
-    assert read_back(["seal", "--no-results-included"]) == SealReeCommand(args=SealReeArgs(results_included=False))
+    assert read_back(["seal-ree", "--no-results-included"]) == SealReeCommand(args=SealReeArgs(results_included=False))
 
 
 def test_an_option_takes_its_value_after_an_equals_sign_too() -> None:
@@ -161,13 +161,13 @@ def test_an_option_takes_its_value_after_an_equals_sign_too() -> None:
     ("argv", "stdin", "problem"),
     [
         (["no-such-verb"], None, "No such command"),
-        (["experiment"], None, "experiment_name"),
-        (["seal", "--no-such-option"], None, "No such option"),
-        (["write", "--", "a.sh"], None, "read from stdin"),
+        (["run-experiment"], None, "experiment_name"),
+        (["seal-ree", "--no-such-option"], None, "No such option"),
+        (["write-script", "--", "a.sh"], None, "read from stdin"),
         (["acquire-source", "--mode"], None, "requires an argument"),
         (["review", "acquire-source", "--basis", "nope"], None, "'nope' is not one of"),
-        (["infer", "--target", "nope"], None, "no script kind"),
-        (["infer", "--target", "experiment_run"], None, "requires an experiment_name"),
+        (["suggest-scripts", "--target", "nope"], None, "no script kind"),
+        (["suggest-scripts", "--target", "experiment_run"], None, "requires an experiment_name"),
     ],
 )
 def test_words_that_spell_no_command_say_why(argv: list[str], stdin: bytes | None, problem: str) -> None:

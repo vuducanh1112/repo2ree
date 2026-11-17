@@ -22,21 +22,24 @@ _EVIDENCE = {"current": "current", "stale": "STALE", "missing": "missing", "not_
 # What to run for each step, as a person types it.
 HINTS: dict[ReeStepKey, str] = {
     "source": "ree acquire-source --archive PATH, or ree acquire-source --origin-url URL",
-    "metadata": "ree define --name NAME --version VERSION --description TEXT",
-    "hbom": "ree hbom",
+    "metadata": "ree patch-ree-definition --name NAME --version VERSION --description TEXT",
+    "hbom": "ree observe-hardware",
     "check_working_environment": "ree edit check_working_environment, then ree check-working-environment",
-    "evaluate": "ree evaluate",
+    "evaluate": "ree evaluate-reproducibility",
     "build_experiment_environment": (
-        "ree define --artifact-path PATH, ree infer --target build_experiment_environment --write, "
-        "then ree build-experiment-environment"
+        "ree patch-ree-definition --artifact-path PATH, "
+        "ree suggest-scripts --target build_experiment_environment --write, then ree build-experiment-environment"
     ),
-    "sbom": "ree sbom",
-    "crosscheck": "ree sbom-check",
-    "activation": "ree infer --target activate_experiment_environment --write, then ree test-activation",
+    "sbom": "ree generate-sbom",
+    "crosscheck": "ree cross-check-sbom",
+    "activation": (
+        "ree suggest-scripts --target activate_experiment_environment --write, then ree activate-experiment-environment"
+    ),
     "experiments": (
-        "ree edit experiment_run:NAME, ree define --experiment NAME --output PATH, then ree experiment NAME"
+        "ree edit experiment_run:NAME, ree patch-ree-definition --experiment NAME --output PATH, "
+        "then ree run-experiment NAME"
     ),
-    "seal": "ree seal",
+    "seal": "ree seal-ree",
 }
 
 

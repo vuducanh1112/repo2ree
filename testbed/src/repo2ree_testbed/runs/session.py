@@ -225,7 +225,9 @@ def steps(session: tuple[CliCommand, ...], dossier: Path) -> tuple[list[Step], l
             run = change.commit.run_id
             step = by_run.get(run) or by_run.get(run.rsplit(".", 1)[0]) if run else None
             if step is None and change.commit.operation == "initialize_ree":
-                step = next((s for s in found if s.command.ree == ree and s.command.words[:1] == ("init",)), None)
+                step = next(
+                    (s for s in found if s.command.ree == ree and s.command.words[:1] == ("initialize-ree",)), None
+                )
             if step is None:
                 pending.append(change)
                 continue

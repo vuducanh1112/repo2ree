@@ -19,7 +19,7 @@ verbs so its ``--help`` mirrors the executor CLI:
   source overlaid with the author scripts (overlay wins), re-restoring the
   sealed experiment environment from ``ree/artifacts/`` (a cheap copy, never a rebuild). This
   resets state so each run starts from a deterministic slate;
-* ``build-experiment-environment`` / ``test-activation`` / ``experiment <name>`` — run the
+* ``build-experiment-environment`` / ``activate-experiment-environment`` / ``run-experiment <name>`` — run the
   author scripts from the workspace root, reusing the sealed experiment environment when
   present and otherwise building it once. Runnables that declared a verify
   script get it executed from the workspace root after their run script — a
@@ -54,12 +54,12 @@ from repo2ree_core.persistence.layout import (
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.reproduction.commands import (
     ACQUIRE_SOURCE,
+    ACTIVATE_EXPERIMENT_ENVIRONMENT,
     BUILD_EXPERIMENT_ENVIRONMENT,
     CHECK_WORKING_ENVIRONMENT,
-    EXPERIMENT,
     MATERIALIZE_WORKSPACE,
     REPRODUCTION_COMMANDS,
-    TEST_ACTIVATION,
+    RUN_EXPERIMENT,
 )
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
@@ -88,7 +88,7 @@ _VERB_FUNCTIONS = {
     MATERIALIZE_WORKSPACE.name: "do_materialize",
     CHECK_WORKING_ENVIRONMENT.name: "do_check",
     BUILD_EXPERIMENT_ENVIRONMENT.name: "do_build",
-    TEST_ACTIVATION.name: "do_activate",
+    ACTIVATE_EXPERIMENT_ENVIRONMENT.name: "do_activate",
 }
 
 
@@ -101,7 +101,7 @@ def _dispatch_arms() -> str:
     """Render the per-verb ``case`` arms from the shared command registry."""
     arms: list[str] = []
     for command in REPRODUCTION_COMMANDS:
-        if command.name == EXPERIMENT.name:
+        if command.name == RUN_EXPERIMENT.name:
             arms.append(f'  {command.name}) shift; do_experiment "${{1:-}}" ;;')
         else:
             arms.append(f"  {command.name}) {_VERB_FUNCTIONS[command.name]} ;;")
@@ -428,13 +428,13 @@ _RUN_SH_TEMPLATE = shell_text("""
 
     do_activate() {
       ensure_workspace; ensure_experiment_environment
-      say "== test-activation =="
+      say "== activate-experiment-environment =="
       run_activation
     }
 
     do_experiment() {
       name=${1:-}
-      [ -n "$name" ] || die "usage: $0 experiment <name>"
+      [ -n "$name" ] || die "usage: $0 run-experiment <name>"
       line=$(experiments | while IFS='\t' read -r n s v; do
         if [ "$n" = "$name" ]; then printf '%s\t%s' "$s" "$v"; break; fi
       done)
@@ -471,7 +471,7 @@ _RUN_SH_TEMPLATE = shell_text("""
       say "== check-working-environment =="
       run_in_workspace "$CHECK_SCRIPT"
       ensure_experiment_environment
-      say "== test-activation =="
+      say "== activate-experiment-environment =="
       run_activation
       experiments | while IFS='\t' read -r n s v; do
         [ -n "$n" ] || continue
@@ -499,7 +499,7 @@ _RUN_SH_TEMPLATE = shell_text("""
       fi
       say ""
       say "Run everything end-to-end:      sh $0 all"
-      say "Or one phase at a time, e.g.:    sh $0 experiment <name>"
+      say "Or one phase at a time, e.g.:    sh $0 run-experiment <name>"
       say "Re-check a claim without re-running: sh $0 verify <name>"
     }
 
@@ -568,14 +568,14 @@ _REPRODUCING_MD = shell_text("""
     Or drive it one phase at a time:
 
     ```shell
-    sh run.sh                          # materialize a clean workspace and list commands
-    sh run.sh acquire-source           # extract/fetch the source (verify SWHID if able)
-    sh run.sh materialize-workspace    # assemble a clean workspace = source + overlay
-    sh run.sh build-experiment-environment            # build the experiment environment from the author's build script
-    sh run.sh test-activation          # enter the experiment environment and hand over
-    sh run.sh experiment <name>        # run a named experiment and verify its result
-    sh run.sh verify <name>            # verify only, without re-running
-    sh run.sh list                     # list commands again
+    sh run.sh                                  # materialize a clean workspace and list commands
+    sh run.sh acquire-source                   # extract/fetch the source (verify SWHID if able)
+    sh run.sh materialize-workspace            # assemble a clean workspace = source + overlay
+    sh run.sh build-experiment-environment     # build the experiment environment from the author's build script
+    sh run.sh activate-experiment-environment  # enter the experiment environment and hand over
+    sh run.sh run-experiment <name>            # run a named experiment and verify its result
+    sh run.sh verify <name>                    # verify only, without re-running
+    sh run.sh list                             # list commands again
     ```
 
     ## Verification

@@ -7,6 +7,8 @@ from pathlib import Path, PurePosixPath
 import pytest
 from scripts.contracts import FORMAT, REGISTRY, Contract, Name, check, export, fixtures, is_fixture, write
 
+from repo2ree_protocol.verbs import words_of
+
 SCHEMA = PurePosixPath("contracts/a/schema.json")
 TYPES = PurePosixPath("gui/types.ts")
 SEALED = PurePosixPath("contracts/a/fixtures/sealed")
@@ -64,7 +66,7 @@ def test_a_contract_is_correct_however_it_was_written(root: Path) -> None:
 
 def operation_contracts(root: Path, *, cli_runs: list[str], protocol_names: str) -> tuple[Contract, ...]:
     behaviour = {"x-operations": {"operations": {"build": "", "run": ""}, "review_operations": {"review_run": ""}}}
-    cli = {"commands": [{"operations": cli_runs}]}
+    cli = {"commands": [{"words": list(words_of(name)), "operations": [name]} for name in cli_runs]}
     protocol = {"$defs": {"Command": {"properties": {"operation": {"const": protocol_names}}}}}
     documents = {
         Name.BEHAVIOUR_SCHEMA: (PurePosixPath("contracts/behaviour.json"), behaviour),
@@ -90,8 +92,26 @@ def test_check_holds_the_contracts_to_the_catalogue_of_operations(root: Path) ->
     assert found == {
         ("cli.json", "uncatalogued", "bulid"),
         ("protocol.json", "uncatalogued", "remove"),
-        ("cli.json", "unrun", "no"),
+        ("cli.json", "unrun", "run:"),
     }
+
+
+def test_an_operation_is_run_by_the_command_spelled_as_its_name(root: Path) -> None:
+    registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
+    cli = registry[1]
+    renamed = {
+        "commands": [
+            {"words": ["make"], "operations": ["build"]},
+            {"words": ["run"], "operations": ["run"]},
+            {"words": ["review", "run"], "operations": ["review_run"]},
+        ]
+    }
+    put(root, cli.path, json.dumps(renamed) + "\n")
+    registry = (registry[0], contract(cli.name, cli.path, json.dumps(renamed) + "\n"), registry[2])
+
+    assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
+        ("unrun", "build: no `ree build` runs it")
+    ]
 
 
 def test_ignored_files_under_contracts_are_not_the_registrys_business(root: Path) -> None:

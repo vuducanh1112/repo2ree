@@ -4,7 +4,7 @@ A contract is correct when its file equals what its render function returns now,
 by a recipe, by ``write``, or by hand. ``check`` holds every contract to that, and holds ``contracts/`` to holding
 nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. It holds the
 contracts to the specification's catalogue of operations too: each operation a contract names is catalogued, and
-each catalogued operation is run by a `ree` command.
+each catalogued one is run by the `ree` command spelled as its name in kebab case.
 
     python -m scripts.contracts write [NAME...]   # every contract, in the order below, or the named ones
     python -m scripts.contracts check             # exit 1 on a missing, stale or unaccounted file
@@ -30,6 +30,7 @@ from repo2ree_assurance_checker.codegen import render_schema
 from repo2ree_assurance_checker.files import load_spec
 from repo2ree_cli.export_schema import schema_document as cli_schema
 from repo2ree_protocol.export_schema import schema_document as protocol_schema
+from repo2ree_protocol.verbs import words_of
 from repo2ree_ree.export_schema import schema_document as ree_schema
 from repo2ree_ree.layout import layout_document
 
@@ -200,7 +201,7 @@ def check(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> list
 
 
 def operation_problems(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> list[Problem]:
-    """Each operation a JSON contract names that the catalogue lacks, and each catalogued one no `ree` command runs."""
+    """Each operation a contract names that the catalogue lacks, and each catalogued one its `ree` words don't run."""
     documents = {
         contract.name: (contract.path, json.loads((root / contract.path).read_text(encoding="utf-8")))
         for contract in registry
@@ -218,9 +219,14 @@ def operation_problems(*, registry: Sequence[Contract] = REGISTRY, root: Path = 
     ]
     if Name.CLI_SCHEMA in documents:
         cli_path, cli = documents[Name.CLI_SCHEMA]
-        run = {operation for command in cli["commands"] for operation in command["operations"]}
+        run = {
+            operation
+            for command in cli["commands"]
+            for operation in command["operations"]
+            if tuple(command["words"]) == words_of(operation)
+        }
         problems.extend(
-            Problem(cli_path, "unrun", f"no `ree` command runs {name}: declare it on the command that runs it")
+            Problem(cli_path, "unrun", f"{name}: no `ree {' '.join(words_of(name))}` runs it")
             for name in sorted(catalogue - run)
         )
     return problems

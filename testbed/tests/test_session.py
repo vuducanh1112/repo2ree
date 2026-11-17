@@ -43,9 +43,9 @@ def run(test: Path, root: Path, run_id: str, *words: str, stdin: bytes | None = 
 def test_dir(tmp_path: Path) -> Path:
     test = tmp_path / "test"
     root = tmp_path / "work" / "demo-1"
-    run(test, root, "run-1", "init", "--name", "demo")
-    run(test, root, "run-2", "write", "build_experiment_environment", stdin=b"echo built\n")
-    run(test, root, "run-3", "define", "--version", "1.0")
+    run(test, root, "run-1", "initialize-ree", "--name", "demo")
+    run(test, root, "run-2", "write-script", "build_experiment_environment", stdin=b"echo built\n")
+    run(test, root, "run-3", "patch-ree-definition", "--version", "1.0")
     run(test, root, "run-4", "status")
     shutil.copytree(root / ".git", test / "dossier/rees/demo-1/ree/.git")
     return test
@@ -54,7 +54,12 @@ def test_dir(tmp_path: Path) -> Path:
 def test_each_command_is_shown_with_the_commits_its_run_made(test_dir: Path) -> None:
     found, unmatched = session.steps(read_session(test_dir / "artifacts" / SESSION), test_dir / "dossier")
 
-    assert [step.command.words[0] for step in found] == ["init", "write", "define", "status"]
+    assert [step.command.words[0] for step in found] == [
+        "initialize-ree",
+        "write-script",
+        "patch-ree-definition",
+        "status",
+    ]
     assert [[change.commit.operation for change in step.changes] for step in found] == [
         ["initialize_ree"],
         ["write_script"],
@@ -79,7 +84,7 @@ def test_the_page_shows_each_command_and_a_read_as_one_line(test_dir: Path, tmp_
     assert session.draw(test_dir, tmp_path / "report", "a test")
 
     page = (tmp_path / "report/index.html").read_text()
-    assert "$ ree write build_experiment_environment" in page
+    assert "$ ree write-script build_experiment_environment" in page
     assert "read, changed nothing" in page
     assert "the file tree after it" in page
 

@@ -142,11 +142,13 @@ class Invocation:
         """The REE at ``-C`` or, without it, the nearest one at or above the current directory."""
         if self.ree is not None:
             if not (self.ree / REE_MANIFEST).is_file():
-                raise NoReeError(f"no REE at {self.ree}: create one with `ree -C {self.ree} init`")
+                raise NoReeError(f"no REE at {self.ree}: create one with `ree -C {self.ree} initialize-ree`")
             return ReeLayout(root=self.ree)
         found = nearest_ree(Path.cwd())
         if found is None:
-            raise NoReeError(f"no REE at or above {Path.cwd()}: create one with `ree init`, or name one with -C")
+            raise NoReeError(
+                f"no REE at or above {Path.cwd()}: create one with `ree initialize-ree`, or name one with -C"
+            )
         return ReeLayout(root=found)
 
     def sink(self) -> LogSink:
@@ -316,7 +318,7 @@ _EPILOG = "\b\nExit status:\n" + "\n".join(f"  {code:>3}  {meaning}" for code, m
 def cli(ctx: click.Context, ree: Path | None, machine: bool, run_id: str | None, context: str | None) -> None:
     """repo2ree: author, run, seal and review reproducible execution environments (REEs).
 
-    Start with `ree init`, then `ree status` says where the REE stands and what to run next.
+    Start with `ree initialize-ree`, then `ree status` says where the REE stands and what to run next.
     """
     ctx.obj = Invocation(
         ree=ree.resolve() if ree else None,
@@ -653,7 +655,7 @@ _EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
 }
 # What a command's help adds to its summary.
 _MORE: dict[type[BaseModel], str] = {
-    WriteScriptCommand: "The script is read on stdin: `ree write build_experiment_environment < build.sh`.",
+    WriteScriptCommand: "The script is read on stdin: `ree write-script build_experiment_environment < build.sh`.",
     PatchReeDefinitionCommand: (
         "Give the options for the common fields, or pipe a JSON patch of the definition's top-level fields on stdin."
     ),
@@ -717,20 +719,20 @@ def review_all(**params: Any) -> None:
     review_id = opened.review_id
     experiments = [item.name for item in ReeDirectory(layout).read_ree().subject.definition.experiments]
     commands: list[tuple[list[str], Command]] = [
-        (["review", "acquire-source"], ReviewAcquireSourceCommand(args=opened)),
+        ([*VERBS[ReviewAcquireSourceCommand]], ReviewAcquireSourceCommand(args=opened)),
         (
-            ["review", "build-experiment-environment"],
+            [*VERBS[ReviewBuildExperimentEnvironmentCommand]],
             ReviewBuildExperimentEnvironmentCommand.model_validate(
                 {"args": {"review_id": review_id, "basis": opened.basis}}
             ),
         ),
         (
-            ["review", "test-activation"],
+            [*VERBS[ReviewActivateExperimentEnvironmentCommand]],
             ReviewActivateExperimentEnvironmentCommand.model_validate({"args": {"review_id": review_id}}),
         ),
         *(
             (
-                ["review", "experiment", name],
+                [*VERBS[ReviewRunExperimentCommand], name],
                 ReviewRunExperimentCommand.model_validate({"args": {"review_id": review_id, "experiment_name": name}}),
             )
             for name in experiments
@@ -804,11 +806,11 @@ def _init(invocation: Invocation, read: BaseModel) -> None:
     try:
         result = initialize_ree(ReeLayout(root=root), name=cast(InitRee, read).name)
     except HistoryCaptureError as exc:
-        refuse(invocation, "init", "precondition", str(exc))
+        refuse(invocation, verb_of(InitRee), "precondition", str(exc))
     initialized = Initialized(root=str(root), state=result.status, snapshot_id=result.snapshot_id)
     answer(
         invocation,
-        "init",
+        verb_of(InitRee),
         initialized,
         render_with=lambda _outputs: f"{result.status.replace('_', ' ')} {root}\nnext: ree status",
     )
@@ -946,7 +948,7 @@ def edit_cmd(script: ScriptTargetSelectorArg) -> None:
     invocation = _invocation()
     layout = _layout_or_refuse(invocation, "edit")
     if invocation.machine or not _at_terminal():
-        refuse(invocation, "edit", "validation", "edit needs a terminal: write a script with `ree write`")
+        refuse(invocation, "edit", "validation", "edit needs a terminal: write a script with `ree write-script`")
     store = ReeDirectory(layout)
     if store.read_ree().seal is not None:
         refuse(invocation, "edit", "precondition", "a sealed REE takes no edits")

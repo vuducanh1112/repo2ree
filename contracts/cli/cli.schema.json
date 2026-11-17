@@ -40,7 +40,7 @@
       "label": "Provide Metadata",
       "requires": [],
       "commands": [
-        "define"
+        "patch-ree-definition"
       ]
     },
     {
@@ -49,8 +49,8 @@
       "label": "Hardware BOM",
       "requires": [],
       "commands": [
-        "hbom",
-        "define"
+        "observe-hardware",
+        "patch-ree-definition"
       ]
     },
     {
@@ -59,8 +59,8 @@
       "label": "Check Working Environment",
       "requires": [],
       "commands": [
-        "write",
-        "define",
+        "write-script",
+        "patch-ree-definition",
         "check-working-environment"
       ]
     },
@@ -72,7 +72,7 @@
         "source"
       ],
       "commands": [
-        "evaluate"
+        "evaluate-reproducibility"
       ]
     },
     {
@@ -84,8 +84,8 @@
       ],
       "commands": [
         "build-experiment-environment",
-        "infer",
-        "write"
+        "suggest-scripts",
+        "write-script"
       ]
     },
     {
@@ -96,7 +96,7 @@
         "build_experiment_environment"
       ],
       "commands": [
-        "sbom"
+        "generate-sbom"
       ]
     },
     {
@@ -108,7 +108,7 @@
         "evaluate"
       ],
       "commands": [
-        "sbom-check"
+        "cross-check-sbom"
       ]
     },
     {
@@ -119,7 +119,7 @@
         "build_experiment_environment"
       ],
       "commands": [
-        "test-activation"
+        "activate-experiment-environment"
       ]
     },
     {
@@ -130,10 +130,10 @@
         "build_experiment_environment"
       ],
       "commands": [
-        "experiment",
-        "define",
-        "infer",
-        "write"
+        "run-experiment",
+        "patch-ree-definition",
+        "suggest-scripts",
+        "write-script"
       ]
     },
     {
@@ -142,7 +142,7 @@
       "label": "Seal",
       "requires": [],
       "commands": [
-        "seal"
+        "seal-ree"
       ]
     }
   ],
@@ -210,6 +210,23 @@
       "stdout": "result",
       "outputs": {
         "$ref": "#/$defs/AcquireSourceOutputs"
+      }
+    },
+    {
+      "words": [
+        "activate-experiment-environment"
+      ],
+      "summary": "Run the activation alone: it enters the experiment environment and hands over",
+      "help": "Run the activation alone: it enters the experiment environment and hands over",
+      "runs": true,
+      "operations": [
+        "activate_experiment_environment"
+      ],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/RunnableOperationOutputs"
       }
     },
     {
@@ -337,7 +354,252 @@
     },
     {
       "words": [
-        "define"
+        "cross-check-sbom"
+      ],
+      "summary": "Check the SBOM against the dependencies the source declares",
+      "help": "Check the SBOM against the dependencies the source declares",
+      "runs": true,
+      "operations": [
+        "cross_check_sbom"
+      ],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/CrossCheckSbomOutputs"
+      }
+    },
+    {
+      "words": [
+        "edit"
+      ],
+      "summary": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.",
+      "help": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.\n\nA script not written yet starts from its default template. The edit is written only if the script did not change\nmeanwhile.\n",
+      "runs": true,
+      "operations": [
+        "write_script"
+      ],
+      "params": [
+        {
+          "name": "script",
+          "kind": "argument",
+          "required": true,
+          "multiple": false,
+          "type": "KIND[:EXPERIMENT]",
+          "choices": [
+            "build_experiment_environment",
+            "activate_experiment_environment",
+            "experiment_run:",
+            "experiment_verify:",
+            "launch",
+            "check_working_environment"
+          ]
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/ScriptEdited"
+      }
+    },
+    {
+      "words": [
+        "evaluate-reproducibility"
+      ],
+      "summary": "Score how fully the source pins its dependencies",
+      "help": "Score how fully the source pins its dependencies",
+      "runs": true,
+      "operations": [
+        "evaluate_reproducibility"
+      ],
+      "params": [
+        {
+          "name": "--strict",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Count an unpinned dependency as a failure.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-strict"
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/EvaluateOutputs"
+      }
+    },
+    {
+      "words": [
+        "generate-sbom"
+      ],
+      "summary": "List the software in the experiment environment (SBOM)",
+      "help": "List the software in the experiment environment (SBOM)",
+      "runs": true,
+      "operations": [
+        "generate_sbom"
+      ],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/GenerateSbomOutputs"
+      }
+    },
+    {
+      "words": [
+        "initialize-ree"
+      ],
+      "summary": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
+      "help": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
+      "runs": false,
+      "operations": [
+        "initialize_ree"
+      ],
+      "params": [
+        {
+          "name": "--name",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "The REE's name.",
+          "type": "text"
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/Initialized"
+      }
+    },
+    {
+      "words": [
+        "lint-scripts"
+      ],
+      "summary": "Check the REE's scripts",
+      "help": "Check the REE's scripts",
+      "runs": true,
+      "operations": [
+        "lint_scripts"
+      ],
+      "params": [
+        {
+          "name": "--target",
+          "kind": "option",
+          "required": false,
+          "multiple": true,
+          "help": "The scripts to check, each KIND[:EXPERIMENT].",
+          "type": "KIND[:EXPERIMENT]",
+          "choices": [
+            "build_experiment_environment",
+            "activate_experiment_environment",
+            "experiment_run:",
+            "experiment_verify:",
+            "launch",
+            "check_working_environment"
+          ]
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/LintScriptsOutputs"
+      }
+    },
+    {
+      "words": [
+        "load-ree-bundle"
+      ],
+      "summary": "Replace the REE with a bundle (--archive), sealed or draft",
+      "help": "Replace the REE with a bundle (--archive), sealed or draft",
+      "runs": true,
+      "operations": [
+        "load_ree_bundle"
+      ],
+      "params": [
+        {
+          "name": "--archive",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "The archive to take, staged in the REE.",
+          "type": "file"
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/LoadReeBundleOutputs"
+      }
+    },
+    {
+      "words": [
+        "log"
+      ],
+      "summary": "Print every attempt recorded in the REE's history and its reviews'.",
+      "help": "Print every attempt recorded in the REE's history and its reviews'.",
+      "runs": false,
+      "operations": [],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/OperationHistory"
+      }
+    },
+    {
+      "words": [
+        "machine"
+      ],
+      "summary": "Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container.",
+      "help": "Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container.",
+      "runs": false,
+      "operations": [],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/MachineFacts"
+      }
+    },
+    {
+      "words": [
+        "materialize-workspace"
+      ],
+      "summary": "Assemble a clean workspace from the source and the REE overlay",
+      "help": "Assemble a clean workspace from the source and the REE overlay",
+      "runs": true,
+      "operations": [
+        "materialize_workspace"
+      ],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/NoOutputs"
+      }
+    },
+    {
+      "words": [
+        "observe-hardware"
+      ],
+      "summary": "Record the hardware this machine offers (HBOM)",
+      "help": "Record the hardware this machine offers (HBOM)",
+      "runs": true,
+      "operations": [
+        "observe_hardware"
+      ],
+      "params": [],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/ObserveHardwareOutputs"
+      }
+    },
+    {
+      "words": [
+        "patch-ree-definition"
       ],
       "summary": "Declare the REE's name, catalog entry, experiment environment and experiments",
       "help": "Declare the REE's name, catalog entry, experiment environment and experiments.\n\nGive the options for the common fields, or pipe a JSON patch of the definition's top-level fields on stdin.",
@@ -456,301 +718,6 @@
     },
     {
       "words": [
-        "edit"
-      ],
-      "summary": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.",
-      "help": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.\n\nA script not written yet starts from its default template. The edit is written only if the script did not change\nmeanwhile.\n",
-      "runs": true,
-      "operations": [
-        "write_script"
-      ],
-      "params": [
-        {
-          "name": "script",
-          "kind": "argument",
-          "required": true,
-          "multiple": false,
-          "type": "KIND[:EXPERIMENT]",
-          "choices": [
-            "build_experiment_environment",
-            "activate_experiment_environment",
-            "experiment_run:",
-            "experiment_verify:",
-            "launch",
-            "check_working_environment"
-          ]
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/ScriptEdited"
-      }
-    },
-    {
-      "words": [
-        "evaluate"
-      ],
-      "summary": "Score how fully the source pins its dependencies",
-      "help": "Score how fully the source pins its dependencies",
-      "runs": true,
-      "operations": [
-        "evaluate_reproducibility"
-      ],
-      "params": [
-        {
-          "name": "--strict",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "Count an unpinned dependency as a failure.",
-          "flag": true,
-          "default": false,
-          "negation": "--no-strict"
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/EvaluateOutputs"
-      }
-    },
-    {
-      "words": [
-        "experiment"
-      ],
-      "summary": "Run a named experiment and verify its result",
-      "help": "Run a named experiment and verify its result",
-      "runs": true,
-      "operations": [
-        "run_experiment"
-      ],
-      "params": [
-        {
-          "name": "experiment_name",
-          "kind": "argument",
-          "required": true,
-          "multiple": false,
-          "type": "text"
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/RunnableOperationOutputs"
-      }
-    },
-    {
-      "words": [
-        "hbom"
-      ],
-      "summary": "Record the hardware this machine offers (HBOM)",
-      "help": "Record the hardware this machine offers (HBOM)",
-      "runs": true,
-      "operations": [
-        "observe_hardware"
-      ],
-      "params": [],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/ObserveHardwareOutputs"
-      }
-    },
-    {
-      "words": [
-        "infer"
-      ],
-      "summary": "Propose scripts for the REE from its source and this machine",
-      "help": "Propose scripts for the REE from its source and this machine.\n\nShows each proposal against the script as it is written.",
-      "runs": true,
-      "operations": [
-        "suggest_scripts",
-        "write_script"
-      ],
-      "params": [
-        {
-          "name": "--write",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "Write the proposed script, for one --target.",
-          "flag": true,
-          "default": false
-        },
-        {
-          "name": "--rule",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "With --write, the rule whose proposal to write.",
-          "type": "text"
-        },
-        {
-          "name": "--target",
-          "kind": "option",
-          "required": false,
-          "multiple": true,
-          "help": "The scripts to propose, each KIND[:EXPERIMENT].",
-          "type": "KIND[:EXPERIMENT]",
-          "choices": [
-            "build_experiment_environment",
-            "activate_experiment_environment",
-            "experiment_run:",
-            "experiment_verify:",
-            "launch",
-            "check_working_environment"
-          ]
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "anyOf": [
-          {
-            "$ref": "#/$defs/InferenceReport"
-          },
-          {
-            "$ref": "#/$defs/ScriptWritten"
-          }
-        ]
-      }
-    },
-    {
-      "words": [
-        "init"
-      ],
-      "summary": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
-      "help": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
-      "runs": false,
-      "operations": [
-        "initialize_ree"
-      ],
-      "params": [
-        {
-          "name": "--name",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "The REE's name.",
-          "type": "text"
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/Initialized"
-      }
-    },
-    {
-      "words": [
-        "lint"
-      ],
-      "summary": "Check the REE's scripts",
-      "help": "Check the REE's scripts",
-      "runs": true,
-      "operations": [
-        "lint_scripts"
-      ],
-      "params": [
-        {
-          "name": "--target",
-          "kind": "option",
-          "required": false,
-          "multiple": true,
-          "help": "The scripts to check, each KIND[:EXPERIMENT].",
-          "type": "KIND[:EXPERIMENT]",
-          "choices": [
-            "build_experiment_environment",
-            "activate_experiment_environment",
-            "experiment_run:",
-            "experiment_verify:",
-            "launch",
-            "check_working_environment"
-          ]
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/LintScriptsOutputs"
-      }
-    },
-    {
-      "words": [
-        "load-bundle"
-      ],
-      "summary": "Replace the REE with a bundle (--archive), sealed or draft",
-      "help": "Replace the REE with a bundle (--archive), sealed or draft",
-      "runs": true,
-      "operations": [
-        "load_ree_bundle"
-      ],
-      "params": [
-        {
-          "name": "--archive",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "The archive to take, staged in the REE.",
-          "type": "file"
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/LoadReeBundleOutputs"
-      }
-    },
-    {
-      "words": [
-        "log"
-      ],
-      "summary": "Print every attempt recorded in the REE's history and its reviews'.",
-      "help": "Print every attempt recorded in the REE's history and its reviews'.",
-      "runs": false,
-      "operations": [],
-      "params": [],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/OperationHistory"
-      }
-    },
-    {
-      "words": [
-        "machine"
-      ],
-      "summary": "Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container.",
-      "help": "Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container.",
-      "runs": false,
-      "operations": [],
-      "params": [],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/MachineFacts"
-      }
-    },
-    {
-      "words": [
-        "materialize-workspace"
-      ],
-      "summary": "Assemble a clean workspace from the source and the REE overlay",
-      "help": "Assemble a clean workspace from the source and the REE overlay",
-      "runs": true,
-      "operations": [
-        "materialize_workspace"
-      ],
-      "params": [],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/NoOutputs"
-      }
-    },
-    {
-      "words": [
         "remove-source"
       ],
       "summary": "Remove the REE's source, keeping its scripts and definition",
@@ -822,6 +789,33 @@
       "stdout": "result",
       "outputs": {
         "$ref": "#/$defs/ReviewAcquireSourceOutputs"
+      }
+    },
+    {
+      "words": [
+        "review",
+        "activate-experiment-environment"
+      ],
+      "summary": "Test the activation in the review",
+      "help": "Test the activation in the review",
+      "runs": true,
+      "operations": [
+        "review_activate_experiment_environment"
+      ],
+      "params": [
+        {
+          "name": "--review-id",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "The review, an attempt of its own beside the REE.",
+          "type": "text"
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/ReviewActivateExperimentEnvironmentOutputs"
       }
     },
     {
@@ -937,7 +931,7 @@
     {
       "words": [
         "review",
-        "experiment"
+        "run-experiment"
       ],
       "summary": "Reproduce one experiment in the review and compare it with the author's",
       "help": "Reproduce one experiment in the review and compare it with the author's",
@@ -970,33 +964,6 @@
     },
     {
       "words": [
-        "review",
-        "test-activation"
-      ],
-      "summary": "Test the activation in the review",
-      "help": "Test the activation in the review",
-      "runs": true,
-      "operations": [
-        "review_activate_experiment_environment"
-      ],
-      "params": [
-        {
-          "name": "--review-id",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "The review, an attempt of its own beside the REE.",
-          "type": "text"
-        }
-      ],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/ReviewActivateExperimentEnvironmentOutputs"
-      }
-    },
-    {
-      "words": [
         "reviews"
       ],
       "summary": "Print the REE's reviews, newest first.",
@@ -1012,36 +979,27 @@
     },
     {
       "words": [
-        "sbom"
+        "run-experiment"
       ],
-      "summary": "List the software in the experiment environment (SBOM)",
-      "help": "List the software in the experiment environment (SBOM)",
+      "summary": "Run a named experiment and verify its result",
+      "help": "Run a named experiment and verify its result",
       "runs": true,
       "operations": [
-        "generate_sbom"
+        "run_experiment"
       ],
-      "params": [],
+      "params": [
+        {
+          "name": "experiment_name",
+          "kind": "argument",
+          "required": true,
+          "multiple": false,
+          "type": "text"
+        }
+      ],
       "stdin": null,
       "stdout": "result",
       "outputs": {
-        "$ref": "#/$defs/GenerateSbomOutputs"
-      }
-    },
-    {
-      "words": [
-        "sbom-check"
-      ],
-      "summary": "Check the SBOM against the dependencies the source declares",
-      "help": "Check the SBOM against the dependencies the source declares",
-      "runs": true,
-      "operations": [
-        "cross_check_sbom"
-      ],
-      "params": [],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/CrossCheckSbomOutputs"
+        "$ref": "#/$defs/RunnableOperationOutputs"
       }
     },
     {
@@ -1067,7 +1025,7 @@
     },
     {
       "words": [
-        "seal"
+        "seal-ree"
       ],
       "summary": "Seal the REE: freeze it and its evidence under one digest",
       "help": "Seal the REE: freeze it and its evidence under one digest",
@@ -1156,6 +1114,65 @@
     },
     {
       "words": [
+        "suggest-scripts"
+      ],
+      "summary": "Propose scripts for the REE from its source and this machine",
+      "help": "Propose scripts for the REE from its source and this machine.\n\nShows each proposal against the script as it is written.",
+      "runs": true,
+      "operations": [
+        "suggest_scripts",
+        "write_script"
+      ],
+      "params": [
+        {
+          "name": "--write",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Write the proposed script, for one --target.",
+          "flag": true,
+          "default": false
+        },
+        {
+          "name": "--rule",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "With --write, the rule whose proposal to write.",
+          "type": "text"
+        },
+        {
+          "name": "--target",
+          "kind": "option",
+          "required": false,
+          "multiple": true,
+          "help": "The scripts to propose, each KIND[:EXPERIMENT].",
+          "type": "KIND[:EXPERIMENT]",
+          "choices": [
+            "build_experiment_environment",
+            "activate_experiment_environment",
+            "experiment_run:",
+            "experiment_verify:",
+            "launch",
+            "check_working_environment"
+          ]
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/InferenceReport"
+          },
+          {
+            "$ref": "#/$defs/ScriptWritten"
+          }
+        ]
+      }
+    },
+    {
+      "words": [
         "templates"
       ],
       "summary": "Print the starter templates for the REE's scripts and where each script belongs.",
@@ -1167,23 +1184,6 @@
       "stdout": "result",
       "outputs": {
         "$ref": "#/$defs/ScriptTemplateCatalog"
-      }
-    },
-    {
-      "words": [
-        "test-activation"
-      ],
-      "summary": "Run the activation alone: it enters the experiment environment and hands over",
-      "help": "Run the activation alone: it enters the experiment environment and hands over",
-      "runs": true,
-      "operations": [
-        "activate_experiment_environment"
-      ],
-      "params": [],
-      "stdin": null,
-      "stdout": "result",
-      "outputs": {
-        "$ref": "#/$defs/RunnableOperationOutputs"
       }
     },
     {
@@ -1212,10 +1212,10 @@
     },
     {
       "words": [
-        "write"
+        "write-script"
       ],
       "summary": "Write one of the REE's scripts from stdin",
-      "help": "Write one of the REE's scripts from stdin.\n\nThe script is read on stdin: `ree write build_experiment_environment < build.sh`.",
+      "help": "Write one of the REE's scripts from stdin.\n\nThe script is read on stdin: `ree write-script build_experiment_environment < build.sh`.",
       "runs": true,
       "operations": [
         "write_script"

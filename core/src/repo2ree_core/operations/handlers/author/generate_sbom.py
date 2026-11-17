@@ -35,7 +35,7 @@ def handle_generate_sbom(
 ) -> ActionResult:
     store = ReeDirectory(layout)
     if not store.manifest_exists():
-        return ActionResult.failed("precondition", "no REE here: run `ree init` first")
+        return ActionResult.failed("precondition", "no REE here: run `ree initialize-ree` first")
 
     try:
         ree = load_ree(layout, store)

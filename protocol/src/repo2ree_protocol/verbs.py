@@ -4,8 +4,7 @@ The command line is the one interface into an REE, for a person at a terminal as
 ``Command`` and its argv are two spellings of one value. ``to_argv`` writes the argv a caller runs; ``ree`` reads it
 back with options generated from the same command models (``repo2ree_cli.options``), so the spellings cannot drift.
 
-The steps an REE's reproduction shares with its bundle's ``run.sh`` keep the names they have there
-(``materialize-workspace``, ``build-experiment-environment``, ``test-activation``, ``experiment``).
+A command's words are its operation's catalogued name in kebab case, a review's under ``review``.
 """
 
 from __future__ import annotations
@@ -42,28 +41,21 @@ from repo2ree_protocol.command import (
 
 REVIEW = "review"
 
+
+def command_types() -> tuple[type[BaseModel], ...]:
+    """Every member of the ``Command`` union."""
+    return get_args(get_args(Command)[0])
+
+
+def words_of(operation: str) -> tuple[str, ...]:
+    """The words that run an operation: ``review_run_experiment`` is ``review run-experiment``."""
+    if operation.startswith(f"{REVIEW}_"):
+        return (REVIEW, operation.removeprefix(f"{REVIEW}_").replace("_", "-"))
+    return (operation.replace("_", "-"),)
+
+
 VERBS: dict[type[BaseModel], tuple[str, ...]] = {
-    AcquireSourceCommand: ("acquire-source",),
-    RemoveSourceCommand: ("remove-source",),
-    LoadReeBundleCommand: ("load-bundle",),
-    SuggestScriptsCommand: ("infer",),
-    LintScriptsCommand: ("lint",),
-    WriteScriptCommand: ("write",),
-    PatchReeDefinitionCommand: ("define",),
-    MaterializeWorkspaceCommand: ("materialize-workspace",),
-    CheckWorkingEnvironmentCommand: ("check-working-environment",),
-    BuildExperimentEnvironmentCommand: ("build-experiment-environment",),
-    ActivateExperimentEnvironmentCommand: ("test-activation",),
-    RunExperimentCommand: ("experiment",),
-    GenerateSbomCommand: ("sbom",),
-    CrossCheckSbomCommand: ("sbom-check",),
-    EvaluateReproducibilityCommand: ("evaluate",),
-    ObserveHardwareCommand: ("hbom",),
-    SealReeCommand: ("seal",),
-    ReviewAcquireSourceCommand: (REVIEW, "acquire-source"),
-    ReviewBuildExperimentEnvironmentCommand: (REVIEW, "build-experiment-environment"),
-    ReviewActivateExperimentEnvironmentCommand: (REVIEW, "test-activation"),
-    ReviewRunExperimentCommand: (REVIEW, "experiment"),
+    command: words_of(str(command.model_fields["operation"].default)) for command in command_types()
 }
 
 # What each command does, in a line of its help. The steps shared with run.sh say what they say there.
@@ -92,11 +84,6 @@ SUMMARIES: dict[type[BaseModel], str] = {
     ReviewActivateExperimentEnvironmentCommand: "Test the activation in the review",
     ReviewRunExperimentCommand: "Reproduce one experiment in the review and compare it with the author's",
 }
-
-
-def command_types() -> tuple[type[BaseModel], ...]:
-    """Every member of the ``Command`` union."""
-    return get_args(get_args(Command)[0])
 
 
 def to_argv(cmd: Command) -> tuple[list[str], bytes | None]:

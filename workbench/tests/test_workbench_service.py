@@ -52,7 +52,7 @@ def test_service_routes_every_execution_operation_for_the_ree_it_names(tmp_path:
 
     # The service spells each read as the ree argv that answers it: the outputs of its result, or its bytes.
     assert backend.calls == [
-        "init",
+        "initialize-ree",
         "query --json lint-draft -- launch < b'set -eu\\n'",
         "query cat -- ree.json < None",
         "cancel",

@@ -69,7 +69,7 @@ def root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def initialized(root: Path) -> Path:
-    result = ree(root, "init", "--name", "demo")
+    result = ree(root, "initialize-ree", "--name", "demo")
     assert result.exit_code == 0, result.output
     return root
 
@@ -89,7 +89,7 @@ def test_build_info_reports_injected_revision(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_init_bootstraps_tree_and_metadata(root: Path) -> None:
-    result = machine(root, "init", "--name", "demo")
+    result = machine(root, "initialize-ree", "--name", "demo")
     assert result.exit_code == 0
     assert outputs(result)["state"] == "initialised"
     assert outputs(result)["snapshot_id"]
@@ -108,7 +108,7 @@ def test_init_bootstraps_tree_and_metadata(root: Path) -> None:
 def test_init_is_idempotent(initialized: Path) -> None:
     before = ReeLayout(root=initialized).manifest.read_text()
 
-    result = machine(initialized, "init", "--name", "demo")
+    result = machine(initialized, "initialize-ree", "--name", "demo")
     assert result.exit_code == 0
     assert outputs(result)["state"] == "already_initialised"
     assert ReeLayout(root=initialized).manifest.read_text() == before
@@ -116,15 +116,15 @@ def test_init_is_idempotent(initialized: Path) -> None:
 
 def test_init_reports_capture_failure(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("repo2ree_core.persistence.history.find_tool", lambda name: None)
-    result = ree(root, "init", "--name", "demo")
+    result = ree(root, "initialize-ree", "--name", "demo")
     assert result.exit_code == REFUSED
     assert result.stdout == ""
-    assert "init failed: Git is required" in result.stderr
+    assert "initialize-ree failed: Git is required" in result.stderr
     assert not root.exists()
 
 
 def test_init_names_the_ree_after_its_directory(root: Path) -> None:
-    result = ree(root, "init")
+    result = ree(root, "initialize-ree")
 
     assert result.exit_code == 0, result.output
     assert result.stdout.splitlines() == [f"initialised {root}", "next: ree status"]
@@ -132,7 +132,7 @@ def test_init_names_the_ree_after_its_directory(root: Path) -> None:
 
 
 def test_init_seeds_scripts_that_need_no_container_engine_and_a_check_that_passes(root: Path) -> None:
-    result = ree(root, "init", "--name", "demo")
+    result = ree(root, "initialize-ree", "--name", "demo")
 
     assert result.exit_code == 0, result.output
     store = ReeDirectory(ReeLayout(root=root))
@@ -156,7 +156,7 @@ def test_a_read_before_init_is_refused(root: Path) -> None:
     refused = ActionResult.model_validate_json(result.stdout)
     assert refused.failure is not None
     assert refused.failure.category == "precondition"
-    assert refused.failure.message == f"no REE at {root}: create one with `ree -C {root} init`"
+    assert refused.failure.message == f"no REE at {root}: create one with `ree -C {root} initialize-ree`"
 
 
 def test_a_command_outside_any_ree_is_refused_and_leaves_nothing_behind(
@@ -164,15 +164,15 @@ def test_a_command_outside_any_ree_is_refused_and_leaves_nothing_behind(
 ) -> None:
     monkeypatch.chdir(tmp_path)
 
-    result = runner.invoke(cli, ["evaluate"])
+    result = runner.invoke(cli, ["evaluate-reproducibility"])
 
     assert result.exit_code == REFUSED
-    assert f"evaluate failed: no REE at or above {tmp_path}" in result.stderr
+    assert f"evaluate-reproducibility failed: no REE at or above {tmp_path}" in result.stderr
     assert list(tmp_path.iterdir()) == []
 
 
 def test_a_workbench_reads_the_refusal_of_a_command_on_no_ree(root: Path) -> None:
-    result = machine(root, "evaluate")
+    result = machine(root, "evaluate-reproducibility")
 
     assert result.exit_code == REFUSED
     refused = ActionResult.model_validate_json(result.stdout)
@@ -205,7 +205,7 @@ def test_without_c_the_nearest_ree_above_the_current_directory_is_the_one(
 
 
 def test_a_command_writes_its_result_to_stdout_and_its_logs_to_stderr(initialized: Path) -> None:
-    result = machine(initialized, "--run-id", "run-1", "write", BUILD_SCRIPT, input="echo build\n")
+    result = machine(initialized, "--run-id", "run-1", "write-script", BUILD_SCRIPT, input="echo build\n")
     assert result.exit_code == 0, result.output
 
     assert ActionResult.model_validate_json(result.stdout.strip()).status == "succeeded"
@@ -227,7 +227,14 @@ def test_an_explicit_context_joins_the_result_the_logs_and_the_history(
     context = ExecutionContext.new(ree_id="ree-1")
 
     invocation = machine(
-        initialized, "--run-id", "reused-run", "--context", context.model_dump_json(), "write", BUILD_SCRIPT, input="x"
+        initialized,
+        "--run-id",
+        "reused-run",
+        "--context",
+        context.model_dump_json(),
+        "write-script",
+        BUILD_SCRIPT,
+        input="x",
     )
 
     assert invocation.exit_code == 0, invocation.output
@@ -245,7 +252,7 @@ def test_an_explicit_context_joins_the_result_the_logs_and_the_history(
 
 def test_the_run_log_records_the_whole_command_and_result_untruncated(initialized: Path) -> None:
     content = "echo build\n" + "x" * 4000
-    result = machine(initialized, "--run-id", "run-2", "write", BUILD_SCRIPT, input=content)
+    result = machine(initialized, "--run-id", "run-2", "write-script", BUILD_SCRIPT, input=content)
     assert result.exit_code == 0, result.output
 
     frames = [json.loads(line) for line in ReeLayout(root=initialized).run_log("run-2").read_text().splitlines()]
@@ -259,7 +266,7 @@ def test_the_run_log_records_the_whole_command_and_result_untruncated(initialize
 
 
 def test_words_that_spell_no_command_are_refused_as_a_result_under_json(initialized: Path) -> None:
-    result = machine(initialized, "seal", "--no-such-option")
+    result = machine(initialized, "seal-ree", "--no-such-option")
 
     assert result.exit_code == REFUSED
     refused = ActionResult.model_validate_json(result.stdout)
@@ -292,7 +299,7 @@ def test_a_failing_command_still_reports_its_result(initialized: Path) -> None:
 
 
 def test_a_refused_command_exits_refused(initialized: Path) -> None:
-    result = machine(initialized, "experiment", "missing")
+    result = machine(initialized, "run-experiment", "missing")
     assert result.exit_code == REFUSED
     failure = ActionResult.model_validate_json(result.stdout.strip()).failure
     assert failure is not None
@@ -341,7 +348,7 @@ def test_a_canceled_run_exits_canceled_and_clears_its_marker(initialized: Path) 
     layout = ReeLayout(root=initialized)
     layout.run_cancel_marker("run-1").touch()
 
-    result = machine(initialized, "--run-id", "run-1", "write", BUILD_SCRIPT, input="echo build\n")
+    result = machine(initialized, "--run-id", "run-1", "write-script", BUILD_SCRIPT, input="echo build\n")
 
     assert result.exit_code == CANCELED
     assert ActionResult.model_validate_json(result.stdout.strip()).status == "canceled"
@@ -361,7 +368,7 @@ def test_a_stop_signal_cancels_the_run_cooperatively_and_the_handler_is_restored
     monkeypatch.setattr(session_module, "run_command", interrupted)
     before = signal.getsignal(stop)
 
-    result = machine(initialized, "--run-id", "run-1", "write", BUILD_SCRIPT, input="echo build\n")
+    result = machine(initialized, "--run-id", "run-1", "write-script", BUILD_SCRIPT, input="echo build\n")
 
     assert ActionResult.model_validate_json(result.stdout.strip()).status == "canceled"
     assert signal.getsignal(stop) is before
@@ -373,16 +380,16 @@ def test_a_stop_signal_cancels_the_run_cooperatively_and_the_handler_is_restored
 
 
 def test_a_person_reads_plain_lines_and_the_outcome(initialized: Path) -> None:
-    result = ree(initialized, "write", BUILD_SCRIPT, input="echo build\n")
+    result = ree(initialized, "write-script", BUILD_SCRIPT, input="echo build\n")
 
     assert result.exit_code == 0, result.output
     assert result.stdout == ""
     assert "{" not in result.stderr
-    assert result.stderr.strip().endswith("write succeeded")
+    assert result.stderr.strip().endswith("write-script succeeded")
 
 
 def test_a_person_sees_why_a_command_was_refused(initialized: Path) -> None:
-    result = ree(initialized, "experiment", "missing")
+    result = ree(initialized, "run-experiment", "missing")
 
     assert result.exit_code == REFUSED
     assert "experiment failed:" in result.stderr
@@ -422,11 +429,10 @@ def test_the_steps_shared_with_run_sh_have_its_names_and_its_summaries() -> None
         MaterializeWorkspaceCommand,
         BuildExperimentEnvironmentCommand,
         ActivateExperimentEnvironmentCommand,
+        RunExperimentCommand,
     ):
         [verb] = VERBS[command]
         assert SUMMARIES[command] == shared[verb]
-    assert VERBS[RunExperimentCommand] == ("experiment",)
-    assert SUMMARIES[RunExperimentCommand] == shared["experiment"]
 
 
 # ================================================
@@ -435,7 +441,7 @@ def test_the_steps_shared_with_run_sh_have_its_names_and_its_summaries() -> None
 
 
 def test_cat_round_trips_workspace_bytes(initialized: Path) -> None:
-    assert machine(initialized, "write", BUILD_SCRIPT, input="payload\n").exit_code == 0
+    assert machine(initialized, "write-script", BUILD_SCRIPT, input="payload\n").exit_code == 0
 
     result = ree(initialized, "cat", f"workspace/{BUILD_SCRIPT}")
     assert result.exit_code == 0
@@ -467,8 +473,10 @@ def test_cat_refuses_a_path_out_of_the_ree_as_a_result_under_json(initialized: P
 
 
 def test_show_reflects_workspace_files(initialized: Path) -> None:
-    assert machine(initialized, "define", "--experiment", "hello").exit_code == 0
-    assert machine(initialized, "write", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
+    assert machine(initialized, "patch-ree-definition", "--experiment", "hello").exit_code == 0
+    assert (
+        machine(initialized, "write-script", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
+    )
 
     result = machine(initialized, "show")
     assert result.exit_code == 0
@@ -479,8 +487,10 @@ def test_show_reflects_workspace_files(initialized: Path) -> None:
 
 
 def test_show_summary_omits_inline_file_content(initialized: Path) -> None:
-    assert machine(initialized, "define", "--experiment", "hello").exit_code == 0
-    assert machine(initialized, "write", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
+    assert machine(initialized, "patch-ree-definition", "--experiment", "hello").exit_code == 0
+    assert (
+        machine(initialized, "write-script", "ree-scripts/experiments/hello.sh", input="print('hi')\n").exit_code == 0
+    )
 
     result = machine(initialized, "show", "--summary")
 
@@ -501,7 +511,7 @@ def test_a_person_reads_the_ree_as_a_summary(initialized: Path) -> None:
 
 
 def test_a_person_reads_the_log_one_attempt_a_line(initialized: Path) -> None:
-    assert ree(initialized, "write", BUILD_SCRIPT, input="echo build\n").exit_code == 0
+    assert ree(initialized, "write-script", BUILD_SCRIPT, input="echo build\n").exit_code == 0
 
     result = ree(initialized, "log")
 
@@ -535,13 +545,13 @@ def test_a_person_at_a_terminal_confirms_a_seal_seeing_what_is_not_complete(
 ) -> None:
     monkeypatch.setattr(cli_module, "_at_terminal", lambda: True)
 
-    declined = ree(initialized, "seal", input="n\n")
+    declined = ree(initialized, "seal-ree", input="n\n")
 
     assert declined.exit_code == 1
     assert "Not complete: Source Acquisition" in declined.stderr
     assert ReeDirectory(ReeLayout(root=initialized)).read_ree().seal is None
 
-    confirmed = ree(initialized, "seal", input="y\n")
+    confirmed = ree(initialized, "seal-ree", input="y\n")
 
     assert confirmed.exit_code == 0, confirmed.output
     assert ReeDirectory(ReeLayout(root=initialized)).read_ree().seal is not None
@@ -550,7 +560,7 @@ def test_a_person_at_a_terminal_confirms_a_seal_seeing_what_is_not_complete(
 def test_a_workbench_seals_without_being_asked(initialized: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli_module, "_at_terminal", lambda: True)
 
-    result = machine(initialized, "seal")
+    result = machine(initialized, "seal-ree")
 
     assert result.exit_code == 0, result.output
     assert ActionResult.model_validate_json(result.stdout).status == "succeeded"

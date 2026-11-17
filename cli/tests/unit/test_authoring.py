@@ -38,7 +38,7 @@ def outputs(result: Result) -> dict[str, Any]:
 @pytest.fixture
 def root(tmp_path: Path) -> Path:
     root = tmp_path / "ree"
-    assert ree(root, "init", "--name", "demo").exit_code == 0
+    assert ree(root, "initialize-ree", "--name", "demo").exit_code == 0
     return root
 
 
@@ -90,8 +90,8 @@ def test_a_guarded_write_names_the_digest_status_reports(root: Path) -> None:
     etag = next(script.etag for script in status(root).scripts if script.path == BUILD_SCRIPT)
     assert etag is not None
 
-    written = ree(root, "write", "--expected-etag", etag, "build_experiment_environment", input="echo one\n")
-    stale = ree(root, "--json", "write", "--expected-etag", etag, BUILD_SCRIPT, input="echo two\n")
+    written = ree(root, "write-script", "--expected-etag", etag, "build_experiment_environment", input="echo one\n")
+    stale = ree(root, "--json", "write-script", "--expected-etag", etag, BUILD_SCRIPT, input="echo two\n")
 
     assert written.exit_code == 0, written.output
     assert stale.exit_code == REFUSED
@@ -102,7 +102,7 @@ def test_a_guarded_write_names_the_digest_status_reports(root: Path) -> None:
 
 
 def test_a_refused_command_tells_a_person_what_to_run_next(root: Path) -> None:
-    result = ree(root, "evaluate")
+    result = ree(root, "evaluate-reproducibility")
 
     assert result.exit_code == REFUSED
     assert "next: Source Acquisition: ree acquire-source" in result.stderr
@@ -114,9 +114,9 @@ def test_a_refused_command_tells_a_person_what_to_run_next(root: Path) -> None:
 
 
 def test_define_changes_the_fields_it_is_given_and_keeps_the_rest(root: Path) -> None:
-    assert ree(root, "define", "--version", "1.0", "--description", "A hello world.").exit_code == 0
+    assert ree(root, "patch-ree-definition", "--version", "1.0", "--description", "A hello world.").exit_code == 0
 
-    result = ree(root, "define", "--version", "1.1", "--keyword", "hello", "--keyword", "world")
+    result = ree(root, "patch-ree-definition", "--version", "1.1", "--keyword", "hello", "--keyword", "world")
 
     assert result.exit_code == 0, result.output
     assert result.stdout.startswith("revision sha256:")
@@ -134,34 +134,34 @@ def test_define_declares_an_experiment_with_its_scripts_and_removes_them_with_it
         layout.overlay_file("ree-scripts/experiments/fig.sh"),
         layout.overlay_file("ree-scripts/experiments/fig.verify.sh"),
     )
-    undeclared = ree(root, "write", "experiment_run:fig", input="echo hi > out.txt\n")
+    undeclared = ree(root, "write-script", "experiment_run:fig", input="echo hi > out.txt\n")
     assert undeclared.exit_code == REFUSED
     assert "declare its experiment first" in undeclared.stderr
 
-    assert ree(root, "define", "--experiment", "fig", "--output", "out.txt").exit_code == 0
+    assert ree(root, "patch-ree-definition", "--experiment", "fig", "--output", "out.txt").exit_code == 0
     assert (run.read_text(), verify.read_text()) == (experiment_run_templates()[0].body, verify_templates()[0].body)
-    assert ree(root, "write", "experiment_run:fig", input="echo hi > out.txt\n").exit_code == 0
-    assert ree(root, "define", "--experiment", "fig", "--output", "out.csv").exit_code == 0
+    assert ree(root, "write-script", "experiment_run:fig", input="echo hi > out.txt\n").exit_code == 0
+    assert ree(root, "patch-ree-definition", "--experiment", "fig", "--output", "out.csv").exit_code == 0
 
     [experiment] = ReeDirectory(layout).read_ree().subject.definition.experiments
     assert (experiment.name, [str(path) for path in experiment.output_paths]) == ("fig", ["out.csv"])
     assert experiment.verify_script_path == "ree-scripts/experiments/fig.verify.sh"
     assert run.read_text() == "echo hi > out.txt\n"
-    assert ree(root, "define", "--remove-experiment", "fig").exit_code == 0
+    assert ree(root, "patch-ree-definition", "--remove-experiment", "fig").exit_code == 0
     assert not ReeDirectory(layout).read_ree().subject.definition.experiments
     assert not run.exists()
     assert not verify.exists()
 
 
 def test_define_still_takes_a_json_patch_on_stdin(root: Path) -> None:
-    result = ree(root, "define", input=json.dumps({"name": "renamed"}))
+    result = ree(root, "patch-ree-definition", input=json.dumps({"name": "renamed"}))
 
     assert result.exit_code == 0, result.output
     assert ReeDirectory(ReeLayout(root=root)).read_ree().subject.definition.name == "renamed"
 
 
 def test_an_output_names_the_experiment_it_follows(root: Path) -> None:
-    result = ree(root, "define", "--output", "out.txt")
+    result = ree(root, "patch-ree-definition", "--output", "out.txt")
 
     assert result.exit_code == REFUSED
     assert "--output names a path of the --experiment it follows" in result.stderr
@@ -173,7 +173,7 @@ def test_an_output_names_the_experiment_it_follows(root: Path) -> None:
 
 
 def test_infer_shows_each_proposal_against_the_script_as_written(acquired: Path) -> None:
-    result = ree(acquired, "infer", "--target", "build_experiment_environment")
+    result = ree(acquired, "suggest-scripts", "--target", "build_experiment_environment")
 
     assert result.exit_code == 0, result.output
     assert f"{BUILD_SCRIPT}: needs input" in result.stdout
@@ -182,7 +182,7 @@ def test_infer_shows_each_proposal_against_the_script_as_written(acquired: Path)
 
 
 def test_infer_writes_the_proposed_script(acquired: Path) -> None:
-    result = ree(acquired, "--json", "infer", "--target", "build_experiment_environment", "--write")
+    result = ree(acquired, "--json", "suggest-scripts", "--target", "build_experiment_environment", "--write")
 
     assert result.exit_code == 0, result.output
     written = outputs(result)
@@ -194,7 +194,7 @@ def test_infer_writes_the_proposed_script(acquired: Path) -> None:
 def test_infer_refuses_to_write_what_no_rule_proposes(acquired: Path) -> None:
     before = ReeLayout(root=acquired).overlay_file(BUILD_SCRIPT).read_text()
 
-    result = ree(acquired, "infer", "--target", "build_experiment_environment", "--write", "--rule", "nope")
+    result = ree(acquired, "suggest-scripts", "--target", "build_experiment_environment", "--write", "--rule", "nope")
 
     assert result.exit_code == REFUSED
     assert f"inference proposes no script for {BUILD_SCRIPT} by rule nope" in result.stderr
@@ -202,7 +202,7 @@ def test_infer_refuses_to_write_what_no_rule_proposes(acquired: Path) -> None:
 
 
 def test_infer_writes_one_script_at_a_time(root: Path) -> None:
-    result = ree(root, "infer", "--target", "launch", "--target", "check_working_environment", "--write")
+    result = ree(root, "suggest-scripts", "--target", "launch", "--target", "check_working_environment", "--write")
 
     assert result.exit_code == REFUSED
     assert "--write writes one script" in result.stderr
@@ -223,7 +223,7 @@ def test_edit_writes_what_the_editor_saved(root: Path, monkeypatch: pytest.Monke
 
     monkeypatch.setattr("click.edit", editor)
 
-    assert ree(root, "define", "--experiment", "fig").exit_code == 0
+    assert ree(root, "patch-ree-definition", "--experiment", "fig").exit_code == 0
     result = ree(root, "edit", "experiment_run:fig")
 
     assert result.exit_code == 0, result.output
@@ -269,7 +269,7 @@ def _ran(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
 
 
 def test_a_review_step_without_a_review_is_refused(root: Path) -> None:
-    result = ree(root, "review", "test-activation")
+    result = ree(root, "review", "activate-experiment-environment")
 
     assert result.exit_code == REFUSED
     assert "no review yet: open one with `ree review acquire-source`" in result.stderr
@@ -287,8 +287,8 @@ def test_acquiring_a_review_source_opens_a_review_of_its_own(root: Path, monkeyp
 
 
 def test_review_all_runs_every_step_in_one_review(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    assert ree(root, "define", "--experiment", "fig").exit_code == 0
-    assert ree(root, "write", "experiment_run:fig", input="echo hi\n").exit_code == 0
+    assert ree(root, "patch-ree-definition", "--experiment", "fig").exit_code == 0
+    assert ree(root, "write-script", "experiment_run:fig", input="echo hi\n").exit_code == 0
     ran = _ran(monkeypatch)
 
     result = ree(root, "--json", "review", "all", "--basis", "independent")
@@ -302,7 +302,7 @@ def test_review_all_runs_every_step_in_one_review(root: Path, monkeypatch: pytes
     ]
     assert len({cmd.args.review_id for cmd in ran}) == 1
     assert ran[1].args.basis == "independent"
-    assert [step["words"] for step in outputs(result)["steps"]][-1] == ["review", "experiment", "fig"]
+    assert [step["words"] for step in outputs(result)["steps"]][-1] == ["review", "run-experiment", "fig"]
 
 
 def test_review_all_stops_at_the_first_step_that_fails(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -337,14 +337,23 @@ def test_schema_describes_every_command_a_person_sees(root: Path) -> None:
     assert result.exit_code == 0, result.output
     described = json.loads(result.stdout)
     words = {" ".join(command["words"]) for command in described["commands"]}
-    assert {"status", "write", "define", "infer", "review all", "review experiment", "seal", "cat"} <= words
+    assert {
+        "status",
+        "write-script",
+        "patch-ree-definition",
+        "suggest-scripts",
+        "review all",
+        "review run-experiment",
+        "seal-ree",
+        "cat",
+    } <= words
     assert not {"settle", "build-info", "lint-draft", "manifest"} & words
     assert described["exit_codes"]["2"].startswith("refused")
     assert "precondition" in described["failure_categories"]
 
 
 def test_schema_of_one_command_says_its_stdin_options_and_outputs(root: Path) -> None:
-    [write] = json.loads(ree(root, "--json", "schema", "write").stdout)["commands"]
+    [write] = json.loads(ree(root, "--json", "schema", "write-script").stdout)["commands"]
     [review_step] = json.loads(ree(root, "--json", "schema", "review", "acquire-source").stdout)["commands"]
     [cat] = json.loads(ree(root, "--json", "schema", "cat").stdout)["commands"]
 

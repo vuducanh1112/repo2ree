@@ -65,7 +65,7 @@ class WorkbenchHello(BaseModel):
 
 
 class InitReeRequest(BaseModel):
-    """Create the REE in the workbench's store, which runs ``ree init`` for it; refused where one is already."""
+    """Create the REE in the workbench's store, which runs ``ree initialize-ree``; refused where one is already."""
 
     model_config = ConfigDict(extra="forbid")
 

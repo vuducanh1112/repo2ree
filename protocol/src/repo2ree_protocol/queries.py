@@ -118,7 +118,7 @@ class InitRee(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    init: Annotated[Literal["init"], VERB] = "init"
+    initialize_ree: Annotated[Literal["initialize-ree"], VERB] = "initialize-ree"
     name: str = Field(description="The REE's name.")
 
 
@@ -128,11 +128,11 @@ def query_types() -> tuple[type[BaseModel], ...]:
 
 
 def verb_of(model: type[BaseModel]) -> str:
-    """The verb that spells a read, or ``init``: the default of its first field."""
+    """The verb that spells a read, or ``initialize-ree``: the default of its first field."""
     return cast(str, next(iter(model.model_fields.values())).default)
 
 
 def query_argv(query: BaseModel) -> tuple[list[str], bytes | None]:
-    """The argv after ``ree`` that answers ``query`` (or runs ``init``), and what it reads on stdin."""
+    """The argv after ``ree`` that answers ``query`` (or runs ``initialize-ree``), and what it reads on stdin."""
     words, stdin = encode_args(query)
     return [verb_of(type(query)), *words], stdin

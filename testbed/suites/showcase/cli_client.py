@@ -167,10 +167,10 @@ class CliClient:
         return done.stdout
 
     def _write(self, ree_id: str, path: str, content: str) -> None:
-        self._outputs(ree_id, "write", path, stdin=content.encode())
+        self._outputs(ree_id, "write-script", path, stdin=content.encode())
 
     def _write_proposed(self, ree_id: str, target: str, rule: str) -> None:
-        self._outputs(ree_id, "infer", "--target", target, "--write", "--rule", rule)
+        self._outputs(ree_id, "suggest-scripts", "--target", target, "--write", "--rule", rule)
 
     def _staged(self, data: bytes, name: str) -> Path:
         staged = self.machine.workdir / "uploads" / uuid4().hex / name
@@ -182,7 +182,7 @@ class CliClient:
         """Create an REE, and its kept folder: one with no history in it is an REE whose history went unkept."""
         ree_id = f"{name[:40]}-{uuid4().hex[:8]}"
         (self.kept_dir / ree_id).mkdir(parents=True, exist_ok=True)
-        self._outputs(ree_id, "init", "--name", name)
+        self._outputs(ree_id, "initialize-ree", "--name", name)
         return ree_id
 
     def _keep(self, ree_id: str) -> None:
@@ -232,27 +232,27 @@ class CliClient:
         return self._step(ree_id, "acquire-source", "--origin-url", origin_url, "--source-type", source_type)
 
     def declare_name(self, ree_id: str, name: str) -> None:
-        self._outputs(ree_id, "define", "--name", name)
+        self._outputs(ree_id, "patch-ree-definition", "--name", name)
 
     def declare_catalog(self, ree_id: str, *, version: str, description: str) -> None:
-        self._outputs(ree_id, "define", "--version", version, "--description", description)
+        self._outputs(ree_id, "patch-ree-definition", "--version", version, "--description", description)
 
     def declare_cpu(self, ree_id: str, model: str, cpu: Cpu) -> None:
         patch = DefinitionPatch(hardware=HardwarePatch(cpus={model: cpu})).model_dump(exclude_none=True)
-        self._outputs(ree_id, "define", stdin=json.dumps(patch).encode())
+        self._outputs(ree_id, "patch-ree-definition", stdin=json.dumps(patch).encode())
 
     def declare_experiment(self, ree_id: str, fixture: Project) -> None:
         outputs = [word for path in fixture.outputs for word in ("--output", str(path))]
-        self._outputs(ree_id, "define", "--experiment", fixture.experiment, *outputs)
+        self._outputs(ree_id, "patch-ree-definition", "--experiment", fixture.experiment, *outputs)
         self._write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
         self._write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
 
     def evaluate(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "evaluate")
+        return self._step(ree_id, "evaluate-reproducibility")
 
     def infer(self, ree_id: str, kind: ScriptKind, *, experiment: str | None = None) -> InferenceResult:
         target = f"{kind}:{experiment}" if experiment is not None else kind
-        [result] = InferenceReport.model_validate(self._outputs(ree_id, "infer", "--target", target)).results
+        [result] = InferenceReport.model_validate(self._outputs(ree_id, "suggest-scripts", "--target", target)).results
         return result
 
     def check_working_environment(self, ree_id: str, fixture: Project) -> Run:
@@ -263,7 +263,7 @@ class CliClient:
                 self._write_proposed(ree_id, "launch", rule)
             else:
                 self._write(ree_id, LAUNCH_SCRIPT, fixture.recipe("launch.sh"))
-            self._outputs(ree_id, "define", "--launch")
+            self._outputs(ree_id, "patch-ree-definition", "--launch")
         self._write(ree_id, fixture.check_script, fixture.recipe("check_working_environment.sh"))
         return self._step(ree_id, "check-working-environment")
 
@@ -274,7 +274,7 @@ class CliClient:
         checked = self.check_working_environment(ree_id, fixture)
         if checked.status != "succeeded":
             return checked
-        self._outputs(ree_id, "define", "--artifact-path", fixture.experiment_environment_path)
+        self._outputs(ree_id, "patch-ree-definition", "--artifact-path", fixture.experiment_environment_path)
         self.infer(ree_id, "build_experiment_environment")
         rule = fixture.rule("build_experiment_environment.sh")
         if script is None and rule:
@@ -286,27 +286,27 @@ class CliClient:
         return self._step(ree_id, "build-experiment-environment")
 
     def generate_sbom(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "sbom")
+        return self._step(ree_id, "generate-sbom")
 
     def cross_check_sbom(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "sbom-check")
+        return self._step(ree_id, "cross-check-sbom")
 
     def activate(self, ree_id: str, fixture: Project) -> Run:
         rule = fixture.rule("activate_experiment_environment.sh")
         if rule:
             self._write_proposed(ree_id, "activate_experiment_environment", rule)
-        return self._step(ree_id, "test-activation")
+        return self._step(ree_id, "activate-experiment-environment")
 
     def run_experiment(self, ree_id: str, fixture: Project) -> Run:
         self.declare_experiment(ree_id, fixture)
         self.infer(ree_id, "experiment_run", experiment=fixture.experiment)
         self.infer(ree_id, "experiment_verify", experiment=fixture.experiment)
-        return self._step(ree_id, "experiment", fixture.experiment)
+        return self._step(ree_id, "run-experiment", fixture.experiment)
 
     def author(self, ree_id: str, fixture: Project) -> None:
         self.upload_source(ree_id, fixture)
-        self._outputs(ree_id, "evaluate")
-        self._outputs(ree_id, "hbom")
+        self._outputs(ree_id, "evaluate-reproducibility")
+        self._outputs(ree_id, "observe-hardware")
         for label, run in (
             ("build_experiment_environment", lambda: self.build_experiment_environment(ree_id, fixture)),
             ("activation", lambda: self.activate(ree_id, fixture)),
@@ -316,7 +316,7 @@ class CliClient:
             assert done.status == "succeeded", f"{label} ended {done.status}\n{self.logs(ree_id, done)}"
 
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "seal")
+        return self._step(ree_id, "seal-ree")
 
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"
@@ -325,7 +325,7 @@ class CliClient:
         return target
 
     def load(self, ree_id: str, bundle: bytes) -> None:
-        self._outputs(ree_id, "load-bundle", "--archive", str(self._staged(bundle, "ree.zip")))
+        self._outputs(ree_id, "load-ree-bundle", "--archive", str(self._staged(bundle, "ree.zip")))
 
     def review_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "review", "acquire-source", "--basis", basis)
@@ -342,10 +342,10 @@ class CliClient:
         return self._step(ree_id, "review", "build-experiment-environment", "--basis", basis, "--review-id", review_id)
 
     def review_activation(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "review", "test-activation", "--review-id", review_id)
+        return self._step(ree_id, "review", "activate-experiment-environment", "--review-id", review_id)
 
     def review_experiment(self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "review", "experiment", "--review-id", review_id, experiment)
+        return self._step(ree_id, "review", "run-experiment", "--review-id", review_id, experiment)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
         """Author and seal ``fixture``, and reproduce it in a second REE."""

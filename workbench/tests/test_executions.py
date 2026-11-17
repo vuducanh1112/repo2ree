@@ -46,7 +46,7 @@ LINT = {"operation": "lint_scripts", "args": {"targets": []}}
 
 
 def fake_executor(tmp_path: Path, execute: str = "") -> Path:
-    """A ``ree`` whose ``lint`` logs a line, runs ``execute``, then reports success with its context."""
+    """A ``ree`` whose ``lint-scripts`` logs a line, runs ``execute``, then reports success with its context."""
     path = tmp_path / "ree"
     marker = tmp_path / "marker"
     path.write_text(
@@ -54,7 +54,7 @@ def fake_executor(tmp_path: Path, execute: str = "") -> Path:
         'while [ $# -gt 0 ]; do case "$1" in -C|--run-id) shift 2 ;; --context) context=$2; shift 2 ;; '
         "--json) shift ;; *) break ;; esac; done\n"
         'case "$1" in\n'
-        "  lint) cat >/dev/null\n"
+        "  lint-scripts) cat >/dev/null\n"
         '    echo \'{"type":"log","stream":"stdout","level":"info","message":"one"}\' >&2\n'
         "    echo two >&2\n"
         f"    {execute}\n"

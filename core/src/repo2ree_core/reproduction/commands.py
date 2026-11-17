@@ -1,19 +1,9 @@
-"""The reproduction commands shared by the executor CLI and the bundle run.sh.
+"""The reproduction commands the executor CLI shares with a bundle's run.sh, their words and one-line summaries.
 
-These are the phases of reproducing an REE — acquire the source, assemble a
-clean workspace, check the working environment, build the experiment environment,
-test the activation, run experiments. They are the single source of truth for
-the run vocabulary so ``ree --help`` and ``sh run.sh --help`` expose the same
-verbs and one-line summaries and cannot drift.
+Each is an operation of the catalogue, spelled as the CLI spells it: its name in kebab case. run.sh adds only
+helpers that run no operation of their own (``all``, ``list``, ``verify``).
 
-The executor CLI is a superset: it also exposes *authoring* commands (seal,
-write-file, patch-ree-definition, …) that are not reproduction commands and live
-outside this registry. The bundle ``run.sh`` exposes exactly these verbs plus a
-couple of orchestration helpers (``all``, ``list``).
-
-Leaf module: it imports nothing from ``repo2ree_core`` so both the run.sh
-generator (``ree_scripts.reproducer``) and the executor CLI can depend on it
-without an import cycle.
+Leaf module: it imports nothing from ``repo2ree_core``, so the run.sh generator and the CLI can both depend on it.
 """
 
 from __future__ import annotations
@@ -23,39 +13,36 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ReproductionCommand:
-    """A verb shared by the executor CLI and the bundle reproducer.
-
-    ``name`` is the subcommand token on both surfaces; ``summary`` is the
-    one-line help rendered verbatim in both ``--help`` outputs.
-    """
-
-    name: str
+    operation: str
     summary: str
 
+    @property
+    def name(self) -> str:
+        return self.operation.replace("_", "-")
 
-# Ordered by lifecycle phase: acquire -> assemble -> check -> build -> activate -> run.
+
 ACQUIRE_SOURCE = ReproductionCommand(
-    "acquire-source",
+    "acquire_source",
     "Acquire the source, verifying it against the recorded SWHID",
 )
 MATERIALIZE_WORKSPACE = ReproductionCommand(
-    "materialize-workspace",
+    "materialize_workspace",
     "Assemble a clean workspace from the source and the REE overlay",
 )
 CHECK_WORKING_ENVIRONMENT = ReproductionCommand(
-    "check-working-environment",
+    "check_working_environment",
     "Run the author's check that this machine offers what the scripts need",
 )
 BUILD_EXPERIMENT_ENVIRONMENT = ReproductionCommand(
-    "build-experiment-environment",
+    "build_experiment_environment",
     "Build the experiment environment from the REE build script",
 )
-TEST_ACTIVATION = ReproductionCommand(
-    "test-activation",
+ACTIVATE_EXPERIMENT_ENVIRONMENT = ReproductionCommand(
+    "activate_experiment_environment",
     "Run the activation alone: it enters the experiment environment and hands over",
 )
-EXPERIMENT = ReproductionCommand(
-    "experiment",
+RUN_EXPERIMENT = ReproductionCommand(
+    "run_experiment",
     "Run a named experiment and verify its result",
 )
 
@@ -64,6 +51,6 @@ REPRODUCTION_COMMANDS: tuple[ReproductionCommand, ...] = (
     MATERIALIZE_WORKSPACE,
     CHECK_WORKING_ENVIRONMENT,
     BUILD_EXPERIMENT_ENVIRONMENT,
-    TEST_ACTIVATION,
-    EXPERIMENT,
+    ACTIVATE_EXPERIMENT_ENVIRONMENT,
+    RUN_EXPERIMENT,
 )

@@ -170,14 +170,14 @@ def test_run_sh_materializes_and_reuses_sealed_experiment_environment(tmp_path):
     assert (root / "ree" / WORKSPACE_DIRNAME / "ree-scripts" / "build_experiment_environment.sh").is_file()
     assert (root / "ree" / WORKSPACE_DIRNAME / "hello.txt").is_file()
 
-    activated = _run(root, "test-activation")
+    activated = _run(root, "activate-experiment-environment")
     assert activated.returncode == 0, activated.stderr
     assert "Reusing sealed experiment environment" in activated.stdout
     assert "did-build" not in activated.stdout  # build skipped
     assert "SEALED-EXPERIMENT_ENVIRONMENT" in activated.stdout  # activation read the reused experiment environment
     assert f"$ sh {RESERVED_LAUNCH_SCRIPT} sh ree-scripts/activate_experiment_environment.sh true" in activated.stdout
 
-    exp = _run(root, "experiment", "demo exp")
+    exp = _run(root, "run-experiment", "demo exp")
     assert exp.returncode == 0, exp.stderr
     assert "exp:demo exp" in exp.stdout
     # The bundled verify script read the materialized stdout and passed.
@@ -193,7 +193,7 @@ def test_run_sh_experiment_verify_failure_fails_the_command(tmp_path):
     (root / "ree" / OVERLAY_DIRNAME / "ree-scripts" / "experiments" / "demo.verify.sh").write_text(
         "#!/bin/sh\ngrep -q NOT-THE-CLAIMED-RESULT run.log\n"
     )
-    result = _run(root, "experiment", "demo")
+    result = _run(root, "run-experiment", "demo")
     assert result.returncode != 0
     assert "VERIFIED: fail" in result.stdout
 
@@ -214,7 +214,7 @@ def test_run_sh_verify_reads_workspace_with_no_injected_env(tmp_path):
         "grep -q claimed-result run.log || exit 1\n"
         "grep -q ok out.txt || exit 1\n"
     )
-    result = _run(root, "experiment", "demo")
+    result = _run(root, "run-experiment", "demo")
     assert result.returncode == 0, result.stderr + result.stdout
     assert "VERIFIED: pass" in result.stdout
 
@@ -224,7 +224,7 @@ def test_run_sh_test_activation_fails_when_the_activation_does_not_hand_over(tmp
     (root / "ree" / OVERLAY_DIRNAME / "ree-scripts" / "activate_experiment_environment.sh").write_text(
         "#!/bin/sh\nexit 3\n"
     )
-    result = _run(root, "test-activation")
+    result = _run(root, "activate-experiment-environment")
     assert result.returncode != 0
 
 
@@ -235,7 +235,7 @@ def test_run_sh_verify_only_rechecks_prior_run_without_rerunning(tmp_path):
         experiments=[("demo", "ree-scripts/experiments/demo.sh", "ree-scripts/experiments/demo.verify.sh")],
     )
     # Produce the outputs once.
-    first = _run(root, "experiment", "demo")
+    first = _run(root, "run-experiment", "demo")
     assert first.returncode == 0, first.stderr
     assert "VERIFIED: pass" in first.stdout
 
@@ -294,7 +294,10 @@ def test_run_sh_all_runs_full_pipeline_end_to_end(tmp_path):
     # Whole pipeline, in order: materialize -> experiment environment reuse -> activation -> every experiment.
     assert "Reusing sealed experiment environment" in out
     assert "did-build" not in out  # reused, not rebuilt
-    order = [out.index(m) for m in ("== test-activation ==", "exp:demo exp", "exp:two", "All steps completed.")]
+    order = [
+        out.index(m)
+        for m in ("== activate-experiment-environment ==", "exp:demo exp", "exp:two", "All steps completed.")
+    ]
     assert order == sorted(order)
     # The verified experiment reported its verdict inside the pipeline.
     assert "VERIFIED: pass" in out
@@ -329,7 +332,7 @@ def test_run_sh_all_aborts_on_failing_experiment(tmp_path):
 
 def test_run_sh_builds_when_no_sealed_experiment_environment(tmp_path):
     root = _seed_extracted_bundle(tmp_path, include_experiment_environment=False, experiments=[])
-    activated = _run(root, "test-activation")
+    activated = _run(root, "activate-experiment-environment")
     assert activated.returncode == 0, activated.stderr
     assert "did-build" in activated.stdout  # fell back to building
     assert "BUILT" in activated.stdout  # activation read the freshly built experiment environment
@@ -338,7 +341,7 @@ def test_run_sh_builds_when_no_sealed_experiment_environment(tmp_path):
 def test_run_sh_rejects_unknown_command_and_missing_experiment(tmp_path):
     root = _seed_extracted_bundle(tmp_path, include_experiment_environment=True, experiments=[])
     assert _run(root, "bogus").returncode != 0
-    missing = _run(root, "experiment", "nope")
+    missing = _run(root, "run-experiment", "nope")
     assert missing.returncode != 0
     assert "no experiment named" in missing.stderr
 
@@ -348,7 +351,7 @@ def test_run_sh_exposes_every_reproduction_command(tmp_path):
     root = _seed_extracted_bundle(tmp_path, include_experiment_environment=True, experiments=[])
     for command in REPRODUCTION_COMMANDS:
         # experiment needs a name; the rest are bare verbs that must succeed.
-        if command.name == "experiment":
+        if command.name == "run-experiment":
             continue
         result = _run(root, command.name)
         assert result.returncode == 0, f"{command.name}: {result.stderr}"
@@ -397,7 +400,7 @@ def test_run_sh_runs_the_experiment_inside_the_activation_and_verifies_outside_i
         '#!/bin/sh\ngrep -qx inside run.log && [ -z "${ACTIVATED:-}" ]\n'
     )
 
-    result = _run(root, "experiment", "demo")
+    result = _run(root, "run-experiment", "demo")
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "VERIFIED: pass" in result.stdout
@@ -438,7 +441,7 @@ def test_run_sh_hands_a_reproducers_options_to_the_authors_launch(tmp_path):
     root = _seed_extracted_bundle(
         tmp_path, include_experiment_environment=True, experiments=_DEMO, launch=_LOGGING_LAUNCH
     )
-    result = _run_with(root, {"REE_LAUNCH_OPTIONS": "--partition=short"}, "experiment", "demo")
+    result = _run_with(root, {"REE_LAUNCH_OPTIONS": "--partition=short"}, "run-experiment", "demo")
     assert result.returncode == 0, result.stdout + result.stderr
     assert {line.split("|")[0] for line in _launched(root)} == {"--partition=short"}
 
@@ -458,10 +461,10 @@ def test_run_sh_launches_with_the_reproducers_own_command(tmp_path):
     root = _seed_extracted_bundle(tmp_path, include_experiment_environment=True, experiments=_DEMO)
     scripts = root / "ree" / OVERLAY_DIRNAME / "ree-scripts"
     (scripts / "experiments" / "demo.sh").write_text('#!/bin/sh\necho "exp:demo ${LAUNCHED_BY:-directly}" > run.log\n')
-    direct = _run(root, "experiment", "demo")
+    direct = _run(root, "run-experiment", "demo")
     assert direct.returncode == 0, direct.stdout + direct.stderr
     assert (root / "ree" / WORKSPACE_DIRNAME / "run.log").read_text() == "exp:demo directly\n"
-    mine = _run_with(root, {"REE_LAUNCH": "env LAUNCHED_BY=mine"}, "experiment", "demo")
+    mine = _run_with(root, {"REE_LAUNCH": "env LAUNCHED_BY=mine"}, "run-experiment", "demo")
     assert mine.returncode == 0, mine.stdout + mine.stderr
     assert (root / "ree" / WORKSPACE_DIRNAME / "run.log").read_text() == "exp:demo mine\n"
     assert "$ env LAUNCHED_BY=mine sh ree-scripts/activate_experiment_environment.sh sh" in mine.stdout

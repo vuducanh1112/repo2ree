@@ -4766,10 +4766,10 @@
       "additionalProperties": false,
       "description": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
       "properties": {
-        "init": {
-          "const": "init",
-          "default": "init",
-          "title": "Init",
+        "initialize_ree": {
+          "const": "initialize-ree",
+          "default": "initialize-ree",
+          "title": "Initialize Ree",
           "type": "string"
         },
         "name": {
@@ -4786,7 +4786,7 @@
     },
     "InitReeRequest": {
       "additionalProperties": false,
-      "description": "Create the REE in the workbench's store, which runs ``ree init`` for it; refused where one is already.",
+      "description": "Create the REE in the workbench's store, which runs ``ree initialize-ree``; refused where one is already.",
       "properties": {
         "op": {
           "const": "init_ree",

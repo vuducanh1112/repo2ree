@@ -33,20 +33,20 @@ def test_the_contract_is_valid_and_ree_schema_prints_it() -> None:
 
 
 def test_a_command_that_runs_names_its_operations_and_a_read_none() -> None:
-    assert command("seal")["operations"] == ["seal_ree"]
-    assert command("infer")["operations"] == ["suggest_scripts", "write_script"]
+    assert command("seal-ree")["operations"] == ["seal_ree"]
+    assert command("suggest-scripts")["operations"] == ["suggest_scripts", "write_script"]
     assert command("review", "all")["operations"][0] == "review_acquire_source"
     assert command("status")["operations"] == []
-    assert [step["commands"] for step in DOCUMENT["steps"] if step["key"] == "seal"] == [["seal"]]
+    assert [step["commands"] for step in DOCUMENT["steps"] if step["key"] == "seal"] == [["seal-ree"]]
 
 
 def test_what_ree_prints_conforms_to_the_contract(tmp_path: Path) -> None:
     root = tmp_path / "ree"
-    initialized = runner.invoke(cli, ["-C", str(root), "--json", "init", "--name", "demo"])
+    initialized = runner.invoke(cli, ["-C", str(root), "--json", "initialize-ree", "--name", "demo"])
     status = runner.invoke(cli, ["-C", str(root), "--json", "status"])
-    refused = runner.invoke(cli, ["-C", str(root), "--json", "evaluate"])
+    refused = runner.invoke(cli, ["-C", str(root), "--json", "evaluate-reproducibility"])
 
-    for result, words in ((initialized, ("init",)), (status, ("status",))):
+    for result, words in ((initialized, ("initialize-ree",)), (status, ("status",))):
         printed = json.loads(result.stdout)
         validator(DOCUMENT["result"]).validate(printed)
         validator(command(*words)["outputs"]).validate(printed["outputs"])

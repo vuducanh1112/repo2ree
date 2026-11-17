@@ -53,7 +53,7 @@ def trace_file(tmp_path: Path) -> Path:
 @pytest.fixture
 def root(tmp_path: Path, trace_file: Path) -> Path:
     root = tmp_path / "ree"
-    assert ree(trace_file, "-C", str(root), "init", "--name", "demo").returncode == 0
+    assert ree(trace_file, "-C", str(root), "initialize-ree", "--name", "demo").returncode == 0
     trace_file.unlink()
     return root
 
@@ -74,21 +74,21 @@ def test_a_read_is_one_span_under_the_callers_trace(root: Path, trace_file: Path
 
 def test_a_run_nests_its_session_under_the_invocation(root: Path, trace_file: Path) -> None:
     completed = ree(
-        trace_file, "-C", str(root), "--json", "write", RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, input="x"
+        trace_file, "-C", str(root), "--json", "write-script", RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, input="x"
     )
 
     assert completed.returncode == 0, completed.stderr
-    invocation = named(trace_file, "ree write")
+    invocation = named(trace_file, "ree write-script")
     session = named(trace_file, "session.write_script")
     assert session["parent_id"] == invocation["context"]["span_id"]
     assert invocation["attributes"]["repo2ree.status"] == "succeeded"
 
 
 def test_a_nested_command_is_named_by_all_its_words(root: Path, trace_file: Path) -> None:
-    ree(trace_file, "-C", str(root), "--json", "review", "test-activation", "--review-id", "missing")
+    ree(trace_file, "-C", str(root), "--json", "review", "activate-experiment-environment", "--review-id", "missing")
 
-    assert named(trace_file, "ree review test-activation")["attributes"]["repo2ree.cli.command"] == (
-        "review test-activation"
+    assert named(trace_file, "ree review activate-experiment-environment")["attributes"]["repo2ree.cli.command"] == (
+        "review activate-experiment-environment"
     )
 
 
