@@ -47,8 +47,11 @@ class FakeRunner:
         written: Sequence[str] = WRITTEN,
         codes: dict[str, int | BaseException] | None = None,
         archives: Sequence[str] = (),
+        free: Sequence[int] = (100,),
     ) -> None:
         self.archives = list(archives)
+        # The GiB free each time the disk is read, the last one from then on.
+        self.free = list(free)
         self.states = list(states)
         self.code = code
         self.written = list(written)
@@ -72,6 +75,8 @@ class FakeRunner:
                 return SSH_FAILED, ""
             state, command = self.states.pop(0) if self.states else ("fetched", "")
             return 0, f"{state}\n{command}\n"
+        if "df -BG" in argv[-1]:
+            return 0, f"{self.free.pop(0) if len(self.free) > 1 else self.free[0]}G\n"
         if "ls dist/images" in argv[-1]:
             return 0, "".join(f"{name}\n" for name in self.archives)
         if REPORT in argv[-1]:
@@ -428,6 +433,43 @@ def test_collecting_garbage_refuses_while_a_job_runs_and_here() -> None:
     assert not runner.ran("builder prune")
     with pytest.raises(SystemExit, match="run `just prune` here"):
         Machine(LOCAL, MachineConfig(), FakeRunner()).gc()
+
+
+def test_once_its_results_are_here_a_job_leaves_only_the_newest_run_of_each_tier_there() -> None:
+    runner = FakeRunner(("none", ""), ("ended", SYSTEM))
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+
+    [tidy] = runner.ran("repo2ree_testbed prune")
+    assert "prune --keep-runs 1 --keep-suite 1" in tidy
+    fetched = next(i for i, call in enumerate(runner.calls) if "touch test-artifacts/machine-job/fetched" in call[-1])
+    pruned = next(i for i, call in enumerate(runner.calls) if "repo2ree_testbed prune" in call[-1])
+    assert fetched < pruned
+
+
+def test_a_machine_short_of_disk_collects_garbage_before_the_job_starts(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = FakeRunner(("none", ""), ("ended", SYSTEM), free=(12, 60))
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+
+    assert ">> vm has 12 GiB free, under 40: collecting garbage first" in capsys.readouterr().out
+    [collection] = runner.ran("builder prune")
+    assert "nix-collect-garbage" in collection
+    collected = next(i for i, call in enumerate(runner.calls) if "builder prune" in call[-1])
+    started = next(i for i, call in enumerate(runner.calls) if "exec -d" in call[-1])
+    assert collected < started
+
+
+def test_a_machine_still_short_of_disk_is_refused_and_starts_nothing() -> None:
+    runner = FakeRunner(("none", ""), free=(12, 30))
+    with pytest.raises(SystemExit, match="vm still has only 30 GiB free, under 40"):
+        run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
+    assert not _pushed(runner)
+    assert not _started(runner)
+
+
+def test_a_machine_with_room_starts_without_collecting_garbage() -> None:
+    runner = FakeRunner(("none", ""), ("ended", SYSTEM))
+    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+    assert not runner.ran("builder prune")
 
 
 def test_results_another_run_is_already_bringing_back_are_not_copied_twice() -> None:

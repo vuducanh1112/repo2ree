@@ -24,6 +24,11 @@ than a machine), but for experiment environment tarballs and archives, which sta
 dropped connection only stops the showing: the job goes on, and the next run on that
 machine shows it again and brings its results back before starting anything of its own.
 `cancel` stops the job; `remove` takes the container down and deletes the clone.
+
+A machine keeps itself bounded. Once a job's results are here, its test artifacts are pruned to
+the newest run of each tier, which keeps the experiment environment tarballs and archives of the
+last run there. A job starts only with MIN_FREE_GIB free on the machine's disk: below that, `gc`
+runs first, and a machine still short of it is refused rather than left to fill up mid-run.
 """
 
 from __future__ import annotations
@@ -84,6 +89,10 @@ PROJECT = "repo2ree-dev"
 CACHE_KEPT_FOR = "24h"
 # How long `gc` keeps an image nothing runs: a week of rebuilds stays warm.
 IMAGES_KEPT_FOR = "168h"
+# What a job needs free on the machine's disk to start: a showcase tier at 8 jobs writes about 20 GiB.
+MIN_FREE_GIB = 40
+# The runs per tier a machine keeps once their results are here: the newest, with its archives.
+MACHINE_KEEPS_RUNS = 1
 
 
 class Runner(Protocol):
@@ -155,12 +164,15 @@ class Machine:
                 return code
         if job.state == "dead":
             print(f">> `{job.command}` died on {self.name} without an exit code: its container restarted")
+        self._make_room()
         self._ship(revision)
         self._up()
         self._start(command, argv)
         if not self._show():
             return INTERRUPTED
-        return self._bring_back(self.job())
+        code = self._bring_back(self.job())
+        self._tidy()
+        return code
 
     def job(self) -> Job:
         alive = f"{self._compose} exec -T {SERVICE} sh -c {shlex.quote(_ALIVE)} 2>/dev/null"
@@ -225,15 +237,18 @@ class Machine:
     def gc(self) -> None:
         """Bound what the machine keeps: the clone's generated trees, Docker's build cache, unused images.
 
-        In the clone, the stacks runs left and every generated tree's own prune (`just prune`); on
-        the host, build cache unused for CACHE_KEPT_FOR and images nothing runs that are older than
-        IMAGES_KEPT_FOR. The running dev container and its image stay, and so do the bundle
-        stores, which the testbed prunes itself.
+        In the clone, the stacks runs left and every generated tree's own prune (`just prune`); in
+        the dev container, the Nix store paths nothing roots; on the host, build cache unused for
+        CACHE_KEPT_FOR and images nothing runs that are older than IMAGES_KEPT_FOR. The running dev
+        container and its image stay, and so do the bundle stores, which the testbed prunes itself.
         """
         if not self.remote:
             raise SystemExit(f">> {self.name} is this checkout; run `just prune` here")
         if self.job().state == "running":
             raise SystemExit(f">> {self.name} is running a job; let it end, or: just machine cancel {self.name}")
+        self._collect()
+
+    def _collect(self) -> None:
         # A clone of a commit before `just prune` existed skips it rather than failing on it.
         steps = "just stack-clean; just clean-workbenches; just --show prune >/dev/null 2>&1 && just prune"
         clone = shlex.join([*SHELL, "bash", "-c", steps])
@@ -241,6 +256,8 @@ class Machine:
             [
                 "df -h / | tail -n 1",
                 f"(test -d {CLONE} && cd {CLONE} && {self._exec} bash -lc {shlex.quote(clone)})",
+                # The dev container's Nix store: what no root (its dev shell, a bundle's out-link) holds.
+                f"(test -d {CLONE} && cd {CLONE} && {self._exec} nix-collect-garbage --quiet > /dev/null)",
                 f"docker builder prune -a -f --filter until={CACHE_KEPT_FOR} > /dev/null",
                 f"docker image prune -a -f --filter until={IMAGES_KEPT_FOR} > /dev/null",
                 "docker system df",
@@ -248,6 +265,43 @@ class Machine:
             ]
         )
         self._require(self.runner.call(self._on_host(script)), "collect garbage")
+
+    def free_gib(self) -> int:
+        """The GiB free on the machine's disk, where its clone and Docker are."""
+        read, output = self.runner.capture(self._on_host("df -BG --output=avail / | tail -n 1"))
+        self._require(read, "read its free disk")
+        return int(output.strip().rstrip("G"))
+
+    def _make_room(self) -> None:
+        """Collect garbage first when the disk is short of MIN_FREE_GIB, and refuse a disk still short of it."""
+        free = self.free_gib()
+        if free >= MIN_FREE_GIB:
+            return
+        print(f">> {self.name} has {free} GiB free, under {MIN_FREE_GIB}: collecting garbage first")
+        self._collect()
+        free = self.free_gib()
+        if free < MIN_FREE_GIB:
+            raise SystemExit(
+                f">> {self.name} still has only {free} GiB free, under {MIN_FREE_GIB}: free some there"
+                " (docker system df) before running on it"
+            )
+
+    def _tidy(self) -> None:
+        """Prune the clone's test artifacts to the newest run per tier: what the ended job wrote is here now."""
+        prune = shlex.join(
+            [
+                *SHELL,
+                "python",
+                "-m",
+                "repo2ree_testbed",
+                "prune",
+                "--keep-runs",
+                str(MACHINE_KEEPS_RUNS),
+                "--keep-suite",
+                str(MACHINE_KEEPS_RUNS),
+            ]
+        )
+        self._require(self.runner.call(self._in_clone(f"{self._exec} bash -lc {shlex.quote(prune)}")), "prune its runs")
 
     def _ship(self, revision: str) -> None:
         """Put ``revision`` in the machine's clone, checked out clean."""
