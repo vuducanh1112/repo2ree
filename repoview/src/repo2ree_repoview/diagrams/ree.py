@@ -1,12 +1,11 @@
 """Draw the REE contract's anatomy: every part of an REE, the files it is about, and how the two meet.
 
-From the contract alone: contracts/ree/ree.schema.json and the file tree it points into,
-contracts/ree/layout.json. The definition's sections stand on the left, the receipts and the bundle in
-the middle, the tree on the right. Each digest field is joined to the files it is the digest of
-(``x-digest-of``), so a declaration and the receipts that ran it meet at the same file; a path field
-names where it is resolved (``x-relative-to``). Where no file joins them, a declared field is joined
-straight to the receipt field that records it: the section's own name, the same fields, or the
-experiment's name.
+From the contract alone: the REE schema and the file tree it points into, ``ree-schema`` and ``ree-layout`` in the
+contract registry as ``just export-contracts`` exports it. The definition's sections stand on the left, the receipts
+and the bundle in the middle, the tree on the right. Each digest field is joined to the files it is the digest of
+(``x-digest-of``), so a declaration and the receipts that ran it meet at the same file; a path field names where it
+is resolved (``x-relative-to``). Where no file joins them, a declared field is joined straight to the receipt field
+that records it: the section's own name, the same fields, or the experiment's name.
 
     python -m repo2ree_repoview ree-anatomy -o reports/diagrams/ree/anatomy.svg
 """
@@ -26,10 +25,7 @@ from pydantic import Field, ValidationError
 from repo2ree_repoview.diagrams import emit
 from repo2ree_repoview.documents import Document
 from repo2ree_repoview.graphviz import inline_svg, quote
-from repo2ree_repoview.repository import ROOT
-
-SCHEMA = ROOT / "contracts/ree/ree.schema.json"
-LAYOUT = ROOT / "contracts/ree/layout.json"
+from repo2ree_repoview.overview.exports import Contracts
 
 Role = Literal["definition", "receipt", "bundle"]
 Covers = Literal["file", "tree", "paths", "subject", "outside"]
@@ -207,9 +203,11 @@ class Anatomy:
     pairs: tuple[Pair, ...]
     tree: TreeEntry
     links: tuple[Link, ...]
+    # Where the file tree is kept, as the contract registry says.
+    tree_source: str = ""
 
 
-def anatomy(schema: Schema, layout: Layout) -> Anatomy:
+def anatomy(schema: Schema, layout: Layout, tree_source: str = "") -> Anatomy:
     """Every part of an REE, from the schema's root down to the sections of its definition and receipts."""
     subject = schema.of(schema.properties["subject"])
     definition = schema.of(subject.properties["definition"])
@@ -242,7 +240,7 @@ def anatomy(schema: Schema, layout: Layout) -> Anatomy:
             boxes.append(Box(name, "bundle", prop.text(), expanded(schema, schema.of(prop).properties)))
     declared = {name: schema.of(prop).properties for name, prop in definition.properties.items() if prop.target()}
     paired = [pair for pair in pairs(schema, definition, receipt_fields, set(shared)) if not in_tree(declared, pair)]
-    return Anatomy(tuple(boxes), shared, tuple(paired), layout.root, tuple(links(boxes, layout.root)))
+    return Anatomy(tuple(boxes), shared, tuple(paired), layout.root, tuple(links(boxes, layout.root)), tree_source)
 
 
 def expanded(schema: Schema, fields: dict[str, Property]) -> dict[str, Property]:
@@ -360,7 +358,7 @@ CLUSTERS: dict[Role | Literal["tree"], str] = {
     "definition": '<B>definition</B>  <FONT POINT-SIZE="10">what the author declares</FONT>',
     "receipt": '<B>receipts</B>  <FONT POINT-SIZE="10">what a run observed</FONT>',
     "bundle": "<B>bundle and seal</B>",
-    "tree": '<B>file tree</B>  <FONT POINT-SIZE="10">contracts/ree/layout.json</FONT>',
+    "tree": "<B>file tree</B>",
 }
 
 
@@ -379,6 +377,8 @@ def render_dot(drawn: Anatomy) -> str:
         if role == "receipt" and drawn.shared:
             every = esc(", ".join(drawn.shared))
             label += f'<BR ALIGN="LEFT"/><FONT POINT-SIZE="9" COLOR="{MUTED}">every receipt also carries {every}</FONT>'
+        if role == "tree" and drawn.tree_source:
+            label += f'  <FONT POINT-SIZE="10">{esc(drawn.tree_source)}</FONT>'
         lines.append(f"  subgraph cluster_{role} {{ margin=14; label=<{label}>;")
         if role == "tree":
             lines.append(f'    "tree" [label=<{tree_table(drawn.tree)}>];')
@@ -406,14 +406,15 @@ def svg(drawn: Anatomy) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--schema", type=Path, default=SCHEMA, help="the REE contract's JSON Schema")
-    parser.add_argument("--layout", type=Path, default=LAYOUT, help="the REE file tree the schema points into")
+    parser.add_argument("--contracts", type=Path, help="the contract registry as exported (reports/exports/)")
     parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     args = parser.parse_args()
     try:
-        schema = Schema.model_validate_json(args.schema.read_text(encoding="utf-8"))
-        layout = Layout.model_validate_json(args.layout.read_text(encoding="utf-8"))
-        emit(svg(anatomy(schema, layout)), args.output)
+        registry = Contracts.read(args.contracts) if args.contracts else Contracts.read()
+        schema = Schema.model_validate_json(registry.entry("ree-schema").file.read_text(encoding="utf-8"))
+        tree = registry.entry("ree-layout")
+        layout = Layout.model_validate_json(tree.file.read_text(encoding="utf-8"))
+        emit(svg(anatomy(schema, layout, tree.path)), args.output)
     except (OSError, ValueError, ValidationError, RuntimeError) as error:
         parser.exit(1, f"{error}\n")
     return 0

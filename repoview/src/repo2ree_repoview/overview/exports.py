@@ -341,12 +341,28 @@ class GeneratedContract(Document):
         return hashlib.sha256(self.file.read_bytes()).hexdigest()
 
 
+# The contracts the views read, by the names the registry gives them.
+type ContractName = Literal[
+    "cli-schema", "protocol-schema", "openapi", "behaviour-schema", "ree-schema", "ree-layout", "environment"
+]
+
+
 class Contracts(Export):
     FORMAT = "repo2ree-contracts/1"
 
     contracts: tuple[GeneratedContract, ...]
     # The hand-written files under contracts/: every one under a fixtures/ directory.
     fixtures: tuple[str, ...]
+
+    @classmethod
+    def read(cls, path: Path = EXPORTS / "contracts.json") -> Contracts:
+        return cls.model_validate_json(path.read_bytes())
+
+    def entry(self, name: ContractName) -> GeneratedContract:
+        found = next((contract for contract in self.contracts if contract.name == name), None)
+        if found is None:
+            raise LookupError(f"the contract registry names no {name!r}")
+        return found
 
 
 # ---------------------------------------------------------------------------- operations

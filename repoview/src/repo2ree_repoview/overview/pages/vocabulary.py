@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 
-from repo2ree_repoview.overview.exports import Spec
+from repo2ree_repoview.overview.exports import Contracts, Spec
 from repo2ree_repoview.overview.html import Page, esc, section, table
 
 TYPES = {"str": "str", "str?": "str | None", "bool": "bool", "bool?": "bool | None", "int": "int", "int?": "int | None"}
@@ -124,7 +124,7 @@ def boundary_code(spec: Spec, name: str) -> str:
     return code(lines)
 
 
-def page_vocabulary(spec: Spec) -> Page:
+def page_vocabulary(spec: Spec, registry: Contracts) -> Page:
     processes: dict[str, list[str]] = defaultdict(list)
     for component in spec.components.values():
         processes[component.process].append(component.name)
@@ -153,7 +153,7 @@ def page_vocabulary(spec: Spec) -> Page:
     )
     lede = (
         f"What owners record, from <code>assurance/spec/vocabulary/</code>; published to the product as "
-        "<code>contracts/behaviour/events.schema.json</code> "
+        f"<code>{esc(registry.entry('behaviour-schema').path)}</code> "
         f"(vocabulary <code>{esc(spec.vocabulary_digest[:19])}…</code>)."
     )
     teaser = (

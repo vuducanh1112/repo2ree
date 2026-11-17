@@ -9,7 +9,7 @@ from repo2ree_repoview.diagrams.ree import CAPTURES, COLOURS, DIGEST, PAIR, TREE
 from repo2ree_repoview.overview import figures
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.drawing import never_taken
-from repo2ree_repoview.overview.exports import Aggregate, Spec, SubMachine
+from repo2ree_repoview.overview.exports import Aggregate, ContractName, Contracts, Spec, SubMachine
 from repo2ree_repoview.overview.figures import diagram_origin, inlined
 from repo2ree_repoview.overview.html import Page, esc, section
 from repo2ree_repoview.overview.receipt import AggregateMoves, Move
@@ -19,9 +19,9 @@ from repo2ree_repoview.stamp import read_svg_stamp
 DISALLOWED_SHOWN = 20
 # How a page names an aggregate whose name is an acronym.
 TITLES = {"Ree": "REE"}
-# The drawing of an aggregate's document as its contract states it, and the recipe that draws it.
-ANATOMIES = {
-    "Ree": ("ree/anatomy.svg", "generate-ree-anatomy", ("contracts/ree/ree.schema.json", "contracts/ree/layout.json"))
+# The drawing of an aggregate's document as its contracts state it, the recipe that draws it, and those contracts.
+ANATOMIES: dict[str, tuple[str, str, tuple[ContractName, ...]]] = {
+    "Ree": ("ree/anatomy.svg", "generate-ree-anatomy", ("ree-schema", "ree-layout"))
 }
 
 
@@ -169,10 +169,11 @@ ANATOMY_LEGEND = (
 )
 
 
-def anatomy(aggregate: Aggregate, bundle: Bundle) -> str:
+def anatomy(aggregate: Aggregate, bundle: Bundle, registry: Contracts) -> str:
     if aggregate.name not in ANATOMIES:
         return ""
-    drawing, recipe, contracts = ANATOMIES[aggregate.name]
+    drawing, recipe, names = ANATOMIES[aggregate.name]
+    contracts = [registry.entry(name).path for name in names]
     path = figures.DIAGRAMS / drawing
     origin = diagram_origin(bundle, read_svg_stamp(path)) if path.is_file() else ""
     return (
@@ -185,7 +186,7 @@ def anatomy(aggregate: Aggregate, bundle: Bundle) -> str:
     )
 
 
-def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle) -> Page:
+def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle, registry: Contracts) -> Page:
     """Every part in the checker's order, one row of cards per group."""
     groups: dict[str, list[str]] = {}
     for machine in aggregate.machines:
@@ -198,7 +199,7 @@ def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle) 
         + f'<div class="diagram full">{inlined(bundle, evidence_drawing(aggregate.name))}</div>'
     )
     body = (
-        anatomy(aggregate, bundle)
+        anatomy(aggregate, bundle, registry)
         + graph
         + "<h3>Parts</h3>"
         + summary(aggregate, moves)

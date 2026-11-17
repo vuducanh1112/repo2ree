@@ -2,10 +2,10 @@
 it holds.
 
 Each contract is drawn from the entry points it names itself, one drawing each, so a drawing shows what one reader
-of the contract meets and nothing more: every command's outputs (``contracts/cli/cli.schema.json``), every message,
-operation's outputs and read (``contracts/protocol/protocol.schema.json``), the models each group of HTTP operations
-sends and answers with (``contracts/openapi.json``), the behaviour journal's records
-(``contracts/behaviour/events.schema.json``), and the REE document (``contracts/ree/ree.schema.json``).
+of the contract meets and nothing more: every command's outputs (``cli-schema``), every message, operation's outputs
+and read (``protocol-schema``), the models each group of HTTP operations sends and answers with (``openapi``), the
+behaviour journal's records (``behaviour-schema``), and the REE document (``ree-schema``). Each is found by that name
+in the contract registry, as ``just export-contracts`` exports it.
 
     python -m repo2ree_repoview contract-graphs -o reports/diagrams/contracts
 
@@ -26,9 +26,8 @@ from pydantic import Field, JsonValue, ValidationError
 
 from repo2ree_repoview.documents import Document
 from repo2ree_repoview.graphviz import inline_svg, quote
-from repo2ree_repoview.repository import ROOT
+from repo2ree_repoview.overview.exports import ContractName, Contracts
 
-CONTRACTS = ROOT / "contracts"
 Shape = Literal["one", "optional", "list", "map", "union"]
 Kind = Literal["entry", "model", "alias"]
 
@@ -132,9 +131,9 @@ class Entry:
 
 @dataclass(frozen=True)
 class Contract:
-    """A contract, its models, and the entry points it is drawn from."""
+    """A contract, its models, and the entry points it is drawn from; keyed by its name in the registry."""
 
-    key: str
+    key: ContractName
     path: str
     title: str
     defs: dict[str, Node]
@@ -192,16 +191,16 @@ class _Cli(Document):
     defs: dict[str, Node] = Field(default_factory=dict, alias="$defs")
 
 
-def cli_contract() -> Contract:
-    path = "contracts/cli/cli.schema.json"
-    document = _Cli.model_validate_json((ROOT / path).read_bytes())
+def cli_contract(registry: Contracts) -> Contract:
+    found = registry.entry("cli-schema")
+    document = _Cli.model_validate_json(found.file.read_bytes())
     entries = [_entry("result", "Every command's result", {"result": document.result})]
     entries += [
         _entry(slug(" ".join(command.words)), f"ree {' '.join(command.words)}", {"outputs": command.outputs})
         for command in document.commands
         if command.outputs
     ]
-    return Contract("cli", path, "Command line", document.defs, tuple(entries))
+    return Contract("cli-schema", found.path, "Command line", document.defs, tuple(entries))
 
 
 class _Read(Document):
@@ -216,9 +215,9 @@ class _Protocol(Document):
     defs: dict[str, Node] = Field(default_factory=dict, alias="$defs")
 
 
-def protocol_contract() -> Contract:
-    path = "contracts/protocol/protocol.schema.json"
-    document = _Protocol.model_validate_json((ROOT / path).read_bytes())
+def protocol_contract(registry: Contracts) -> Contract:
+    found = registry.entry("protocol-schema")
+    document = _Protocol.model_validate_json(found.file.read_bytes())
     entries = [
         _entry(f"message-{slug(name)}", f"message {name}", {name: schema}) for name, schema in document.messages.items()
     ]
@@ -230,7 +229,7 @@ def protocol_contract() -> Contract:
         _entry(f"read-{slug(verb)}", f"read {verb}", {"query": read.query, "reply": read.reply})
         for verb, read in document.queries.items()
     ]
-    return Contract("protocol", path, "Protocol", document.defs, tuple(entries))
+    return Contract("protocol-schema", found.path, "Protocol", document.defs, tuple(entries))
 
 
 class _Media(Document):
@@ -267,9 +266,9 @@ class _OpenApi(Document):
 _METHODS = ("get", "post", "put", "patch", "delete")
 
 
-def openapi_contract() -> Contract:
-    path = "contracts/openapi.json"
-    document = _OpenApi.model_validate_json((ROOT / path).read_bytes())
+def openapi_contract(registry: Contracts) -> Contract:
+    found = registry.entry("openapi")
+    document = _OpenApi.model_validate_json(found.file.read_bytes())
     tagged: dict[str, dict[str, JsonValue]] = {}
     for item in document.paths.values():
         for method, operation in item.items():
@@ -282,7 +281,7 @@ def openapi_contract() -> Contract:
             if status and (answer := operation.responses[status].carried()):
                 rows[f"{operation.operation_id} → {status}"] = answer
     entries = tuple(_entry(slug(tag), f"{tag} operations", rows) for tag, rows in sorted(tagged.items()) if rows)
-    return Contract("openapi", path, "HTTP API", document.components.schemas, entries)
+    return Contract("openapi", found.path, "HTTP API", document.components.schemas, entries)
 
 
 class _Rooted(Document):
@@ -299,22 +298,24 @@ class _Rooted(Document):
         )
 
 
-def events_contract() -> Contract:
-    path = "contracts/behaviour/events.schema.json"
-    document = _Rooted.model_validate_json((ROOT / path).read_bytes())
+def events_contract(registry: Contracts) -> Contract:
+    found = registry.entry("behaviour-schema")
+    document = _Rooted.model_validate_json(found.file.read_bytes())
     entries = (Entry("records", "a journal record", document.root()),)
-    return Contract("behaviour", path, "Behaviour events", document.defs, entries)
+    return Contract("behaviour-schema", found.path, "Behaviour events", document.defs, entries)
 
 
-def ree_contract() -> Contract:
-    path = "contracts/ree/ree.schema.json"
-    document = _Rooted.model_validate_json((ROOT / path).read_bytes())
+def ree_contract(registry: Contracts) -> Contract:
+    found = registry.entry("ree-schema")
+    document = _Rooted.model_validate_json(found.file.read_bytes())
     entries = (Entry("document", "ree.json", document.root()),)
-    return Contract("ree", path, "REE document", document.defs, entries)
+    return Contract("ree-schema", found.path, "REE document", document.defs, entries)
 
 
-def contracts() -> tuple[Contract, ...]:
-    return (cli_contract(), protocol_contract(), openapi_contract(), events_contract(), ree_contract())
+def contracts(registry: Contracts) -> tuple[Contract, ...]:
+    return tuple(
+        read(registry) for read in (cli_contract, protocol_contract, openapi_contract, events_contract, ree_contract)
+    )
 
 
 # ================================================
@@ -397,9 +398,10 @@ def drawing_path(output: Path, contract: Contract, entry: Entry) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-o", "--output", type=Path, required=True, help="the directory to draw into")
+    parser.add_argument("--contracts", type=Path, help="the contract registry as exported (reports/exports/)")
     args = parser.parse_args()
     try:
-        drawn = contracts()
+        drawn = contracts(Contracts.read(args.contracts) if args.contracts else Contracts.read())
         written: set[Path] = set()
         for contract in drawn:
             for entry in contract.entries:
@@ -410,6 +412,9 @@ def main() -> int:
                 print(target)
         for stale in set(args.output.glob("*/*.svg")) - written:
             stale.unlink()
+        for folder in args.output.iterdir():
+            if folder.is_dir() and not any(folder.iterdir()):
+                folder.rmdir()
     except (OSError, ValueError, ValidationError, RuntimeError) as error:
         parser.exit(1, f"{error}\n")
     return 0

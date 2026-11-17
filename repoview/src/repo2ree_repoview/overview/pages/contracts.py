@@ -7,28 +7,38 @@ from __future__ import annotations
 
 from repo2ree_repoview.diagrams.contracts import Contract, contracts, drawing_path
 from repo2ree_repoview.overview.bundle import Bundle, Origin
-from repo2ree_repoview.overview.exports import Contracts
+from repo2ree_repoview.overview.contracts import Environment
+from repo2ree_repoview.overview.exports import ContractName, Contracts, GeneratedContract
 from repo2ree_repoview.overview.figures import DIAGRAMS, diagram_origin
-from repo2ree_repoview.overview.html import Page, esc, prose, section, table
+from repo2ree_repoview.overview.html import Page, esc, link_card, prose, section, table
+from repo2ree_repoview.overview.pages.environment import ENVIRONMENT_PAGE
 from repo2ree_repoview.stamp import read_svg_stamp
 
 CONTRACTS = "contracts"
 GRAPHS = DIAGRAMS / "contracts"
+# The contracts with a page of their own under this one.
+SUBPAGES: dict[str, str] = {"environment": ENVIRONMENT_PAGE}
 
 
-def graph_anchor(contract: str, entry: str) -> str:
+def graph_anchor(contract: ContractName, entry: str) -> str:
     """Where the drawing of ``entry``, an entry point of ``contract``, sits on the contracts page."""
     return f"graph-{contract}-{entry}"
 
 
-def graph_link(contract: str, entry: str, text: str) -> str:
+def graph_link(contract: ContractName, entry: str, text: str) -> str:
     return f'<a href="{CONTRACTS}.html#{esc(graph_anchor(contract, entry))}">{text}</a>'
+
+
+def _path(contract: GeneratedContract) -> str:
+    code = f"<code>{esc(contract.path)}</code>"
+    page = SUBPAGES.get(contract.name)
+    return f'<a href="{page}.html">{code}</a>' if page else code
 
 
 def _files(registry: Contracts) -> str:
     rows = [
         [
-            f"<code>{esc(contract.path)}</code>",
+            _path(contract),
             prose(contract.summary),
             prose(contract.between),
             f"<code>{esc(contract.rendered_by)}</code>",
@@ -78,8 +88,8 @@ def _graphs(bundle: Bundle, contract: Contract) -> str:
     )
 
 
-def page_contracts(bundle: Bundle, registry: Contracts) -> Page:
-    drawn = contracts()
+def page_contracts(bundle: Bundle, registry: Contracts, environment: Environment) -> Page:
+    drawn = contracts(registry)
     index = " · ".join(f'<a href="#graphs-{esc(contract.key)}">{esc(contract.title)}</a>' for contract in drawn)
     lede = (
         "The contracts the repository commits, and each drawn from the entry points it names: a box for each "
@@ -88,7 +98,17 @@ def page_contracts(bundle: Bundle, registry: Contracts) -> Page:
         'document\'s own anatomy is on the <a href="ree.html">REE</a> page; the interfaces these contracts specify '
         f'are on the <a href="interfaces.html">Interfaces</a> page.</p><p class="lede">Graphs: {index}'
     )
-    body = _files(registry) + "".join(_graphs(bundle, contract) for contract in drawn)
+    cards = (
+        '<div class="cards">'
+        + link_card(
+            ENVIRONMENT_PAGE,
+            "Environment variables",
+            f"{len(environment.variables)} variables",
+            f"<code>{esc(environment.contract_path)}</code>",
+        )
+        + "</div>"
+    )
+    body = cards + _files(registry) + "".join(_graphs(bundle, contract) for contract in drawn)
     graphs = sum(len(contract.entries) for contract in drawn)
     teaser = f"{len(registry.contracts)} committed contracts, drawn as {graphs} graphs of their models"
     return Page(CONTRACTS, "Contracts", teaser, section(CONTRACTS, "Contracts", lede, body))

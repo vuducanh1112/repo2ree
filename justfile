@@ -105,13 +105,13 @@ generate-just-recipe-graph: export-just-recipes
 
 # Draw the REE contract's anatomy from contracts/ree/ree.schema.json: every part, and which declared field each receipt repeats.
 [group('Diagrams')]
-generate-ree-anatomy:
+generate-ree-anatomy: export-contracts
     python -m repo2ree_repoview ree-anatomy -o {{ quote(REE_ANATOMY) }}
     {{ STAMP_DIAGRAMS }} --by generate-ree-anatomy {{ quote(REE_ANATOMY) }}
 
 # Draw the committed JSON contracts (contracts/) as graphs of their models, one drawing per entry point each names.
 [group('Diagrams')]
-generate-contract-graphs:
+generate-contract-graphs: export-contracts
     #!/usr/bin/env bash
     set -euo pipefail
     written=$(python -m repo2ree_repoview contract-graphs -o {{ quote(CONTRACT_GRAPHS) }})

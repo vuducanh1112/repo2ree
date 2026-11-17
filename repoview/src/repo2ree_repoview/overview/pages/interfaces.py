@@ -1,8 +1,8 @@
 """The interfaces into an REE as their committed contracts specify them: the command line and the HTTP API, each on
 a page of its own, and the authoring steps both advance.
 
-Everything here is read off the contracts (``contracts/``), so a page says what a contract says and nothing a
-contract does not: the command line from ``contracts/cli/cli.schema.json``, the API from ``contracts/openapi.json``.
+Everything here is read off the contracts, so a page says what a contract says and nothing a contract does not: the
+command line from ``cli-schema``, the API from ``openapi``, each where the contract registry keeps it.
 Each model a page names links to its graph on the contracts page.
 """
 
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from repo2ree_repoview.diagrams.contracts import slug
 from repo2ree_repoview.overview.contracts import CliCommand, CliParam, CliSchema, OpenApi, schema_name
-from repo2ree_repoview.overview.html import Page, esc, filter_box, prose, section, table
+from repo2ree_repoview.overview.html import Page, esc, filter_box, link_card, prose, section, table
 from repo2ree_repoview.overview.pages.contracts import graph_link
 
 INTERFACES = "interfaces"
@@ -52,13 +52,6 @@ def _steps(cli: CliSchema, api: OpenApi) -> str:
     )
 
 
-def _card(slug_: str, title: str, value: str, note: str) -> str:
-    return (
-        f'<a class="card link" href="{slug_}.html"><div class="k">{esc(title)}</div><div class="v">{esc(value)}</div>'
-        f'<div class="muted">{note}</div></a>'
-    )
-
-
 def page_interfaces(cli: CliSchema, api: OpenApi) -> Page:
     lede = (
         "How an REE is driven, as the committed contracts specify it. A person or an agent runs <code>ree</code>; "
@@ -67,8 +60,8 @@ def page_interfaces(cli: CliSchema, api: OpenApi) -> Page:
     )
     cards = (
         '<div class="cards">'
-        + _card(CLI_PAGE, "Command line", f"{len(cli.commands)} commands", "<code>contracts/cli/cli.schema.json</code>")
-        + _card(API_PAGE, "HTTP API", f"{api.operations} operations", "<code>contracts/openapi.json</code>")
+        + link_card(CLI_PAGE, "Command line", f"{len(cli.commands)} commands", f"<code>{esc(cli.contract_path)}</code>")
+        + link_card(API_PAGE, "HTTP API", f"{api.operations} operations", f"<code>{esc(api.contract_path)}</code>")
         + "</div>"
     )
     teaser = f"{len(cli.commands)} commands and {api.operations} HTTP operations, and the steps both advance"
@@ -103,7 +96,7 @@ def _usage(command: CliCommand) -> str:
 def _outputs(command: CliCommand) -> str:
     if not command.outputs:
         return esc(_PRINTS[command.stdout])
-    return graph_link("cli", slug(" ".join(command.words)), esc(schema_name(command.outputs)))
+    return graph_link("cli-schema", slug(" ".join(command.words)), esc(schema_name(command.outputs)))
 
 
 def _command_rows(commands: tuple[CliCommand, ...]) -> list[list[str]]:
@@ -131,10 +124,10 @@ def page_cli(cli: CliSchema) -> Page:
     )
     categories = ", ".join(f"<code>{esc(category)}</code>" for category in cli.failure_categories)
     lede = (
-        f"{len(cli.commands)} commands, from <code>contracts/cli/cli.schema.json</code>, which "
+        f"{len(cli.commands)} commands, from <code>{esc(cli.contract_path)}</code>, which "
         "<code>ree schema</code> prints. Each runs against the REE at <code>-C</code>, or the nearest at or above "
         "the current directory, and ends in one result ("
-        + graph_link("cli", "result", "<code>ActionResult</code>")
+        + graph_link("cli-schema", "result", "<code>ActionResult</code>")
         + "): plain lines for a person, one JSON line on stdout under <code>--json</code>, with the run's events as "
         f"NDJSON on stderr. A failed result carries one of the categories {categories}."
     )
@@ -177,7 +170,7 @@ def page_api(api: OpenApi) -> Page:
     ]
     rows.sort(key=lambda row: (row[0], row[2]))
     lede = (
-        f"{api.operations} operations on {len(api.paths)} paths, from <code>contracts/openapi.json</code>. An "
+        f"{api.operations} operations on {len(api.paths)} paths, from <code>{esc(api.contract_path)}</code>. An "
         "operation that runs a command returns a run to follow (<code>observeRun</code>); the API runs it through "
         "the REE's workbench, which runs <code>ree --json</code>. Each tag links to the graph of the models its "
         "operations send and answer with."

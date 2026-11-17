@@ -1,4 +1,5 @@
-"""The published contracts the overview reads: the command line, the HTTP API, and the environment variables."""
+"""The published contracts the overview reads: the command line, the HTTP API, and the environment variables, each
+found by its name in the contract registry."""
 
 from __future__ import annotations
 
@@ -7,12 +8,8 @@ from typing import Literal
 from pydantic import Field, JsonValue
 
 from repo2ree_repoview.documents import Document
-from repo2ree_repoview.repository import ROOT
+from repo2ree_repoview.overview.exports import Contracts
 
-CONTRACTS = ROOT / "contracts"
-ENVIRONMENT = CONTRACTS / "config/environment.json"
-OPENAPI = CONTRACTS / "openapi.json"
-CLI = CONTRACTS / "cli/cli.schema.json"
 HTTP_METHODS = ("get", "post", "put", "patch", "delete")
 
 
@@ -27,12 +24,18 @@ class Variable(Document):
 
 
 class Environment(Document):
+    # Where the registry keeps the contract this was read from, and the function that renders it.
+    contract_path: str = ""
+    rendered_by: str = ""
     variables: dict[str, Variable]
     patterns: dict[str, Variable] = Field(default_factory=dict)
 
     @classmethod
-    def read(cls) -> Environment:
-        return cls.model_validate_json(ENVIRONMENT.read_bytes())
+    def read(cls, registry: Contracts) -> Environment:
+        found = registry.entry("environment")
+        return cls.model_validate_json(found.file.read_bytes()).model_copy(
+            update={"contract_path": found.path, "rendered_by": found.rendered_by}
+        )
 
 
 # ================================================
@@ -69,11 +72,13 @@ class Operation(Document):
 
 
 class OpenApi(Document):
+    contract_path: str = ""
     paths: dict[str, dict[str, Operation]]
 
     @classmethod
-    def read(cls) -> OpenApi:
-        return cls.model_validate_json(OPENAPI.read_bytes())
+    def read(cls, registry: Contracts) -> OpenApi:
+        found = registry.entry("openapi")
+        return cls.model_validate_json(found.file.read_bytes()).model_copy(update={"contract_path": found.path})
 
     @property
     def operations(self) -> int:
@@ -161,6 +166,7 @@ class CliStep(Document):
 
 
 class CliSchema(Document):
+    contract_path: str = ""
     exit_codes: dict[str, str]
     failure_categories: tuple[str, ...]
     events: dict[str, str]
@@ -168,5 +174,6 @@ class CliSchema(Document):
     commands: tuple[CliCommand, ...]
 
     @classmethod
-    def read(cls) -> CliSchema:
-        return cls.model_validate_json(CLI.read_bytes())
+    def read(cls, registry: Contracts) -> CliSchema:
+        found = registry.entry("cli-schema")
+        return cls.model_validate_json(found.file.read_bytes()).model_copy(update={"contract_path": found.path})

@@ -6,21 +6,25 @@ from pathlib import Path
 
 import pytest
 
-from repo2ree_repoview.diagrams.ree import LAYOUT, SCHEMA, Anatomy, Layout, Link, Pair, Schema, anatomy, render_dot
+from repo2ree_repoview.diagrams.ree import Anatomy, Layout, Link, Pair, Schema, anatomy, render_dot
 from repo2ree_repoview.overview import figures
 from repo2ree_repoview.overview.bundle import Bundle
-from repo2ree_repoview.overview.exports import SPEC_EXPORT, Spec, exported
+from repo2ree_repoview.overview.exports import CONTRACTS_EXPORT, SPEC_EXPORT, Contracts, Spec, exported
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.receipt import AggregateMoves, Evidence
 from repo2ree_repoview.stamp import Stamp, stamp_svg
 
+REGISTRY = Contracts.model_validate_json(exported(CONTRACTS_EXPORT))
+
 
 def contract() -> Schema:
-    return Schema.model_validate_json(SCHEMA.read_text(encoding="utf-8"))
+    return Schema.model_validate_json(REGISTRY.entry("ree-schema").file.read_text(encoding="utf-8"))
 
 
 def drawn() -> Anatomy:
-    return anatomy(contract(), Layout.model_validate_json(LAYOUT.read_text(encoding="utf-8")))
+    return anatomy(
+        contract(), Layout.model_validate_json(REGISTRY.entry("ree-layout").file.read_text(encoding="utf-8"))
+    )
 
 
 def test_every_section_of_the_definition_and_every_receipt_is_a_box() -> None:
@@ -102,7 +106,7 @@ def test_the_ree_page_shows_the_anatomy_with_its_commit_and_recipe(
 ) -> None:
     monkeypatch.setattr(figures, "DIAGRAMS", tmp_path / "diagrams")
     ree = Spec.model_validate_json(exported(SPEC_EXPORT)).aggregates["Ree"]
-    page = page_aggregate(ree, AggregateMoves.over(Evidence(), "Ree"), bundle).body
+    page = page_aggregate(ree, AggregateMoves.over(Evidence(), "Ree"), bundle, REGISTRY).body
     assert "<h3>Anatomy</h3>" in page
     assert "Missing: run <code>just generate-ree-anatomy</code>" in page
 
@@ -118,7 +122,7 @@ def test_the_ree_page_shows_the_anatomy_with_its_commit_and_recipe(
         by="generate-ree-anatomy",
     )
     stamp_svg(drawing, stamp)
-    page = page_aggregate(ree, AggregateMoves.over(Evidence(), "Ree"), bundle).body
+    page = page_aggregate(ree, AggregateMoves.over(Evidence(), "Ree"), bundle, REGISTRY).body
     assert "Generated from <code>aaaaaaaaaa</code>" in page
     assert "Drawn by <code>just generate-ree-anatomy</code>" in page
     assert '<g id="a"/>' in page

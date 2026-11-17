@@ -53,6 +53,14 @@ def filter_box(target: str, placeholder: str) -> str:
     return f'<input class="filter" data-target="{target}" placeholder="{esc(placeholder)}">'
 
 
+def link_card(slug: str, title: str, value: str, note: str) -> str:
+    """A box leading to the page ``slug``: its title, a figure, and a note under them."""
+    return (
+        f'<a class="card link" href="{slug}.html"><div class="k">{esc(title)}</div><div class="v">{esc(value)}</div>'
+        f'<div class="muted">{note}</div></a>'
+    )
+
+
 @dataclass(frozen=True)
 class Page:
     slug: str

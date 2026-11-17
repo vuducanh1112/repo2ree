@@ -10,12 +10,14 @@ import pytest
 
 from repo2ree_repoview.overview import figures
 from repo2ree_repoview.overview.bundle import Bundle
-from repo2ree_repoview.overview.exports import SPEC_EXPORT, Operations, Spec, exported
+from repo2ree_repoview.overview.exports import CONTRACTS_EXPORT, SPEC_EXPORT, Contracts, Operations, Spec, exported
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.coverage import page_coverage
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.receipt import AggregateMoves, Evidence, Exercised
 from repo2ree_repoview.overview.spec_diagrams import drawings, part_drawing
+
+REGISTRY = Contracts.model_validate_json(exported(CONTRACTS_EXPORT))
 
 
 def spec() -> Spec:
@@ -90,7 +92,7 @@ def test_the_page_shows_each_part_as_drawn_and_lists_what_nothing_took(
     drawn.parent.mkdir(parents=True)
     drawn.write_text('<?xml version="1.0"?>\n<svg viewBox="0 0 1 1"><g id="runtime-part"/></svg>\n')
     tally = AggregateMoves.over(run_with(tmp_path, REPORT), "Ree")
-    page = page_aggregate(spec().aggregates["Ree"], tally, bundle).body
+    page = page_aggregate(spec().aggregates["Ree"], tally, bundle, REGISTRY).body
     assert '<svg viewBox="0 0 1 1"><g id="runtime-part"/></svg>' in page
     assert (bundle.root / "diagrams" / part_drawing("Ree", "experiment_environment")).is_file()
     # A part not drawn yet says how to draw it.
@@ -106,7 +108,7 @@ def test_the_page_shows_each_part_as_drawn_and_lists_what_nothing_took(
 def test_reports_from_before_aggregates_say_so_instead_of_showing_nothing_moved(tmp_path: Path, bundle: Bundle) -> None:
     tally = AggregateMoves.over(run_with(tmp_path, {"rules": []}), "Ree")
     assert not tally.recorded
-    assert "predate aggregate reporting" in page_aggregate(spec().aggregates["Ree"], tally, bundle).body
+    assert "predate aggregate reporting" in page_aggregate(spec().aggregates["Ree"], tally, bundle, REGISTRY).body
 
 
 def test_entities_without_a_machine_are_listed_not_drawn_and_point_to_their_parts(
@@ -125,7 +127,9 @@ def test_the_count_leaves_out_bulk_operations_and_groups_follow_the_checkers_ord
 ) -> None:
     ree = spec().aggregates["Ree"]
     allowed = sum(op not in m.bulk for m in ree.machines for edge in m.edges for op in edge.by)
-    page = page_aggregate(ree, AggregateMoves.over(run_with(tmp_path, {"aggregates": []}), "Ree"), bundle).body
+    page = page_aggregate(
+        ree, AggregateMoves.over(run_with(tmp_path, {"aggregates": []}), "Ree"), bundle, REGISTRY
+    ).body
     assert f"of {allowed} allowed moves" in page
     sections = [chunk.split("</h3>", 1)[0] for chunk in page.split("<h3>")[1:]]
     assert sections == ["Anatomy", "Evidence graph", "Parts"]

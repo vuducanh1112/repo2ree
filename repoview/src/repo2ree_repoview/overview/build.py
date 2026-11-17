@@ -1,14 +1,14 @@
 """Build the repository overview: one static page over what the repository already knows.
 
 It runs nothing. It reads what the recipes `just repo-overview` depends on wrote: the
-zones, the behaviour specification, the operations traceview folds from the
+zones, the contract registry, the behaviour specification, the operations traceview folds from the
 assurance-gate receipt's verifications, which showcase runs to read, and the Just recipes
 (reports/exports/), and the
 generated architecture, domain, specification, and recipe diagrams (reports/diagrams/), and
 the assurance-gate receipt's tests assessed and drawn again (reports/behaviour/). Beside them
 it reads the gates' receipts, the coverage and excuses of the last
-assurance-gate receipt, how long the recipes took (logs/just/), the environment contract,
-and the interface contracts (contracts/), and lays them out page by page.
+assurance-gate receipt, how long the recipes took (logs/just/), and the contracts the registry names
+(contracts/), and lays them out page by page.
 
 The overview is a bundle bound to one commit: whatever it shows from outside the tree
 (test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
@@ -31,9 +31,9 @@ from repo2ree_repoview.overview.exports import EXPORTS, Contracts, Operations, S
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.architecture import page_architecture
-from repo2ree_repoview.overview.pages.configuration import page_configuration
-from repo2ree_repoview.overview.pages.contracts import page_contracts
+from repo2ree_repoview.overview.pages.contracts import CONTRACTS, page_contracts
 from repo2ree_repoview.overview.pages.coverage import SHOWCASES, page_coverage, page_showcase_coverage
+from repo2ree_repoview.overview.pages.environment import page_environment
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
 from repo2ree_repoview.overview.pages.interfaces import INTERFACES, page_api, page_cli, page_interfaces
@@ -167,13 +167,14 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     bundle.write(
         "inputs/timings.json", timings.model_dump_json(indent=2), str(LOGS.relative_to(ROOT)), Origin(kind="timings")
     )
-    cli, api = CliSchema.read(), OpenApi.read()
+    cli, api = CliSchema.read(registry), OpenApi.read(registry)
+    environment = Environment.read(registry)
     pages = [
         page_zones(zones),
         page_gates(receipt, excused, bundle, evidence, verdicts),
         page_receipts(now),
         page_operations(operations, receipt, bundle, evidence),
-        page_vocabulary(spec),
+        page_vocabulary(spec, registry),
         page_specification(spec, bundle),
         page_coverage(
             spec,
@@ -196,14 +197,13 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
             gate_needs(now, tier_receipts()).get("showcase-gate", []),
         ),
         *(
-            page_aggregate(aggregate, AggregateMoves.over(evidence, name), bundle)
+            page_aggregate(aggregate, AggregateMoves.over(evidence, name), bundle, registry)
             for name, aggregate in spec.aggregates.items()
         ),
         page_architecture(bundle),
         page_interfaces(cli, api),
-        page_contracts(bundle, registry),
+        page_contracts(bundle, registry, environment),
         page_recipes(recipes, bundle, timings),
-        page_configuration(Environment.read()),
     ]
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
@@ -214,6 +214,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         *((page, SHOWCASES) for page in showcase_ree_pages(showcases, showcase_records)),
         (page_cli(cli), INTERFACES),
         (page_api(api), INTERFACES),
+        (page_environment(environment), CONTRACTS),
     ]
     for page, parent in subpages:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now, parent), encoding="utf-8")
