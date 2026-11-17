@@ -1,7 +1,7 @@
 {
   "seal": {
-    "ree_digest": "sha256:c439f77cc8123ec540b8a50f6ac8e3ec7226ab57bef476eb51b3efb3dc5f4662",
-    "sealed_at": "2026-11-12T15:07:46.116803Z"
+    "ree_digest": "sha256:916c9f0e758fed2c2342781e9305c76d2454e2224673907b8ab0f009334a9716",
+    "sealed_at": "2026-11-17T18:26:46.145196Z"
   },
   "subject": {
     "capture": {
@@ -24,14 +24,14 @@
           "size": 159
         },
         {
-          "digest": "sha256:8ba42f13bf15b2e60ddbe3b4de1f895ffb5778e4e2817dd46081ab3188e742cc",
+          "digest": "sha256:58b478832e471ebf361304154f1e63ed3a9a241d2d0cab143a790e1048fbec76",
           "path": ".workspace.materialized.json",
-          "size": 676
+          "size": 846
         },
         {
-          "digest": "sha256:4dcd42454c93762dea1467d5554acd0ef4e33fc205cd2b7423c3e2b24431b3d0",
+          "digest": "sha256:410a8aa9c4eff710cbb812af0313e53697bc98a416fcb81f6af3c063b89d34d5",
           "path": "REPRODUCING.md",
-          "size": 4046
+          "size": 4678
         },
         {
           "digest": "sha256:eb1d0f4f5fcfb53bdb702ed50ccf6cb5f37918679d00d0be7c5e29aaf5adec3c",
@@ -44,9 +44,9 @@
           "size": 10909
         },
         {
-          "digest": "sha256:f40611bc88a2a3096256a03d2cbc01cd3ff3b1c1906684494321bc3e0ac10823",
+          "digest": "sha256:c537a5af9dbaa7089c2584664a9eef6dfd5c7738698738db79677f8782606671",
           "path": "artifacts/sbom.json",
-          "size": 1079924
+          "size": 1079014
         },
         {
           "digest": "sha256:357cba6997f3310ee936f8187ddc74ed83d765d0e68ff9e21350573236483e8e",
@@ -54,19 +54,19 @@
           "size": 1161
         },
         {
-          "digest": "sha256:e8837f986e959630b5e7de8c7101ef83d9f834ab214a9ef8163e8ebc42e1335f",
+          "digest": "sha256:fdfbd3d23ff84b07fa2efd4021747201bc4f577023fcbb79f7f858ff955d962a",
           "path": "overlay/ree-scripts/activate_experiment_environment.sh",
-          "size": 280
+          "size": 393
         },
         {
-          "digest": "sha256:673940c8e2e2451205b608239810624f554e049d4c43d99dec2c85b2c8cce454",
+          "digest": "sha256:c232b057c40dfdf6c5606386de071ac7833810f75fb106dfd53ba5ac8f2f93a8",
           "path": "overlay/ree-scripts/build_experiment_environment.sh",
-          "size": 124
+          "size": 786
         },
         {
+          "digest": "sha256:3ef559361d83a2c525505a87edfa69ec1909334ae3d381b085755d373fc8c3fb",
           "path": "overlay/ree-scripts/check_working_environment.sh",
-          "digest": "sha256:377c8cc52c71a7f3727bb95dcd358309bbd9377a11efe2722c1934fda3dcc480",
-          "size": 2432
+          "size": 202
         },
         {
           "digest": "sha256:fdf3dc4a13f4d5ad6ce47890ffbefbca330f806bbf5724aabf4169ef2e291c6f",
@@ -79,8 +79,8 @@
           "size": 68
         },
         {
-          "path": "overlay/ree-scripts/launch.sh",
           "digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+          "path": "overlay/ree-scripts/launch.sh",
           "size": 320
         },
         {
@@ -89,22 +89,22 @@
           "size": 425
         },
         {
-          "digest": "sha256:ee2696dce7fcdee222c968f45f6ed607a1d0d3aa34272044e7cc5419e40700b0",
+          "digest": "sha256:b15e36d37a400f6a595d031fb2073a914bcdbd90672ab99cb87dfc21047f7716",
           "path": "run.sh",
-          "size": 8754
+          "size": 9947
         },
         {
-          "digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
+          "digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
           "path": "snapshot.tar.gz",
-          "size": 4024
+          "size": 4006
         }
       ]
     },
     "definition": {
       "activate_experiment_environment": {
-        "activate_experiment_environment_script_digest": "sha256:e8837f986e959630b5e7de8c7101ef83d9f834ab214a9ef8163e8ebc42e1335f",
+        "activate_experiment_environment_script_digest": "sha256:fdfbd3d23ff84b07fa2efd4021747201bc4f577023fcbb79f7f858ff955d962a",
         "activate_experiment_environment_script_path": "ree-scripts/activate_experiment_environment.sh",
-        "activate_experiment_environment_script_size": 280
+        "activate_experiment_environment_script_size": 393
       },
       "catalog": {
         "contributors": [],
@@ -113,11 +113,16 @@
         "version": "1.0.0",
         "website": ""
       },
+      "check_working_environment": {
+        "check_working_environment_script_digest": "sha256:3ef559361d83a2c525505a87edfa69ec1909334ae3d381b085755d373fc8c3fb",
+        "check_working_environment_script_path": "ree-scripts/check_working_environment.sh",
+        "check_working_environment_script_size": 202
+      },
       "experiment_environment": {
         "artifact_path": "source/runtime.tar",
-        "build_experiment_environment_script_digest": "sha256:673940c8e2e2451205b608239810624f554e049d4c43d99dec2c85b2c8cce454",
+        "build_experiment_environment_script_digest": "sha256:c232b057c40dfdf6c5606386de071ac7833810f75fb106dfd53ba5ac8f2f93a8",
         "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
-        "build_experiment_environment_script_size": 124
+        "build_experiment_environment_script_size": 786
       },
       "experiments": [
         {
@@ -150,83 +155,85 @@
         "network": {},
         "storage": {}
       },
+      "launch": {
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+        "launch_script_path": "ree-scripts/launch.sh",
+        "launch_script_size": 320
+      },
       "name": "ree-hello-world",
       "source": {
         "source_type": "tarball"
-      },
-      "launch": {
-        "launch_script_path": "ree-scripts/launch.sh",
-        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
-        "launch_script_size": 320
-      },
-      "check_working_environment": {
-        "check_working_environment_script_path": "ree-scripts/check_working_environment.sh",
-        "check_working_environment_script_digest": "sha256:377c8cc52c71a7f3727bb95dcd358309bbd9377a11efe2722c1934fda3dcc480",
-        "check_working_environment_script_size": 2432
       }
     },
     "receipts": {
       "activation": {
-        "activate_experiment_environment_script_digest": "sha256:e8837f986e959630b5e7de8c7101ef83d9f834ab214a9ef8163e8ebc42e1335f",
-        "duration_ms": 832,
+        "activate_experiment_environment_script_digest": "sha256:fdfbd3d23ff84b07fa2efd4021747201bc4f577023fcbb79f7f858ff955d962a",
+        "duration_ms": 603,
         "exit_code": 0,
-        "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
+        "experiment_environment_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
         "experiment_environment_path": "source/runtime.tar",
-        "finished_at": "2026-11-12T15:07:33.730267Z",
+        "finished_at": "2026-11-17T18:26:36.260830Z",
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+        "launched": {
+          "node": "docker"
+        },
         "operation": "activate_experiment_environment",
-        "recorded_at": "2026-11-12T15:07:33.730267Z",
-        "run_id": "activation-255c57f341764aa3bfbfa7e8556497e7",
+        "recorded_at": "2026-11-17T18:26:36.260830Z",
+        "run_id": "cli-2f832d1e3d04",
         "schema_version": 1,
-        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
-        "started_at": "2026-11-12T15:07:32.897896Z",
+        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
+        "started_at": "2026-11-17T18:26:35.657008Z",
         "working_environment": {
           "container": true,
           "host": {
-            "arch": "aarch64",
-            "kernel": "6.12.5-linuxkit",
+            "arch": "x86_64",
+            "kernel": "6.12.113+deb13-amd64",
             "os": "Debian GNU/Linux 13 (trixie)"
           }
-        },
-        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa"
+        }
       },
       "evaluation": {
         "analyzer_version": "1",
         "dependency_count": 6,
         "dependency_level": 3,
-        "duration_ms": 3,
+        "duration_ms": 4,
         "environment_level": 1,
-        "finished_at": "2026-11-12T15:06:45.459016Z",
+        "finished_at": "2026-11-17T18:25:53.716934Z",
         "machine_level": 0,
         "manifest_count": 1,
         "operation": "evaluate_reproducibility",
-        "overlay_digest": "sha256:092d7d5bf89492fee9cade6ebd65e1efef90ac5c4239fdda37499162fcdb6e97",
-        "recorded_at": "2026-11-12T15:06:45.459016Z",
+        "overlay_digest": "sha256:50aed0c8f18f4d96c8612597909939a1db468d1ae67d91a1cc7402cabc6db59f",
+        "recorded_at": "2026-11-17T18:25:53.716934Z",
         "report_digest": "sha256:3266a222ccbb6b88c859ef252c97f466aeadb937c289736c76a2562b3097b1e3",
         "report_path": "artifacts/reproducibility-report.json",
-        "run_id": "evaluate-e6d67913a53f4ca89d9cc21b9ff7082e",
+        "run_id": "cli-b2e2277c555c",
         "schema_version": 1,
-        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
-        "started_at": "2026-11-12T15:06:45.455862Z",
+        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
+        "started_at": "2026-11-17T18:25:53.712100Z",
         "strict": false
       },
       "experiment_environment": {
         "artifact_path": "source/runtime.tar",
-        "build_experiment_environment_script_digest": "sha256:673940c8e2e2451205b608239810624f554e049d4c43d99dec2c85b2c8cce454",
+        "build_experiment_environment_script_digest": "sha256:c232b057c40dfdf6c5606386de071ac7833810f75fb106dfd53ba5ac8f2f93a8",
         "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
-        "duration_ms": 29995,
-        "finished_at": "2026-11-12T15:07:21.524127Z",
+        "duration_ms": 22949,
+        "finished_at": "2026-11-17T18:26:22.006062Z",
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+        "launched": {
+          "node": "docker"
+        },
         "operation": "build_experiment_environment",
-        "produced_artifact_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
-        "recorded_at": "2026-11-12T15:07:21.524127Z",
-        "run_id": "build_experiment_environment-b2969ca1cc994418a3c9733da028adab",
+        "produced_artifact_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
+        "recorded_at": "2026-11-17T18:26:22.006062Z",
+        "run_id": "cli-6d273b504dd2",
         "schema_version": 1,
-        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
-        "started_at": "2026-11-12T15:06:51.529337Z",
+        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
+        "started_at": "2026-11-17T18:25:59.056136Z",
         "working_environment": {
           "container": true,
           "host": {
-            "arch": "aarch64",
-            "kernel": "6.12.5-linuxkit",
+            "arch": "x86_64",
+            "kernel": "6.12.113+deb13-amd64",
             "os": "Debian GNU/Linux 13 (trixie)"
           }
         },
@@ -234,80 +241,105 @@
           "changed_path_count": 0,
           "changed_paths": [],
           "status": "clean"
-        },
-        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa"
+        }
       },
       "experiments": {
         "python-hello": {
-          "activate_experiment_environment_script_digest": "sha256:e8837f986e959630b5e7de8c7101ef83d9f834ab214a9ef8163e8ebc42e1335f",
-          "duration_ms": 1706,
-          "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
+          "activate_experiment_environment_script_digest": "sha256:fdfbd3d23ff84b07fa2efd4021747201bc4f577023fcbb79f7f858ff955d962a",
+          "duration_ms": 706,
+          "experiment_environment_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
           "experiment_name": "python-hello",
-          "finished_at": "2026-11-12T15:07:44.763405Z",
+          "finished_at": "2026-11-17T18:26:44.796002Z",
+          "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+          "launched": {
+            "node": "docker"
+          },
           "operation": "run_experiment",
           "produced_output_digest": "sha256:8413a8c8bd8aaf94d7404d59c4c62734fcd0cd5577e22efc5c19b43c4bc32e14",
-          "recorded_at": "2026-11-12T15:07:44.763405Z",
+          "recorded_at": "2026-11-17T18:26:44.796002Z",
           "run_exit_code": 0,
-          "run_id": "experiment-6e1858a848e448e29d2b8ff319b3bd09",
+          "run_id": "cli-d86373209411",
           "run_script_digest": "sha256:fdf3dc4a13f4d5ad6ce47890ffbefbca330f806bbf5724aabf4169ef2e291c6f",
           "schema_version": 1,
-          "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
-          "started_at": "2026-11-12T15:07:43.057081Z",
+          "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
+          "started_at": "2026-11-17T18:26:44.089553Z",
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:fe95e38cfebb82d420df440287581b32959c5168b4191e298cfabf99da98efbe",
           "working_environment": {
             "container": true,
             "host": {
-              "arch": "aarch64",
-              "kernel": "6.12.5-linuxkit",
+              "arch": "x86_64",
+              "kernel": "6.12.113+deb13-amd64",
               "os": "Debian GNU/Linux 13 (trixie)"
             }
-          },
-          "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa"
+          }
         }
       },
       "sbom": {
-        "duration_ms": 4709,
-        "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
+        "duration_ms": 6932,
+        "experiment_environment_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
         "experiment_environment_path": "source/runtime.tar",
-        "finished_at": "2026-11-12T15:07:29.298923Z",
+        "finished_at": "2026-11-17T18:26:31.391300Z",
         "operation": "generate_sbom",
-        "recorded_at": "2026-11-12T15:07:29.298923Z",
-        "run_id": "sbom-cb70d0f12e434ce1b5215ec68a2dd471",
-        "sbom_digest": "sha256:f40611bc88a2a3096256a03d2cbc01cd3ff3b1c1906684494321bc3e0ac10823",
+        "recorded_at": "2026-11-17T18:26:31.391300Z",
+        "run_id": "cli-3f7f39f4b8f1",
+        "sbom_digest": "sha256:c537a5af9dbaa7089c2584664a9eef6dfd5c7738698738db79677f8782606671",
         "sbom_format": "cyclonedx-json",
         "sbom_path": "artifacts/sbom.json",
         "schema_version": 1,
-        "started_at": "2026-11-12T15:07:24.589618Z",
+        "started_at": "2026-11-17T18:26:24.458360Z",
         "tool_version": "1.51.0"
       },
       "sbom_cross_check": {
         "declared_direct_total": 6,
-        "duration_ms": 12,
-        "finished_at": "2026-11-12T15:07:30.561262Z",
+        "duration_ms": 14,
+        "finished_at": "2026-11-17T18:26:32.705653Z",
         "observed_matched": 6,
-        "observed_total": 2853,
+        "observed_total": 2854,
         "operation": "cross_check_sbom",
-        "recorded_at": "2026-11-12T15:07:30.561262Z",
+        "recorded_at": "2026-11-17T18:26:32.705653Z",
         "report_digest": "sha256:3266a222ccbb6b88c859ef252c97f466aeadb937c289736c76a2562b3097b1e3",
-        "run_id": "crosscheck-f1ce6dd132884671820043b03c1018f8",
-        "sbom_digest": "sha256:f40611bc88a2a3096256a03d2cbc01cd3ff3b1c1906684494321bc3e0ac10823",
+        "run_id": "cli-fd06e94ce283",
+        "sbom_digest": "sha256:c537a5af9dbaa7089c2584664a9eef6dfd5c7738698738db79677f8782606671",
         "schema_version": 1,
-        "started_at": "2026-11-12T15:07:30.548425Z",
+        "started_at": "2026-11-17T18:26:32.690952Z",
         "undeclared_same_ecosystem": 18,
         "version_mismatches": 0
       },
       "source": {
-        "duration_ms": 110,
-        "finished_at": "2026-11-12T15:06:40.134483Z",
+        "duration_ms": 109,
+        "finished_at": "2026-11-17T18:25:50.281121Z",
         "observed_swhid": "swh:1:dir:d628538e71146ddab265cb55b04a35c2bf22e7ba",
         "operation": "acquire_source",
-        "recorded_at": "2026-11-12T15:06:40.134483Z",
-        "run_id": "source-ba9b047253cf4519968452a086483df9",
+        "recorded_at": "2026-11-17T18:25:50.281121Z",
+        "run_id": "cli-67b41a638a4d",
         "schema_version": 1,
-        "snapshot_digest": "sha256:86a72eb5f9c051a0751ab65f058a6c6ef8c635a89313526a5cdae8a07ef4360e",
+        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
         "source_type": "tarball",
-        "started_at": "2026-11-12T15:06:40.024375Z"
+        "started_at": "2026-11-17T18:25:50.171729Z"
+      },
+      "working_environment_check": {
+        "check_working_environment_script_digest": "sha256:3ef559361d83a2c525505a87edfa69ec1909334ae3d381b085755d373fc8c3fb",
+        "duration_ms": 103,
+        "exit_code": 0,
+        "finished_at": "2026-11-17T18:25:55.998157Z",
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+        "launched": {
+          "node": "docker"
+        },
+        "operation": "check_working_environment",
+        "recorded_at": "2026-11-17T18:25:55.998157Z",
+        "run_id": "cli-ce02488f3422",
+        "schema_version": 1,
+        "started_at": "2026-11-17T18:25:55.894899Z",
+        "working_environment": {
+          "container": true,
+          "host": {
+            "arch": "x86_64",
+            "kernel": "6.12.113+deb13-amd64",
+            "os": "Debian GNU/Linux 13 (trixie)"
+          }
+        }
       }
     },
     "schema_version": 1
