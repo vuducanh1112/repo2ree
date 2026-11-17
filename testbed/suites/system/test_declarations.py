@@ -84,9 +84,8 @@ def test_declared_hardware_experiment_environment_activation_and_experiments_com
     assert api.audit(ree_id)["experiment_environment"]["evidence"] == "stale"
     api.patch(ree_id, {"experiment_environment": {"artifact_path": f"{EXPERIMENT_ENVIRONMENT}.renamed"}})
     api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
-    api.patch(ree_id, {"activate_experiment_environment": None})
-    assert api.audit(ree_id)["activation"]["evidence"] == "stale"
-    api.patch(ree_id, {"activate_experiment_environment": {}})
+    # The activation is never undeclared: every REE has its script, and its evidence stands.
+    api.patch(ree_id, {"activate_experiment_environment": None}, expect=400)
     assert api.audit(ree_id)["activation"]["evidence"] == "current"
 
     experiment = {"name": EXPERIMENT, "output_paths": [RESULT]}

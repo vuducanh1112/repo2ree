@@ -14,7 +14,7 @@ from system_client import (
     BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
     EXPERIMENT,
     EXPERIMENT_ENVIRONMENT,
-    EXPERIMENT_VERIFY,
+    LAUNCH_SCRIPT,
     RECONNECT_BOUND,
     Api,
     fault,
@@ -146,7 +146,7 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     busy = api.request(
         "PUT",
         f"/api/v1/rees/{ree_id}/files/content",
-        json={"path": EXPERIMENT_VERIFY, "content": "#!/bin/sh\n"},
+        json={"path": LAUNCH_SCRIPT, "content": "#!/bin/sh\n"},
         expect=None,
         timeout=120.0,
     )
@@ -155,4 +155,4 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     assert api.wait(ree_id, run, timeout=60)["status"] == "canceled"
     assert busy.status_code == 409, busy.text
     assert busy.json()["error"]["code"] == "ree_busy"
-    api.write(ree_id, EXPERIMENT_VERIFY, "#!/bin/sh\n")
+    api.write(ree_id, LAUNCH_SCRIPT, "#!/bin/sh\n")

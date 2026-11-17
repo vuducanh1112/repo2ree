@@ -30,7 +30,9 @@ EDITED_LAUNCH = '#!/usr/bin/env sh\nset -eu\n# edited\nexec "$@"\n'
 
 
 def launch_script(api: Api, ree_id: str) -> bytes:
-    return bytes(api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": LAUNCH_SCRIPT}).content)
+    return bytes(
+        api.request("GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": f"overlay/{LAUNCH_SCRIPT}"}).content
+    )
 
 
 def build_taking(api: Api, ree_id: str, seconds: int) -> dict[str, Any]:
