@@ -20,6 +20,8 @@ class Deployment:
     tools_bundle: Path
     # The machine each store's workbench is installed on; without one, it runs from source here.
     environment: Environment | None = None
+    # An API and a workbench service on each location; without them, the client runs ree on the machine itself.
+    control_plane: bool = True
 
 
 @dataclass(frozen=True)

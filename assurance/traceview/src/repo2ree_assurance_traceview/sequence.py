@@ -1,8 +1,10 @@
-"""One operation as a sequence across components: client, API, supervisor, workbench, executor, core.
+"""One operation as a sequence across components: client, API, supervisor, workbench, ree, core.
 
 Journal records and the capture commit sit at their own timestamps. Spans add the hops nothing
-journals yet. Attempt states carry no timestamp: they are placed inside the ``command.<op>`` span,
-the bracket in which core's capture_command runs, and marked inferred. Times are seconds from the
+journals yet: a ``ree <words>`` span is one invocation of the command line, called by the
+workbench that started it or else by the client at a terminal. Attempt states carry no
+timestamp: they are placed inside the ``command.<op>`` span, the bracket in which core's
+capture_command runs, and marked inferred. Times are seconds from the
 origin a sequence is given (the trace's first journal record), or else from its own first line.
 
 The lifecycle joins the sequences of every segment of an REE, in evidence order, into one.
@@ -33,18 +35,27 @@ from repo2ree_assurance_traceview.model import (
 from repo2ree_assurance_traceview.spans import Span, SpanIndex, timestamp
 
 LANES = (
-    Lane(id="client", label="Client", process="browser"),
+    Lane(id="client", label="Client", process="browser or terminal"),
     Lane(id="api", label="API", process="api process"),
     Lane(id="supervisor", label="Supervisor", process="api process"),
     Lane(id="workbench", label="Workbench", process="workbench"),
-    Lane(id="executor", label="Executor", process="executor"),
-    Lane(id="core", label="Core · Git", process="executor"),
+    Lane(id="cli", label="CLI · ree", process="ree"),
+    Lane(id="core", label="Core · Git", process="ree"),
 )
 QUIET = 0.1  # A stretch without spans worth pointing out, in seconds.
 MINOR = 0.05  # Docker calls shorter than this in total are left out, in seconds.
 STAGING = ("copy_open", "copy_chunk", "copy_close")
 UNINTERESTING = ("GET", "OPTIONS", "HTTP")
 EPSILON = 0.0005
+
+
+def invocation(span: Span) -> bool:
+    """Whether ``span`` is one ``ree`` invocation, named ``ree`` and the words of its command."""
+    return span.service == "cli" and (span.name == "ree" or span.name.startswith("ree "))
+
+
+def _start(span: Span) -> float:
+    return span.start
 
 
 def route(name: str) -> str:
@@ -140,11 +151,17 @@ def build_sequence(
     commit: str | None = None,
     files: int | None = None,
     origin: float | None = None,
+    ran: Span | None = None,
 ) -> Sequence:
+    """``ran`` is the run of an attempt ``ree`` ran with no control plane: its spans and the invocation above it."""
     builder = _Builder(origin)
     related = spans.in_traces(event.trace_id for event in (*runs, *exchange))
+    if ran is not None:
+        above = [span for span in spans.ancestors(ran) if invocation(span)]
+        related = sorted({span.id: span for span in (*related, *above, *spans.subtree(ran))}.values(), key=_start)
     background = any(event.facts.get(terms.RUN_ID) for event in runs)
     request = _request(builder, spans, related, background=background)
+    invoked = any(invocation(span) for span in related)
 
     for event in runs:
         category = event.facts.get(terms.FAILURE_CATEGORY)
@@ -191,14 +208,30 @@ def build_sequence(
                 builder.message(
                     span.start, "supervisor", "workbench", operation or span.name, "span", detail=milliseconds(span)
                 )
-        elif span.service == "cli" and span.name.startswith("executor."):
-            builder.message(span.start, "workbench", "executor", "start ree", "span", detail=span.name)
-            builder.activate("executor", span.start, span.end, span.name)
+        elif invocation(span):
+            parent = spans.parent(span)
+            caller = "workbench" if parent is not None and parent.service == "workbench" else "client"
+            builder.message(span.start, caller, "cli", span.name, "span")
+            builder.activate("cli", span.start, span.end, span.name)
+            status = span.attribute("repo2ree.status")
+            code = span.attribute("repo2ree.exit_code")
+            builder.message(
+                span.end,
+                "cli",
+                caller,
+                status or "ended",
+                "span",
+                detail=f"exit {code}" if code is not None else None,
+            )
+        elif span.service == "cli" and span.name.startswith("executor.") and not invoked:
+            # Recorded before ree traced its invocations: the session span, then named executor.<op>, stands in.
+            builder.message(span.start, "workbench", "cli", "start ree", "span", detail=span.name)
+            builder.activate("cli", span.start, span.end, span.name)
             for mark in span.events:
                 if mark.attributes.get("repo2ree.boundary") == "executor.completed":
                     label = f"completed · {mark.attributes.get('repo2ree.status')}"
                     detail = f"exit {mark.attributes.get('repo2ree.exit_code')}"
-                    builder.message(mark.at, "executor", "workbench", label, "span", detail=detail)
+                    builder.message(mark.at, "cli", "workbench", label, "span", detail=detail)
         elif span.service == "cli" and span.name.startswith("command."):
             builder.activate("core", span.start, span.end, f"{span.name} · capture_command")
             _capture(
@@ -214,7 +247,7 @@ def build_sequence(
             captured = True
         elif span.service == "cli" and span.name == "process.exec":
             detail = f"exit {span.attribute('repo2ree.exit_code')} · {milliseconds(span)}"
-            builder.note(span.start, "executor", f"$ {span.attribute('repo2ree.exec.argv')}", "span", detail=detail)
+            builder.note(span.start, "cli", f"$ {span.attribute('repo2ree.exec.argv')}", "span", detail=detail)
     _staging(builder, staged)
     if attempt and not captured:
         # No command span: the command's exchanges bracket the attempt, as they do for the checker.
@@ -280,9 +313,7 @@ def _command(builder: _Builder, spans: SpanIndex, span: Span, operation: str) ->
     executor = next((c for c in spans.children(span) if c.service == "cli"), None)
     if executor is not None and executor.start - span.start > QUIET:
         label = f"{(executor.start - span.start) * 1000:.0f} ms without spans"
-        builder.note(
-            span.start + EPSILON, "workbench", label, "gap", detail="before the executor span opens", tone="gap"
-        )
+        builder.note(span.start + EPSILON, "workbench", label, "gap", detail="before ree's span opens", tone="gap")
 
 
 class _Bracket:

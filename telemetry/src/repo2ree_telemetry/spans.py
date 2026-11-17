@@ -394,21 +394,3 @@ def remote_context(traceparent: str | None) -> context.Context | None:
     if not traceparent:
         return None
     return extract({"traceparent": traceparent})
-
-
-def attach_remote_context(traceparent: str | None) -> object | None:
-    """Make the remote traceparent the current context; return a detach token.
-
-    Pass the token to ``detach_context`` when the unit of work completes. Returns
-    None when there is nothing to attach.
-    """
-    if not traceparent:
-        return None
-    ctx = extract({"traceparent": traceparent})
-    return context.attach(ctx)
-
-
-def detach_context(token: object | None) -> None:
-    """Detach a context previously attached via ``attach_remote_context``."""
-    if token is not None:
-        context.detach(token)  # type: ignore[arg-type]

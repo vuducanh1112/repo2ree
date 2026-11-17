@@ -70,10 +70,10 @@ def test_a_lane_is_reached_only_as_far_as_every_instance_reaches_it() -> None:
     assert (with_spans["api"], with_spans["core"]) == ("checked", "checked")
     # The supervisor's journal holds what it sent and was answered, nothing the workbench recorded itself.
     assert with_spans["workbench"] == "exchanged"
-    assert with_spans["executor"] == "span"
+    assert with_spans["cli"] == "span"
 
     both = build_catalogue([("a", trace_of(recorded(), build_spans())), ("b", trace_of(recorded()))])
-    assert both.operations[1].reach["executor"] == "none"
+    assert both.operations[1].reach["cli"] == "none"
 
 
 def test_rules_are_tallied_by_verdict_over_every_instance() -> None:

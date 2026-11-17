@@ -52,6 +52,7 @@ from repo2ree_supervisor.locks import ReeLocks
 from repo2ree_supervisor.transfers import ReceivedFile
 from repo2ree_telemetry.behaviour import events
 from repo2ree_telemetry.bootstrap import get_meter, get_tracer
+from repo2ree_telemetry.command_line import TRACE_RELAY_ENV
 from repo2ree_telemetry.relay import SpanSink
 from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
@@ -220,7 +221,7 @@ class CommandDispatcher:
             facts={"operation": str(cmd.operation), "run_id": run_id, "session": session},
         )
         context = context.model_copy(update={"dispatch_record": record})
-        env = {"TRACE_RELAY": "1"} if self._span_sink is not None else {}
+        env = {TRACE_RELAY_ENV: "1"} if self._span_sink is not None else {}
         answered = False
 
         def answer(message: events.StartRunResponse) -> None:

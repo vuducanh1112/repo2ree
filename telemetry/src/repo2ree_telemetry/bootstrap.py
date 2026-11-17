@@ -109,6 +109,7 @@ def setup_tracing(
     endpoint: str | None = None,
     console_fallback: bool = False,
     instance_id: str | None = None,
+    export_timeout: float | None = None,
 ) -> TracerProvider | None:
     """Configure the global TracerProvider once for this process.
 
@@ -131,7 +132,9 @@ def setup_tracing(
     if endpoint:
         from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
-        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces")))
+        provider.add_span_processor(
+            BatchSpanProcessor(OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces", timeout=export_timeout))
+        )
     elif trace_file := os.environ.get(TRACE_FILE_ENV):
         provider.add_span_processor(SimpleSpanProcessor(_FileSpanExporter(Path(trace_file))))
     else:
@@ -195,6 +198,7 @@ def setup_logs(
     *,
     endpoint: str | None = None,
     instance_id: str | None = None,
+    export_timeout: float | None = None,
 ) -> LoggerProvider | None:
     """Configure the global LoggerProvider once for this process.
 
@@ -217,7 +221,9 @@ def setup_logs(
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 
     provider = LoggerProvider(resource=build_resource(service_name, instance_id))
-    provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{endpoint}/v1/logs")))
+    provider.add_log_record_processor(
+        BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{endpoint}/v1/logs", timeout=export_timeout))
+    )
     set_logger_provider(provider)
     return provider
 

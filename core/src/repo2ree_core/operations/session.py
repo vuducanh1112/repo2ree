@@ -30,8 +30,6 @@ from repo2ree_ree.reserved_paths import is_overlay_path
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
-    attach_remote_context,
-    detach_context,
     record_command_status,
     record_exit_code,
     record_failure,
@@ -51,7 +49,6 @@ def run_session(
     emit: LogSink,
     run_id: str | None = None,
     context: ExecutionContext | None = None,
-    traceparent: str | None = None,
 ) -> ActionResult:
     """Run ``cmd`` against the REE at ``layout``, logging to ``emit`` and to the run log, and return its result."""
     context = context or ExecutionContext.new()
@@ -62,7 +59,6 @@ def run_session(
     evidence: ReeLayout | ReviewLayout = layout.review(review_id) if review_id else layout
     evidence.runs.mkdir(parents=True, exist_ok=True)
     cancel_marker = layout.run_cancel_marker(run_id)
-    token = attach_remote_context(traceparent)
     try:
         with evidence.run_log(run_id).open("a", encoding="utf-8") as run_log, _stopped_by_signals() as stopped:
 
@@ -100,7 +96,6 @@ def run_session(
             )
             return result
     finally:
-        detach_context(token)
         # Each run clears its own marker, so a stale one never cancels a later run that reuses the id.
         cancel_marker.unlink(missing_ok=True)
 
@@ -116,9 +111,8 @@ def _run_held(
     """The command, run while this process alone runs one in the REE."""
     settle_leftover_attempts(layout, log=log)
     pick_up_authored_edits(layout, log=log)
-    # The process itself, as one span, so a trace shows the process boundary between whoever started
-    # it and core's command span.
-    with tracer.start_as_current_span(f"executor.{cmd.operation}") as span:
+    # The session, as one span: the run held in the REE, around core's command span.
+    with tracer.start_as_current_span(f"session.{cmd.operation}") as span:
         CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
         result = run_command(
             cmd,
@@ -132,7 +126,7 @@ def _run_held(
         record_failure(span, result.failure)
         record_command_status(span, result.status)
         record_result_evidence(span, result)
-        record_result_boundary(span, "executor.completed", result)
+        record_result_boundary(span, "session.completed", result)
     return result
 
 

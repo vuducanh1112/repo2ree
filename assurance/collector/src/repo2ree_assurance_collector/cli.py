@@ -1,4 +1,4 @@
-"""Command line: collect a deployment's behaviour evidence through its control plane into a dossier.
+"""Command line: collect a deployment's behaviour evidence into a dossier, through its control plane if any.
 
   python -m repo2ree_assurance_collector DIR [--control-plane URL]
       [--archives-in FOLDER]...  REE archives clients downloaded and kept there
@@ -15,9 +15,10 @@
 Through the control plane, collects the owners' persisted state, then their journals, so the
 journals reach past the state's cut. A deployment shutting down for good can instead export
 them after its owners stopped (--journal-dir): only then do the journals carry their close.
-Collecting into an existing dossier adds to it. Exits 1 when any source could not be
-collected; the dossier still lists it, with the problem, so verification reports the gap
-instead of judging around it.
+A deployment with no control plane, where a client ran ``ree`` itself, is collected from the
+REEs it kept (--kept-rees) and its span files alone. Collecting into an existing dossier adds
+to it. Exits 1 when any source could not be collected; the dossier still lists it, with the
+problem, so verification reports the gap instead of judging around it.
 """
 
 from __future__ import annotations
@@ -75,8 +76,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not separator or not SAFE_NAME.match(store_id) or not folder:
             parser.error(f"--store-journal-dir takes STORE=DIR, not {given!r}")
         stores[store_id] = Path(folder)
-    if args.control_plane is None and args.journal_dir is None:
-        parser.error("give --control-plane, --journal-dir, or both")
+    if args.control_plane is None and args.journal_dir is None and args.kept_rees is None:
+        parser.error("give --control-plane, --journal-dir, or --kept-rees")
     if stores and args.journal_dir is None:
         parser.error("--store-journal-dir exports journals beside the control plane's: give --journal-dir")
     if args.control_plane is None and (args.archives_in or args.ree):

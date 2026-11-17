@@ -400,6 +400,14 @@ ARCHIVE_DIR = Path(os.environ.get("E2E_ARCHIVE_DIR", "test-artifacts/python/show
 KEPT_REE_DIR = Path(os.environ.get("E2E_KEPT_REE_DIR", "test-artifacts/python/showcase-cli/kept-rees"))
 
 
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    if os.environ.get(MACHINE_VARIABLE):
+        return
+    skip = pytest.mark.skip(reason="the CLI showcases run ree on a machine: run them with just test-showcase-cli")
+    for item in items:
+        item.add_marker(skip)
+
+
 @pytest.fixture(scope="session")
 def client() -> Client:
     machine = Machine(

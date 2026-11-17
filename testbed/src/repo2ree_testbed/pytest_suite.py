@@ -31,7 +31,7 @@ def listed(*directories: Path) -> list[str]:
 def run(*directories: Path, machine: Callable[[str], str] | None = None) -> int:
     names = ", ".join(str(directory.relative_to(ROOT)) for directory in directories)
     parser = argparse.ArgumentParser(description=f"Run {names} against a stack")
-    parser.add_argument("--base-url")
+    parser.add_argument("--base-url", help="the stack's API; a stack with no control plane has none")
     parser.add_argument("--list", action="store_true", help="print the suite's test ids and run nothing")
     args, rest = parser.parse_known_args()
     os.chdir(ROOT)
@@ -39,9 +39,8 @@ def run(*directories: Path, machine: Callable[[str], str] | None = None) -> int:
         nodes = listed(*directories)
         sys.stdout.write("".join(f"{node}\t{machine(node)}\n" if machine else f"{node}\n" for node in nodes))
         return 0
-    if not args.base_url:
-        parser.error("--base-url is required to run the suite")
-    os.environ["E2E_API_BASE_URL"] = args.base_url
+    if args.base_url:
+        os.environ["E2E_API_BASE_URL"] = args.base_url
     selected = [arg for arg in rest if "::" in arg]
     options = [arg for arg in rest if arg not in selected]
     if report_dir := os.environ.get("E2E_TEST_DIR"):

@@ -180,8 +180,9 @@ class Script:
 
     def start(self, api_url: str, environment: Mapping[str, str], selection: Sequence[str], launch: Launch) -> Started:
         print(f">> stack ready — running script={self.path}")
+        base_url = ["--base-url", api_url] if api_url else []
         if self.record is None:
-            command = [str(self.path), "--base-url", api_url, *selection]
+            command = [str(self.path), *base_url, *selection]
             return Started(_popen(command, ROOT, environment, launch))
         self.record.parent.mkdir(parents=True, exist_ok=True)
         descriptor, name = tempfile.mkstemp(prefix="repo2ree-record-status-")

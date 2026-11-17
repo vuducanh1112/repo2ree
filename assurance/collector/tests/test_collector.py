@@ -435,3 +435,17 @@ def test_an_ree_a_client_kept_nothing_of_leaves_the_verdict_no_evidence_to_pass_
     evidence = load_dossier(directory)
 
     assert any("kept no history of it" in problem for problem in evidence.problems)
+
+
+def test_a_deployment_with_no_control_plane_is_collected_from_its_kept_rees_and_spans(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    kept = tmp_path / "kept"
+    (kept / "ree-a" / ".git").mkdir(parents=True)
+    spans_file = tmp_path / "cli.ndjson"
+    spans_file.write_text("")
+
+    assert main([str(directory), "--kept-rees", str(kept), "--spans", str(spans_file)]) == 0
+
+    dossier = read_dossier(directory)
+    assert dossier.control_plane is None
+    assert [(source.kind, source.name) for source in dossier.sources] == [("git", "ree-a"), ("spans", "cli")]

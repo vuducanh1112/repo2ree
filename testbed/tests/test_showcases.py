@@ -7,6 +7,7 @@ import pytest
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.runs.api_showcase import RUNNERS, e2e_arguments
+from repo2ree_testbed.runs.e2e import parse
 from repo2ree_testbed.showcases import (
     ALL_PROJECTS,
     API_FEATURES,
@@ -127,6 +128,16 @@ def test_the_cli_tier_runs_the_same_tests_through_its_own_runner() -> None:
     assert (api[1], cli[1]) == (str(RUNNERS["api"]), str(RUNNERS["cli"]))
     assert all(runner.is_file() for runner in RUNNERS.values())
     assert cli[2:4] == ["--tier", CLI_TIER]
+
+
+def test_the_cli_tier_runs_no_control_plane_and_the_api_tier_does() -> None:
+    assert "--no-control-plane" in e2e_arguments(jobs=1, surface="cli")
+    assert "--no-control-plane" not in e2e_arguments(jobs=1)
+    assert not parse(
+        ["--script", str(RUNNERS["cli"]), "--tier", CLI_TIER, "--per-test", "--no-control-plane"]
+    ).deployment.control_plane
+    with pytest.raises(SystemExit):
+        parse(["--script", str(RUNNERS["cli"]), "--tier", CLI_TIER, "--no-control-plane"])
 
 
 def test_every_project_checks_what_its_scripts_need() -> None:

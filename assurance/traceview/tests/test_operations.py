@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from traceview_scenario import REE, Scenario, build_spans, recorded, trace_of
 
+from repo2ree_assurance_traceview.spans import Span
+
 
 def test_the_scenario_conforms() -> None:
     assert trace_of(recorded()).verdict == "passed"
@@ -59,13 +61,40 @@ def test_spans_annotate_but_never_change_what_was_checked() -> None:
 def test_a_sequence_follows_one_operation_across_components() -> None:
     sequence = trace_of(recorded(), build_spans()).entries[2].sequence
     assert sequence is not None
-    assert [lane.id for lane in sequence.lanes] == ["client", "api", "supervisor", "workbench", "executor", "core"]
+    assert [lane.id for lane in sequence.lanes] == ["client", "api", "supervisor", "workbench", "cli", "core"]
     lines = [(row.provenance, row.lane, row.to, row.label) for row in sequence.rows]
     assert lines[0] == ("span", "client", "api", "POST /rees/{id}/build-experiment-environment")
     assert ("journal", "supervisor", "workbench", "start_run · build_experiment_environment") in lines
     assert ("journal", "workbench", "supervisor", "settled · succeeded") in lines
     assert ("git", "core", None, "commit c3000000") in lines
     assert any(row.tone == "gap" and row.label == "350 ms without spans" for row in sequence.rows)
+
+
+def invoked_spans() -> list[Span]:
+    """build_spans, with the executor's command line traced as one ``ree`` invocation under the workbench's request."""
+    spans = build_spans()
+    executor = next(s for s in spans if s.name.startswith("executor."))
+    invoked = executor.model_copy(
+        update={
+            "id": "w3i",
+            "name": "ree build-experiment-environment",
+            "start": executor.start - 0.01,
+            "end": executor.end + 0.01,
+            "events": (),
+            "attributes": {"repo2ree.status": "succeeded", "repo2ree.exit_code": 0},
+        }
+    )
+    return [*(s.model_copy(update={"parent": "w3i"}) if s is executor else s for s in spans), invoked]
+
+
+def test_an_invocation_is_the_workbench_calling_ree_and_ree_answering() -> None:
+    sequence = trace_of(recorded(), invoked_spans()).entries[2].sequence
+    assert sequence is not None
+    lines = [(row.provenance, row.lane, row.to, row.label, row.detail) for row in sequence.rows]
+    assert ("span", "workbench", "cli", "ree build-experiment-environment", None) in lines
+    assert ("span", "cli", "workbench", "succeeded", "exit 0") in lines
+    assert not any(label == "start ree" for _, _, _, label, _ in lines)
+    assert [a.label for a in sequence.activations if a.lane == "cli"] == ["ree build-experiment-environment"]
 
 
 def test_attempt_states_are_placed_inside_the_command_span_and_marked_inferred() -> None:

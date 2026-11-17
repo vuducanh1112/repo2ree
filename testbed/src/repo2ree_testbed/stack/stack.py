@@ -1,4 +1,8 @@
-"""One source stack: the API under coverage, its compute locations, one client run, and what it leaves."""
+"""One source stack: the API under coverage, its compute locations, one client run, and what it leaves.
+
+A deployment with no control plane is the test's machine alone, with no service on it: its client runs ``ree`` there
+itself, and the dossier holds the REEs the client kept and ``ree``'s spans.
+"""
 
 from __future__ import annotations
 
@@ -147,6 +151,9 @@ class E2EStack:
         self.port: int | None = None
         self.backend: subprocess.Popen[bytes] | None = None
         self.locations: list[subprocess.Popen[bytes]] = []
+        # The machine with no service on it, where the client runs ree itself when there is no control plane.
+        self.machine: subprocess.Popen[bytes] | None = None
+        self.machine_state = self.control_state / ("workbench-1" if deployment.control_plane else "machine")
         # How each location was started, so one can be started again on its own (a killed workbench).
         self.launches: list[tuple[list[str], dict[str, str], Path]] = []
         # In store mode, the relay each store's workbench reaches the API through.
@@ -294,6 +301,39 @@ class E2EStack:
 
         wait_until(f"{len(services)} store workbench(es)", ready)
 
+    def start_machine(self) -> None:
+        """The test's machine with no service on it: an idle process keeps it up while the client runs ree there."""
+        machine = self.deployment.environment
+        if machine is None:
+            raise RuntimeError("with no control plane the client runs ree on the test's machine, and it names none")
+        self.machine_state.mkdir(parents=True, exist_ok=True)
+        ready = self.machine_state / "ready"
+        environment: dict[str, str] = {}
+        telemetry = (self.layout.telemetry,) if self.layout.telemetry is not None else ()
+        if self.layout.telemetry is not None:
+            environment["TRACE_FILE"] = str(self.layout.telemetry / "cli.ndjson")
+        if machine.nested_daemon:
+            environment[DNS_VARIABLE] = ",".join(host_nameservers(machine.image))
+        command = machine_command(
+            machine,
+            environment,
+            ["sh", "-c", 'touch "$0" && exec sleep infinity', str(ready)],
+            container=f"{self.layout.run_token}-1",
+            owner=self.layout.run_token,
+            network=workbench_host()[1],
+            mounts=(self.machine_state, *telemetry),
+        )
+        log = self.layout.logs / f"machine-{self.deployment.tier}.log"
+        print(f">> starting the {machine.name} machine, with no service on it (log: {log})")
+        self.machine = process = self.launch(command, self.environment, log)
+
+        def started() -> bool:
+            if process.poll() is not None:
+                raise RuntimeError(f"the {machine.name} machine exited before it was ready (log: {log})")
+            return ready.exists()
+
+        wait_until(f"the {machine.name} machine", started)
+
     def launch(self, command: list[str], environment: dict[str, str], log: Path) -> subprocess.Popen[bytes]:
         # A process group of its own, so a fault reaches the workbench and whatever it runs.
         return subprocess.Popen(
@@ -411,7 +451,7 @@ class E2EStack:
         if not self.restarting.acquire(blocking=False):
             return None
         try:
-            infrastructure = [process for process in [self.backend, *self.locations] if process]
+            infrastructure = [process for process in [self.backend, self.machine, *self.locations] if process]
             return next((process for process in infrastructure if process.poll() is not None), None)
         finally:
             self.restarting.release()
@@ -428,7 +468,7 @@ class E2EStack:
         }
         if (machine := self.deployment.environment) is not None:
             # The first store's machine, for a client that works on it as its user does: the CLI showcases.
-            workdir = self.control_state / "workbench-1" / "cli"
+            workdir = self.machine_state / "cli"
             workdir.mkdir(parents=True, exist_ok=True)
             environment |= {
                 MACHINE_VARIABLE: machine.name,
@@ -471,11 +511,12 @@ class E2EStack:
             for rival in self.rivals.values():
                 terminate(rival)
             terminate(self.backend)
+            terminate(self.machine)
             for relay in self.relays.values():
                 relay.close()
-        if self.api_url:
+        if self.api_url or not self.deployment.control_plane:
             with self.phase("export"):
-                exported = self.collect_stopped()
+                exported = self.collect_stopped() if self.deployment.control_plane else self.collect_kept()
             if exported and not remove_state(self.control_state):
                 self.state_left = True
         with self.phase("cleanup"):
@@ -523,7 +564,20 @@ class E2EStack:
         print(f">> behaviour dossier{status}: {self.layout.dossier}")
         return collected.returncode == 0
 
+    def collect_kept(self) -> bool:
+        """With no control plane: the REEs the client kept, and the spans ree wrote on the machine."""
+        command = [*self.collect(), "--kept-rees", str(self.layout.kept_rees)]
+        telemetry = self.layout.telemetry
+        for path in sorted(telemetry.glob("*.ndjson")) if telemetry is not None else []:
+            command += ["--spans", str(path)]
+        collected = subprocess.run(command, cwd=ROOT, check=False)
+        status = "" if collected.returncode == 0 else " (incomplete: see the sources listed above)"
+        print(f">> behaviour dossier{status}: {self.layout.dossier}")
+        return collected.returncode == 0
+
     def coverage_report(self) -> None:
+        if not self.deployment.control_plane:
+            return  # No API or workbench ran under coverage.
         environment = {**self.environment, "COVERAGE_FILE": str(self.coverage_file)}
         deployment = self.deployment
         print(
@@ -536,11 +590,16 @@ class E2EStack:
         render(CoverageRoot.current(), deployment.tier)
 
     def run_once(self) -> int:
-        with self.phase("backend"):
-            self.prepare()
-            self.start_backend()
-        with self.phase("locations"):
-            self.start_locations()
+        if self.deployment.control_plane:
+            with self.phase("backend"):
+                self.prepare()
+                self.start_backend()
+            with self.phase("locations"):
+                self.start_locations()
+        else:
+            with self.phase("machine"):
+                self.prepare()
+                self.start_machine()
         with self.phase("client"):
             self.client_status = self.run_client()
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")

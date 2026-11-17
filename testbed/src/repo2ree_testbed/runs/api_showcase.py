@@ -28,6 +28,7 @@ def e2e_arguments(*, jobs: int, select: Sequence[str] = (), surface: Surface = "
         *("--per-test", "--exit-on", "tests"),
         *("--jobs", str(jobs)),
         *(("--select", " ".join(select)) if select else ()),
+        *(("--no-control-plane",) if surface == "cli" else ()),
     ]
 
 

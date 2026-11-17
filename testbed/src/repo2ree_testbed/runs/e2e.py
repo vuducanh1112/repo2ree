@@ -82,6 +82,11 @@ def parse(argv: list[str] | None = None) -> Invocation:
         choices=sorted(ENVIRONMENTS),
         help="install each store's workbench on this machine, where it runs the REEs' scripts",
     )
+    parser.add_argument(
+        "--no-control-plane",
+        action="store_true",
+        help="start no API and no workbench service: the client runs ree on each test's machine itself",
+    )
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
     parser.add_argument("--cli-bundle", type=Path, default=ROOT / "dist/bundles/cli")
     parser.add_argument("--tools-bundle", type=Path, default=ROOT / "dist/bundles/tools")
@@ -99,6 +104,8 @@ def parse(argv: list[str] | None = None) -> Invocation:
         parser.error("--select picks tests to run each on a stack of its own; it needs --per-test")
     if args.script and not args.tier:
         parser.error("--script needs --tier <name> to say which tier it measures")
+    if args.no_control_plane and not (args.script and args.per_test):
+        parser.error("--no-control-plane runs a script's tests each on its machine: it needs --script and --per-test")
     client: Client
     if args.project:
         playwright = Playwright(args.project, gui_machines())
@@ -116,6 +123,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         state_root=args.state_root,
         cli_bundle=args.cli_bundle,
         tools_bundle=args.tools_bundle,
+        control_plane=not args.no_control_plane,
     )
     schedule = PerTest(args.jobs, select) if args.per_test else WholeSuite()
     return Invocation(deployment, client, schedule, args.exit_on)

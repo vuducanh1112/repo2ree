@@ -58,9 +58,10 @@ from repo2ree_assurance_traceview.sequence import (
     build_sequence,
     epoch_sequence,
     fold,
+    invocation,
     session_sequence,
 )
-from repo2ree_assurance_traceview.spans import SpanIndex, timestamp
+from repo2ree_assurance_traceview.spans import Span, SpanIndex, timestamp
 
 NOISE = ("websocket", "GET ", "HTTP /workbench/connect")
 TOP_SPANS = 6
@@ -101,6 +102,9 @@ class _Evidence:
     def rel(self, event: Event | None) -> float | None:
         return round(timestamp(event.at) - self.origin, 3) if event is not None and event.at else None
 
+    def at(self, t: float) -> float:
+        return round(t - self.origin, 3)
+
     def rules(self, events: list[Event]) -> tuple[RuleHit, ...]:
         hits = [
             RuleHit(rule=j.rule, verdict=j.verdict, event=j.event, subject=j.subject, key=j.key)
@@ -119,9 +123,10 @@ class _Evidence:
         states = tuple(StateAt(state=e.target_state or "", t=self.rel(e), ref=e.ref) for e in events)
         return Machine(key=events[0].key, states=states, facts=facts)
 
-    def span_summary(self, events: list[Event]) -> tuple[SpanSummary, ...]:
-        """The longest spans in the traces these events were recorded in."""
-        related = [s for s in self.spans.in_traces(e.trace_id for e in events) if not any(n in s.name for n in NOISE)]
+    def span_summary(self, events: list[Event], ran: Span | None = None) -> tuple[SpanSummary, ...]:
+        """The longest spans in the traces these events were recorded in, or of the run ``ree`` ran."""
+        found = self.spans.subtree(ran) if ran is not None else self.spans.in_traces(e.trace_id for e in events)
+        related = [s for s in found if not any(n in s.name for n in NOISE)]
         top = sorted(related, key=lambda span: -span.duration)[:TOP_SPANS]
         return tuple(
             SpanSummary(
@@ -250,12 +255,17 @@ class _Capture:
     sent: Event | None
     answered: Event | None
     run: list[Event] | None  # None for authoring: an attempt no watched action names.
+    # The run's spans when ``ree`` ran the attempt with no control plane: every invocation is an operation.
+    ran: Span | None = None
 
     @classmethod
     def of(cls, evidence: _Evidence, commit: _Commit, run_of_attempt: dict[str, list[Event]]) -> _Capture:
         key = commit.attempt[0].key
         exchange = _command(evidence, key)
         journaled = evidence.position
+        run = run_of_attempt.get(key)
+        run_id = next((_str(e.facts[terms.RUN_ID]) for e in commit.attempt if e.facts.get(terms.RUN_ID)), None)
+        ran = evidence.spans.run(run_id) if run is None and exchange is None and run_id else None
         return cls(
             commit=commit,
             key=key,
@@ -277,7 +287,8 @@ class _Capture:
             exchange=[e for e in exchange.events if e.ref in journaled] if exchange else [],
             sent=exchange.request if exchange and exchange.request and exchange.request.ref in journaled else None,
             answered=exchange.outcome if exchange and exchange.outcome and exchange.outcome.ref in journaled else None,
-            run=run_of_attempt.get(key),
+            run=run,
+            ran=ran if ran is not None and any(invocation(s) for s in evidence.spans.ancestors(ran)) else None,
         )
 
     @property
@@ -292,14 +303,17 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
     first = capture.commit.ree[0] if capture.commit.ree else None
     ree_change = ReeChange(before=first.source_state, after=first.target_state or "") if first else None
     size = files.get(commit) if commit else None
+    ran = capture.ran
     return Entry(
         kind="operation",
         name=capture.operation,
-        start=evidence.rel(run[0]),
-        end=evidence.rel(run[-1]),
+        start=evidence.rel(run[0]) if run else evidence.at(ran.start) if ran else None,
+        end=evidence.rel(run[-1]) if run else evidence.at(ran.end) if ran else None,
         outcome=capture.outcome,
-        run=evidence.machine(run),
-        dispatch=Dispatch(
+        run=evidence.machine(run) if run else None,
+        dispatch=None
+        if capture.sent is None and answered is None
+        else Dispatch(
             sent=capture.sent.ref if capture.sent else None,
             received=answered.ref if answered else None,
             outcome=(
@@ -321,7 +335,7 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
         ree=ree_change,
         changes=tuple(capture.changes),
         rules=evidence.rules(run + capture.checked),
-        spans=evidence.span_summary(run + capture.exchange),
+        spans=evidence.span_summary(run + capture.exchange, ran),
         sequence=build_sequence(
             evidence.spans,
             runs=run,
@@ -332,6 +346,7 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
             origin=evidence.origin,
             commit=commit,
             files=size,
+            ran=ran,
         ),
     )
 
@@ -376,7 +391,7 @@ class _Timeline:
             self.baseline = dict(self.standing)
         if capture.sent is not None:
             self.setups_before(self.evidence.position[capture.sent.ref])
-        if capture.run is None:
+        if capture.run is None and capture.ran is None:
             self._author(capture)
         else:
             self.close_authoring()
@@ -386,6 +401,9 @@ class _Timeline:
             self.entries.append(_operation_entry(self.evidence, capture, capture.run, self.files))
             self.positions.append(self.evidence.position.get(capture.run[0].ref))
             self.drawn.add(capture.run[0].key)
+        elif capture.ran is not None:
+            self.entries.append(_operation_entry(self.evidence, capture, [], self.files))
+            self.positions.append(None)
 
     def setups_before(self, position: int | None) -> None:
         """Journal-only entries the journal places before ``position`` (all of them when None)."""

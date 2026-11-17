@@ -154,8 +154,12 @@ class SpanIndex:
         self.unreadable = unreadable  # Records passed over; the page says how many.
         self._by_trace: dict[str, list[Span]] = defaultdict(list)
         self._children: dict[str, list[Span]] = defaultdict(list)
+        self._by_id = {span.id: span for span in self.spans}
+        self._by_run: dict[str, list[Span]] = defaultdict(list)
         for span in self.spans:
             self._by_trace[span.trace].append(span)
+            if run_id := span.attribute("repo2ree.run_id"):
+                self._by_run[run_id].append(span)
             if span.parent:
                 self._children[span.parent].append(span)
 
@@ -165,3 +169,28 @@ class SpanIndex:
 
     def children(self, span: Span) -> list[Span]:
         return self._children.get(span.id, [])
+
+    def parent(self, span: Span) -> Span | None:
+        return self._by_id.get(span.parent) if span.parent else None
+
+    def ancestors(self, span: Span) -> list[Span]:
+        """The spans above ``span``, nearest first."""
+        found: list[Span] = []
+        parent = self.parent(span)
+        while parent is not None:
+            found.append(parent)
+            parent = self.parent(parent)
+        return found
+
+    def subtree(self, span: Span) -> list[Span]:
+        """``span`` and every span below it, in start order."""
+        found = [span]
+        for child in self.children(span):
+            found += self.subtree(child)
+        return sorted(found, key=lambda each: each.start)
+
+    def run(self, run_id: str) -> Span | None:
+        """The outermost span that names the run ``run_id``."""
+        named = self._by_run.get(run_id, [])
+        ids = {span.id for span in named}
+        return next((span for span in named if span.parent not in ids), None)

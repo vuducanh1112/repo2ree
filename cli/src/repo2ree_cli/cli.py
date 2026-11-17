@@ -97,8 +97,12 @@ from repo2ree_protocol.result import ActionResult, FailureCategory
 from repo2ree_protocol.verbs import REVIEW, SUMMARIES, VERBS
 from repo2ree_ree.layout import REE_MANIFEST
 from repo2ree_ree.review import ReviewSet
-from repo2ree_telemetry.log import configure_logging
-from repo2ree_telemetry.relay import setup_relay_tracing
+from repo2ree_telemetry.command_line import (
+    invocation_span,
+    name_invocation,
+    record_invocation_result,
+    setup_command_line_telemetry,
+)
 
 SUCCEEDED = 0
 FAILED = 1
@@ -171,7 +175,6 @@ class Invocation:
             emit=self.sink(),
             run_id=run_id,
             context=context,
-            traceparent=os.environ.get("TRACEPARENT"),
         )
 
 
@@ -207,6 +210,7 @@ def finish(
 
     ``ran`` says a command ran, whose outcome a person is told on stderr beside its outputs.
     """
+    record_invocation_result(result)
     if invocation.machine:
         click.echo(result.model_dump_json())
     else:
@@ -261,7 +265,19 @@ def _layout_or_refuse(invocation: Invocation, words: str) -> ReeLayout:
 
 
 class ReeGroup(click.Group):
-    """The command group: under ``--json`` a usage error is a refused result too, so an agent reads one shape."""
+    """A command group: under ``--json`` a usage error is a refused result too, so an agent reads one shape.
+
+    The invocation's span is named after the command it resolves to.
+    """
+
+    def resolve_command(
+        self, ctx: click.Context, args: list[str]
+    ) -> tuple[str | None, click.Command | None, list[str]]:
+        name, command, rest = super().resolve_command(ctx, args)
+        if name is not None and not isinstance(command, click.Group):
+            groups = [each.info_name or "" for each in _lineage(ctx) if each.parent is not None]
+            name_invocation([*groups, name])
+        return name, command, rest
 
     def invoke(self, ctx: click.Context) -> Any:
         try:
@@ -272,6 +288,10 @@ class ReeGroup(click.Group):
             failed = ActionResult.failed("validation", exc.format_message(), origin="executor")
             click.echo(failed.model_dump_json())
             ctx.exit(REFUSED)
+
+
+def _lineage(ctx: click.Context) -> list[click.Context]:
+    return [*_lineage(ctx.parent), ctx] if ctx.parent is not None else [ctx]
 
 
 _EPILOG = "\b\nExit status:\n" + "\n".join(f"  {code:>3}  {meaning}" for code, meaning in EXIT_CODES.items())
@@ -308,18 +328,19 @@ def cli(ctx: click.Context, ree: Path | None, machine: bool, run_id: str | None,
 
 
 def main() -> None:
-    configure_logging()
+    shutdown = setup_command_line_telemetry("repo2ree-cli", sys.stderr)
     # Where the workbench gives the command line its pinned tools (git, curl, tar, …): first on PATH for it and the
     # processes it starts, while anything else keeps the PATH it had.
     if tools_bin := os.environ.get("REPO2REE_TOOLS_BIN"):
         os.environ["PATH"] = f"{tools_bin}{os.pathsep}{os.environ.get('PATH', '')}"
-    # The workbench asks for spans with TRACE_RELAY: they ride the NDJSON on stderr back to it.
-    if os.environ.get("TRACE_RELAY"):
-        setup_relay_tracing("repo2ree-cli", sys.stderr)
-    cli()
+    try:
+        with invocation_span():
+            cli()
+    finally:
+        shutdown()
 
 
-@cli.group(REVIEW)
+@cli.group(REVIEW, cls=ReeGroup)
 def review() -> None:
     """Review a sealed REE: reproduce its steps in a review of their own and compare them with the author's.
 

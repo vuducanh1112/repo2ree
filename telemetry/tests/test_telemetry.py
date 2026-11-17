@@ -53,11 +53,9 @@ from repo2ree_telemetry.spans import (
     ScriptSpanAttrs,
     WorkbenchSpanAttrs,
     _SpanFactCarrier,
-    attach_remote_context,
     command_metric_attrs,
     current_trace_context,
     current_traceparent,
-    detach_context,
     record_command_status,
     record_current_span_facts,
     record_exec_outcome,
@@ -324,21 +322,6 @@ def test_current_trace_context_and_traceparent_use_active_span() -> None:
         context.detach(token)  # type: ignore[arg-type]
 
 
-def test_attach_remote_context_round_trips_traceparent() -> None:
-    traceparent = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
-    token = attach_remote_context(traceparent)
-    try:
-        assert current_trace_context() == (
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "bbbbbbbbbbbbbbbb",
-        )
-    finally:
-        detach_context(token)
-
-    assert attach_remote_context(None) is None
-    detach_context(None)
-
-
 def test_relayed_span_json_renders_scalar_attributes() -> None:
     span = PbSpan(
         name="executor.run",
@@ -481,8 +464,8 @@ def _stub_otlp_exporters(monkeypatch: pytest.MonkeyPatch) -> None:
     import opentelemetry.exporter.otlp.proto.http.trace_exporter as trace_exporter_module
     import opentelemetry.sdk.metrics.export as metrics_export_module
 
-    monkeypatch.setattr(trace_exporter_module, "OTLPSpanExporter", lambda endpoint: InMemorySpanExporter())
-    monkeypatch.setattr(log_exporter_module, "OTLPLogExporter", lambda endpoint: InMemoryLogRecordExporter())
+    monkeypatch.setattr(trace_exporter_module, "OTLPSpanExporter", lambda endpoint, **_: InMemorySpanExporter())
+    monkeypatch.setattr(log_exporter_module, "OTLPLogExporter", lambda endpoint, **_: InMemoryLogRecordExporter())
     monkeypatch.setattr(metric_exporter_module, "OTLPMetricExporter", lambda endpoint: None)
     # The reader owns the export cadence; an in-memory one collects on demand
     # and starts no periodic thread.
