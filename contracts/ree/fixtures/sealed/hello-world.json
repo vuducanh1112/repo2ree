@@ -1,7 +1,7 @@
 {
   "seal": {
-    "ree_digest": "sha256:916c9f0e758fed2c2342781e9305c76d2454e2224673907b8ab0f009334a9716",
-    "sealed_at": "2026-11-17T18:26:46.145196Z"
+    "ree_digest": "sha256:d58936f83d3cd9944466b8fa869600a6a9d9c1004b76bbf2a48234e7181d7e10",
+    "sealed_at": "2026-11-17T21:37:12.741569Z"
   },
   "subject": {
     "capture": {
@@ -24,14 +24,14 @@
           "size": 159
         },
         {
-          "digest": "sha256:58b478832e471ebf361304154f1e63ed3a9a241d2d0cab143a790e1048fbec76",
+          "digest": "sha256:0de09f0f6aa3988aba344c0e21b09b198c5a010e5b28de5ef055cbca345c95c2",
           "path": ".workspace.materialized.json",
           "size": 846
         },
         {
-          "digest": "sha256:410a8aa9c4eff710cbb812af0313e53697bc98a416fcb81f6af3c063b89d34d5",
+          "digest": "sha256:7e1fe8066d350588ea15d9531b43c9ae82dd03fa1d2685bd0256f974334f8982",
           "path": "REPRODUCING.md",
-          "size": 4678
+          "size": 4727
         },
         {
           "digest": "sha256:eb1d0f4f5fcfb53bdb702ed50ccf6cb5f37918679d00d0be7c5e29aaf5adec3c",
@@ -44,9 +44,9 @@
           "size": 10909
         },
         {
-          "digest": "sha256:c537a5af9dbaa7089c2584664a9eef6dfd5c7738698738db79677f8782606671",
+          "digest": "sha256:a30b7ec8dab3c960b2217629979d4ca68382b6f294314c3d5fc14a2643aa856c",
           "path": "artifacts/sbom.json",
-          "size": 1079014
+          "size": 1078960
         },
         {
           "digest": "sha256:357cba6997f3310ee936f8187ddc74ed83d765d0e68ff9e21350573236483e8e",
@@ -89,12 +89,12 @@
           "size": 425
         },
         {
-          "digest": "sha256:b15e36d37a400f6a595d031fb2073a914bcdbd90672ab99cb87dfc21047f7716",
+          "digest": "sha256:d8e7b9de39a8d4281f5517b0af7141860797c2bd25dcd3626151f8f5a1bbd800",
           "path": "run.sh",
-          "size": 9947
+          "size": 10014
         },
         {
-          "digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
+          "digest": "sha256:4a52909c2601a41b92f54bde0eaf4e3da815a960bad25966c129555009e47fcd",
           "path": "snapshot.tar.gz",
           "size": 4006
         }
@@ -168,21 +168,21 @@
     "receipts": {
       "activation": {
         "activate_experiment_environment_script_digest": "sha256:fdfbd3d23ff84b07fa2efd4021747201bc4f577023fcbb79f7f858ff955d962a",
-        "duration_ms": 603,
+        "duration_ms": 704,
         "exit_code": 0,
-        "experiment_environment_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
+        "experiment_environment_digest": "sha256:536181ad867f98119ad8ddee95f6d5433118f2e0805bc7808998ab33bd75f16d",
         "experiment_environment_path": "source/runtime.tar",
-        "finished_at": "2026-11-17T18:26:36.260830Z",
+        "finished_at": "2026-11-17T21:37:02.380111Z",
         "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
         "launched": {
           "node": "docker"
         },
         "operation": "activate_experiment_environment",
-        "recorded_at": "2026-11-17T18:26:36.260830Z",
-        "run_id": "cli-2f832d1e3d04",
+        "recorded_at": "2026-11-17T21:37:02.380111Z",
+        "run_id": "cli-31dce3b08277",
         "schema_version": 1,
-        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
-        "started_at": "2026-11-17T18:26:35.657008Z",
+        "snapshot_digest": "sha256:4a52909c2601a41b92f54bde0eaf4e3da815a960bad25966c129555009e47fcd",
+        "started_at": "2026-11-17T21:37:01.675511Z",
         "working_environment": {
           "container": true,
           "host": {
@@ -196,39 +196,39 @@
         "analyzer_version": "1",
         "dependency_count": 6,
         "dependency_level": 3,
-        "duration_ms": 4,
+        "duration_ms": 5,
         "environment_level": 1,
-        "finished_at": "2026-11-17T18:25:53.716934Z",
+        "finished_at": "2026-11-17T21:36:19.137182Z",
         "machine_level": 0,
         "manifest_count": 1,
         "operation": "evaluate_reproducibility",
         "overlay_digest": "sha256:50aed0c8f18f4d96c8612597909939a1db468d1ae67d91a1cc7402cabc6db59f",
-        "recorded_at": "2026-11-17T18:25:53.716934Z",
+        "recorded_at": "2026-11-17T21:36:19.137182Z",
         "report_digest": "sha256:3266a222ccbb6b88c859ef252c97f466aeadb937c289736c76a2562b3097b1e3",
         "report_path": "artifacts/reproducibility-report.json",
-        "run_id": "cli-b2e2277c555c",
+        "run_id": "cli-c80b7d03aa74",
         "schema_version": 1,
-        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
-        "started_at": "2026-11-17T18:25:53.712100Z",
+        "snapshot_digest": "sha256:4a52909c2601a41b92f54bde0eaf4e3da815a960bad25966c129555009e47fcd",
+        "started_at": "2026-11-17T21:36:19.131964Z",
         "strict": false
       },
       "experiment_environment": {
         "artifact_path": "source/runtime.tar",
         "build_experiment_environment_script_digest": "sha256:c232b057c40dfdf6c5606386de071ac7833810f75fb106dfd53ba5ac8f2f93a8",
         "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
-        "duration_ms": 22949,
-        "finished_at": "2026-11-17T18:26:22.006062Z",
+        "duration_ms": 23052,
+        "finished_at": "2026-11-17T21:36:47.668909Z",
         "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
         "launched": {
           "node": "docker"
         },
         "operation": "build_experiment_environment",
-        "produced_artifact_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
-        "recorded_at": "2026-11-17T18:26:22.006062Z",
-        "run_id": "cli-6d273b504dd2",
+        "produced_artifact_digest": "sha256:536181ad867f98119ad8ddee95f6d5433118f2e0805bc7808998ab33bd75f16d",
+        "recorded_at": "2026-11-17T21:36:47.668909Z",
+        "run_id": "cli-7570f3b75587",
         "schema_version": 1,
-        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
-        "started_at": "2026-11-17T18:25:59.056136Z",
+        "snapshot_digest": "sha256:4a52909c2601a41b92f54bde0eaf4e3da815a960bad25966c129555009e47fcd",
+        "started_at": "2026-11-17T21:36:24.616773Z",
         "working_environment": {
           "container": true,
           "host": {
@@ -246,23 +246,23 @@
       "experiments": {
         "python-hello": {
           "activate_experiment_environment_script_digest": "sha256:fdfbd3d23ff84b07fa2efd4021747201bc4f577023fcbb79f7f858ff955d962a",
-          "duration_ms": 706,
-          "experiment_environment_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
+          "duration_ms": 807,
+          "experiment_environment_digest": "sha256:536181ad867f98119ad8ddee95f6d5433118f2e0805bc7808998ab33bd75f16d",
           "experiment_name": "python-hello",
-          "finished_at": "2026-11-17T18:26:44.796002Z",
+          "finished_at": "2026-11-17T21:37:11.335210Z",
           "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
           "launched": {
             "node": "docker"
           },
           "operation": "run_experiment",
           "produced_output_digest": "sha256:8413a8c8bd8aaf94d7404d59c4c62734fcd0cd5577e22efc5c19b43c4bc32e14",
-          "recorded_at": "2026-11-17T18:26:44.796002Z",
+          "recorded_at": "2026-11-17T21:37:11.335210Z",
           "run_exit_code": 0,
-          "run_id": "cli-d86373209411",
+          "run_id": "cli-b2076fbda8eb",
           "run_script_digest": "sha256:fdf3dc4a13f4d5ad6ce47890ffbefbca330f806bbf5724aabf4169ef2e291c6f",
           "schema_version": 1,
-          "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
-          "started_at": "2026-11-17T18:26:44.089553Z",
+          "snapshot_digest": "sha256:4a52909c2601a41b92f54bde0eaf4e3da815a960bad25966c129555009e47fcd",
+          "started_at": "2026-11-17T21:37:10.527650Z",
           "verify_exit_code": 0,
           "verify_script_digest": "sha256:fe95e38cfebb82d420df440287581b32959c5168b4191e298cfabf99da98efbe",
           "working_environment": {
@@ -276,62 +276,62 @@
         }
       },
       "sbom": {
-        "duration_ms": 6932,
-        "experiment_environment_digest": "sha256:3ae8cb1b12f7b926f7d63ae51b7cb276e13f17937ff1473d8dde4b70bc1b6e8d",
+        "duration_ms": 7037,
+        "experiment_environment_digest": "sha256:536181ad867f98119ad8ddee95f6d5433118f2e0805bc7808998ab33bd75f16d",
         "experiment_environment_path": "source/runtime.tar",
-        "finished_at": "2026-11-17T18:26:31.391300Z",
+        "finished_at": "2026-11-17T21:36:57.226056Z",
         "operation": "generate_sbom",
-        "recorded_at": "2026-11-17T18:26:31.391300Z",
-        "run_id": "cli-3f7f39f4b8f1",
-        "sbom_digest": "sha256:c537a5af9dbaa7089c2584664a9eef6dfd5c7738698738db79677f8782606671",
+        "recorded_at": "2026-11-17T21:36:57.226056Z",
+        "run_id": "cli-9b601c0e5420",
+        "sbom_digest": "sha256:a30b7ec8dab3c960b2217629979d4ca68382b6f294314c3d5fc14a2643aa856c",
         "sbom_format": "cyclonedx-json",
         "sbom_path": "artifacts/sbom.json",
         "schema_version": 1,
-        "started_at": "2026-11-17T18:26:24.458360Z",
+        "started_at": "2026-11-17T21:36:50.189008Z",
         "tool_version": "1.51.0"
       },
       "sbom_cross_check": {
         "declared_direct_total": 6,
-        "duration_ms": 14,
-        "finished_at": "2026-11-17T18:26:32.705653Z",
+        "duration_ms": 15,
+        "finished_at": "2026-11-17T21:36:58.620345Z",
         "observed_matched": 6,
         "observed_total": 2854,
         "operation": "cross_check_sbom",
-        "recorded_at": "2026-11-17T18:26:32.705653Z",
+        "recorded_at": "2026-11-17T21:36:58.620345Z",
         "report_digest": "sha256:3266a222ccbb6b88c859ef252c97f466aeadb937c289736c76a2562b3097b1e3",
-        "run_id": "cli-fd06e94ce283",
-        "sbom_digest": "sha256:c537a5af9dbaa7089c2584664a9eef6dfd5c7738698738db79677f8782606671",
+        "run_id": "cli-73e6b602fff7",
+        "sbom_digest": "sha256:a30b7ec8dab3c960b2217629979d4ca68382b6f294314c3d5fc14a2643aa856c",
         "schema_version": 1,
-        "started_at": "2026-11-17T18:26:32.690952Z",
+        "started_at": "2026-11-17T21:36:58.605093Z",
         "undeclared_same_ecosystem": 18,
         "version_mismatches": 0
       },
       "source": {
-        "duration_ms": 109,
-        "finished_at": "2026-11-17T18:25:50.281121Z",
+        "duration_ms": 110,
+        "finished_at": "2026-11-17T21:36:15.596412Z",
         "observed_swhid": "swh:1:dir:d628538e71146ddab265cb55b04a35c2bf22e7ba",
         "operation": "acquire_source",
-        "recorded_at": "2026-11-17T18:25:50.281121Z",
-        "run_id": "cli-67b41a638a4d",
+        "recorded_at": "2026-11-17T21:36:15.596412Z",
+        "run_id": "cli-e96c96c2e00b",
         "schema_version": 1,
-        "snapshot_digest": "sha256:f4fc96f8ae4bf4d43d44a871118c2f1c587b9cb74d2642f1bf5ea3ba07c10cc4",
+        "snapshot_digest": "sha256:4a52909c2601a41b92f54bde0eaf4e3da815a960bad25966c129555009e47fcd",
         "source_type": "tarball",
-        "started_at": "2026-11-17T18:25:50.171729Z"
+        "started_at": "2026-11-17T21:36:15.486084Z"
       },
       "working_environment_check": {
         "check_working_environment_script_digest": "sha256:3ef559361d83a2c525505a87edfa69ec1909334ae3d381b085755d373fc8c3fb",
-        "duration_ms": 103,
+        "duration_ms": 102,
         "exit_code": 0,
-        "finished_at": "2026-11-17T18:25:55.998157Z",
+        "finished_at": "2026-11-17T21:36:21.489917Z",
         "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
         "launched": {
           "node": "docker"
         },
         "operation": "check_working_environment",
-        "recorded_at": "2026-11-17T18:25:55.998157Z",
-        "run_id": "cli-ce02488f3422",
+        "recorded_at": "2026-11-17T21:36:21.489917Z",
+        "run_id": "cli-60df38b0243e",
         "schema_version": 1,
-        "started_at": "2026-11-17T18:25:55.894899Z",
+        "started_at": "2026-11-17T21:36:21.387012Z",
         "working_environment": {
           "container": true,
           "host": {
