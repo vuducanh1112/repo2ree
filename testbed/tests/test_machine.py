@@ -435,41 +435,58 @@ def test_collecting_garbage_refuses_while_a_job_runs_and_here() -> None:
         Machine(LOCAL, MachineConfig(), FakeRunner()).gc()
 
 
-def test_once_its_results_are_here_a_job_leaves_only_the_newest_run_of_each_tier_there() -> None:
-    runner = FakeRunner(("none", ""), ("ended", SYSTEM))
-    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
-
+def test_tidying_prunes_a_machines_runs_to_the_newest_per_tier_once_their_results_are_here() -> None:
+    runner = FakeRunner(("fetched", SYSTEM))
+    Machine("vm", VM, runner).tidy()
     [tidy] = runner.ran("repo2ree_testbed prune")
     assert "prune --keep-runs 1 --keep-suite 1" in tidy
-    fetched = next(i for i, call in enumerate(runner.calls) if "touch test-artifacts/machine-job/fetched" in call[-1])
-    pruned = next(i for i, call in enumerate(runner.calls) if "repo2ree_testbed prune" in call[-1])
-    assert fetched < pruned
 
 
-def test_a_machine_short_of_disk_collects_garbage_before_the_job_starts(capsys: pytest.CaptureFixture[str]) -> None:
-    runner = FakeRunner(("none", ""), ("ended", SYSTEM), free=(12, 60))
-    assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
+@pytest.mark.parametrize("state", ["running", "ended"])
+def test_tidying_prunes_nothing_while_a_jobs_results_are_not_here(state: str) -> None:
+    runner = FakeRunner((state, SYSTEM))
+    Machine("vm", VM, runner).tidy()
+    assert not runner.ran("repo2ree_testbed prune")
+
+
+def test_making_room_collects_garbage_when_the_disk_is_short(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = FakeRunner(("fetched", SYSTEM), free=(12, 60))
+    Machine("vm", VM, runner).make_room()
 
     assert ">> vm has 12 GiB free, under 40: collecting garbage first" in capsys.readouterr().out
     [collection] = runner.ran("builder prune")
     assert "nix-collect-garbage" in collection
-    collected = next(i for i, call in enumerate(runner.calls) if "builder prune" in call[-1])
-    started = next(i for i, call in enumerate(runner.calls) if "exec -d" in call[-1])
-    assert collected < started
 
 
-def test_a_machine_still_short_of_disk_is_refused_and_starts_nothing() -> None:
+def test_making_room_refuses_a_disk_still_short() -> None:
     runner = FakeRunner(("none", ""), free=(12, 30))
     with pytest.raises(SystemExit, match="vm still has only 30 GiB free, under 40"):
-        run_recipe(Machine("vm", VM, runner), ["test-e2e-system"])
-    assert not _pushed(runner)
-    assert not _started(runner)
+        Machine("vm", VM, runner).make_room()
 
 
-def test_a_machine_with_room_starts_without_collecting_garbage() -> None:
-    runner = FakeRunner(("none", ""), ("ended", SYSTEM))
+def test_making_room_leaves_a_disk_with_room_or_a_running_job_alone() -> None:
+    roomy = FakeRunner(("none", ""))
+    Machine("vm", VM, roomy).make_room()
+    busy = FakeRunner(("running", GATE), free=(5,))
+    Machine("vm", VM, busy).make_room()
+    assert not roomy.ran("builder prune")
+    assert not busy.ran("builder prune")
+    assert not busy.ran("df -BG")
+
+
+def test_a_run_itself_neither_collects_garbage_nor_prunes() -> None:
+    runner = FakeRunner(("none", ""), ("ended", SYSTEM), free=(5,))
     assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"]) == 0
-    assert not runner.ran("builder prune")
+    assert not runner.ran("df -BG")
+    assert not runner.ran("repo2ree_testbed prune")
+
+
+def test_here_there_is_nothing_to_make_room_for_or_tidy() -> None:
+    runner = FakeRunner()
+    local = Machine(LOCAL, MachineConfig(), runner)
+    local.make_room()
+    local.tidy()
+    assert runner.calls == []
 
 
 def test_results_another_run_is_already_bringing_back_are_not_copied_twice() -> None:

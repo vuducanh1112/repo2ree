@@ -25,10 +25,11 @@ dropped connection only stops the showing: the job goes on, and the next run on 
 machine shows it again and brings its results back before starting anything of its own.
 `cancel` stops the job; `remove` takes the container down and deletes the clone.
 
-A machine keeps itself bounded. Once a job's results are here, its test artifacts are pruned to
-the newest run of each tier, which keeps the experiment environment tarballs and archives of the
-last run there. A job starts only with MIN_FREE_GIB free on the machine's disk: below that, `gc`
-runs first, and a machine still short of it is refused rather than left to fill up mid-run.
+A machine is kept bounded by steps of their own, which the just recipes that run on a machine
+depend on (`just machine-make-room`, `just machine-tidy`): before a job, `make-room` runs `gc`
+when the machine's disk is short of MIN_FREE_GIB, and refuses a machine still short of it rather
+than leave it to fill up mid-run; after it, `tidy` prunes its test artifacts to the newest run of
+each tier, which keeps the experiment environment tarballs and archives of the last run there.
 """
 
 from __future__ import annotations
@@ -164,15 +165,12 @@ class Machine:
                 return code
         if job.state == "dead":
             print(f">> `{job.command}` died on {self.name} without an exit code: its container restarted")
-        self._make_room()
         self._ship(revision)
         self._up()
         self._start(command, argv)
         if not self._show():
             return INTERRUPTED
-        code = self._bring_back(self.job())
-        self._tidy()
-        return code
+        return self._bring_back(self.job())
 
     def job(self) -> Job:
         alive = f"{self._compose} exec -T {SERVICE} sh -c {shlex.quote(_ALIVE)} 2>/dev/null"
@@ -272,8 +270,17 @@ class Machine:
         self._require(read, "read its free disk")
         return int(output.strip().rstrip("G"))
 
-    def _make_room(self) -> None:
-        """Collect garbage first when the disk is short of MIN_FREE_GIB, and refuse a disk still short of it."""
+    def make_room(self) -> None:
+        """Collect garbage when the disk is short of MIN_FREE_GIB, and refuse a disk still short of it.
+
+        A machine running a job is left alone: a run there shows that job rather than starting one.
+        """
+        if not self.remote:
+            return
+        job = self.job()
+        if job.state == "running":
+            print(f">> {self.name} is running `{job.command}`; leaving its disk as it is")
+            return
         free = self.free_gib()
         if free >= MIN_FREE_GIB:
             return
@@ -286,8 +293,17 @@ class Machine:
                 " (docker system df) before running on it"
             )
 
-    def _tidy(self) -> None:
-        """Prune the clone's test artifacts to the newest run per tier: what the ended job wrote is here now."""
+    def tidy(self) -> None:
+        """Prune the clone's test artifacts to the newest run per tier, once the last job's results are here.
+
+        Here, a run prunes test-artifacts itself; there, a job running or not yet brought back keeps all.
+        """
+        if not self.remote:
+            return
+        job = self.job()
+        if job.state not in ("none", "fetched"):
+            print(f">> {self.name} has `{job.command}` {job.state}, its results not here yet; pruning nothing")
+            return
         prune = shlex.join(
             [
                 *SHELL,
@@ -517,6 +533,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "gc", help="prune the clone's generated trees, Docker's build cache, and unused images there"
     ).add_argument("machine")
     commands.add_parser(
+        "make-room", help=f"run gc there when its disk has under {MIN_FREE_GIB} GiB free; refuse it if still short"
+    ).add_argument("machine")
+    commands.add_parser(
+        "tidy", help="prune its test artifacts to the newest run per tier, once the last job's results are here"
+    ).add_argument("machine")
+    commands.add_parser(
         "fetch-archives", help="bring its image archive sets (just archive-images) here, for publish-candidate"
     ).add_argument("machine")
     gating = commands.add_parser("gate", help="run the assurance gate there and bring its receipt and runs back")
@@ -546,6 +568,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "gc":
         machine.gc()
+        return 0
+    if args.command == "make-room":
+        machine.make_room()
+        return 0
+    if args.command == "tidy":
+        machine.tidy()
         return 0
     if args.command == "gate":
         return gate(machine, args.jobs)
