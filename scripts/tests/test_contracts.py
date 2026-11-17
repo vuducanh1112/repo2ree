@@ -62,6 +62,38 @@ def test_a_contract_is_correct_however_it_was_written(root: Path) -> None:
     assert check(registry=registry, root=root) == []
 
 
+def operation_contracts(root: Path, *, cli_runs: list[str], protocol_names: str) -> tuple[Contract, ...]:
+    behaviour = {"x-operations": {"operations": {"build": "", "run": ""}, "review_operations": {"review_run": ""}}}
+    cli = {"commands": [{"operations": cli_runs}]}
+    protocol = {"$defs": {"Command": {"properties": {"operation": {"const": protocol_names}}}}}
+    documents = {
+        Name.BEHAVIOUR_SCHEMA: (PurePosixPath("contracts/behaviour.json"), behaviour),
+        Name.CLI_SCHEMA: (PurePosixPath("contracts/cli.json"), cli),
+        Name.PROTOCOL_SCHEMA: (PurePosixPath("contracts/protocol.json"), protocol),
+    }
+    registry = []
+    for name, (path, document) in documents.items():
+        text = json.dumps(document) + "\n"
+        put(root, path, text)
+        registry.append(contract(name, path, text))
+    return tuple(registry)
+
+
+def test_check_holds_the_contracts_to_the_catalogue_of_operations(root: Path) -> None:
+    kept = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
+    assert check(registry=kept, root=root) == []
+
+    broken = operation_contracts(root, cli_runs=["build", "review_run", "bulid"], protocol_names="remove")
+    problems = check(registry=broken, root=root)
+    found = {(problem.path.name, problem.kind, problem.hint.split()[0]) for problem in problems}
+
+    assert found == {
+        ("cli.json", "uncatalogued", "bulid"),
+        ("protocol.json", "uncatalogued", "remove"),
+        ("cli.json", "unrun", "no"),
+    }
+
+
 def test_ignored_files_under_contracts_are_not_the_registrys_business(root: Path) -> None:
     put(root, PurePosixPath(".gitignore"), "*.tmp\n")
     put(root, PurePosixPath("contracts/scratch.tmp"), "")

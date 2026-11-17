@@ -789,6 +789,7 @@ def _read_command(
         outputs=REPLIES.get(model, Initialized if model is InitRee else None),
         spelling=spelling,
         stdout="bytes" if model in (CatQuery, BundleQuery) else "result",
+        operations=("initialize_ree",) if model is InitRee else (),
     )
 
 

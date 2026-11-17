@@ -6,11 +6,15 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import get_args
 
 import pytest
 
 from repo2ree_telemetry.behaviour import VOCABULARY, events
+from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 from repo2ree_telemetry.behaviour.writer import FileJournal, Journal, close_journal, journal, open_journal
+
+CONTRACT = Path(__file__).resolve().parents[2] / "contracts" / "behaviour" / "events.schema.json"
 
 
 def records(path: Path) -> list[dict[str, object]]:
@@ -154,3 +158,10 @@ def test_concurrent_processes_never_share_an_epoch(tmp_path: Path) -> None:
     assert (first.epoch, second.epoch) == (1, 2)
     first.close()
     second.close()
+
+
+def test_the_author_api_actions_are_the_ones_the_contract_names() -> None:
+    schema = json.loads(CONTRACT.read_text(encoding="utf-8"))
+    named = schema["$defs"]["AuthorApiAction"]["properties"]["facts"]["properties"]["action"]["enum"]
+
+    assert set(get_args(AuthorApiActionName)) == set(named)

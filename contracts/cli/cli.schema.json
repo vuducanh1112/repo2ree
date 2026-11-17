@@ -623,7 +623,9 @@
       "summary": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
       "help": "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
       "runs": false,
-      "operations": [],
+      "operations": [
+        "initialize_ree"
+      ],
       "params": [
         {
           "name": "--name",

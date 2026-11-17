@@ -2,7 +2,9 @@
 
 A contract is correct when its file equals what its render function returns now, however the file was written:
 by a recipe, by ``write``, or by hand. ``check`` holds every contract to that, and holds ``contracts/`` to holding
-nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory.
+nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. It holds the
+contracts to the specification's catalogue of operations too: each operation a contract names is catalogued, and
+each catalogued operation is run by a `ree` command.
 
     python -m scripts.contracts write [NAME...]   # every contract, in the order below, or the named ones
     python -m scripts.contracts check             # exit 1 on a missing, stale or unaccounted file
@@ -36,6 +38,7 @@ CONTRACTS = PurePosixPath("contracts")
 FIXTURES = "fixtures"
 FORMAT = "repo2ree-contracts/1"
 OPENAPI = PurePosixPath("contracts/openapi.json")
+CATALOGUE = PurePosixPath("assurance/spec/vocabulary/operation.toml")
 OPENAPI_TYPESCRIPT = PurePosixPath("gui/node_modules/.bin/openapi-typescript")
 
 
@@ -145,7 +148,7 @@ REGISTRY: tuple[Contract, ...] = (
     ),
 )
 
-ProblemKind = Literal["missing", "stale", "unaccounted"]
+ProblemKind = Literal["missing", "stale", "unaccounted", "uncatalogued", "unrun"]
 
 
 @dataclass(frozen=True)
@@ -191,7 +194,55 @@ def check(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> list
         for path in _files(root, CONTRACTS)
         if path not in registered and not is_fixture(path)
     )
+    if not problems:
+        problems.extend(operation_problems(registry=registry, root=root))
     return problems
+
+
+def operation_problems(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> list[Problem]:
+    """Each operation a JSON contract names that the catalogue lacks, and each catalogued one no `ree` command runs."""
+    documents = {
+        contract.name: (contract.path, json.loads((root / contract.path).read_text(encoding="utf-8")))
+        for contract in registry
+        if contract.path.suffix == ".json"
+    }
+    if Name.BEHAVIOUR_SCHEMA not in documents:
+        return []
+    _, behaviour = documents[Name.BEHAVIOUR_SCHEMA]
+    catalogue = {name for table in behaviour["x-operations"].values() for name in table}
+    problems = [
+        Problem(path, "uncatalogued", f"{name} is not in {CATALOGUE}: catalogue it or use a catalogued name")
+        for name_, (path, document) in documents.items()
+        if name_ is not Name.BEHAVIOUR_SCHEMA
+        for name in sorted(_operations_named(document) - catalogue)
+    ]
+    if Name.CLI_SCHEMA in documents:
+        cli_path, cli = documents[Name.CLI_SCHEMA]
+        run = {operation for command in cli["commands"] for operation in command["operations"]}
+        problems.extend(
+            Problem(cli_path, "unrun", f"no `ree` command runs {name}: declare it on the command that runs it")
+            for name in sorted(catalogue - run)
+        )
+    return problems
+
+
+def _operations_named(document: object) -> set[str]:
+    """The operation names in a JSON document: an ``operation`` property's const, and an ``operations`` list's items."""
+    named: set[str] = set()
+    if isinstance(document, dict):
+        properties = document.get("properties")
+        operation = properties.get("operation") if isinstance(properties, dict) else None
+        if isinstance(operation, dict) and isinstance(operation.get("const"), str):
+            named.add(operation["const"])
+        for key, value in document.items():
+            if key in ("operations", "x-operations") and isinstance(value, list):
+                named.update(item for item in value if isinstance(item, str))
+            else:
+                named |= _operations_named(value)
+    elif isinstance(document, list):
+        for item in document:
+            named |= _operations_named(item)
+    return named
 
 
 def fixtures(root: Path = ROOT) -> list[PurePosixPath]:

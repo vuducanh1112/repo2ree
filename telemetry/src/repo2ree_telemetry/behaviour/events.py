@@ -33,6 +33,7 @@ AuthorApiActionName = Literal[
     "create_ree",
     "delete_ree",
     # source
+    "initialize_ree",
     "acquire_source",
     "upload_source",
     "remove_source",
@@ -50,6 +51,7 @@ AuthorApiActionName = Literal[
     "cross_check_sbom",
     "activate_experiment_environment",
     "check_working_environment",
+    "materialize_workspace",
     "run_experiment",
     # lifecycle
     "seal_ree",
