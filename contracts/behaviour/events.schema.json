@@ -3,7 +3,35 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:7be0e08f94d14e8a9814623e02ecef54251c697443ec6617b9aa9bf6592394cc",
+  "x-vocabulary": "sha256:7e54a32eb5c44761218f3d04ba33c376e803bb57624cfb2c98c95a3037527eb0",
+  "x-operations": {
+    "operations": {
+      "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
+      "acquire_source": "Fetch the source from its origin, or take it from an archive, and freeze it.",
+      "remove_source": "Remove the frozen source, keeping the scripts and the definition.",
+      "load_ree_bundle": "Replace the REE with a bundle, sealed or draft, its receipts included.",
+      "patch_ree_definition": "Change the REE's declarations: its name, catalog entry, experiment environment and experiments, whose scripts come and go with them.",
+      "write_script": "Overwrite one of the REE's scripts: each always has one.",
+      "suggest_scripts": "Propose build experiment environment and activation scripts from the source and the machine.",
+      "lint_scripts": "Check the REE's scripts.",
+      "evaluate_reproducibility": "Assess how fully the source pins its dependencies.",
+      "observe_hardware": "Record the hardware the machine offers.",
+      "check_working_environment": "Run the author's check that the working environment offers what the scripts need.",
+      "materialize_workspace": "Assemble the workspace afresh from the source and the REE's scripts, undoing whatever changed it.",
+      "build_experiment_environment": "Build the experiment environment with the build experiment environment script.",
+      "generate_sbom": "List the software in the built experiment environment.",
+      "cross_check_sbom": "Compare the dependencies the source declares with the SBOM.",
+      "activate_experiment_environment": "Run the activate experiment environment script alone: it enters the experiment environment and hands over.",
+      "run_experiment": "Run one declared experiment and verify its outputs.",
+      "seal_ree": "Freeze the REE and its evidence under one digest: nothing changes after this."
+    },
+    "review_operations": {
+      "review_acquire_source": "Open a review: acquire the source the author pinned, from its origin or from the REE's own snapshot.",
+      "review_build_experiment_environment": "Rebuild the experiment environment from the review's source, or certify the one the REE ships.",
+      "review_activate_experiment_environment": "Run the author's activate experiment environment script alone, in the review's workspace.",
+      "review_run_experiment": "Reproduce one experiment in the review, and compare its outputs with the author's."
+    }
+  },
   "type": "object",
   "properties": {
     "v": {
@@ -275,27 +303,27 @@
             },
             "operation": {
               "enum": [
+                "initialize_ree",
                 "acquire_source",
                 "remove_source",
+                "load_ree_bundle",
                 "patch_ree_definition",
-                "write_file",
-                "delete_file",
-                "generate_script_candidates",
+                "write_script",
+                "suggest_scripts",
                 "lint_scripts",
-                "evaluate_dependency_score",
-                "generate_hbom",
+                "evaluate_reproducibility",
+                "observe_hardware",
+                "check_working_environment",
+                "materialize_workspace",
                 "build_experiment_environment",
                 "generate_sbom",
                 "cross_check_sbom",
-                "activation_test",
-                "check_working_environment",
+                "activate_experiment_environment",
                 "run_experiment",
                 "seal_ree",
-                "load_ree_bundle",
-                "materialize_workspace",
                 "review_acquire_source",
                 "review_build_experiment_environment",
-                "review_activation_test",
+                "review_activate_experiment_environment",
                 "review_run_experiment"
               ]
             },
@@ -359,27 +387,27 @@
                   },
                   "operation": {
                     "enum": [
+                      "initialize_ree",
                       "acquire_source",
                       "remove_source",
+                      "load_ree_bundle",
                       "patch_ree_definition",
-                      "write_file",
-                      "delete_file",
-                      "generate_script_candidates",
+                      "write_script",
+                      "suggest_scripts",
                       "lint_scripts",
-                      "evaluate_dependency_score",
-                      "generate_hbom",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
                       "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
-                      "activation_test",
-                      "check_working_environment",
+                      "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
-                      "load_ree_bundle",
-                      "materialize_workspace",
                       "review_acquire_source",
                       "review_build_experiment_environment",
-                      "review_activation_test",
+                      "review_activate_experiment_environment",
                       "review_run_experiment"
                     ]
                   },
@@ -444,27 +472,27 @@
                   },
                   "operation": {
                     "enum": [
+                      "initialize_ree",
                       "acquire_source",
                       "remove_source",
+                      "load_ree_bundle",
                       "patch_ree_definition",
-                      "write_file",
-                      "delete_file",
-                      "generate_script_candidates",
+                      "write_script",
+                      "suggest_scripts",
                       "lint_scripts",
-                      "evaluate_dependency_score",
-                      "generate_hbom",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
                       "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
-                      "activation_test",
-                      "check_working_environment",
+                      "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
-                      "load_ree_bundle",
-                      "materialize_workspace",
                       "review_acquire_source",
                       "review_build_experiment_environment",
-                      "review_activation_test",
+                      "review_activate_experiment_environment",
                       "review_run_experiment"
                     ]
                   },
@@ -528,27 +556,27 @@
                   },
                   "operation": {
                     "enum": [
+                      "initialize_ree",
                       "acquire_source",
                       "remove_source",
+                      "load_ree_bundle",
                       "patch_ree_definition",
-                      "write_file",
-                      "delete_file",
-                      "generate_script_candidates",
+                      "write_script",
+                      "suggest_scripts",
                       "lint_scripts",
-                      "evaluate_dependency_score",
-                      "generate_hbom",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
                       "build_experiment_environment",
                       "generate_sbom",
                       "cross_check_sbom",
-                      "activation_test",
-                      "check_working_environment",
+                      "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
-                      "load_ree_bundle",
-                      "materialize_workspace",
                       "review_acquire_source",
                       "review_build_experiment_environment",
-                      "review_activation_test",
+                      "review_activate_experiment_environment",
                       "review_run_experiment"
                     ]
                   },
@@ -640,24 +668,7 @@
               "enum": [
                 "create_ree",
                 "delete_ree",
-                "acquire_source",
                 "upload_source",
-                "remove_source",
-                "edit_definition",
-                "write_file",
-                "delete_file",
-                "suggest_scripts",
-                "lint_scripts",
-                "evaluate_reproducibility",
-                "observe_hardware",
-                "build_experiment_environment",
-                "generate_sbom",
-                "cross_check_sbom",
-                "test_activation",
-                "check_working_environment",
-                "run_experiment",
-                "seal_ree",
-                "load_ree_bundle",
                 "view_ree",
                 "view_ree_state",
                 "read_file",
@@ -668,7 +679,25 @@
                 "list_actions",
                 "view_action",
                 "view_action_log",
-                "watch_action"
+                "watch_action",
+                "initialize_ree",
+                "acquire_source",
+                "remove_source",
+                "load_ree_bundle",
+                "patch_ree_definition",
+                "write_script",
+                "suggest_scripts",
+                "lint_scripts",
+                "evaluate_reproducibility",
+                "observe_hardware",
+                "check_working_environment",
+                "materialize_workspace",
+                "build_experiment_environment",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
+                "run_experiment",
+                "seal_ree"
               ]
             },
             "attempt_id": {
@@ -755,24 +784,7 @@
                     "enum": [
                       "create_ree",
                       "delete_ree",
-                      "acquire_source",
                       "upload_source",
-                      "remove_source",
-                      "edit_definition",
-                      "write_file",
-                      "delete_file",
-                      "suggest_scripts",
-                      "lint_scripts",
-                      "evaluate_reproducibility",
-                      "observe_hardware",
-                      "build_experiment_environment",
-                      "generate_sbom",
-                      "cross_check_sbom",
-                      "test_activation",
-                      "check_working_environment",
-                      "run_experiment",
-                      "seal_ree",
-                      "load_ree_bundle",
                       "view_ree",
                       "view_ree_state",
                       "read_file",
@@ -783,7 +795,25 @@
                       "list_actions",
                       "view_action",
                       "view_action_log",
-                      "watch_action"
+                      "watch_action",
+                      "initialize_ree",
+                      "acquire_source",
+                      "remove_source",
+                      "load_ree_bundle",
+                      "patch_ree_definition",
+                      "write_script",
+                      "suggest_scripts",
+                      "lint_scripts",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
+                      "build_experiment_environment",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activate_experiment_environment",
+                      "run_experiment",
+                      "seal_ree"
                     ]
                   },
                   "attempt_id": {
@@ -912,7 +942,30 @@
               "type": "integer"
             },
             "operation": {
-              "type": "string"
+              "enum": [
+                "initialize_ree",
+                "acquire_source",
+                "remove_source",
+                "load_ree_bundle",
+                "patch_ree_definition",
+                "write_script",
+                "suggest_scripts",
+                "lint_scripts",
+                "evaluate_reproducibility",
+                "observe_hardware",
+                "check_working_environment",
+                "materialize_workspace",
+                "build_experiment_environment",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
+                "run_experiment",
+                "seal_ree",
+                "review_acquire_source",
+                "review_build_experiment_environment",
+                "review_activate_experiment_environment",
+                "review_run_experiment"
+              ]
             },
             "reason": {
               "enum": [
@@ -989,7 +1042,30 @@
                     "type": "integer"
                   },
                   "operation": {
-                    "type": "string"
+                    "enum": [
+                      "initialize_ree",
+                      "acquire_source",
+                      "remove_source",
+                      "load_ree_bundle",
+                      "patch_ree_definition",
+                      "write_script",
+                      "suggest_scripts",
+                      "lint_scripts",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
+                      "build_experiment_environment",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activate_experiment_environment",
+                      "run_experiment",
+                      "seal_ree",
+                      "review_acquire_source",
+                      "review_build_experiment_environment",
+                      "review_activate_experiment_environment",
+                      "review_run_experiment"
+                    ]
                   },
                   "reason": {
                     "enum": [
@@ -1068,7 +1144,30 @@
                     "type": "integer"
                   },
                   "operation": {
-                    "type": "string"
+                    "enum": [
+                      "initialize_ree",
+                      "acquire_source",
+                      "remove_source",
+                      "load_ree_bundle",
+                      "patch_ree_definition",
+                      "write_script",
+                      "suggest_scripts",
+                      "lint_scripts",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
+                      "build_experiment_environment",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activate_experiment_environment",
+                      "run_experiment",
+                      "seal_ree",
+                      "review_acquire_source",
+                      "review_build_experiment_environment",
+                      "review_activate_experiment_environment",
+                      "review_run_experiment"
+                    ]
                   },
                   "reason": {
                     "enum": [
@@ -1146,7 +1245,30 @@
                     "type": "integer"
                   },
                   "operation": {
-                    "type": "string"
+                    "enum": [
+                      "initialize_ree",
+                      "acquire_source",
+                      "remove_source",
+                      "load_ree_bundle",
+                      "patch_ree_definition",
+                      "write_script",
+                      "suggest_scripts",
+                      "lint_scripts",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
+                      "build_experiment_environment",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activate_experiment_environment",
+                      "run_experiment",
+                      "seal_ree",
+                      "review_acquire_source",
+                      "review_build_experiment_environment",
+                      "review_activate_experiment_environment",
+                      "review_run_experiment"
+                    ]
                   },
                   "reason": {
                     "enum": [
@@ -1253,9 +1375,26 @@
               ]
             },
             "operation": {
-              "type": [
-                "string",
-                "null"
+              "enum": [
+                "initialize_ree",
+                "acquire_source",
+                "remove_source",
+                "load_ree_bundle",
+                "patch_ree_definition",
+                "write_script",
+                "suggest_scripts",
+                "lint_scripts",
+                "evaluate_reproducibility",
+                "observe_hardware",
+                "check_working_environment",
+                "materialize_workspace",
+                "build_experiment_environment",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
+                "run_experiment",
+                "seal_ree",
+                null
               ]
             },
             "step": {
@@ -1317,9 +1456,26 @@
                     ]
                   },
                   "operation": {
-                    "type": [
-                      "string",
-                      "null"
+                    "enum": [
+                      "initialize_ree",
+                      "acquire_source",
+                      "remove_source",
+                      "load_ree_bundle",
+                      "patch_ree_definition",
+                      "write_script",
+                      "suggest_scripts",
+                      "lint_scripts",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "materialize_workspace",
+                      "build_experiment_environment",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activate_experiment_environment",
+                      "run_experiment",
+                      "seal_ree",
+                      null
                     ]
                   },
                   "step": {
@@ -2140,7 +2296,30 @@
                     "type": "object",
                     "properties": {
                       "operation": {
-                        "type": "string"
+                        "enum": [
+                          "initialize_ree",
+                          "acquire_source",
+                          "remove_source",
+                          "load_ree_bundle",
+                          "patch_ree_definition",
+                          "write_script",
+                          "suggest_scripts",
+                          "lint_scripts",
+                          "evaluate_reproducibility",
+                          "observe_hardware",
+                          "check_working_environment",
+                          "materialize_workspace",
+                          "build_experiment_environment",
+                          "generate_sbom",
+                          "cross_check_sbom",
+                          "activate_experiment_environment",
+                          "run_experiment",
+                          "seal_ree",
+                          "review_acquire_source",
+                          "review_build_experiment_environment",
+                          "review_activate_experiment_environment",
+                          "review_run_experiment"
+                        ]
                       },
                       "run_id": {
                         "type": "string"

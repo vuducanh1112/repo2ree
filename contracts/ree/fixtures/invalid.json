@@ -56,7 +56,10 @@
             "name": "train  model",
             "run_script_path": "ree-scripts/experiments/train-model.sh",
             "run_script_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-            "run_script_size": 1
+            "run_script_size": 1,
+            "verify_script_path": "ree-scripts/experiments/train-model.verify.sh",
+            "verify_script_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "verify_script_size": 1
           }
         }
       ],
@@ -125,7 +128,7 @@
           "path": "/subject/definition/experiments/0/verify_script_size"
         }
       ],
-      "error": "experiment verification path, digest, and size must be present together"
+      "error": "subject.definition.experiments.0.verify_script_size\n  Field required"
     },
     {
       "name": "an experiment receipt under another name",

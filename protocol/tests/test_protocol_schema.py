@@ -39,5 +39,5 @@ def test_a_message_the_protocol_writes_conforms(message: str, instance: dict[str
 
 
 def test_outputs_conform_per_operation() -> None:
-    validator(DOCUMENT["x-outputs"]["write_file"]).validate({})
-    assert not validator(DOCUMENT["x-outputs"]["write_file"]).is_valid({"surprise": 1})
+    validator(DOCUMENT["x-outputs"]["write_script"]).validate({})
+    assert not validator(DOCUMENT["x-outputs"]["write_script"]).is_valid({"surprise": 1})

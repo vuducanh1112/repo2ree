@@ -16,6 +16,9 @@ class Component(SpecModel):
     summary: str
 
 
+type CatalogueTable = Literal["operations", "review_operations"]
+
+
 class FactDeclaration(SpecModel):
     """A fact with where it must be present; a bare type string declares an optional fact."""
 
@@ -27,6 +30,8 @@ class FactDeclaration(SpecModel):
     # The only values the fact may take, each with what it means; or the same values, grouped.
     values: dict[Name, str] = Field(default_factory=dict)
     groups: dict[Name, dict[Name, str]] = Field(default_factory=dict)
+    # Tables of the operation catalogue whose names the fact takes besides its own groups, each a group of its own.
+    catalogue: tuple[CatalogueTable, ...] = ()
 
     @field_validator("required_in", mode="before")
     @classmethod
@@ -41,8 +46,10 @@ class FactDeclaration(SpecModel):
 
     @model_validator(mode="after")
     def coherent_values(self) -> Self:
-        if self.values and self.groups:
+        if self.values and (self.groups or self.catalogue):
             raise ValueError("a fact lists its values or groups them, not both")
+        if self.catalogue and self.type.rstrip("?") != "str":
+            raise ValueError("only a str fact takes the catalogue's operations")
         if self.allowed and self.type.rstrip("?") != "str":
             raise ValueError("only a str fact lists its values")
         grouped = [value for group in self.groups.values() for value in group]
@@ -156,6 +163,23 @@ class BoundaryVocabulary(SpecModel):
 REVIEW_PREFIX = "review_"
 
 
+def with_catalogue(entry: FactEntry, catalogue: Catalogue | None) -> FactEntry:
+    """The fact with each catalogue table it names spelled out as a group of its values."""
+    if isinstance(entry, str) or not entry.catalogue:
+        return entry
+    if catalogue is None:
+        raise ValueError(f"a fact takes {list(entry.catalogue)} but the specification has no catalogue")
+    tables: dict[str, dict[str, str]] = {
+        table: dict(catalogue.operations if table == "operations" else catalogue.review_operations)
+        for table in entry.catalogue
+    }
+    if clash := set(tables) & set(entry.groups):
+        raise ValueError(f"a fact's own group is named like a catalogue table: {sorted(clash)}")
+    return FactDeclaration.model_validate(
+        entry.model_dump(exclude={"catalogue"}) | {"groups": {**entry.groups, **tables}}
+    )
+
+
 class Catalogue(SpecModel):
     """The commands core runs, each with what it means: on an REE, and on a review of one."""
 
@@ -164,6 +188,10 @@ class Catalogue(SpecModel):
     summary: str
     operations: dict[Name, str] = Field(min_length=1)
     review_operations: dict[Name, str] = Field(default_factory=dict)
+
+    @property
+    def names(self) -> frozenset[str]:
+        return frozenset((*self.operations, *self.review_operations))
 
     @model_validator(mode="after")
     def reviews_reproduce_operations(self) -> Self:

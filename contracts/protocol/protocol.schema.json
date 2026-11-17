@@ -6,26 +6,26 @@
       "discriminator": {
         "mapping": {
           "acquire_source": "#/$defs/AcquireSourceCommand",
-          "activation_test": "#/$defs/ActivationTestCommand",
+          "activate_experiment_environment": "#/$defs/ActivateExperimentEnvironmentCommand",
           "build_experiment_environment": "#/$defs/BuildExperimentEnvironmentCommand",
           "check_working_environment": "#/$defs/CheckWorkingEnvironmentCommand",
           "cross_check_sbom": "#/$defs/CrossCheckSbomCommand",
-          "evaluate_dependency_score": "#/$defs/EvaluateDependencyScoreCommand",
-          "generate_hbom": "#/$defs/GenerateHbomCommand",
+          "evaluate_reproducibility": "#/$defs/EvaluateReproducibilityCommand",
           "generate_sbom": "#/$defs/GenerateSbomCommand",
-          "generate_script_candidates": "#/$defs/GenerateScriptCandidatesCommand",
           "lint_scripts": "#/$defs/LintScriptsCommand",
           "load_ree_bundle": "#/$defs/LoadReeBundleCommand",
           "materialize_workspace": "#/$defs/MaterializeWorkspaceCommand",
+          "observe_hardware": "#/$defs/ObserveHardwareCommand",
           "patch_ree_definition": "#/$defs/PatchReeDefinitionCommand",
           "remove_source": "#/$defs/RemoveSourceCommand",
           "review_acquire_source": "#/$defs/ReviewAcquireSourceCommand",
-          "review_activation_test": "#/$defs/ReviewActivationTestCommand",
+          "review_activate_experiment_environment": "#/$defs/ReviewActivateExperimentEnvironmentCommand",
           "review_build_experiment_environment": "#/$defs/ReviewBuildExperimentEnvironmentCommand",
           "review_run_experiment": "#/$defs/ReviewRunExperimentCommand",
           "run_experiment": "#/$defs/RunExperimentCommand",
           "seal_ree": "#/$defs/SealReeCommand",
-          "write_file": "#/$defs/WriteFileCommand"
+          "suggest_scripts": "#/$defs/SuggestScriptsCommand",
+          "write_script": "#/$defs/WriteScriptCommand"
         },
         "propertyName": "operation"
       },
@@ -37,7 +37,7 @@
           "$ref": "#/$defs/ReviewBuildExperimentEnvironmentCommand"
         },
         {
-          "$ref": "#/$defs/ReviewActivationTestCommand"
+          "$ref": "#/$defs/ReviewActivateExperimentEnvironmentCommand"
         },
         {
           "$ref": "#/$defs/ReviewRunExperimentCommand"
@@ -52,7 +52,7 @@
           "$ref": "#/$defs/LoadReeBundleCommand"
         },
         {
-          "$ref": "#/$defs/WriteFileCommand"
+          "$ref": "#/$defs/WriteScriptCommand"
         },
         {
           "$ref": "#/$defs/PatchReeDefinitionCommand"
@@ -70,22 +70,22 @@
           "$ref": "#/$defs/CrossCheckSbomCommand"
         },
         {
-          "$ref": "#/$defs/EvaluateDependencyScoreCommand"
+          "$ref": "#/$defs/EvaluateReproducibilityCommand"
         },
         {
           "$ref": "#/$defs/RunExperimentCommand"
         },
         {
-          "$ref": "#/$defs/GenerateHbomCommand"
+          "$ref": "#/$defs/ObserveHardwareCommand"
         },
         {
-          "$ref": "#/$defs/ActivationTestCommand"
+          "$ref": "#/$defs/ActivateExperimentEnvironmentCommand"
         },
         {
           "$ref": "#/$defs/CheckWorkingEnvironmentCommand"
         },
         {
-          "$ref": "#/$defs/GenerateScriptCandidatesCommand"
+          "$ref": "#/$defs/SuggestScriptsCommand"
         },
         {
           "$ref": "#/$defs/LintScriptsCommand"
@@ -164,8 +164,8 @@
     "review_build_experiment_environment": {
       "$ref": "#/$defs/ReviewBuildExperimentEnvironmentOutputs"
     },
-    "review_activation_test": {
-      "$ref": "#/$defs/ReviewActivationTestOutputs"
+    "review_activate_experiment_environment": {
+      "$ref": "#/$defs/ReviewActivateExperimentEnvironmentOutputs"
     },
     "review_run_experiment": {
       "$ref": "#/$defs/ReviewRunExperimentOutputs"
@@ -179,7 +179,7 @@
     "load_ree_bundle": {
       "$ref": "#/$defs/LoadReeBundleOutputs"
     },
-    "write_file": {
+    "write_script": {
       "anyOf": [
         {
           "$ref": "#/$defs/NoOutputs"
@@ -218,22 +218,22 @@
     "cross_check_sbom": {
       "$ref": "#/$defs/CrossCheckSbomOutputs"
     },
-    "evaluate_dependency_score": {
+    "evaluate_reproducibility": {
       "$ref": "#/$defs/EvaluateOutputs"
     },
     "run_experiment": {
       "$ref": "#/$defs/RunnableOperationOutputs"
     },
-    "generate_hbom": {
-      "$ref": "#/$defs/GenerateHbomOutputs"
+    "observe_hardware": {
+      "$ref": "#/$defs/ObserveHardwareOutputs"
     },
-    "activation_test": {
+    "activate_experiment_environment": {
       "$ref": "#/$defs/RunnableOperationOutputs"
     },
     "check_working_environment": {
       "$ref": "#/$defs/RunnableOperationOutputs"
     },
-    "generate_script_candidates": {
+    "suggest_scripts": {
       "$ref": "#/$defs/InferenceReport"
     },
     "lint_scripts": {
@@ -692,6 +692,30 @@
       "title": "ActionResult",
       "type": "object"
     },
+    "ActivateExperimentEnvironmentArgs": {
+      "additionalProperties": false,
+      "description": "No args — activation runs the REE's stored Activation through its\nexperiment environment entry; there is no per-run script path.",
+      "properties": {},
+      "title": "ActivateExperimentEnvironmentArgs",
+      "type": "object"
+    },
+    "ActivateExperimentEnvironmentCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/ActivateExperimentEnvironmentArgs",
+          "default": {}
+        }
+      },
+      "title": "ActivateExperimentEnvironmentCommand",
+      "type": "object"
+    },
     "ActivateExperimentEnvironmentDefinition": {
       "additionalProperties": false,
       "properties": {
@@ -841,8 +865,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "activation_test",
-          "default": "activation_test",
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
           "title": "Operation",
           "type": "string"
         },
@@ -921,16 +945,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -957,33 +973,10 @@
         "duration_ms",
         "recorded_at",
         "snapshot_digest",
-        "activate_experiment_environment_script_digest"
+        "activate_experiment_environment_script_digest",
+        "launch_script_digest"
       ],
       "title": "ActivationReceipt",
-      "type": "object"
-    },
-    "ActivationTestArgs": {
-      "additionalProperties": false,
-      "description": "No args — activation runs the REE's stored Activation through its\nexperiment environment entry; there is no per-run script path.",
-      "properties": {},
-      "title": "ActivationTestArgs",
-      "type": "object"
-    },
-    "ActivationTestCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "activation_test",
-          "default": "activation_test",
-          "title": "Operation",
-          "type": "string"
-        },
-        "args": {
-          "$ref": "#/$defs/ActivationTestArgs",
-          "default": {}
-        }
-      },
-      "title": "ActivationTestCommand",
       "type": "object"
     },
     "ArgvCommandCandidate": {
@@ -1194,16 +1187,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -1234,7 +1219,8 @@
         "build_experiment_environment_script_digest",
         "workspace_drift",
         "artifact_path",
-        "produced_artifact_digest"
+        "produced_artifact_digest",
+        "launch_script_digest"
       ],
       "title": "BuildExperimentEnvironmentReceipt",
       "type": "object"
@@ -1802,16 +1788,8 @@
           "$ref": "#/$defs/WorkingEnvironmentObservation"
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -1838,7 +1816,8 @@
         "duration_ms",
         "recorded_at",
         "check_working_environment_script_digest",
-        "working_environment"
+        "working_environment",
+        "launch_script_digest"
       ],
       "title": "CheckWorkingEnvironmentReceipt",
       "type": "object"
@@ -2697,38 +2676,6 @@
       "title": "ErrorFrame",
       "type": "object"
     },
-    "EvaluateDependencyScoreArgs": {
-      "additionalProperties": false,
-      "properties": {
-        "strict": {
-          "default": false,
-          "description": "Count an unpinned dependency as a failure.",
-          "title": "Strict",
-          "type": "boolean"
-        }
-      },
-      "title": "EvaluateDependencyScoreArgs",
-      "type": "object"
-    },
-    "EvaluateDependencyScoreCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "evaluate_dependency_score",
-          "default": "evaluate_dependency_score",
-          "title": "Operation",
-          "type": "string"
-        },
-        "args": {
-          "$ref": "#/$defs/EvaluateDependencyScoreArgs",
-          "default": {
-            "strict": false
-          }
-        }
-      },
-      "title": "EvaluateDependencyScoreCommand",
-      "type": "object"
-    },
     "EvaluateOutputs": {
       "additionalProperties": false,
       "properties": {
@@ -2772,6 +2719,38 @@
         "report"
       ],
       "title": "EvaluateOutputs",
+      "type": "object"
+    },
+    "EvaluateReproducibilityArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "strict": {
+          "default": false,
+          "description": "Count an unpinned dependency as a failure.",
+          "title": "Strict",
+          "type": "boolean"
+        }
+      },
+      "title": "EvaluateReproducibilityArgs",
+      "type": "object"
+    },
+    "EvaluateReproducibilityCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "evaluate_reproducibility",
+          "default": "evaluate_reproducibility",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/EvaluateReproducibilityArgs",
+          "default": {
+            "strict": false
+          }
+        }
+      },
+      "title": "EvaluateReproducibilityCommand",
       "type": "object"
     },
     "EvaluateReproducibilityReceipt": {
@@ -3343,31 +3322,15 @@
           "type": "integer"
         },
         "verify_script_path": {
-          "anyOf": [
-            {
-              "type": "string",
-              "x-relative-to": [
-                "overlay"
-              ]
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Path"
+          "title": "Verify Script Path",
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Verify Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -3376,17 +3339,9 @@
           }
         },
         "verify_script_size": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Size"
+          "minimum": 0,
+          "title": "Verify Script Size",
+          "type": "integer"
         },
         "output_paths": {
           "default": [],
@@ -3404,7 +3359,10 @@
         "name",
         "run_script_path",
         "run_script_digest",
-        "run_script_size"
+        "run_script_size",
+        "verify_script_path",
+        "verify_script_digest",
+        "verify_script_size"
       ],
       "title": "ExperimentDefinition",
       "type": "object"
@@ -4121,57 +4079,6 @@
       "title": "GPUDefinition",
       "type": "object"
     },
-    "GenerateHbomArgs": {
-      "additionalProperties": false,
-      "description": "No args — profiles the workbench container's hardware and writes to ree.json.",
-      "properties": {},
-      "title": "GenerateHbomArgs",
-      "type": "object"
-    },
-    "GenerateHbomCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "generate_hbom",
-          "default": "generate_hbom",
-          "title": "Operation",
-          "type": "string"
-        },
-        "args": {
-          "$ref": "#/$defs/GenerateHbomArgs",
-          "default": {}
-        }
-      },
-      "title": "GenerateHbomCommand",
-      "type": "object"
-    },
-    "GenerateHbomOutputs": {
-      "additionalProperties": false,
-      "properties": {
-        "observation": {
-          "additionalProperties": true,
-          "title": "Observation",
-          "type": "object"
-        },
-        "component_counts": {
-          "additionalProperties": {
-            "type": "integer"
-          },
-          "title": "Component Counts",
-          "type": "object"
-        },
-        "receipt": {
-          "$ref": "#/$defs/ObserveHardwareReceipt"
-        }
-      },
-      "required": [
-        "observation",
-        "component_counts",
-        "receipt"
-      ],
-      "title": "GenerateHbomOutputs",
-      "type": "object"
-    },
     "GenerateSbomArgs": {
       "additionalProperties": false,
       "description": "No args — the scan targets the experiment environment the build recipe declares.",
@@ -4333,44 +4240,6 @@
         "tool_version"
       ],
       "title": "GenerateSbomReceipt",
-      "type": "object"
-    },
-    "GenerateScriptCandidatesArgs": {
-      "additionalProperties": false,
-      "description": "Read-only inference of author-facing shell scripts.\n\nSynchronous and always recomputed from the current upstream tree, intent,\npolicy, and DAG version; it persists nothing and never writes. Writing a\nchosen candidate stays on the existing ``write_file`` path.",
-      "properties": {
-        "targets": {
-          "description": "The scripts to propose, each KIND[:EXPERIMENT].",
-          "items": {
-            "$ref": "#/$defs/ScriptTargetSelectorArg"
-          },
-          "title": "Targets",
-          "type": "array"
-        }
-      },
-      "required": [
-        "targets"
-      ],
-      "title": "GenerateScriptCandidatesArgs",
-      "type": "object"
-    },
-    "GenerateScriptCandidatesCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "generate_script_candidates",
-          "default": "generate_script_candidates",
-          "title": "Operation",
-          "type": "string"
-        },
-        "args": {
-          "$ref": "#/$defs/GenerateScriptCandidatesArgs"
-        }
-      },
-      "required": [
-        "args"
-      ],
-      "title": "GenerateScriptCandidatesCommand",
       "type": "object"
     },
     "HBOM": {
@@ -5555,6 +5424,57 @@
       "title": "NoOutputs",
       "type": "object"
     },
+    "ObserveHardwareArgs": {
+      "additionalProperties": false,
+      "description": "No args — profiles the workbench container's hardware and writes to ree.json.",
+      "properties": {},
+      "title": "ObserveHardwareArgs",
+      "type": "object"
+    },
+    "ObserveHardwareCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "observe_hardware",
+          "default": "observe_hardware",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/ObserveHardwareArgs",
+          "default": {}
+        }
+      },
+      "title": "ObserveHardwareCommand",
+      "type": "object"
+    },
+    "ObserveHardwareOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "observation": {
+          "additionalProperties": true,
+          "title": "Observation",
+          "type": "object"
+        },
+        "component_counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Component Counts",
+          "type": "object"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ObserveHardwareReceipt"
+        }
+      },
+      "required": [
+        "observation",
+        "component_counts",
+        "receipt"
+      ],
+      "title": "ObserveHardwareOutputs",
+      "type": "object"
+    },
     "ObserveHardwareReceipt": {
       "additionalProperties": false,
       "properties": {
@@ -6060,6 +5980,9 @@
           "default": null
         }
       },
+      "required": [
+        "subject"
+      ],
       "title": "Ree",
       "type": "object"
     },
@@ -6185,48 +6108,16 @@
           "default": null
         },
         "experiment_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/ExperimentEnvironmentDefinition"
         },
         "activate_experiment_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
         },
         "check_working_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
         },
         "launch": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/LaunchDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/LaunchDefinition"
         },
         "hardware": {
           "anyOf": [
@@ -6248,6 +6139,12 @@
           "type": "array"
         }
       },
+      "required": [
+        "experiment_environment",
+        "activate_experiment_environment",
+        "check_working_environment",
+        "launch"
+      ],
       "title": "ReeDefinition",
       "type": "object"
     },
@@ -6567,6 +6464,9 @@
           "$ref": "#/$defs/CapturePolicy"
         }
       },
+      "required": [
+        "definition"
+      ],
       "title": "ReeSubject",
       "type": "object"
     },
@@ -6912,6 +6812,63 @@
       "title": "ReviewAcquireSourceReceipt",
       "type": "object"
     },
+    "ReviewActivateExperimentEnvironmentArgs": {
+      "additionalProperties": false,
+      "description": "Probe the experiment environment an attempt certified, inside that attempt's workspace.\n\nNo ``basis``: activation runs *in* the workspace the build step left behind\nand cannot tell how the experiment environment got there — deliberately, so the author's\nscripts run unchanged on either basis. What the resulting pass is worth is\ntherefore not this step's to choose; it is inherited from the bases the\nsource and build steps already settled (see ``reviews.attempt_basis``).",
+      "properties": {
+        "review_id": {
+          "description": "The review, an attempt of its own beside the REE.",
+          "title": "Review Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_id"
+      ],
+      "title": "ReviewActivateExperimentEnvironmentArgs",
+      "type": "object"
+    },
+    "ReviewActivateExperimentEnvironmentCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "review_activate_experiment_environment",
+          "default": "review_activate_experiment_environment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/ReviewActivateExperimentEnvironmentArgs"
+        }
+      },
+      "required": [
+        "args"
+      ],
+      "title": "ReviewActivateExperimentEnvironmentCommand",
+      "type": "object"
+    },
+    "ReviewActivateExperimentEnvironmentOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ReviewActivationReceipt"
+        },
+        "outcome": {
+          "$ref": "#/$defs/ActivationOutcome"
+        }
+      },
+      "required": [
+        "review_id",
+        "receipt",
+        "outcome"
+      ],
+      "title": "ReviewActivateExperimentEnvironmentOutputs",
+      "type": "object"
+    },
     "ReviewActivationReceipt": {
       "additionalProperties": false,
       "description": "The author's activation, run alone in the review's workspace around a command that does nothing.",
@@ -6955,8 +6912,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "activation_test",
-          "default": "activation_test",
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
           "title": "Operation",
           "type": "string"
         },
@@ -7023,63 +6980,6 @@
         "experiment_environment_digest"
       ],
       "title": "ReviewActivationReceipt",
-      "type": "object"
-    },
-    "ReviewActivationTestArgs": {
-      "additionalProperties": false,
-      "description": "Probe the experiment environment an attempt certified, inside that attempt's workspace.\n\nNo ``basis``: activation runs *in* the workspace the build step left behind\nand cannot tell how the experiment environment got there — deliberately, so the author's\nscripts run unchanged on either basis. What the resulting pass is worth is\ntherefore not this step's to choose; it is inherited from the bases the\nsource and build steps already settled (see ``reviews.attempt_basis``).",
-      "properties": {
-        "review_id": {
-          "description": "The review, an attempt of its own beside the REE.",
-          "title": "Review Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "review_id"
-      ],
-      "title": "ReviewActivationTestArgs",
-      "type": "object"
-    },
-    "ReviewActivationTestCommand": {
-      "additionalProperties": false,
-      "properties": {
-        "operation": {
-          "const": "review_activation_test",
-          "default": "review_activation_test",
-          "title": "Operation",
-          "type": "string"
-        },
-        "args": {
-          "$ref": "#/$defs/ReviewActivationTestArgs"
-        }
-      },
-      "required": [
-        "args"
-      ],
-      "title": "ReviewActivationTestCommand",
-      "type": "object"
-    },
-    "ReviewActivationTestOutputs": {
-      "additionalProperties": false,
-      "properties": {
-        "review_id": {
-          "title": "Review Id",
-          "type": "string"
-        },
-        "receipt": {
-          "$ref": "#/$defs/ReviewActivationReceipt"
-        },
-        "outcome": {
-          "$ref": "#/$defs/ActivationOutcome"
-        }
-      },
-      "required": [
-        "review_id",
-        "receipt",
-        "outcome"
-      ],
-      "title": "ReviewActivationTestOutputs",
       "type": "object"
     },
     "ReviewBuildExperimentEnvironmentArgs": {
@@ -7914,16 +7814,8 @@
           }
         },
         "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Verify Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -7938,17 +7830,10 @@
           "type": "integer"
         },
         "verify_exit_code": {
-          "anyOf": [
-            {
-              "const": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Exit Code"
+          "const": 0,
+          "default": 0,
+          "title": "Verify Exit Code",
+          "type": "integer"
         },
         "working_environment": {
           "anyOf": [
@@ -7962,16 +7847,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -8019,7 +7896,9 @@
         "experiment_name",
         "snapshot_digest",
         "activate_experiment_environment_script_digest",
-        "run_script_digest"
+        "run_script_digest",
+        "verify_script_digest",
+        "launch_script_digest"
       ],
       "title": "RunExperimentReceipt",
       "type": "object"
@@ -9115,6 +8994,44 @@
       "title": "StrategyOutcomesObservation",
       "type": "object"
     },
+    "SuggestScriptsArgs": {
+      "additionalProperties": false,
+      "description": "Read-only inference of author-facing shell scripts.\n\nSynchronous and always recomputed from the current upstream tree, intent,\npolicy, and DAG version; it persists nothing and never writes. Writing a\nchosen candidate stays on the existing ``write_script`` path.",
+      "properties": {
+        "targets": {
+          "description": "The scripts to propose, each KIND[:EXPERIMENT].",
+          "items": {
+            "$ref": "#/$defs/ScriptTargetSelectorArg"
+          },
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "targets"
+      ],
+      "title": "SuggestScriptsArgs",
+      "type": "object"
+    },
+    "SuggestScriptsCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "suggest_scripts",
+          "default": "suggest_scripts",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SuggestScriptsArgs"
+        }
+      },
+      "required": [
+        "args"
+      ],
+      "title": "SuggestScriptsCommand",
+      "type": "object"
+    },
     "TargetInferenceResult": {
       "additionalProperties": false,
       "properties": {
@@ -9735,7 +9652,7 @@
       "title": "WorkspaceFile",
       "type": "object"
     },
-    "WriteFileArgs": {
+    "WriteScriptArgs": {
       "additionalProperties": false,
       "description": "Write content into /ree/overlay/<path> and mirror to /ree/workspace/<path>.",
       "properties": {
@@ -9760,26 +9677,26 @@
         "path",
         "content"
       ],
-      "title": "WriteFileArgs",
+      "title": "WriteScriptArgs",
       "type": "object"
     },
-    "WriteFileCommand": {
+    "WriteScriptCommand": {
       "additionalProperties": false,
       "properties": {
         "operation": {
-          "const": "write_file",
-          "default": "write_file",
+          "const": "write_script",
+          "default": "write_script",
           "title": "Operation",
           "type": "string"
         },
         "args": {
-          "$ref": "#/$defs/WriteFileArgs"
+          "$ref": "#/$defs/WriteScriptArgs"
         }
       },
       "required": [
         "args"
       ],
-      "title": "WriteFileCommand",
+      "title": "WriteScriptCommand",
       "type": "object"
     }
   }

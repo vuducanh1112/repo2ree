@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import bare_ree
 
 from repo2ree_core.operations.handlers.author import acquire_source
 from repo2ree_core.operations.handlers.author.acquire_source import (
@@ -26,7 +27,7 @@ def _workbench(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.write_ree(ree or Ree())
+    store.write_ree(ree or bare_ree())
     return layout, store
 
 

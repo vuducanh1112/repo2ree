@@ -592,7 +592,7 @@ const RECEIPT_OPERATIONS_BY_PAGE: Readonly<Partial<Record<AppShellPage, readonly
   [PAGE.EVALUATE]: ["evaluate_reproducibility"],
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: ["build_experiment_environment"],
   [PAGE.SBOM]: ["generate_sbom", "cross_check_sbom"],
-  [PAGE.ACTIVATION]: ["activation_test"],
+  [PAGE.ACTIVATION]: ["activate_experiment_environment"],
   [PAGE.EXPERIMENTS]: ["run_experiment"],
 };
 

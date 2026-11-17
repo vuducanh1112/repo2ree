@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import ree_definition
 from scriptinfer_helpers import machine
 
 from repo2ree_core.author_recipes.inference import (
@@ -19,7 +20,7 @@ from repo2ree_core.author_recipes.inference.experiment_environment_inputs import
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import LogicalRootObservation
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentEnvironmentDefinition, ReeDefinition
+from repo2ree_ree.model import ExperimentEnvironmentDefinition
 from repo2ree_ree.primitives import ExperimentEnvironmentPath
 
 
@@ -35,16 +36,12 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
     experiment_environment = intent_kwargs.pop("experiment_environment", None)
     name = str(intent_kwargs.pop("name", ""))
     assert not intent_kwargs
-    definition = ReeDefinition(
+    definition = ree_definition(
         name=name,
-        experiment_environment=(
-            ExperimentEnvironmentDefinition(
-                build_experiment_environment_script_digest=digest_bytes(b"build_experiment_environment"),
-                build_experiment_environment_script_size=5,
-                artifact_path=ExperimentEnvironmentPath(str(experiment_environment)),
-            )
-            if experiment_environment
-            else None
+        experiment_environment=ExperimentEnvironmentDefinition(
+            build_experiment_environment_script_digest=digest_bytes(b"build_experiment_environment"),
+            build_experiment_environment_script_size=5,
+            artifact_path=ExperimentEnvironmentPath(str(experiment_environment)) if experiment_environment else None,
         ),
     )
     report = infer_scripts(

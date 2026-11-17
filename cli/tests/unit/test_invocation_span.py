@@ -79,7 +79,7 @@ def test_a_run_nests_its_session_under_the_invocation(root: Path, trace_file: Pa
 
     assert completed.returncode == 0, completed.stderr
     invocation = named(trace_file, "ree write")
-    session = named(trace_file, "session.write_file")
+    session = named(trace_file, "session.write_script")
     assert session["parent_id"] == invocation["context"]["span_id"]
     assert invocation["attributes"]["repo2ree.status"] == "succeeded"
 

@@ -3,11 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import LAUNCH, ree_definition, with_fixed_scripts
 
 from repo2ree_core.digests import digest_output_paths
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, RunnableRunOutputs
-from repo2ree_core.operations.handlers.author import activation_test, run_experiment, runnable
+from repo2ree_core.operations.handlers.author import activate_experiment_environment, run_experiment, runnable
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
@@ -18,7 +19,6 @@ from repo2ree_ree.model import (
     ExperimentDefinition,
     ExperimentEnvironmentDefinition,
     Ree,
-    ReeDefinition,
     ReeSubject,
 )
 from repo2ree_ree.primitives import (
@@ -77,6 +77,7 @@ def _build_receipt() -> BuildExperimentEnvironmentReceipt:
         workspace_drift=WorkspaceDrift(status="unknown"),
         artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
+        launch_script_digest=LAUNCH,
     )
 
 
@@ -91,18 +92,19 @@ def _activation_receipt(*, experiment_environment: bool = True, script: bytes = 
         experiment_environment_path=ExperimentEnvironmentPath("runtime.tar") if experiment_environment else None,
         experiment_environment_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT) if experiment_environment else None,
         activate_experiment_environment_script_digest=digest_bytes(script),
+        launch_script_digest=LAUNCH,
     )
 
 
-def _experiment_definition(*, verify: bool = True) -> ExperimentDefinition:
+def _experiment_definition() -> ExperimentDefinition:
     return ExperimentDefinition(
         name=_EXPERIMENT_NAME,
         run_script_path=OverlayPath(experiment_run_script_path(_EXPERIMENT_NAME)),
         run_script_digest=digest_bytes(_EXPERIMENT_SCRIPT),
         run_script_size=len(_EXPERIMENT_SCRIPT),
-        verify_script_path=(OverlayPath(experiment_verify_script_path(_EXPERIMENT_NAME)) if verify else None),
-        verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY) if verify else None,
-        verify_script_size=len(_EXPERIMENT_VERIFY) if verify else None,
+        verify_script_path=OverlayPath(experiment_verify_script_path(_EXPERIMENT_NAME)),
+        verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY),
+        verify_script_size=len(_EXPERIMENT_VERIFY),
         output_paths=(WorkspacePath("outputs/result.txt"),),
     )
 
@@ -112,27 +114,18 @@ def _ree(
     source: bool = True,
     experiment_environment: bool = True,
     build: bool = True,
-    activate: bool = True,
     activated: bool = True,
     experiments: bool = True,
 ) -> Ree:
-    definition = ReeDefinition(
-        experiment_environment=(
-            ExperimentEnvironmentDefinition(
-                build_experiment_environment_script_digest=digest_bytes(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
-                build_experiment_environment_script_size=len(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
-                artifact_path=ExperimentEnvironmentPath("runtime.tar"),
-            )
-            if experiment_environment
-            else None
+    definition = ree_definition(
+        experiment_environment=ExperimentEnvironmentDefinition(
+            build_experiment_environment_script_digest=digest_bytes(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            build_experiment_environment_script_size=len(_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+            artifact_path=ExperimentEnvironmentPath("runtime.tar") if experiment_environment else None,
         ),
-        activate_experiment_environment=(
-            ActivateExperimentEnvironmentDefinition(
-                activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE_SCRIPT),
-                activate_experiment_environment_script_size=len(_ACTIVATE_SCRIPT),
-            )
-            if activate
-            else None
+        activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
+            activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE_SCRIPT),
+            activate_experiment_environment_script_size=len(_ACTIVATE_SCRIPT),
         ),
         experiments=(_experiment_definition(),) if experiments else (),
     )
@@ -141,7 +134,7 @@ def _ree(
         ree = commit_receipt(ree, _source_receipt())
     if experiment_environment and build:
         ree = commit_receipt(ree, _build_receipt())
-    if source and activate and activated:
+    if source and activated:
         ree = commit_receipt(ree, _activation_receipt(experiment_environment=experiment_environment))
     return ree
 
@@ -158,7 +151,7 @@ def _workbench(
     store.workspace.write_bytes(experiment_run_script_path(_EXPERIMENT_NAME), _EXPERIMENT_SCRIPT)
     store.workspace.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
     store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
-    store.write_ree(ree or _ree())
+    store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
 
@@ -194,7 +187,7 @@ def test_activation_runs_alone_and_commits_exact_input_receipt(
 
     monkeypatch.setattr(runnable, "run_runnable", execute)
 
-    result = activation_test.handle_activation_test(
+    result = activate_experiment_environment.handle_activate_experiment_environment(
         run_id="activation-1",
         log=lambda *args: None,
         is_canceled=lambda: False,
@@ -222,7 +215,7 @@ def test_native_activation_has_no_experiment_environment_binding(
     _layout, store = _workbench(tmp_path, monkeypatch, _ree(experiment_environment=False, activated=False))
     monkeypatch.setattr(runnable, "run_runnable", _activate_alone)
 
-    result = activation_test.handle_activation_test(
+    result = activate_experiment_environment.handle_activate_experiment_environment(
         run_id="activation-native",
         log=lambda *args: None,
         is_canceled=lambda: False,
@@ -322,7 +315,7 @@ def test_unsuccessful_attempt_commits_no_receipt(
     _layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
     monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome(status))
 
-    result = activation_test.handle_activation_test(
+    result = activate_experiment_environment.handle_activate_experiment_environment(
         run_id="activation-unsuccessful",
         log=lambda *args: None,
         is_canceled=lambda: False,
@@ -338,7 +331,6 @@ def test_unsuccessful_attempt_commits_no_receipt(
     [
         (_ree(source=False), "source has not been acquired"),
         (_ree(build=False, activated=False), "experiment environment has not been built"),
-        (_ree(activate=False), "no activate experiment environment script is defined"),
         (record_seal(_ree(activated=False), sealed_at=_NOW), "sealed REE"),
     ],
 )
@@ -358,7 +350,7 @@ def test_activation_preconditions_reject_invalid_evidence_before_execution(
 
     monkeypatch.setattr(runnable, "run_runnable", execute)
 
-    result = activation_test.handle_activation_test(
+    result = activate_experiment_environment.handle_activate_experiment_environment(
         run_id="activation-rejected",
         log=lambda *args: None,
         is_canceled=lambda: False,
@@ -388,7 +380,7 @@ def test_changed_script_is_rejected_before_execution(
 
     monkeypatch.setattr(runnable, "run_runnable", execute)
 
-    result = activation_test.handle_activation_test(
+    result = activate_experiment_environment.handle_activate_experiment_environment(
         run_id="activation-stale-script",
         log=lambda *args: None,
         is_canceled=lambda: False,
@@ -442,7 +434,7 @@ def test_revision_conflict_does_not_select_the_new_receipt(
 
     monkeypatch.setattr(runnable, "save_ree", conflict)
 
-    result = activation_test.handle_activation_test(
+    result = activate_experiment_environment.handle_activate_experiment_environment(
         run_id="activation-conflict",
         log=lambda *args: None,
         is_canceled=lambda: False,

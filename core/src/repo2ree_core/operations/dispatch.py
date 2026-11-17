@@ -8,30 +8,34 @@ from pydantic import BaseModel, ValidationError
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.capture import capture_command
 from repo2ree_core.operations.handlers.author.acquire_source import handle_acquire_source
-from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
+from repo2ree_core.operations.handlers.author.activate_experiment_environment import (
+    handle_activate_experiment_environment,
+)
 from repo2ree_core.operations.handlers.author.build_experiment_environment import handle_build_experiment_environment
 from repo2ree_core.operations.handlers.author.check_working_environment import handle_check_working_environment
 from repo2ree_core.operations.handlers.author.cross_check_sbom import handle_cross_check_sbom
-from repo2ree_core.operations.handlers.author.evaluate_dependency_score import (
-    handle_evaluate_dependency_score,
+from repo2ree_core.operations.handlers.author.evaluate_reproducibility import (
+    handle_evaluate_reproducibility,
 )
-from repo2ree_core.operations.handlers.author.generate_hbom import handle_generate_hbom
 from repo2ree_core.operations.handlers.author.generate_sbom import handle_generate_sbom
-from repo2ree_core.operations.handlers.author.generate_script_candidates import (
-    handle_generate_script_candidates,
-)
 from repo2ree_core.operations.handlers.author.lint_scripts import handle_lint_scripts
 from repo2ree_core.operations.handlers.author.load_ree_bundle import handle_load_ree_bundle
 from repo2ree_core.operations.handlers.author.materialize_workspace import (
     handle_materialize_workspace,
 )
+from repo2ree_core.operations.handlers.author.observe_hardware import handle_observe_hardware
 from repo2ree_core.operations.handlers.author.patch_ree_definition import handle_patch_ree_definition
 from repo2ree_core.operations.handlers.author.remove_source import handle_remove_source
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
-from repo2ree_core.operations.handlers.author.write_file import handle_write_file
+from repo2ree_core.operations.handlers.author.suggest_scripts import (
+    handle_suggest_scripts,
+)
+from repo2ree_core.operations.handlers.author.write_script import handle_write_script
 from repo2ree_core.operations.handlers.review.acquire_source import handle_review_acquire_source
-from repo2ree_core.operations.handlers.review.activation_test import handle_review_activation_test
+from repo2ree_core.operations.handlers.review.activate_experiment_environment import (
+    handle_review_activate_experiment_environment,
+)
 from repo2ree_core.operations.handlers.review.build_experiment_environment import (
     handle_review_build_experiment_environment,
 )
@@ -39,27 +43,27 @@ from repo2ree_core.operations.handlers.review.run_experiment import handle_revie
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
-    ActivationTestCommand,
+    ActivateExperimentEnvironmentCommand,
     BuildExperimentEnvironmentCommand,
     CheckWorkingEnvironmentCommand,
     Command,
     CrossCheckSbomCommand,
-    EvaluateDependencyScoreCommand,
-    GenerateHbomCommand,
+    EvaluateReproducibilityCommand,
     GenerateSbomCommand,
-    GenerateScriptCandidatesCommand,
     LintScriptsCommand,
     LoadReeBundleCommand,
     MaterializeWorkspaceCommand,
+    ObserveHardwareCommand,
     PatchReeDefinitionCommand,
     RemoveSourceCommand,
     ReviewAcquireSourceCommand,
-    ReviewActivationTestCommand,
+    ReviewActivateExperimentEnvironmentCommand,
     ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
     RunExperimentCommand,
     SealReeCommand,
-    WriteFileCommand,
+    SuggestScriptsCommand,
+    WriteScriptCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
@@ -170,16 +174,18 @@ def _dispatch(
         return handle_review_build_experiment_environment(
             cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel
         )
-    if isinstance(cmd, ReviewActivationTestCommand):
-        return handle_review_activation_test(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, ReviewActivateExperimentEnvironmentCommand):
+        return handle_review_activate_experiment_environment(
+            cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel
+        )
     if isinstance(cmd, ReviewRunExperimentCommand):
         return handle_review_run_experiment(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):
         return handle_materialize_workspace(layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, LoadReeBundleCommand):
         return handle_load_ree_bundle(cmd.args, layout=layout, log=log, is_canceled=cancel)
-    if isinstance(cmd, WriteFileCommand):
-        return handle_write_file(cmd.args, layout=layout, log=log, is_canceled=cancel)
+    if isinstance(cmd, WriteScriptCommand):
+        return handle_write_script(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, PatchReeDefinitionCommand):
         return handle_patch_ree_definition(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, AcquireSourceCommand):
@@ -188,22 +194,22 @@ def _dispatch(
         return handle_remove_source(layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, BuildExperimentEnvironmentCommand):
         return handle_build_experiment_environment(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
-    if isinstance(cmd, EvaluateDependencyScoreCommand):
-        return handle_evaluate_dependency_score(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, EvaluateReproducibilityCommand):
+        return handle_evaluate_reproducibility(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RunExperimentCommand):
         return handle_run_experiment(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
-    if isinstance(cmd, GenerateHbomCommand):
-        return handle_generate_hbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, ObserveHardwareCommand):
+        return handle_observe_hardware(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
         return handle_generate_sbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, CrossCheckSbomCommand):
         return handle_cross_check_sbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
-    if isinstance(cmd, ActivationTestCommand):
-        return handle_activation_test(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+    if isinstance(cmd, ActivateExperimentEnvironmentCommand):
+        return handle_activate_experiment_environment(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, CheckWorkingEnvironmentCommand):
         return handle_check_working_environment(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
-    if isinstance(cmd, GenerateScriptCandidatesCommand):
-        return handle_generate_script_candidates(cmd.args, layout=layout, log=log, is_canceled=cancel)
+    if isinstance(cmd, SuggestScriptsCommand):
+        return handle_suggest_scripts(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, LintScriptsCommand):
         return handle_lint_scripts(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, SealReeCommand):

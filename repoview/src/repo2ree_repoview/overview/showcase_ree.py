@@ -1,8 +1,8 @@
 """The REE a showcase's authoring test sealed, read from the copy the test preserved.
 
 The preserved copy is the REE's Git repository (``dossier/rees/<name>/ree``). Every operation is a commit whose
-message carries its record, so the REE itself says what inference proposed (``generate_script_candidates``) and what
-was written (``write_file``). Each script under ``overlay/`` at the seal is matched against those proposals: the
+message carries its record, so the REE itself says what inference proposed (``suggest_scripts``) and what
+was written (``write_script``). Each script under ``overlay/`` at the seal is matched against those proposals: the
 bytes of a candidate as proposed, bytes chosen over what inference proposed, bytes written where inference was asked
 and proposed nothing, or bytes written without inference being asked.
 """
@@ -23,7 +23,7 @@ SCRIPTS = OVERLAY + "ree-scripts/"
 # The scripts in the order an REE runs them: its environment built, then activated; its experiments after.
 RUN_ORDER = (SCRIPTS + "build_experiment_environment.sh", SCRIPTS + "activate_experiment_environment.sh")
 SEAL = "seal_ree"
-INFER = "generate_script_candidates"
+INFER = "suggest_scripts"
 LFS_POINTER = b"version https://git-lfs.github.com/spec/v1"
 # Text files up to this size are shown in full.
 SHOWN_BYTES = 64_000
@@ -316,7 +316,7 @@ class Operation:
 
 @dataclass(frozen=True)
 class Request:
-    """One ``generate_script_candidates``: what inference answered for each target it was asked about."""
+    """One ``suggest_scripts``: what inference answered for each target it was asked about."""
 
     commit: str
     results: tuple[TargetResult, ...]

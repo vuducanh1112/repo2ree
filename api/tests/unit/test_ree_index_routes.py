@@ -11,12 +11,13 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from ree_definitions import ree_definition
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
 from repo2ree_api.deps import ree_index
 from repo2ree_api.ree_index import entry_from_ree
 from repo2ree_api.settings import service_settings
-from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
+from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeSeal, ReeSubject
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +34,7 @@ def empty_index() -> Iterator[None]:
 
 
 def seal(digest: str, *, name: str = "demo", sealed_at: str = "2026-07-29T00:00:00Z") -> None:
-    subject = ReeSubject(definition=ReeDefinition(name=name, catalog=ReeCatalogMetadata(description="a demo")))
+    subject = ReeSubject(definition=ree_definition(name=name, catalog=ReeCatalogMetadata(description="a demo")))
     seal_model = ReeSeal.model_validate({"sealed_at": sealed_at, "ree_digest": digest})
     ree = Ree.model_construct(subject=subject, seal=seal_model)
     ree_index.record_seal(entry_from_ree(ree))

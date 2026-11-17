@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import ree_definition
 from scriptinfer_helpers import FixedEngines, MemoryAccessor, docker_archive, machine
 
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
@@ -12,7 +13,6 @@ from repo2ree_core.author_recipes.inference.experiment_environment_inputs import
 from repo2ree_core.author_recipes.inference.machine import MachineInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import ContainerEngine, ContainerEnginesObservation
-from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 ARTIFACT = "runtime.tar"
@@ -40,7 +40,7 @@ def _infer(
         declared_experiment_environment_path=ARTIFACT, accessor=MemoryAccessor(files or {})
     )
     report = infer_scripts(
-        root, list(targets), definition=ReeDefinition(name="Demo"), experiment_environment_inputs=inputs, machine=on
+        root, list(targets), definition=ree_definition(name="Demo"), experiment_environment_inputs=inputs, machine=on
     )
     return report.results
 

@@ -9,7 +9,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 
 
-def handle_activation_test(
+def handle_activate_experiment_environment(
     *,
     layout: ReeLayout,
     run_id: str,
@@ -17,7 +17,7 @@ def handle_activation_test(
     is_canceled: CancelCheck,
 ) -> ActionResult:
     return handle_runnable_operation(
-        "activation_test",
+        "activate_experiment_environment",
         layout=layout,
         run_id=run_id,
         log=log,

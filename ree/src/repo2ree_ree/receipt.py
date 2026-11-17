@@ -37,10 +37,9 @@ SbomDigest = Annotated[Digest, digest_of("file", "artifacts/sbom.json")]
 BuildScriptDigest = Annotated[Digest, digest_of("file", _BUILD_SCRIPT)]
 ActivateScriptDigest = Annotated[Digest, digest_of("file", _ACTIVATE_SCRIPT)]
 LaunchScriptDigest = Annotated[Digest, digest_of("file", _LAUNCH_SCRIPT)]
-OptionalLaunchScriptDigest = Annotated[Digest | None, digest_of("file", _LAUNCH_SCRIPT)]
 CheckScriptDigest = Annotated[Digest, digest_of("file", _CHECK_SCRIPT)]
 RunScriptDigest = Annotated[Digest, digest_of("file", _RUN_SCRIPT)]
-VerifyScriptDigest = Annotated[Digest | None, digest_of("file", _VERIFY_SCRIPT)]
+VerifyScriptDigest = Annotated[Digest, digest_of("file", _VERIFY_SCRIPT)]
 EnvironmentDigest = Annotated[Digest, digest_of("file", *_ENVIRONMENT, named_by=_ARTIFACT_PATH)]
 OptionalEnvironmentDigest = Annotated[Digest | None, digest_of("file", *_ENVIRONMENT, named_by=_ARTIFACT_PATH)]
 OutputDigest = Annotated[
@@ -131,8 +130,7 @@ class BuildExperimentEnvironmentReceipt(ReceiptEnvelope):
     artifact_path: ExperimentEnvironmentPath
     produced_artifact_digest: EnvironmentDigest
     working_environment: WorkingEnvironmentObservation | None = None
-    # The launch script the step ran under, and where that put it; both absent when it ran directly.
-    launch_script_digest: OptionalLaunchScriptDigest = None
+    launch_script_digest: LaunchScriptDigest
     launched: Launched | None = None
 
 
@@ -143,8 +141,7 @@ class CheckWorkingEnvironmentReceipt(ReceiptEnvelope):
     check_working_environment_script_digest: CheckScriptDigest
     exit_code: Literal[0] = 0
     working_environment: WorkingEnvironmentObservation
-    # The launch script the step ran under, and where that put it; both absent when it ran directly.
-    launch_script_digest: OptionalLaunchScriptDigest = None
+    launch_script_digest: LaunchScriptDigest
     launched: Launched | None = None
 
 
@@ -172,15 +169,14 @@ class CrossCheckSbomReceipt(ReceiptEnvelope):
 class ActivationReceipt(ReceiptEnvelope):
     """The activate experiment environment script ran a command that does nothing, which exited 0."""
 
-    operation: Literal["activation_test"] = "activation_test"
+    operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
     snapshot_digest: SnapshotDigest
     experiment_environment_path: ExperimentEnvironmentPath | None = None
     experiment_environment_digest: OptionalEnvironmentDigest = None
     activate_experiment_environment_script_digest: ActivateScriptDigest
     exit_code: Literal[0] = 0
     working_environment: WorkingEnvironmentObservation | None = None
-    # The launch script the step ran under, and where that put it; both absent when it ran directly.
-    launch_script_digest: OptionalLaunchScriptDigest = None
+    launch_script_digest: LaunchScriptDigest
     launched: Launched | None = None
 
 
@@ -191,12 +187,11 @@ class RunExperimentReceipt(ReceiptEnvelope):
     experiment_environment_digest: OptionalEnvironmentDigest = None
     activate_experiment_environment_script_digest: ActivateScriptDigest
     run_script_digest: RunScriptDigest
-    verify_script_digest: VerifyScriptDigest = None
+    verify_script_digest: VerifyScriptDigest
     run_exit_code: Literal[0] = 0
-    verify_exit_code: Literal[0] | None = None
+    verify_exit_code: Literal[0] = 0
     working_environment: WorkingEnvironmentObservation | None = None
-    # The launch script the step ran under, and where that put it; both absent when it ran directly.
-    launch_script_digest: OptionalLaunchScriptDigest = None
+    launch_script_digest: LaunchScriptDigest
     launched: Launched | None = None
     produced_output_digest: OutputDigest = None
 

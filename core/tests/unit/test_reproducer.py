@@ -58,11 +58,7 @@ def test_reproducer_entries_are_run_sh_scripts_and_readme():
 
 
 def test_the_readme_points_at_the_check_of_what_the_scripts_need():
-    def readme(check: str | None) -> str:
-        return dict(reproducer_entries(check_script=check))["REPRODUCING.md"].decode()
-
-    assert "left no check" in readme(None)
-    text = readme(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
+    text = dict(reproducer_entries(check_script=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT))["REPRODUCING.md"].decode()
     assert f"`{RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT}`" in text
     assert "sh run.sh check-working-environment" in text
     assert "@@" not in text
@@ -100,8 +96,8 @@ def _seed_extracted_bundle(
     *,
     include_experiment_environment: bool,
     experiments: list[tuple[str, str, str]],
-    launch: str | None = None,
-    check: str | None = None,
+    launch: str = 'exec "$@"\n',
+    check: str = "exit 0\n",
 ) -> Path:
     """Lay out an extracted-bundle tree (run.sh + ree/...) without sealing."""
     root = tmp_path / "download"
@@ -124,12 +120,15 @@ def _seed_extracted_bundle(
     (overlay / "build_experiment_environment.sh").write_text("#!/bin/sh\necho BUILT > runtime.tar.gz\necho did-build\n")
     # The activation reads the experiment environment it enters, so a test of it alone shows which one that was.
     (overlay / "activate_experiment_environment.sh").write_text('#!/bin/sh\ncat runtime.tar.gz\nexec "$@"\n')
+    # Every experiment has its verify script: one that checks nothing where the test gives none.
+    experiments = [
+        (name, script, verify or script.removesuffix(".sh") + ".verify.sh") for name, script, verify in experiments
+    ]
     for name, script, verify in experiments:
         # The run script materializes its stdout to a workspace file so a verify
         # script can read it back — there is no injected stdout variable.
         (ree / OVERLAY_DIRNAME / script).write_text(f"#!/bin/sh\necho exp:{name} | tee run.log\n")
-        if verify:
-            (ree / OVERLAY_DIRNAME / verify).write_text(f'#!/bin/sh\ngrep -q "exp:{name}" run.log\n')
+        (ree / OVERLAY_DIRNAME / verify).write_text(f'#!/bin/sh\ngrep -q "exp:{name}" run.log\n')
 
     if include_experiment_environment:
         (ree / ARTIFACTS_DIRNAME / "runtime.tar.gz").write_text("SEALED-EXPERIMENT_ENVIRONMENT\n")
@@ -140,13 +139,11 @@ def _seed_extracted_bundle(
         experiments=experiments,
         experiment_environment_workspace_path="runtime.tar.gz",
         experiment_environment_artifact_basename="runtime.tar.gz" if include_experiment_environment else None,
-        launch_script=RESERVED_LAUNCH_SCRIPT if launch is not None else None,
-        check_script=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT if check is not None else None,
+        launch_script=RESERVED_LAUNCH_SCRIPT,
+        check_script=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
     )
-    if check is not None:
-        (ree / OVERLAY_DIRNAME / RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT).write_text(check)
-    if launch is not None:
-        (ree / OVERLAY_DIRNAME / RESERVED_LAUNCH_SCRIPT).write_text(launch)
+    (ree / OVERLAY_DIRNAME / RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT).write_text(check)
+    (ree / OVERLAY_DIRNAME / RESERVED_LAUNCH_SCRIPT).write_text(launch)
     (root / "run.sh").write_bytes(run_sh)
     # run.sh delegates acquisition to this bundled script (no origin baked in,
     # so it extracts the snapshot) and the clear-and-merge to the materialize script.
@@ -178,7 +175,7 @@ def test_run_sh_materializes_and_reuses_sealed_experiment_environment(tmp_path):
     assert "Reusing sealed experiment environment" in activated.stdout
     assert "did-build" not in activated.stdout  # build skipped
     assert "SEALED-EXPERIMENT_ENVIRONMENT" in activated.stdout  # activation read the reused experiment environment
-    assert "$ sh ree-scripts/activate_experiment_environment.sh true" in activated.stdout  # and ran alone
+    assert f"$ sh {RESERVED_LAUNCH_SCRIPT} sh ree-scripts/activate_experiment_environment.sh true" in activated.stdout
 
     exp = _run(root, "experiment", "demo exp")
     assert exp.returncode == 0, exp.stderr
@@ -269,17 +266,6 @@ def test_run_sh_verify_only_needs_an_experiment(tmp_path):
     result = _run(root, "verify")
     assert result.returncode != 0
     assert "usage:" in result.stderr
-
-
-def test_run_sh_verify_only_errors_when_no_verify_script_declared(tmp_path):
-    root = _seed_extracted_bundle(
-        tmp_path,
-        include_experiment_environment=True,
-        experiments=[("demo", "ree-scripts/experiments/demo.sh", "")],
-    )
-    result = _run(root, "verify", "demo")
-    assert result.returncode != 0
-    assert "no verify script" in (result.stderr + result.stdout)
 
 
 def test_run_sh_verify_only_errors_for_unknown_experiment(tmp_path):
@@ -438,6 +424,7 @@ def test_run_sh_launches_every_script_through_the_authors_launch(tmp_path):
     result = _run(root, "all")
     assert result.returncode == 0, result.stdout + result.stderr
     assert _launched(root) == [
+        "|sh ree-scripts/check_working_environment.sh",
         "|sh ree-scripts/build_experiment_environment.sh",
         "|sh ree-scripts/activate_experiment_environment.sh true",
         "|sh ree-scripts/activate_experiment_environment.sh sh ree-scripts/experiments/demo.sh",
@@ -485,8 +472,6 @@ def test_the_readme_says_how_the_scripts_were_launched_and_how_to_launch_them_ot
     assert f"`{RESERVED_LAUNCH_SCRIPT}`".encode() in launched
     assert b"REE_LAUNCH=native" in launched
     assert b"REE_LAUNCH_OPTIONS=" in launched
-    direct = dict(reproducer_entries())[BUNDLE_REPRODUCER_README_ENTRY_PATH]
-    assert b"The author ran every script directly" in direct
 
 
 def test_run_sh_all_runs_the_authors_check_before_anything_else_and_stops_when_it_fails(tmp_path):
@@ -514,8 +499,3 @@ def test_run_sh_checks_the_working_environment_on_its_own(tmp_path):
         tmp_path, include_experiment_environment=False, experiments=_DEMO, check="echo checked-here\n"
     )
     assert "checked-here" in _run(root, "check-working-environment").stdout
-
-    unchecked = _seed_extracted_bundle(tmp_path / "unchecked", include_experiment_environment=False, experiments=_DEMO)
-    result = _run(unchecked, "check-working-environment")
-    assert result.returncode == 0
-    assert "declared no check" in result.stdout

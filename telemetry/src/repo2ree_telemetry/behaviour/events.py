@@ -37,9 +37,8 @@ AuthorApiActionName = Literal[
     "upload_source",
     "remove_source",
     # editing
-    "edit_definition",
-    "write_file",
-    "delete_file",
+    "patch_ree_definition",
+    "write_script",
     # assistance
     "suggest_scripts",
     "lint_scripts",
@@ -49,7 +48,7 @@ AuthorApiActionName = Literal[
     "build_experiment_environment",
     "generate_sbom",
     "cross_check_sbom",
-    "test_activation",
+    "activate_experiment_environment",
     "check_working_environment",
     "run_experiment",
     # lifecycle

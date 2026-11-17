@@ -6,16 +6,17 @@ from collections.abc import Callable, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
+from ree_definitions import ree_definition
 
 from repo2ree_api.deps import command_dispatcher, ree_registry
 from repo2ree_api.workbench.archives import archive_download_filename
 from repo2ree_core.time_utils import utc_now_instant
-from repo2ree_ree.model import Ree, ReeDefinition, ReeSeal, ReeSubject, canonical_subject_digest, ree_status
+from repo2ree_ree.model import Ree, ReeSeal, ReeSubject, canonical_subject_digest, ree_status
 from repo2ree_supervisor import ReeRoute
 
 
 def _manifest(name: str, *, sealed: bool = False) -> Ree:
-    subject = ReeSubject(definition=ReeDefinition(name=name))
+    subject = ReeSubject(definition=ree_definition(name=name))
     seal = ReeSeal(sealed_at=utc_now_instant(), ree_digest=canonical_subject_digest(subject)) if sealed else None
     return Ree(subject=subject, seal=seal)
 

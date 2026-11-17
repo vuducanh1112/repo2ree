@@ -26,7 +26,7 @@ from repo2ree_core.persistence.operation_history import next_operation_sequence,
 from repo2ree_protocol.command import (
     Command,
     ReviewAcquireSourceCommand,
-    ReviewActivationTestCommand,
+    ReviewActivateExperimentEnvironmentCommand,
     ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
 )
@@ -61,7 +61,7 @@ def capture_command(
         (
             ReviewAcquireSourceCommand,
             ReviewBuildExperimentEnvironmentCommand,
-            ReviewActivationTestCommand,
+            ReviewActivateExperimentEnvironmentCommand,
             ReviewRunExperimentCommand,
         ),
     ):

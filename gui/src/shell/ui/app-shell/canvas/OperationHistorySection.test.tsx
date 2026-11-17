@@ -12,7 +12,7 @@ const operation = {
   attempt_id: "attempt",
   run_id: "run-1",
   sequence: 2,
-  command: { operation: "write_file", args: { path: "example.txt", content: "old content" } },
+  command: { operation: "write_script", args: { path: "example.txt", content: "old content" } },
   scope: ".",
   capture_status: "captured" as const,
   operation_status: "succeeded" as const,
@@ -28,7 +28,7 @@ describe("operation history", () => {
       reeId: "ree-1",
       services: fakeApiServices({ ree: { listOperationHistory } }),
     });
-    await user.click(await screen.findByText("#2 write_file · succeeded"));
+    await user.click(await screen.findByText("#2 write_script · succeeded"));
     expect(screen.getByText("Before: before-commit")).toBeVisible();
     expect(screen.getByText("After: after-commit")).toBeVisible();
     await user.click(screen.getByText("Command and raw record"));
@@ -56,7 +56,7 @@ describe("operation history", () => {
         },
       }),
     });
-    await userEvent.click(await screen.findByText("Unordered · write_file · unknown"));
+    await userEvent.click(await screen.findByText("Unordered · write_script · unknown"));
     expect(screen.getByText(/completion may be unresolved/)).toBeVisible();
     expect(screen.getByText("Scope: reviews/review-1")).toBeVisible();
   });

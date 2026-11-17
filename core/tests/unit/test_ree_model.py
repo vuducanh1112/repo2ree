@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from ree_definitions import LAUNCH, PLACEHOLDER, bare_ree, ree_definition
 
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.transitions import (
@@ -21,7 +22,6 @@ from repo2ree_ree.model import (
     ExperimentDefinition,
     ExperimentEnvironmentDefinition,
     Ree,
-    ReeDefinition,
     ReeSubject,
     SourceDefinition,
     canonical_subject_digest,
@@ -34,7 +34,7 @@ from repo2ree_ree.primitives import (
     parse_utc_instant,
 )
 from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
-from repo2ree_ree.reserved_paths import experiment_run_script_path
+from repo2ree_ree.reserved_paths import experiment_run_script_path, experiment_verify_script_path
 
 _DIGEST = digest_bytes(b"content")
 _OTHER_DIGEST = digest_bytes(b"other")
@@ -42,7 +42,7 @@ _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 
 
 def test_ree_round_trips_as_the_same_local_and_bundle_model() -> None:
-    ree = Ree(subject=ReeSubject(definition=ReeDefinition(name="demo")))
+    ree = Ree(subject=ReeSubject(definition=ree_definition(name="demo")))
 
     assert Ree.model_validate_json(ree.model_dump_json()) == ree
 
@@ -63,7 +63,7 @@ def test_the_ree_document_round_trips_through_disk_under_one_name(tmp_path: Path
     store.ensure_dirs()
     draft = Ree(
         subject=ReeSubject(
-            definition=ReeDefinition(name="demo"),
+            definition=ree_definition(name="demo"),
             # A restored draft keeps the inventory it arrived with; nothing
             # reads it as a claim until a seal binds it.
             contents=BundleContents(
@@ -86,14 +86,17 @@ def test_experiment_slug_collisions_are_rejected() -> None:
             run_script_path=OverlayPath(experiment_run_script_path(name)),
             run_script_digest=_DIGEST,
             run_script_size=1,
+            verify_script_path=OverlayPath(experiment_verify_script_path(name)),
+            verify_script_digest=PLACEHOLDER,
+            verify_script_size=1,
         )
 
     with pytest.raises(ValidationError, match="slugs"):
-        ReeDefinition(experiments=(experiment("one two"), experiment("one  two")))
+        ree_definition(experiments=(experiment("one two"), experiment("one  two")))
 
 
 def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> None:
-    ree = Ree(subject=ReeSubject(definition=ReeDefinition()))
+    ree = Ree(subject=ReeSubject(definition=ree_definition()))
     before = canonical_subject_digest(ree.subject)
     receipt = BuildExperimentEnvironmentReceipt(
         run_id=RunId("run-1"),
@@ -107,6 +110,7 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
         workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         produced_artifact_digest=_OTHER_DIGEST,
+        launch_script_digest=LAUNCH,
     )
 
     updated = commit_receipt(ree, receipt)
@@ -120,11 +124,11 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
 
 
 def test_seal_binds_and_freezes_the_subject() -> None:
-    ree = record_seal(Ree(), sealed_at=_NOW)
+    ree = record_seal(bare_ree(), sealed_at=_NOW)
     validate_seal(ree)
 
     changed = ree.model_copy(
-        update={"subject": ree.subject.model_copy(update={"definition": ReeDefinition(name="changed")})}
+        update={"subject": ree.subject.model_copy(update={"definition": ree_definition(name="changed")})}
     )
     with pytest.raises(ValueError, match="does not match"):
         validate_seal(changed)
@@ -144,7 +148,7 @@ def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> N
     )
     ree = Ree(
         subject=ReeSubject(
-            definition=ReeDefinition(
+            definition=ree_definition(
                 source=source,
                 experiment_environment=ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=_DIGEST,
@@ -182,7 +186,7 @@ def test_bundle_payload_is_not_audited_until_the_ree_is_sealed() -> None:
         snapshot_digest=_DIGEST,
     )
     draft = commit_receipt(
-        Ree(subject=ReeSubject(definition=ReeDefinition(source=source))),
+        Ree(subject=ReeSubject(definition=ree_definition(source=source))),
         receipt,
     )
 

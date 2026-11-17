@@ -96,7 +96,7 @@ class ReviewBuildExperimentEnvironmentCommand(BaseModel):
     args: ReviewBuildExperimentEnvironmentArgs
 
 
-class ReviewActivationTestArgs(BaseModel):
+class ReviewActivateExperimentEnvironmentArgs(BaseModel):
     """Probe the experiment environment an attempt certified, inside that attempt's workspace.
 
     No ``basis``: activation runs *in* the workspace the build step left behind
@@ -111,11 +111,11 @@ class ReviewActivationTestArgs(BaseModel):
     review_id: Annotated[str, Field(description="The review, an attempt of its own beside the REE.")]
 
 
-class ReviewActivationTestCommand(BaseModel):
+class ReviewActivateExperimentEnvironmentCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["review_activation_test"] = "review_activation_test"
-    args: ReviewActivationTestArgs
+    operation: Literal["review_activate_experiment_environment"] = "review_activate_experiment_environment"
+    args: ReviewActivateExperimentEnvironmentArgs
 
 
 class ReviewRunExperimentArgs(BaseModel):
@@ -211,7 +211,7 @@ class LoadReeBundleCommand(BaseModel):
     args: LoadReeBundleArgs
 
 
-class WriteFileArgs(BaseModel):
+class WriteScriptArgs(BaseModel):
     """Write content into /ree/overlay/<path> and mirror to /ree/workspace/<path>."""
 
     model_config = ConfigDict(extra="forbid")
@@ -226,11 +226,11 @@ class WriteFileArgs(BaseModel):
     )
 
 
-class WriteFileCommand(BaseModel):
+class WriteScriptCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["write_file"] = "write_file"
-    args: WriteFileArgs
+    operation: Literal["write_script"] = "write_script"
+    args: WriteScriptArgs
 
 
 class PatchReeDefinitionArgs(BaseModel):
@@ -302,17 +302,17 @@ class CrossCheckSbomCommand(BaseModel):
     args: CrossCheckSbomArgs = CrossCheckSbomArgs()
 
 
-class EvaluateDependencyScoreArgs(BaseModel):
+class EvaluateReproducibilityArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     strict: bool = Field(default=False, description="Count an unpinned dependency as a failure.")
 
 
-class EvaluateDependencyScoreCommand(BaseModel):
+class EvaluateReproducibilityCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["evaluate_dependency_score"] = "evaluate_dependency_score"
-    args: EvaluateDependencyScoreArgs = EvaluateDependencyScoreArgs()
+    operation: Literal["evaluate_reproducibility"] = "evaluate_reproducibility"
+    args: EvaluateReproducibilityArgs = EvaluateReproducibilityArgs()
 
 
 class RunExperimentArgs(BaseModel):
@@ -328,31 +328,31 @@ class RunExperimentCommand(BaseModel):
     args: RunExperimentArgs
 
 
-class GenerateHbomArgs(BaseModel):
+class ObserveHardwareArgs(BaseModel):
     """No args — profiles the workbench container's hardware and writes to ree.json."""
 
     model_config = ConfigDict(extra="forbid")
 
 
-class GenerateHbomCommand(BaseModel):
+class ObserveHardwareCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["generate_hbom"] = "generate_hbom"
-    args: GenerateHbomArgs = GenerateHbomArgs()
+    operation: Literal["observe_hardware"] = "observe_hardware"
+    args: ObserveHardwareArgs = ObserveHardwareArgs()
 
 
-class ActivationTestArgs(BaseModel):
+class ActivateExperimentEnvironmentArgs(BaseModel):
     """No args — activation runs the REE's stored Activation through its
     experiment environment entry; there is no per-run script path."""
 
     model_config = ConfigDict(extra="forbid")
 
 
-class ActivationTestCommand(BaseModel):
+class ActivateExperimentEnvironmentCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["activation_test"] = "activation_test"
-    args: ActivationTestArgs = ActivationTestArgs()
+    operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
+    args: ActivateExperimentEnvironmentArgs = ActivateExperimentEnvironmentArgs()
 
 
 class CheckWorkingEnvironmentArgs(BaseModel):
@@ -417,12 +417,12 @@ class ScriptTarget(BaseModel):
     path: str
 
 
-class GenerateScriptCandidatesArgs(BaseModel):
+class SuggestScriptsArgs(BaseModel):
     """Read-only inference of author-facing shell scripts.
 
     Synchronous and always recomputed from the current upstream tree, intent,
     policy, and DAG version; it persists nothing and never writes. Writing a
-    chosen candidate stays on the existing ``write_file`` path.
+    chosen candidate stays on the existing ``write_script`` path.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -430,11 +430,11 @@ class GenerateScriptCandidatesArgs(BaseModel):
     targets: list[ScriptTargetSelectorArg] = Field(description="The scripts to propose, each KIND[:EXPERIMENT].")
 
 
-class GenerateScriptCandidatesCommand(BaseModel):
+class SuggestScriptsCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    operation: Literal["generate_script_candidates"] = "generate_script_candidates"
-    args: GenerateScriptCandidatesArgs
+    operation: Literal["suggest_scripts"] = "suggest_scripts"
+    args: SuggestScriptsArgs
 
 
 class LintScriptsArgs(BaseModel):
@@ -474,23 +474,23 @@ class SealReeCommand(BaseModel):
 Command = Annotated[
     ReviewAcquireSourceCommand
     | ReviewBuildExperimentEnvironmentCommand
-    | ReviewActivationTestCommand
+    | ReviewActivateExperimentEnvironmentCommand
     | ReviewRunExperimentCommand
     | MaterializeWorkspaceCommand
     | AcquireSourceCommand
     | LoadReeBundleCommand
-    | WriteFileCommand
+    | WriteScriptCommand
     | PatchReeDefinitionCommand
     | RemoveSourceCommand
     | BuildExperimentEnvironmentCommand
     | GenerateSbomCommand
     | CrossCheckSbomCommand
-    | EvaluateDependencyScoreCommand
+    | EvaluateReproducibilityCommand
     | RunExperimentCommand
-    | GenerateHbomCommand
-    | ActivationTestCommand
+    | ObserveHardwareCommand
+    | ActivateExperimentEnvironmentCommand
     | CheckWorkingEnvironmentCommand
-    | GenerateScriptCandidatesCommand
+    | SuggestScriptsCommand
     | LintScriptsCommand
     | SealReeCommand,
     Field(discriminator="operation"),

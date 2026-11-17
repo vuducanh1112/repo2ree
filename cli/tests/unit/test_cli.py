@@ -28,7 +28,7 @@ from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.persistence.run_lock import RUN_LOCK
 from repo2ree_core.reproduction.commands import REPRODUCTION_COMMANDS
 from repo2ree_protocol.command import (
-    ActivationTestCommand,
+    ActivateExperimentEnvironmentCommand,
     BuildExperimentEnvironmentCommand,
     MaterializeWorkspaceCommand,
     RunExperimentCommand,
@@ -214,7 +214,7 @@ def test_a_command_writes_its_result_to_stdout_and_its_logs_to_stderr(initialize
     assert layout.workspace_file(BUILD_SCRIPT).read_text() == "echo build\n"
     # stderr is NDJSON events only, the run's id first: the workbench parses every line.
     events = _stderr_events(result)
-    assert events[0] == {"type": "started", "run_id": "run-1", "operation": "write_file"}
+    assert events[0] == {"type": "started", "run_id": "run-1", "operation": "write_script"}
     assert all(event["type"] == "log" for event in events[1:])
     frames = [json.loads(line) for line in layout.run_log("run-1").read_text().splitlines()]
     assert {frame["type"] for frame in frames} == {"command", "log", "result"}
@@ -413,12 +413,16 @@ def test_a_script_edited_in_place_is_picked_up_before_the_next_command(initializ
     assert "picking up the edit to " + BUILD_SCRIPT in result.stderr
     assert layout.workspace_file(BUILD_SCRIPT).read_text() == "echo edited in my editor\n"
     operations = [record.command["operation"] for record in read_operation_history(layout).operations]
-    assert "write_file" in operations
+    assert "write_script" in operations
 
 
 def test_the_steps_shared_with_run_sh_have_its_names_and_its_summaries() -> None:
     shared = {step.name: step.summary for step in REPRODUCTION_COMMANDS}
-    for command in (MaterializeWorkspaceCommand, BuildExperimentEnvironmentCommand, ActivationTestCommand):
+    for command in (
+        MaterializeWorkspaceCommand,
+        BuildExperimentEnvironmentCommand,
+        ActivateExperimentEnvironmentCommand,
+    ):
         [verb] = VERBS[command]
         assert SUMMARIES[command] == shared[verb]
     assert VERBS[RunExperimentCommand] == ("experiment",)
@@ -502,7 +506,7 @@ def test_a_person_reads_the_log_one_attempt_a_line(initialized: Path) -> None:
     result = ree(initialized, "log")
 
     assert result.exit_code == 0, result.output
-    [line] = [line for line in result.stdout.splitlines() if "write_file" in line]
+    [line] = [line for line in result.stdout.splitlines() if "write_script" in line]
     assert "succeeded" in line
 
 

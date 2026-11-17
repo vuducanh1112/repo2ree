@@ -77,6 +77,7 @@ from repo2ree_assurance_checker.spec.vocabulary import (
     allowed_values,
     fact_types,
     parse_vocabulary,
+    with_catalogue,
 )
 
 
@@ -107,6 +108,8 @@ class Spec(SpecModel):
         dumped = self.model_dump(mode="json")
         return {
             "components": dumped["components"],
+            "operations": dumped["operations"],
+            "review_operations": dumped["review_operations"],
             "entities": {
                 name: {field: entity[field] for field in entity_fields} for name, entity in dumped["entities"].items()
             },
@@ -251,6 +254,51 @@ def _unconstrained(word: EntityVocabulary) -> dict[str, Any]:
     return {"initial": tuple(word.states), "settles_before_close": False, "transitions": (), "constrained": False}
 
 
+def _spelled_out(
+    word: EntityVocabulary | BoundaryVocabulary | Catalogue, catalogue: Catalogue | None
+) -> EntityVocabulary | BoundaryVocabulary | Catalogue:
+    if isinstance(word, EntityVocabulary):
+        return word.model_copy(
+            update={"facts": {name: with_catalogue(entry, catalogue) for name, entry in word.facts.items()}}
+        )
+    if isinstance(word, BoundaryVocabulary):
+        facts = {
+            message: {name: with_catalogue(entry, catalogue) for name, entry in declared.items()}
+            for message, declared in word.facts.items()
+        }
+        return word.model_copy(update={"facts": facts})
+    return word
+
+
+def _named_operations(aggregate: AggregateSpec) -> set[str]:
+    taken = {operation for machine in aggregate.machines for edge in machine.edges for operation in edge.by}
+    return taken | {aggregate.created_by, aggregate.restored_by, *aggregate.writes_nothing}
+
+
+def operation_problems(spec: Spec) -> list[str]:
+    """Where the specification names operations the catalogue does not, or leaves one of an REE's unsaid.
+
+    Every operation an aggregate names is catalogued and none is a review's, and each of an REE's operations is
+    named by an aggregate: what it may change, or that it writes nothing. A specification without a catalogue,
+    as older revisions are, has nothing to hold them to.
+    """
+    if not spec.operations:
+        return []
+    catalogued = {*spec.operations, *spec.review_operations}
+    problems: list[str] = []
+    named: set[str] = set()
+    for aggregate in spec.aggregates.values():
+        own = _named_operations(aggregate)
+        if unknown := own - catalogued:
+            problems.append(f"{aggregate.name} names operations the catalogue does not: {sorted(unknown)}")
+        if reviews := own & set(spec.review_operations):
+            problems.append(f"{aggregate.name} names review operations, which change no REE: {sorted(reviews)}")
+        named |= own
+    if spec.aggregates and (unsaid := set(spec.operations) - named):
+        problems.append(f"operations no aggregate says what they may change: {sorted(unsaid)}")
+    return problems
+
+
 def parse_spec(
     vocabulary: list[dict[str, Any]],
     entities: list[dict[str, Any]],
@@ -271,6 +319,8 @@ def parse_spec(
     catalogues = [word for word in words if isinstance(word, Catalogue)]
     if len(catalogues) > 1:
         raise ValueError(f"one operation catalogue, not {[catalogue.name for catalogue in catalogues]}")
+    catalogue = catalogues[0] if catalogues else None
+    words = [_spelled_out(word, catalogue) for word in words]
     entity_words = {word.name: word for word in words if isinstance(word, EntityVocabulary)}
     boundary_words = {word.name: word for word in words if isinstance(word, BoundaryVocabulary)}
     machines = [MachineRules.model_validate(document) for document in entities]
@@ -365,6 +415,7 @@ __all__ = [
     "fact_problems",
     "fact_types",
     "matches",
+    "operation_problems",
     "parse_spec",
     "parse_vocabulary",
     "place",

@@ -77,7 +77,7 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
 class ReviewActivationReceipt(ReviewReceiptEnvelope):
     """The author's activation, run alone in the review's workspace around a command that does nothing."""
 
-    operation: Literal["activation_test"] = "activation_test"
+    operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
     activate_experiment_environment_script_digest: Digest
     exit_code: int | None = None
     experiment_environment_path: WorkspacePath

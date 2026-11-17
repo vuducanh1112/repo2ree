@@ -6,12 +6,12 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
+from ree_definitions import bare_ree
 
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.steps import ree_steps
 from repo2ree_protocol.document import WorkbenchReeDocument
-from repo2ree_ree.model import Ree
 from repo2ree_ree.reproducibility import (
     DependencyLevel,
     DependencySummary,
@@ -52,7 +52,7 @@ def test_author_receipts_cross_as_a_typed_document(
     online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    ree = Ree()
+    ree = bare_ree()
     monkeypatch.setattr(
         command_dispatcher,
         "get_ree_state",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReeDocument } from "../../infra/api/apiTypes";
+import { fixedDeclarations } from "./fixedDeclarations";
 import { mapReeDetailToReeSlices } from "./mapping";
 
 describe("shell/data/ree/mapping", () => {
@@ -10,6 +11,7 @@ describe("shell/data/ree/mapping", () => {
         subject: {
           schema_version: 1,
           definition: {
+            ...fixedDeclarations,
             name: "workspace-demo",
             catalog: {
               description: "",
@@ -77,6 +79,7 @@ describe("shell/data/ree/mapping", () => {
         subject: {
           schema_version: 1,
           definition: {
+            ...fixedDeclarations,
             name: "workspace-demo",
             catalog: {
               description: "",

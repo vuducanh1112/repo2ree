@@ -27,4 +27,4 @@ def test_a_failure_may_carry_nothing() -> None:
 
 def test_outputs_an_operation_does_not_declare_are_refused() -> None:
     with pytest.raises(ValidationError):
-        validate_outputs("write_file", ActionResult(status="succeeded", outputs={"surprise": 1}))
+        validate_outputs("write_script", ActionResult(status="succeeded", outputs={"surprise": 1}))

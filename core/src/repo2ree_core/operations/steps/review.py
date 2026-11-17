@@ -396,9 +396,8 @@ def review_launch(record: ReviewRecord, ree: Ree, workspace: Path) -> Launch | N
 
 
 def launch_digest(ree: Ree, launch: Launch | None) -> Digest | None:
-    """The digest of the author's launch script a step ran under; None when it ran directly."""
-    declared = ree.subject.definition.launch
-    return declared.launch_script_digest if launch is not None and declared is not None else None
+    """The digest of the author's launch script a step ran under; None when it ran natively."""
+    return ree.subject.definition.launch.launch_script_digest if launch is not None else None
 
 
 @dataclass(frozen=True)

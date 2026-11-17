@@ -92,7 +92,6 @@ def test_the_declared_launch_is_used_only_while_its_script_is_the_one_declared(t
     body = FAKE_SRUN.encode()
     definition = LaunchDefinition(launch_script_digest=digest_bytes(body), launch_script_size=len(body))
     assert declared_launch(definition, workspace) == Launch(script=RESERVED_LAUNCH_SCRIPT)
-    assert declared_launch(None, workspace) is None
     (workspace / RESERVED_LAUNCH_SCRIPT).write_text(FAKE_SRUN + "# edited\n")
     with pytest.raises(ReePreconditionError, match="does not match"):
         declared_launch(definition, workspace)

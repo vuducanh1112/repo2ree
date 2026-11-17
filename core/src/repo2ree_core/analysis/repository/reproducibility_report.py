@@ -6,7 +6,7 @@ reproducibility (unpinned dependencies, missing lockfile, floating base image,
 non-declarative system, ...).
 
 No I/O and no subprocess: scanning the repository and serializing the report to
-``artifacts/`` live in the ``evaluate_dependency_score`` handler.  This module
+``artifacts/`` live in the ``evaluate_reproducibility`` handler.  This module
 only computes.
 
 This report reads repository manifests, lockfiles, and environment declarations

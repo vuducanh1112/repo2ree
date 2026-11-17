@@ -19,7 +19,7 @@ def _os_error(code: int) -> OSError:
 
 
 def test_a_full_volume_is_environmental_and_worth_retrying():
-    result = failed_from_exception(_os_error(errno.ENOSPC), "write_file failed: no space")
+    result = failed_from_exception(_os_error(errno.ENOSPC), "write_script failed: no space")
 
     assert result.status == "failed"
     assert result.failure is not None
@@ -28,7 +28,7 @@ def test_a_full_volume_is_environmental_and_worth_retrying():
     # The symbolic name, because whoever reads this is diagnosing it.
     assert result.failure.details == {"errno": "ENOSPC"}
     # The handler's message survives: only it knows which operation failed.
-    assert result.failure.message == "write_file failed: no space"
+    assert result.failure.message == "write_script failed: no space"
 
 
 def test_a_read_only_mount_is_environmental_but_not_retryable():

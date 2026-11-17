@@ -851,7 +851,7 @@ export interface paths {
          *
          *     Takes no ``basis``, unlike the two steps before it: activation runs in the
          *     workspace the build left behind and inherits what that evidence is worth
-         *     rather than choosing (see :class:`ReviewActivationTestArgs`).
+         *     rather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).
          */
         post: operations["startActivationReview"];
         delete?: never;
@@ -1225,10 +1225,10 @@ export interface components {
             recorded_at: string;
             /**
              * Operation
-             * @default activation_test
+             * @default activate_experiment_environment
              * @constant
              */
-            operation: "activation_test";
+            operation: "activate_experiment_environment";
             /** Snapshot Digest */
             snapshot_digest: string;
             /** Experiment Environment Path */
@@ -1245,7 +1245,7 @@ export interface components {
             exit_code: 0;
             working_environment?: components["schemas"]["WorkingEnvironmentObservation"] | null;
             /** Launch Script Digest */
-            launch_script_digest?: string | null;
+            launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
         };
         /**
@@ -1452,7 +1452,7 @@ export interface components {
             produced_artifact_digest: string;
             working_environment?: components["schemas"]["WorkingEnvironmentObservation"] | null;
             /** Launch Script Digest */
-            launch_script_digest?: string | null;
+            launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
         };
         /**
@@ -1652,7 +1652,7 @@ export interface components {
             exit_code: 0;
             working_environment: components["schemas"]["WorkingEnvironmentObservation"];
             /** Launch Script Digest */
-            launch_script_digest?: string | null;
+            launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
         };
         /**
@@ -2299,11 +2299,11 @@ export interface components {
             /** Run Script Size */
             run_script_size: number;
             /** Verify Script Path */
-            verify_script_path?: string | null;
+            verify_script_path: string;
             /** Verify Script Digest */
-            verify_script_digest?: string | null;
+            verify_script_digest: string;
             /** Verify Script Size */
-            verify_script_size?: number | null;
+            verify_script_size: number;
             /**
              * Output Paths
              * @default []
@@ -3192,7 +3192,7 @@ export interface components {
         };
         /** Ree */
         Ree: {
-            subject?: components["schemas"]["ReeSubject"];
+            subject: components["schemas"]["ReeSubject"];
             seal?: components["schemas"]["ReeSeal"] | null;
         };
         /** ReeAudit */
@@ -3275,10 +3275,10 @@ export interface components {
             name: string;
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
-            experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
-            activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
-            check_working_environment?: components["schemas"]["CheckWorkingEnvironmentDefinition"] | null;
-            launch?: components["schemas"]["LaunchDefinition"] | null;
+            experiment_environment: components["schemas"]["ExperimentEnvironmentDefinition"];
+            activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentDefinition"];
+            check_working_environment: components["schemas"]["CheckWorkingEnvironmentDefinition"];
+            launch: components["schemas"]["LaunchDefinition"];
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
@@ -3295,10 +3295,10 @@ export interface components {
             name: string;
             catalog?: components["schemas"]["ReeCatalogMetadata"];
             source?: components["schemas"]["SourceDefinition"] | null;
-            experiment_environment?: components["schemas"]["ExperimentEnvironmentDefinition"] | null;
-            activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentDefinition"] | null;
-            check_working_environment?: components["schemas"]["CheckWorkingEnvironmentDefinition"] | null;
-            launch?: components["schemas"]["LaunchDefinition"] | null;
+            experiment_environment: components["schemas"]["ExperimentEnvironmentDefinition"];
+            activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentDefinition"];
+            check_working_environment: components["schemas"]["CheckWorkingEnvironmentDefinition"];
+            launch: components["schemas"]["LaunchDefinition"];
             hardware?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
@@ -3547,7 +3547,7 @@ export interface components {
              * @constant
              */
             schema_version: 1;
-            definition?: components["schemas"]["ReeDefinition-Output"];
+            definition: components["schemas"]["ReeDefinition-Output"];
             receipts?: components["schemas"]["ReeReceipts"];
             contents?: components["schemas"]["BundleContents"];
             capture?: components["schemas"]["CapturePolicy"];
@@ -3714,10 +3714,10 @@ export interface components {
             status: "succeeded" | "failed";
             /**
              * Operation
-             * @default activation_test
+             * @default activate_experiment_environment
              * @constant
              */
-            operation: "activation_test";
+            operation: "activate_experiment_environment";
             /** Activate Experiment Environment Script Digest */
             activate_experiment_environment_script_digest: string;
             /** Exit Code */
@@ -3935,18 +3935,22 @@ export interface components {
             /** Run Script Digest */
             run_script_digest: string;
             /** Verify Script Digest */
-            verify_script_digest?: string | null;
+            verify_script_digest: string;
             /**
              * Run Exit Code
              * @default 0
              * @constant
              */
             run_exit_code: 0;
-            /** Verify Exit Code */
-            verify_exit_code?: 0 | null;
+            /**
+             * Verify Exit Code
+             * @default 0
+             * @constant
+             */
+            verify_exit_code: 0;
             working_environment?: components["schemas"]["WorkingEnvironmentObservation"] | null;
             /** Launch Script Digest */
-            launch_script_digest?: string | null;
+            launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
             /** Produced Output Digest */
             produced_output_digest?: string | null;

@@ -1,4 +1,4 @@
-"""Handler for the write_file operation.
+"""Handler for the write_script operation.
 
 Overwrites one of the REE's scripts in /ree/overlay/<path> and mirrors it to
 /ree/workspace/<path>. The overlay holds the scripts and nothing else: the fixed
@@ -15,15 +15,15 @@ from repo2ree_core.operations.handlers.author.file_concurrency import check_expe
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
-from repo2ree_protocol.command import WriteFileArgs
+from repo2ree_protocol.command import WriteScriptArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.paths import validate_relative_path
 from repo2ree_ree.reserved_paths import is_overlay_path
 
 
-def handle_write_file(
-    args: WriteFileArgs,
+def handle_write_script(
+    args: WriteScriptArgs,
     *,
     layout: ReeLayout,
     log: LogSink,
@@ -58,7 +58,7 @@ def handle_write_file(
     if is_canceled():
         return ActionResult(status="canceled")
 
-    log("system", "info", f"write_file: {args.path}")
+    log("system", "info", f"write_script: {args.path}")
     old_overlay = store.overlay.read_bytes(args.path) if store.overlay.is_file(args.path) else None
     old_workspace = store.workspace.read_bytes(args.path) if store.workspace.is_file(args.path) else None
     before_revision = revision_of(ree)
@@ -77,8 +77,8 @@ def handle_write_file(
         return ActionResult.failed("conflict", str(exc), retryable=True)
     except Exception as exc:
         _restore_file(store, args.path, old_overlay=old_overlay, old_workspace=old_workspace)
-        log("system", "error", f"write_file failed: {exc}")
-        return failed_from_exception(exc, f"write_file failed: {exc}")
+        log("system", "error", f"write_script failed: {exc}")
+        return failed_from_exception(exc, f"write_script failed: {exc}")
 
     return ActionResult(status="succeeded", exit_code=0)
 

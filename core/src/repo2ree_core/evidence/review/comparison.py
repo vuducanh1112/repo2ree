@@ -153,8 +153,7 @@ def compare_experiment_results(
     the author's criterion is what judges the result.
     """
     if (
-        not verify_script_path.strip()
-        or expected_verify_exit_code is None
+        expected_verify_exit_code is None
         or expected_verify_script_digest is None
         or verify_script_digest is None
         or expected_verify_script_digest != verify_script_digest

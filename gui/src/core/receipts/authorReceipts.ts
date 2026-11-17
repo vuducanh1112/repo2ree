@@ -36,7 +36,7 @@ const OPERATION_LABELS: Record<string, string> = {
   cross_check_sbom: "SBOM cross-check",
   activation: "Activation tested",
   // Compatibility with the pre-contract spelling carried by early drafts.
-  activation_test: "Activation tested",
+  activate_experiment_environment: "Activation tested",
   run_experiment: "Experiment run",
 };
 
@@ -49,7 +49,7 @@ const OPERATION_ORDER: readonly string[] = [
   "generate_sbom",
   "cross_check_sbom",
   "activation",
-  "activation_test",
+  "activate_experiment_environment",
   "run_experiment",
 ];
 

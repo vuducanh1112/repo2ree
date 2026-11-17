@@ -37,7 +37,7 @@ from repo2ree_ree.primitives import ExperimentEnvironmentPath
 from repo2ree_ree.receipt import ActivationReceipt, Launched, RunExperimentReceipt
 from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
-RunnableKind = Literal["activation_test", "run_experiment"]
+RunnableKind = Literal["activate_experiment_environment", "run_experiment"]
 RunnableDefinition = ActivateExperimentEnvironmentDefinition | ExperimentDefinition
 
 
@@ -91,7 +91,7 @@ def handle_runnable_operation(
             exit_code=exit_code,
             outputs=outputs.model_dump(mode="json", exclude_none=True),
         )
-    expected_verify = isinstance(definition, ExperimentDefinition) and definition.verify_script_path is not None
+    expected_verify = isinstance(definition, ExperimentDefinition)
     if outcome.run_outputs.exit_code != 0 or (outcome.run_outputs.verify_exit_code == 0) != expected_verify:
         message = f"{kind} reported success without complete successful script outcomes"
         log("system", "error", message)
@@ -148,11 +148,8 @@ def handle_runnable_operation(
 def _select_definition(ree: Ree, kind: RunnableKind, experiment_name: str) -> RunnableDefinition:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot run author operations")
-    if kind == "activation_test":
-        definition = ree.subject.definition.activate_experiment_environment
-        if definition is None:
-            raise ReePreconditionError("no activate experiment environment script is defined")
-        return definition
+    if kind == "activate_experiment_environment":
+        return ree.subject.definition.activate_experiment_environment
     for experiment in ree.subject.definition.experiments:
         if experiment.name == experiment_name:
             return experiment
@@ -171,7 +168,7 @@ def _check_preconditions(
         _check_activation_evidence(ree)
 
     experiment_environment = ree.subject.definition.experiment_environment
-    if experiment_environment is None or experiment_environment.artifact_path is None:
+    if experiment_environment.artifact_path is None:
         return None, None
     build = ree.subject.receipts.experiment_environment
     if build is None:
@@ -198,15 +195,12 @@ def _check_experiment_scripts(definition: ExperimentDefinition, layout: ReeLayou
         definition.run_script_size,
         label="run script",
     )
-    if definition.verify_script_path is not None:
-        if definition.verify_script_digest is None or definition.verify_script_size is None:
-            raise AssertionError("definition admitted incomplete verification script identity")
-        _check_script(
-            layout.workspace / str(definition.verify_script_path),
-            definition.verify_script_digest,
-            definition.verify_script_size,
-            label="verification script",
-        )
+    _check_script(
+        layout.workspace / str(definition.verify_script_path),
+        definition.verify_script_digest,
+        definition.verify_script_size,
+        label="verification script",
+    )
 
 
 def _check_activation_evidence(ree: Ree) -> None:
@@ -225,8 +219,6 @@ def _check_script(path: Path, expected_digest: Digest, expected_size: int, *, la
 
 def _check_activation(ree: Ree, layout: ReeLayout) -> ActivateExperimentEnvironmentDefinition:
     activation = ree.subject.definition.activate_experiment_environment
-    if activation is None:
-        raise ReePreconditionError("no activate experiment environment script is defined")
     _check_script(
         layout.workspace / str(activation.activate_experiment_environment_script_path),
         activation.activate_experiment_environment_script_digest,
@@ -246,7 +238,7 @@ def _as_runnable(
         activate_script=activate_script,
         launch=launch,
         run_script=str(definition.run_script_path),
-        verify_script=str(definition.verify_script_path or ""),
+        verify_script=str(definition.verify_script_path),
         output_paths=tuple(str(path) for path in definition.output_paths),
     )
 
@@ -260,9 +252,8 @@ def _outputs(
     )
 
 
-def _launch_digest(ree: Ree) -> Digest | None:
-    launch = ree.subject.definition.launch
-    return launch.launch_script_digest if launch else None
+def _launch_digest(ree: Ree) -> Digest:
+    return ree.subject.definition.launch.launch_script_digest
 
 
 def _source_snapshot(ree: Ree) -> Digest:
@@ -283,7 +274,7 @@ def _successful_receipt(
     produced_output_digest: Digest | None,
     activate_experiment_environment_script_digest: Digest,
     working_environment: WorkingEnvironmentObservation,
-    launch_script_digest: Digest | None,
+    launch_script_digest: Digest,
     launched: Launched | None,
 ) -> ActivationReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
@@ -308,7 +299,7 @@ def _successful_receipt(
         run_script_digest=definition.run_script_digest,
         verify_script_digest=definition.verify_script_digest,
         run_exit_code=0,
-        verify_exit_code=0 if definition.verify_script_path is not None else None,
+        verify_exit_code=0,
         produced_output_digest=produced_output_digest,
         working_environment=working_environment,
         launch_script_digest=launch_script_digest,

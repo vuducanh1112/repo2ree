@@ -6,12 +6,12 @@ That ``ree`` reads each argv back as the same value is ``repo2ree_cli``'s to sho
 from __future__ import annotations
 
 from repo2ree_protocol.command import (
-    GenerateScriptCandidatesArgs,
-    GenerateScriptCandidatesCommand,
-    ReviewActivationTestArgs,
-    ReviewActivationTestCommand,
-    WriteFileArgs,
-    WriteFileCommand,
+    ReviewActivateExperimentEnvironmentArgs,
+    ReviewActivateExperimentEnvironmentCommand,
+    SuggestScriptsArgs,
+    SuggestScriptsCommand,
+    WriteScriptArgs,
+    WriteScriptCommand,
 )
 from repo2ree_protocol.queries import CatQuery, InitRee, LintDraftQuery, ShowQuery, query_argv
 from repo2ree_protocol.verbs import VERBS, command_types, to_argv
@@ -33,13 +33,13 @@ def test_reads_keep_the_words_a_person_types() -> None:
 
 
 def test_an_argv_says_only_what_differs_from_the_defaults() -> None:
-    cmd = WriteFileCommand(args=WriteFileArgs(path="ree-scripts/build_experiment_environment.sh", content="x"))
+    cmd = WriteScriptCommand(args=WriteScriptArgs(path="ree-scripts/build_experiment_environment.sh", content="x"))
     assert to_argv(cmd) == (["write", "--", "ree-scripts/build_experiment_environment.sh"], b"x")
 
 
 def test_a_target_is_its_kind_and_experiment() -> None:
-    cmd = GenerateScriptCandidatesCommand(
-        args=GenerateScriptCandidatesArgs.model_validate(
+    cmd = SuggestScriptsCommand(
+        args=SuggestScriptsArgs.model_validate(
             {"targets": [{"kind": "build_experiment_environment"}, {"kind": "experiment_run", "experiment_name": "a"}]}
         )
     )
@@ -47,5 +47,5 @@ def test_a_target_is_its_kind_and_experiment() -> None:
 
 
 def test_a_review_step_names_its_review_by_option() -> None:
-    cmd = ReviewActivationTestCommand(args=ReviewActivationTestArgs(review_id="review-1"))
+    cmd = ReviewActivateExperimentEnvironmentCommand(args=ReviewActivateExperimentEnvironmentArgs(review_id="review-1"))
     assert to_argv(cmd) == (["review", "test-activation", "--review-id", "review-1"], None)

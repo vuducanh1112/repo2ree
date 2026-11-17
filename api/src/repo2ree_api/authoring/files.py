@@ -14,7 +14,7 @@ from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, Worksp
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
-from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
+from repo2ree_protocol.command import WriteScriptArgs, WriteScriptCommand
 from repo2ree_protocol.outputs import NoOutputs
 from repo2ree_ree.digest import digest_bytes
 
@@ -55,7 +55,7 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
     the write if the file has changed since its etag was read.
     """
-    with author_api_action("write_file", ree_id, path=payload.path):
+    with author_api_action("write_script", ree_id, path=payload.path):
         return _write_file(ree_id, payload)
 
 
@@ -65,10 +65,10 @@ def _write_file(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutati
         # The if_match check rides inside the command so the workbench verifies
         # it under the same per-REE serialization as the write — an API-side
         # pre-read could pass and still lose to a concurrent writer.
-        cmd = WriteFileCommand(
-            args=WriteFileArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
+        cmd = WriteScriptCommand(
+            args=WriteScriptArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
         )
-        NoOutputs.model_validate(dispatch_or_fail(handle, cmd, "write-file", "Workbench write_file failed").outputs)
+        NoOutputs.model_validate(dispatch_or_fail(handle, cmd, "write-file", "Workbench write_script failed").outputs)
         # The workbench validates a later ``if_match`` against
         # ``workspace_content_etag``, which digests the stored bytes the same
         # way — one shared helper so the compare cannot drift across processes.

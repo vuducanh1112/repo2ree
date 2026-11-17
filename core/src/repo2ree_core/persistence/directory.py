@@ -202,7 +202,7 @@ class ReeDirectory:
         if not self.manifest_exists():
             return ()
         build = self.read_ree().subject.definition.experiment_environment
-        artifact = self.author_artifact(str(build.artifact_path)) if build and build.artifact_path else None
+        artifact = self.author_artifact(str(build.artifact_path)) if build.artifact_path else None
         return (artifact,) if artifact is not None else ()
 
     def ensure_reserved_overlay_scripts(self) -> None:

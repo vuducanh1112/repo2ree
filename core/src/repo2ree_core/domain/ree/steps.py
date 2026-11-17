@@ -16,18 +16,18 @@ from repo2ree_protocol.audit import ReeAudit, StepAudit
 from repo2ree_protocol.catalog import ReeStep, ReeStepKey, ReeSteps, ReeStepState, ReeStepStatus
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
-    ActivationTestCommand,
+    ActivateExperimentEnvironmentCommand,
     BuildExperimentEnvironmentCommand,
     CheckWorkingEnvironmentCommand,
     CrossCheckSbomCommand,
-    EvaluateDependencyScoreCommand,
-    GenerateHbomCommand,
+    EvaluateReproducibilityCommand,
     GenerateSbomCommand,
-    GenerateScriptCandidatesCommand,
+    ObserveHardwareCommand,
     PatchReeDefinitionCommand,
     RunExperimentCommand,
     SealReeCommand,
-    WriteFileCommand,
+    SuggestScriptsCommand,
+    WriteScriptCommand,
 )
 from repo2ree_protocol.verbs import VERBS
 from repo2ree_ree.model import Ree
@@ -44,27 +44,27 @@ REE_STEPS: tuple[ReeStep, ...] = (
         key="hbom",
         order=3,
         label="Hardware BOM",
-        commands=_commands(GenerateHbomCommand, PatchReeDefinitionCommand),
+        commands=_commands(ObserveHardwareCommand, PatchReeDefinitionCommand),
     ),
     ReeStep(
         key="check_working_environment",
         order=4,
         label="Check Working Environment",
-        commands=_commands(WriteFileCommand, PatchReeDefinitionCommand, CheckWorkingEnvironmentCommand),
+        commands=_commands(WriteScriptCommand, PatchReeDefinitionCommand, CheckWorkingEnvironmentCommand),
     ),
     ReeStep(
         key="evaluate",
         order=5,
         label="Reproducibility Readiness",
         requires=["source"],
-        commands=_commands(EvaluateDependencyScoreCommand),
+        commands=_commands(EvaluateReproducibilityCommand),
     ),
     ReeStep(
         key="build_experiment_environment",
         order=6,
         label="Build Experiment Environment",
         requires=["source"],
-        commands=_commands(BuildExperimentEnvironmentCommand, GenerateScriptCandidatesCommand, WriteFileCommand),
+        commands=_commands(BuildExperimentEnvironmentCommand, SuggestScriptsCommand, WriteScriptCommand),
     ),
     ReeStep(
         key="sbom",
@@ -85,16 +85,14 @@ REE_STEPS: tuple[ReeStep, ...] = (
         order=9,
         label="Test Activation",
         requires=["build_experiment_environment"],
-        commands=_commands(ActivationTestCommand),
+        commands=_commands(ActivateExperimentEnvironmentCommand),
     ),
     ReeStep(
         key="experiments",
         order=10,
         label="Experiments",
         requires=["build_experiment_environment"],
-        commands=_commands(
-            RunExperimentCommand, PatchReeDefinitionCommand, GenerateScriptCandidatesCommand, WriteFileCommand
-        ),
+        commands=_commands(RunExperimentCommand, PatchReeDefinitionCommand, SuggestScriptsCommand, WriteScriptCommand),
     ),
     ReeStep(key="seal", order=11, label="Seal", commands=_commands(SealReeCommand)),
 )

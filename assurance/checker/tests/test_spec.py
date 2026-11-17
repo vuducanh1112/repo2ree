@@ -22,6 +22,7 @@ from repo2ree_assurance_checker.spec import (
     Spec,
     fact_problems,
     matches,
+    operation_problems,
     parse_spec,
     spell_out_groups,
 )
@@ -333,7 +334,7 @@ def test_declared_facts_are_typed_required_ones_present_and_the_rest_the_owners_
 
 
 def test_a_fact_that_lists_its_values_takes_no_other() -> None:
-    allowed = {"action": ("write_file", "seal_ree")}
+    allowed = {"action": ("write_script", "seal_ree")}
     assert fact_problems({"action": "str"}, (), {"action": "seal_ree"}, allowed) == []
     assert fact_problems({"action": "str"}, (), {"action": "seal"}, allowed) == [
         ("violated", "fact 'action' is 'seal', which its declaration does not list")
@@ -357,7 +358,7 @@ def test_incoherent_value_lists_are_rejected(declaration: dict[str, Any], messag
 
 
 def test_a_group_condition_is_spelled_out_as_the_groups_values() -> None:
-    groups = {"AuthorApiAction": {"action": {"editing": ("write_file", "delete_file"), "reading": ("read_file",)}}}
+    groups = {"AuthorApiAction": {"action": {"editing": ("write_script", "delete_file"), "reading": ("read_file",)}}}
     invariant = {
         "id": "x",
         "when": {
@@ -368,7 +369,7 @@ def test_a_group_condition_is_spelled_out_as_the_groups_values() -> None:
         "require": {"where": {"action": {"group": "reading"}}},
     }
     spelled = spell_out_groups(invariant, groups)
-    assert spelled["when"]["where"] == {"action": {"in": ["write_file", "delete_file", "read_file"]}}
+    assert spelled["when"]["where"] == {"action": {"in": ["write_script", "delete_file", "read_file"]}}
     assert spelled["require"]["where"] == {"action": {"in": ["read_file"]}}
     with pytest.raises(ValueError, match="declares no groups"):
         spell_out_groups(invariant | {"require": {"where": {"action": {"group": "painting"}}}}, groups)
@@ -385,14 +386,12 @@ def test_the_author_rules_name_the_action_groups_they_mean() -> None:
     assert isinstance(condition, dict)
     assert isinstance(condition["in"], list)
     on_the_ree = set(condition["in"])
-    assert on_the_ree == set().union(
-        *(groups[name] for name in ("source", "editing", "assistance", "evidence", "lifecycle"))
-    )
+    assert on_the_ree == set(spec.operations) | groups["upload"]
 
 
 def test_the_catalogue_names_every_operation_once_and_each_review_the_operation_it_reproduces() -> None:
     spec = load_spec()
-    assert len(spec.operations) == 17
+    assert len(spec.operations) == 18
     assert set(spec.review_operations) == {
         "review_acquire_source",
         "review_build_experiment_environment",
@@ -420,3 +419,37 @@ def test_the_specification_has_one_catalogue() -> None:
     docs.vocabulary.append(docs.words("Operation") | {"name": "MoreOperations"})
     with pytest.raises(ValueError, match="one operation catalogue"):
         docs.parse()
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        (
+            lambda docs: docs.aggregates[0].update(writes_nothing=["teleport"]),
+            "names operations the catalogue does not",
+        ),
+        (
+            lambda docs: docs.aggregates[0].update(writes_nothing=["review_acquire_source"]),
+            "names review operations, which change no REE",
+        ),
+        (
+            lambda docs: docs.aggregates[0].update(writes_nothing=["suggest_scripts"]),
+            "operations no aggregate says what they may change: ['lint_scripts', 'materialize_workspace']",
+        ),
+    ],
+)
+def test_every_operation_the_aggregates_name_is_catalogued_and_each_of_an_rees_is_named(
+    change: Any, problem: str
+) -> None:
+    assert operation_problems(load_spec()) == []
+    docs = documents()
+    change(docs)
+    assert any(problem in found for found in operation_problems(docs.parse()))
+
+
+def test_a_fact_that_takes_the_catalogue_lists_its_operations_as_groups() -> None:
+    spec = load_spec()
+    assert set(spec.entities["Attempt"].allowed["operation"]) == {*spec.operations, *spec.review_operations}
+    groups = spec.entities["AuthorApiAction"].groups["action"]
+    assert set(groups["operations"]) == set(spec.operations)
+    assert "review_acquire_source" not in spec.entities["AuthorApiAction"].allowed["action"]

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import ree_definition
 
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.machine import MachineInputs
@@ -13,7 +14,6 @@ from repo2ree_core.execution.slurm_probe import observed
 from repo2ree_core.execution.working_environment import ProbeResult
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_protocol.inference import SlurmObservation, SlurmPartition, SlurmProbe
-from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.reserved_paths import RESERVED_LAUNCH_SCRIPT
 
 LAUNCH = ScriptTargetSelectorArg(kind="launch")
@@ -35,7 +35,7 @@ def _usable(*partitions: SlurmPartition) -> SlurmProbe:
 def _infer(root: Path, probe: SlurmProbe) -> TargetInferenceResult:
     (root / "main.py").write_text("print(1)\n")
     report = infer_scripts(
-        root, [LAUNCH], definition=ReeDefinition(name="Demo"), machine=MachineInputs(slurm=FixedSlurm(probe))
+        root, [LAUNCH], definition=ree_definition(name="Demo"), machine=MachineInputs(slurm=FixedSlurm(probe))
     )
     (result,) = report.results
     return result

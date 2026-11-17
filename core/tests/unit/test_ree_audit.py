@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from ree_definitions import LAUNCH, PLACEHOLDER, ree_definition
 
 from repo2ree_core.domain.ree.audit import _evidence_standing, _Subject, audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
@@ -18,7 +19,6 @@ from repo2ree_ree.model import (
     ExperimentDefinition,
     ExperimentEnvironmentDefinition,
     Ree,
-    ReeDefinition,
     ReeSubject,
     SourceDefinition,
 )
@@ -40,7 +40,11 @@ from repo2ree_ree.receipt import (
     RunExperimentReceipt,
     WorkspaceDrift,
 )
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
+from repo2ree_ree.reserved_paths import (
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    experiment_run_script_path,
+    experiment_verify_script_path,
+)
 
 _DIGEST = digest_bytes(b"content")
 _OTHER_DIGEST = digest_bytes(b"other")
@@ -79,6 +83,7 @@ def _build_receipt(script_digest: Digest = _DIGEST) -> BuildExperimentEnvironmen
         workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=_EXPERIMENT_ENVIRONMENT_PATH,
         produced_artifact_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
+        launch_script_digest=LAUNCH,
     )
 
 
@@ -88,6 +93,9 @@ def _experiment(name: str = _EXPERIMENT_NAME, *, run_script_digest: Digest = _DI
         run_script_path=OverlayPath(experiment_run_script_path(name)),
         run_script_digest=run_script_digest,
         run_script_size=1,
+        verify_script_path=OverlayPath(experiment_verify_script_path(name)),
+        verify_script_digest=PLACEHOLDER,
+        verify_script_size=1,
     )
 
 
@@ -103,13 +111,15 @@ def _experiment_receipt(name: str = _EXPERIMENT_NAME) -> RunExperimentReceipt:
         experiment_environment_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
         activate_experiment_environment_script_digest=_DIGEST,
         run_script_digest=_DIGEST,
+        launch_script_digest=LAUNCH,
+        verify_script_digest=PLACEHOLDER,
     )
 
 
 def _built_ree(*, build_experiment_environment_script_digest: Digest = _DIGEST) -> Ree:
     ree = Ree(
         subject=ReeSubject(
-            definition=ReeDefinition(
+            definition=ree_definition(
                 source=_SOURCE,
                 experiment_environment=ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=build_experiment_environment_script_digest,
@@ -307,26 +317,6 @@ def test_stale_steps_walks_every_step_the_audit_reports() -> None:
 # ================================================
 
 
-def test_removing_the_build_declaration_leaves_its_receipt_stale_rather_than_hidden() -> None:
-    """Deleting ``build.sh`` drops the declaration but keeps the receipt.
-
-    The receipt then attests a build of a recipe the REE no longer carries.
-    Reporting that as ``not_applicable`` would hide it from the seal gate,
-    which is the one reader that must not miss it.
-    """
-    orphaned = replace_definition(
-        _built_ree(),
-        _built_ree().subject.definition.model_copy(update={"experiment_environment": None}),
-    )
-
-    result = audit(orphaned)
-
-    assert result.experiment_environment.evidence == "stale"
-    assert result.experiment_environment.receipt_run_id == RunId("build-1")
-    assert result.experiment_environment.reasons == ("experiment environment build definition was removed",)
-    assert [name for name, _ in result.stale_steps()] == ["experiment_environment"]
-
-
 def test_removing_the_source_declaration_leaves_its_receipt_stale() -> None:
     """The steps whose comparisons all pass vacuously get the generic reason."""
     orphaned = replace_definition(
@@ -342,7 +332,7 @@ def test_removing_the_source_declaration_leaves_its_receipt_stale() -> None:
 
 
 def test_a_step_with_neither_declaration_nor_receipt_stays_not_applicable() -> None:
-    bare = Ree(subject=ReeSubject(definition=ReeDefinition()))
+    bare = Ree(subject=ReeSubject(definition=ree_definition()))
 
     result = audit(bare)
 
@@ -375,7 +365,7 @@ def test_evidence_standing_is_the_table_it_documents(
 def test_an_observed_hardware_receipt_stands_without_a_declaration() -> None:
     """The observation is the content, not evidence for something declared.
 
-    ``generate_hbom`` files this receipt and never declares
+    ``observe_hardware`` files this receipt and never declares
     ``definition.hardware`` — an author may observe the machine without stating
     a requirement. Reading that as an orphan would refuse the seal on a
     perfectly consistent REE.

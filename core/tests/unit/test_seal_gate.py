@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import LAUNCH, ree_definition
 
 from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, replace_definition
@@ -12,7 +13,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeSubject, SourceDefinition
 from repo2ree_ree.primitives import (
     Digest,
     ExperimentEnvironmentPath,
@@ -36,7 +37,7 @@ _SOURCE = SourceDefinition(origin_url="https://example.test/repo.git", source_ty
 def _ree(*, build_experiment_environment_script_digest: Digest = _SCRIPT_DIGEST) -> Ree:
     ree = Ree(
         subject=ReeSubject(
-            definition=ReeDefinition(
+            definition=ree_definition(
                 name="demo",
                 source=_SOURCE,
                 experiment_environment=ExperimentEnvironmentDefinition(
@@ -74,6 +75,7 @@ def _ree(*, build_experiment_environment_script_digest: Digest = _SCRIPT_DIGEST)
             workspace_drift=WorkspaceDrift(status="clean"),
             artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
+            launch_script_digest=LAUNCH,
         ),
     )
 
@@ -137,7 +139,7 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
 
 def test_missing_evidence_still_seals(tmp_path: Path) -> None:
     """Incomplete is not self-contradictory: an REE may be sealed with gaps."""
-    bare = Ree(subject=ReeSubject(definition=ReeDefinition(name="demo")))
+    bare = Ree(subject=ReeSubject(definition=ree_definition(name="demo")))
     store = _store(tmp_path, bare)
 
     outputs = seal_ree(
@@ -202,17 +204,14 @@ def test_canceling_a_streamed_seal_does_not_publish_partial_state(tmp_path: Path
 
 
 def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: Path) -> None:
-    """Dropping the declaration must not launder the receipt that attested it.
-
-    Deleting ``build.sh`` clears ``build_experiment_environment`` but leaves the build receipt
-    on the aggregate. Sealing there would publish an experiment environment attestation for a
-    recipe the bundle does not carry — evidence no reader could check.
-    """
-    orphaned = replace_definition(_ree(), _ree().subject.definition.model_copy(update={"experiment_environment": None}))
+    """Dropping where the build leaves its artifact must not launder the receipt that attested it."""
+    definition = _ree().subject.definition
+    unplaced = definition.experiment_environment.model_copy(update={"artifact_path": None})
+    orphaned = replace_definition(_ree(), definition.model_copy(update={"experiment_environment": unplaced}))
     store = _store(tmp_path, orphaned)
 
     with pytest.raises(
-        ReePreconditionError, match="experiment_environment: experiment environment build definition was removed"
+        ReePreconditionError, match="experiment_environment: experiment environment artifact path changed"
     ):
         seal_ree(
             store.layout,

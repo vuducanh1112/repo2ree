@@ -57,19 +57,19 @@ from repo2ree_protocol.build import current_build
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
     Command,
-    GenerateScriptCandidatesCommand,
     LoadReeBundleCommand,
     PatchReeDefinitionCommand,
     ReviewAcquireSourceArgs,
     ReviewAcquireSourceCommand,
-    ReviewActivationTestCommand,
+    ReviewActivateExperimentEnvironmentCommand,
     ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
     ScriptTargetSelectorArg,
     SealReeCommand,
+    SuggestScriptsCommand,
     TargetKind,
-    WriteFileArgs,
-    WriteFileCommand,
+    WriteScriptArgs,
+    WriteScriptCommand,
     command_adapter,
 )
 from repo2ree_protocol.document import ReeStatusReport, WorkbenchReeDocument
@@ -518,7 +518,7 @@ def _infer(
     if params["rule"] and not params["write"]:
         raise click.UsageError("--rule picks the proposal --write writes")
     args = spelling.build(params, None)
-    infer = GenerateScriptCandidatesCommand.model_validate({"args": args})
+    infer = SuggestScriptsCommand.model_validate({"args": args})
     inferred = invocation.run(infer, layout, identity=invocation.identity(1) if params["write"] else None)
 
     def shown(outputs: dict[str, Any]) -> str:
@@ -542,7 +542,7 @@ def _infer(
         refuse(invocation, joined, "precondition", f"inference proposes no script for {result.target.path}{rule}")
     chosen = proposals[0]
     content = cast(str, chosen.body)
-    write = WriteFileCommand(args=WriteFileArgs(path=chosen.target.path, content=content))
+    write = WriteScriptCommand(args=WriteScriptArgs(path=chosen.target.path, content=content))
     written = invocation.run(write, layout, identity=invocation.identity(2))
     if written.status != "succeeded":
         finish(invocation, joined, written, ran=True)
@@ -615,13 +615,13 @@ def _review_step(
 _HANDLERS: dict[type[BaseModel], Handler] = {
     AcquireSourceCommand: _acquire_source,
     LoadReeBundleCommand: _load_bundle,
-    WriteFileCommand: _on_script,
+    WriteScriptCommand: _on_script,
     PatchReeDefinitionCommand: _define,
-    GenerateScriptCandidatesCommand: _infer,
+    SuggestScriptsCommand: _infer,
     SealReeCommand: _seal,
     ReviewAcquireSourceCommand: _review_step,
     ReviewBuildExperimentEnvironmentCommand: _review_step,
-    ReviewActivationTestCommand: _review_step,
+    ReviewActivateExperimentEnvironmentCommand: _review_step,
     ReviewRunExperimentCommand: _review_step,
 }
 _REVIEW_ID = ("review_id",)
@@ -631,7 +631,7 @@ _OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
     LoadReeBundleCommand: ("upload_token", "archive_name"),
     ReviewAcquireSourceCommand: _REVIEW_ID,
     ReviewBuildExperimentEnvironmentCommand: _REVIEW_ID,
-    ReviewActivationTestCommand: _REVIEW_ID,
+    ReviewActivateExperimentEnvironmentCommand: _REVIEW_ID,
     ReviewRunExperimentCommand: _REVIEW_ID,
 }
 # Fields a workbench passes and a person does not.
@@ -646,18 +646,18 @@ _EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
     AcquireSourceCommand: [_ARCHIVE],
     LoadReeBundleCommand: [_ARCHIVE],
     PatchReeDefinitionCommand: _DEFINE_OPTIONS,
-    GenerateScriptCandidatesCommand: [
+    SuggestScriptsCommand: [
         click.Option(["--write"], is_flag=True, help="Write the proposed script, for one --target."),
         click.Option(["--rule"], default=None, help="With --write, the rule whose proposal to write."),
     ],
 }
 # What a command's help adds to its summary.
 _MORE: dict[type[BaseModel], str] = {
-    WriteFileCommand: "The script is read on stdin: `ree write build_experiment_environment < build.sh`.",
+    WriteScriptCommand: "The script is read on stdin: `ree write build_experiment_environment < build.sh`.",
     PatchReeDefinitionCommand: (
         "Give the options for the common fields, or pipe a JSON patch of the definition's top-level fields on stdin."
     ),
-    GenerateScriptCandidatesCommand: "Shows each proposal against the script as it is written.",
+    SuggestScriptsCommand: "Shows each proposal against the script as it is written.",
 }
 
 
@@ -677,12 +677,10 @@ def _verb_command(command: type[BaseModel], words: tuple[str, ...]) -> click.Com
         help=f"{summary}.\n\n{_MORE[command]}" if command in _MORE else summary,
         short_help=summary,
         words=words,
-        outputs=OUTPUTS[operation] | ScriptWritten
-        if command is GenerateScriptCandidatesCommand
-        else OUTPUTS[operation],
+        outputs=OUTPUTS[operation] | ScriptWritten if command is SuggestScriptsCommand else OUTPUTS[operation],
         spelling=spelling,
         runs=True,
-        operations=(operation, "write_file") if command is GenerateScriptCandidatesCommand else (operation,),
+        operations=(operation, "write_script") if command is SuggestScriptsCommand else (operation,),
     )
 
 
@@ -699,7 +697,7 @@ for _command, _words in VERBS.items():
     operations=(
         "review_acquire_source",
         "review_build_experiment_environment",
-        "review_activation_test",
+        "review_activate_experiment_environment",
         "review_run_experiment",
     ),
     params=Spelling(ReviewAcquireSourceArgs, optional=_REVIEW_ID).params,
@@ -726,7 +724,10 @@ def review_all(**params: Any) -> None:
                 {"args": {"review_id": review_id, "basis": opened.basis}}
             ),
         ),
-        (["review", "test-activation"], ReviewActivationTestCommand.model_validate({"args": {"review_id": review_id}})),
+        (
+            ["review", "test-activation"],
+            ReviewActivateExperimentEnvironmentCommand.model_validate({"args": {"review_id": review_id}}),
+        ),
         *(
             (
                 ["review", "experiment", name],
@@ -933,7 +934,7 @@ def status_cmd() -> None:
     )
 
 
-@cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True, operations=("write_file",))
+@cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True, operations=("write_script",))
 @click.argument("script", type=TARGET)
 def edit_cmd(script: ScriptTargetSelectorArg) -> None:
     """Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.
@@ -956,7 +957,7 @@ def edit_cmd(script: ScriptTargetSelectorArg) -> None:
             invocation, "edit", ScriptEdited(path=path, changed=False), render_with=lambda _outputs: f"{path} unchanged"
         )
     etag = workspace_content_etag(store, path) or ""
-    write = WriteFileCommand(args=WriteFileArgs(path=path, content=edited, expected_etag=etag))
+    write = WriteScriptCommand(args=WriteScriptArgs(path=path, content=edited, expected_etag=etag))
     written = invocation.run(write, layout)
     outputs = ScriptEdited(path=path, changed=True).model_dump(mode="json")
     finish(

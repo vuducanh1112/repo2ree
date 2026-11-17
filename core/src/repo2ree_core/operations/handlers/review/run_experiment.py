@@ -63,13 +63,11 @@ def _step(experiment_name: str) -> ReviewRunnableStep:
         if experiment is None:
             raise ValueError(f"no experiment named {experiment_name!r} is declared")
         activation_script = definition.activate_experiment_environment
-        if activation_script is None:
-            raise ValueError("no activate experiment environment script is declared")
         return (
             RunnableSpec(
                 run_script=str(experiment.run_script_path),
                 activate_script=str(activation_script.activate_experiment_environment_script_path),
-                verify_script=str(experiment.verify_script_path or ""),
+                verify_script=str(experiment.verify_script_path),
                 output_paths=tuple(str(path) for path in experiment.output_paths),
             ),
             experiment.name,
@@ -112,9 +110,7 @@ def handle_review_run_experiment(
     experiment, certified, outcome = opened.runnable, opened.certified, opened.outcome
     review_layout = opened.review_layout
     run_script_digest = digest_file_if_exists(review_layout.workspace / experiment.run_script)
-    verify_script_digest = (
-        digest_file_if_exists(review_layout.workspace / experiment.verify_script) if experiment.verify_script else None
-    )
+    verify_script_digest = digest_file_if_exists(review_layout.workspace / experiment.verify_script)
     activate_script_digest = digest_file_if_exists(review_layout.workspace / experiment.activate_script)
 
     comparison = _certify(
@@ -251,14 +247,7 @@ def _log_verdict(comparison: ExperimentComparison, *, log: LogSink) -> None:
         "info" if comparison.verdict in {"identical", "reproduced"} else "warn",
         f"experiment {comparison.experiment_name!r} {comparison.verdict} ({comparison.basis})",
     )
-    if comparison.verdict == "inconclusive" and not comparison.verify_script_path.strip():
-        log(
-            "system",
-            "warn",
-            "this experiment declares no verify script, so nothing states what a correct result is — "
-            "the run happened, but no verdict about its results can follow from it",
-        )
-    elif comparison.expected_verify_exit_code is None:
+    if comparison.expected_verify_exit_code is None:
         log(
             "system",
             "warn",

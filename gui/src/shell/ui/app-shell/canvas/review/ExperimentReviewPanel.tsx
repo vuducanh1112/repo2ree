@@ -129,9 +129,8 @@ function ExperimentRow({
  */
 function CriterionNote({ comparison }: { comparison: ReviewExperimentComparison }) {
   const criterion = comparison.verifyScriptPath.trim();
-  const note = !criterion
-    ? "no verify script"
-    : comparison.expectedVerifyExitCode == null
+  const note =
+    comparison.expectedVerifyExitCode == null
       ? "no author baseline"
       : comparison.expectedVerifyScriptDigest == null
         ? "author criterion unbound"
@@ -142,13 +141,9 @@ function CriterionNote({ comparison }: { comparison: ReviewExperimentComparison 
   return (
     <span
       className={styles.criterion}
-      title={
-        criterion
-          ? `criterion: ${criterion}${
-              comparison.verifyScriptDigest ? ` (${comparison.verifyScriptDigest})` : ""
-            }`
-          : "this experiment declares no verify script, so nothing states what a correct result is"
-      }
+      title={`criterion: ${criterion}${
+        comparison.verifyScriptDigest ? ` (${comparison.verifyScriptDigest})` : ""
+      }`}
     >
       {note}
     </span>

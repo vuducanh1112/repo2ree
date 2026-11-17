@@ -50,7 +50,7 @@ class ReviewBuildExperimentEnvironmentOutputs(BaseModel):
     comparison: ExperimentEnvironmentComparison
 
 
-class ReviewActivationTestOutputs(BaseModel):
+class ReviewActivateExperimentEnvironmentOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
@@ -161,7 +161,7 @@ class RunnableOperationOutputs(BaseModel):
     receipt: ActivationReceipt | RunExperimentReceipt | CheckWorkingEnvironmentReceipt | None = None
 
 
-class GenerateHbomOutputs(BaseModel):
+class ObserveHardwareOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     observation: dict[str, Any]
@@ -202,23 +202,23 @@ class LintScriptsOutputs(BaseModel):
 OUTPUTS: dict[str, Any] = {
     "review_acquire_source": ReviewAcquireSourceOutputs,
     "review_build_experiment_environment": ReviewBuildExperimentEnvironmentOutputs,
-    "review_activation_test": ReviewActivationTestOutputs,
+    "review_activate_experiment_environment": ReviewActivateExperimentEnvironmentOutputs,
     "review_run_experiment": ReviewRunExperimentOutputs,
     "materialize_workspace": NoOutputs,
     "acquire_source": AcquireSourceOutputs,
     "load_ree_bundle": LoadReeBundleOutputs,
-    "write_file": NoOutputs | VersionConflictOutputs,
+    "write_script": NoOutputs | VersionConflictOutputs,
     "patch_ree_definition": PatchReeDefinitionOutputs | VersionConflictOutputs,
     "remove_source": NoOutputs,
     "build_experiment_environment": BuildExperimentEnvironmentOutputs | BuildExperimentEnvironmentFailureOutputs,
     "generate_sbom": GenerateSbomOutputs,
     "cross_check_sbom": CrossCheckSbomOutputs,
-    "evaluate_dependency_score": EvaluateOutputs,
+    "evaluate_reproducibility": EvaluateOutputs,
     "run_experiment": RunnableOperationOutputs,
-    "generate_hbom": GenerateHbomOutputs,
-    "activation_test": RunnableOperationOutputs,
+    "observe_hardware": ObserveHardwareOutputs,
+    "activate_experiment_environment": RunnableOperationOutputs,
     "check_working_environment": RunnableOperationOutputs,
-    "generate_script_candidates": InferenceReport,
+    "suggest_scripts": InferenceReport,
     "lint_scripts": LintScriptsOutputs,
     "seal_ree": SealOutputs,
 }

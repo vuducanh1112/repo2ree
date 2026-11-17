@@ -339,13 +339,10 @@ function DetailField({
  * declared, the verify script exited 0 too; anything else is a fail.
  */
 function runResultSummary(outputs: ExperimentRunOutputs): string {
-  const hasVerify = outputs.verifyExitCode !== undefined;
   if (outputs.verdict === "pass") {
-    return hasVerify
-      ? "Verify script exited 0 — the declared validation passed."
-      : "Command exited 0 — no verify script declared.";
+    return "Verify script exited 0 — the declared validation passed.";
   }
-  if (hasVerify && outputs.exitCode === 0) {
+  if (outputs.verifyExitCode !== undefined && outputs.exitCode === 0) {
     return `Verify script failed (exit code ${outputs.verifyExitCode ?? "?"}) — declared validation failed.`;
   }
   return `Run script failed (exit code ${outputs.exitCode ?? "?"}).`;

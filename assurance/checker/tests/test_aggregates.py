@@ -56,7 +56,7 @@ def test_every_field_and_receipt_kind_has_a_machine_after_the_lifecycle() -> Non
 def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() -> None:
     assert allowed("field", "definition.experiment_environment", "set", "set") == {
         "patch_ree_definition",
-        "write_file",
+        "write_script",
         "load_ree_bundle",
     }
     assert allowed("field", "definition.catalog.contributors", CREATED, "unset") == {"initialize_ree"}
@@ -67,7 +67,7 @@ def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() 
 def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
     # The build experiment environment script is a file: writing it changes the declaration the experiment environment
     # rests on.
-    assert {"write_file", "acquire_source"} <= allowed("receipt", "experiment_environment", "current", "stale")
+    assert {"write_script", "acquire_source"} <= allowed("receipt", "experiment_environment", "current", "stale")
     # A new experiment environment makes everything run on the old one stale, but never the experiment environment
     # itself.
     assert "build_experiment_environment" in allowed("receipt", "activation", "current", "stale")
@@ -82,14 +82,14 @@ def test_what_runs_through_the_activation_rests_on_it_and_the_build_does_not() -
     for name in ("activation", "experiment"):
         assert "definition.activate_experiment_environment" in ree().receipts[name].rests_on
     assert "definition.activate_experiment_environment" not in ree().receipts["experiment_environment"].rests_on
-    assert "write_file" in allowed("receipt", "experiment", "current", "stale")
+    assert "write_script" in allowed("receipt", "experiment", "current", "stale")
 
 
 def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_its_script() -> None:
     assert ree().receipts["activation"].about == ("definition.activate_experiment_environment",)
     assert "activation" in ree().receipts["experiment"].made_from
     # Testing the activation again may stale every experiment run through the one before.
-    assert "activation_test" in allowed("receipt", "experiment", "current", "stale")
+    assert "activate_experiment_environment" in allowed("receipt", "experiment", "current", "stale")
 
 
 def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch() -> None:
@@ -103,7 +103,7 @@ def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch
 
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
     # Standing is the receipt against the document as it now stands: undoing an edit undoes its staleness.
-    assert {"patch_ree_definition", "write_file", "build_experiment_environment"} <= allowed(
+    assert {"patch_ree_definition", "write_script", "build_experiment_environment"} <= allowed(
         "receipt", "activation", "stale", "current"
     )
     assert allowed("receipt", "experiment_environment", "current", "stale") <= allowed(
@@ -124,7 +124,7 @@ def test_undeclaring_a_keyed_item_discards_its_receipt() -> None:
 
 
 def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale() -> None:
-    assert allowed("receipt", "hardware", "not_applicable", "current") == {"generate_hbom", "load_ree_bundle"}
+    assert allowed("receipt", "hardware", "not_applicable", "current") == {"observe_hardware", "load_ree_bundle"}
     assert allowed("receipt", "hardware", "current", "stale") == {"load_ree_bundle"}
 
 
@@ -155,7 +155,7 @@ def mutated(change: Any) -> dict[str, Any]:
         (lambda a: a["receipts"]["experiment_environment"].update(about=["definition.experiments[*]"]), "is not keyed"),
         (lambda a: a["receipts"]["sbom"].update(made_from=["experiment"]), "other, unkeyed receipts"),
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
-        (lambda a: a.update(writes_nothing=["write_file"]), "write nothing take edges"),
+        (lambda a: a.update(writes_nothing=["write_script"]), "write nothing take edges"),
         (lambda a: a.pop("overlay"), "names no overlay"),
         (
             lambda a: a["fields"]["definition.experiment_environment"].update(files=["ree-scripts/{slug}.sh"]),
@@ -257,11 +257,11 @@ def test_changes_across_an_unreadable_document_are_owned_by_no_operation(tmp_pat
     root = tmp_path / "ree"
     subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True)
     commit_document(root, "initialize_ree", {"subject": {"definition": {"name": "demo"}}}, None)
-    record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "write_file"}}
+    record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "write_script"}}
     (root / "ree.json").write_text("not json")
     environment = {**os.environ, **GIT_ENVIRONMENT}
     subprocess.run(
-        [GIT, "-C", str(root), "commit", "-qam", "write_file\n\n" + json.dumps({"kind": "x"})],
+        [GIT, "-C", str(root), "commit", "-qam", "write_script\n\n" + json.dumps({"kind": "x"})],
         check=True,
         env=environment,
     )
@@ -365,6 +365,7 @@ def authored() -> Evidence:
                     "definition.name",
                     "definition.experiment_environment",
                     "definition.activate_experiment_environment",
+                    "definition.launch",
                     "definition.check_working_environment",
                 )
             ),
@@ -531,23 +532,23 @@ def test_a_script_changes_with_the_field_that_declares_it() -> None:
     assert (
         overlay_findings(
             file(1900, build, None, "b1", "initialize_ree", "created"),
-            file(5900, run, None, "r1", "write_file", "operation"),
+            file(5900, run, None, "r1", "write_script", "operation"),
             changes=(
-                change(5900, "definition.experiments[one].run_script_digest", "d", "d2", "write_file", "operation"),
+                change(5900, "definition.experiments[one].run_script_digest", "d", "d2", "write_script", "operation"),
             ),
         )
         == []
     )
-    assert overlay_findings(file(5900, build, "b1", "b2", "write_file", "operation")) == [
-        f"Ree {REE} {build}: changed by write_file, but definition.experiment_environment, which claims it, did not"
+    assert overlay_findings(file(5900, build, "b1", "b2", "write_script", "operation")) == [
+        f"Ree {REE} {build}: changed by write_script, but definition.experiment_environment, which claims it, did not"
     ]
 
 
 def test_scripts_of_what_is_not_declared_need_no_field_to_change() -> None:
     assert (
         overlay_findings(
-            file(5900, "overlay/ree-scripts/experiments/not-yet.sh", None, "r", "write_file", "operation"),
-            file(5900, "overlay/ree-scripts/experiments/not-yet.verify.sh", None, "v", "write_file", "operation"),
+            file(5900, "overlay/ree-scripts/experiments/not-yet.sh", None, "r", "write_script", "operation"),
+            file(5900, "overlay/ree-scripts/experiments/not-yet.verify.sh", None, "v", "write_script", "operation"),
         )
         == []
     )
@@ -555,7 +556,7 @@ def test_scripts_of_what_is_not_declared_need_no_field_to_change() -> None:
 
 def test_a_file_no_field_claims_violates_the_aggregate_rule() -> None:
     extra = "overlay/instant/requirements-extra.txt"
-    assert overlay_findings(file(5900, extra, None, "m", "write_file", "operation")) == [
+    assert overlay_findings(file(5900, extra, None, "m", "write_script", "operation")) == [
         f"Ree {REE} {extra}: is in the overlay, but no field claims it",
         f"Ree {REE} {extra}: is committed, but no entry of the tree is it (it falls in overlay)",
     ]
@@ -575,17 +576,17 @@ def test_each_capture_commit_reports_the_files_it_changed(tmp_path: Path) -> Non
     (root / "overlay/ree-scripts/build_experiment_environment.sh").write_text("echo two\n")
     (root / "overlay/notes.txt").write_text("kept\n")
     subprocess.run([GIT, "-C", str(root), "add", "overlay"], check=True)
-    record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "write_file"}}
+    record = {"attempt_id": "a1", "context": {"ree_id": REE}, "command": {"operation": "write_script"}}
     commit_document(
-        root, "write_file", {"subject": {"definition": {"name": "demo"}}}, record | {"operation_status": "succeeded"}
+        root, "write_script", {"subject": {"definition": {"name": "demo"}}}, record | {"operation_status": "succeeded"}
     )
     evidence = load_evidence(repositories=[root], git_executable=GIT)
     moved = [(c.cause, c.operation, c.path, c.before is None, c.after is None) for c in evidence.files]
     assert moved == [
         ("created", "initialize_ree", "overlay/ree-scripts/build_experiment_environment.sh", True, False),
         ("created", "initialize_ree", "ree.json", True, False),
-        ("operation", "write_file", "overlay/notes.txt", True, False),
-        ("operation", "write_file", "overlay/ree-scripts/build_experiment_environment.sh", False, False),
+        ("operation", "write_script", "overlay/notes.txt", True, False),
+        ("operation", "write_script", "overlay/ree-scripts/build_experiment_environment.sh", False, False),
     ]
 
 
@@ -618,7 +619,7 @@ def test_what_a_capture_commits_is_an_entry_of_the_tree_stored_as_it_says() -> N
 def test_a_file_the_tree_does_not_name_or_never_captures_violates_the_aggregate_rule() -> None:
     assert tree_findings(
         file(1900, "artifacts/runtime.tar", None, "r", "seal_ree", "operation", "lfs"),
-        file(1900, "notes.txt", None, "n", "write_file", "operation"),
+        file(1900, "notes.txt", None, "n", "write_script", "operation"),
         file(1900, "workspace/build/out.o", None, "w", "seal_ree", "operation"),
         file(1900, "reviews/r1/runs/a.ndjson", None, "l", "review_run_experiment", "operation"),
     ) == [

@@ -9,15 +9,16 @@ from pathlib import Path
 from typing import Literal
 
 import pytest
+from ree_definitions import PLACEHOLDER, ree_definition
 from scriptinfer_helpers import MemoryAccessor, docker_archive, not_an_archive, oci_archive, venv_archive
 
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.model import ExperimentDefinition
 from repo2ree_ree.primitives import OverlayPath
-from repo2ree_ree.reserved_paths import experiment_run_script_path
+from repo2ree_ree.reserved_paths import experiment_run_script_path, experiment_verify_script_path
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
 _VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
@@ -26,6 +27,9 @@ _EXPERIMENT = ExperimentDefinition(
     run_script_path=OverlayPath(experiment_run_script_path("run")),
     run_script_digest=digest_bytes(b"script"),
     run_script_size=6,
+    verify_script_path=OverlayPath(experiment_verify_script_path("run")),
+    verify_script_digest=PLACEHOLDER,
+    verify_script_size=1,
 )
 
 
@@ -45,7 +49,7 @@ def _activation(
     name: str = "Demo",
     kind: Literal["experiment_run", "activate_experiment_environment"] = "experiment_run",
 ) -> TargetInferenceResult:
-    definition = ReeDefinition(name=name, experiments=(_EXPERIMENT,))
+    definition = ree_definition(name=name, experiments=(_EXPERIMENT,))
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=experiment_environment,
         experiments=[_EXPERIMENT],

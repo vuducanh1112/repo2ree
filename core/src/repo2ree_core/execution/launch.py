@@ -33,12 +33,8 @@ class Launch:
     options: tuple[LaunchOption, ...] = ()
 
 
-def declared_launch(
-    definition: LaunchDefinition | None, workspace: Path, options: tuple[LaunchOption, ...] = ()
-) -> Launch | None:
-    """The launch an REE declares, once its script in ``workspace`` is the one it declares; None runs directly."""
-    if definition is None:
-        return None
+def declared_launch(definition: LaunchDefinition, workspace: Path, options: tuple[LaunchOption, ...] = ()) -> Launch:
+    """The launch an REE declares, once its script in ``workspace`` is the one it declares."""
     path = workspace / str(definition.launch_script_path)
     if not path.is_file():
         raise ReePreconditionError(f"the launch script is missing: {definition.launch_script_path}")

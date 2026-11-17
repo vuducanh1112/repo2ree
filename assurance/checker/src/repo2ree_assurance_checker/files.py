@@ -9,7 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from repo2ree_assurance_checker.spec import TREE_FORMAT, Spec, parse_spec
+from repo2ree_assurance_checker.spec import TREE_FORMAT, Spec, operation_problems, parse_spec
 
 ROOT = Path(__file__).resolve().parents[4]
 SPEC_DIR = ROOT / "assurance" / "spec"
@@ -39,7 +39,7 @@ def load_spec(directory: Path = SPEC_DIR) -> Spec:
         path = directory / name
         return tomllib.loads(path.read_text()) if path.exists() else {}
 
-    return parse_spec(
+    spec = parse_spec(
         documents("vocabulary"),
         documents("entities"),
         documents("boundaries"),
@@ -47,6 +47,9 @@ def load_spec(directory: Path = SPEC_DIR) -> Spec:
         single("components.toml"),
         [with_tree(document, read_from_root) for document in documents("aggregates")],
     )
+    if problems := operation_problems(spec):
+        raise ValueError("; ".join(problems))
+    return spec
 
 
 def load_spec_at(revision: str, executable: str = "git") -> Spec:

@@ -20,11 +20,14 @@ from repo2ree_ree.reserved_paths import (
     experiment_verify_script_path,
 )
 
-FIXED_DECLARATIONS = {
-    "experiment_environment": "build experiment environment script",
-    "activate_experiment_environment": "activate experiment environment script",
-    "launch": "launch script",
-    "check_working_environment": "check script",
+FIXED_SCRIPTS = {
+    "experiment_environment": ("build_experiment_environment", RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
+    "activate_experiment_environment": (
+        "activate_experiment_environment",
+        RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    ),
+    "launch": ("launch", RESERVED_LAUNCH_SCRIPT),
+    "check_working_environment": ("check_working_environment", RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT),
 }
 
 
@@ -99,9 +102,8 @@ def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: Re
     # The source changes only by acquiring or removing it; a whole definition may repeat it unchanged.
     if "source" in patch and _source(patch["source"]) != current.source:
         raise ValueError("the source changes only by acquiring or removing it, not by a definition patch")
-    for field, label in FIXED_DECLARATIONS.items():
-        if field in patch and patch[field] is None and getattr(current, field) is not None:
-            raise ValueError(f"every REE has its {label}: write the script rather than undeclaring it")
+    if undeclared := sorted(field for field in FIXED_SCRIPTS if field in patch and patch[field] is None):
+        raise ValueError(f"every REE declares {', '.join(undeclared)}: write the script rather than undeclaring it")
     payload = current.model_dump(mode="json")
     payload.update(patch)
     definition = hydrate_definition_payload(payload, layout)
@@ -120,67 +122,37 @@ def rehydrate_after_file_mutation(definition: ReeDefinition, layout: ReeLayout) 
 
 
 def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> ReeDefinition:
+    """The definition with each script's identity read off its authored bytes, never taken from the payload."""
     hydrated = dict(payload)
-    build = hydrated.get("experiment_environment")
-    if build is not None:
-        recipe = build if isinstance(build, dict) else {}
-        script = _required_overlay_file(
-            layout, RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "build experiment environment script"
-        )
-        hydrated["experiment_environment"] = {
-            "build_experiment_environment_script_path": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-            "build_experiment_environment_script_digest": digest_file(script),
-            "build_experiment_environment_script_size": script.stat().st_size,
-            # Carried through rather than derived. A script's identity is read
-            # off the authored file and never taken from the client, but where
-            # the build leaves its experiment environment is the author's own declaration —
-            # the same split the experiment branch makes for ``output_paths``.
-            "artifact_path": recipe.get("artifact_path"),
+    for field, (prefix, path) in FIXED_SCRIPTS.items():
+        script = _required_overlay_file(layout, path, f"{prefix.replace('_', ' ')} script")
+        hydrated[field] = {
+            f"{prefix}_script_path": path,
+            f"{prefix}_script_digest": digest_file(script),
+            f"{prefix}_script_size": script.stat().st_size,
         }
-
-    if hydrated.get("activate_experiment_environment") is not None:
-        activate = _required_overlay_file(
-            layout, RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "activate experiment environment script"
-        )
-        hydrated["activate_experiment_environment"] = {
-            "activate_experiment_environment_script_path": RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
-            "activate_experiment_environment_script_digest": digest_file(activate),
-            "activate_experiment_environment_script_size": activate.stat().st_size,
-        }
-
-    if hydrated.get("launch") is not None:
-        launch = _required_overlay_file(layout, RESERVED_LAUNCH_SCRIPT, "launch script")
-        hydrated["launch"] = {
-            "launch_script_path": RESERVED_LAUNCH_SCRIPT,
-            "launch_script_digest": digest_file(launch),
-            "launch_script_size": launch.stat().st_size,
-        }
-
-    if hydrated.get("check_working_environment") is not None:
-        check = _required_overlay_file(layout, RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, "check script")
-        hydrated["check_working_environment"] = {
-            "check_working_environment_script_path": RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
-            "check_working_environment_script_digest": digest_file(check),
-            "check_working_environment_script_size": check.stat().st_size,
-        }
+    # Where the build leaves the experiment environment is the author's own declaration, carried through.
+    build = payload.get("experiment_environment")
+    hydrated["experiment_environment"]["artifact_path"] = (
+        build.get("artifact_path") if isinstance(build, dict) else None
+    )
 
     experiments: list[dict[str, Any]] = []
     for raw in hydrated.get("experiments") or []:
         experiment = dict(raw)
         name = str(experiment.get("name") or "")
-        run_path = experiment_run_script_path(name)
-        verify_path = experiment_verify_script_path(name)
+        run_path, verify_path = experiment_script_paths(name)
         run_script = _required_overlay_file(layout, run_path, f"experiment {name!r} run script")
-        verify_script = layout.overlay_file(verify_path)
+        verify_script = _required_overlay_file(layout, verify_path, f"experiment {name!r} verify script")
         experiments.append(
             {
                 "name": name,
                 "run_script_path": run_path,
                 "run_script_digest": digest_file(run_script),
                 "run_script_size": run_script.stat().st_size,
-                "verify_script_path": verify_path if verify_script.is_file() else None,
-                "verify_script_digest": digest_file(verify_script) if verify_script.is_file() else None,
-                "verify_script_size": verify_script.stat().st_size if verify_script.is_file() else None,
+                "verify_script_path": verify_path,
+                "verify_script_digest": digest_file(verify_script),
+                "verify_script_size": verify_script.stat().st_size,
                 "output_paths": experiment.get("output_paths") or [],
             }
         )

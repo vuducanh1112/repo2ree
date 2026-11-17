@@ -90,7 +90,7 @@ def test_a_run_lost_with_its_workbench_is_an_operation_through_its_dispatch() ->
 
 def test_actions_no_entry_draws_are_placed_by_journal_position_and_reads_are_left_out() -> None:
     s = recorded()
-    requested(s, 25.0, "act-write", "write_file", "failed", path="notes.txt", http_status=503)
+    requested(s, 25.0, "act-write", "write_script", "failed", path="notes.txt", http_status=503)
     requested(s, 26.0, "act-view", "view_action", "succeeded", about_action_id="act-run-build")
     s.operation("run-test", "test_activation", "a-test", "test_activation", 30.0)
     s.commit(5, "a-test", "test_activation", "run-test", [], ("draft", "draft"))
@@ -102,7 +102,7 @@ def test_actions_no_entry_draws_are_placed_by_journal_position_and_reads_are_lef
         ("authoring", "authoring", None),
         ("operation", "build_experiment_environment", "succeeded"),
         ("operation", "generate_sbom", "succeeded"),
-        ("action", "write_file", "failed"),
+        ("action", "write_script", "failed"),
         ("operation", "test_activation", "succeeded"),
         ("action", "delete_ree", "succeeded"),
     ]

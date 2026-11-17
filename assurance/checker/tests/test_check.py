@@ -680,10 +680,10 @@ def test_evidence_from_a_failed_attempt_is_violated() -> None:
 def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> None:
     recorder = Recorder()
     recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
-    recorder.attempt("a1", operation="write_file")
+    recorder.attempt("a1", operation="write_script")
     recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
     assert findings(recorder, "receipts-come-from-their-producers") == [
-        "violated: Attempt a1 reached captured with {'outcome': 'succeeded', 'operation': 'write_file'}"
+        "violated: Attempt a1 reached captured with {'outcome': 'succeeded', 'operation': 'write_script'}"
     ]
 
 

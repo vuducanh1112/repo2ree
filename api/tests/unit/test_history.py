@@ -11,7 +11,7 @@ def test_history_endpoint_includes_failed_and_pending_attempts(client, online_re
         {
             "attempt_id": "one",
             "run_id": "run",
-            "command": {"operation": "write_file", "args": {"path": "x"}},
+            "command": {"operation": "write_script", "args": {"path": "x"}},
             "scope": ".",
             "operation_status": "failed",
             "capture_status": "captured",

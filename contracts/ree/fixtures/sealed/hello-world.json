@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:1b61dce9068f1c728f7466fb63a4f36de008b7f74b90a94fe0300725090b457e",
+    "ree_digest": "sha256:c439f77cc8123ec540b8a50f6ac8e3ec7226ab57bef476eb51b3efb3dc5f4662",
     "sealed_at": "2026-11-12T15:07:46.116803Z"
   },
   "subject": {
@@ -64,6 +64,11 @@
           "size": 124
         },
         {
+          "path": "overlay/ree-scripts/check_working_environment.sh",
+          "digest": "sha256:377c8cc52c71a7f3727bb95dcd358309bbd9377a11efe2722c1934fda3dcc480",
+          "size": 2432
+        },
+        {
           "digest": "sha256:fdf3dc4a13f4d5ad6ce47890ffbefbca330f806bbf5724aabf4169ef2e291c6f",
           "path": "overlay/ree-scripts/experiments/python-hello.sh",
           "size": 77
@@ -72,6 +77,11 @@
           "digest": "sha256:fe95e38cfebb82d420df440287581b32959c5168b4191e298cfabf99da98efbe",
           "path": "overlay/ree-scripts/experiments/python-hello.verify.sh",
           "size": 68
+        },
+        {
+          "path": "overlay/ree-scripts/launch.sh",
+          "digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+          "size": 320
         },
         {
           "digest": "sha256:eb350ba0bd51631d3dd35c6a78db5984b24dd6c59bbb896d673bab666f0943c5",
@@ -143,6 +153,16 @@
       "name": "ree-hello-world",
       "source": {
         "source_type": "tarball"
+      },
+      "launch": {
+        "launch_script_path": "ree-scripts/launch.sh",
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa",
+        "launch_script_size": 320
+      },
+      "check_working_environment": {
+        "check_working_environment_script_path": "ree-scripts/check_working_environment.sh",
+        "check_working_environment_script_digest": "sha256:377c8cc52c71a7f3727bb95dcd358309bbd9377a11efe2722c1934fda3dcc480",
+        "check_working_environment_script_size": 2432
       }
     },
     "receipts": {
@@ -153,7 +173,7 @@
         "experiment_environment_digest": "sha256:9cd519ec5ff3d721ea2ac814dfd9265d3d433dd90aa1e6563f0a3cd2f9938d52",
         "experiment_environment_path": "source/runtime.tar",
         "finished_at": "2026-11-12T15:07:33.730267Z",
-        "operation": "activation_test",
+        "operation": "activate_experiment_environment",
         "recorded_at": "2026-11-12T15:07:33.730267Z",
         "run_id": "activation-255c57f341764aa3bfbfa7e8556497e7",
         "schema_version": 1,
@@ -166,7 +186,8 @@
             "kernel": "6.12.5-linuxkit",
             "os": "Debian GNU/Linux 13 (trixie)"
           }
-        }
+        },
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa"
       },
       "evaluation": {
         "analyzer_version": "1",
@@ -213,7 +234,8 @@
           "changed_path_count": 0,
           "changed_paths": [],
           "status": "clean"
-        }
+        },
+        "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa"
       },
       "experiments": {
         "python-hello": {
@@ -240,7 +262,8 @@
               "kernel": "6.12.5-linuxkit",
               "os": "Debian GNU/Linux 13 (trixie)"
             }
-          }
+          },
+          "launch_script_digest": "sha256:075a3ccf75277e5270a9e861fcab80cadf911e02f07b872268b2a51fd6d047fa"
         }
       },
       "sbom": {

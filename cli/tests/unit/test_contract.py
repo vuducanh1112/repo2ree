@@ -34,7 +34,7 @@ def test_the_contract_is_valid_and_ree_schema_prints_it() -> None:
 
 def test_a_command_that_runs_names_its_operations_and_a_read_none() -> None:
     assert command("seal")["operations"] == ["seal_ree"]
-    assert command("infer")["operations"] == ["generate_script_candidates", "write_file"]
+    assert command("infer")["operations"] == ["suggest_scripts", "write_script"]
     assert command("review", "all")["operations"][0] == "review_acquire_source"
     assert command("status")["operations"] == []
     assert [step["commands"] for step in DOCUMENT["steps"] if step["key"] == "seal"] == [["seal"]]

@@ -297,7 +297,7 @@ def test_review_all_runs_every_step_in_one_review(root: Path, monkeypatch: pytes
     assert [cmd.operation for cmd in ran] == [
         "review_acquire_source",
         "review_build_experiment_environment",
-        "review_activation_test",
+        "review_activate_experiment_environment",
         "review_run_experiment",
     ]
     assert len({cmd.args.review_id for cmd in ran}) == 1

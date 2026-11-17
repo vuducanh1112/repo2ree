@@ -22,7 +22,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.persistence.run_lock import holding_ree
-from repo2ree_protocol.command import Command, WriteFileArgs, WriteFileCommand
+from repo2ree_protocol.command import Command, WriteScriptArgs, WriteScriptCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -158,7 +158,7 @@ def pick_up_authored_edits(layout: ReeLayout, *, log: LogSink) -> list[ActionRes
     """Record every script the author edited in ``overlay/`` directly, before anything else runs.
 
     The overlay is where an REE's scripts live, and a person edits them there with their own editor; until an
-    edit is written through ``write_file`` the workspace keeps the old script and the definition its old digest.
+    edit is written through ``write_script`` the workspace keeps the old script and the definition its old digest.
     Each edited script is written as it is, an attempt of its own, so its history is that of an edit made through
     any other caller. A script deleted from the overlay directly is not picked up: ``ree rm`` deletes one.
     """
@@ -185,7 +185,7 @@ def pick_up_authored_edits(layout: ReeLayout, *, log: LogSink) -> list[ActionRes
         context = ExecutionContext.new()
         results.append(
             run_command(
-                WriteFileCommand(args=WriteFileArgs(path=str(path), content=content)),
+                WriteScriptCommand(args=WriteScriptArgs(path=str(path), content=content)),
                 layout=layout,
                 log=log,
                 run_id=f"edit-{context.attempt_id}",

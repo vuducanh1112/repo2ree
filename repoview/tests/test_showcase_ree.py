@@ -128,7 +128,7 @@ def write(repo: Path, path: str, body: str) -> None:
     target = repo / "overlay" / path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(body)
-    operation(repo, "write_file", {"path": path, "content": body})
+    operation(repo, "write_script", {"path": path, "content": body})
 
 
 def sealed_test(tmp_path: Path) -> Path:
@@ -150,12 +150,12 @@ def sealed_test(tmp_path: Path) -> Path:
         ],
         "dags": [BUILD_DAG],
     }
-    operation(repo, "generate_script_candidates", outputs=report)
+    operation(repo, "suggest_scripts", outputs=report)
     write(repo, BUILD, PROPOSED_BUILD)
     write(repo, ACTIVATE, '#!/usr/bin/env sh\nPATH=/venv/bin:$PATH\nexec "$@"\n')
     write(repo, EXPERIMENT, "python main.py\n")
     nothing = {"target": {"kind": "experiment_verify", "path": VERIFY}, "status": "not_inferred"}
-    operation(repo, "generate_script_candidates", outputs={"results": [nothing | {"application": "unavailable"}]})
+    operation(repo, "suggest_scripts", outputs={"results": [nothing | {"application": "unavailable"}]})
     write(repo, VERIFY, "grep -q Hello result.txt\n")
     operation(repo, "seal_ree", outputs={"sealed_at": "2026-11-13T00:00:00Z", "ree_digest": "sha256:aa"})
     operation(repo, "run_experiment")

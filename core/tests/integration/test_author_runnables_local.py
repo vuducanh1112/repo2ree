@@ -7,8 +7,11 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt
-from repo2ree_core.operations.handlers.author.activation_test import handle_activation_test
+from repo2ree_core.operations.handlers.author.activate_experiment_environment import (
+    handle_activate_experiment_environment,
+)
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
+from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import RunExperimentArgs
@@ -17,7 +20,6 @@ from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
     ExperimentDefinition,
     Ree,
-    ReeDefinition,
     ReeSubject,
 )
 from repo2ree_ree.primitives import OverlayPath, RunId, WorkspacePath, parse_utc_instant
@@ -37,7 +39,8 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
 ) -> None:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
-    store.ensure_dirs()
+    initialize_ree(layout, name="local")
+    started = store.read_ree().subject.definition
     # The activation enters an "environment" (a variable) and hands over to whatever it is given.
     activate = (
         b'#!/bin/sh\nset -eu\nprintf entered >> activation.out\nprintf "%s\\n" "$*" >> handed.out\n'
@@ -52,23 +55,25 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, activate)
     store.workspace.write_bytes(experiment_run_path, experiment_run)
     store.workspace.write_bytes(experiment_verify_path, experiment_verify)
-    definition = ReeDefinition(
-        activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
-            activate_experiment_environment_script_digest=digest_bytes(activate),
-            activate_experiment_environment_script_size=len(activate),
-        ),
-        experiments=(
-            ExperimentDefinition(
-                name=name,
-                run_script_path=OverlayPath(experiment_run_path),
-                run_script_digest=digest_bytes(experiment_run),
-                run_script_size=len(experiment_run),
-                verify_script_path=OverlayPath(experiment_verify_path),
-                verify_script_digest=digest_bytes(experiment_verify),
-                verify_script_size=len(experiment_verify),
-                output_paths=(WorkspacePath("outputs/result.txt"),),
+    definition = started.model_copy(
+        update={
+            "activate_experiment_environment": ActivateExperimentEnvironmentDefinition(
+                activate_experiment_environment_script_digest=digest_bytes(activate),
+                activate_experiment_environment_script_size=len(activate),
             ),
-        ),
+            "experiments": (
+                ExperimentDefinition(
+                    name=name,
+                    run_script_path=OverlayPath(experiment_run_path),
+                    run_script_digest=digest_bytes(experiment_run),
+                    run_script_size=len(experiment_run),
+                    verify_script_path=OverlayPath(experiment_verify_path),
+                    verify_script_digest=digest_bytes(experiment_verify),
+                    verify_script_size=len(experiment_verify),
+                    output_paths=(WorkspacePath("outputs/result.txt"),),
+                ),
+            ),
+        }
     )
     ree = Ree(subject=ReeSubject(definition=definition))
     ree = commit_receipt(
@@ -85,7 +90,7 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
         ),
     )
     store.write_ree(ree)
-    activation_result = handle_activation_test(
+    activation_result = handle_activate_experiment_environment(
         run_id="activation-local",
         log=lambda *args: None,
         is_canceled=lambda: False,

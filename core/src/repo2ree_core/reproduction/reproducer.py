@@ -66,6 +66,8 @@ from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_singl
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
+    RESERVED_LAUNCH_SCRIPT,
 )
 
 # ================================================
@@ -136,18 +138,16 @@ def build_reproducer_sh(
     experiments: Sequence[tuple[str, str, str]],
     experiment_environment_workspace_path: str | None,
     experiment_environment_artifact_basename: str | None,
-    launch_script: str | None = None,
-    check_script: str | None = None,
+    launch_script: str = RESERVED_LAUNCH_SCRIPT,
+    check_script: str = RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
 ) -> bytes:
     """Render the self-contained ``run.sh`` for a bundle.
 
-    With ``launch_script``, every script runs through the author's launch script, as on the author's workbench,
-    unless the reproducer sets ``REE_LAUNCH``. With ``check_script``, ``all`` runs the author's check of the
-    working environment before anything else runs.
+    Every script runs through the author's launch script, as on the author's workbench, unless the reproducer sets
+    ``REE_LAUNCH``, and ``all`` runs the author's check of the working environment before anything else runs.
 
     ``experiments`` is a sequence of ``(name, run_script, verify_script)``
-    triples; ``verify_script`` may be empty (run only, exit code is the
-    verdict). The experiment environment arguments are non-empty together only when a built
+    triples. The experiment environment arguments are non-empty together only when a built
     experiment environment was sealed into ``ree/artifacts/``; when either is missing the
     script builds instead of reusing. Source acquisition (snapshot-extract or
     origin-fetch + SWHID verify) is delegated to the bundled
@@ -166,8 +166,8 @@ def build_reproducer_sh(
             f"ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT={shell_single_quote(activate_experiment_environment_script)}",
             f"EXPERIMENT_ENVIRONMENT_WS_PATH={shell_single_quote(experiment_environment_workspace_path or '')}",
             f"EXPERIMENT_ENVIRONMENT_ARTIFACT={shell_single_quote(experiment_environment_artifact_basename or '')}",
-            f"LAUNCH_SCRIPT={shell_single_quote(launch_script or '')}",
-            f"CHECK_SCRIPT={shell_single_quote(check_script or '')}",
+            f"LAUNCH_SCRIPT={shell_single_quote(launch_script)}",
+            f"CHECK_SCRIPT={shell_single_quote(check_script)}",
         )
     )
     script = (
@@ -192,8 +192,8 @@ def reproducer_entries(
     source_type: str = "",
     revision: str = "",
     swhid: str = "",
-    launch_script: str | None = None,
-    check_script: str | None = None,
+    launch_script: str = RESERVED_LAUNCH_SCRIPT,
+    check_script: str = RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT,
 ) -> list[tuple[str, bytes]]:
     """Return the ``(path, bytes)`` bundle entries for the reproducer.
 
@@ -230,10 +230,8 @@ def reproducer_entries(
     ]
 
 
-def _working_environment_text(check_script: str | None) -> str:
+def _working_environment_text(check_script: str) -> str:
     """What the scripts need from the machine that runs them, for a reader about to run them."""
-    if not check_script:
-        return "The scripts run in whatever shell runs `run.sh`; the author left no check of what they need."
     return (
         f"The scripts run in whatever shell runs `run.sh`. What they need from it is the author's check, "
         f"`{check_script}` (in `ree/@@OVERLAY_DIRNAME@@/`): `sh run.sh check-working-environment` runs it alone, and "
@@ -241,13 +239,8 @@ def _working_environment_text(check_script: str | None) -> str:
     )
 
 
-def _launch_text(launch_script: str | None) -> str:
+def _launch_text(launch_script: str) -> str:
     """How the scripts are launched, and how a reproducer launches them otherwise."""
-    if not launch_script:
-        return (
-            "The author ran every script directly. To launch each through something of your own, a scheduler for "
-            "instance, set `REE_LAUNCH` to its command: `REE_LAUNCH='srun -N1 -t 30' sh run.sh all`."
-        )
     return (
         f"The author launched every script through `{launch_script}` (in `ree/@@OVERLAY_DIRNAME@@/`), "
         "and `run.sh` does the same: read it to see the launcher and the options it sets. To change that:\n\n"
@@ -297,19 +290,15 @@ _RUN_SH_TEMPLATE = shell_text("""
     say() { printf '%s\\n' "$*"; }
     die() { printf 'error: %s\\n' "$*" >&2; exit 1; }
 
-    # Every script runs through the author's launch script when the REE declares one, as on the author's
+    # Every script runs through the author's launch script, as on the author's
     # workbench. REE_LAUNCH=native runs them directly; REE_LAUNCH='<command>' launches them with that command
     # instead; REE_LAUNCH_OPTIONS reaches the author's launch script, which adds it to its launcher's options.
     launched() {
       case "${REE_LAUNCH:-}" in
         native) "$@" ;;
         "")
-          if [ -n "$LAUNCH_SCRIPT" ]; then
-            [ -f "$LAUNCH_SCRIPT" ] || die "launch script not found in workspace: $LAUNCH_SCRIPT"
-            sh "$LAUNCH_SCRIPT" "$@"
-          else
-            "$@"
-          fi ;;
+          [ -f "$LAUNCH_SCRIPT" ] || die "launch script not found in workspace: $LAUNCH_SCRIPT"
+          sh "$LAUNCH_SCRIPT" "$@" ;;
         *) eval "$REE_LAUNCH" '"$@"' ;;
       esac
     }
@@ -318,7 +307,7 @@ _RUN_SH_TEMPLATE = shell_text("""
     launch_prefix() {
       case "${REE_LAUNCH:-}" in
         native) ;;
-        "") if [ -n "$LAUNCH_SCRIPT" ]; then printf 'sh %s ' "$LAUNCH_SCRIPT"; fi ;;
+        "") printf 'sh %s ' "$LAUNCH_SCRIPT" ;;
         *) printf '%s ' "$REE_LAUNCH" ;;
       esac
     }
@@ -417,18 +406,16 @@ _RUN_SH_TEMPLATE = shell_text("""
     }
 
     # Run a run script inside the activated experiment environment, then its verify
-    # script (when declared) outside it.
+    # script outside it.
     run_verified() {
-      script=$1; verify=${2:-}
+      script=$1; verify=$2
       run_activated "$script"
-      [ -z "$verify" ] && return 0
       run_verify_only "$verify"
     }
 
     # The author's check that this machine offers what the scripts need, launched as every script is.
     do_check() {
       ensure_workspace
-      [ -n "$CHECK_SCRIPT" ] || { say "The author declared no check of the working environment."; return 0; }
       say "== check-working-environment =="
       run_in_workspace "$CHECK_SCRIPT"
     }
@@ -461,9 +448,8 @@ _RUN_SH_TEMPLATE = shell_text("""
 
     # Verify only: re-check an experiment's claim against the outputs a previous run
     # left in the workspace, without re-running. Needs the workspace populated but not
-    # the experiment environment (the verify script only reads workspace files). Fails if the
-    # experiment declares no verify script, or if the outputs it expects are absent
-    # (never produced, or the workspace was reset since the run).
+    # the experiment environment (the verify script only reads workspace files). Fails if
+    # the outputs it expects are absent (never produced, or the workspace was reset since the run).
     do_verify() {
       name=${1:-}
       [ -n "$name" ] || die "usage: $0 verify <name>"
@@ -473,7 +459,6 @@ _RUN_SH_TEMPLATE = shell_text("""
       done)
       [ -n "$match" ] || die "no experiment named: $name (try '$0 list')"
       verify=$(printf '%s' "$match" | cut -f2)
-      [ -n "$verify" ] || die "experiment '$name' declares no verify script — nothing to verify"
       say "== verify: $name =="
       run_verify_only "$verify"
     }
@@ -483,10 +468,8 @@ _RUN_SH_TEMPLATE = shell_text("""
     # each other). Aborts on the first failure (set -e), including inside the loop.
     do_all() {
       do_materialize
-      if [ -n "$CHECK_SCRIPT" ]; then
-        say "== check-working-environment =="
-        run_in_workspace "$CHECK_SCRIPT"
-      fi
+      say "== check-working-environment =="
+      run_in_workspace "$CHECK_SCRIPT"
       ensure_experiment_environment
       say "== test-activation =="
       run_activation

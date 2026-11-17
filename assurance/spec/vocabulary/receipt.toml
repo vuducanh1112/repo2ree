@@ -21,7 +21,7 @@ not_applicable = "Nothing is declared for this step to be about, and there is no
 [facts]
 # source, evaluation, hardware, working_environment_check, experiment_environment, sbom, sbom_cross_check, activation, or experiment:<name>.
 step = "str"
-operation = "str?"
+operation = { type = "str?", catalogue = ["operations"] }
 attempt_id = "str?"
 
 # The step without the experiment name.

@@ -202,16 +202,14 @@ def _audit_working_environment_check_step(subject: _Subject) -> StepAudit:
     declared, receipt = subject.definition.check_working_environment, subject.receipts.working_environment_check
     reasons: list[str] = []
     if receipt:
-        if declared is None:
-            reasons.append("the check was removed")
-        elif receipt.check_working_environment_script_digest != declared.check_working_environment_script_digest:
+        if receipt.check_working_environment_script_digest != declared.check_working_environment_script_digest:
             reasons.append("check script changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("the working environment has not been checked",)),
-        applicable=declared is not None or receipt is not None,
+        applicable=True,
     )
 
 
@@ -221,13 +219,10 @@ def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
     if receipt:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
             reasons.append("source snapshot changed")
-        if build is None:
-            reasons.append("experiment environment build definition was removed")
-        else:
-            if receipt.build_experiment_environment_script_digest != build.build_experiment_environment_script_digest:
-                reasons.append("build experiment environment script changed")
-            if receipt.artifact_path != build.artifact_path:
-                reasons.append("experiment environment artifact path changed")
+        if receipt.build_experiment_environment_script_digest != build.build_experiment_environment_script_digest:
+            reasons.append("build experiment environment script changed")
+        if receipt.artifact_path != build.artifact_path:
+            reasons.append("experiment environment artifact path changed")
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
     return _step(
@@ -239,23 +234,13 @@ def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
 
 
 def _launch_changed(subject: _Subject, ran_under: Digest | None) -> bool:
-    """Whether the step ran under another launch than the one the REE declares, or none where it declares one."""
-    declared = subject.definition.launch
-    return ran_under != (declared.launch_script_digest if declared else None)
+    """Whether the step ran under another launch than the one the REE declares, or under none."""
+    return ran_under != subject.definition.launch.launch_script_digest
 
 
 def _experiment_environment_is_declared(subject: _Subject) -> bool:
-    """Whether this REE says an experiment environment should exist and how to produce one.
-
-    One question, asked in one place, because more than one step turns on it —
-    the build itself and the SBOM scanned off what it produced. It used to be
-    spelled ``experiment environment is not None and build_experiment_environment is not None`` at each site,
-    a conjunction no other step needed, because the two halves of one recipe
-    were two optional fields. They are one now, so the remaining check is what
-    it always meant: a recipe that has been told where to leave its artifact.
-    """
-    build = subject.definition.experiment_environment
-    return build is not None and build.artifact_path is not None
+    """Whether the build has been told where to leave the experiment environment: the build and its SBOM turn on it."""
+    return subject.definition.experiment_environment.artifact_path is not None
 
 
 def _audit_sbom_step(subject: _Subject) -> StepAudit:
@@ -301,7 +286,7 @@ def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
 
 def _audit_activation_step(subject: _Subject) -> StepAudit:
     """The activation, run alone: what it ran with, against what the REE now declares and was built from."""
-    declared, receipt = subject.definition.activate_experiment_environment, subject.receipts.activation
+    receipt = subject.receipts.activation
     reasons: list[str] = []
     if receipt:
         if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
@@ -318,14 +303,12 @@ def _audit_activation_step(subject: _Subject) -> StepAudit:
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("the activation has not been tested",)),
-        applicable=declared is not None,
+        applicable=True,
     )
 
 
 def _activation_reasons(subject: _Subject, ran_with: Digest) -> tuple[str, ...]:
     declared = subject.definition.activate_experiment_environment
-    if declared is None:
-        return ("activate experiment environment definition was removed",)
     if ran_with != declared.activate_experiment_environment_script_digest:
         return ("activate experiment environment script changed",)
     return ()

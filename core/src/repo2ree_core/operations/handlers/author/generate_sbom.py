@@ -145,8 +145,8 @@ def _check_preconditions(
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot generate an SBOM")
     experiment_environment = ree.subject.definition.experiment_environment
-    experiment_environment_path = experiment_environment.artifact_path if experiment_environment else None
-    if experiment_environment is None or experiment_environment_path is None:
+    experiment_environment_path = experiment_environment.artifact_path
+    if experiment_environment_path is None:
         raise ReePreconditionError("no experiment environment artifact path is declared")
     if not is_experiment_environment_archive(str(experiment_environment.artifact_path)):
         raise ValueError("SBOM generation currently supports experiment environment tarballs only")

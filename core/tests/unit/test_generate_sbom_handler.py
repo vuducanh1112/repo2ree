@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import LAUNCH, ree_definition, with_fixed_scripts
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
 from repo2ree_core.domain.ree.envelope import ReceiptEnvelopeFields
@@ -13,7 +14,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeSubject
 from repo2ree_ree.primitives import (
     ExperimentEnvironmentPath,
     OverlayPath,
@@ -45,7 +46,7 @@ def _ree(
     with_build: bool = True,
     experiment_environment_path: str = "runtime.tar",
 ) -> Ree:
-    definition = ReeDefinition(
+    definition = ree_definition(
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
             build_experiment_environment_script_size=len(_SCRIPT),
@@ -77,6 +78,7 @@ def _ree(
             workspace_drift=WorkspaceDrift(status="unknown"),
             artifact_path=ExperimentEnvironmentPath(experiment_environment_path),
             produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
+            launch_script_digest=LAUNCH,
         ),
     )
 
@@ -90,7 +92,7 @@ def _workbench(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
-    store.write_ree(ree or _ree())
+    store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
 

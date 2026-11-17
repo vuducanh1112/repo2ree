@@ -99,7 +99,7 @@ def handle_review_build_experiment_environment(
 
     store = ReeDirectory(layout)
     experiment_environment_definition = ree.subject.definition.experiment_environment
-    if experiment_environment_definition is None or experiment_environment_definition.artifact_path is None:
+    if experiment_environment_definition.artifact_path is None:
         return stop("failed", "The author baseline declares no experiment environment artifact to certify")
     experiment_environment_path = str(experiment_environment_definition.artifact_path)
 
@@ -131,27 +131,24 @@ def handle_review_build_experiment_environment(
     if materialized.returncode != 0:
         return stop("failed", f"materialize script exited {materialized.returncode}")
 
-    # 2. Before anything runs there, the author's check of the working environment, where it declares one.
+    # 2. Before anything runs there, the author's check of the working environment.
     check = ree.subject.definition.check_working_environment
-    if check is not None:
-        try:
-            check_launch = review_launch(started, ree, review_layout.workspace)
-        except ReePreconditionError as exc:
-            return stop("failed", f"cannot launch the author's check: {exc}")
-        log("system", "info", f"review {args.review_id}: checking the working environment with the author's check")
-        checked = run_workspace_script(
-            review_layout.workspace.resolve(),
-            str(check.check_working_environment_script_path),
-            log=log,
-            is_canceled=is_canceled,
-            launch=check_launch,
-        )
-        if checked.status == "canceled" or is_canceled():
-            return stop("canceled", "check canceled")
-        if checked.status != "succeeded":
-            return stop(
-                "failed", f"the working environment does not pass the author's check (exit {checked.exit_code})"
-            )
+    try:
+        check_launch = review_launch(started, ree, review_layout.workspace)
+    except ReePreconditionError as exc:
+        return stop("failed", f"cannot launch the author's check: {exc}")
+    log("system", "info", f"review {args.review_id}: checking the working environment with the author's check")
+    checked = run_workspace_script(
+        review_layout.workspace.resolve(),
+        str(check.check_working_environment_script_path),
+        log=log,
+        is_canceled=is_canceled,
+        launch=check_launch,
+    )
+    if checked.status == "canceled" or is_canceled():
+        return stop("canceled", "check canceled")
+    if checked.status != "succeeded":
+        return stop("failed", f"the working environment does not pass the author's check (exit {checked.exit_code})")
 
     # 3. Put an experiment environment in that workspace: build one, or stage the shipped one.
     if basis == "bundled" and bundled_experiment_environment is not None:

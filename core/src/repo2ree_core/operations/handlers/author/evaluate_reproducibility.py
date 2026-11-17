@@ -13,7 +13,7 @@ from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, REPRODUCIBILITY_REPORT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
-from repo2ree_protocol.command import EvaluateDependencyScoreArgs
+from repo2ree_protocol.command import EvaluateReproducibilityArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import EvaluateOutputs
 from repo2ree_protocol.result import ActionResult
@@ -24,8 +24,8 @@ _ANALYZER_VERSION = "1"
 _REPORT_PATH = ArtifactPath(f"{ARTIFACTS_DIRNAME}/{REPRODUCIBILITY_REPORT_FILENAME}")
 
 
-def handle_evaluate_dependency_score(
-    args: EvaluateDependencyScoreArgs,
+def handle_evaluate_reproducibility(
+    args: EvaluateReproducibilityArgs,
     *,
     layout: ReeLayout,
     run_id: str,
@@ -55,11 +55,11 @@ def handle_evaluate_dependency_score(
         log("system", "error", str(exc))
         return ActionResult.failed("execution", str(exc))
     except Exception as exc:
-        log("system", "error", f"evaluate_dependency_score failed: {exc}")
-        return failed_from_exception(exc, f"evaluate_dependency_score failed: {exc}")
+        log("system", "error", f"evaluate_reproducibility failed: {exc}")
+        return failed_from_exception(exc, f"evaluate_reproducibility failed: {exc}")
 
     if is_canceled():
-        log("system", "warn", "evaluate_dependency_score canceled")
+        log("system", "warn", "evaluate_reproducibility canceled")
         return ActionResult(status="canceled")
 
     try:

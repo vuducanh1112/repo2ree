@@ -15,7 +15,10 @@ def main() -> None:
 
     with open("fit.csv", "w", encoding="utf-8") as table:
         table.write("hour,measured,fitted\n")
-        table.writelines(f"{hour:.0f},{measured:.1f},{value:.4f}\n" for hour, measured, value in zip(HOURS, MEASURED, fitted, strict=True))
+        table.writelines(
+            f"{hour:.0f},{measured:.1f},{value:.4f}\n"
+            for hour, measured, value in zip(HOURS, MEASURED, fitted, strict=True)
+        )
 
     figure, axes = plt.subplots(figsize=(8, 6), dpi=100)
     axes.scatter(HOURS, MEASURED, label="measured")

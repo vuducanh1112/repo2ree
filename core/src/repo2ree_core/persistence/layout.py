@@ -190,7 +190,7 @@ class ReeLayout:
 
     @property
     def reproducibility_report(self) -> Path:
-        """This REE's evaluate report, written by ``evaluate_dependency_score``.
+        """This REE's evaluate report, written by ``evaluate_reproducibility``.
 
         Beside the SBOM in ``artifacts/`` and for the same reason: produced
         evidence, not an authored file. Its presence is also the evaluate step's

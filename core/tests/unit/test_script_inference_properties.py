@@ -20,6 +20,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from ree_definitions import PLACEHOLDER, ree_definition
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
 from repo2ree_core.author_recipes.inference import infer_scripts
@@ -34,9 +35,9 @@ from repo2ree_core.author_recipes.inference.repository_facts import resolve_logi
 from repo2ree_core.author_recipes.inference.resolvers import ScoreFreeViabilityResolver
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.model import ExperimentDefinition
 from repo2ree_ree.primitives import OverlayPath, WorkspacePath
-from repo2ree_ree.reserved_paths import experiment_run_script_path
+from repo2ree_ree.reserved_paths import experiment_run_script_path, experiment_verify_script_path
 
 pytestmark = pytest.mark.property
 
@@ -180,7 +181,7 @@ def test_build_inference_is_deterministic_and_automatic_is_safe(has_docker: bool
     try:
         _make_build_tree(dir_a, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
         _make_build_tree(dir_b, has_docker=has_docker, has_req=has_req, wrapped=wrapped)
-        definition = ReeDefinition(name="Demo REE")
+        definition = ree_definition(name="Demo REE")
         selectors = [ScriptTargetSelectorArg(kind="build_experiment_environment")]
         result_a = infer_scripts(dir_a, selectors, definition=definition).results[0]
         result_b = infer_scripts(dir_b, selectors, definition=definition).results[0]
@@ -224,7 +225,7 @@ _NASTY = [
 
 
 def _docker_activate_body(root: Path, experiment_environment_path: str, image_tag: str) -> str:
-    definition = ReeDefinition(name="Demo")
+    definition = ree_definition(name="Demo")
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=experiment_environment_path,
         accessor=MemoryAccessor({experiment_environment_path: docker_archive([image_tag], cmd=["python", "main.py"])}),
@@ -273,7 +274,7 @@ def test_adversarial_declared_experiment_environment_cannot_break_the_build_expe
     report = infer_scripts(
         tmp_path,
         [ScriptTargetSelectorArg(kind="build_experiment_environment")],
-        definition=ReeDefinition(name="Demo"),
+        definition=ree_definition(name="Demo"),
         experiment_environment_inputs=ExperimentEnvironmentInputs(
             declared_experiment_environment_path=experiment_environment_path
         ),
@@ -295,7 +296,7 @@ def test_every_run_scaffold_is_fail_closed(docker: bool) -> None:
         )
         archive = docker_archive(["ree-runtime:demo"]) if docker else _venv_bytes()
         experiments = [_exp()]
-        definition = ReeDefinition(name="Demo", experiments=tuple(experiments))
+        definition = ree_definition(name="Demo", experiments=tuple(experiments))
         inputs = ExperimentEnvironmentInputs(
             declared_experiment_environment_path=experiment_environment,
             experiments=experiments,
@@ -346,4 +347,7 @@ def _exp():
         run_script_digest=digest_bytes(b"script"),
         run_script_size=6,
         output_paths=(WorkspacePath("results/run.log"),),
+        verify_script_path=OverlayPath(experiment_verify_script_path("run")),
+        verify_script_digest=PLACEHOLDER,
+        verify_script_size=1,
     )

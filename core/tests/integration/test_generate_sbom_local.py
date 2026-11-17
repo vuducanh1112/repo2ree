@@ -8,10 +8,11 @@ import pytest
 
 from repo2ree_core.domain.ree.transitions import commit_receipt
 from repo2ree_core.operations.handlers.author.generate_sbom import handle_generate_sbom
+from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeSubject
 from repo2ree_ree.primitives import (
     ExperimentEnvironmentPath,
     OverlayPath,
@@ -30,17 +31,20 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
 ) -> None:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
-    store.ensure_dirs()
+    initialize_ree(layout, name="local")
+    started = store.read_ree().subject.definition
     script = b"#!/bin/sh\nexit 0\n"
     experiment_environment = b"local experiment environment archive"
     (layout.workspace / "runtime.tar").write_bytes(experiment_environment)
 
-    definition = ReeDefinition(
-        experiment_environment=ExperimentEnvironmentDefinition(
-            build_experiment_environment_script_digest=digest_bytes(script),
-            build_experiment_environment_script_size=len(script),
-            artifact_path=ExperimentEnvironmentPath("runtime.tar"),
-        ),
+    definition = started.model_copy(
+        update={
+            "experiment_environment": ExperimentEnvironmentDefinition(
+                build_experiment_environment_script_digest=digest_bytes(script),
+                build_experiment_environment_script_size=len(script),
+                artifact_path=ExperimentEnvironmentPath("runtime.tar"),
+            )
+        }
     )
     ree = Ree(subject=ReeSubject(definition=definition))
     ree = commit_receipt(
@@ -70,6 +74,7 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
             workspace_drift=WorkspaceDrift(status="unknown"),
             artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=digest_bytes(experiment_environment),
+            launch_script_digest=started.launch.launch_script_digest,
         ),
     )
     store.write_ree(ree)

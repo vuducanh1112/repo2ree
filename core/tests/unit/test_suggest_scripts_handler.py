@@ -1,4 +1,4 @@
-"""Unit coverage for the generate_script_candidates operations handler.
+"""Unit coverage for the suggest_scripts operations handler.
 
 Runs the handler against an REE in a tmp root and exercises the precondition
 guard, the read-only success path, and that inference reads the immutable
@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 from scriptinfer_helpers import FixedEngines
 
-from repo2ree_core.operations.handlers.author import generate_script_candidates as handler
+from repo2ree_core.operations.handlers.author import suggest_scripts as handler
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
+from repo2ree_protocol.command import ScriptTargetSelectorArg, SuggestScriptsArgs
 
 
 @pytest.fixture(autouse=True)
@@ -46,15 +46,15 @@ def _seed_upstream(tmp_path: Path, files: dict[str, str]) -> None:
         fp.write_text(content)
 
 
-def _args(*kinds: str) -> GenerateScriptCandidatesArgs:
+def _args(*kinds: str) -> SuggestScriptsArgs:
     targets = [ScriptTargetSelectorArg.model_validate({"kind": k}) for k in kinds]
-    return GenerateScriptCandidatesArgs(targets=targets)
+    return SuggestScriptsArgs(targets=targets)
 
 
 def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
-    result = handler.handle_generate_script_candidates(
-        GenerateScriptCandidatesArgs(targets=[]),
+    result = handler.handle_suggest_scripts(
+        SuggestScriptsArgs(targets=[]),
         log=_silent_log,
         is_canceled=_never_canceled,
         layout=ReeLayout(root=tmp_path),
@@ -67,7 +67,7 @@ def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.Monk
 def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)  # ensure_dirs does not create upstream
     (tmp_path / "upstream").rmdir() if (tmp_path / "upstream").is_dir() else None
-    result = handler.handle_generate_script_candidates(
+    result = handler.handle_suggest_scripts(
         _args("build_experiment_environment"),
         log=_silent_log,
         is_canceled=_never_canceled,
@@ -81,7 +81,7 @@ def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.Mo
 def test_build_success_returns_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _store_at(tmp_path, monkeypatch)
     _seed_upstream(tmp_path, {"Dockerfile": "FROM x\n", "main.py": "y"})
-    result = handler.handle_generate_script_candidates(
+    result = handler.handle_suggest_scripts(
         _args("build_experiment_environment"),
         log=_silent_log,
         is_canceled=_never_canceled,
@@ -103,7 +103,7 @@ def test_inference_ignores_overlay_generated_output(tmp_path: Path, monkeypatch:
     overlay_dockerfile = tmp_path / "overlay" / "Dockerfile"
     overlay_dockerfile.parent.mkdir(parents=True, exist_ok=True)
     overlay_dockerfile.write_text("FROM x\n")
-    result = handler.handle_generate_script_candidates(
+    result = handler.handle_suggest_scripts(
         _args("build_experiment_environment"),
         log=_silent_log,
         is_canceled=_never_canceled,

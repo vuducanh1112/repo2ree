@@ -12,10 +12,11 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
+from ree_definitions import bare_ree, ree_definition
 
 from repo2ree_api.deposit.models import ArchiveBindingAttestation
 from repo2ree_api.ree_index import ReeIndex, ReeIndexEntry, entry_from_ree
-from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, ReeSubject
+from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeSeal, ReeSubject
 
 # ================================================
 # Helpers
@@ -24,7 +25,7 @@ from repo2ree_ree.model import Ree, ReeCatalogMetadata, ReeDefinition, ReeSeal, 
 
 def sealed_ree(seal_hash: str, *, name: str = "demo", sealed_at: str = "2026-07-29T00:00:00Z") -> Ree:
     subject = ReeSubject(
-        definition=ReeDefinition(
+        definition=ree_definition(
             name=name,
             catalog=ReeCatalogMetadata(description="a demo", keywords=("repro",)),
         )
@@ -72,7 +73,7 @@ def test_entry_is_projected_from_the_ree() -> None:
 def test_unsealed_ree_cannot_be_indexed() -> None:
     """No digest means no identity to file the entry under."""
     with pytest.raises(ValueError, match="sealed REE"):
-        entry_from_ree(Ree())
+        entry_from_ree(bare_ree())
 
 
 # ================================================

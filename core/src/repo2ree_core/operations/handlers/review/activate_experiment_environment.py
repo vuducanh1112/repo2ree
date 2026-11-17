@@ -1,6 +1,6 @@
 """Run the author's activation alone in the experiment environment a review attempt certified.
 
-The reviewer-side counterpart of the author's ``activation_test`` step, and the
+The reviewer-side counterpart of the author's ``activate_experiment_environment`` step, and the
 only review step that certifies nothing by comparison: there is no author
 artifact to reproduce, so whether the activation enters and hands over is the whole claim.
 
@@ -24,9 +24,9 @@ from repo2ree_core.operations.steps.review import (
     open_review_run,
 )
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.command import ReviewActivationTestArgs
+from repo2ree_protocol.command import ReviewActivateExperimentEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
-from repo2ree_protocol.outputs import ReviewActivationTestOutputs
+from repo2ree_protocol.outputs import ReviewActivateExperimentEnvironmentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
@@ -36,8 +36,6 @@ from repo2ree_ree.review import ActivationOutcome, ActivationVerdict, ReviewActi
 
 def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
     activation = definition.activate_experiment_environment
-    if activation is None:
-        raise ValueError("no activate experiment environment script is declared")
     return RunnableSpec(activate_script=str(activation.activate_experiment_environment_script_path)), "activation"
 
 
@@ -67,8 +65,8 @@ _STEP = ReviewRunnableStep(
 )
 
 
-def handle_review_activation_test(
-    args: ReviewActivationTestArgs,
+def handle_review_activate_experiment_environment(
+    args: ReviewActivateExperimentEnvironmentArgs,
     *,
     layout: ReeLayout,
     run_id: str,
@@ -131,7 +129,7 @@ def handle_review_activation_test(
         experiment_environment_digest=certified.experiment_environment_digest,
     )
 
-    outputs = ReviewActivationTestOutputs(
+    outputs = ReviewActivateExperimentEnvironmentOutputs(
         review_id=args.review_id,
         receipt=receipt,
         outcome=activation_outcome,

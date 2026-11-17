@@ -51,12 +51,12 @@ def _recorded(context: ExecutionContext) -> ActionResult:
 
 def test_a_synchronous_action_is_requested_then_answered_with_its_attempt(actions: Records) -> None:
     context = ExecutionContext.new(ree_id="ree-1")
-    with author_actions.author_api_action("write_file", "ree-1", path="overlay/run.sh") as action_id:
+    with author_actions.author_api_action("write_script", "ree-1", path="overlay/run.sh") as action_id:
         author_actions.learn_attempt(_recorded(context))
 
     assert actions() == [
-        (action_id, None, "requested", {"action": "write_file", "path": "overlay/run.sh"}),
-        (action_id, "requested", "succeeded", {"action": "write_file", "attempt_id": context.attempt_id}),
+        (action_id, None, "requested", {"action": "write_script", "path": "overlay/run.sh"}),
+        (action_id, "requested", "succeeded", {"action": "write_script", "attempt_id": context.attempt_id}),
     ]
 
 

@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from ree_definitions import bare_ree
 
 from repo2ree_api.authoring import seal as seal_routes
 from repo2ree_api.deps import command_dispatcher
@@ -13,7 +14,6 @@ from repo2ree_core.domain.ree.steps import ree_steps
 from repo2ree_protocol.command import SealReeCommand
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.model import Ree
 from repo2ree_supervisor import ReeRoute
 
 
@@ -30,7 +30,9 @@ def test_seal_runs_in_background_and_relays_progress(
         return ActionResult(status="succeeded", outputs={"ree_digest": "sha256:value"})
 
     monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
-    document = WorkbenchReeDocument(ree=Ree(), status="draft", audit=audit(Ree()), steps=ree_steps(Ree(), audit(Ree())))
+    document = WorkbenchReeDocument(
+        ree=bare_ree(), status="draft", audit=audit(bare_ree()), steps=ree_steps(bare_ree(), audit(bare_ree()))
+    )
     monkeypatch.setattr(command_dispatcher, "get_ree_document", lambda _handle: document)
     monkeypatch.setattr(
         seal_routes,

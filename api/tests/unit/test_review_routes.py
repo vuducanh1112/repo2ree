@@ -9,7 +9,7 @@ from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.review import stages as review_routes
 from repo2ree_protocol.command import (
     ReviewAcquireSourceCommand,
-    ReviewActivationTestCommand,
+    ReviewActivateExperimentEnvironmentCommand,
     ReviewBuildExperimentEnvironmentCommand,
     ReviewRunExperimentCommand,
 )
@@ -160,7 +160,7 @@ def test_start_activation_review_targets_the_named_attempt(
     assert response.status_code == 200
     assert captured["operation"] == "activation"
     command = captured["command"]
-    assert isinstance(command, ReviewActivationTestCommand)
+    assert isinstance(command, ReviewActivateExperimentEnvironmentCommand)
     assert command.args.review_id == "review-one"
 
 

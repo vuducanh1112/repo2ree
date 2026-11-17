@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import ree_definition, with_fixed_scripts
 
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.process import StepOutcome
@@ -11,7 +12,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeDefinition, ReeSubject, SourceDefinition
+from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeSubject, SourceDefinition
 from repo2ree_ree.primitives import ExperimentEnvironmentPath, RunId, parse_utc_instant
 from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
@@ -40,7 +41,7 @@ def _ree(*, with_source: bool = True, with_experiment_environment: bool = True, 
     # Declaration and receipt move together, as ``acquire_source`` commits them:
     # a source receipt with no declaration behind it is an orphan the audit
     # reports as stale, not the ordinary acquired state this fixture stands for.
-    definition = ReeDefinition(
+    definition = ree_definition(
         source=SourceDefinition(origin_url=origin_url, source_type="git") if with_source else None,
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
@@ -62,7 +63,7 @@ def _workbench(
     store.ensure_dirs()
     store.overlay.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _SCRIPT)
     store.workspace.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _SCRIPT)
-    store.write_ree(ree or _ree())
+    store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
 

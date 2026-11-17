@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:36bd792f47bffbebfeae7d11dd8a211f903adcb9677aab4c46fd1ceadbffbf3c",
+    "ree_digest": "sha256:807e17ec5384d7f31c433ef26dcf4b70600ffcfe76bda230bc06e879fd56d980",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -150,8 +150,8 @@
         }
       },
       "launch": {
-        "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
         "launch_script_path": "ree-scripts/launch.sh",
+        "launch_script_digest": "sha256:5bf6f1dad70b56edab29987f726547c48b68304b7cacb876c5ba2975b4d873c2",
         "launch_script_size": 86
       },
       "name": "maximal",
@@ -175,7 +175,7 @@
           "slurm_job_id": "4711",
           "slurm_step_id": "0"
         },
-        "operation": "activation_test",
+        "operation": "activate_experiment_environment",
         "recorded_at": "2026-10-01T08:16:05.000000Z",
         "run_id": "run-activation",
         "schema_version": 1,

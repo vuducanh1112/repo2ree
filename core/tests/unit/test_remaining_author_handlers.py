@@ -4,22 +4,22 @@ import json
 from pathlib import Path
 
 import pytest
+from ree_definitions import LAUNCH, ree_definition, with_fixed_scripts
 
 from repo2ree_core.domain.ree.envelope import ReceiptEnvelopeFields
 from repo2ree_core.domain.ree.transitions import commit_receipt, revision_of
-from repo2ree_core.operations.handlers.author import cross_check_sbom, generate_hbom
+from repo2ree_core.operations.handlers.author import cross_check_sbom, observe_hardware
 from repo2ree_core.operations.handlers.author.patch_ree_definition import handle_patch_ree_definition
-from repo2ree_core.operations.handlers.author.write_file import handle_write_file
+from repo2ree_core.operations.handlers.author.write_script import handle_write_script
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.command import PatchReeDefinitionArgs, WriteFileArgs
+from repo2ree_protocol.command import PatchReeDefinitionArgs, WriteScriptArgs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.hbom import HBOM, CPUDefinition
 from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
     ExperimentEnvironmentDefinition,
     Ree,
-    ReeDefinition,
     ReeSubject,
     SourceDefinition,
 )
@@ -86,7 +86,7 @@ def _envelope(run_id: str) -> ReceiptEnvelopeFields:
 def _ree() -> Ree:
     return Ree(
         subject=ReeSubject(
-            definition=ReeDefinition(
+            definition=ree_definition(
                 name="demo",
                 experiment_environment=ExperimentEnvironmentDefinition(
                     build_experiment_environment_script_digest=digest_bytes(_BUILD),
@@ -113,7 +113,7 @@ def _workbench(
     store.workspace.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
     store.overlay.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE)
     store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE)
-    store.write_ree(ree or _ree())
+    store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
 
@@ -204,8 +204,8 @@ def test_recipe_file_write_rehydrates_definition_and_its_deletion_is_refused(
     _layout, store = _workbench(tmp_path, monkeypatch)
     changed = "#!/bin/sh\nprintf changed\n"
 
-    write_result = handle_write_file(
-        WriteFileArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, content=changed),
+    write_result = handle_write_script(
+        WriteScriptArgs(path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, content=changed),
         log=lambda *args: None,
         is_canceled=lambda: False,
         layout=_layout,
@@ -233,9 +233,9 @@ def test_hardware_observation_commits_receipt_without_rewriting_declaration(
 ) -> None:
     _layout, store = _workbench(tmp_path, monkeypatch)
     observed = HBOM(cpus={"Xeon": CPUDefinition(quantity=2)})
-    monkeypatch.setattr(generate_hbom, "generate_hbom", lambda: observed)
+    monkeypatch.setattr(observe_hardware, "generate_hbom", lambda: observed)
 
-    result = generate_hbom.handle_generate_hbom(
+    result = observe_hardware.handle_observe_hardware(
         run_id="hardware-1", log=lambda *args: None, is_canceled=lambda: False, layout=_layout
     )
 
@@ -257,7 +257,7 @@ def test_cross_check_commits_inline_receipt_and_preserves_evaluation_report(
     layout.reproducibility_report.write_bytes(report_bytes)
     layout.sbom.write_bytes(sbom_bytes)
     ree = _cross_check_ree(report_digest=digest_bytes(report_bytes), sbom_digest=digest_bytes(sbom_bytes))
-    store.write_ree(ree)
+    store.write_ree(with_fixed_scripts(store.layout, ree))
 
     result = cross_check_sbom.handle_cross_check_sbom(
         run_id="cross-check-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
@@ -281,7 +281,7 @@ def _cross_check_ree(
 ) -> Ree:
     report_digest = report_digest or digest_bytes(json.dumps(_REPORT).encode())
     sbom_digest = sbom_digest or digest_bytes(json.dumps(_SBOM).encode())
-    definition = ReeDefinition(
+    definition = ree_definition(
         name="demo",
         source=SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
         experiment_environment=ExperimentEnvironmentDefinition(
@@ -310,6 +310,7 @@ def _cross_check_ree(
             workspace_drift=WorkspaceDrift(status="unknown"),
             artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
+            launch_script_digest=LAUNCH,
         ),
     )
     ree = commit_receipt(

@@ -19,8 +19,8 @@ from repo2ree_api.control.run_orchestration import run_summary, start_single_com
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
     ReviewAcquireSourceCommand,
-    ReviewActivationTestArgs,
-    ReviewActivationTestCommand,
+    ReviewActivateExperimentEnvironmentArgs,
+    ReviewActivateExperimentEnvironmentCommand,
     ReviewBasis,
     ReviewBuildExperimentEnvironmentArgs,
     ReviewBuildExperimentEnvironmentCommand,
@@ -134,9 +134,11 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
 
     Takes no ``basis``, unlike the two steps before it: activation runs in the
     workspace the build left behind and inherits what that evidence is worth
-    rather than choosing (see :class:`ReviewActivationTestArgs`).
+    rather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).
     """
-    command = ReviewActivationTestCommand(args=ReviewActivationTestArgs(review_id=review_id))
+    command = ReviewActivateExperimentEnvironmentCommand(
+        args=ReviewActivateExperimentEnvironmentArgs(review_id=review_id)
+    )
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(

@@ -14,7 +14,7 @@ faked) when it is absent. Build it with ``just build-e2e-bundles``.
 
 Flow exercised over the real workbench:
     init-ree -> get-ree -> acquire_source (staged upload, no network)
-        -> write_file -> read-ree-file round-trip -> patch_ree_definition
+        -> write_script -> read-ree-file round-trip -> patch_ree_definition
         -> build_experiment_environment (real script run by the workbench)
         -> seal_ree -> build-archive -> delete
 
@@ -54,8 +54,8 @@ from repo2ree_protocol.command import (
     PatchReeDefinitionArgs,
     PatchReeDefinitionCommand,
     SealReeCommand,
-    WriteFileArgs,
-    WriteFileCommand,
+    WriteScriptArgs,
+    WriteScriptCommand,
 )
 from repo2ree_protocol.workbench import workbench_hello_adapter
 from repo2ree_supervisor import (
@@ -296,7 +296,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
     # uploaded tree is what a build will actually see.
     assert dispatcher.read_ree_file_bytes(handle, "workspace/main.py") == b"print('hello from upstream')\n"
 
-    # --- write_file: dispatched over the workbench's socket -----------
+    # --- write_script: dispatched over the workbench's socket -----------
     # The build always runs the reserved, REE-owned build script, so author the
     # recipe there. It has to *produce* the declared experiment environment: the handler digests
     # the artifact for the receipt and fails the run if the script exits clean
@@ -307,7 +307,7 @@ def test_workbench_lifecycle_e2e(workbench: tuple[CommandDispatcher, ReeRoute], 
     )
     result = dispatcher.dispatch_action(
         handle,
-        WriteFileCommand(args=WriteFileArgs(path=build_experiment_environment_script, content=build_body)),
+        WriteScriptCommand(args=WriteScriptArgs(path=build_experiment_environment_script, content=build_body)),
         "write",
         log,
     )

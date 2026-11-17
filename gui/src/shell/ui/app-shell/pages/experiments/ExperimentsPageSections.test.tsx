@@ -131,12 +131,6 @@ describe("experiment detail states", () => {
     [runState({ status: "running" }), "Running experiment…"],
     [
       runState({
-        outputs: { subjectName: "smoke", exitCode: 0, verdict: "pass" },
-      }),
-      "Command exited 0 — no verify script declared.",
-    ],
-    [
-      runState({
         outputs: { subjectName: "smoke", exitCode: 0, verifyExitCode: 0, verdict: "pass" },
       }),
       "Verify script exited 0 — the declared validation passed.",

@@ -10,17 +10,16 @@ from pathlib import Path
 import pytest
 
 from repo2ree_core.operations.handlers.author import acquire_source, remove_source
+from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import AcquireSourceArgs
-from repo2ree_ree.model import Ree
 
 
 def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[ReeLayout, ReeDirectory]:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
-    store.ensure_dirs()
-    store.write_ree(Ree())
+    initialize_ree(layout, name="local")
     return layout, store
 
 

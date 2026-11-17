@@ -6,6 +6,7 @@ import re
 
 import pytest
 from fastapi.testclient import TestClient
+from ree_definitions import bare_ree
 
 from repo2ree_api.authoring.catalog import _STEP_ACTIONS
 from repo2ree_api.deps import command_dispatcher
@@ -13,14 +14,15 @@ from repo2ree_authoring.templates import script_template_catalog
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.steps import REE_STEPS, ree_steps
 from repo2ree_protocol.document import WorkbenchReeDocument
-from repo2ree_ree.model import Ree
 from repo2ree_supervisor import ReeRoute
 
 
 @pytest.fixture
 def listed(online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch) -> ReeRoute:
     """The REE's workbench answers for a fresh REE, with the catalogs its command line prints."""
-    document = WorkbenchReeDocument(ree=Ree(), status="draft", audit=audit(Ree()), steps=ree_steps(Ree(), audit(Ree())))
+    document = WorkbenchReeDocument(
+        ree=bare_ree(), status="draft", audit=audit(bare_ree()), steps=ree_steps(bare_ree(), audit(bare_ree()))
+    )
     monkeypatch.setattr(command_dispatcher, "get_ree_state", lambda handle: document)
     monkeypatch.setattr(command_dispatcher, "list_script_templates", lambda handle: script_template_catalog())
     return online_ree

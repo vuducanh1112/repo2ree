@@ -23,7 +23,7 @@ stopped = "Settled: the executor ended after the workbench asked it to stop."
 lost = "Settled: the executor was gone without having reported how it ended."
 
 [facts]
-operation = "str"
+operation = { type = "str", catalogue = ["operations", "review_operations"] }
 run_id = "str"
 # The journal record of the request that started it (see boundaries/start_run.toml).
 dispatched_by = "str?"

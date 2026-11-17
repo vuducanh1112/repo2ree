@@ -43,30 +43,7 @@ failed = "The command could not do it."
 canceled = "The command stopped because its run was canceled."
 interrupted = "The executor ended without reporting; the REE files were rolled back to the before-snapshot."
 
-# The command core ran: one of the typed commands the product dispatches into an REE.
+# The command core ran: one of the catalogue's operations, on the REE or on a review of it.
 [facts.operation]
 type = "str"
-
-[facts.operation.values]
-acquire_source = "Fetch or receive the source and freeze it."
-remove_source = "Remove the frozen source."
-patch_ree_definition = "Change the REE's declarations."
-write_file = "Create or overwrite a file in the REE's overlay."
-delete_file = "Delete a file from the REE's overlay."
-generate_script_candidates = "Suggest build experiment environment and activation scripts."
-lint_scripts = "Check the REE's scripts."
-evaluate_dependency_score = "Assess how reproducible the source's dependencies are."
-generate_hbom = "Record the hardware the REE runs on."
-build_experiment_environment = "Build the experiment environment with the build experiment environment script."
-generate_sbom = "List what the built experiment environment contains."
-cross_check_sbom = "Compare the declared dependencies with the SBOM."
-activation_test = "Run the activation alone: it enters the experiment environment and hands over."
-check_working_environment = "Run the author's check in the working environment."
-run_experiment = "Run one declared experiment and verify its outputs."
-seal_ree = "Freeze the REE."
-load_ree_bundle = "Restore an REE from a bundle, its receipts included."
-materialize_workspace = "Merge the upstream source and the overlay into the workspace."
-review_acquire_source = "A reviewer reproduces the source."
-review_build_experiment_environment = "A reviewer reproduces the build of the experiment environment."
-review_activation_test = "A reviewer runs the author's activation alone."
-review_run_experiment = "A reviewer reproduces one experiment."
+catalogue = ["operations", "review_operations"]

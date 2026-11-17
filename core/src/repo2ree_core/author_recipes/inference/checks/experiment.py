@@ -49,7 +49,7 @@ class RequestedExperimentCheck:
         binding = ExperimentBinding(
             name=experiment.name,
             run_script_path=str(experiment.run_script_path),
-            verify_script_path=str(experiment.verify_script_path) if experiment.verify_script_path else None,
+            verify_script_path=str(experiment.verify_script_path),
             output_paths=list(experiment.output_paths),
         )
         return CheckResult(

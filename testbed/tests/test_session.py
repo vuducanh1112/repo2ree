@@ -57,7 +57,7 @@ def test_each_command_is_shown_with_the_commits_its_run_made(test_dir: Path) -> 
     assert [step.command.words[0] for step in found] == ["init", "write", "define", "status"]
     assert [[change.commit.operation for change in step.changes] for step in found] == [
         ["initialize_ree"],
-        ["write_file"],
+        ["write_script"],
         ["patch_ree_definition"],
         [],
     ]

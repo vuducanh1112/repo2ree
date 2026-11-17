@@ -16,8 +16,8 @@ from repo2ree_protocol.command import (
     PatchReeDefinitionArgs,
     PatchReeDefinitionCommand,
     RemoveSourceCommand,
-    WriteFileArgs,
-    WriteFileCommand,
+    WriteScriptArgs,
+    WriteScriptCommand,
 )
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.reserved_paths import RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT
@@ -34,7 +34,7 @@ def _declared(tmp_path: Path, body: str = PASSES) -> ReeLayout:
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="checked")
     written = _run(
-        layout, WriteFileCommand(args=WriteFileArgs(path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, content=body))
+        layout, WriteScriptCommand(args=WriteScriptArgs(path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, content=body))
     )
     assert written.status == "succeeded", written
     declared = _run(
@@ -61,7 +61,7 @@ def test_a_passing_check_is_recorded_where_it_ran_and_completes_its_step(tmp_pat
     assert receipt is not None
     assert receipt.working_environment.host.arch
     assert receipt.check_working_environment_script_digest == (
-        ree.subject.definition.check_working_environment.check_working_environment_script_digest  # type: ignore[union-attr]
+        ree.subject.definition.check_working_environment.check_working_environment_script_digest
     )
     steps = {step.key: step.status for step in ree_steps(ree, audit(ree)).steps}
     assert steps["check_working_environment"] == "complete"
@@ -94,24 +94,6 @@ def test_every_ree_starts_with_a_check_that_passes_and_its_step_still_to_do(tmp_
     assert _check(layout).status == "succeeded"
 
 
-def test_an_undeclared_check_is_refused(tmp_path: Path) -> None:
-    layout = ReeLayout(root=tmp_path / "ree")
-    initialize_ree(layout, name="unchecked")
-    store = ReeDirectory(layout)
-    ree = store.read_ree()
-    # Only an REE from before every REE had its check declares none.
-    definition = ree.subject.definition.model_copy(update={"check_working_environment": None})
-    store.write_ree(ree.model_copy(update={"subject": ree.subject.model_copy(update={"definition": definition})}))
-
-    result = _check(layout)
-
-    assert result.status == "failed"
-    assert result.failure is not None
-    assert result.failure.category == "precondition"
-    ree = ReeDirectory(layout).read_ree()
-    assert audit(ree).working_environment_check.evidence == "not_applicable"
-
-
 def test_editing_the_check_leaves_it_stale_and_removing_the_source_keeps_it(tmp_path: Path) -> None:
     layout = _declared(tmp_path)
     assert _check(layout).status == "succeeded"
@@ -120,7 +102,9 @@ def test_editing_the_check_leaves_it_stale_and_removing_the_source_keeps_it(tmp_
     assert ReeDirectory(layout).read_ree().subject.receipts.working_environment_check is not None
 
     edited = PASSES + "command -v sh >/dev/null\n"
-    _run(layout, WriteFileCommand(args=WriteFileArgs(path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, content=edited)))
+    _run(
+        layout, WriteScriptCommand(args=WriteScriptArgs(path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, content=edited))
+    )
     ree = ReeDirectory(layout).read_ree()
     assert audit(ree).working_environment_check.reasons == ("check script changed",)
 
@@ -134,5 +118,5 @@ def test_the_declared_check_cannot_be_undeclared(tmp_path: Path) -> None:
 
     assert result.status == "failed"
     assert result.failure is not None
-    assert "every REE has its check script" in result.failure.message
+    assert "every REE declares check_working_environment" in result.failure.message
     assert ReeDirectory(layout).read_ree().subject.definition.check_working_environment is not None

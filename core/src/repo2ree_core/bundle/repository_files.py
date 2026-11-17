@@ -16,26 +16,22 @@ def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:
     experiment_environment = definition.experiment_environment
     activate = definition.activate_experiment_environment
     for name, content in reproducer_entries(
-        activate_experiment_environment_script=str(activate.activate_experiment_environment_script_path)
-        if activate
-        else "",
+        activate_experiment_environment_script=str(activate.activate_experiment_environment_script_path),
         experiments=[
-            (exp.name, str(exp.run_script_path), str(exp.verify_script_path or "")) for exp in definition.experiments
+            (exp.name, str(exp.run_script_path), str(exp.verify_script_path)) for exp in definition.experiments
         ],
         experiment_environment_workspace_path=str(experiment_environment.artifact_path)
-        if experiment_environment and experiment_environment.artifact_path
+        if experiment_environment.artifact_path
         else "",
         experiment_environment_artifact_basename=PurePosixPath(str(experiment_environment.artifact_path)).name
-        if experiment_environment and experiment_environment.artifact_path
+        if experiment_environment.artifact_path
         else "",
         origin_url=source.origin_url or "" if source else "",
         source_type=source.source_type if source else "",
         revision=source.requested_ref or "" if source else "",
         swhid=str(ree.subject.receipts.source.observed_swhid or "") if ree.subject.receipts.source else "",
-        launch_script=str(definition.launch.launch_script_path) if definition.launch else None,
-        check_script=str(definition.check_working_environment.check_working_environment_script_path)
-        if definition.check_working_environment
-        else None,
+        launch_script=str(definition.launch.launch_script_path),
+        check_script=str(definition.check_working_environment.check_working_environment_script_path),
     ):
         target = layout.root / name.removeprefix("ree/")
         if name == "run.sh":

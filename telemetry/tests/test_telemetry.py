@@ -753,10 +753,10 @@ def test_build_span_sink_console_fallback_decodes_spans_locally(
 
 
 def test_relayed_console_sink_writes_decoded_spans_to_stdout(capsys: pytest.CaptureFixture[str]) -> None:
-    _relayed_console_sink([_relayed_payload("command.activation_test")])
+    _relayed_console_sink([_relayed_payload("command.activate_experiment_environment")])
 
     rendered = json.loads(capsys.readouterr().out.strip())
-    assert rendered["name"] == "command.activation_test"
+    assert rendered["name"] == "command.activate_experiment_environment"
     assert rendered["parent_id"] is None
 
 

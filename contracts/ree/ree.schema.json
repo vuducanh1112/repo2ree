@@ -195,8 +195,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "activation_test",
-          "default": "activation_test",
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
           "title": "Operation",
           "type": "string"
         },
@@ -275,16 +275,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -311,7 +303,8 @@
         "duration_ms",
         "recorded_at",
         "snapshot_digest",
-        "activate_experiment_environment_script_digest"
+        "activate_experiment_environment_script_digest",
+        "launch_script_digest"
       ],
       "title": "ActivationReceipt",
       "type": "object"
@@ -418,16 +411,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -458,7 +443,8 @@
         "build_experiment_environment_script_digest",
         "workspace_drift",
         "artifact_path",
-        "produced_artifact_digest"
+        "produced_artifact_digest",
+        "launch_script_digest"
       ],
       "title": "BuildExperimentEnvironmentReceipt",
       "type": "object"
@@ -693,16 +679,8 @@
           "$ref": "#/$defs/WorkingEnvironmentObservation"
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -729,7 +707,8 @@
         "duration_ms",
         "recorded_at",
         "check_working_environment_script_digest",
-        "working_environment"
+        "working_environment",
+        "launch_script_digest"
       ],
       "title": "CheckWorkingEnvironmentReceipt",
       "type": "object"
@@ -1033,31 +1012,15 @@
           "type": "integer"
         },
         "verify_script_path": {
-          "anyOf": [
-            {
-              "type": "string",
-              "x-relative-to": [
-                "overlay"
-              ]
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Path"
+          "title": "Verify Script Path",
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Verify Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -1066,17 +1029,9 @@
           }
         },
         "verify_script_size": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Size"
+          "minimum": 0,
+          "title": "Verify Script Size",
+          "type": "integer"
         },
         "output_paths": {
           "default": [],
@@ -1094,7 +1049,10 @@
         "name",
         "run_script_path",
         "run_script_digest",
-        "run_script_size"
+        "run_script_size",
+        "verify_script_path",
+        "verify_script_digest",
+        "verify_script_size"
       ],
       "title": "ExperimentDefinition",
       "type": "object"
@@ -1842,48 +1800,16 @@
           "default": null
         },
         "experiment_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/ExperimentEnvironmentDefinition"
         },
         "activate_experiment_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
         },
         "check_working_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
         },
         "launch": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/LaunchDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/LaunchDefinition"
         },
         "hardware": {
           "anyOf": [
@@ -1905,6 +1831,12 @@
           "type": "array"
         }
       },
+      "required": [
+        "experiment_environment",
+        "activate_experiment_environment",
+        "check_working_environment",
+        "launch"
+      ],
       "title": "ReeDefinition",
       "type": "object"
     },
@@ -2066,6 +1998,9 @@
           "$ref": "#/$defs/CapturePolicy"
         }
       },
+      "required": [
+        "definition"
+      ],
       "title": "ReeSubject",
       "type": "object"
     },
@@ -2164,16 +2099,8 @@
           }
         },
         "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Verify Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -2188,17 +2115,10 @@
           "type": "integer"
         },
         "verify_exit_code": {
-          "anyOf": [
-            {
-              "const": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Exit Code"
+          "const": 0,
+          "default": 0,
+          "title": "Verify Exit Code",
+          "type": "integer"
         },
         "working_environment": {
           "anyOf": [
@@ -2212,16 +2132,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -2269,7 +2181,9 @@
         "experiment_name",
         "snapshot_digest",
         "activate_experiment_environment_script_digest",
-        "run_script_digest"
+        "run_script_digest",
+        "verify_script_digest",
+        "launch_script_digest"
       ],
       "title": "RunExperimentReceipt",
       "type": "object"
@@ -2489,6 +2403,9 @@
       "default": null
     }
   },
+  "required": [
+    "subject"
+  ],
   "title": "Ree",
   "type": "object"
 }

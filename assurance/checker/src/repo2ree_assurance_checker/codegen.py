@@ -174,6 +174,7 @@ def render_schema(spec: Spec) -> str:
             "checked per journal by `python -m repo2ree_assurance_checker validate-journal`."
         ),
         "x-vocabulary": spec.vocabulary_digest,
+        "x-operations": {"operations": spec.operations, "review_operations": spec.review_operations},
         "type": "object",
         "properties": {"v": {"const": 1}, "seq": {"type": "integer", "minimum": 1}, "at": {"type": "string"}},
         "required": ["v", "seq", "kind"],

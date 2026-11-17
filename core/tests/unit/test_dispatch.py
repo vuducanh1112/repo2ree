@@ -21,21 +21,21 @@ from repo2ree_core.operations import dispatch as rc
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
-    ActivationTestCommand,
+    ActivateExperimentEnvironmentCommand,
     BuildExperimentEnvironmentCommand,
     Command,
     CrossCheckSbomCommand,
-    EvaluateDependencyScoreCommand,
-    GenerateHbomCommand,
+    EvaluateReproducibilityCommand,
     GenerateSbomCommand,
     MaterializeWorkspaceCommand,
+    ObserveHardwareCommand,
     PatchReeDefinitionCommand,
     RemoveSourceCommand,
     ReviewAcquireSourceCommand,
     ReviewBuildExperimentEnvironmentCommand,
     RunExperimentCommand,
     SealReeCommand,
-    WriteFileCommand,
+    WriteScriptCommand,
 )
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -47,16 +47,16 @@ _ROUTES: list[tuple[type[BaseModel], str]] = [
     (ReviewAcquireSourceCommand, "handle_review_acquire_source"),
     (ReviewBuildExperimentEnvironmentCommand, "handle_review_build_experiment_environment"),
     (MaterializeWorkspaceCommand, "handle_materialize_workspace"),
-    (WriteFileCommand, "handle_write_file"),
+    (WriteScriptCommand, "handle_write_script"),
     (PatchReeDefinitionCommand, "handle_patch_ree_definition"),
     (RemoveSourceCommand, "handle_remove_source"),
     (BuildExperimentEnvironmentCommand, "handle_build_experiment_environment"),
-    (EvaluateDependencyScoreCommand, "handle_evaluate_dependency_score"),
+    (EvaluateReproducibilityCommand, "handle_evaluate_reproducibility"),
     (RunExperimentCommand, "handle_run_experiment"),
-    (GenerateHbomCommand, "handle_generate_hbom"),
+    (ObserveHardwareCommand, "handle_observe_hardware"),
     (GenerateSbomCommand, "handle_generate_sbom"),
     (CrossCheckSbomCommand, "handle_cross_check_sbom"),
-    (ActivationTestCommand, "handle_activation_test"),
+    (ActivateExperimentEnvironmentCommand, "handle_activate_experiment_environment"),
     (SealReeCommand, "handle_seal_ree"),
 ]
 

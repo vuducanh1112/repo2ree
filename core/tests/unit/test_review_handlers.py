@@ -6,12 +6,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from ree_definitions import LAUNCH, ree_definition, with_fixed_scripts
 
+from repo2ree_authoring.templates import reserved_script_template
 from repo2ree_core.evidence.review.records import new_review_record, step_state, with_step
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record, write_review_record
 from repo2ree_core.operations.handlers.review import (
     acquire_source,
-    activation_test,
+    activate_experiment_environment,
     build_experiment_environment,
     run_experiment,
 )
@@ -20,7 +22,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
-    ReviewActivationTestArgs,
+    ReviewActivateExperimentEnvironmentArgs,
     ReviewBuildExperimentEnvironmentArgs,
     ReviewRunExperimentArgs,
 )
@@ -33,7 +35,6 @@ from repo2ree_ree.model import (
     ExperimentEnvironmentDefinition,
     LaunchDefinition,
     Ree,
-    ReeDefinition,
     ReeReceipts,
     ReeSubject,
     SourceDefinition,
@@ -87,7 +88,10 @@ _EXPERIMENT = b"#!/bin/sh\nmkdir -p outputs && printf result > outputs/result.tx
 _EXPERIMENT_VERIFY = b'#!/bin/sh\ntest "$(cat outputs/result.txt)" = result\n'
 
 
-def _author_ree(launch: bytes | None = None) -> Ree:
+_DIRECT = reserved_script_template(RESERVED_LAUNCH_SCRIPT).encode()
+
+
+def _author_ree(launch: bytes = _DIRECT) -> Ree:
     experiment = ExperimentDefinition(
         name=_EXPERIMENT_NAME,
         run_script_path=OverlayPath(experiment_run_script_path(_EXPERIMENT_NAME)),
@@ -111,19 +115,18 @@ def _author_ree(launch: bytes | None = None) -> Ree:
         run_script_digest=digest_bytes(_EXPERIMENT),
         verify_script_digest=digest_bytes(_EXPERIMENT_VERIFY),
         verify_exit_code=0,
+        launch_script_digest=LAUNCH,
     )
     return Ree(
         subject=ReeSubject(
-            definition=ReeDefinition(
+            definition=ree_definition(
                 experiment_environment=_build_recipe(ExperimentEnvironmentPath(_EXPERIMENT_ENVIRONMENT_PATH)),
                 activate_experiment_environment=ActivateExperimentEnvironmentDefinition(
                     activate_experiment_environment_script_digest=digest_bytes(_ACTIVATE),
                     activate_experiment_environment_script_size=len(_ACTIVATE),
                 ),
                 experiments=(experiment,),
-                launch=LaunchDefinition(launch_script_digest=digest_bytes(launch), launch_script_size=len(launch))
-                if launch is not None
-                else None,
+                launch=LaunchDefinition(launch_script_digest=digest_bytes(launch), launch_script_size=len(launch)),
             ),
             receipts=ReeReceipts(experiments={_EXPERIMENT_NAME: author_experiment}),
         )
@@ -135,7 +138,7 @@ def _workbench(
     monkeypatch: pytest.MonkeyPatch,
     *,
     activate: bytes = _ACTIVATE,
-    launch: bytes | None = None,
+    launch: bytes = _DIRECT,
     reviewer_launch: ReviewLaunch | None = None,
     reviewer_copy: bytes | None = None,
 ) -> ReeLayout:
@@ -151,8 +154,7 @@ def _workbench(
         experiment_run_script_path(_EXPERIMENT_NAME): _EXPERIMENT,
         experiment_verify_script_path(_EXPERIMENT_NAME): _EXPERIMENT_VERIFY,
     }
-    if launch is not None:
-        files[RESERVED_LAUNCH_SCRIPT] = reviewer_copy if reviewer_copy is not None else launch
+    files[RESERVED_LAUNCH_SCRIPT] = reviewer_copy if reviewer_copy is not None else launch
     for relative, contents in files.items():
         target = review.workspace / relative
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -184,8 +186,8 @@ def _workbench(
 
 
 def _activate(layout: ReeLayout):
-    return activation_test.handle_review_activation_test(
-        ReviewActivationTestArgs(review_id=_REVIEW_ID),
+    return activate_experiment_environment.handle_review_activate_experiment_environment(
+        ReviewActivateExperimentEnvironmentArgs(review_id=_REVIEW_ID),
         run_id="review-activation",
         log=lambda *_: None,
         is_canceled=lambda: False,
@@ -217,27 +219,30 @@ def test_source_review_reads_definition_and_author_receipt(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.write_ree(
-        Ree(
-            subject=ReeSubject(
-                definition=ReeDefinition(
-                    source=SourceDefinition(origin_url=str(origin), source_type="git", requested_ref=revision)
-                ),
-                receipts=ReeReceipts(
-                    source=AcquireSourceReceipt(
-                        run_id=RunId("author-source"),
-                        started_at=_NOW,
-                        finished_at=_NOW,
-                        duration_ms=0,
-                        recorded_at=_NOW,
-                        origin_url=str(origin),
-                        source_type="git",
-                        requested_ref=revision,
-                        resolved_revision=revision,
-                        observed_swhid=Swhid(swhid),
-                        snapshot_digest=digest_bytes(b"snapshot"),
-                    )
-                ),
-            )
+        with_fixed_scripts(
+            layout,
+            Ree(
+                subject=ReeSubject(
+                    definition=ree_definition(
+                        source=SourceDefinition(origin_url=str(origin), source_type="git", requested_ref=revision)
+                    ),
+                    receipts=ReeReceipts(
+                        source=AcquireSourceReceipt(
+                            run_id=RunId("author-source"),
+                            started_at=_NOW,
+                            finished_at=_NOW,
+                            duration_ms=0,
+                            recorded_at=_NOW,
+                            origin_url=str(origin),
+                            source_type="git",
+                            requested_ref=revision,
+                            resolved_revision=revision,
+                            observed_swhid=Swhid(swhid),
+                            snapshot_digest=digest_bytes(b"snapshot"),
+                        )
+                    ),
+                )
+            ),
         )
     )
     result = acquire_source.handle_review_acquire_source(
@@ -263,12 +268,15 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
     store.ensure_dirs()
     store.artifacts.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.write_ree(
-        Ree(
-            subject=ReeSubject(
-                definition=ReeDefinition(
-                    experiment_environment=_build_recipe(ExperimentEnvironmentPath("artifacts/runtime.tar"))
+        with_fixed_scripts(
+            layout,
+            Ree(
+                subject=ReeSubject(
+                    definition=ree_definition(
+                        experiment_environment=_build_recipe(ExperimentEnvironmentPath("artifacts/runtime.tar"))
+                    )
                 )
-            )
+            ),
         )
     )
     review = layout.review(_REVIEW_ID)
@@ -306,16 +314,19 @@ def test_a_review_runs_the_authors_check_before_anything_else_runs_there(
     store.artifacts.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
     store.overlay.write_bytes(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, check)
     store.write_ree(
-        Ree(
-            subject=ReeSubject(
-                definition=ReeDefinition(
-                    experiment_environment=_build_recipe(ExperimentEnvironmentPath("artifacts/runtime.tar")),
-                    check_working_environment=CheckWorkingEnvironmentDefinition(
-                        check_working_environment_script_digest=digest_bytes(check),
-                        check_working_environment_script_size=len(check),
-                    ),
+        with_fixed_scripts(
+            layout,
+            Ree(
+                subject=ReeSubject(
+                    definition=ree_definition(
+                        experiment_environment=_build_recipe(ExperimentEnvironmentPath("artifacts/runtime.tar")),
+                        check_working_environment=CheckWorkingEnvironmentDefinition(
+                            check_working_environment_script_digest=digest_bytes(check),
+                            check_working_environment_script_size=len(check),
+                        ),
+                    )
                 )
-            )
+            ),
         )
     )
     review = layout.review(_REVIEW_ID)
@@ -444,8 +455,8 @@ def test_a_review_launches_the_authors_scripts_through_the_authors_launch_with_i
 
     outputs = _experiment(layout)
     assert outputs["receipt"]["launched"]["slurm_job_id"] == "4711"
-    # The author's receipt ran under no launch, the review under the author's: shown side by side, deciding nothing.
-    assert outputs["comparison"]["expected_launch_script_digest"] is None
+    # The author's receipt ran under another launch than the review's: shown side by side, deciding nothing.
+    assert outputs["comparison"]["expected_launch_script_digest"] == LAUNCH
     assert outputs["comparison"]["launch_script_digest"] == digest_bytes(_LAUNCH)
     assert outputs["comparison"]["verdict"] == "reproduced"
 

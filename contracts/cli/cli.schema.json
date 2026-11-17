@@ -462,7 +462,7 @@
       "help": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.\n\nA script not written yet starts from its default template. The edit is written only if the script did not change\nmeanwhile.\n",
       "runs": true,
       "operations": [
-        "write_file"
+        "write_script"
       ],
       "params": [
         {
@@ -495,7 +495,7 @@
       "help": "Score how fully the source pins its dependencies",
       "runs": true,
       "operations": [
-        "evaluate_dependency_score"
+        "evaluate_reproducibility"
       ],
       "params": [
         {
@@ -548,13 +548,13 @@
       "help": "Record the hardware this machine offers (HBOM)",
       "runs": true,
       "operations": [
-        "generate_hbom"
+        "observe_hardware"
       ],
       "params": [],
       "stdin": null,
       "stdout": "result",
       "outputs": {
-        "$ref": "#/$defs/GenerateHbomOutputs"
+        "$ref": "#/$defs/ObserveHardwareOutputs"
       }
     },
     {
@@ -565,8 +565,8 @@
       "help": "Propose scripts for the REE from its source and this machine.\n\nShows each proposal against the script as it is written.",
       "runs": true,
       "operations": [
-        "generate_script_candidates",
-        "write_file"
+        "suggest_scripts",
+        "write_script"
       ],
       "params": [
         {
@@ -833,7 +833,7 @@
       "operations": [
         "review_acquire_source",
         "review_build_experiment_environment",
-        "review_activation_test",
+        "review_activate_experiment_environment",
         "review_run_experiment"
       ],
       "params": [
@@ -975,7 +975,7 @@
       "help": "Test the activation in the review",
       "runs": true,
       "operations": [
-        "review_activation_test"
+        "review_activate_experiment_environment"
       ],
       "params": [
         {
@@ -990,7 +990,7 @@
       "stdin": null,
       "stdout": "result",
       "outputs": {
-        "$ref": "#/$defs/ReviewActivationTestOutputs"
+        "$ref": "#/$defs/ReviewActivateExperimentEnvironmentOutputs"
       }
     },
     {
@@ -1175,7 +1175,7 @@
       "help": "Run the activation alone: it enters the experiment environment and hands over",
       "runs": true,
       "operations": [
-        "activation_test"
+        "activate_experiment_environment"
       ],
       "params": [],
       "stdin": null,
@@ -1216,7 +1216,7 @@
       "help": "Write one of the REE's scripts from stdin.\n\nThe script is read on stdin: `ree write build_experiment_environment < build.sh`.",
       "runs": true,
       "operations": [
-        "write_file"
+        "write_script"
       ],
       "params": [
         {
@@ -1690,8 +1690,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "activation_test",
-          "default": "activation_test",
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
           "title": "Operation",
           "type": "string"
         },
@@ -1770,16 +1770,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -1806,7 +1798,8 @@
         "duration_ms",
         "recorded_at",
         "snapshot_digest",
-        "activate_experiment_environment_script_digest"
+        "activate_experiment_environment_script_digest",
+        "launch_script_digest"
       ],
       "title": "ActivationReceipt",
       "type": "object"
@@ -1995,16 +1988,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -2035,7 +2020,8 @@
         "build_experiment_environment_script_digest",
         "workspace_drift",
         "artifact_path",
-        "produced_artifact_digest"
+        "produced_artifact_digest",
+        "launch_script_digest"
       ],
       "title": "BuildExperimentEnvironmentReceipt",
       "type": "object"
@@ -2441,16 +2427,8 @@
           "$ref": "#/$defs/WorkingEnvironmentObservation"
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -2477,7 +2455,8 @@
         "duration_ms",
         "recorded_at",
         "check_working_environment_script_digest",
-        "working_environment"
+        "working_environment",
+        "launch_script_digest"
       ],
       "title": "CheckWorkingEnvironmentReceipt",
       "type": "object"
@@ -3768,31 +3747,15 @@
           "type": "integer"
         },
         "verify_script_path": {
-          "anyOf": [
-            {
-              "type": "string",
-              "x-relative-to": [
-                "overlay"
-              ]
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Path"
+          "title": "Verify Script Path",
+          "type": "string",
+          "x-relative-to": [
+            "overlay"
+          ]
         },
         "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Verify Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -3801,17 +3764,9 @@
           }
         },
         "verify_script_size": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Script Size"
+          "minimum": 0,
+          "title": "Verify Script Size",
+          "type": "integer"
         },
         "output_paths": {
           "default": [],
@@ -3829,7 +3784,10 @@
         "name",
         "run_script_path",
         "run_script_digest",
-        "run_script_size"
+        "run_script_size",
+        "verify_script_path",
+        "verify_script_digest",
+        "verify_script_size"
       ],
       "title": "ExperimentDefinition",
       "type": "object"
@@ -4476,33 +4434,6 @@
         }
       },
       "title": "GPUDefinition",
-      "type": "object"
-    },
-    "GenerateHbomOutputs": {
-      "additionalProperties": false,
-      "properties": {
-        "observation": {
-          "additionalProperties": true,
-          "title": "Observation",
-          "type": "object"
-        },
-        "component_counts": {
-          "additionalProperties": {
-            "type": "integer"
-          },
-          "title": "Component Counts",
-          "type": "object"
-        },
-        "receipt": {
-          "$ref": "#/$defs/ObserveHardwareReceipt"
-        }
-      },
-      "required": [
-        "observation",
-        "component_counts",
-        "receipt"
-      ],
-      "title": "GenerateHbomOutputs",
       "type": "object"
     },
     "GenerateSbomOutputs": {
@@ -5566,6 +5497,33 @@
       "title": "NoOutputs",
       "type": "object"
     },
+    "ObserveHardwareOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "observation": {
+          "additionalProperties": true,
+          "title": "Observation",
+          "type": "object"
+        },
+        "component_counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Component Counts",
+          "type": "object"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ObserveHardwareReceipt"
+        }
+      },
+      "required": [
+        "observation",
+        "component_counts",
+        "receipt"
+      ],
+      "title": "ObserveHardwareOutputs",
+      "type": "object"
+    },
     "ObserveHardwareReceipt": {
       "additionalProperties": false,
       "properties": {
@@ -6002,6 +5960,9 @@
           "default": null
         }
       },
+      "required": [
+        "subject"
+      ],
       "title": "Ree",
       "type": "object"
     },
@@ -6127,48 +6088,16 @@
           "default": null
         },
         "experiment_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/ExperimentEnvironmentDefinition"
         },
         "activate_experiment_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/ActivateExperimentEnvironmentDefinition"
         },
         "check_working_environment": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/CheckWorkingEnvironmentDefinition"
         },
         "launch": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/LaunchDefinition"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
+          "$ref": "#/$defs/LaunchDefinition"
         },
         "hardware": {
           "anyOf": [
@@ -6190,6 +6119,12 @@
           "type": "array"
         }
       },
+      "required": [
+        "experiment_environment",
+        "activate_experiment_environment",
+        "check_working_environment",
+        "launch"
+      ],
       "title": "ReeDefinition",
       "type": "object"
     },
@@ -6565,6 +6500,9 @@
           "$ref": "#/$defs/CapturePolicy"
         }
       },
+      "required": [
+        "definition"
+      ],
       "title": "ReeSubject",
       "type": "object"
     },
@@ -6816,6 +6754,28 @@
       "title": "ReviewAcquireSourceReceipt",
       "type": "object"
     },
+    "ReviewActivateExperimentEnvironmentOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ReviewActivationReceipt"
+        },
+        "outcome": {
+          "$ref": "#/$defs/ActivationOutcome"
+        }
+      },
+      "required": [
+        "review_id",
+        "receipt",
+        "outcome"
+      ],
+      "title": "ReviewActivateExperimentEnvironmentOutputs",
+      "type": "object"
+    },
     "ReviewActivationReceipt": {
       "additionalProperties": false,
       "description": "The author's activation, run alone in the review's workspace around a command that does nothing.",
@@ -6859,8 +6819,8 @@
           "type": "string"
         },
         "operation": {
-          "const": "activation_test",
-          "default": "activation_test",
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
           "title": "Operation",
           "type": "string"
         },
@@ -6927,28 +6887,6 @@
         "experiment_environment_digest"
       ],
       "title": "ReviewActivationReceipt",
-      "type": "object"
-    },
-    "ReviewActivationTestOutputs": {
-      "additionalProperties": false,
-      "properties": {
-        "review_id": {
-          "title": "Review Id",
-          "type": "string"
-        },
-        "receipt": {
-          "$ref": "#/$defs/ReviewActivationReceipt"
-        },
-        "outcome": {
-          "$ref": "#/$defs/ActivationOutcome"
-        }
-      },
-      "required": [
-        "review_id",
-        "receipt",
-        "outcome"
-      ],
-      "title": "ReviewActivationTestOutputs",
       "type": "object"
     },
     "ReviewBuildExperimentEnvironmentOutputs": {
@@ -7675,16 +7613,8 @@
           }
         },
         "verify_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Verify Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -7699,17 +7629,10 @@
           "type": "integer"
         },
         "verify_exit_code": {
-          "anyOf": [
-            {
-              "const": 0,
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Verify Exit Code"
+          "const": 0,
+          "default": 0,
+          "title": "Verify Exit Code",
+          "type": "integer"
         },
         "working_environment": {
           "anyOf": [
@@ -7723,16 +7646,8 @@
           "default": null
         },
         "launch_script_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
           "title": "Launch Script Digest",
+          "type": "string",
           "x-digest-of": {
             "covers": "file",
             "entries": [
@@ -7780,7 +7695,9 @@
         "experiment_name",
         "snapshot_digest",
         "activate_experiment_environment_script_digest",
-        "run_script_digest"
+        "run_script_digest",
+        "verify_script_digest",
+        "launch_script_digest"
       ],
       "title": "RunExperimentReceipt",
       "type": "object"

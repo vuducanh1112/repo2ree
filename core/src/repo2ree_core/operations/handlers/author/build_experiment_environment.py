@@ -150,8 +150,6 @@ def _check_preconditions(
         # message that tells the author what to do next.
         raise ReePreconditionError("; ".join(source_audit.reasons) or "source has not been acquired")
     build = ree.subject.definition.experiment_environment
-    if build is None:
-        raise ReePreconditionError("no experiment environment build definition is present")
     experiment_environment_path = build.artifact_path
     if experiment_environment_path is None:
         raise ReePreconditionError("no experiment environment artifact path is declared")
@@ -167,6 +165,5 @@ def _check_preconditions(
     return build, experiment_environment_path
 
 
-def _launch_digest(ree: Ree) -> Digest | None:
-    launch = ree.subject.definition.launch
-    return launch.launch_script_digest if launch else None
+def _launch_digest(ree: Ree) -> Digest:
+    return ree.subject.definition.launch.launch_script_digest

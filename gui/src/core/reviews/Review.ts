@@ -80,8 +80,8 @@ export type ActivationVerdict = "passed" | "failed";
  * `identical` adds that the declared outputs came out byte for byte the same —
  * more than the author claimed, and never required, since timestamps and seeds
  * land in output files on every honest re-run. `inconclusive` means there was
- * no bound criterion to meet: the experiment declares no verify script, the
- * author never ran it, or the author and reviewer criterion digests differ.
+ * no bound criterion to meet: the author never ran it, or the author and
+ * reviewer criterion digests differ.
  */
 export type ExperimentVerdict = "identical" | "reproduced" | "different" | "inconclusive";
 

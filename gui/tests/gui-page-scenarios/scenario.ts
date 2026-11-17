@@ -205,7 +205,7 @@ const visualRee = {
           finished_at: "2026-04-12T09:35:07Z",
           duration_ms: 7000,
           recorded_at: "2026-04-12T09:35:07Z",
-          operation: "activation_test",
+          operation: "activate_experiment_environment",
           snapshot_digest: "sha256:source-snapshot",
           experiment_environment_path: "artifacts/climate-runtime.tar",
           experiment_environment_digest: "sha256:experiment-environment",

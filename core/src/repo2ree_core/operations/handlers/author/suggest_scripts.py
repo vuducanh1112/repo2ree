@@ -4,7 +4,7 @@ Inference scans the immutable ``upstream`` tree (never the materialized
 workspace, so it can never discover its own generated output as evidence),
 runs the versioned decision DAGs, and returns the full ``InferenceReport`` in
 the result outputs. It is synchronous, persists nothing, and writes no files —
-turning a candidate into a script stays on the existing ``write_file`` path.
+turning a candidate into a script stays on the existing ``write_script`` path.
 
 Besides the REE, it reads the machine its scripts run on: which container engines
 they can use, and whether Slurm can launch them; each probed where ree runs, when a
@@ -22,7 +22,7 @@ from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.operations.handlers.author._script_inference_inputs import build_experiment_environment_inputs
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.command import GenerateScriptCandidatesArgs, ScriptTargetSelectorArg
+from repo2ree_protocol.command import ScriptTargetSelectorArg, SuggestScriptsArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 
@@ -37,8 +37,8 @@ def slurm_probe(layout: ReeLayout) -> SlurmProbeSource:
     return RunnerSlurmProbe(layout.workspace)
 
 
-def handle_generate_script_candidates(
-    args: GenerateScriptCandidatesArgs,
+def handle_suggest_scripts(
+    args: SuggestScriptsArgs,
     *,
     layout: ReeLayout,
     log: LogSink,
@@ -80,11 +80,11 @@ def handle_generate_script_candidates(
         log("system", "error", f"invalid inference target: {exc}")
         return ActionResult.failed("validation", f"invalid inference target: {exc}")
     except Exception as exc:
-        log("system", "error", f"generate_script_candidates failed: {exc}")
-        return failed_from_exception(exc, f"generate_script_candidates failed: {exc}")
+        log("system", "error", f"suggest_scripts failed: {exc}")
+        return failed_from_exception(exc, f"suggest_scripts failed: {exc}")
 
     if is_canceled():
-        log("system", "warn", "generate_script_candidates canceled")
+        log("system", "warn", "suggest_scripts canceled")
         return ActionResult(status="canceled")
 
     inferred = sum(1 for result in report.results if result.status != "not_inferred")

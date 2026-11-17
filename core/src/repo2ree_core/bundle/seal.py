@@ -95,7 +95,7 @@ def seal_ree(
         if layout.snapshot_archive.is_file():
             paths.add(layout.snapshot_archive.relative_to(layout.root).as_posix())
     experiment_environment = ree.subject.definition.experiment_environment
-    if experiment_environment_included and experiment_environment and experiment_environment.artifact_path:
+    if experiment_environment_included and experiment_environment.artifact_path:
         source = store.author_artifact(str(experiment_environment.artifact_path))
         if source is None:
             raise ValueError("Selected experiment environment is unavailable")

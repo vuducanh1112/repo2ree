@@ -4,15 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ree_definitions import PLACEHOLDER, ree_definition
 from scriptinfer_helpers import MemoryAccessor, docker_archive, venv_archive
 
 from repo2ree_core.author_recipes.inference import TargetInferenceResult, infer_scripts
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.model import ExperimentDefinition
 from repo2ree_ree.primitives import OverlayPath, WorkspacePath
-from repo2ree_ree.reserved_paths import experiment_run_script_path
+from repo2ree_ree.reserved_paths import experiment_run_script_path, experiment_verify_script_path
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
 _VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
@@ -34,7 +35,7 @@ def _experiment(
     files: dict[str, bytes],
     experiments: list[ExperimentDefinition],
 ) -> TargetInferenceResult:
-    definition = ReeDefinition(name="Demo", experiments=tuple(experiments))
+    definition = ree_definition(name="Demo", experiments=tuple(experiments))
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=experiment_environment,
         experiments=experiments,
@@ -137,4 +138,7 @@ def _definition(name: str, output_paths: list[str]) -> ExperimentDefinition:
         run_script_digest=digest_bytes(b"script"),
         run_script_size=6,
         output_paths=tuple(WorkspacePath(path) for path in output_paths),
+        verify_script_path=OverlayPath(experiment_verify_script_path(name)),
+        verify_script_digest=PLACEHOLDER,
+        verify_script_size=1,
     )

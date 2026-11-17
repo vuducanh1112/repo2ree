@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ree_definitions import PLACEHOLDER, ree_definition
 from scriptinfer_helpers import MemoryAccessor, docker_archive, machine
 
 from repo2ree_core.author_recipes.inference import infer_scripts
@@ -23,9 +24,13 @@ from repo2ree_core.author_recipes.inference.policy import default_policy
 from repo2ree_core.author_recipes.inference.repository_facts import scan_repository
 from repo2ree_protocol.command import ScriptTargetSelectorArg
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.model import ExperimentDefinition, ReeDefinition
+from repo2ree_ree.model import ExperimentDefinition
 from repo2ree_ree.primitives import OverlayPath
-from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, experiment_run_script_path
+from repo2ree_ree.reserved_paths import (
+    RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
+    experiment_run_script_path,
+    experiment_verify_script_path,
+)
 
 _DOCKER_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime.tar"
 _VENV_EXPERIMENT_ENVIRONMENT = ".repo2ree/artifacts/runtime-venv.tar.gz"
@@ -34,9 +39,12 @@ _EXPERIMENT = ExperimentDefinition(
     run_script_path=OverlayPath(experiment_run_script_path("run")),
     run_script_digest=digest_bytes(b"script"),
     run_script_size=6,
+    verify_script_path=OverlayPath(experiment_verify_script_path("run")),
+    verify_script_digest=PLACEHOLDER,
+    verify_script_size=1,
 )
 _RUN = ScriptTargetSelectorArg(kind="experiment_run", experiment_name=_EXPERIMENT.name)
-_DEFINITION = ReeDefinition(name="Demo", experiments=(_EXPERIMENT,))
+_DEFINITION = ree_definition(name="Demo", experiments=(_EXPERIMENT,))
 
 
 def _tree(root: Path, files: dict[str, str]) -> None:

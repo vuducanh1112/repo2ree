@@ -24,7 +24,7 @@ unavailable = "The workbench reported that it cannot run commands."
 error = "The workbench reported a transport or protocol error."
 
 [facts.start_run]
-operation = "str"
+operation = { type = "str", catalogue = ["operations", "review_operations"] }
 run_id = "str"
 
 # The WorkbenchSession the command was sent on: a command is sent on a session or not at all.

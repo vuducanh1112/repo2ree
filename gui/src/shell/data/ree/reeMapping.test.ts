@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ReeDocument } from "../../infra/api/apiTypes";
+import { fixedDeclarations } from "./fixedDeclarations";
 import { mapReeDetailToReeProject } from "./reeMapping";
 
 function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
@@ -9,6 +10,7 @@ function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
       subject: {
         schema_version: 1,
         definition: {
+          ...fixedDeclarations,
           name: "workspace-demo",
           catalog: {
             description: "",

@@ -17,9 +17,9 @@ from repo2ree_api.contracts import ERROR_RESPONSES
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle
 from repo2ree_protocol.command import (
-    GenerateScriptCandidatesArgs,
-    GenerateScriptCandidatesCommand,
     ScriptTargetSelectorArg,
+    SuggestScriptsArgs,
+    SuggestScriptsCommand,
 )
 from repo2ree_protocol.inference import InferenceReport
 
@@ -86,8 +86,8 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
 def _suggest(ree_id: str, payload: GenerateScriptCandidatesPayload) -> InferenceReport:
     handle = require_handle(ree_id)
     with ree_command_span("generate-script-candidates", ree_id):
-        cmd = GenerateScriptCandidatesCommand(
-            args=GenerateScriptCandidatesArgs(
+        cmd = SuggestScriptsCommand(
+            args=SuggestScriptsArgs(
                 targets=[
                     ScriptTargetSelectorArg(kind=target.kind, experiment_name=target.experiment_name)
                     for target in payload.targets

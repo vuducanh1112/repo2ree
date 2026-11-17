@@ -77,7 +77,7 @@ require = { boundary = "cancel_run", message = "cancel_run", key_from = "$key", 
 id = "api-success-is-recorded"
 pattern = "requires"
 summary = "The author is told an action on the REE succeeded only after its attempt was recorded as succeeded."
-when = { entity = "AuthorApiAction", to = "succeeded", where = { action = { group = ["source", "editing", "assistance", "evidence", "lifecycle"] } } }
+when = { entity = "AuthorApiAction", to = "succeeded", where = { action = { group = ["operations", "upload"] } } }
 require = { entity = "Attempt", key_from = "attempt_id", reached = "captured", where = { outcome = "succeeded" }, order = "before" }
 
 # A failed or canceled action that got as far as an attempt names it, and that
@@ -133,13 +133,13 @@ per = "kind"
 
 [invariant.require.where.operation.in]
 source = ["acquire_source", "load_ree_bundle"]
-evaluation = ["evaluate_dependency_score", "load_ree_bundle"]
-hardware = ["generate_hbom", "load_ree_bundle"]
+evaluation = ["evaluate_reproducibility", "load_ree_bundle"]
+hardware = ["observe_hardware", "load_ree_bundle"]
 working_environment_check = ["check_working_environment", "load_ree_bundle"]
 experiment_environment = ["build_experiment_environment", "load_ree_bundle"]
 sbom = ["generate_sbom", "load_ree_bundle"]
 sbom_cross_check = ["cross_check_sbom", "load_ree_bundle"]
-activation = ["activation_test", "load_ree_bundle"]
+activation = ["activate_experiment_environment", "load_ree_bundle"]
 experiment = ["run_experiment", "load_ree_bundle"]
 
 [[invariant]]

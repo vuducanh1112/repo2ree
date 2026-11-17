@@ -26,11 +26,6 @@ _LABEL = "check_working_environment"
 def declared_check(ree: Ree, layout: ReeLayout) -> CheckWorkingEnvironmentDefinition:
     """The check the REE declares, once its script in the workspace is the one it declares."""
     declared = ree.subject.definition.check_working_environment
-    if declared is None:
-        raise ReePreconditionError(
-            "no check is declared: write ree-scripts/check_working_environment.sh and declare it "
-            '({"check_working_environment": {}})'
-        )
     path = layout.workspace / str(declared.check_working_environment_script_path)
     if not path.is_file():
         raise ReePreconditionError(f"the check script is missing: {declared.check_working_environment_script_path}")
@@ -80,13 +75,12 @@ def handle_check_working_environment(
         )
     observed = observe_working_environment()
     timing = timer.finish()
-    launch_definition = ree.subject.definition.launch
     receipt = CheckWorkingEnvironmentReceipt(
         **receipt_envelope(run_id, timing),
         check_working_environment_script_digest=declared.check_working_environment_script_digest,
         exit_code=0,
         working_environment=observed,
-        launch_script_digest=launch_definition.launch_script_digest if launch_definition else None,
+        launch_script_digest=ree.subject.definition.launch.launch_script_digest,
         launched=outcome.launched,
     )
     try:

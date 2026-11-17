@@ -378,8 +378,8 @@ def test_declaring_writing_and_removing_capture_scripts_and_command_bytes(ree):
     from repo2ree_protocol.command import (
         PatchReeDefinitionArgs,
         PatchReeDefinitionCommand,
-        WriteFileArgs,
-        WriteFileCommand,
+        WriteScriptArgs,
+        WriteScriptCommand,
     )
 
     script = "ree-scripts/experiments/demo.verify.sh"
@@ -391,7 +391,7 @@ def test_declaring_writing_and_removing_capture_scripts_and_command_bytes(ree):
     )
     assert declared.status == "succeeded"
     assert script in git(ree, "ls-tree", "-r", "--name-only", "HEAD")
-    command = WriteFileCommand(args=WriteFileArgs(path=script, content=content))
+    command = WriteScriptCommand(args=WriteScriptArgs(path=script, content=content))
     result = dispatch.run_command(command, log=lambda *args: None, layout=ree)
     assert result.status == "succeeded"
     assert operation_record(ree, result)["command"] == command.model_dump(mode="json")
@@ -407,10 +407,10 @@ def test_declaring_writing_and_removing_capture_scripts_and_command_bytes(ree):
 
 @pytest.mark.parametrize("path", ["data.tmp", "project/requirements-extra.txt", "ree-scripts/helper.sh"])
 def test_the_overlay_takes_only_the_rees_scripts(ree, path):
-    from repo2ree_protocol.command import WriteFileArgs, WriteFileCommand
+    from repo2ree_protocol.command import WriteScriptArgs, WriteScriptCommand
 
     result = dispatch.run_command(
-        WriteFileCommand(args=WriteFileArgs(path=path, content="x\n")),
+        WriteScriptCommand(args=WriteScriptArgs(path=path, content="x\n")),
         log=lambda *args: None,
         layout=ree,
     )

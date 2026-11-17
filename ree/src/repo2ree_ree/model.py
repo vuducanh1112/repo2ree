@@ -51,11 +51,6 @@ class _DomainModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-def _all_or_none(*values: object) -> bool:
-    present = [value is not None for value in values]
-    return all(present) or not any(present)
-
-
 class Contributor(_DomainModel):
     identifier: str = ""
     name: str = ""
@@ -151,18 +146,16 @@ class ExperimentDefinition(_DomainModel):
     run_script_path: OverlayPath
     run_script_digest: RunScriptDigest
     run_script_size: int = Field(ge=0)
-    verify_script_path: OverlayPath | None = None
-    verify_script_digest: VerifyScriptDigest = None
-    verify_script_size: int | None = Field(default=None, ge=0)
+    verify_script_path: OverlayPath
+    verify_script_digest: VerifyScriptDigest
+    verify_script_size: int = Field(ge=0)
     output_paths: tuple[WorkspacePath, ...] = ()
 
     @model_validator(mode="after")
     def _conventional_paths(self) -> ExperimentDefinition:
         if self.run_script_path != experiment_run_script_path(self.name):
             raise ValueError("experiment run script path must be derived from its name")
-        if not _all_or_none(self.verify_script_path, self.verify_script_digest, self.verify_script_size):
-            raise ValueError("experiment verification path, digest, and size must be present together")
-        if self.verify_script_path is not None and self.verify_script_path != experiment_verify_script_path(self.name):
+        if self.verify_script_path != experiment_verify_script_path(self.name):
             raise ValueError("experiment verification script path must be derived from its name")
         if len(self.output_paths) != len(set(self.output_paths)):
             raise ValueError("experiment output paths must be unique")
@@ -177,12 +170,10 @@ class ReeDefinition(_DomainModel):
     name: str = ""
     catalog: ReeCatalogMetadata = Field(default_factory=ReeCatalogMetadata)
     source: SourceDefinition | None = None
-    experiment_environment: ExperimentEnvironmentDefinition | None = None
-    activate_experiment_environment: ActivateExperimentEnvironmentDefinition | None = None
-    # The author's check that the working environment offers what the scripts need; every REE starts with one.
-    check_working_environment: CheckWorkingEnvironmentDefinition | None = None
-    # None runs every script directly; with a launch, each runs through it.
-    launch: LaunchDefinition | None = None
+    experiment_environment: ExperimentEnvironmentDefinition
+    activate_experiment_environment: ActivateExperimentEnvironmentDefinition
+    check_working_environment: CheckWorkingEnvironmentDefinition
+    launch: LaunchDefinition
     hardware: HardwareDefinition | None = None
     experiments: tuple[ExperimentDefinition, ...] = ()
 
@@ -259,7 +250,7 @@ class CapturePolicy(_DomainModel):
 
 class ReeSubject(_DomainModel):
     schema_version: Literal[1] = CURRENT_SCHEMA_VERSION
-    definition: ReeDefinition = Field(default_factory=ReeDefinition)
+    definition: ReeDefinition
     receipts: ReeReceipts = Field(default_factory=ReeReceipts)
     contents: BundleContents = Field(default_factory=BundleContents)
     capture: CapturePolicy = Field(default_factory=CapturePolicy)
@@ -287,7 +278,7 @@ def canonical_subject_digest(subject: ReeSubject) -> Digest:
 
 
 class Ree(_DomainModel):
-    subject: ReeSubject = Field(default_factory=ReeSubject)
+    subject: ReeSubject
     seal: ReeSeal | None = None
 
     @model_validator(mode="after")

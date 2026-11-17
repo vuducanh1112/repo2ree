@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from ree_definitions import ree_definition
 
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
@@ -16,7 +17,6 @@ from repo2ree_ree.model import (
     ExperimentEnvironmentDefinition,
     LaunchDefinition,
     Ree,
-    ReeDefinition,
     ReeSubject,
     SourceDefinition,
 )
@@ -33,8 +33,8 @@ def _launch(body: bytes = _LAUNCH) -> LaunchDefinition:
     return LaunchDefinition(launch_script_digest=digest_bytes(body), launch_script_size=len(body))
 
 
-def _ree(launch: LaunchDefinition | None) -> Ree:
-    definition = ReeDefinition(
+def _ree(launch: LaunchDefinition) -> Ree:
+    definition = ree_definition(
         source=SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_BUILD),
@@ -56,7 +56,7 @@ def _ree(launch: LaunchDefinition | None) -> Ree:
     return commit_receipt(Ree(subject=ReeSubject(definition=definition)), source)
 
 
-def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launch: LaunchDefinition | None) -> ReeDirectory:
+def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launch: LaunchDefinition) -> ReeDirectory:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
@@ -87,15 +87,6 @@ def test_a_build_runs_through_the_declared_launch_and_its_receipt_says_where(
     assert receipt.launched.slurm_job_id == "4711"
 
 
-def test_an_ree_without_a_launch_runs_its_build_directly(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    store = _workbench(tmp_path, monkeypatch, None)
-    assert _build(store.layout) == "succeeded"
-    assert store.workspace.read_bytes("runtime.tar") == b"direct"
-    receipt = store.read_ree().subject.receipts.experiment_environment
-    assert receipt is not None
-    assert (receipt.launch_script_digest, receipt.launched) == (None, None)
-
-
 def test_a_launch_script_edited_since_it_was_declared_stops_the_build(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -105,22 +96,9 @@ def test_a_launch_script_edited_since_it_was_declared_stops_the_build(
     assert store.read_ree().subject.receipts.experiment_environment is None
 
 
-@pytest.mark.parametrize(
-    ("before", "after"),
-    [
-        (_launch(), _launch(_LAUNCH + b"# another launcher\n")),
-        (_launch(), None),
-        (None, _launch()),
-    ],
-    ids=["changed", "removed", "added"],
-)
-def test_a_step_that_ran_under_another_launch_is_stale(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    before: LaunchDefinition | None,
-    after: LaunchDefinition | None,
-) -> None:
-    store = _workbench(tmp_path, monkeypatch, before)
+def test_a_step_that_ran_under_another_launch_is_stale(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store = _workbench(tmp_path, monkeypatch, _launch())
+    after = _launch(_LAUNCH + b"# another launcher\n")
     assert _build(store.layout) == "succeeded"
     ree = store.read_ree()
     assert audit(ree).experiment_environment.evidence == "current"

@@ -12,12 +12,12 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.frames import LogSink
-from repo2ree_protocol.outputs import GenerateHbomOutputs
+from repo2ree_protocol.outputs import ObserveHardwareOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.receipt import ObserveHardwareReceipt
 
 
-def handle_generate_hbom(
+def handle_observe_hardware(
     *,
     layout: ReeLayout,
     run_id: str,
@@ -45,7 +45,7 @@ def handle_generate_hbom(
         log("system", "error", f"hardware profiling failed: {exc}")
         return failed_from_exception(exc, f"hardware profiling failed: {exc}")
     if is_canceled():
-        log("system", "warn", "generate_hbom canceled after profiling")
+        log("system", "warn", "observe_hardware canceled after profiling")
         return ActionResult(status="canceled")
 
     timing = timer.finish()
@@ -61,7 +61,7 @@ def handle_generate_hbom(
     except Exception as exc:
         return failed_from_exception(exc, f"failed to commit hardware observation: {exc}")
 
-    outputs = GenerateHbomOutputs(
+    outputs = ObserveHardwareOutputs(
         observation=observation.model_dump(exclude_none=True),
         component_counts={
             "cpus": len(observation.cpus),
@@ -72,5 +72,5 @@ def handle_generate_hbom(
         },
         receipt=receipt,
     )
-    log("system", "info", "generate_hbom succeeded")
+    log("system", "info", "observe_hardware succeeded")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))
