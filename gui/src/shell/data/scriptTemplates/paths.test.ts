@@ -7,11 +7,13 @@ import { experimentRunScriptPath, experimentVerifyScriptPath } from "./paths";
 // The backend owns the slug rule (repo2ree_ree.reserved_paths.experiment_slug)
 // and these helpers re-derive it so the editor can show the destination before
 // the round-trip. Two implementations of one rule, so both sides assert against
-// contracts/experiment-slugs.json — see
+// contracts/ree/fixtures/experiment-slugs.json — see
 // ree/tests/test_experiment_slug_contract.py.
 const fixture = JSON.parse(
   readFileSync(
-    fileURLToPath(new URL("../../../../../contracts/experiment-slugs.json", import.meta.url)),
+    fileURLToPath(
+      new URL("../../../../../contracts/ree/fixtures/experiment-slugs.json", import.meta.url),
+    ),
     "utf-8",
   ),
 ) as { cases: Array<{ name: string; slug: string }> };

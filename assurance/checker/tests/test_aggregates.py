@@ -485,7 +485,9 @@ def test_each_script_is_claimed_by_the_field_that_declares_it(path: str, claim: 
 
 
 def test_an_item_is_named_in_its_files_by_the_slug_the_product_gives_it() -> None:
-    slugs = json.loads((Path(__file__).resolve().parents[3] / "contracts/experiment-slugs.json").read_text())
+    slugs = json.loads(
+        (Path(__file__).resolve().parents[3] / "contracts/ree/fixtures/experiment-slugs.json").read_text()
+    )
     for case in slugs["cases"]:
         assert experiment_slug(case["name"]) == case["slug"]
 

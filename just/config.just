@@ -6,7 +6,7 @@ check-config:
 
 [group('Configuration')]
 export-config: && check-config
-    python -m scripts.config.export --write
+    python -m scripts.contracts write environment
 
 [group('Configuration')]
 show-config owner="all":

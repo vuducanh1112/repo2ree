@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from scripts.config.export import CONTRACT, ROOT, build_contract, rendered_contract
+from scripts.config.export import ROOT, build_contract
 
 WORKSPACE_MEMBERS = tuple(tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["uv"]["workspace"]["members"])
 PYTHON_ROOTS = (*(f"{member}/src" for member in WORKSPACE_MEMBERS), "scripts")
@@ -224,9 +224,6 @@ def main() -> int:
             print(f"undeclared environment variable {name}")
             for reference in sorted(references[name], key=lambda item: (item.path, item.line, item.access)):
                 print(f"  {reference.access:12} {reference.path.relative_to(ROOT)}:{reference.line}")
-        return 1
-    if not CONTRACT.exists() or CONTRACT.read_text() != rendered_contract():
-        print("configuration contract is stale; run: just export-config")
         return 1
     print(f"configuration contract valid: {len(declared)} variables, {len(declared_patterns)} patterns")
     return 0

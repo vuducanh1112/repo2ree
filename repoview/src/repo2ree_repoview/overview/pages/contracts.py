@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from repo2ree_repoview.diagrams.contracts import Contract, contracts, drawing_path
 from repo2ree_repoview.overview.bundle import Bundle, Origin
-from repo2ree_repoview.overview.contracts import CONTRACT_FILES
+from repo2ree_repoview.overview.exports import Contracts
 from repo2ree_repoview.overview.figures import DIAGRAMS, diagram_origin
 from repo2ree_repoview.overview.html import Page, esc, prose, section, table
 from repo2ree_repoview.stamp import read_svg_stamp
@@ -25,23 +25,28 @@ def graph_link(contract: str, entry: str, text: str) -> str:
     return f'<a href="{CONTRACTS}.html#{esc(graph_anchor(contract, entry))}">{text}</a>'
 
 
-def _files() -> str:
+def _files(registry: Contracts) -> str:
     rows = [
         [
             f"<code>{esc(contract.path)}</code>",
-            prose(contract.binds),
+            prose(contract.summary),
             prose(contract.between),
-            f"<code>just {esc(contract.written_by)}</code>",
+            f"<code>{esc(contract.rendered_by)}</code>",
             f'<code title="sha256 {contract.digest}">{contract.digest[:12]}</code>',
         ]
-        for contract in CONTRACT_FILES
+        for contract in registry.contracts
         if contract.file.is_file()
     ]
+    fixtures = [[f"<code>{esc(path)}</code>"] for path in registry.fixtures]
     return (
         "<h3 id='files'>Contract files</h3>"
-        '<p class="lede">Each is generated from the code that implements it and committed; a test fails when the '
-        "code and the committed contract differ, so a change to an interface is a change to its contract.</p>"
-        + table(["Contract", "Binds", "Between", "Written by", "sha256"], rows)
+        '<p class="lede">Each is rendered from the code that implements it and committed '
+        "(<code>scripts/contracts.py</code>); <code>just check-contracts</code> fails when the code and a committed "
+        "contract differ, so a change to an interface is a change to its contract.</p>"
+        + table(["Contract", "Binds", "Between", "Rendered by", "sha256"], rows)
+        + "<h3 id='fixtures'>Fixtures</h3>"
+        '<p class="lede">Written by hand, and read by the tests that hold implementations to them.</p>'
+        + table(["Fixture"], fixtures)
     )
 
 
@@ -73,7 +78,7 @@ def _graphs(bundle: Bundle, contract: Contract) -> str:
     )
 
 
-def page_contracts(bundle: Bundle) -> Page:
+def page_contracts(bundle: Bundle, registry: Contracts) -> Page:
     drawn = contracts()
     index = " · ".join(f'<a href="#graphs-{esc(contract.key)}">{esc(contract.title)}</a>' for contract in drawn)
     lede = (
@@ -83,7 +88,7 @@ def page_contracts(bundle: Bundle) -> Page:
         'document\'s own anatomy is on the <a href="ree.html">REE</a> page; the interfaces these contracts specify '
         f'are on the <a href="interfaces.html">Interfaces</a> page.</p><p class="lede">Graphs: {index}'
     )
-    body = _files() + "".join(_graphs(bundle, contract) for contract in drawn)
+    body = _files(registry) + "".join(_graphs(bundle, contract) for contract in drawn)
     graphs = sum(len(contract.entries) for contract in drawn)
-    teaser = f"{len(CONTRACT_FILES)} committed contracts, drawn as {graphs} graphs of their models"
+    teaser = f"{len(registry.contracts)} committed contracts, drawn as {graphs} graphs of their models"
     return Page(CONTRACTS, "Contracts", teaser, section(CONTRACTS, "Contracts", lede, body))

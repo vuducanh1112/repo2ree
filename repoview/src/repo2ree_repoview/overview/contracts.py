@@ -1,11 +1,7 @@
-"""The published contracts the overview lists: the command line, the HTTP API, the environment variables, and the
-committed contract files with what each binds."""
+"""The published contracts the overview reads: the command line, the HTTP API, and the environment variables."""
 
 from __future__ import annotations
 
-import hashlib
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, JsonValue
@@ -174,73 +170,3 @@ class CliSchema(Document):
     @classmethod
     def read(cls) -> CliSchema:
         return cls.model_validate_json(CLI.read_bytes())
-
-
-# ================================================
-# The contract files
-# ================================================
-
-
-@dataclass(frozen=True)
-class Contract:
-    """A committed contract: what it binds, between whom, and the recipe that writes it."""
-
-    path: str
-    binds: str
-    between: str
-    written_by: str
-
-    @property
-    def file(self) -> Path:
-        return ROOT / self.path
-
-    @property
-    def digest(self) -> str:
-        return hashlib.sha256(self.file.read_bytes()).hexdigest()
-
-
-CONTRACT_FILES: tuple[Contract, ...] = (
-    Contract(
-        "contracts/cli/cli.schema.json",
-        "Every `ree` command: its options, stdin, what it prints and its outputs; exit statuses and the steps.",
-        "a person or an agent, and `ree`",
-        "generate-cli-schema",
-    ),
-    Contract(
-        "contracts/openapi.json",
-        "Every HTTP operation, its request and responses, and the operations that advance each step.",
-        "the GUI and HTTP clients, and the API",
-        "generate-openapi",
-    ),
-    Contract(
-        "contracts/protocol/protocol.schema.json",
-        "The commands and reads the workbench runs as `ree` argv, their results and outputs, and the workbench's "
-        "WebSocket messages.",
-        "the supervisor, the workbench and `ree`",
-        "generate-protocol-schema",
-    ),
-    Contract(
-        "contracts/ree/ree.schema.json",
-        "The REE document (`ree.json`): definition, receipts, seal.",
-        "every reader and writer of an REE",
-        "generate-ree-schema",
-    ),
-    Contract(
-        "contracts/ree/layout.json",
-        "The REE's file tree: every path, and how a capture stores it.",
-        "core and every reader of an REE's files",
-        "generate-ree-schema",
-    ),
-    Contract(
-        "contracts/behaviour/events.schema.json",
-        "The behaviour events each component journals, from the specification.",
-        "the components and the assurance checker",
-        "generate-behaviour-schema",
-    ),
-    Contract(
-        "contracts/config/environment.json",
-        "The environment variables each process reads.",
-        "a deployment and the processes it starts",
-        "export-config",
-    ),
-)

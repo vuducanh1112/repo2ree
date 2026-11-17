@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "api:types": "openapi-typescript ../contracts/openapi.json -o src/shell/infra/api/generated/openapi.ts",
     "check:core-purity": "node scripts/checkCorePurity.mjs",
     "check:style-architecture": "node scripts/checkStyleArchitecture.mjs",
     "dev": "vite",

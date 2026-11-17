@@ -6,23 +6,19 @@ from pathlib import Path, PurePosixPath
 import pytest
 from jsonschema import Draft202012Validator
 
-from repo2ree_ree.export_schema import LAYOUT_PATH, SCHEMA_PATH, schema_document
-from repo2ree_ree.layout import REE_TREE, layout_document
+from repo2ree_ree.export_schema import schema_document
+from repo2ree_ree.layout import REE_TREE
 
-SEALED = sorted((SCHEMA_PATH.parent / "sealed").glob("*.json"))
-
-
-def test_the_committed_schema_is_current() -> None:
-    assert SCHEMA_PATH.read_text(encoding="utf-8") == schema_document(), "run: just generate-ree-schema"
+SEALED = sorted((Path(__file__).resolve().parents[2] / "contracts/ree/fixtures/sealed").glob("*.json"))
 
 
-def test_the_committed_layout_is_current() -> None:
-    assert LAYOUT_PATH.read_text(encoding="utf-8") == layout_document(), "run: just generate-ree-schema"
+def test_there_are_sealed_documents() -> None:
+    assert SEALED
 
 
 @pytest.mark.parametrize("path", SEALED, ids=lambda path: path.stem)
 def test_a_sealed_document_conforms_to_the_schema(path: Path) -> None:
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(schema_document())
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(json.loads(path.read_text(encoding="utf-8")))
 
@@ -36,7 +32,7 @@ def annotated(prop: dict[str, object], key: str) -> object:
 
 
 def fields() -> list[tuple[str, str, dict[str, object]]]:
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = json.loads(schema_document())
     return [
         (definition, name, prop)
         for definition, body in schema["$defs"].items()

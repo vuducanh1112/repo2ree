@@ -145,7 +145,7 @@ def _item(field: str, slug: str, held: Mapping[str, str]) -> str | None:
 
 
 def experiment_slug(name: str) -> str:
-    """An item's name as its files spell it (contracts/experiment-slugs.json)."""
+    """An item's name as its files spell it (contracts/ree/fixtures/experiment-slugs.json)."""
     return "-".join(name.split()) or "experiment"
 
 

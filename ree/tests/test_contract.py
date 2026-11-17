@@ -15,7 +15,7 @@ from repo2ree_ree.digest import digest_bytes, digest_json
 from repo2ree_ree.instant import format_utc_instant, parse_utc_instant
 from repo2ree_ree.model import Ree, canonical_subject_digest
 
-CONTRACT = Path(__file__).resolve().parents[2] / "contracts" / "ree"
+CONTRACT = Path(__file__).resolve().parents[2] / "contracts" / "ree" / "fixtures"
 SEALED = sorted((CONTRACT / "sealed").glob("*.json"))
 CANONICAL = json.loads((CONTRACT / "canonical.json").read_text(encoding="utf-8"))
 INVALID = json.loads((CONTRACT / "invalid.json").read_text(encoding="utf-8"))

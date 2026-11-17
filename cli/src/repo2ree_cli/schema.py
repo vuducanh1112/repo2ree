@@ -5,7 +5,7 @@ result, bytes, or a script), the protocol operations it runs, and the model of i
 The exit statuses, the failure categories, the result and event shapes, and the authoring steps with the commands
 that advance each come with them. Every model is defined once, under ``$defs``.
 
-The same document is committed as ``contracts/cli/cli.schema.json`` (``python -m repo2ree_cli.export_schema``).
+The same document is committed as ``contracts/cli/cli.schema.json`` (``python -m scripts.contracts write cli-schema``).
 """
 
 from __future__ import annotations

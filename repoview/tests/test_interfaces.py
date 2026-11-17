@@ -11,7 +11,8 @@ import pytest
 
 from repo2ree_repoview.diagrams.contracts import contracts, drawing_path, render_dot
 from repo2ree_repoview.overview.bundle import Bundle
-from repo2ree_repoview.overview.contracts import CONTRACT_FILES, CliSchema, OpenApi
+from repo2ree_repoview.overview.contracts import CliSchema, OpenApi
+from repo2ree_repoview.overview.exports import CONTRACTS_EXPORT, Contracts, exported
 from repo2ree_repoview.overview.pages.contracts import page_contracts
 from repo2ree_repoview.overview.pages.interfaces import page_api, page_cli, page_interfaces
 
@@ -20,12 +21,13 @@ API = OpenApi.read()
 HUB = html.unescape(page_interfaces(CLI, API).body)
 COMMANDS = html.unescape(page_cli(CLI).body)
 OPERATIONS = html.unescape(page_api(API).body)
+REGISTRY = Contracts.model_validate_json(exported(CONTRACTS_EXPORT))
 
 
 @pytest.fixture(scope="module")
 def contracts_page(tmp_path_factory: pytest.TempPathFactory) -> str:
     bundle = Bundle(tmp_path_factory.mktemp("overview") / "bundle", "r" * 40)
-    return html.unescape(page_contracts(bundle).body)
+    return html.unescape(page_contracts(bundle, REGISTRY).body)
 
 
 def test_the_hub_leads_to_both_surfaces() -> None:
@@ -47,8 +49,9 @@ def test_the_api_page_lists_every_operation() -> None:
 
 
 def test_every_contract_it_lists_is_committed(contracts_page: str) -> None:
-    assert all(contract.file.is_file() for contract in CONTRACT_FILES)
-    assert all(contract.path in contracts_page for contract in CONTRACT_FILES)
+    assert all(contract.file.is_file() for contract in REGISTRY.contracts)
+    assert all(contract.path in contracts_page for contract in REGISTRY.contracts)
+    assert all(path in contracts_page for path in REGISTRY.fixtures)
 
 
 def test_every_link_to_a_graph_lands_on_one(contracts_page: str) -> None:

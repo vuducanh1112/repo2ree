@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import sys
@@ -10,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from repo2ree_api.authoring.catalog import STEP_ACTIONS_EXTENSION
-from repo2ree_api.export_openapi import CONTRACT_PATH, openapi_document
 from repo2ree_api.main import app
 from repo2ree_core.domain.ree.steps import REE_STEPS
 
@@ -22,18 +20,6 @@ def _operations(schema: dict[str, Any]):
         for method, operation in path_item.items():
             if method in HTTP_METHODS:
                 yield path, method, operation
-
-
-def test_generated_document_matches_committed_contract() -> None:
-    """The committed api/openapi.json is the frozen contract; the app is one
-    implementation of it. On intentional API changes regenerate with
-    `just generate-openapi` so the contract change is a reviewable diff."""
-    committed = CONTRACT_PATH.read_text()
-
-    # Compare parsed documents first for a readable pytest diff, then the exact
-    # serialization so formatting drift can't creep into the committed file.
-    assert json.loads(committed) == app.openapi(), "regenerate with `just generate-openapi`"
-    assert committed == openapi_document(), "regenerate with `just generate-openapi`"
 
 
 def test_the_contract_is_written_from_the_code_alone(tmp_path: Path) -> None:

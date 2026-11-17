@@ -1,17 +1,20 @@
-"""The overview's reading of the documents it draws from: the specification, the zones, and the operations.
+"""The overview's reading of the documents it draws from: the specification, the zones, the contracts, and the
+operations.
 
 Each comes from its owner as JSON, written to reports/exports/ by a recipe `just repo-overview`
 depends on (``python -m repo2ree_assurance_checker export``, ``python scripts/zones.py export``,
-``python -m repo2ree_assurance_traceview operations``), so the views never import the checker,
-the guard, or traceview. These models are this package's own typed view of those documents,
-and a document in a format they do not know is refused rather than half read.
+``python -m scripts.contracts export``, ``python -m repo2ree_assurance_traceview operations``), so the views
+never import the checker, the guard, the contract registry, or traceview. These models are this package's own
+typed view of those documents, and a document in a format they do not know is refused rather than half read.
 """
 
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 from collections.abc import Iterable
+from pathlib import Path
 from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, model_validator
@@ -23,6 +26,7 @@ from repo2ree_repoview.repository import ROOT
 EXPORTS = ROOT / "reports/exports"
 SPEC_EXPORT = (sys.executable, "-m", "repo2ree_assurance_checker", "export")
 ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
+CONTRACTS_EXPORT = (sys.executable, "-m", "scripts.contracts", "export")
 
 
 def operations_export(verifications: Iterable[str]) -> tuple[str, ...]:
@@ -313,6 +317,36 @@ class Zones(Export):
     zones: tuple[Zone, ...]
     files: tuple[Placed, ...]
     problems: tuple[str, ...]
+
+
+# ---------------------------------------------------------------------------- contracts
+
+
+class GeneratedContract(Document):
+    """A committed contract: what it binds, between whom, the function that renders it, and how to rewrite it."""
+
+    name: str
+    path: str
+    summary: str
+    between: str
+    rendered_by: str
+    write: str
+
+    @property
+    def file(self) -> Path:
+        return ROOT / self.path
+
+    @property
+    def digest(self) -> str:
+        return hashlib.sha256(self.file.read_bytes()).hexdigest()
+
+
+class Contracts(Export):
+    FORMAT = "repo2ree-contracts/1"
+
+    contracts: tuple[GeneratedContract, ...]
+    # The hand-written files under contracts/: every one under a fixtures/ directory.
+    fixtures: tuple[str, ...]
 
 
 # ---------------------------------------------------------------------------- operations

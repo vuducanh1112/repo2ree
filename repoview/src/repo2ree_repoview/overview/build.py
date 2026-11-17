@@ -27,7 +27,7 @@ from pathlib import Path
 from repo2ree_repoview.diagrams.recipes import read_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.contracts import CliSchema, Environment, OpenApi
-from repo2ree_repoview.overview.exports import EXPORTS, Operations, ShowcaseRuns, Spec, Zones
+from repo2ree_repoview.overview.exports import EXPORTS, Contracts, Operations, ShowcaseRuns, Spec, Zones
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.architecture import page_architecture
@@ -149,6 +149,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     bundle = Bundle(output or OVERVIEWS / bundle_name(now), now.revision)
     zones = Zones.model_validate_json(kept(bundle, exports, "zones"))
     spec = Spec.model_validate_json(kept(bundle, exports, "spec"))
+    registry = Contracts.model_validate_json(kept(bundle, exports, "contracts"))
     receipt = read_receipt()
     evidence = bundle_evidence(bundle, receipt)
     operations = Operations.model_validate_json(kept(bundle, exports, "operations"))
@@ -200,7 +201,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         ),
         page_architecture(bundle),
         page_interfaces(cli, api),
-        page_contracts(bundle),
+        page_contracts(bundle, registry),
         page_recipes(recipes, bundle, timings),
         page_configuration(Environment.read()),
     ]

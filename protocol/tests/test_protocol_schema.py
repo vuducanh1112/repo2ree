@@ -7,20 +7,16 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from repo2ree_protocol.command import SealReeArgs, SealReeCommand
-from repo2ree_protocol.export_schema import MESSAGES, SCHEMA_PATH, schema_document
+from repo2ree_protocol.export_schema import MESSAGES, schema_document
 from repo2ree_protocol.outputs import OUTPUTS
 from repo2ree_protocol.queries import REPLIES, query_types, verb_of
 from repo2ree_protocol.result import ActionResult
 
-DOCUMENT = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+DOCUMENT = json.loads(schema_document())
 
 
 def validator(entry: dict[str, Any]) -> Draft202012Validator:
     return Draft202012Validator({"$defs": DOCUMENT["$defs"], **entry})
-
-
-def test_the_committed_schema_is_current() -> None:
-    assert SCHEMA_PATH.read_text(encoding="utf-8") == schema_document(), "run: just generate-protocol-schema"
 
 
 def test_the_schema_is_valid_and_indexes_everything_the_protocol_names() -> None:

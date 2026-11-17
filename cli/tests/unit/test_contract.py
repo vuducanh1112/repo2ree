@@ -1,4 +1,4 @@
-"""The committed command-line contract is what ``ree schema`` says, and what ``ree`` prints conforms to it."""
+"""The command-line contract is what ``ree schema`` says, and what ``ree`` prints conforms to it."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from click.testing import CliRunner
 from jsonschema import Draft202012Validator
 
 from repo2ree_cli.cli import cli
-from repo2ree_cli.export_schema import SCHEMA_PATH, schema_document
+from repo2ree_cli.export_schema import schema_document
 
-DOCUMENT: dict[str, Any] = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+DOCUMENT: dict[str, Any] = json.loads(schema_document())
 runner = CliRunner()
 
 
@@ -22,10 +22,6 @@ def command(*words: str) -> dict[str, Any]:
 
 def validator(entry: dict[str, Any]) -> Draft202012Validator:
     return Draft202012Validator({"$defs": DOCUMENT["$defs"], **entry})
-
-
-def test_the_committed_contract_is_current() -> None:
-    assert SCHEMA_PATH.read_text(encoding="utf-8") == schema_document(), "run: just generate-cli-schema"
 
 
 def test_the_contract_is_valid_and_ree_schema_prints_it() -> None:

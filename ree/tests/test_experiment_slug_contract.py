@@ -2,7 +2,7 @@
 
 The GUI derives the same reserved script path locally (see
 ``gui/src/shell/data/scriptTemplates/paths.test.ts``), so the rule has two
-implementations. Both assert against ``contracts/experiment-slugs.json``: if
+implementations. Both assert against ``contracts/ree/fixtures/experiment-slugs.json``: if
 either side changes how a name becomes a slug, one of the two suites fails
 instead of the two silently disagreeing about where a script lives.
 """
@@ -22,7 +22,7 @@ from repo2ree_ree.reserved_paths import (
     is_overlay_path,
 )
 
-_FIXTURE = Path(__file__).resolve().parents[2] / "contracts" / "experiment-slugs.json"
+_FIXTURE = Path(__file__).resolve().parents[2] / "contracts/ree/fixtures/experiment-slugs.json"
 _CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))["cases"]
 
 

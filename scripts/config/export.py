@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate the machine-readable environment contract from runtime schemas."""
+"""The machine-readable environment contract, from runtime schemas.
+
+``contracts/config/environment.json`` publishes it (``scripts/contracts.py``); ``--show OWNER`` lists its variables.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +15,6 @@ from repo2ree_api.settings import Settings
 from repo2ree_workbench.config import WorkbenchEnvironment
 
 ROOT = Path(__file__).resolve().parents[2]
-CONTRACT = ROOT / "contracts/config/environment.json"
 
 # Variables owned by launchers, deployment adapters, or shared protocol code do
 # not belong to one service settings model. They are declared here so they are
@@ -135,22 +137,9 @@ def rendered_contract() -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    action = parser.add_mutually_exclusive_group(required=True)
-    action.add_argument("--write", action="store_true")
-    action.add_argument("--check", action="store_true")
-    action.add_argument("--show", metavar="OWNER")
+    parser.add_argument("--show", metavar="OWNER", required=True)
     args = parser.parse_args()
-    rendered = rendered_contract()
-    if args.write:
-        CONTRACT.parent.mkdir(parents=True, exist_ok=True)
-        CONTRACT.write_text(rendered)
-        return 0
-    if args.check:
-        if not CONTRACT.exists() or CONTRACT.read_text() != rendered:
-            print("configuration contract is stale; run: just export-config")
-            return 1
-        return 0
-    contract = json.loads(rendered)
+    contract = json.loads(rendered_contract())
     for name, detail in contract["variables"].items():
         if args.show == "all" or detail["owner"] == args.show:
             default = detail["schema"].get("default", "<required>")

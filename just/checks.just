@@ -52,7 +52,7 @@ check-nix: _check-write-hint
 
 # Run all GUI static checks.
 [group('Checks')]
-check-gui: _check-write-hint check-api-types
+check-gui: _check-write-hint
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Running GUI checks..."
@@ -71,21 +71,6 @@ check-gui: _check-write-hint check-api-types
     npm run check:style-architecture
     echo "Running dependency-cruiser..."
     npx depcruise src tests
-
-# Generates them into a temporary file and compares content rather than against HEAD,
-# so it also works while an API migration is intentionally uncommitted, without
-# modifying the worktree.
-# Require the checked-in GUI API types to be current with the OpenAPI contract.
-[group('Checks')]
-check-api-types: _check-write-hint
-    #!/usr/bin/env bash
-    set -euo pipefail
-    generated={{ quote(ROOT + "/gui/src/shell/infra/api/generated/openapi.ts") }}
-    candidate=$(mktemp)
-    trap 'rm -f "$candidate"' EXIT
-    cd gui
-    npx openapi-typescript ../contracts/openapi.json -o "$candidate"
-    diff -u "$generated" "$candidate"
 
 # A package with import contracts of its own declares them in its pyproject.toml: the
 # testbed and the views read what they test as processes and exports, the assurance
@@ -134,7 +119,7 @@ test-tooling:
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures
+check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures check-contracts
 
 # Run every container-free unit test suite.
 [group('Tests')]

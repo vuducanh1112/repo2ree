@@ -13,6 +13,7 @@ from pydantic import ValidationError
 from repo2ree_repoview.overview.build import build
 from repo2ree_repoview.overview.bundle import COMMAND, Bundle, sha256
 from repo2ree_repoview.overview.exports import (
+    CONTRACTS_EXPORT,
     SPEC_EXPORT,
     ZONES_EXPORT,
     ShowcaseRuns,
@@ -33,6 +34,7 @@ def exports(tmp_path: Path) -> Path:
     directory.mkdir()
     (directory / "spec.json").write_text(exported(SPEC_EXPORT))
     (directory / "zones.json").write_text(exported(ZONES_EXPORT))
+    (directory / "contracts.json").write_text(exported(CONTRACTS_EXPORT))
     (directory / "operations.json").write_text(exported(operations_export(gate_verifications(read_receipt()))))
     (directory / "just-recipes.json").write_text(exported(("just", "--dump", "--dump-format", "json")))
     (directory / "showcases.json").write_text(

@@ -1,7 +1,9 @@
+"""The protocol as JSON Schema, as ``contracts/protocol/protocol.schema.json`` publishes it
+(``scripts/contracts.py``)."""
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from pydantic import create_model
@@ -12,8 +14,6 @@ from repo2ree_protocol.outputs import OUTPUTS
 from repo2ree_protocol.queries import REPLIES, verb_of
 from repo2ree_protocol.result import ActionResult
 from repo2ree_protocol.workbench import WorkbenchHello, WorkbenchWsMessage, WorkbenchWsRequest
-
-SCHEMA_PATH = Path(__file__).resolve().parents[3] / "contracts" / "protocol" / "protocol.schema.json"
 
 MESSAGES: dict[str, Any] = {
     "Command": Command,
@@ -53,12 +53,3 @@ def schema_document() -> str:
         "$defs": root["$defs"],
     }
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
-
-
-def main() -> None:
-    SCHEMA_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SCHEMA_PATH.write_text(schema_document(), encoding="utf-8")
-
-
-if __name__ == "__main__":
-    main()

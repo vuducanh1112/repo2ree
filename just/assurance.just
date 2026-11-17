@@ -10,10 +10,9 @@
 # Each assurance package has its own import contracts: the checker stays independent of the product,
 # the collector reaches it only over HTTP, the views see only the checker's public surface, and the
 # dossier format, the leaf every step shares, knows none of them.
-# Static checks for every assurance package, and that the generated contract (contracts/behaviour) is current.
+# Static checks for every assurance package.
 [group('Checks')]
 check-assurance: (check-package `python scripts/workspace.py assurance`)
-    python -m repo2ree_assurance_checker generate-schema --check
 
 # Tests for every assurance package. The checker's history tests need git; the collector's serve
 # the control plane's behaviour endpoints from a local stub; the traceview dossier smoke test needs
