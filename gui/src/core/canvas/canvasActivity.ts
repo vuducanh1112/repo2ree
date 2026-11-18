@@ -1,5 +1,6 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
-import type { ReeRunOperation, ReeRunSummary } from "@core/runs/ReeRun";
+import type { ReeRunOperation } from "@core/generated/vocabulary";
+import type { ReeRunSummary } from "@core/runs/ReeRun";
 import { isTerminalReeRunStatus } from "@core/runs/ReeRunStatus";
 import { CANVAS_NODES, type NodeZone } from "./canvasNodes";
 

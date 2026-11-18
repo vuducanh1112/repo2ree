@@ -1,3 +1,6 @@
+import { requireKnownNames } from "@core/contract/unknownNames";
+import { REE_AUDIT_KEYS, type ReeAuditKey } from "@core/generated/vocabulary";
+
 // Whether the receipt this REE carries for one step still speaks for what the
 // REE now declares. This is the backend's verdict — the `ReeAudit` shipped with
 // every REE document — not a record that a run happened in this browser tab:
@@ -7,14 +10,9 @@
 export type EvidenceStatus = "missing" | "current" | "stale" | "not_applicable";
 
 /** The audit's own step names. The domain names its steps; pages are the shell's word. */
-export type EvidenceStep =
-  | "acquire_source"
-  | "evaluate_reproducibility"
-  | "observe_hardware"
-  | "build_experiment_environment"
-  | "generate_sbom"
-  | "cross_check_sbom"
-  | "activate_experiment_environment";
+export type EvidenceStep = Exclude<ReeAuditKey, "experiments">;
+
+const EVIDENCE_STEPS = REE_AUDIT_KEYS.filter((key): key is EvidenceStep => key !== "experiments");
 
 export type StepEvidence = Partial<Record<EvidenceStep, EvidenceStatus>>;
 
@@ -35,26 +33,9 @@ export interface ExperimentAudit {
  * The complete audit returned with an REE. Unlike the legacy StepEvidence
  * projection this retains the receipt/run binding and the backend's reasons.
  */
-export interface ReeAudit {
-  acquire_source?: StepAudit | EvidenceStatus;
-  evaluate_reproducibility?: StepAudit | EvidenceStatus;
-  observe_hardware?: StepAudit | EvidenceStatus;
-  build_experiment_environment?: StepAudit | EvidenceStatus;
-  generate_sbom?: StepAudit | EvidenceStatus;
-  cross_check_sbom?: StepAudit | EvidenceStatus;
-  activate_experiment_environment?: StepAudit | EvidenceStatus;
+export type ReeAudit = Partial<Record<EvidenceStep, StepAudit | EvidenceStatus>> & {
   experiments?: ExperimentAudit[];
-}
-
-const EVIDENCE_STEPS: readonly EvidenceStep[] = [
-  "acquire_source",
-  "evaluate_reproducibility",
-  "observe_hardware",
-  "build_experiment_environment",
-  "generate_sbom",
-  "cross_check_sbom",
-  "activate_experiment_environment",
-];
+};
 
 const EVIDENCE_STATUSES: readonly EvidenceStatus[] = [
   "missing",
@@ -88,8 +69,14 @@ export function isEvidenceStale(evidence: StepEvidence, step: EvidenceStep): boo
  * Project the wire `ReeAudit` (a `StepAudit` per step) down to the standing we
  * read. Payload and reasons stay on the wire: nothing here reports on a bundle.
  */
-export function mapRawStepEvidence(raw: unknown): StepEvidence {
+function auditRecord(raw: unknown): Record<string, unknown> {
   const audit = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  requireKnownNames("audit", REE_AUDIT_KEYS, Object.keys(audit));
+  return audit;
+}
+
+export function mapRawStepEvidence(raw: unknown): StepEvidence {
+  const audit = auditRecord(raw);
   const evidence: StepEvidence = {};
   for (const step of EVIDENCE_STEPS) {
     const entry = audit[step];
@@ -120,7 +107,7 @@ function mapRawStepAudit(raw: unknown): StepAudit {
 }
 
 export function mapRawReeAudit(raw: unknown): ReeAudit {
-  const audit = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const audit = auditRecord(raw);
   const mapped: ReeAudit = { experiments: [] };
   for (const step of EVIDENCE_STEPS) {
     mapped[step] = mapRawStepAudit(audit[step]);

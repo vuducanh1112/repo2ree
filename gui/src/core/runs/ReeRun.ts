@@ -1,3 +1,5 @@
+import { isOneOf } from "@core/contract/unknownNames";
+import { RECEIPT_OPERATIONS, type ReeRunOperation } from "@core/generated/vocabulary";
 import type { LogLine } from "../ree/ReeTypes";
 import type { ReeRunStatus } from "./ReeRunStatus";
 
@@ -47,49 +49,9 @@ export interface ReeRun {
   outputs?: Record<string, unknown>;
 }
 
-/** The operation a run runs, by the specification's catalogue name, as recorded on every run summary. */
-export const REE_RUN_OPERATIONS = [
-  "initialize_ree",
-  "acquire_source",
-  "remove_source",
-  "load_ree_bundle",
-  "patch_ree_definition",
-  "write_script",
-  "suggest_scripts",
-  "lint_scripts",
-  "evaluate_reproducibility",
-  "observe_hardware",
-  "check_working_environment",
-  "materialize_workspace",
-  "build_experiment_environment",
-  "generate_sbom",
-  "cross_check_sbom",
-  "activate_experiment_environment",
-  "run_experiment",
-  "seal_ree",
-  "review_acquire_source",
-  "review_build_experiment_environment",
-  "review_activate_experiment_environment",
-  "review_run_experiment",
-] as const;
-
-export type ReeRunOperation = (typeof REE_RUN_OPERATIONS)[number];
-
 /** The operations whose successful run files a receipt under its own run id. */
-const RECEIPT_OPERATIONS: ReadonlySet<ReeRunOperation> = new Set([
-  "acquire_source",
-  "evaluate_reproducibility",
-  "observe_hardware",
-  "build_experiment_environment",
-  "generate_sbom",
-  "cross_check_sbom",
-  "activate_experiment_environment",
-  "check_working_environment",
-  "run_experiment",
-]);
-
 export function filesReceipt(operation: ReeRunOperation): boolean {
-  return RECEIPT_OPERATIONS.has(operation);
+  return isOneOf(RECEIPT_OPERATIONS, operation);
 }
 
 /** A run as returned by the run-listing endpoint: a ReeRun plus its operation. */

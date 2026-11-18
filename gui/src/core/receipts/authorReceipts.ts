@@ -1,3 +1,10 @@
+import { requireKnownNames } from "@core/contract/unknownNames";
+import {
+  RECEIPT_OPERATIONS,
+  REE_RECEIPT_KEYS,
+  type ReceiptOperation,
+} from "@core/generated/vocabulary";
+
 // View model for the receipts console: the typed author evidence the backend
 // carries inline (one latest successful receipt per operation). Nothing here
 // derives new facts — it orders, labels and formats what the record states.
@@ -17,7 +24,7 @@ export interface ReceiptField {
 export interface ReceiptView {
   key: string;
   title: string;
-  operation: string;
+  operation: ReceiptOperation;
   runId: string;
   /** Compact duration label ("820ms", "12.400s", "3m 7s"). */
   duration: string;
@@ -27,28 +34,17 @@ export interface ReceiptView {
   raw: unknown;
 }
 
-const OPERATION_LABELS: Record<string, string> = {
+const OPERATION_LABELS: Record<ReceiptOperation, string> = {
   acquire_source: "Source acquired",
   evaluate_reproducibility: "Reproducibility evaluated",
   observe_hardware: "Hardware observed",
+  check_working_environment: "Working environment checked",
   build_experiment_environment: "Experiment environment built",
   generate_sbom: "SBOM generated",
   cross_check_sbom: "SBOM cross-check",
   activate_experiment_environment: "Activation tested",
   run_experiment: "Experiment run",
 };
-
-// Pipeline order, so the console reads top-to-bottom like the canvas ring.
-const OPERATION_ORDER: readonly string[] = [
-  "acquire_source",
-  "evaluate_reproducibility",
-  "observe_hardware",
-  "build_experiment_environment",
-  "generate_sbom",
-  "cross_check_sbom",
-  "activate_experiment_environment",
-  "run_experiment",
-];
 
 // The envelope every receipt shares — rendered by the card's own chrome, so
 // the field list holds only what is specific to the operation.
@@ -85,17 +81,9 @@ export function formatReceiptDuration(durationMs: number): string {
 export function parseAuthorReceipts(value: unknown): ReceiptView[] {
   const raw = asRecord(value);
   if (!raw) return [];
-  const experiments = asRecord(raw.experiments);
-  const receipts = [
-    raw.acquire_source,
-    raw.evaluate_reproducibility,
-    raw.observe_hardware,
-    raw.build_experiment_environment,
-    raw.generate_sbom,
-    raw.cross_check_sbom,
-    raw.activate_experiment_environment,
-    ...Object.values(experiments ?? {}),
-  ];
+  requireKnownNames("receipts", REE_RECEIPT_KEYS, Object.keys(raw));
+  const { experiments, ...stages } = raw;
+  const receipts = [...Object.values(stages), ...Object.values(asRecord(experiments) ?? {})];
   return receipts
     .map(parseReceipt)
     .filter((entry): entry is ReceiptView => entry !== null)
@@ -107,11 +95,12 @@ function parseReceipt(value: unknown): ReceiptView | null {
   if (!receipt) return null;
   const operation = stringValue(receipt.operation);
   if (!operation) return null;
+  const [known] = requireKnownNames("receipt operation", RECEIPT_OPERATIONS, [operation]);
 
   return {
-    key: `${operation}:${stringValue(receipt.run_id)}`,
-    title: receiptTitle(operation, receipt),
-    operation,
+    key: `${known}:${stringValue(receipt.run_id)}`,
+    title: receiptTitle(known, receipt),
+    operation: known,
     runId: stringValue(receipt.run_id),
     duration:
       typeof receipt.duration_ms === "number" ? formatReceiptDuration(receipt.duration_ms) : "",
@@ -121,8 +110,8 @@ function parseReceipt(value: unknown): ReceiptView | null {
   };
 }
 
-function receiptTitle(operation: string, receipt: Record<string, unknown>): string {
-  const label = OPERATION_LABELS[operation] ?? operation;
+function receiptTitle(operation: ReceiptOperation, receipt: Record<string, unknown>): string {
+  const label = OPERATION_LABELS[operation];
   const experiment = stringValue(receipt.experiment_name);
   return experiment ? `${label} · ${experiment}` : label;
 }
@@ -170,10 +159,9 @@ function compareReceipts(left: ReceiptView, right: ReceiptView): number {
   return left.title.localeCompare(right.title);
 }
 
-function operationRank(operation: string): number {
-  const index = OPERATION_ORDER.indexOf(operation);
-  // Operations this build does not know about sort last, never interleaved.
-  return index === -1 ? OPERATION_ORDER.length : index;
+// Pipeline order, so the console reads top-to-bottom like the canvas ring.
+function operationRank(operation: ReceiptOperation): number {
+  return RECEIPT_OPERATIONS.indexOf(operation);
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

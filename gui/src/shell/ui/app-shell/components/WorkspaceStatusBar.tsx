@@ -1,6 +1,6 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReeFile } from "@core/ree/ReeTypes";
-import type { ReviewStepKey } from "@core/reviews/reviewDag";
 import type { FileTreeNode } from "@core/workspace/FileTree";
 import type { ReactNode } from "react";
 import { Ic } from "../../shared/components/Icon";

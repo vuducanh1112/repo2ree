@@ -1,7 +1,8 @@
 import { PAGE } from "@core/app-shell/pages";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import { REE_STEPS } from "@core/ree-steps/stepCatalog";
 import type { ReviewBasisRequest } from "@core/reviews/Review";
-import { REVIEW_STEPS, type ReviewStepKey } from "@core/reviews/reviewDag";
+import { REVIEW_STEPS } from "@core/reviews/reviewDag";
 import { Ic } from "../../../shared/components/Icon";
 import { stageTone } from "../../../theme/appearance";
 import { stepIcon } from "../../stepIcons";
@@ -28,7 +29,7 @@ function presentation(key: ReviewStepKey) {
 
 const STEP_SUBJECT: Record<ReviewStepKey, string> = {
   acquire_source: "SWHID",
-  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experiment environment · SBOM diff",
+  build_experiment_environment: "experiment environment · SBOM diff",
   activate_experiment_environment: "experiment environment entry",
   experiments: "declared experiments",
 };

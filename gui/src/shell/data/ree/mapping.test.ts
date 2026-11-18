@@ -142,6 +142,7 @@ describe("shell/data/ree/mapping", () => {
       acquire_source: "current",
       evaluate_reproducibility: "missing",
       observe_hardware: "missing",
+      check_working_environment: "not_applicable",
       build_experiment_environment: "missing",
       generate_sbom: "missing",
       cross_check_sbom: "missing",

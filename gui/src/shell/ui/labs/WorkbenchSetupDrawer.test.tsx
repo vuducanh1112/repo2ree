@@ -10,7 +10,7 @@ import { WorkbenchSetupDrawer } from "./WorkbenchSetupDrawer";
 const wireRun = (runId: string) => ({
   run_id: runId,
   ree_id: "ree-new",
-  operation: "provision" as const,
+  operation: "initialize_ree" as const,
   status: "succeeded" as const,
   created_at: "2026-01-01T00:00:00Z",
   started_at: "2026-01-01T00:00:01Z",

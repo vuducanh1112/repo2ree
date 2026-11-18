@@ -23,6 +23,7 @@ from pathlib import Path, PurePosixPath
 from typing import Literal
 
 from scripts.config.export import rendered_contract as environment_contract
+from scripts.gui_vocabulary import biome_config, vocabulary_module
 
 from repo2ree_api.export_openapi import openapi_document
 from repo2ree_assurance_checker.codegen import render_schema
@@ -47,6 +48,8 @@ class Name(StrEnum):
     CLI_SCHEMA = "cli-schema"
     OPENAPI = "openapi"
     OPENAPI_TYPES = "openapi-types"
+    GUI_VOCABULARY = "gui-vocabulary"
+    BIOME_NAMING = "biome-naming"
     BEHAVIOUR_SCHEMA = "behaviour-schema"
     ENVIRONMENT = "environment"
 
@@ -129,6 +132,20 @@ REGISTRY: tuple[Contract, ...] = (
         "The OpenAPI contract as the GUI's TypeScript types.",
         "the GUI and the API",
         openapi_types,
+    ),
+    Contract(
+        Name.GUI_VOCABULARY,
+        PurePosixPath("gui/src/core/generated/vocabulary.ts"),
+        "The sets of names the GUI reads off the wire, from the OpenAPI contract.",
+        "the GUI and the API",
+        vocabulary_module,
+    ),
+    Contract(
+        Name.BIOME_NAMING,
+        PurePosixPath("gui/biome.json"),
+        "The GUI's lint configuration, whose naming conventions let a property be spelled as a wire name.",
+        "the GUI's sources",
+        biome_config,
     ),
     Contract(
         Name.BEHAVIOUR_SCHEMA,

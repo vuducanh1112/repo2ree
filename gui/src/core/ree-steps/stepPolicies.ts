@@ -1,7 +1,9 @@
+import { isOneOf } from "@core/contract/unknownNames";
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { StepRunOutcome } from "../ree/ReeTypes";
 import type { TerminalReeRunFailure } from "../runs/ReeRunStatus";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
+import { REE_STEP_KEYS } from "./ReeStepParams";
 import type { ReeStepKey } from "./stepRunParams";
 import type { ReeStepRequirement } from "./stepTypes";
 
@@ -20,16 +22,8 @@ const WORKSPACE_REFRESH_STEPS = new Set<ReeStepKey>([
   "observe_hardware",
   "generate_sbom",
 ]);
-const REE_STEP_KEYS = new Set<ReeStepKey>([
-  "evaluate_reproducibility",
-  "build_experiment_environment",
-  "observe_hardware",
-  "generate_sbom",
-  "activate_experiment_environment",
-]);
-
 export function isReeStepKey(key: string): key is ReeStepKey {
-  return REE_STEP_KEYS.has(key as ReeStepKey);
+  return isOneOf(REE_STEP_KEYS, key);
 }
 
 export function getReeStepRequirements(key: ReeStepKey): ReeStepRequirement[] {

@@ -12,6 +12,7 @@
       "src/**/*.css",
       "scripts/**/*.mjs",
       "!src/shell/infra/api/generated/**",
+      "!src/core/generated/**",
       "!dist",
       "!node_modules",
       "!.vite",
@@ -55,7 +56,7 @@
                 "selector": {
                   "kind": "typeProperty"
                 },
-                "match": "__brand|acquire_source|observe_hardware|check_working_environment|evaluate_reproducibility|build_experiment_environment|generate_sbom|cross_check_sbom|activate_experiment_environment|seal_ree|(.+)",
+                "match": "__brand|acquire_source|activate_experiment_environment|build_experiment_environment|check_working_environment|cross_check_sbom|evaluate_reproducibility|experiment_run|experiment_verify|generate_sbom|initialize_ree|lint_scripts|load_ree_bundle|materialize_workspace|observe_hardware|patch_ree_definition|remove_source|review_acquire_source|review_activate_experiment_environment|review_build_experiment_environment|review_run_experiment|run_experiment|seal_ree|suggest_scripts|write_script|(.+)",
                 "formats": [
                   "camelCase",
                   "PascalCase",
@@ -66,7 +67,7 @@
                 "selector": {
                   "kind": "objectLiteralProperty"
                 },
-                "match": "acquire_source|observe_hardware|check_working_environment|evaluate_reproducibility|build_experiment_environment|generate_sbom|cross_check_sbom|activate_experiment_environment|seal_ree|(.+)",
+                "match": "acquire_source|activate_experiment_environment|build_experiment_environment|check_working_environment|cross_check_sbom|evaluate_reproducibility|experiment_run|experiment_verify|generate_sbom|initialize_ree|lint_scripts|load_ree_bundle|materialize_workspace|observe_hardware|patch_ree_definition|remove_source|review_acquire_source|review_activate_experiment_environment|review_build_experiment_environment|review_run_experiment|run_experiment|seal_ree|suggest_scripts|write_script|(.+)",
                 "formats": [
                   "camelCase",
                   "PascalCase",

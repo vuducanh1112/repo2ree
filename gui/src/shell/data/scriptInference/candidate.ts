@@ -1,3 +1,4 @@
+import type { ScriptKind } from "@core/generated/vocabulary";
 import type { DecisionDag, DecisionTrace, InferenceReport } from "@shell/infra/api/apiTypes";
 import type { ScriptGeneration } from "./generation";
 import { dagForTrace, findResult, type InferenceResult, traceForResult } from "./reportSelectors";
@@ -6,10 +7,13 @@ import { dagForTrace, findResult, type InferenceResult, traceForResult } from ".
 // engine infers them — the reduction from report to loadable script is
 // identical, so it lives here once. Build used to have its own copy of this
 // file and fell behind when the build DAG started emitting blocking warnings.
-export type ScriptTargetKind =
-  | "build_experiment_environment"
-  | "activate_experiment_environment"
-  | "experiment_run";
+const SCRIPT_TARGET_KINDS = [
+  "build_experiment_environment",
+  "activate_experiment_environment",
+  "experiment_run",
+] as const satisfies readonly ScriptKind[];
+
+export type ScriptTargetKind = (typeof SCRIPT_TARGET_KINDS)[number];
 
 function matches(kind: ScriptTargetKind, experimentName?: string) {
   return (result: InferenceResult): boolean => {

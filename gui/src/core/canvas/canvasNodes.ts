@@ -6,6 +6,7 @@ import {
 } from "@core/app-shell/processSteps";
 import { axisStandings, axisStepLabel } from "@core/evaluate/axes";
 import type { SbomCrossCheckSummary } from "@core/evaluate/Threat";
+import type { ReceiptOperation } from "@core/generated/vocabulary";
 import type { ReceiptView } from "@core/receipts/authorReceipts";
 import type { Badges } from "@core/ree/ReeTypes";
 import { isAuditStale } from "@core/ree/StepEvidence";
@@ -586,7 +587,9 @@ export function nodeSummary(
   }
 }
 
-const RECEIPT_OPERATIONS_BY_PAGE: Readonly<Partial<Record<AppShellPage, readonly string[]>>> = {
+const RECEIPT_OPERATIONS_BY_PAGE: Readonly<
+  Partial<Record<AppShellPage, readonly ReceiptOperation[]>>
+> = {
   [PAGE.ACQUIRE_SOURCE]: ["acquire_source"],
   [PAGE.OBSERVE_HARDWARE]: ["observe_hardware"],
   [PAGE.EVALUATE_REPRODUCIBILITY]: ["evaluate_reproducibility"],

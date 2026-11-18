@@ -1,3 +1,4 @@
+import { UnknownWireNames } from "@core/contract/unknownNames";
 import { describe, expect, it } from "vitest";
 import {
   auditReceiptRunId,
@@ -27,12 +28,24 @@ describe("mapRawStepEvidence", () => {
     });
   });
 
-  it("keeps unknown steps and unknown standings out of the slice", () => {
-    expect(mapRawStepEvidence({ deposit: { evidence: "current" } })).toEqual({});
-    expect(mapRawStepEvidence({ experiment_environment: { evidence: "probably-fine" } })).toEqual(
-      {},
+  it("reads the working environment check's standing", () => {
+    expect(
+      mapRawStepEvidence({
+        check_working_environment: { evidence: "current", payload: "present" },
+      }),
+    ).toEqual({ check_working_environment: "current" });
+  });
+
+  it("keeps unknown standings out of the slice", () => {
+    expect(mapRawStepEvidence({ generate_sbom: { evidence: "probably-fine" } })).toEqual({});
+    expect(mapRawStepEvidence({ generate_sbom: "current" })).toEqual({});
+  });
+
+  it("refuses a step the contract does not name, rather than reading it as missing", () => {
+    expect(() => mapRawStepEvidence({ experiment_environment: { evidence: "current" } })).toThrow(
+      UnknownWireNames,
     );
-    expect(mapRawStepEvidence({ experiment_environment: "current" })).toEqual({});
+    expect(() => mapRawReeAudit({ deposit: { evidence: "current" } })).toThrow(/deposit/);
   });
 
   it("reads an absent audit as an REE that has recorded nothing", () => {

@@ -12,7 +12,7 @@ describe("createHydrateReeWorkspace", () => {
         sealed_at: "2026-01-01T00:00:00Z",
         seal_hash: "sha256:abc",
       },
-      audit: { experiment_environment: { evidence: "current", payload: "present" } },
+      audit: { build_experiment_environment: { evidence: "current", payload: "present" } },
       fallbackName: "Fallback",
     });
 

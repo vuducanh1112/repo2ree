@@ -1,4 +1,5 @@
 import type { ReeSpec } from "../ree/ReeSpec";
+import { isReeStepKey } from "./stepPolicies";
 import type { ReeStepKey, ReeStepRunParamsByKey } from "./stepRunParams";
 import type { GenericReeStepParams } from "./stepTypes";
 
@@ -138,16 +139,4 @@ export function buildStepRunParams(
     return params;
   }
   return buildStepRunRequest(key, params as ReeStepRunParamsByKey[typeof key], ree).params;
-}
-
-const REE_STEP_KEYS: readonly ReeStepKey[] = [
-  "evaluate_reproducibility",
-  "build_experiment_environment",
-  "observe_hardware",
-  "generate_sbom",
-  "activate_experiment_environment",
-];
-
-function isReeStepKey(key: string): key is ReeStepKey {
-  return (REE_STEP_KEYS as readonly string[]).includes(key);
 }

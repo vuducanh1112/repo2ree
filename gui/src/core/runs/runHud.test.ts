@@ -1,5 +1,6 @@
+import { REE_RUN_OPERATIONS, type ReeRunOperation } from "@core/generated/vocabulary";
 import { describe, expect, it } from "vitest";
-import type { ReeRunOperation, ReeRunSummary } from "./ReeRun";
+import type { ReeRunSummary } from "./ReeRun";
 import {
   activeRunCount,
   formatRunDuration,
@@ -21,30 +22,16 @@ function run(overrides: Partial<ReeRunSummary> & { runId: string }): ReeRunSumma
   };
 }
 
-const OPERATIONS: ReeRunOperation[] = [
-  "initialize_ree",
-  "load_ree_bundle",
-  "seal_ree",
-  "acquire_source",
-  "build_experiment_environment",
-  "generate_sbom",
-  "cross_check_sbom",
-  "observe_hardware",
-  "activate_experiment_environment",
-  "check_working_environment",
-  "evaluate_reproducibility",
-  "run_experiment",
-  "review_acquire_source",
-  "review_build_experiment_environment",
-  "review_activate_experiment_environment",
-  "review_run_experiment",
-];
-
 describe("runHudTabForOperation", () => {
-  it("routes every operation to a tab", () => {
-    const tabKeys = RUN_HUD_TABS.map((tab) => tab.key);
-    for (const operation of OPERATIONS) {
-      expect(tabKeys).toContain(runHudTabForOperation(operation));
+  it("holds every run operation in exactly one tab", () => {
+    for (const operation of REE_RUN_OPERATIONS) {
+      const holding = RUN_HUD_TABS.filter((tab) =>
+        (tab.operations as readonly ReeRunOperation[]).includes(operation),
+      );
+      expect(
+        holding.map((tab) => tab.key),
+        operation,
+      ).toHaveLength(1);
     }
   });
 

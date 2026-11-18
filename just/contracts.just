@@ -10,7 +10,7 @@ generate-openapi:
 # Regenerate the GUI TypeScript view of the OpenAPI contract.
 [group('Contracts')]
 generate-api-types: generate-openapi
-    python -m scripts.contracts write openapi-types
+    python -m scripts.contracts write openapi-types gui-vocabulary biome-naming
 
 # Regenerate the committed REE document schema and the REE file tree (contracts/ree/layout.json).
 [group('Contracts')]

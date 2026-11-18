@@ -1,14 +1,18 @@
+import type { ScriptKind } from "@core/generated/vocabulary";
 import type { LintFinding, LintReport, LintTierStatus } from "@shell/infra/api/apiTypes";
 
 /** The finding shape, re-exported for the UI: components read server state
  * through this layer rather than reaching into the API client themselves. */
 export type { LintFinding } from "@shell/infra/api/apiTypes";
 
-export type LintTargetKind =
-  | "build_experiment_environment"
-  | "activate_experiment_environment"
-  | "experiment_run"
-  | "experiment_verify";
+const LINT_TARGET_KINDS = [
+  "build_experiment_environment",
+  "activate_experiment_environment",
+  "experiment_run",
+  "experiment_verify",
+] as const satisfies readonly ScriptKind[];
+
+export type LintTargetKind = (typeof LINT_TARGET_KINDS)[number];
 
 export interface LintTarget {
   kind: LintTargetKind;

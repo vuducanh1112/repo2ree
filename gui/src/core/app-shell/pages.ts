@@ -1,3 +1,4 @@
+import { STEP } from "@core/generated/vocabulary";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 
@@ -5,18 +6,18 @@ import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState"
 // A page that does one of the REE's steps is keyed by that step.
 export const PAGE = {
   WORKBENCH: "workbench",
-  ACQUIRE_SOURCE: "acquire_source",
-  METADATA: "metadata",
-  EXPERIMENTS: "experiments",
-  OBSERVE_HARDWARE: "observe_hardware",
+  ACQUIRE_SOURCE: STEP.ACQUIRE_SOURCE,
+  METADATA: STEP.METADATA,
+  EXPERIMENTS: STEP.EXPERIMENTS,
+  OBSERVE_HARDWARE: STEP.OBSERVE_HARDWARE,
   // The hub canvas itself: no dock is open, the pod and its nodes fill the view.
   CANVAS: "canvas",
-  SEAL_REE: "seal_ree",
+  SEAL_REE: STEP.SEAL_REE,
   ARCHIVE: "archive",
-  EVALUATE_REPRODUCIBILITY: "evaluate_reproducibility",
-  BUILD_EXPERIMENT_ENVIRONMENT: "build_experiment_environment",
-  GENERATE_SBOM: "generate_sbom",
-  ACTIVATE_EXPERIMENT_ENVIRONMENT: "activate_experiment_environment",
+  EVALUATE_REPRODUCIBILITY: STEP.EVALUATE_REPRODUCIBILITY,
+  BUILD_EXPERIMENT_ENVIRONMENT: STEP.BUILD_EXPERIMENT_ENVIRONMENT,
+  GENERATE_SBOM: STEP.GENERATE_SBOM,
+  ACTIVATE_EXPERIMENT_ENVIRONMENT: STEP.ACTIVATE_EXPERIMENT_ENVIRONMENT,
 } as const;
 
 export const APP_ROUTE = {

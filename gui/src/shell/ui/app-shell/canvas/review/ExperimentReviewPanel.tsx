@@ -1,5 +1,6 @@
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReviewAttempt, ReviewExperimentComparison } from "@core/reviews/Review";
-import type { ReviewStepKey, ReviewStepStatus } from "@core/reviews/reviewDag";
+import type { ReviewStepStatus } from "@core/reviews/reviewDag";
 import { experimentReviewStatus, reproducedExperimentCount } from "@core/reviews/reviewStatuses";
 import { Ic } from "../../../shared/components/Icon";
 import styles from "./ReviewConsole.module.css";

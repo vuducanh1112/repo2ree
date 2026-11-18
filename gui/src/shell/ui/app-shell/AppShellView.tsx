@@ -1,6 +1,6 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { activeNode, CANVAS_NODES, isNodeStale } from "@core/canvas/canvasNodes";
-import type { ReviewStepKey } from "@core/reviews/reviewDag";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import { useWorkspaceNavigationGuard } from "@shell/state/ree-editor/workspace-sync/useWorkspaceNavigationGuard";
 import { useCallback, useMemo, useState } from "react";
 import { WorkspaceLoadErrorView, WorkspaceLoadingView } from "../errors/WorkspaceLoadView";

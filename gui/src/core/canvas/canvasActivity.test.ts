@@ -1,6 +1,7 @@
 import { PAGE } from "@core/app-shell/pages";
 import { canvasActivity } from "@core/canvas/canvasActivity";
-import type { ReeRunOperation, ReeRunSummary } from "@core/runs/ReeRun";
+import type { ReeRunOperation } from "@core/generated/vocabulary";
+import type { ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
 import { describe, expect, it } from "vitest";
 

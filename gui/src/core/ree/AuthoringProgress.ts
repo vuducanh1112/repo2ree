@@ -1,19 +1,15 @@
+import { isOneOf, requireKnownNames } from "@core/contract/unknownNames";
+import { STEP_KEYS, type StepKey } from "@core/generated/vocabulary";
+
 // Where the REE stands on each authoring step, as its own records say. The REE
 // document carries it (`steps`); the shell reads it rather than deriving it, so
 // the GUI says what `ree status` says.
 
-export const AUTHORING_STEP_KEYS = [
-  "acquire_source",
-  "metadata",
-  "observe_hardware",
-  "evaluate_reproducibility",
-  "build_experiment_environment",
-  "generate_sbom",
-  "cross_check_sbom",
-  "activate_experiment_environment",
-  "experiments",
-  "seal_ree",
-] as const;
+// Every step but the working environment check, which has no page of its own.
+export const AUTHORING_STEP_KEYS = STEP_KEYS.filter(
+  (key): key is Exclude<StepKey, "check_working_environment"> =>
+    key !== "check_working_environment",
+);
 
 export type AuthoringStepKey = (typeof AUTHORING_STEP_KEYS)[number];
 
@@ -38,14 +34,19 @@ export const NO_AUTHORING_PROGRESS: AuthoringProgress = { steps: [], next: undef
 const STATUSES: readonly AuthoringStepStatus[] = ["complete", "ready", "blocked"];
 
 function isStepKey(value: unknown): value is AuthoringStepKey {
-  return AUTHORING_STEP_KEYS.includes(value as AuthoringStepKey);
+  return isOneOf(AUTHORING_STEP_KEYS, value);
 }
 
 export function mapRawAuthoringProgress(raw: unknown): AuthoringProgress {
   const progress = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  const steps = Array.isArray(progress.steps) ? progress.steps : [];
-  const known = steps.flatMap((value): AuthoringStep[] => {
-    const step = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const steps = (Array.isArray(progress.steps) ? progress.steps : []).map((value) =>
+    value && typeof value === "object" ? (value as Record<string, unknown>) : {},
+  );
+  requireKnownNames("steps", STEP_KEYS, [
+    ...steps.flatMap((step) => [step.key, ...(Array.isArray(step.requires) ? step.requires : [])]),
+    ...(progress.next == null ? [] : [progress.next]),
+  ]);
+  const known = steps.flatMap((step): AuthoringStep[] => {
     if (!isStepKey(step.key)) return [];
     return [
       {
@@ -59,8 +60,8 @@ export function mapRawAuthoringProgress(raw: unknown): AuthoringProgress {
       },
     ];
   });
-  // A step this GUI has no page for (the working environment check) is not offered as the next one: the first
-  // ready step it can show is.
+  // The working environment check has no page, so it is not offered as the next step: the first ready step the
+  // GUI can show is.
   const fallback = known
     .filter((step) => step.status === "ready")
     .sort((a, b) => a.order - b.order)[0]?.key;

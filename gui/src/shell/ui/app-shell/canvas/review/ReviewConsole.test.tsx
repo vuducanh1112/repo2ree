@@ -29,7 +29,7 @@ function ReviewWorkflowPanel({ experiments }: { experiments: readonly ReeExperim
 const opened = {
   run_id: "run-review",
   ree_id: "ree-1",
-  operation: "source" as const,
+  operation: "review_acquire_source" as const,
   status: "running" as const,
   created_at: "2026-01-01T00:00:00Z",
   started_at: null,

@@ -17,39 +17,45 @@ const auditStep = {
 // What the REE says of its steps: every receipt current, the definition whole, not yet sealed.
 const visualSteps = {
   steps: [
-    { key: "source", order: 1, label: "Source Acquisition", requires: [], status: "complete" },
-    { key: "metadata", order: 2, label: "Provide Metadata", requires: [], status: "complete" },
-    { key: "hbom", order: 3, label: "Hardware BOM", requires: [], status: "complete" },
     {
-      key: "evaluate",
+      key: "acquire_source",
+      order: 1,
+      label: "Source Acquisition",
+      requires: [],
+      status: "complete",
+    },
+    { key: "metadata", order: 2, label: "Provide Metadata", requires: [], status: "complete" },
+    { key: "observe_hardware", order: 3, label: "Hardware BOM", requires: [], status: "complete" },
+    {
+      key: "evaluate_reproducibility",
       order: 4,
       label: "Reproducibility Readiness",
-      requires: ["source"],
+      requires: ["acquire_source"],
       status: "complete",
     },
     {
       key: "build_experiment_environment",
       order: 5,
       label: "Build Experiment Environment",
-      requires: ["source"],
+      requires: ["acquire_source"],
       status: "complete",
     },
     {
-      key: "sbom",
+      key: "generate_sbom",
       order: 6,
       label: "Generate SBOM",
       requires: ["build_experiment_environment"],
       status: "complete",
     },
     {
-      key: "crosscheck",
+      key: "cross_check_sbom",
       order: 7,
       label: "Cross-check SBOM",
-      requires: ["sbom", "evaluate"],
+      requires: ["generate_sbom", "evaluate_reproducibility"],
       status: "complete",
     },
     {
-      key: "activation",
+      key: "activate_experiment_environment",
       order: 8,
       label: "Test Activation",
       requires: ["build_experiment_environment"],
@@ -62,9 +68,9 @@ const visualSteps = {
       requires: ["build_experiment_environment"],
       status: "complete",
     },
-    { key: "seal", order: 10, label: "Seal", requires: [], status: "ready" },
+    { key: "seal_ree", order: 10, label: "Seal", requires: [], status: "ready" },
   ],
-  next: "seal",
+  next: "seal_ree",
 };
 
 const visualRee = {
@@ -400,7 +406,7 @@ const runs = {
     {
       run_id: "run-evaluate",
       ree_id: VISUAL_REE_ID,
-      operation: "evaluate",
+      operation: "evaluate_reproducibility",
       status: "succeeded",
       created_at: TS,
       started_at: TS,
@@ -446,14 +452,17 @@ const reviews = {
       created_at: "2026-04-12T10:00:00Z",
       updated_at: "2026-04-12T10:08:40Z",
       status: "completed",
-      steps: ["source", "build_experiment_environment", "activation", "experiments"].map(
-        (step) => ({
-          step,
-          status: "completed",
-          started_at: "2026-04-12T10:00:00Z",
-          updated_at: "2026-04-12T10:08:40Z",
-        }),
-      ),
+      steps: [
+        "acquire_source",
+        "build_experiment_environment",
+        "activate_experiment_environment",
+        "experiments",
+      ].map((step) => ({
+        step,
+        status: "completed",
+        started_at: "2026-04-12T10:00:00Z",
+        updated_at: "2026-04-12T10:08:40Z",
+      })),
       source_comparison: {
         policy: "swhid",
         basis: "independent",

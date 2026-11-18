@@ -1,4 +1,5 @@
-import { REE_RUN_OPERATIONS, type ReeRunOperation, type ReeRunSummary } from "./ReeRun";
+import { REE_RUN_OPERATIONS, type ReeRunOperation } from "@core/generated/vocabulary";
+import type { ReeRunSummary } from "./ReeRun";
 import { isTerminalReeRunStatus } from "./ReeRunStatus";
 
 /** The operation whose run advances a step: the one the step is keyed by, and for the experiments, running one. */

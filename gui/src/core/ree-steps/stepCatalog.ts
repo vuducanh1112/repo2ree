@@ -72,13 +72,7 @@ export function defaultParamsForReeStep<K extends ReeStepKey>(key: K): ReeStepPa
 }
 
 export function initialReeStepParams(): ReeStepParams {
-  return {
-    evaluate_reproducibility: { ...DEFAULT_REE_STEP_PARAMS.evaluate_reproducibility },
-    build_experiment_environment: { ...DEFAULT_REE_STEP_PARAMS.build_experiment_environment },
-    observe_hardware: { ...DEFAULT_REE_STEP_PARAMS.observe_hardware },
-    generate_sbom: { ...DEFAULT_REE_STEP_PARAMS.generate_sbom },
-    activate_experiment_environment: { ...DEFAULT_REE_STEP_PARAMS.activate_experiment_environment },
-  };
+  return structuredClone(DEFAULT_REE_STEP_PARAMS);
 }
 
 export function mergeStepParams<K extends ReeStepKey>(

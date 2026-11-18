@@ -1,8 +1,4 @@
-export type ReviewStepKey =
-  | "acquire_source"
-  | "build_experiment_environment"
-  | "activate_experiment_environment"
-  | "experiments";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 
 /**
  * `uninhabitable` is a verdict, `failed` is a breakdown — activation is the one

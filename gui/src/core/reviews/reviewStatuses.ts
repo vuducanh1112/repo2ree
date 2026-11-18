@@ -1,5 +1,6 @@
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReviewAttempt, ReviewStepState } from "./Review";
-import { REVIEW_STEPS, type ReviewStepKey, type ReviewStepStatus, reviewStep } from "./reviewDag";
+import { REVIEW_STEPS, type ReviewStepStatus, reviewStep } from "./reviewDag";
 
 /**
  * The per-step display state of a review attempt.
@@ -55,21 +56,11 @@ export function runnableReviewSteps(
   );
   if (busy) return new Set();
   // Source opens an attempt, so it is always available; every other step needs
-  // its dependencies settled — and only source is implemented beyond build.
+  // its dependencies settled.
   return new Set(
-    REVIEW_STEPS.filter(
-      (step) => statuses[step.key] !== "unavailable" && IMPLEMENTED_STEPS.has(step.key),
-    ).map((step) => step.key),
+    REVIEW_STEPS.filter((step) => statuses[step.key] !== "unavailable").map((step) => step.key),
   );
 }
-
-/** Steps with a reviewer-side path today; the rest stay disabled in the DAG. */
-const IMPLEMENTED_STEPS = new Set<ReviewStepKey>([
-  "acquire_source",
-  "build_experiment_environment",
-  "activate_experiment_environment",
-  "experiments",
-]);
 
 /**
  * The status of one experiment within an attempt.

@@ -1,6 +1,7 @@
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { ReviewAttempt, ReviewBasisRequest } from "@core/reviews/Review";
-import { type ReviewStepKey, settledReviewStepCount } from "@core/reviews/reviewDag";
+import { settledReviewStepCount } from "@core/reviews/reviewDag";
 import {
   reviewStepStatuses,
   runnableReviewSteps,

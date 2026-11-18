@@ -1,9 +1,9 @@
 /* biome-ignore-all lint/style/useNamingConvention: backend fixtures intentionally use wire field names */
 import { PAGE } from "@core/app-shell/pages";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReeExperiment } from "@core/ree/ReeSpec";
 import type { Badges } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
-import type { ReviewStepKey } from "@core/reviews/reviewDag";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";

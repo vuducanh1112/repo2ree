@@ -1,3 +1,4 @@
+import { UnknownWireNames } from "@core/contract/unknownNames";
 import { describe, expect, it } from "vitest";
 import { isAuthoringStepComplete, mapRawAuthoringProgress } from "./AuthoringProgress";
 
@@ -29,13 +30,9 @@ describe("authoring progress", () => {
     expect(isAuthoringStepComplete(progress, "evaluate_reproducibility")).toBe(false);
   });
 
-  it("drops what it does not know and claims nothing done", () => {
+  it("claims nothing done on a status it does not know", () => {
     const progress = mapRawAuthoringProgress({
-      steps: [
-        { key: "unknown", order: 1, label: "?", status: "complete" },
-        { key: "seal_ree", order: 10, label: "Seal", status: "finished" },
-      ],
-      next: "unknown",
+      steps: [{ key: "seal_ree", order: 10, label: "Seal", status: "finished" }],
     });
 
     expect(progress.steps.map((step) => [step.key, step.status])).toEqual([
@@ -43,6 +40,38 @@ describe("authoring progress", () => {
     ]);
     expect(progress.next).toBeUndefined();
     expect(mapRawAuthoringProgress(undefined)).toEqual({ steps: [], next: undefined });
+  });
+
+  it("refuses a step the contract does not name, wherever it appears", () => {
+    const step = { order: 1, label: "?", status: "complete" };
+    expect(() => mapRawAuthoringProgress({ steps: [{ ...step, key: "source" }] })).toThrow(
+      UnknownWireNames,
+    );
+    expect(() =>
+      mapRawAuthoringProgress({
+        steps: [{ ...step, key: "seal_ree", requires: ["sealing"] }],
+      }),
+    ).toThrow(/sealing/);
+    expect(() => mapRawAuthoringProgress({ steps: [], next: "source" })).toThrow(UnknownWireNames);
+  });
+
+  it("reads the working environment check without showing it", () => {
+    const progress = mapRawAuthoringProgress({
+      steps: [
+        { key: "check_working_environment", order: 4, label: "Check", status: "complete" },
+        {
+          key: "evaluate_reproducibility",
+          order: 5,
+          label: "Readiness",
+          requires: ["check_working_environment"],
+          status: "ready",
+        },
+      ],
+    });
+
+    expect(progress.steps.map((step) => [step.key, step.requires])).toEqual([
+      ["evaluate_reproducibility", []],
+    ]);
   });
 
   it("offers the first ready step it can show when the next one is a step it has no page for", () => {

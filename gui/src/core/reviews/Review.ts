@@ -1,4 +1,4 @@
-import type { ReviewStepKey } from "./reviewDag";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 
 export type ReviewStatus = "running" | "completed" | "failed" | "canceled";
 export type SourceComparisonVerdict = "identical" | "different" | "inconclusive";

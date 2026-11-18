@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import fnmatch
+import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from scripts.vocabulary.discover import contract_sets
+from scripts.vocabulary.discover import ROOT, contract_sets
 from scripts.vocabulary.model import CONTRACTS, Context, Located, Reader
 
 # ================================================
@@ -213,3 +214,43 @@ class SourceSet(Reader):
     def read(self, context: Context) -> tuple[Located, ...]:
         found = context.sources().get(self.site)
         return (found,) if found else ()
+
+
+@dataclass(frozen=True)
+class SourceSites(Reader):
+    """The literal sets at every site matching a pattern: copies, which must agree, or one set they make up."""
+
+    pattern: str
+    combine: Literal["copies", "union"]
+
+    def describe(self) -> str:
+        return self.pattern if self.combine == "copies" else f"every set at {self.pattern}, together"
+
+    def claims(self) -> tuple[str, ...]:
+        return (self.pattern,)
+
+    def read(self, context: Context) -> tuple[Located, ...]:
+        found = [at for site, at in context.sources().items() if fnmatch.fnmatchcase(site, self.pattern)]
+        if self.combine == "copies" or not found:
+            return tuple(found)
+        return (Located(self.pattern, frozenset().union(*(at.names for at in found))),)
+
+
+GUI_VOCABULARY = "gui/src/core/generated/vocabulary.ts"
+
+
+@dataclass(frozen=True)
+class GuiVocabularySet(Reader):
+    """One array of the GUI's generated vocabulary, as the committed module spells it."""
+
+    constant: str
+
+    def describe(self) -> str:
+        return f"{GUI_VOCABULARY}::{self.constant}"
+
+    def read(self, context: Context) -> tuple[Located, ...]:
+        source = (ROOT / GUI_VOCABULARY).read_text(encoding="utf-8")
+        found = re.search(rf"export const {self.constant} = \[(.*?)\] as const;", source, re.DOTALL)
+        if not found:
+            return ()
+        return (Located(self.describe(), frozenset(re.findall(r'"([a-z_]+)"', found.group(1)))),)

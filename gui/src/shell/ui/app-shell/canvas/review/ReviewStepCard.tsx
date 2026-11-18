@@ -1,4 +1,5 @@
-import type { ReviewStepKey, ReviewStepStatus } from "@core/reviews/reviewDag";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
+import type { ReviewStepStatus } from "@core/reviews/reviewDag";
 import type { ReactNode } from "react";
 import { Ic } from "../../../shared/components/Icon";
 import { cssVars } from "../../../theme/styleVars";

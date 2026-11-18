@@ -1,18 +1,11 @@
-import { PAGE } from "@core/app-shell/pages";
+import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReviewAttempt } from "@core/reviews/Review";
-import { REVIEW_STEPS, type ReviewStepKey, type ReviewStepStatus } from "@core/reviews/reviewDag";
+import { REVIEW_STEPS, type ReviewStepStatus, reviewStep } from "@core/reviews/reviewDag";
 import { type ReactNode, type Ref, useEffect, useRef } from "react";
 import { ExperimentReviewPanel } from "./ExperimentReviewPanel";
 import styles from "./ReviewConsole.module.css";
 import { STATUS_LABEL } from "./ReviewStepCard";
 import type { ReviewWorkflowModel } from "./useReviewWorkflowModel";
-
-const STEP_LABEL: Record<ReviewStepKey, string> = {
-  acquire_source: "Source",
-  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "Build Experiment Environment",
-  activate_experiment_environment: "Activation",
-  experiments: "Experiments",
-};
 
 /**
  * Everything one review attempt has settled, in the order the graph settles it.
@@ -42,7 +35,7 @@ export function ReviewEvidence({
   const section = (step: ReviewStepKey, children: ReactNode) => (
     <EvidenceSection
       key={step}
-      label={STEP_LABEL[step]}
+      label={reviewStep(step).label}
       status={statuses[step] ?? "ready"}
       current={focusStep === step}
       sectionRef={focusStep === step ? focusRef : undefined}

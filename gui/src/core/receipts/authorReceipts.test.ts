@@ -1,3 +1,4 @@
+import { UnknownWireNames } from "@core/contract/unknownNames";
 import { describe, expect, it } from "vitest";
 import { formatReceiptDuration, parseAuthorReceipts } from "./authorReceipts";
 
@@ -64,7 +65,29 @@ describe("parseAuthorReceipts", () => {
 
   it("drops absent or unusable receipt slots", () => {
     expect(parseAuthorReceipts(undefined)).toEqual([]);
-    expect(parseAuthorReceipts({ source: {}, experiments: { bad: { run_id: "x" } } })).toEqual([]);
+    expect(
+      parseAuthorReceipts({ acquire_source: null, experiments: { bad: { run_id: "x" } } }),
+    ).toEqual([]);
+  });
+
+  it("refuses a slot or an operation the contract does not name", () => {
+    expect(() => parseAuthorReceipts({ source: receipt("acquire_source") })).toThrow(
+      UnknownWireNames,
+    );
+    expect(() => parseAuthorReceipts({ acquire_source: receipt("acquire") })).toThrow(/acquire/);
+  });
+
+  it("shows the working environment check in pipeline order", () => {
+    const views = parseAuthorReceipts({
+      build_experiment_environment: receipt("build_experiment_environment"),
+      check_working_environment: receipt("check_working_environment"),
+      acquire_source: receipt("acquire_source"),
+    });
+    expect(views.map((view) => view.title)).toEqual([
+      "Source acquired",
+      "Working environment checked",
+      "Experiment environment built",
+    ]);
   });
 
   it("uses the contract operation name for activation evidence", () => {

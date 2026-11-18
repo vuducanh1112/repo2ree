@@ -8,9 +8,11 @@ from scripts.vocabulary.readers import (
     CatalogueTable,
     CommandsRunByName,
     ContractSet,
+    GuiVocabularySet,
     OperationsNamed,
     RoutedOperations,
     SourceSet,
+    SourceSites,
     SpecFieldGroups,
     SpecReceipts,
 )
@@ -46,6 +48,10 @@ def _source(name: str, site: str, summary: str) -> Vocabulary:
 
 def _contract(name: str, summary: str, *patterns: str) -> Vocabulary:
     return Vocabulary(name, CONTRACT, ContractSet(patterns), summary)
+
+
+def _gui(name: str, constant: str, summary: str) -> Vocabulary:
+    return Vocabulary(name, CONTRACT, GuiVocabularySet(constant), summary)
 
 
 VOCABULARIES = (
@@ -138,6 +144,20 @@ VOCABULARIES = (
         "The script template catalogue: each kind's templates and where its scripts belong.",
         "*:/*ScriptTemplateCatalog/properties",
     ),
+    # ---- the GUI's vocabulary, generated from the OpenAPI contract ----
+    _gui("gui.steps", "STEP_KEYS", "The steps of authoring an REE, as the GUI reads them."),
+    _gui("gui.review_steps", "REVIEW_STEP_KEYS", "The steps of a review attempt, as the GUI reads them."),
+    _gui("gui.run_operations", "REE_RUN_OPERATIONS", "A run's operation, as the GUI reads it."),
+    _gui("gui.audit", "REE_AUDIT_KEYS", "What the audit reports on, as the GUI reads it."),
+    _gui("gui.receipts", "REE_RECEIPT_KEYS", "The REE's receipt slots, as the GUI reads them."),
+    _gui("gui.receipt_operations", "RECEIPT_OPERATIONS", "The operations that file the REE's receipts."),
+    _gui("gui.script_kinds", "SCRIPT_KINDS", "The kinds of script an REE has, as the GUI reads them."),
+    Vocabulary(
+        "gui.lint_names",
+        SOURCE,
+        SourceSites("gui/biome.json::match.*", "copies"),
+        "The wire names Biome lets a property be spelled as, generated with the GUI's vocabulary.",
+    ),
     # ---- source: the literals the contracts render from ----
     _source(
         "protocol.operation_name", "protocol/src/repo2ree_protocol/command.py::OperationName", "A command's operation."
@@ -214,6 +234,53 @@ VOCABULARIES = (
     _source(
         "testbed.script_kind", "testbed/src/repo2ree_testbed/api_models.py::ScriptKind", "The testbed's script kinds."
     ),
+    # ---- the GUI's hand-chosen sets, each typed by its generated vocabulary ----
+    _source(
+        "gui.dock_steps",
+        "gui/src/core/ree-steps/ReeStepParams.ts::REE_STEP_KEYS",
+        "The steps a page runs from its dock.",
+    ),
+    _source(
+        "gui.dock_step_defaults",
+        "gui/src/core/ree-steps/stepCatalog.ts::DEFAULT_REE_STEP_PARAMS",
+        "Each dock step's default parameters.",
+    ),
+    _source(
+        "gui.workspace_refresh_steps",
+        "gui/src/core/ree-steps/stepPolicies.ts::WORKSPACE_REFRESH_STEPS",
+        "The dock steps after which the workspace is read again.",
+    ),
+    _source(
+        "gui.page_receipts",
+        "gui/src/core/canvas/canvasNodes.ts::RECEIPT_OPERATIONS_BY_PAGE",
+        "The receipts each canvas page shows.",
+    ),
+    _source(
+        "gui.receipt_labels",
+        "gui/src/core/receipts/authorReceipts.ts::OPERATION_LABELS",
+        "The receipts console's title for each receipt.",
+    ),
+    Vocabulary(
+        "gui.run_hud_tabs",
+        SOURCE,
+        SourceSites("gui/src/core/runs/runHud.ts::RUN_HUD_TABS*", "union"),
+        "The run operations the logs HUD's tabs hold.",
+    ),
+    _source(
+        "gui.review_subjects",
+        "gui/src/shell/ui/app-shell/canvas/review/ReviewStrip.tsx::STEP_SUBJECT",
+        "What each review step compares.",
+    ),
+    _source(
+        "gui.inference_kinds",
+        "gui/src/shell/data/scriptInference/candidate.ts::SCRIPT_TARGET_KINDS",
+        "The scripts a page infers.",
+    ),
+    _source(
+        "gui.lint_kinds",
+        "gui/src/shell/data/scriptLint/findings.ts::LINT_TARGET_KINDS",
+        "The scripts a page lints.",
+    ),
 )
 
 EDGES = (
@@ -266,40 +333,33 @@ EDGES = (
     Edge("authoring.lint.experiment_environment_reference", WITHIN, ("script.kinds",)),
     Edge("authoring.lint.placeholders", WITHIN, ("script.kinds",)),
     Edge("testbed.script_kind", EQUALS, ("script.kinds",)),
-)
-
-_GUI = "the GUI's vocabularies are deferred: they are to be generated from the contracts"
-
-GAPS = (
-    *(
-        Gap(f"gui/src/{site}", _GUI)
-        for site in (
-            "core/app-shell/pages.ts::PAGE",
-            "core/canvas/canvasNodes.ts::RECEIPT_OPERATIONS_BY_PAGE",
-            "core/receipts/authorReceipts.ts::OPERATION_LABELS",
-            "core/receipts/authorReceipts.ts::OPERATION_ORDER",
-            "core/ree-steps/ReeStepParams.ts::ReeStepKey",
-            "core/ree-steps/stepCatalog.ts::DEFAULT_REE_STEP_PARAMS",
-            "core/ree-steps/stepCatalog.ts::initialReeStepParams",
-            "core/ree-steps/stepPolicies.ts::REE_STEP_KEYS",
-            "core/ree-steps/stepPolicies.ts::WORKSPACE_REFRESH_STEPS",
-            "core/ree-steps/stepRunRequests.ts::REE_STEP_KEYS",
-            "core/ree/AuthoringProgress.ts::AUTHORING_STEP_KEYS",
-            "core/ree/StepEvidence.ts::EVIDENCE_STEPS",
-            "core/ree/StepEvidence.ts::EvidenceStep",
-            "core/reviews/reviewDag.ts::ReviewStepKey",
-            "core/reviews/reviewStatuses.ts::IMPLEMENTED_STEPS",
-            "core/runs/ReeRun.ts::RECEIPT_OPERATIONS",
-            "core/runs/ReeRun.ts::REE_RUN_OPERATIONS",
-            "core/runs/runHud.ts::RUN_HUD_TABS*",
-            "shell/data/scriptInference/candidate.ts::ScriptTargetKind",
-            "shell/data/scriptLint/findings.ts::LintTargetKind",
-            "shell/ui/app-shell/canvas/review/ReviewEvidence.tsx::STEP_LABEL",
-            "shell/ui/app-shell/canvas/review/ReviewStrip.tsx::STEP_SUBJECT",
-        )
+    # ---- the GUI ----
+    Edge("gui.steps", DERIVED, ("steps",)),
+    Edge("gui.review_steps", DERIVED, ("review.steps",)),
+    Edge("gui.run_operations", DERIVED, ("run.operations",)),
+    Edge("gui.audit", DERIVED, ("ree.audit",)),
+    Edge("gui.receipts", DERIVED, ("ree.receipts",)),
+    Edge("gui.receipt_operations", DERIVED, ("ree.receipts",)),
+    Edge("gui.script_kinds", DERIVED, ("script.kinds",)),
+    Edge(
+        "gui.lint_names",
+        DERIVED,
+        ("gui.steps", "gui.run_operations", "gui.audit", "gui.receipts", "gui.receipt_operations", "gui.script_kinds"),
     ),
-    Gap("gui/biome.json::match.*", _GUI),
+    Edge("gui.run_operations", WITHIN, OPERATIONS),
+    Edge("gui.receipt_operations", EQUALS, ("spec.receipts",)),
+    Edge("gui.dock_steps", WITHIN, ("gui.steps",)),
+    Edge("gui.dock_step_defaults", EQUALS, ("gui.dock_steps",)),
+    Edge("gui.workspace_refresh_steps", WITHIN, ("gui.dock_steps",)),
+    Edge("gui.page_receipts", WITHIN, ("gui.receipt_operations",)),
+    Edge("gui.receipt_labels", EQUALS, ("gui.receipt_operations",)),
+    Edge("gui.run_hud_tabs", WITHIN, ("gui.run_operations",)),
+    Edge("gui.review_subjects", EQUALS, ("gui.review_steps",)),
+    Edge("gui.inference_kinds", WITHIN, ("gui.script_kinds",)),
+    Edge("gui.lint_kinds", WITHIN, ("gui.script_kinds",)),
 )
+
+GAPS: tuple[Gap, ...] = ()
 
 IGNORED = (
     Ignored("protocol:/$defs/InitRee/properties", "an output's fields: the REE it initialized, and its name"),

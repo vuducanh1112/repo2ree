@@ -1,7 +1,8 @@
 // View model for the logs HUD: one tab per pipeline step, each tab holding
 // that step's run history. Tab order is pipeline order (not recency) so tab
 // positions stay stable across sessions.
-import type { ReeRunOperation, ReeRunSummary } from "./ReeRun";
+import type { ReeRunOperation } from "@core/generated/vocabulary";
+import type { ReeRunSummary } from "./ReeRun";
 import { isTerminalReeRunStatus } from "./ReeRunStatus";
 
 interface RunHudTab {
@@ -27,7 +28,18 @@ export const RUN_HUD_TABS = [
     key: "source",
     abbrev: "SRC",
     label: "Source",
-    operations: ["acquire_source", "review_acquire_source"],
+    operations: [
+      "acquire_source",
+      "remove_source",
+      "materialize_workspace",
+      "review_acquire_source",
+    ],
+  },
+  {
+    key: "authoring",
+    abbrev: "EDIT",
+    label: "Authoring",
+    operations: ["patch_ree_definition", "write_script", "suggest_scripts", "lint_scripts"],
   },
   {
     key: "build_experiment_environment",
@@ -67,10 +79,11 @@ export function runHudTabLabel(key: RunHudTabKey): string {
 }
 
 export function runHudTabForOperation(operation: ReeRunOperation): RunHudTabKey {
-  const tab = RUN_HUD_TABS.find((t) => (t.operations as readonly string[]).includes(operation));
-  // Every ReeRunOperation is listed in RUN_HUD_TABS; guard for forward compat
-  // with operations this build does not know yet.
-  return tab ? tab.key : "experiment";
+  const tab = RUN_HUD_TABS.find((t) =>
+    (t.operations as readonly ReeRunOperation[]).includes(operation),
+  );
+  if (!tab) throw new Error(`No run HUD tab holds ${operation}`);
+  return tab.key;
 }
 
 function newestFirst(runs: readonly ReeRunSummary[]): ReeRunSummary[] {
