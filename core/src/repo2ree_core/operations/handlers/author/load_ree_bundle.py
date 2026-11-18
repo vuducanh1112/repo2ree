@@ -6,13 +6,15 @@ snapshot, overlay, artifacts, results, and the author receipts that back them.
 The untrusted upload bytes go through ``safe_extract_zip`` before anything is
 read out of them, exactly as an uploaded source does.
 
-The bundle publishes only the sources of truth, so the two derived trees are
-rebuilt here rather than copied: the same ``acquire_source.sh`` a reproducer
-runs extracts the restored snapshot into ``upstream/``, and
-``materialize_workspace.sh`` merges it with the restored overlay. Both are the
-shared muscles the authoring pipeline uses, driven directly so that loading is
-one atomic command — the restored author receipts are evidence about the
-author's runs and must not be overwritten by the loader's own.
+The bundle never carries ``upstream/`` or ``workspace/``, so they are rebuilt
+here: the loader's own ``acquire_source.sh`` extracts the restored snapshot into
+``upstream/``, and its ``materialize_workspace.sh`` merges it with the restored
+overlay. Both are the shared muscles the authoring pipeline uses, driven
+directly so that loading is one atomic command, and never a script from the
+upload. They run at the root paths they resolve the REE from, so the files the
+bundle carried there are put back after them: a sealed REE holds exactly what
+its seal lists, and the restored author receipts are evidence about the
+author's runs that the loader's own must not overwrite.
 """
 
 from __future__ import annotations
@@ -83,7 +85,9 @@ def handle_load_ree_bundle(
 
     if is_canceled():
         return ActionResult(status="canceled")
+    restored = _restored_files(layout, sealed=loaded.sealed)
     rebuilt = _rebuild_derived_trees(layout, restored_source=loaded.source_restored, log=log, is_canceled=is_canceled)
+    _put_back(restored)
     if rebuilt is not None:
         return rebuilt
 
@@ -92,6 +96,25 @@ def handle_load_ree_bundle(
         exit_code=0,
         outputs=LoadReeBundleOutputs(archive_name=args.archive_name, loaded=loaded).model_dump(mode="json"),
     )
+
+
+def _restored_files(layout: ReeLayout, *, sealed: bool) -> dict[Path, bytes | None]:
+    """The files the rebuild writes over, as the bundle restored them: None for one it did not carry.
+
+    The rebuild runs the loader's own helpers, never a script from the upload, at the paths the helpers
+    resolve the REE from, and records its materialization. A draft keeps that record, which later builds
+    measure drift against; a sealed REE keeps the bundle's, as it keeps every file its seal lists.
+    """
+    paths = [layout.acquire_script, layout.materialize_script, *([layout.materialize_marker] if sealed else [])]
+    return {path: path.read_bytes() if path.is_file() else None for path in paths}
+
+
+def _put_back(restored: dict[Path, bytes | None]) -> None:
+    for path, content in restored.items():
+        if content is None:
+            path.unlink(missing_ok=True)
+        else:
+            write_atomic(path, content)
 
 
 def _rebuild_derived_trees(

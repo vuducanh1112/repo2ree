@@ -8,6 +8,7 @@ import pytest
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.bundle.repository_restore import restore_repository
+from repo2ree_core.digests import digest_file
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -192,3 +193,30 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
         assert ("ree/artifacts/runtime.tar" in paths) == experiment_environment_included
         assert ("ree/results/data" in paths) == results_included
         assert not any(path.startswith("ree/workspace/") for path in paths)
+
+
+def test_a_loaded_sealed_ree_holds_exactly_the_files_its_seal_lists(tmp_path, monkeypatch):
+    layout, _pointer, _payload = _sealed(tmp_path, monkeypatch)
+    with materialized_ree_download(layout) as archive:
+        data = archive.read_bytes()
+    destination = ReeLayout(root=tmp_path / "destination")
+    initialize_ree(destination, name="blank")
+    # A fresh REE's own helpers and marker differ from the author's; loading must leave the author's.
+    destination.acquire_script.write_bytes(b"#!/bin/sh\n# the blank REE's own\n")
+    destination.materialize_marker.write_text("{}")
+    destination.upload_staging_file("offline").write_bytes(data)
+    loaded = run_command(
+        LoadReeBundleCommand(args=LoadReeBundleArgs(upload_token="offline", archive_name="ree.zip")),  # noqa: S106
+        log=lambda *args: None,
+        layout=destination,
+    )
+    assert loaded.status == "succeeded", loaded
+    sealed = ReeDirectory(destination).read_ree()
+    assert sealed.seal is not None
+    listed = {str(entry.path): entry.digest for entry in sealed.subject.contents.entries}
+    for path in (destination.acquire_script, destination.materialize_script, destination.materialize_marker):
+        relative = path.relative_to(destination.root).as_posix()
+        if relative in listed:
+            assert digest_file(path) == listed[relative], relative
+        else:
+            assert not path.exists(), relative
