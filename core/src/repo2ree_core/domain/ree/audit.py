@@ -190,11 +190,21 @@ def _audit_observe_hardware(subject: _Subject) -> StepAudit:
     refused seal once it stopped.
     """
     receipt = subject.receipts.observe_hardware
+    hbom = subject.definition.hbom
+    declared = hbom is not None and _declares_something(hbom.model_dump(mode="json"))
     return _step(
         receipt.run_id if receipt else None,
         () if receipt else ("hardware has not been observed",),
-        applicable=subject.definition.hbom is not None or receipt is not None,
+        applicable=declared or receipt is not None,
     )
+
+
+def _declares_something(value: object) -> bool:
+    """Whether a declaration says anything: an object only when something in it does, as the document's parts
+    are set. A hardware declaration that lists nothing requires nothing."""
+    if isinstance(value, dict):
+        return any(_declares_something(inner) for inner in value.values())
+    return value not in (None, "", [])
 
 
 def _audit_check_working_environment(subject: _Subject) -> StepAudit:

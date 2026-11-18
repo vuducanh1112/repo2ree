@@ -394,6 +394,14 @@ def test_hardware_is_not_applicable_when_neither_declared_nor_observed() -> None
     assert audit(_built_ree()).observe_hardware.evidence == "not_applicable"
 
 
+def test_a_hardware_declaration_that_lists_nothing_requires_no_observation() -> None:
+    empty = replace_definition(_built_ree(), _built_ree().subject.definition.model_copy(update={"hbom": HBOM()}))
+    assert audit(empty).observe_hardware.evidence == "not_applicable"
+    cpu = HBOM.model_validate({"cpus": {"Xeon": {"quantity": 2}}})
+    declared = replace_definition(_built_ree(), _built_ree().subject.definition.model_copy(update={"hbom": cpu}))
+    assert audit(declared).observe_hardware.evidence == "missing"
+
+
 def _sealed_with(*paths: str) -> Ree:
     ree = _built_ree()
     contents = BundleContents(
