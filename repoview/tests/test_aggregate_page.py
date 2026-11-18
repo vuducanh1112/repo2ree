@@ -69,9 +69,9 @@ REPORT = {
             "instances": 2,
             "moves": [
                 moves("receipt", "build_experiment_environment", "missing", "current", "build_experiment_environment"),
-                moves("field", "definition.catalog.version", "unset", "set", "run_experiment", allowed=False),
+                moves("field", "definition.hbom", "unset", "set", "run_experiment", allowed=False),
             ],
-            "findings": [{"verdict": "violated", "subject": "Ree r definition.catalog.version", "reason": "x"}],
+            "findings": [{"verdict": "violated", "subject": "Ree r definition.hbom", "reason": "x"}],
         }
     ]
 }
@@ -80,8 +80,9 @@ REPORT = {
 def test_each_part_is_drawn_with_the_operations_that_moved_it(tmp_path: Path) -> None:
     drawn = drawings(spec(), run_with(tmp_path, REPORT), {}, Evidence())
     assert "build_experiment_environment 3" in drawn[part_drawing("Ree", "build_experiment_environment")]
-    assert "run_experiment 3 ✗" in drawn[part_drawing("Ree", "definition.catalog.version")]
+    assert "run_experiment 3 ✗" in drawn[part_drawing("Ree", "definition.hbom")]
     assert part_drawing("Ree", "definition.experiments[*]") == "spec/aggregates/Ree/definition.experiments.svg"
+    assert part_drawing("Ree", "definition.catalog.*") == "spec/aggregates/Ree/definition.catalog.svg"
 
 
 def test_the_page_shows_each_part_as_drawn_and_lists_what_nothing_took(
@@ -97,7 +98,7 @@ def test_the_page_shows_each_part_as_drawn_and_lists_what_nothing_took(
     assert (bundle.root / "diagrams" / part_drawing("Ree", "build_experiment_environment")).is_file()
     # A part not drawn yet says how to draw it.
     assert "Missing: run <code>just generate-spec-diagrams</code>" in page
-    assert "Ree r definition.catalog.version: x" in page
+    assert "Ree r definition.hbom: x" in page
     # Never taken, and listed; what only whole-document loading allows is not, unless named outright.
     assert "missing → current by build_experiment_environment" not in page
     assert "stale → current by build_experiment_environment" in page

@@ -338,6 +338,7 @@ def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
             "acquire_source",
             "evaluate_reproducibility",
             "observe_hardware",
+            "check_working_environment",
             "build_experiment_environment",
             "generate_sbom",
             "cross_check_sbom",

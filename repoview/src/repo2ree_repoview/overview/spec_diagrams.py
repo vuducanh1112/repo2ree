@@ -46,8 +46,9 @@ def showcase_coverage_drawing(entity: str) -> str:
 
 
 def part_drawing(aggregate: str, part: str) -> str:
-    """A part's drawing; its name, ``definition.experiments[*]`` say, made safe for a file."""
-    return f"spec/aggregates/{aggregate}/{re.sub(r'[^A-Za-z0-9._-]+', '-', part).strip('-')}.svg"
+    """A part's drawing; its name, ``definition.experiments[*]`` or ``definition.catalog.*`` say, made safe for a
+    file."""
+    return f"spec/aggregates/{aggregate}/{re.sub(r'[^A-Za-z0-9._-]+', '-', part).strip('-.')}.svg"
 
 
 def evidence_drawing(aggregate: str) -> str:

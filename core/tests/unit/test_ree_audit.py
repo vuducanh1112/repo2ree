@@ -441,3 +441,12 @@ def test_editing_the_activate_script_leaves_what_ran_through_it_stale_but_not_th
 
     assert result.build_experiment_environment.evidence == "current"
     assert result.experiments[0].run.reasons == ("activate experiment environment script changed",)
+
+
+def test_an_evaluation_rests_on_the_source_alone_so_rewriting_a_script_leaves_it_current() -> None:
+    evaluated = _cross_checked_ree()
+    definition = evaluated.subject.definition
+    rewritten = definition.model_copy(
+        update={"launch": definition.launch.model_copy(update={"launch_script_digest": _OTHER_DIGEST})}
+    )
+    assert audit(replace_definition(evaluated, rewritten)).evaluate_reproducibility.evidence == "current"
