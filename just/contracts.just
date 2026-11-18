@@ -36,3 +36,13 @@ generate-behaviour-schema:
 [group('Checks')]
 check-contracts: _check-write-hint
     python -m scripts.contracts check
+
+# Hold every set of names the repository spells to the operation catalogue, and find those nothing holds; lists the known gaps.
+[group('Checks')]
+check-vocabulary:
+    python -m scripts.vocabulary check
+
+# Draw the vocabulary graph as Mermaid.
+[group('Contracts')]
+vocabulary-graph:
+    python -m scripts.vocabulary graph

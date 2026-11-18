@@ -2,10 +2,8 @@
 
 A contract is correct when its file equals what its render function returns now, however the file was written:
 by a recipe, by ``write``, or by hand. ``check`` holds every contract to that, and holds ``contracts/`` to holding
-nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. It holds the
-contracts to the specification's catalogue of operations too: each operation a contract names is catalogued, and
-each catalogued one is run by the `ree` command spelled as its name in kebab case, and each one a route starts has a
-route whose operationId is its name in camel case: a POST to the path ``route_path`` spells for it.
+nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. The names the
+contracts spell are held to the catalogue of operations by the vocabulary graph (``python -m scripts.vocabulary``).
 
     python -m scripts.contracts write [NAME...]   # every contract, in the order below, or the named ones
     python -m scripts.contracts check             # exit 1 on a missing, stale or unaccounted file
@@ -31,7 +29,6 @@ from repo2ree_assurance_checker.codegen import render_schema
 from repo2ree_assurance_checker.files import load_spec
 from repo2ree_cli.export_schema import schema_document as cli_schema
 from repo2ree_protocol.export_schema import schema_document as protocol_schema
-from repo2ree_protocol.verbs import words_of
 from repo2ree_ree.export_schema import schema_document as ree_schema
 from repo2ree_ree.layout import layout_document
 
@@ -40,7 +37,6 @@ CONTRACTS = PurePosixPath("contracts")
 FIXTURES = "fixtures"
 FORMAT = "repo2ree-contracts/1"
 OPENAPI = PurePosixPath("contracts/openapi.json")
-CATALOGUE = PurePosixPath("assurance/spec/vocabulary/operation.toml")
 OPENAPI_TYPESCRIPT = PurePosixPath("gui/node_modules/.bin/openapi-typescript")
 
 
@@ -150,7 +146,7 @@ REGISTRY: tuple[Contract, ...] = (
     ),
 )
 
-ProblemKind = Literal["missing", "stale", "unaccounted", "uncatalogued", "unrun", "unrouted", "misrouted"]
+ProblemKind = Literal["missing", "stale", "unaccounted"]
 
 
 @dataclass(frozen=True)
@@ -196,106 +192,7 @@ def check(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> list
         for path in _files(root, CONTRACTS)
         if path not in registered and not is_fixture(path)
     )
-    if not problems:
-        problems.extend(operation_problems(registry=registry, root=root))
     return problems
-
-
-def operation_problems(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> list[Problem]:
-    """Each operation a contract names that the catalogue lacks, and each catalogued one its `ree` words don't run."""
-    documents = {
-        contract.name: (contract.path, json.loads((root / contract.path).read_text(encoding="utf-8")))
-        for contract in registry
-        if contract.path.suffix == ".json"
-    }
-    if Name.BEHAVIOUR_SCHEMA not in documents:
-        return []
-    _, behaviour = documents[Name.BEHAVIOUR_SCHEMA]
-    catalogue = {name for table in behaviour["x-operations"].values() for name in table}
-    problems = [
-        Problem(path, "uncatalogued", f"{name} is not in {CATALOGUE}: catalogue it or use a catalogued name")
-        for name_, (path, document) in documents.items()
-        if name_ is not Name.BEHAVIOUR_SCHEMA
-        for name in sorted(_operations_named(document) - catalogue)
-    ]
-    if Name.CLI_SCHEMA in documents:
-        cli_path, cli = documents[Name.CLI_SCHEMA]
-        run = {
-            operation
-            for command in cli["commands"]
-            for operation in command["operations"]
-            if tuple(command["words"]) == words_of(operation)
-        }
-        problems.extend(
-            Problem(cli_path, "unrun", f"{name}: no `ree {' '.join(words_of(name))}` runs it")
-            for name in sorted(catalogue - run)
-        )
-    if Name.OPENAPI in documents:
-        openapi_path, openapi = documents[Name.OPENAPI]
-        routes = [
-            (path, method, route) for path, methods in openapi["paths"].items() for method, route in methods.items()
-        ]
-        declared = {operation for _, _, route in routes for operation in route.get("x-operations", [])}
-        named = {
-            operation: (path, method)
-            for path, method, route in routes
-            for operation in route.get("x-operations", [])
-            if route["operationId"] == camel_case(operation)
-        }
-        problems.extend(
-            Problem(openapi_path, "unrouted", f"{name}: no route {camel_case(name)} declares it")
-            for name in sorted(declared - set(named))
-        )
-        problems.extend(
-            Problem(openapi_path, "misrouted", f"{name}: {method.upper()} {path}, not POST {route_path(name, path)}")
-            for name, (path, method) in sorted(named.items())
-            if (path, method) != (route_path(name, path), "post")
-        )
-    return problems
-
-
-def route_path(operation: str, path: str) -> str:
-    """The path of the route named after ``operation``: its words under the REE, a review's under its review.
-
-    ``review_run_experiment`` is ``/api/v1/rees/{ree_id}/reviews/{review_id}/run-experiment``; the parameters
-    ``path`` names after those words, such as an experiment's name, follow them.
-    """
-    *review, words = words_of(operation)
-    base = "/api/v1/rees/{ree_id}"
-    if review:
-        base += "/reviews" if operation == "review_acquire_source" else "/reviews/{review_id}"
-    prefix = f"{base}/{words}"
-    rest = path.removeprefix(prefix) if path.startswith(prefix) else ""
-    parameters = [part for part in rest.split("/") if part]
-    if all(part.startswith("{") and part.endswith("}") for part in parameters):
-        return prefix + rest
-    return prefix
-
-
-def camel_case(operation: str) -> str:
-    first, *rest = operation.split("_")
-    return first + "".join(word.capitalize() for word in rest)
-
-
-def _operations_named(document: object) -> set[str]:
-    """The operation names in a JSON document: an ``operation`` property's values, an ``operations`` list's items."""
-    named: set[str] = set()
-    if isinstance(document, dict):
-        properties = document.get("properties")
-        operation = properties.get("operation") if isinstance(properties, dict) else None
-        if isinstance(operation, dict) and isinstance(operation.get("const"), str):
-            named.add(operation["const"])
-        if isinstance(operation, dict) and isinstance(operation.get("enum"), list):
-            named.update(item for item in operation["enum"] if isinstance(item, str))
-        for key, value in document.items():
-            if key in ("operations", "x-operations") and isinstance(value, list):
-                named.update(item for item in value if isinstance(item, str))
-            else:
-                named |= _operations_named(value)
-    elif isinstance(document, list):
-        for item in document:
-            named |= _operations_named(item)
-    return named
 
 
 def fixtures(root: Path = ROOT) -> list[PurePosixPath]:

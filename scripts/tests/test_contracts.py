@@ -7,8 +7,6 @@ from pathlib import Path, PurePosixPath
 import pytest
 from scripts.contracts import FORMAT, REGISTRY, Contract, Name, check, export, fixtures, is_fixture, write
 
-from repo2ree_protocol.verbs import words_of
-
 SCHEMA = PurePosixPath("contracts/a/schema.json")
 TYPES = PurePosixPath("gui/types.ts")
 SEALED = PurePosixPath("contracts/a/fixtures/sealed")
@@ -64,56 +62,6 @@ def test_a_contract_is_correct_however_it_was_written(root: Path) -> None:
     assert check(registry=registry, root=root) == []
 
 
-def operation_contracts(root: Path, *, cli_runs: list[str], protocol_names: str) -> tuple[Contract, ...]:
-    behaviour = {"x-operations": {"operations": {"build": "", "run": ""}, "review_operations": {"review_run": ""}}}
-    cli = {"commands": [{"words": list(words_of(name)), "operations": [name]} for name in cli_runs]}
-    protocol = {"$defs": {"Command": {"properties": {"operation": {"const": protocol_names}}}}}
-    documents = {
-        Name.BEHAVIOUR_SCHEMA: (PurePosixPath("contracts/behaviour.json"), behaviour),
-        Name.CLI_SCHEMA: (PurePosixPath("contracts/cli.json"), cli),
-        Name.PROTOCOL_SCHEMA: (PurePosixPath("contracts/protocol.json"), protocol),
-    }
-    registry = []
-    for name, (path, document) in documents.items():
-        text = json.dumps(document) + "\n"
-        put(root, path, text)
-        registry.append(contract(name, path, text))
-    return tuple(registry)
-
-
-def test_check_holds_the_contracts_to_the_catalogue_of_operations(root: Path) -> None:
-    kept = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
-    assert check(registry=kept, root=root) == []
-
-    broken = operation_contracts(root, cli_runs=["build", "review_run", "bulid"], protocol_names="remove")
-    problems = check(registry=broken, root=root)
-    found = {(problem.path.name, problem.kind, problem.hint.split()[0]) for problem in problems}
-
-    assert found == {
-        ("cli.json", "uncatalogued", "bulid"),
-        ("protocol.json", "uncatalogued", "remove"),
-        ("cli.json", "unrun", "run:"),
-    }
-
-
-def test_an_operation_is_run_by_the_command_spelled_as_its_name(root: Path) -> None:
-    registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
-    cli = registry[1]
-    renamed = {
-        "commands": [
-            {"words": ["make"], "operations": ["build"]},
-            {"words": ["run"], "operations": ["run"]},
-            {"words": ["review", "run"], "operations": ["review_run"]},
-        ]
-    }
-    put(root, cli.path, json.dumps(renamed) + "\n")
-    registry = (registry[0], contract(cli.name, cli.path, json.dumps(renamed) + "\n"), registry[2])
-
-    assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
-        ("unrun", "build: no `ree build` runs it")
-    ]
-
-
 def test_ignored_files_under_contracts_are_not_the_registrys_business(root: Path) -> None:
     put(root, PurePosixPath(".gitignore"), "*.tmp\n")
     put(root, PurePosixPath("contracts/scratch.tmp"), "")
@@ -141,39 +89,3 @@ def test_the_export_lists_every_contract_with_what_renders_it() -> None:
     openapi = next(entry for entry in document["contracts"] if entry["name"] == "openapi")
     assert openapi["rendered_by"] == "repo2ree_api.export_openapi.openapi_document"
     assert openapi["write"] == "python -m scripts.contracts write openapi"
-
-
-def test_an_operation_a_route_starts_has_a_route_named_after_it(root: Path) -> None:
-    registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
-    paths = {
-        "/api/v1/rees/{ree_id}/start-build": {"post": {"operationId": "startBuild", "x-operations": ["build"]}},
-        "/api/v1/rees/{ree_id}/run/{name}": {"post": {"operationId": "run", "x-operations": ["run"]}},
-        "/upload": {"post": {"operationId": "completeUpload", "x-operations": ["run"]}},
-        "/runs": {"get": {"operationId": "listRuns"}},
-    }
-    text = json.dumps({"paths": paths}) + "\n"
-    put(root, PurePosixPath("contracts/openapi.json"), text)
-    registry = (*registry, contract(Name.OPENAPI, PurePosixPath("contracts/openapi.json"), text))
-
-    assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
-        ("unrouted", "build: no route build declares it")
-    ]
-
-
-def test_the_route_named_after_an_operation_is_a_post_to_its_words(root: Path) -> None:
-    registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
-    paths = {
-        "/api/v1/rees/{ree_id}/build": {"put": {"operationId": "build", "x-operations": ["build"]}},
-        "/api/v1/rees/{ree_id}/runs/{name}:run": {"post": {"operationId": "run", "x-operations": ["run"]}},
-        "/api/v1/rees/{ree_id}/reviews/{review_id}/run/{name}": {
-            "post": {"operationId": "reviewRun", "x-operations": ["review_run"]}
-        },
-    }
-    text = json.dumps({"paths": paths}) + "\n"
-    put(root, PurePosixPath("contracts/openapi.json"), text)
-    registry = (*registry, contract(Name.OPENAPI, PurePosixPath("contracts/openapi.json"), text))
-
-    assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
-        ("misrouted", "build: PUT /api/v1/rees/{ree_id}/build, not POST /api/v1/rees/{ree_id}/build"),
-        ("misrouted", "run: POST /api/v1/rees/{ree_id}/runs/{name}:run, not POST /api/v1/rees/{ree_id}/run"),
-    ]

@@ -119,7 +119,7 @@ test-tooling:
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures check-contracts
+check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures check-contracts check-vocabulary
 
 # Run every container-free unit test suite.
 [group('Tests')]
