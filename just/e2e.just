@@ -38,11 +38,19 @@ test-e2e-system jobs=E2E_JOBS *select: build-e2e-bundles (_tier-system jobs "tes
 [group('E2E tests')]
 test-e2e-faults jobs=E2E_JOBS *select: build-e2e-bundles (_tier-faults jobs "tests" select)
 
-# Build and load the image of a machine the environments tier installs a workbench on.
+# Build and load the image of a machine the environments tier installs a workbench on, and record its tag
+# (dist/environments/<name>.image), which the testbed starts the machine from.
 [private]
 _load-environment name: _stage-nix-sources
-    nix build .#testbed-environment-{{ name }} -o {{ quote(ROOT + "/dist/environments/" + name) }}
-    docker load --input {{ quote(ROOT + "/dist/environments/" + name) }}
+    #!/usr/bin/env bash
+    set -euo pipefail
+    built={{ quote(ROOT + "/dist/environments/" + name) }}
+    nix build .#testbed-environment-{{ name }} -o "$built"
+    loaded=$(docker load --input "$built")
+    echo "$loaded"
+    image=$(sed -n 's/^Loaded image: //p' <<< "$loaded")
+    [[ -n "$image" ]] || { echo "docker load named no image for {{ name }}" >&2; exit 1; }
+    printf '%s\n' "$image" > "$built.image"
 
 # Check one machine a workbench is installed on starts, runs what it offers, and leaves nothing behind.
 [group('E2E tests')]
@@ -54,10 +62,10 @@ check-environment name: (_load-environment name)
 test-e2e-environment name: (_load-environment name)
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/environments/run_environment_suite.py") }} --tier e2e-environment-{{ name }} --environment {{ quote(name) }} --per-test --exit-on tests
 
-# Run what else holds of REEs whose author's scripts submit to Slurm or enter Apptainer, on the Slurm machine, not gated.
+# Run what else holds of REEs whose author's scripts submit to Slurm or enter Apptainer, each test on a Slurm machine of its own, `jobs` side by side; not gated.
 [group('E2E tests')]
-test-e2e-slurm *select: (_load-environment "slurm")
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/slurm/run_slurm_suite.py") }} --tier e2e-slurm --environment slurm --per-test --exit-on tests {{ if select != "" { "--select " + quote(select) } else { "" } }}
+test-e2e-slurm jobs=E2E_JOBS *select: (_load-environment "slurm")
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/slurm/run_slurm_suite.py") }} --tier e2e-slurm --environment slurm --per-test --exit-on tests --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
@@ -105,7 +113,8 @@ _tier-showcase jobs *select: build-e2e-bundles (_load-environment "bare") (_load
     python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # A machine is where a recipe runs: `local`, or one in .config/machines.toml (untracked), whose
-# dev container runs one job at a time from a clone of HEAD and hands back what the job wrote.
+# dev container runs each job in a checkout of its own and hands back what the job wrote. Recipes
+# run side by side: start another `just on` beside a running one, on the same machine or another.
 
 # Run a recipe on a machine (e.g. `just on vm test-backend-integration`) and bring back what it wrote under test-artifacts/, .receipts/, and logs/.
 [group('Machines')]
@@ -123,17 +132,17 @@ gate-e2e-on machine="local" jobs="": (machine-gc machine) && (machine-tidy machi
     python -m repo2ree_testbed machine gate {{ quote(machine) }} {{ if jobs != "" { "--jobs " + quote(jobs) } else { "" } }}
     python -m scripts.gates.assurance_gate verify
 
-# Manage the machines: `list`; `cancel <machine>` stops its job and cleans up after it; `remove <machine>` takes its dev container down and deletes its clone. Cleaning up has recipes of its own, which every run on a machine depends on: machine-gc before it, machine-tidy after it.
+# Manage the machines: `list`; `jobs <machine>` lists its jobs; `fetch <machine>` brings back what jobs that ended unseen wrote; `cancel <machine> [job]` stops a job (named by a part of its command if several run) and cleans up after it; `remove <machine>` takes its dev container down and deletes its clone. Cleaning up has recipes of its own, which every run on a machine depends on: machine-gc before it, machine-tidy after it.
 [group('Machines')]
 machine +args:
     python -m repo2ree_testbed machine {{ args }}
 
-# Before a run on a machine, collect garbage there: prune its clone, its dev container's unrooted Nix store, Docker build cache unused for a day, and images unused for a week.
+# Before a run on a machine, collect garbage there unless a job runs: prune its clone, its dev container's unrooted Nix store, Docker build cache unused for a day, and images unused for a week.
 [group('Machines')]
 machine-gc machine:
     python -m repo2ree_testbed machine gc {{ quote(machine) }}
 
-# After a run on a machine: prune its test artifacts to the newest three runs per tier (their archives stay only there), now that the run's results are here.
+# After a run on a machine: prune each idle workspace's test artifacts to the newest three runs per tier (their archives stay only there), now that the run's results are here.
 [group('Machines')]
 machine-tidy machine:
     python -m repo2ree_testbed machine tidy {{ quote(machine) }}

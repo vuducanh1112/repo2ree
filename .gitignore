@@ -31,6 +31,9 @@ result-*
 # Your own settings for this checkout, such as the e2e machines (.config/machines.toml)
 /.config/
 
+# A machine's clone keeps the workspaces of jobs run beside others here (repo2ree_testbed machine).
+/.machine-workspaces/
+
 # Test artifacts — all coverage reports/data and observability traces live
 # under one gitignored root (see the test-artifacts layout in docs/engineering/how-to/testing.md).
 /test-artifacts/

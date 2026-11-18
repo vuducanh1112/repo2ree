@@ -9,6 +9,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
+from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.stack.docker import engine_side
 
 # What the stack gives a workbench it runs from source, and the machine's image already holds.
@@ -23,6 +24,8 @@ class EnvironmentName(StrEnum):
 
 
 DNS_VARIABLE = "REPO2REE_ENVIRONMENT_DNS"
+# Where `just _load-environment <name>` links each machine's image and records the tag it loaded as.
+LOADED = ROOT / "dist" / "environments"
 
 
 @dataclass(frozen=True)
@@ -34,14 +37,19 @@ class Environment:
     privileged: bool = False
     # Directories its services write to that the image's own layers cannot hold.
     scratch: tuple[str, ...] = ()
-    # Whether tests may run on machines of this kind side by side.
-    parallel: bool = True
     # Whether it runs a Docker daemon of its own, which needs telling the host's DNS servers.
     nested_daemon: bool = False
 
     @property
     def image(self) -> str:
-        return f"repo2ree-environment-{self.name}:local"
+        """The machine's image as this checkout built and loaded it, tagged by what it holds."""
+        loaded = LOADED / f"{self.name}.image"
+        try:
+            return loaded.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            raise RuntimeError(
+                f"the {self.name} machine's image is not loaded from this checkout: just _load-environment {self.name}"
+            ) from None
 
 
 ENVIRONMENTS: dict[EnvironmentName, Environment] = {
@@ -56,7 +64,7 @@ ENVIRONMENTS: dict[EnvironmentName, Environment] = {
             nested_daemon=True,
         ),
         Environment(EnvironmentName.PODMAN, engine="podman", privileged=True),
-        Environment(EnvironmentName.SLURM, privileged=True, parallel=False),
+        Environment(EnvironmentName.SLURM, privileged=True),
     )
 }
 

@@ -43,9 +43,9 @@ def holds(api: Api, ree_id: str, script: str) -> None:
 
 def canceled_once_running(api: Api, ree_id: str, script: str, marker: str) -> None:
     """Start ``script`` as the experiment, cancel it once the job is up, and wait for the cancel to settle."""
+    api.patch(ree_id, {"experiments": [{"name": SLURM.experiment, "output_paths": [RESULT]}]})
     api.write(ree_id, SLURM.experiment_script, script)
     api.write(ree_id, SLURM.experiment_verify, NOTHING_TO_VERIFY)
-    api.patch(ree_id, {"experiments": [{"name": SLURM.experiment, "output_paths": [RESULT]}]})
     run = api.post(f"/api/v1/rees/{ree_id}/experiments/{SLURM.experiment}:run")
 
     deadline = time.monotonic() + 60

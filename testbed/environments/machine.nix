@@ -32,7 +32,8 @@ in
 }:
 pkgs.dockerTools.buildLayeredImage {
   name = "repo2ree-environment-${name}";
-  tag = "local";
+  # No tag: Nix tags it by a hash of what it holds, so checkouts of different commits sharing an engine each
+  # start the machine they built (just _load-environment records the tag).
   fromImage = debianWithPython;
   config = {
     Entrypoint =

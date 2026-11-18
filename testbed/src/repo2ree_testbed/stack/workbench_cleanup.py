@@ -119,18 +119,27 @@ def cleanup(owner: str | None) -> None:
         remove("volumes", owned_volumes(owner), owner)
         return
     remove("containers", workbench_containers(None), None)
+    cleanup_orphans()
+    remove("volumes", global_volumes(), None)
+
+
+def cleanup_orphans() -> None:
+    """Remove what the stacks no longer running left, and nothing of the stacks running beside them."""
     for orphan in orphaned_owners():
         remove("containers", workbench_containers(orphan), orphan)
         remove("volumes", owned_volumes(orphan), orphan)
-    remove("volumes", global_volumes(), None)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--owner")
+    parser.add_argument("--orphans", action="store_true", help="only what stacks no longer running left")
     args = parser.parse_args()
     try:
-        cleanup(args.owner)
+        if args.orphans:
+            cleanup_orphans()
+        else:
+            cleanup(args.owner)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(error, file=sys.stderr)
         return 1

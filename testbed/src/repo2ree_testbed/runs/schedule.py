@@ -1,7 +1,6 @@
 """A suite run: every test on a stack of its own, or the whole suite on one, laid out the same way.
 
-A suite that places its tests runs each on a stack on the machine it names; a machine that cannot host
-stacks side by side runs one at a time, whatever the jobs.
+A suite that places its tests runs each on a stack on the machine it names.
 """
 
 from __future__ import annotations
@@ -10,14 +9,13 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, replace
 
 from repo2ree_testbed import provenance
 from repo2ree_testbed.artifacts import ROOT, execution_id, run_dir
 from repo2ree_testbed.records import RunRecord, RunTest, TestResult, read, write
 from repo2ree_testbed.stack.clients import Client, TestCase, reported_outcome
-from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
+from repo2ree_testbed.stack.environments import ENVIRONMENTS
 from repo2ree_testbed.stack.process import capture
 from repo2ree_testbed.stack.services import Deployment
 from repo2ree_testbed.stack.stack import E2EStack, Layout
@@ -52,7 +50,6 @@ class SuiteRun:
         self.stopping = False
         self.last: E2EStack | None = None
         self.placed = False
-        self.machines = {name: threading.Lock() for name, machine in ENVIRONMENTS.items() if not machine.parallel}
 
     def stop(self) -> None:
         with self.lock:
@@ -142,10 +139,6 @@ class SuiteRun:
             return self.deployment
         return replace(self.deployment, environment=ENVIRONMENTS[case.environment])
 
-    def one_at_a_time(self, machine: EnvironmentName | None) -> AbstractContextManager[object]:
-        lock = self.machines.get(machine) if machine is not None else None
-        return lock if lock is not None else nullcontext()
-
     def run_case(self, case: TestCase, *, first: bool, jobs: int, total: int, index: int) -> RunTest:
         directory = self.root / "tests" / case.slug
         layout = Layout.for_test(
@@ -153,16 +146,15 @@ class SuiteRun:
         )
         deployment = self.deployment_of(case)
         machine = deployment.environment.name if deployment.environment else None
-        with self.one_at_a_time(machine):
-            stack = self.stack(layout, case.selection, first=first, deployment=deployment)
-            where = f" on {machine}" if machine else ""
-            print(f">> [{index}/{total}] {case.name} on a fresh stack{where} -> {directory}")
-            started = time.time()
-            try:
-                status = stack.run_once()
-            finally:
-                with self.lock:
-                    self.active.discard(stack)
+        stack = self.stack(layout, case.selection, first=first, deployment=deployment)
+        where = f" on {machine}" if machine else ""
+        print(f">> [{index}/{total}] {case.name} on a fresh stack{where} -> {directory}")
+        started = time.time()
+        try:
+            status = stack.run_once()
+        finally:
+            with self.lock:
+                self.active.discard(stack)
         outcome, reason = reported_outcome(directory / "junit.xml", status)
         result = TestResult(
             name=case.name,

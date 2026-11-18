@@ -76,9 +76,9 @@ retention = "Thirty days, kept by every recorded run"
 claims = ["logs/just"]
 
 [owners.builds]
-summary = "Images, bundles, presentations, and the documentation site"
+summary = "Images, bundles, the testbed's machine images and their tags, presentations, and the documentation site"
 retention = "Rewritten by each build"
-claims = ["dist/images", "dist/bundles", "dist/presentations", "sites/docs"]
+claims = ["dist/images", "dist/bundles", "dist/environments", "dist/presentations", "sites/docs"]
 
 [owners.gates]
 summary = "Receipts: what a gate proved, bound to the content it proved it on"

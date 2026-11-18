@@ -1,5 +1,4 @@
 import io
-import threading
 from pathlib import Path
 
 import pytest
@@ -85,18 +84,6 @@ def test_a_test_that_names_its_machine_is_deployed_there(tmp_path: Path, monkeyp
     assert placed.environment == ENVIRONMENTS[EnvironmentName.SLURM]
     assert placed.tier == run.deployment.tier
     assert run.deployment_of(TestCase("t", "t", ("t",))) == run.deployment
-
-
-def test_a_machine_that_hosts_one_stack_at_a_time_runs_its_tests_one_by_one(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    run = suite_run(tmp_path, monkeypatch)
-    alone = [name for name, machine in ENVIRONMENTS.items() if not machine.parallel]
-    assert EnvironmentName.SLURM in alone
-    for name in alone:
-        assert isinstance(run.one_at_a_time(name), type(threading.Lock()))
-    assert not isinstance(run.one_at_a_time(EnvironmentName.BARE), type(threading.Lock()))
-    assert not isinstance(run.one_at_a_time(None), type(threading.Lock()))
 
 
 def test_a_suite_lists_each_test_with_the_machine_it_names(tmp_path: Path) -> None:

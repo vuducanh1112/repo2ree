@@ -4,7 +4,19 @@ import pytest
 
 from repo2ree_testbed.runs.e2e import parse
 from repo2ree_testbed.runs.environment import probe
+from repo2ree_testbed.stack import environments
 from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName, machine_command
+
+TAG = "3fq0x9kz1v2a"
+
+
+@pytest.fixture(autouse=True)
+def loaded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Every machine's image loaded from this checkout, as `just _load-environment` records it."""
+    for name in EnvironmentName:
+        (tmp_path / f"{name}.image").write_text(f"repo2ree-environment-{name}:{TAG}\n")
+    monkeypatch.setattr(environments, "LOADED", tmp_path)
+    return tmp_path
 
 
 def command(name: str) -> list[str]:
@@ -24,7 +36,13 @@ def test_a_workbench_installed_on_a_machine_gets_only_what_the_machine_lacks() -
 
     assert "WORKBENCH_STORE=lab-1=/state/store" in bare
     assert not any("WORKBENCH_TOOLS_BUNDLE" in part for part in bare)
-    assert bare[-3:] == [ENVIRONMENTS[EnvironmentName.BARE].image, "repo2ree-workbench", "--flag"]
+    assert bare[-3:] == [f"repo2ree-environment-bare:{TAG}", "repo2ree-workbench", "--flag"]
+
+
+def test_a_machine_starts_from_the_image_this_checkout_loaded_and_never_from_another(loaded: Path) -> None:
+    (loaded / "slurm.image").unlink()
+    with pytest.raises(RuntimeError, match="just _load-environment slurm"):
+        command("slurm")
 
 
 def test_a_machine_with_services_starts_as_root_and_is_told_the_user() -> None:
