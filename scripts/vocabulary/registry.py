@@ -245,6 +245,26 @@ VOCABULARIES = (
         "gui/src/core/ree-steps/stepCatalog.ts::DEFAULT_REE_STEP_PARAMS",
         "Each dock step's default parameters.",
     ),
+    *(
+        _source(f"gui.dock_steps.{name}", f"gui/src/core/ree-steps/{site}", "Keyed by the dock steps.")
+        for name, site in (
+            ("params", "ReeStepParams.ts::ReeStepParamsByKey"),
+            ("run_params", "stepRunParams.ts::ReeStepRunParamsByKey"),
+            ("run_requests", "stepRunRequests.ts::ReeStepRunRequestByKey"),
+            ("requirements", "stepPolicies.ts::REE_STEP_REQUIREMENTS"),
+            ("planners", "stepCommands.ts::createStepCommandPlanners"),
+        )
+    ),
+    _source(
+        "gui.step_pages",
+        "gui/src/core/app-shell/authoringDag.ts::PAGE_BY_STEP",
+        "The page each step the GUI shows is done on.",
+    ),
+    _source(
+        "gui.fixed_declarations",
+        "gui/src/shell/data/ree/fixedDeclarations.ts::fixedDeclarations",
+        "The definition fields that declare an REE's fixed scripts.",
+    ),
     _source(
         "gui.workspace_refresh_steps",
         "gui/src/core/ree-steps/stepPolicies.ts::WORKSPACE_REFRESH_STEPS",
@@ -348,6 +368,12 @@ EDGES = (
     Edge("gui.dock_steps", WITHIN, ("gui.steps",)),
     Edge("gui.dock_step_defaults", EQUALS, ("gui.dock_steps",)),
     Edge("gui.workspace_refresh_steps", WITHIN, ("gui.dock_steps",)),
+    *(
+        Edge(f"gui.dock_steps.{name}", EQUALS, ("gui.dock_steps",))
+        for name in ("params", "run_params", "run_requests", "requirements", "planners")
+    ),
+    Edge("gui.step_pages", WITHIN, ("gui.steps",)),
+    Edge("gui.fixed_declarations", WITHIN, ("ree.definition",)),
     Edge("gui.page_receipts", WITHIN, ("gui.receipt_operations",)),
     Edge("gui.receipt_labels", EQUALS, ("gui.receipt_operations",)),
     Edge("gui.run_hud_tabs", WITHIN, ("gui.run_operations",)),

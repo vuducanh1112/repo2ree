@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 from scripts.vocabulary.check import check, downstream, edge_problems, mermaid
-from scripts.vocabulary.discover import biome_sites, python_sites, typescript_sites
+from scripts.vocabulary.discover import biome_sites, python_sites, typescript_sets, typescript_sites
 from scripts.vocabulary.model import Context, Edge, Graph, Ignored, Located, Origin, Reader, Relation, Vocabulary
 from scripts.vocabulary.readers import CatalogueTable, ContractSet, RoutedOperations, SourceSet, route_path, words
 
@@ -157,19 +158,20 @@ def test_python_sets_are_found_by_where_they_are_bound() -> None:
     }
 
 
-def test_the_guis_sets_are_found_by_the_declaration_they_sit_in() -> None:
-    source = (
+def test_the_guis_sets_are_found_over_its_ast_by_the_declaration_they_sit_in(tmp_path: Path) -> None:
+    (tmp_path / "a.ts").write_text(
         'export type Step =\n  | "build"\n  | "run";\n'
         'const KEYS = ["build", "run"] as const;\n'
         'const LABELS = {\n  build: "Build",\n  run: "Run",\n};\n'
         'export const PAGE = {\n  BUILD: "build",\n  RUN: "run",\n} as const;\n'
+        "interface Params {\n  build: { strict: boolean };\n  run: Record<string, never>;\n}\n"
+        "const PLANS = {\n  build: { go: true },\n  run: { go: false },\n};\n"
+        'const SINGLE = ["build"];\n'
+        'const OTHER = ["x", "y"];\n'
     )
-    assert sorted(typescript_sites("gui/src/a.ts", source, ROOTS)) == [
-        "gui/src/a.ts::KEYS",
-        "gui/src/a.ts::LABELS",
-        "gui/src/a.ts::PAGE",
-        "gui/src/a.ts::Step",
-    ]
+    sites = typescript_sites(typescript_sets(["a.ts"], root=tmp_path), ROOTS)
+    assert sorted(sites) == ["a.ts::KEYS", "a.ts::LABELS", "a.ts::PAGE", "a.ts::PLANS", "a.ts::Params", "a.ts::Step"]
+    assert sites["a.ts::Params"].names == frozenset({"build", "run"})
     assert list(biome_sites("gui/biome.json", '"match": "__brand|build|run|(.+)"', ROOTS)) == [
         "gui/biome.json::match.0"
     ]

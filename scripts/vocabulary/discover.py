@@ -3,7 +3,8 @@
 A contract's sets are its schemas' string enums and their objects' property names, each at a JSON
 pointer (``openapi:/components/schemas/ReeAudit/properties``). A source's are its literals: Python
 ``Literal[...]`` types and tuples, lists, sets and dict keys of strings (``core/.../steps.py::_COMPLETE``),
-and the GUI's arrays, string unions and object keys, named by the declaration they sit in. Tests are
+and the GUI's arrays, string unions, object keys and values and interface properties, read over the TypeScript
+AST by ``gui/scripts/vocabularySites.mjs`` and named by the declaration they sit in. Tests are
 not searched: what they spell is what they assert, and the code they test is searched.
 """
 
@@ -14,6 +15,7 @@ import json
 import re
 import subprocess
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -126,30 +128,42 @@ def python_sites(path: str, source: str, roots: frozenset[str]) -> dict[str, Loc
 # ================================================
 
 _NAME = r"[a-z][a-z0-9_]*"
-_ARRAY = re.compile(rf'\[\s*((?:"{_NAME}"\s*,\s*)+"{_NAME}"\s*,?)\s*\]', re.DOTALL)
-_UNION = re.compile(rf'((?:\|\s*)?"{_NAME}"(?:\s*\|\s*"{_NAME}")+)')
-_KEYS = re.compile(rf"\{{((?:\s*(?:\[PAGE\.\w+\]|{_NAME})\s*:\s*[^,\n]+,)+)\s*\}}", re.DOTALL)
-_VALUES = re.compile(rf'\{{((?:\s*(?://[^\n]*\n\s*)*\w+\s*:\s*"{_NAME}"\s*,)+)\s*\}}', re.DOTALL)
-_DECLARATION = re.compile(r"(?:const|let|type|interface|function|class)\s+(\w+)")
+SITES_SCRIPT = "gui/scripts/vocabularySites.mjs"
 
 
-def typescript_sites(path: str, source: str, roots: frozenset[str]) -> dict[str, Located]:
-    sites: dict[str, Located] = {}
-    found: list[tuple[int, list[str]]] = []
-    for pattern in (_ARRAY, _UNION):
-        found += [(match.start(), re.findall(rf'"({_NAME})"', match.group(1))) for match in pattern.finditer(source)]
-    found += [
-        (match.start(), re.findall(rf"(?:^|\n|,)\s*({_NAME})\s*:", match.group(1))) for match in _KEYS.finditer(source)
+@dataclass(frozen=True)
+class TypescriptSet:
+    """A set of names the GUI's sites script found: its file, the declaration it sits in, and its offset there."""
+
+    path: str
+    declaration: str
+    start: int
+    names: tuple[str, ...]
+
+
+def typescript_sets(paths: list[str], root: Path = ROOT) -> list[TypescriptSet]:
+    """Every set of names in the given files, read over the TypeScript AST by the GUI's sites script."""
+    if not paths:
+        return []
+    listed = subprocess.run(
+        ["node", str(ROOT / SITES_SCRIPT), *paths], cwd=root, capture_output=True, text=True, check=True
+    )
+    return [
+        TypescriptSet(found["path"], found["declaration"], found["start"], tuple(found["names"]))
+        for found in json.loads(listed.stdout)
     ]
-    found += [(match.start(), re.findall(rf':\s*"({_NAME})"', match.group(1))) for match in _VALUES.finditer(source)]
-    for start, values in sorted(found):
-        if len(values) < 2 or not set(values) & roots:
+
+
+def typescript_sites(sets: list[TypescriptSet], roots: frozenset[str]) -> dict[str, Located]:
+    """The sets sharing a name with a root, each named after its declaration, in the order they appear."""
+    sites: dict[str, Located] = {}
+    for found in sorted(sets, key=lambda found: (found.path, found.start, found.names)):
+        if len(found.names) < 2 or not set(found.names) & roots:
             continue
-        declarations = _DECLARATION.findall(source[:start])
-        site = f"{path}::{declarations[-1] if declarations else '<module>'}"
+        site = f"{found.path}::{found.declaration}"
         while site in sites:
             site += "+"
-        sites[site] = Located(site, frozenset(values))
+        sites[site] = Located(site, frozenset(found.names))
     return sites
 
 
@@ -170,8 +184,9 @@ def source_sites(roots: frozenset[str]) -> dict[str, Located]:
     for path in tracked("*.py"):
         if "/src/" in path and "/tests/" not in path:
             sites |= python_sites(path, (ROOT / path).read_text(encoding="utf-8"), roots)
-    for path in tracked("gui/src/*.ts", "gui/src/*.tsx"):
-        if ".test." not in path and "/generated/" not in path:
-            sites |= typescript_sites(path, (ROOT / path).read_text(encoding="utf-8"), roots)
+    gui = [
+        path for path in tracked("gui/src/*.ts", "gui/src/*.tsx") if ".test." not in path and "/generated/" not in path
+    ]
+    sites |= typescript_sites(typescript_sets(gui), roots)
     sites |= biome_sites("gui/biome.json", (ROOT / "gui/biome.json").read_text(encoding="utf-8"), roots)
     return sites
