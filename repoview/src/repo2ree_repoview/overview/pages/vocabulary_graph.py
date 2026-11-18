@@ -14,6 +14,31 @@ ORIGIN_LINE = {"spec": "#7c3aed", "contract": "#2563eb", "source": "#d97706"}
 FAILING = "#dc2626"
 
 
+def _swatch(fill: str, line: str, text: str, dashed: bool = False) -> str:
+    border = f"1px {'dashed' if dashed else 'solid'} {line}"
+    return f'<span style="background:{fill};border:{border};border-radius:3px;padding:0 4px">{text}</span>'
+
+
+def _stroke(color: str, text: str, dashed: bool = False) -> str:
+    return f'<span style="border-bottom:2px {"dashed" if dashed else "solid"} {color}">{text}</span>'
+
+
+_SYMBOLS = (
+    (_swatch(ORIGIN_FILL["spec"], ORIGIN_LINE["spec"], "spec"), "read from the specification"),
+    (_swatch(ORIGIN_FILL["contract"], ORIGIN_LINE["contract"], "contract"), "read from a generated contract"),
+    (_swatch(ORIGIN_FILL["source"], ORIGIN_LINE["source"], "source"), "a literal written in code"),
+    (_swatch("#fff", FAILING, "unanchored", dashed=True), "not traced back to the catalogue"),
+    (_stroke("#15803d", "equals"), "the same names as its sources"),
+    (_stroke("#15803d", "within"), "a subset of its sources"),
+    (_stroke("#94a3b8", "derived", dashed=True), "generated from its sources, not checked"),
+    (_stroke(FAILING, "failing"), "the relation does not hold"),
+    ("<b>+n</b>", "n names of its own beyond its sources"),
+)
+LEGEND = (
+    '<ul class="muted">' + "".join(f"<li>{symbol} {description}</li>" for symbol, description in _SYMBOLS) + "</ul>"
+)
+
+
 def _node(vocabulary: GraphVocabulary, roots: tuple[str, ...]) -> str:
     line = ORIGIN_LINE[vocabulary.origin] if vocabulary.anchored else FAILING
     shape = "doubleoctagon" if vocabulary.name in roots else "box"
@@ -71,16 +96,7 @@ def _names(names: tuple[str, ...]) -> str:
 def page_vocabulary_graph(graph: VocabularyGraph) -> Page:
     failing = [edge for edge in graph.edges if edge.problems]
     loose = [vocabulary for vocabulary in graph.vocabularies if not vocabulary.anchored]
-    lede = (
-        "Every closed set of names the repository spells, each read from where it is written, and held to the "
-        "operation catalogue by the edges between them: a vocabulary <b>equals</b> its sources, lies "
-        "<b>within</b> them with the extras it names of its own, or is <b>derived</b> from them (generated, "
-        "never checked). Fill says where it is written: "
-        '<span style="background:#ede9fe">specification</span>, <span style="background:#dbeafe">contract</span>, '
-        '<span style="background:#fef3c7">source</span>; a green edge holds, a red one does not, and a dashed red '
-        "box reaches no root. <code>just check-vocabulary</code> fails on any of these, and on a set of names found "
-        "anywhere that no vocabulary, gap or exception claims."
-    )
+    lede = "Every set of names held to the operation catalogue; <code>just check-vocabulary</code> checks it."
     found = "".join(f'<p class="state-missing">! {esc(problem)}</p>' for problem in graph.problems)
     vocabularies = table(
         ["Vocabulary", "Read from", "Held by", "Names"],
@@ -108,6 +124,7 @@ def page_vocabulary_graph(graph: VocabularyGraph) -> Page:
     )
     body = (
         found
+        + LEGEND
         + f'<div class="svgwrap">{graph_svg(graph)}</div>'
         + "<h3 id='vocabularies'>Vocabularies</h3>"
         + filter_box("vocabulary-list", "Filter vocabularies, places and names…")
