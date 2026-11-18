@@ -15,6 +15,10 @@ class Report:
     problems: tuple[str, ...]
     # Each known gap, and the names it holds today.
     gaps: tuple[tuple[str, str, frozenset[str]], ...]
+    # Each vocabulary's names as read, by name; what each edge found wrong, in the graph's order of edges.
+    names: dict[str, frozenset[str]]
+    edges: tuple[tuple[str, ...], ...]
+    unanchored: frozenset[str]
 
 
 def _listed(names: set[str] | frozenset[str]) -> str:
@@ -142,22 +146,57 @@ def claim_problems(graph: Graph, found: dict[str, Located]) -> list[str]:
 def check(graph: Graph, context: Context) -> Report:
     names, problems = read_all(graph, context)
     problems += structure_problems(graph)
-    for edge in graph.edges:
-        problems += edge_problems(edge, names)
-    problems += anchoring_problems(graph)
+    by_edge = tuple(tuple(edge_problems(edge, names)) for edge in graph.edges)
+    problems += [problem for found in by_edge for problem in found]
+    unanchored = anchoring_problems(graph)
+    problems += unanchored
     found = discovered(context)
     problems += claim_problems(graph, found)
     gaps = tuple(
         (
             gap.site,
             gap.reason,
-            frozenset().union(
-                *(located.names for site, located in found.items() if fnmatch.fnmatchcase(site, gap.site))
-            ),
+            frozenset().union(*(at.names for site, at in found.items() if fnmatch.fnmatchcase(site, gap.site))),
         )
         for gap in graph.gaps
     )
-    return Report(problems=tuple(problems), gaps=gaps)
+    loose = frozenset(problem.split(" ", 1)[0] for problem in unanchored)
+    return Report(problems=tuple(problems), gaps=gaps, names=names, edges=by_edge, unanchored=loose)
+
+
+FORMAT = "repo2ree-vocabulary/1"
+
+
+def export(graph: Graph, report: Report) -> dict[str, object]:
+    """The graph as the overview reads it (repo2ree-vocabulary/1): what each vocabulary holds and each edge found."""
+    return {
+        "format": FORMAT,
+        "roots": list(graph.roots),
+        "vocabularies": [
+            {
+                "name": vocabulary.name,
+                "origin": str(vocabulary.origin),
+                "summary": vocabulary.summary,
+                "where": vocabulary.reader.describe(),
+                "names": sorted(report.names.get(vocabulary.name, frozenset())),
+                "anchored": vocabulary.name not in report.unanchored,
+            }
+            for vocabulary in graph.vocabularies
+        ],
+        "edges": [
+            {
+                "target": edge.target,
+                "relation": str(edge.relation),
+                "sources": list(edge.sources),
+                "extras": list(edge.extras),
+                "problems": list(found),
+            }
+            for edge, found in zip(graph.edges, report.edges, strict=True)
+        ],
+        "gaps": [{"site": site, "reason": reason, "names": sorted(names)} for site, reason, names in report.gaps],
+        "exceptions": [{"site": item.site, "reason": item.reason} for item in graph.ignored],
+        "problems": list(report.problems),
+    }
 
 
 def mermaid(graph: Graph) -> str:

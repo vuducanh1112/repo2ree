@@ -200,7 +200,7 @@ def evidence_svg(aggregate: Aggregate) -> str:
     downstream = stales(aggregate)
     for name, receipt in aggregate.receipts.items():
         label = [f"<B>{esc(name)}</B>" + (" (each)" if receipt.keyed else "")]
-        label.append(f'<FONT POINT-SIZE="9" COLOR="#475569">by {esc(receipt.produced_by)}</FONT>')
+        label.append(f'<FONT POINT-SIZE="9" COLOR="#475569">by {esc(name)}</FONT>')
         if receipt.applies_without_declaration:
             label.append('<FONT POINT-SIZE="9" COLOR="#0f766e">applies undeclared</FONT>')
         if count := len(downstream[name]):

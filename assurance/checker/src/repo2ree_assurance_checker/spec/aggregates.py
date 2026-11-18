@@ -91,13 +91,15 @@ class FieldMachine(SpecModel):
 
 
 class ReceiptMachine(SpecModel):
-    """A receipt's standings; its edges follow from what it depends on (``AggregateSpec.receipt_machine``)."""
+    """A receipt's standings; its edges follow from what it depends on (``AggregateSpec.receipt_machine``).
+
+    A receipt is named after the operation that produces it: the name is the producer, said once.
+    """
 
     about: tuple[FieldPath, ...] = ()
     applies_without_declaration: bool = False
     rests_on: tuple[FieldPath, ...] = ()
     made_from: tuple[Name, ...] = ()
-    produced_by: Operation
     cleared_by: tuple[Operation, ...] = ()
     keyed: bool = False
 
@@ -169,7 +171,7 @@ class AggregateSpec(SpecModel):
     layout: TreeEntry | None = None
     lifecycle: Lifecycle
     fields: dict[FieldPath, FieldMachine]
-    receipts: dict[Name, ReceiptMachine]
+    receipts: dict[Operation, ReceiptMachine]
 
     @model_validator(mode="after")
     def coherent_aggregate(self) -> Self:
@@ -270,9 +272,7 @@ class AggregateSpec(SpecModel):
         receipt = self.receipts[name]
         sets_about = self._writers(receipt.about, "set")
         clears_about = self._writers(receipt.about, "clear")
-        basis_moves = self._writers(receipt.rests_on, "any") | {
-            self.receipts[other].produced_by for other in receipt.made_from
-        }
+        basis_moves = self._writers(receipt.rests_on, "any") | {*receipt.made_from}
         moves: EdgeOperations = defaultdict(set)
         if receipt.keyed:
             moves[(CREATED, "missing")] |= sets_about
@@ -281,16 +281,16 @@ class AggregateSpec(SpecModel):
             moves[(CREATED, self.initial_standing(name))].add(self.created_by)
         moves[("not_applicable", "missing")] |= sets_about
         moves[("missing", "not_applicable")] |= clears_about
-        moves[("missing", "current")].add(receipt.produced_by)
-        if receipt.applies_without_declaration or receipt.produced_by in sets_about:
-            moves[("not_applicable", "current")].add(receipt.produced_by)
+        moves[("missing", "current")].add(name)
+        if receipt.applies_without_declaration or name in sets_about:
+            moves[("not_applicable", "current")].add(name)
         # Undeclaring a keyed item discards its receipt; any other receipt is orphaned, and stale.
         orphaning = set() if receipt.applies_without_declaration or receipt.keyed else clears_about
-        moves[("current", "stale")] |= (basis_moves | orphaning) - {receipt.produced_by}
+        moves[("current", "stale")] |= (basis_moves | orphaning) - {name}
         # A standing is the receipt against the document as it now stands, so whatever moved what it
         # rests on may move it back, and declaring an orphaned receipt's subject again revives it.
         reviving = sets_about if orphaning else set()
-        moves[("stale", "current")] |= {receipt.produced_by} | basis_moves | orphaning | reviving
+        moves[("stale", "current")] |= {name} | basis_moves | orphaning | reviving
         discarding = clears_about if receipt.keyed else set()
         for source in ("current", "stale", "missing"):
             for target in ("missing", "not_applicable"):

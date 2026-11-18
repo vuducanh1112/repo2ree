@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:5655f7f9bbb44f4388d2c165dc08e771ed1c8ebe05ba7670d781cbd721ac7d08",
+  "x-vocabulary": "sha256:fc03800bb37ebc607dcc8b04c49452730051605b707440c211c7a0b2993874a2",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -1371,7 +1371,7 @@
                 "generate_sbom",
                 "cross_check_sbom",
                 "activate_experiment_environment",
-                "experiment"
+                "run_experiment"
               ]
             },
             "operation": {
@@ -1452,7 +1452,7 @@
                       "generate_sbom",
                       "cross_check_sbom",
                       "activate_experiment_environment",
-                      "experiment"
+                      "run_experiment"
                     ]
                   },
                   "operation": {

@@ -24,7 +24,7 @@ def standing(api: Api, ree_id: str) -> dict[str, str]:
         "activate_experiment_environment",
     )
     found = {step: str(audit[step]["evidence"]) for step in steps}
-    return found | {f"experiment:{item['name']}": str(item["run"]["evidence"]) for item in audit["experiments"]}
+    return found | {f"run_experiment:{item['name']}": str(item["run"]["evidence"]) for item in audit["experiments"]}
 
 
 def test_rewriting_or_deleting_a_script_makes_what_it_ran_stale(api: Api, new_ree: Callable[..., str]) -> None:
@@ -36,18 +36,21 @@ def test_rewriting_or_deleting_a_script_makes_what_it_ran_stale(api: Api, new_re
         ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, recipe("activate_experiment_environment.sh") + "# touched\n"
     )
     edited = standing(api, ree_id)
-    assert (edited["activate_experiment_environment"], edited[f"experiment:{EXPERIMENT}"]) == ("stale", "stale")
+    assert (edited["activate_experiment_environment"], edited[f"run_experiment:{EXPERIMENT}"]) == ("stale", "stale")
     api.succeed(ree_id, "activate-experiment-environment")
-    assert standing(api, ree_id)[f"experiment:{EXPERIMENT}"] == "stale"
+    assert standing(api, ree_id)[f"run_experiment:{EXPERIMENT}"] == "stale"
     api.succeed(ree_id, f"run-experiment/{EXPERIMENT}")
-    assert standing(api, ree_id)[f"experiment:{EXPERIMENT}"] == "current"
+    assert standing(api, ree_id)[f"run_experiment:{EXPERIMENT}"] == "current"
 
     api.write(ree_id, EXPERIMENT_SCRIPT, recipe("experiment.sh") + "# touched\n")
-    assert standing(api, ree_id)[f"experiment:{EXPERIMENT}"] == "stale"
+    assert standing(api, ree_id)[f"run_experiment:{EXPERIMENT}"] == "stale"
     api.succeed(ree_id, f"run-experiment/{EXPERIMENT}")
     api.write(ree_id, EXPERIMENT_VERIFY, "#!/usr/bin/env sh\nset -eu\nexit 0\n")
     unchecked = standing(api, ree_id)
-    assert (unchecked["activate_experiment_environment"], unchecked[f"experiment:{EXPERIMENT}"]) == ("current", "stale")
+    assert (unchecked["activate_experiment_environment"], unchecked[f"run_experiment:{EXPERIMENT}"]) == (
+        "current",
+        "stale",
+    )
 
 
 def test_removing_the_source_clears_the_evidence_made_from_it(api: Api, new_ree: Callable[..., str]) -> None:

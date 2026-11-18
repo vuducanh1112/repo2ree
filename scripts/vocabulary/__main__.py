@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import sys
 
-from scripts.vocabulary.check import check, discovered, downstream, mermaid
+from scripts.vocabulary.check import check, discovered, downstream, export, mermaid
 from scripts.vocabulary.discover import load_contract, source_sites
 from scripts.vocabulary.model import Context
 from scripts.vocabulary.registry import GRAPH
@@ -21,11 +22,15 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check", help="hold every vocabulary to its edges and every found set to a claim")
     commands.add_parser("graph", help="print the graph as Mermaid")
+    commands.add_parser("export", help="print the graph and what the check found as JSON (repo2ree-vocabulary/1)")
     commands.add_parser("discover", help="list every set of names found, and what claims it")
     impact = commands.add_parser("impact", help="list every vocabulary held, directly or not, to one")
     impact.add_argument("name")
     args = parser.parse_args(argv)
 
+    if args.command == "export":
+        print(json.dumps(export(GRAPH, check(GRAPH, context())), indent=2))
+        return 0
     if args.command == "graph":
         print(mermaid(GRAPH))
         return 0

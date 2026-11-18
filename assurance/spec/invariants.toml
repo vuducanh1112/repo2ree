@@ -140,7 +140,7 @@ build_experiment_environment = ["build_experiment_environment", "load_ree_bundle
 generate_sbom = ["generate_sbom", "load_ree_bundle"]
 cross_check_sbom = ["cross_check_sbom", "load_ree_bundle"]
 activate_experiment_environment = ["activate_experiment_environment", "load_ree_bundle"]
-experiment = ["run_experiment", "load_ree_bundle"]
+run_experiment = ["run_experiment", "load_ree_bundle"]
 
 [[invariant]]
 id = "sealed-without-stale-evidence"

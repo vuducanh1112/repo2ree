@@ -183,7 +183,7 @@ def producers(docs: Documents) -> dict[str, Any]:
             lambda docs: rule(docs, "api-success-is-recorded")["when"].update(where={"action": "build_runtim"}),
             r"action names values its declaration does not list",
         ),
-        (lambda docs: producers(docs)["in"].pop("experiment"), r"missing \['experiment'\]"),
+        (lambda docs: producers(docs)["in"].pop("run_experiment"), r"missing \['run_experiment'\]"),
         (
             lambda docs: producers(docs)["in"].update(painting=["build_experiment_environment"]),
             r"unlisted \['painting'\]",

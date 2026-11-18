@@ -14,5 +14,6 @@ vocabulary (with its reason); a claim that matches nothing is stale.
 
     python -m scripts.vocabulary check            # exit 1 on any problem; lists the known gaps
     python -m scripts.vocabulary graph            # the graph as Mermaid
+    python -m scripts.vocabulary export           # the graph and what the check found, as JSON for the overview
     python -m scripts.vocabulary impact NAME      # every vocabulary held, directly or not, to NAME
 """

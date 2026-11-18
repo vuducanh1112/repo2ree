@@ -252,7 +252,6 @@ class AggregateReceipt(Document):
     applies_without_declaration: bool = False
     rests_on: tuple[str, ...] = ()
     made_from: tuple[str, ...] = ()
-    produced_by: str
     cleared_by: tuple[str, ...] = ()
     keyed: bool = False
 

@@ -481,7 +481,7 @@ def attempt_events(
 
 
 def step_kind(step: str) -> str:
-    return "experiment" if step.startswith("experiment:") else step
+    return "run_experiment" if step.startswith("run_experiment:") else step
 
 
 @dataclass

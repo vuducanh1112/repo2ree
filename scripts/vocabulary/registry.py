@@ -54,12 +54,6 @@ VOCABULARIES = (
     Vocabulary("review_operations", SPEC, CatalogueTable("review_operations"), "Every operation on a review."),
     # ---- the specification ----
     Vocabulary("spec.receipts", SPEC, SpecReceipts(), "The Ree aggregate's receipts."),
-    Vocabulary(
-        "spec.receipts.named_by_producer",
-        SPEC,
-        SpecReceipts(named_by_producer=True),
-        "Those of the aggregate's receipts named after the operation producing them.",
-    ),
     Vocabulary("spec.groups", SPEC, SpecFieldGroups(), "The groups the aggregate's fields are drawn in."),
     _contract(
         "behaviour.receipt_kinds",
@@ -235,10 +229,10 @@ EDGES = (
     Edge("ree.receipts", WITHIN, ("steps",)),
     Edge("review.steps", WITHIN, ("operations",), ("experiments",)),
     Edge("review.receipts", EQUALS, ("review.steps",)),
-    # A receipt is named after the operation producing it, but the keyed one, which step ids spell experiment:<name>.
-    Edge("spec.receipts.named_by_producer", WITHIN, ("operations",)),
-    Edge("spec.receipts", EQUALS, ("spec.receipts.named_by_producer",), ("experiment",)),
-    Edge("ree.receipts", EQUALS, ("spec.receipts.named_by_producer",), ("experiments",)),
+    # A receipt is named after the operation producing it; the REE keeps the experiments' together.
+    Edge("spec.receipts", WITHIN, ("operations",)),
+    Edge("spec.receipts", WITHIN, ("ree.receipts",), ("run_experiment",)),
+    Edge("ree.receipts", WITHIN, ("spec.receipts",), ("experiments",)),
     Edge("behaviour.receipt_kinds", DERIVED, ("spec.receipts",)),
     Edge("spec.groups", WITHIN, ("spec.receipts",), ("bundle", "catalog", "launch")),
     Edge("ree.definition", WITHIN, ("operations",), DEFINITION_FIELDS),

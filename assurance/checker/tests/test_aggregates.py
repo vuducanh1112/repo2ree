@@ -79,17 +79,17 @@ def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
 
 
 def test_what_runs_through_the_activation_rests_on_it_and_the_build_does_not() -> None:
-    for name in ("activate_experiment_environment", "experiment"):
+    for name in ("activate_experiment_environment", "run_experiment"):
         assert "definition.activate_experiment_environment" in ree().receipts[name].rests_on
     assert "definition.activate_experiment_environment" not in ree().receipts["build_experiment_environment"].rests_on
-    assert "write_script" in allowed("receipt", "experiment", "current", "stale")
+    assert "write_script" in allowed("receipt", "run_experiment", "current", "stale")
 
 
 def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_its_script() -> None:
     assert ree().receipts["activate_experiment_environment"].about == ("definition.activate_experiment_environment",)
-    assert "activate_experiment_environment" in ree().receipts["experiment"].made_from
+    assert "activate_experiment_environment" in ree().receipts["run_experiment"].made_from
     # Testing the activation again may stale every experiment run through the one before.
-    assert "activate_experiment_environment" in allowed("receipt", "experiment", "current", "stale")
+    assert "activate_experiment_environment" in allowed("receipt", "run_experiment", "current", "stale")
 
 
 def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch() -> None:
@@ -115,7 +115,7 @@ def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
 
 def test_undeclaring_a_keyed_item_discards_its_receipt() -> None:
     for source in ("current", "stale", "missing"):
-        assert "patch_ree_definition" in allowed("receipt", "experiment", source, "not_applicable")
+        assert "patch_ree_definition" in allowed("receipt", "run_experiment", source, "not_applicable")
     # An unkeyed receipt is orphaned instead, and only removing the source clears it.
     assert allowed("receipt", "build_experiment_environment", "current", "not_applicable") == {
         "remove_source",
@@ -134,7 +134,7 @@ def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale
 def test_a_receipt_starts_applicable_only_when_what_it_is_about_is_declared_from_the_start() -> None:
     assert allowed("receipt", "activate_experiment_environment", CREATED, "missing") == {"initialize_ree"}
     assert allowed("receipt", "build_experiment_environment", CREATED, "not_applicable") == {"initialize_ree"}
-    assert allowed("receipt", "experiment", CREATED, "missing") == {"patch_ree_definition"}
+    assert allowed("receipt", "run_experiment", CREATED, "missing") == {"patch_ree_definition"}
 
 
 def test_whole_document_operations_are_marked_bulk_for_views() -> None:
@@ -159,7 +159,7 @@ def mutated(change: Any) -> dict[str, Any]:
             lambda a: a["receipts"]["build_experiment_environment"].update(about=["definition.experiments[*]"]),
             "is not keyed",
         ),
-        (lambda a: a["receipts"]["generate_sbom"].update(made_from=["experiment"]), "other, unkeyed receipts"),
+        (lambda a: a["receipts"]["generate_sbom"].update(made_from=["run_experiment"]), "other, unkeyed receipts"),
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
         (lambda a: a.update(writes_nothing=["write_script"]), "write nothing take edges"),
         (lambda a: a.pop("overlay"), "names no overlay"),
@@ -363,8 +363,8 @@ def authored() -> Evidence:
             receipt(
                 3300, "build_experiment_environment", "missing", "current", "build_experiment_environment", "operation"
             ),
-            receipt(4300, "experiment:one", None, "missing", "patch_ree_definition", "operation"),
-            receipt(5300, "experiment:one", "missing", "current", "run_experiment", "operation"),
+            receipt(4300, "run_experiment:one", None, "missing", "patch_ree_definition", "operation"),
+            receipt(5300, "run_experiment:one", "missing", "current", "run_experiment", "operation"),
             lifecycle(6900, "draft", "sealed", "seal_ree", "operation"),
         ),
         changes=(
@@ -413,7 +413,7 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
     assert moves[("definition.experiments[*]", CREATED, "set", "patch_ree_definition")] == 1
     # A receipt's first audited standing is the one the REE was created with.
     assert moves[("build_experiment_environment", CREATED, "not_applicable", "initialize_ree")] == 1
-    assert moves[("experiment", "missing", "current", "run_experiment")] == 1
+    assert moves[("run_experiment", "missing", "current", "run_experiment")] == 1
     assert not check_aggregate(ree(), authored()).findings
 
 
@@ -462,10 +462,10 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     steps = [(step.operation, step.moved) for step in replayed.steps]
     # The standings first audited belong to the step that created the REE, which moves nothing yet.
     assert steps[0] == ("initialize_ree", ())
-    assert ("patch_ree_definition", ("experiment[one]", "definition.experiments[one]")) in steps
+    assert ("patch_ree_definition", ("run_experiment[one]", "definition.experiments[one]")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle", "contents"))
     final = replayed.steps[-1].states
-    assert (final["lifecycle"], final["build_experiment_environment"], final["experiment[one]"]) == (
+    assert (final["lifecycle"], final["build_experiment_environment"], final["run_experiment[one]"]) == (
         "sealed",
         "current",
         "current",
@@ -474,9 +474,9 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     # Drawing order: the lifecycle, each receipt after what it is about, the other groups last.
     assert names[0] == "lifecycle"
     assert names.index("definition.experiment_environment.artifact_path") < names.index("build_experiment_environment")
-    assert names.index("experiment[one]") < names.index("definition.name")
-    item = next(part for part in replayed.parts if part.name == "experiment[one]")
-    assert (item.machine, item.item, item.group) == ("experiment", "one", "experiment")
+    assert names.index("run_experiment[one]") < names.index("definition.name")
+    item = next(part for part in replayed.parts if part.name == "run_experiment[one]")
+    assert (item.machine, item.item, item.group) == ("run_experiment", "one", "run_experiment")
 
 
 # ---------------------------------------------------------------------------- the overlay

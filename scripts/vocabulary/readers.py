@@ -59,20 +59,14 @@ class CatalogueTable(Reader):
 
 @dataclass(frozen=True)
 class SpecReceipts(Reader):
-    """The Ree aggregate's receipts; with ``named_by_producer``, those named after the operation producing them."""
-
-    named_by_producer: bool = False
+    """The Ree aggregate's receipts, each named after the operation producing it."""
 
     def describe(self) -> str:
-        what = "receipts named after their producing operation" if self.named_by_producer else "receipts"
-        return f"the Ree aggregate's {what} (assurance/spec/aggregates/ree.toml)"
+        return "the Ree aggregate's receipts (assurance/spec/aggregates/ree.toml)"
 
     def read(self, context: Context) -> tuple[Located, ...]:
         receipts = context.spec().aggregates["Ree"].receipts
-        names = [
-            name for name, receipt in receipts.items() if not self.named_by_producer or receipt.produced_by == name
-        ]
-        return (Located("spec:aggregates.Ree.receipts", frozenset(names)),)
+        return (Located("spec:aggregates.Ree.receipts", frozenset(receipts)),)
 
 
 @dataclass(frozen=True)

@@ -75,7 +75,7 @@ def card(bundle: Bundle, aggregate: Aggregate, machine: SubMachine, moves: Count
 def receipt_note(aggregate: Aggregate, name: str) -> str:
     receipt = aggregate.receipts[name]
     basis = [*receipt.rests_on, *(f"the {other} receipt" for other in receipt.made_from)]
-    return f"by {receipt.produced_by}; stale when {', '.join(basis) or 'nothing'} moves"
+    return f"by {name}; stale when {', '.join(basis) or 'nothing'} moves"
 
 
 def summary(aggregate: Aggregate, moves: AggregateMoves) -> str:

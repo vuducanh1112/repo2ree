@@ -19,7 +19,7 @@ stale = "A receipt exists, but something it rests on moved or was removed."
 not_applicable = "Nothing is declared for this step to be about, and there is no receipt."
 
 [facts]
-# A receipt's kind, or experiment:<name>.
+# A receipt's kind, or run_experiment:<name>.
 step = "str"
 operation = { type = "str?", catalogue = ["operations"] }
 attempt_id = "str?"
@@ -38,7 +38,7 @@ build_experiment_environment = "The built experiment environment."
 generate_sbom = "The experiment environment's SBOM."
 cross_check_sbom = "Declared dependencies checked against the SBOM."
 activate_experiment_environment = "The activation, run alone: it enters the experiment environment and hands over."
-experiment = "One declared experiment."
+run_experiment = "One declared experiment, run."
 
 [facts.cause]
 type = "str"

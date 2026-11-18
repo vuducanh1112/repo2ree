@@ -123,7 +123,7 @@ change = ["patch_ree_definition", "write_script"]
 files = ["ree-scripts/check_working_environment.sh"]
 
 [fields."definition.experiments[*]"]
-group = "experiment"
+group = "run_experiment"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition", "write_script"]
 clear = ["patch_ree_definition"]
@@ -143,43 +143,36 @@ change = ["seal_ree"]
 [receipts.acquire_source]
 about = ["definition.source"]
 rests_on = ["definition.source"]
-produced_by = "acquire_source"
 cleared_by = ["remove_source"]
 
 [receipts.evaluate_reproducibility]
 about = ["definition.source"]
 made_from = ["acquire_source"]
-produced_by = "evaluate_reproducibility"
 cleared_by = ["remove_source"]
 
 [receipts.observe_hardware]
 about = ["definition.hbom"]
 applies_without_declaration = true
-produced_by = "observe_hardware"
 
 # The check, run in the working environment; it rests on no source, so removing the source keeps it.
 [receipts.check_working_environment]
 about = ["definition.check_working_environment"]
 rests_on = ["definition.check_working_environment", "definition.launch"]
-produced_by = "check_working_environment"
 
 [receipts.build_experiment_environment]
 about = ["definition.experiment_environment.artifact_path"]
 rests_on = ["definition.experiment_environment", "definition.launch"]
 made_from = ["acquire_source"]
-produced_by = "build_experiment_environment"
 cleared_by = ["remove_source"]
 
 [receipts.generate_sbom]
 about = ["definition.experiment_environment.artifact_path"]
 made_from = ["build_experiment_environment"]
-produced_by = "generate_sbom"
 cleared_by = ["remove_source"]
 
 [receipts.cross_check_sbom]
 about = ["definition.source", "definition.experiment_environment.artifact_path"]
 made_from = ["generate_sbom", "evaluate_reproducibility"]
-produced_by = "cross_check_sbom"
 cleared_by = ["remove_source"]
 
 # The activation run alone, around a command that does nothing: it enters the experiment environment and hands over.
@@ -187,10 +180,9 @@ cleared_by = ["remove_source"]
 about = ["definition.activate_experiment_environment"]
 rests_on = ["definition.activate_experiment_environment", "definition.launch"]
 made_from = ["acquire_source", "build_experiment_environment"]
-produced_by = "activate_experiment_environment"
 cleared_by = ["remove_source"]
 
-[receipts.experiment]
+[receipts.run_experiment]
 keyed = true
 about = ["definition.experiments[*]"]
 rests_on = [
@@ -200,5 +192,4 @@ rests_on = [
 ]
 # An experiment runs inside the activation, so only while the activation's evidence is current.
 made_from = ["acquire_source", "build_experiment_environment", "activate_experiment_environment"]
-produced_by = "run_experiment"
 cleared_by = ["remove_source"]

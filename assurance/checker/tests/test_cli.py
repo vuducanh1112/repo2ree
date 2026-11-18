@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -34,8 +35,11 @@ def test_map_draws_every_component(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_a_diff_against_the_committed_specification_says_what_changed(tmp_path: Path) -> None:
+    # The working tree as a commit of its own, so the base is a specification this checker reads even while its
+    # format changes; on a clean tree, HEAD.
+    base = subprocess.run(["git", "stash", "create"], capture_output=True, text=True, check=True).stdout.strip()
     target = tmp_path / "diff.md"
-    assert main(["diff", "--base", "HEAD", "-o", str(target)]) == 0
+    assert main(["diff", "--base", base or "HEAD", "-o", str(target)]) == 0
     rendered = target.read_text()
     assert rendered.startswith("# Behaviour specification change")
     assert load_spec().digest in rendered

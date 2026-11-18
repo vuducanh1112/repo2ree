@@ -17,12 +17,12 @@ def test_re_running_a_receipt_stales_everything_made_from_it() -> None:
     assert downstream["build_experiment_environment"] == (
         "activate_experiment_environment",
         "cross_check_sbom",
-        "experiment",
         "generate_sbom",
+        "run_experiment",
     )
-    assert downstream["activate_experiment_environment"] == ("experiment",)
+    assert downstream["activate_experiment_environment"] == ("run_experiment",)
     assert downstream["generate_sbom"] == ("cross_check_sbom",)
-    assert downstream["experiment"] == ()
+    assert downstream["run_experiment"] == ()
 
 
 def test_the_graph_draws_every_dependency_the_specification_states() -> None:
@@ -37,4 +37,4 @@ def test_the_graph_draws_every_dependency_the_specification_states() -> None:
     assert drawn == stated
     assert ("field:definition.check_working_environment", "check_working_environment") in drawn
     assert ("field:definition.activate_experiment_environment", "activate_experiment_environment") in drawn
-    assert ("activate_experiment_environment", "experiment") in drawn
+    assert ("activate_experiment_environment", "run_experiment") in drawn
