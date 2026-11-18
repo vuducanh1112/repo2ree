@@ -27,7 +27,15 @@ from pathlib import Path
 from repo2ree_repoview.diagrams.recipes import read_recipes
 from repo2ree_repoview.overview.bundle import Bundle, Origin
 from repo2ree_repoview.overview.contracts import CliSchema, Environment, OpenApi
-from repo2ree_repoview.overview.exports import EXPORTS, Contracts, Operations, ShowcaseRuns, Spec, Zones
+from repo2ree_repoview.overview.exports import (
+    EXPORTS,
+    Contracts,
+    Operations,
+    ShowcaseRuns,
+    Spec,
+    VocabularyGraph,
+    Zones,
+)
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.architecture import page_architecture
@@ -43,6 +51,7 @@ from repo2ree_repoview.overview.pages.recipes import page_recipes
 from repo2ree_repoview.overview.pages.showcase_ree import authoring_test, page_showcase_ree
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
+from repo2ree_repoview.overview.pages.vocabulary_graph import page_vocabulary_graph
 from repo2ree_repoview.overview.pages.zones import page_zones
 from repo2ree_repoview.overview.prune import OVERVIEWS, prune
 from repo2ree_repoview.overview.receipt import (
@@ -150,6 +159,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     zones = Zones.model_validate_json(kept(bundle, exports, "zones"))
     spec = Spec.model_validate_json(kept(bundle, exports, "spec"))
     registry = Contracts.model_validate_json(kept(bundle, exports, "contracts"))
+    vocabulary = VocabularyGraph.model_validate_json(kept(bundle, exports, "vocabulary"))
     receipt = read_receipt()
     evidence = bundle_evidence(bundle, receipt)
     operations = Operations.model_validate_json(kept(bundle, exports, "operations"))
@@ -203,6 +213,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         page_architecture(bundle),
         page_interfaces(cli, api),
         page_contracts(bundle, registry, environment),
+        page_vocabulary_graph(vocabulary),
         page_recipes(recipes, bundle, timings),
     ]
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)

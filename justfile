@@ -73,7 +73,7 @@ prune *args:
 
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour and its coverage by the gate and the showcases, architecture, recipes, configuration, API.
 [group('Repository')]
-repo-overview: generate-diagrams export-zones export-contracts export-spec visualize-behaviour visualize-showcases export-operations export-just-recipes
+repo-overview: generate-diagrams export-zones export-contracts export-vocabulary export-spec visualize-behaviour visualize-showcases export-operations export-just-recipes
     python -m repo2ree_repoview overview
 
 # Write the zones and each tracked file's place as JSON (repo2ree-zones/1) for the overview.
@@ -89,6 +89,13 @@ export-contracts:
     mkdir -p {{ quote(EXPORT_DIR) }}
     python -m scripts.contracts export > {{ quote(EXPORT_DIR + "/contracts.json") }}
     {{ STAMP_EXPORTS }} --by export-contracts {{ quote(EXPORT_DIR + "/contracts.json") }}
+
+# Write the vocabulary graph and what its check found as JSON (repo2ree-vocabulary/1) for the overview.
+[group('Repository')]
+export-vocabulary:
+    mkdir -p {{ quote(EXPORT_DIR) }}
+    python -m scripts.vocabulary export > {{ quote(EXPORT_DIR + "/vocabulary.json") }}
+    {{ STAMP_EXPORTS }} --by export-vocabulary {{ quote(EXPORT_DIR + "/vocabulary.json") }}
 
 # Write Just's JSON dump of every recipe for the recipe graph and the overview.
 [group('Repository')]

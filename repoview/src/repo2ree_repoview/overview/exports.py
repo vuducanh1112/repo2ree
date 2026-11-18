@@ -27,6 +27,7 @@ EXPORTS = ROOT / "reports/exports"
 SPEC_EXPORT = (sys.executable, "-m", "repo2ree_assurance_checker", "export")
 ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
 CONTRACTS_EXPORT = (sys.executable, "-m", "scripts.contracts", "export")
+VOCABULARY_EXPORT = (sys.executable, "-m", "scripts.vocabulary", "export")
 
 
 def operations_export(verifications: Iterable[str]) -> tuple[str, ...]:
@@ -315,6 +316,45 @@ class Zones(Export):
 
     zones: tuple[Zone, ...]
     files: tuple[Placed, ...]
+    problems: tuple[str, ...]
+
+
+# ---------------------------------------------------------------------------- vocabulary
+
+
+class GraphVocabulary(Document):
+    name: str
+    origin: Literal["spec", "contract", "source"]
+    summary: str
+    where: str
+    names: tuple[str, ...]
+    anchored: bool
+
+
+class GraphEdge(Document):
+    target: str
+    relation: Literal["equals", "within", "derived"]
+    sources: tuple[str, ...]
+    extras: tuple[str, ...] = ()
+    problems: tuple[str, ...] = ()
+
+
+class GraphClaim(Document):
+    site: str
+    reason: str
+    names: tuple[str, ...] = ()
+
+
+class VocabularyGraph(Export):
+    """Every set of names held to the catalogue, and what the check found (``python -m scripts.vocabulary``)."""
+
+    FORMAT = "repo2ree-vocabulary/1"
+
+    roots: tuple[str, ...]
+    vocabularies: tuple[GraphVocabulary, ...]
+    edges: tuple[GraphEdge, ...]
+    gaps: tuple[GraphClaim, ...]
+    exceptions: tuple[GraphClaim, ...]
     problems: tuple[str, ...]
 
 

@@ -15,6 +15,7 @@ from repo2ree_repoview.overview.bundle import COMMAND, Bundle, sha256
 from repo2ree_repoview.overview.exports import (
     CONTRACTS_EXPORT,
     SPEC_EXPORT,
+    VOCABULARY_EXPORT,
     ZONES_EXPORT,
     ShowcaseRuns,
     Spec,
@@ -35,6 +36,7 @@ def exports(tmp_path: Path) -> Path:
     (directory / "spec.json").write_text(exported(SPEC_EXPORT))
     (directory / "zones.json").write_text(exported(ZONES_EXPORT))
     (directory / "contracts.json").write_text(exported(CONTRACTS_EXPORT))
+    (directory / "vocabulary.json").write_text(exported(VOCABULARY_EXPORT))
     (directory / "operations.json").write_text(exported(operations_export(gate_verifications(read_receipt()))))
     (directory / "just-recipes.json").write_text(exported(("just", "--dump", "--dump-format", "json")))
     (directory / "showcases.json").write_text(
@@ -87,6 +89,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
             *("index", "zones", "assurance-gate", "receipts", "operations", "vocabulary", "specification", "coverage"),
             "showcase-gate",
             *("ree", "architecture", "interfaces", "interfaces-cli", "interfaces-api", "contracts"),
+            "vocabulary-graph",
             *("just-recipes", "contracts-environment"),
             # The frame its bundled evidence is shown in.
             "evidence",
