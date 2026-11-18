@@ -18,9 +18,10 @@ build-e2e-bundles: _stage-nix-sources
     nix build .#cli-bundle -o {{ quote(E2E_CLI_BUNDLE) }}
     nix build .#tools-bundle -o {{ quote(E2E_TOOLS_BUNDLE) }}
 
+# Per test, so each spec runs on the machine its showcase names (the Docker scenario on the docker machine).
 [private]
 _source-stack-playwright project locations:
-    python -m repo2ree_testbed e2e --project {{ quote(project) }} --compute-locations {{ quote(locations) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
+    python -m repo2ree_testbed e2e --project {{ quote(project) }} --per-test --exit-on tests --jobs 1 --compute-locations {{ quote(locations) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
 # The per-test tiers below run as the assurance gate runs them, with `jobs` stacks side by side.
 # Trailing parts of test ids run only the tests whose id contains one (e.g. `just test-e2e-faults 4

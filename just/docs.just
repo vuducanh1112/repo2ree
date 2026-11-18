@@ -48,7 +48,7 @@ publish-doc-demo-assets:
     shopt -s nullglob
     # The newest demo-gui run; Playwright kept its video and screenshots in the run.
     run=$(ls -td {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }}/demo-gui-*/ 2>/dev/null | head -n 1 || true)
-    videos=(${run:+"$run"tests/suite/artifacts/*/video.webm})
+    videos=(${run:+"$run"tests/*/artifacts/*/video.webm})
     if (( ${#videos[@]} != 1 )); then
       echo "Expected exactly one demo-gui run, found ${#videos[@]}."
       echo "Run 'just demo-gui', then retry this recipe."
