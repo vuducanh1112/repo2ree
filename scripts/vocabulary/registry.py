@@ -3,7 +3,7 @@ the names it holds, so it cannot be loosened beside the code it would fail."""
 
 from __future__ import annotations
 
-from scripts.vocabulary.model import Edge, Gap, Graph, Ignored, Origin, Relation, Vocabulary
+from scripts.vocabulary.model import Edge, Graph, Ignored, Origin, Relation, Vocabulary
 from scripts.vocabulary.readers import (
     CatalogueTable,
     CommandsRunByName,
@@ -356,8 +356,6 @@ EDGES = (
     Edge("gui.lint_kinds", WITHIN, ("gui.script_kinds",)),
 )
 
-GAPS: tuple[Gap, ...] = ()
-
 IGNORED = (
     Ignored("protocol:/$defs/InitRee/properties", "an output's fields: the REE it initialized, and its name"),
     Ignored(
@@ -366,4 +364,4 @@ IGNORED = (
     ),
 )
 
-GRAPH = Graph(roots=OPERATIONS, vocabularies=VOCABULARIES, edges=EDGES, gaps=GAPS, ignored=IGNORED)
+GRAPH = Graph(roots=OPERATIONS, vocabularies=VOCABULARIES, edges=EDGES, ignored=IGNORED)

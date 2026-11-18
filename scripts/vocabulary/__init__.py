@@ -9,10 +9,9 @@ names a vocabulary has of its own; each extra must be used. The roots are the ca
 ``check`` evaluates every edge, requires the copies of a contract vocabulary to agree, requires
 every vocabulary to reach a root, and discovers every set of names that shares one with the
 catalogue: in the contracts, in Python source, and in the GUI. Each must be claimed by a
-vocabulary, by a known gap (a hand-written set nothing holds yet, with its reason), or as no
-vocabulary (with its reason); a claim that matches nothing is stale.
+vocabulary or as no vocabulary (with its reason); a claim that matches nothing is stale.
 
-    python -m scripts.vocabulary check            # exit 1 on any problem; lists the known gaps
+    python -m scripts.vocabulary check            # exit 1 on any problem
     python -m scripts.vocabulary graph            # the graph as Mermaid
     python -m scripts.vocabulary export           # the graph and what the check found, as JSON for the overview
     python -m scripts.vocabulary impact NAME      # every vocabulary held, directly or not, to NAME

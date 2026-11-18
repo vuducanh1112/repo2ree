@@ -6,7 +6,7 @@ from typing import Any
 
 from scripts.vocabulary.check import check, downstream, edge_problems, mermaid
 from scripts.vocabulary.discover import biome_sites, python_sites, typescript_sites
-from scripts.vocabulary.model import Context, Edge, Gap, Graph, Ignored, Located, Origin, Reader, Relation, Vocabulary
+from scripts.vocabulary.model import Context, Edge, Graph, Ignored, Located, Origin, Reader, Relation, Vocabulary
 from scripts.vocabulary.readers import CatalogueTable, ContractSet, RoutedOperations, SourceSet, route_path, words
 
 ROOTS = frozenset({"build", "run", "review_run"})
@@ -129,19 +129,16 @@ def test_every_set_sharing_a_name_with_the_catalogue_must_be_claimed() -> None:
     sources = {"core/a.py::STAGES": Located("core/a.py::STAGES", frozenset({"run", "seal"}))}
     found = problems(graph(), context(contracts, sources))
     assert found == [
-        "core/a.py::STAGES names [run, seal] and no vocabulary, gap or exception claims it",
-        "protocol:/$defs/Kind/enum names [build, launch] and no vocabulary, gap or exception claims it",
+        "core/a.py::STAGES names [run, seal] and no vocabulary or exception claims it",
+        "protocol:/$defs/Kind/enum names [build, launch] and no vocabulary or exception claims it",
     ]
-    claimed = graph(gaps=(Gap("core/a.py::STAGES", "later"),), ignored=(Ignored("protocol:/$defs/Kind/enum", "no"),))
+    claimed = graph(ignored=(Ignored("core/a.py::STAGES", "no"), Ignored("protocol:/$defs/Kind/enum", "no")))
     assert problems(claimed, context(contracts, sources)) == []
 
 
 def test_a_claim_on_nothing_is_stale() -> None:
-    stale = graph(gaps=(Gap("core/a.py::GONE", "later"),), ignored=(Ignored("x:/enum", "no"),))
-    assert problems(stale) == [
-        "core/a.py::GONE is claimed but no set is found there: remove the gap",
-        "x:/enum is claimed but no set is found there: remove the exception",
-    ]
+    stale = graph(ignored=(Ignored("x:/enum", "no"),))
+    assert problems(stale) == ["x:/enum is claimed but no set is found there: remove the exception"]
 
 
 def test_python_sets_are_found_by_where_they_are_bound() -> None:

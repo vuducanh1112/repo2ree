@@ -78,14 +78,6 @@ class Edge:
 
 
 @dataclass(frozen=True)
-class Gap:
-    """A discovered set nothing holds yet, kept visible until it is."""
-
-    site: str
-    reason: str
-
-
-@dataclass(frozen=True)
 class Ignored:
     """A discovered set of names that is no vocabulary of the graph."""
 
@@ -98,7 +90,6 @@ class Graph:
     roots: tuple[str, ...]
     vocabularies: tuple[Vocabulary, ...]
     edges: tuple[Edge, ...]
-    gaps: tuple[Gap, ...] = ()
     ignored: tuple[Ignored, ...] = ()
 
     def vocabulary(self, name: str) -> Vocabulary:

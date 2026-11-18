@@ -13,8 +13,6 @@ from scripts.vocabulary.model import CONTRACTS, Context, Edge, Graph, Located, R
 @dataclass(frozen=True)
 class Report:
     problems: tuple[str, ...]
-    # Each known gap, and the names it holds today.
-    gaps: tuple[tuple[str, str, frozenset[str]], ...]
     # Each vocabulary's names as read, by name; what each edge found wrong, in the graph's order of edges.
     names: dict[str, frozenset[str]]
     edges: tuple[tuple[str, ...], ...]
@@ -86,9 +84,9 @@ def structure_problems(graph: Graph) -> list[str]:
             problems.append(
                 f"the root {edge.target} is held to {', '.join(edge.sources)}: a root holds, it is not held"
             )
-    gapped = {gap.site for gap in graph.gaps}
+    excepted = {item.site for item in graph.ignored}
     claimed = {site for vocabulary in graph.vocabularies for site in vocabulary.reader.claims()}
-    problems += [f"{site} is both a gap and a vocabulary's" for site in sorted(gapped & claimed)]
+    problems += [f"{site} is both an exception and a vocabulary's" for site in sorted(excepted & claimed)]
     return problems
 
 
@@ -128,16 +126,15 @@ def discovered(context: Context) -> dict[str, Located]:
 
 def claim_problems(graph: Graph, found: dict[str, Located]) -> list[str]:
     patterns = [site for vocabulary in graph.vocabularies for site in vocabulary.reader.claims()]
-    patterns += [gap.site for gap in graph.gaps] + [item.site for item in graph.ignored]
+    patterns += [item.site for item in graph.ignored]
     problems = [
-        f"{site} names [{_sample(located.names)}] and no vocabulary, gap or exception claims it"
+        f"{site} names [{_sample(located.names)}] and no vocabulary or exception claims it"
         for site, located in sorted(found.items())
         if not any(fnmatch.fnmatchcase(site, pattern) for pattern in patterns)
     ]
     problems += [
-        f"{entry.site} is claimed but no set is found there: remove the {kind}"
-        for kind, entries in (("gap", graph.gaps), ("exception", graph.ignored))
-        for entry in entries
+        f"{entry.site} is claimed but no set is found there: remove the exception"
+        for entry in graph.ignored
         if not any(fnmatch.fnmatchcase(site, entry.site) for site in found)
     ]
     return problems
@@ -150,18 +147,9 @@ def check(graph: Graph, context: Context) -> Report:
     problems += [problem for found in by_edge for problem in found]
     unanchored = anchoring_problems(graph)
     problems += unanchored
-    found = discovered(context)
-    problems += claim_problems(graph, found)
-    gaps = tuple(
-        (
-            gap.site,
-            gap.reason,
-            frozenset().union(*(at.names for site, at in found.items() if fnmatch.fnmatchcase(site, gap.site))),
-        )
-        for gap in graph.gaps
-    )
+    problems += claim_problems(graph, discovered(context))
     loose = frozenset(problem.split(" ", 1)[0] for problem in unanchored)
-    return Report(problems=tuple(problems), gaps=gaps, names=names, edges=by_edge, unanchored=loose)
+    return Report(problems=tuple(problems), names=names, edges=by_edge, unanchored=loose)
 
 
 FORMAT = "repo2ree-vocabulary/1"
@@ -193,7 +181,6 @@ def export(graph: Graph, report: Report) -> dict[str, object]:
             }
             for edge, found in zip(graph.edges, report.edges, strict=True)
         ],
-        "gaps": [{"site": site, "reason": reason, "names": sorted(names)} for site, reason, names in report.gaps],
         "exceptions": [{"site": item.site, "reason": item.reason} for item in graph.ignored],
         "problems": list(report.problems),
     }
@@ -217,6 +204,4 @@ def mermaid(graph: Graph) -> str:
         label = str(edge.relation) + (f" +{', '.join(edge.extras)}" if edge.extras else "")
         arrow = "-.->" if edge.relation is Relation.DERIVED else "-->"
         lines += [f"  {node(source)} {arrow}|{label}| {node(edge.target)}" for source in edge.sources]
-    for index, gap in enumerate(graph.gaps):
-        lines.append(f"  gap{index}{{{{{gap.site.split('::')[-1]}<br/><i>gap</i>}}}}")
     return "\n".join(lines)

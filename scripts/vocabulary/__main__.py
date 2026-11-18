@@ -42,22 +42,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "discover":
         claims = [(site, vocabulary.name) for vocabulary in GRAPH.vocabularies for site in vocabulary.reader.claims()]
-        claims += [(gap.site, "gap") for gap in GRAPH.gaps] + [(item.site, "exception") for item in GRAPH.ignored]
+        claims += [(item.site, "exception") for item in GRAPH.ignored]
         for site, located in sorted(discovered(context()).items()):
             by = next((name for pattern, name in claims if fnmatch.fnmatchcase(site, pattern)), "UNCLAIMED")
             print(f"{by}\t{site}\t{', '.join(sorted(located.names))}")
         return 0
 
     report = check(GRAPH, context())
-    for site, reason, names in report.gaps:
-        print(f"gap      {site}: {reason} [{', '.join(sorted(names))}]")
     for problem in report.problems:
         print(f"problem  {problem}", file=sys.stderr)
     if report.problems:
         print(f">> {len(report.problems)} vocabulary problems", file=sys.stderr)
         return 1
-    held = len(GRAPH.vocabularies)
-    print(f">> vocabulary graph holds: {held} vocabularies, {len(GRAPH.edges)} edges, {len(report.gaps)} known gaps")
+    print(f">> vocabulary graph holds: {len(GRAPH.vocabularies)} vocabularies, {len(GRAPH.edges)} edges")
     return 0
 
 
