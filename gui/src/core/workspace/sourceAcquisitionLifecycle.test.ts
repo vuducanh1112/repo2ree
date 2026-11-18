@@ -33,13 +33,12 @@ describe("runSourceWorkspaceAction", () => {
       };
     });
 
+    const startReeRun = vi.fn(async () => ({ runId: "run-1" }));
     const result = await runSourceWorkspaceAction({
       reeClient: {
         resetWorkspaceRequest: vi.fn(async () => {}),
       },
-      executionRunClient: {
-        startReeRun: vi.fn(async () => ({ runId: "run-1" })),
-      },
+      executionRunClient: { startReeRun },
       reeId: "active",
       resetPayload: '{"mode":"download"}',
       runParams: { mode: "download", source: "https://example.org/repo.git" },
@@ -49,6 +48,8 @@ describe("runSourceWorkspaceAction", () => {
       onUpdateLogs,
     });
 
+    // The run is started by the operation that acquires the source, the name the run client dispatches on.
+    expect(startReeRun).toHaveBeenCalledWith("active", "acquire_source", expect.anything());
     expect(onRunStarted).toHaveBeenCalledWith("source", "run-1");
     expect(onUpdateLogs).toHaveBeenCalled();
     expect(onRunFinished).toHaveBeenCalledWith("source", "run-1");

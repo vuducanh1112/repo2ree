@@ -59,7 +59,7 @@ export async function runSourceWorkspaceAction({
 
   return runExecutionLifecycle({
     startReeRun: (scriptKey, params) => executionRunClient.startReeRun(reeId, scriptKey, params),
-    request: { key: "source", scriptKey: "source", params: runParams },
+    request: { key: "source", scriptKey: "acquire_source", params: runParams },
     pollRun: (runId, onUpdate) => pollRun(reeId, runId, onUpdate),
     onRunStarted,
     onRunFinished,
