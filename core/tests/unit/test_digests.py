@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
+from pathlib import Path
+from typing import Any
 
 from repo2ree_core.digests import digest_file, digest_file_if_exists, digest_output_paths, digest_tree
 from repo2ree_core.persistence.files import pack_directory_tar_gz
@@ -73,3 +76,29 @@ def test_pack_directory_tar_gz_returns_digest_of_written_archive(tmp_path):
     digest = pack_directory_tar_gz(src, archive)
 
     assert digest == digest_file(archive)
+
+
+def _fixture() -> dict[str, list[dict[str, Any]]]:
+    root = next(parent for parent in Path(__file__).resolve().parents if (parent / "contracts").is_dir())
+    fixture: dict[str, list[dict[str, Any]]] = json.loads(
+        (root / "contracts" / "ree" / "fixtures" / "digests.json").read_text(encoding="utf-8")
+    )
+    return fixture
+
+
+def _written(root: Path, files: dict[str, str]) -> Path:
+    for path, content in files.items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(content, encoding="utf-8")
+    return root
+
+
+def test_digest_tree_is_the_one_the_format_pins(tmp_path):
+    for index, case in enumerate(_fixture()["tree"]):
+        assert digest_tree(_written(tmp_path / str(index), case["files"])) == case["digest"], case["name"]
+
+
+def test_digest_output_paths_is_the_one_the_format_pins(tmp_path):
+    for index, case in enumerate(_fixture()["paths"]):
+        root = _written(tmp_path / str(index), case["files"])
+        assert digest_output_paths(root, case["paths"]) == case["digest"], case["name"]

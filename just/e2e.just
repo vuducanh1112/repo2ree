@@ -94,6 +94,16 @@ test-showcase-cli jobs=E2E_JOBS *select: (_tier-showcase-cli jobs select) (asses
 _tier-showcase-cli jobs *select: _load-showcase-environments
     python -m repo2ree_testbed cli-showcase run --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
 
+# Author the example REE again (examples/rees/ree-hello-world.zip) as the Python Docker showcase authors it, through `ree` on the testbed's docker machine, here or on a machine (e.g. `just author-example-bundle vm`); the example is replaced only if the new bundle holds every rule the specification sets a sealed REE.
+[group('E2E tests')]
+author-example-bundle machine="local":
+    {{ if machine == "local" { "just --justfile " + quote(ROOT + "/justfile") + " _author-example-bundle" } else { "just --justfile " + quote(ROOT + "/justfile") + " on-wip " + quote(machine) + " _author-example-bundle" } }}
+    python scripts/example_bundle.py adopt
+
+[private]
+_author-example-bundle: (_tier-showcase-cli "1" "test_python_docker_authoring")
+    python scripts/example_bundle.py stage
+
 # Build and load the image of each machine an API showcase runs on.
 [private]
 _load-showcase-environments:

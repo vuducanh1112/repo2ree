@@ -90,7 +90,8 @@ app loads back (workbench step → "Load REE bundle", or `POST
 ### `ree-hello-world.zip`
 
 The REE the Python Docker showcase authors, authored through `ree` on the
-testbed's `docker` machine (`testbed/environments/docker`), carrying its real
+testbed's `docker` machine (`testbed/environments/docker`) by
+`just author-example-bundle vm`, carrying its real
 author evidence: the source snapshot, the overlay scripts with the project's
 check of the working environment, the SBOM, the reproducibility report, the
 captured experiment result, and the author receipts from that run.
