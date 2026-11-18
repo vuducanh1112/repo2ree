@@ -21,11 +21,8 @@ from dataclasses import dataclass
 from importlib.resources import files
 
 from repo2ree_protocol.catalog import (
-    ActivateExperimentEnvironmentScriptTemplates,
-    BuildExperimentEnvironmentScriptTemplates,
-    CheckWorkingEnvironmentScriptTemplates,
     ExperimentScriptTemplates,
-    LaunchScriptTemplates,
+    ReservedScriptTemplates,
     ScriptTemplateCatalog,
     ScriptTemplateEntry,
 )
@@ -161,7 +158,7 @@ def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
     )
 
 
-def verify_templates() -> tuple[ScriptTemplate, ...]:
+def experiment_verify_templates() -> tuple[ScriptTemplate, ...]:
     """The verify-script templates for the standard verification cases.
 
     Verify scripts are plain POSIX sh, run from the workspace root after the
@@ -206,24 +203,24 @@ def verify_templates() -> tuple[ScriptTemplate, ...]:
 def script_template_catalog() -> ScriptTemplateCatalog:
     """Every script kind's templates and where its scripts belong, each environment's default marked."""
     return ScriptTemplateCatalog(
-        build_experiment_environment=BuildExperimentEnvironmentScriptTemplates(
-            path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
-            templates=_entries(build_templates()),
+        build_experiment_environment=ReservedScriptTemplates(
+            path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, templates=_entries(build_templates())
         ),
-        activate_experiment_environment=ActivateExperimentEnvironmentScriptTemplates(
+        activate_experiment_environment=ReservedScriptTemplates(
             path=RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
             templates=_entries(activate_experiment_environment_templates()),
         ),
-        launch=LaunchScriptTemplates(path=RESERVED_LAUNCH_SCRIPT, templates=_entries(launch_templates())),
-        check_working_environment=CheckWorkingEnvironmentScriptTemplates(
+        launch=ReservedScriptTemplates(path=RESERVED_LAUNCH_SCRIPT, templates=_entries(launch_templates())),
+        check_working_environment=ReservedScriptTemplates(
             path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, templates=_entries(check_working_environment_templates())
         ),
-        experiment=ExperimentScriptTemplates(
-            run_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh",
-            verify_script_path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
-            templates=_entries(experiment_run_templates()),
+        experiment_run=ExperimentScriptTemplates(
+            path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh", templates=_entries(experiment_run_templates())
         ),
-        verify=_entries(verify_templates()),
+        experiment_verify=ExperimentScriptTemplates(
+            path_pattern=f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh",
+            templates=_entries(experiment_verify_templates()),
+        ),
     )
 
 

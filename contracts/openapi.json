@@ -8504,29 +8504,6 @@
         "title": "ActivateExperimentEnvironmentReceipt",
         "description": "The activate experiment environment script ran a command that does nothing, which exited 0."
       },
-      "ActivateExperimentEnvironmentScriptTemplates": {
-        "properties": {
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "templates": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Templates"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path",
-          "templates"
-        ],
-        "title": "ActivateExperimentEnvironmentScriptTemplates",
-        "description": "The activate experiment environment templates and the reserved path they all belong at."
-      },
       "ActivationOutcome": {
         "properties": {
           "policy": {
@@ -9023,29 +9000,6 @@
         ],
         "title": "BuildExperimentEnvironmentReceipt"
       },
-      "BuildExperimentEnvironmentScriptTemplates": {
-        "properties": {
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "templates": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Templates"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path",
-          "templates"
-        ],
-        "title": "BuildExperimentEnvironmentScriptTemplates",
-        "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry for an\nenvironment (``is_default``) is the content a fresh REE's build script there is\nseeded with."
-      },
       "BuildInfo": {
         "properties": {
           "version": {
@@ -9442,29 +9396,6 @@
         ],
         "title": "CheckWorkingEnvironmentReceipt",
         "description": "The author's check of the working environment ran there, launched as every script is, and exited 0."
-      },
-      "CheckWorkingEnvironmentScriptTemplates": {
-        "properties": {
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "templates": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Templates"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path",
-          "templates"
-        ],
-        "title": "CheckWorkingEnvironmentScriptTemplates",
-        "description": "The check-script templates and the reserved path they belong at.\n\nEvery REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.\nThe check runs in the working environment, launched as every script is, and must exit 0."
       },
       "CommandCandidatesBinding": {
         "properties": {
@@ -11404,13 +11335,9 @@
       },
       "ExperimentScriptTemplates": {
         "properties": {
-          "run_script_path_pattern": {
+          "path_pattern": {
             "type": "string",
-            "title": "Run Script Path Pattern"
-          },
-          "verify_script_path_pattern": {
-            "type": "string",
-            "title": "Verify Script Path Pattern"
+            "title": "Path Pattern"
           },
           "templates": {
             "items": {
@@ -11423,12 +11350,11 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "run_script_path_pattern",
-          "verify_script_path_pattern",
+          "path_pattern",
           "templates"
         ],
         "title": "ExperimentScriptTemplates",
-        "description": "Templates for per-experiment run scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips."
+        "description": "The templates of a script every experiment has, and the path it belongs at.\n\nThe pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens."
       },
       "Failure": {
         "properties": {
@@ -12375,29 +12301,6 @@
         ],
         "title": "LaunchDefinition",
         "description": "The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``."
-      },
-      "LaunchScriptTemplates": {
-        "properties": {
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "templates": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Templates"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path",
-          "templates"
-        ],
-        "title": "LaunchScriptTemplates",
-        "description": "The launch-script templates and the reserved path they belong at.\n\nOptional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run\neach script through it, ``sh launch.sh <command>``."
       },
       "Launched": {
         "properties": {
@@ -14254,6 +14157,29 @@
         "title": "RequirementsProjectBinding",
         "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries only the located file and its digest \u2014 the base image travels via\ndeployment policy, not repository evidence, so it is resolved by the\nbase-image check/renderer rather than baked into this binding."
       },
+      "ReservedScriptTemplates": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "templates"
+        ],
+        "title": "ReservedScriptTemplates",
+        "description": "The templates of a script an REE has once, and the reserved path it belongs at."
+      },
       "ResolveNode": {
         "properties": {
           "id": {
@@ -15889,26 +15815,22 @@
       "ScriptTemplateCatalog": {
         "properties": {
           "build_experiment_environment": {
-            "$ref": "#/components/schemas/BuildExperimentEnvironmentScriptTemplates"
+            "$ref": "#/components/schemas/ReservedScriptTemplates"
           },
           "activate_experiment_environment": {
-            "$ref": "#/components/schemas/ActivateExperimentEnvironmentScriptTemplates"
+            "$ref": "#/components/schemas/ReservedScriptTemplates"
           },
           "launch": {
-            "$ref": "#/components/schemas/LaunchScriptTemplates"
+            "$ref": "#/components/schemas/ReservedScriptTemplates"
           },
           "check_working_environment": {
-            "$ref": "#/components/schemas/CheckWorkingEnvironmentScriptTemplates"
+            "$ref": "#/components/schemas/ReservedScriptTemplates"
           },
-          "experiment": {
+          "experiment_run": {
             "$ref": "#/components/schemas/ExperimentScriptTemplates"
           },
-          "verify": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Verify"
+          "experiment_verify": {
+            "$ref": "#/components/schemas/ExperimentScriptTemplates"
           }
         },
         "additionalProperties": false,
@@ -15918,10 +15840,11 @@
           "activate_experiment_environment",
           "launch",
           "check_working_environment",
-          "experiment",
-          "verify"
+          "experiment_run",
+          "experiment_verify"
         ],
-        "title": "ScriptTemplateCatalog"
+        "title": "ScriptTemplateCatalog",
+        "description": "Each script kind's templates and where its scripts belong."
       },
       "ScriptTemplateEntry": {
         "properties": {

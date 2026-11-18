@@ -19,10 +19,8 @@ const fixture = JSON.parse(
 ) as { cases: Array<{ name: string; slug: string }> };
 
 const catalog = {
-  experiment: {
-    run_script_path_pattern: "ree-scripts/experiments/{slug}.sh",
-    verify_script_path_pattern: "ree-scripts/experiments/{slug}.verify.sh",
-  },
+  experiment_run: { path_pattern: "ree-scripts/experiments/{slug}.sh" },
+  experiment_verify: { path_pattern: "ree-scripts/experiments/{slug}.verify.sh" },
 } as unknown as ScriptTemplateCatalog;
 
 describe("experiment script paths", () => {

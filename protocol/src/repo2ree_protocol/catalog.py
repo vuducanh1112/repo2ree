@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from repo2ree_protocol.command import TargetKind
+
 ReeStepKey = Literal[
     "acquire_source",
     "metadata",
@@ -67,48 +69,8 @@ class ScriptTemplateEntry(BaseModel):
     is_default: bool
 
 
-class BuildExperimentEnvironmentScriptTemplates(BaseModel):
-    """The build-script templates and the reserved path they all belong at.
-
-    One entry per standard runtime-packaging strategy; the default entry for an
-    environment (``is_default``) is the content a fresh REE's build script there is
-    seeded with.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: str
-    templates: list[ScriptTemplateEntry]
-
-
-class ActivateExperimentEnvironmentScriptTemplates(BaseModel):
-    """The activate experiment environment templates and the reserved path they all belong at."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: str
-    templates: list[ScriptTemplateEntry]
-
-
-class LaunchScriptTemplates(BaseModel):
-    """The launch-script templates and the reserved path they belong at.
-
-    Optional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run
-    each script through it, ``sh launch.sh <command>``.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    path: str
-    templates: list[ScriptTemplateEntry]
-
-
-class CheckWorkingEnvironmentScriptTemplates(BaseModel):
-    """The check-script templates and the reserved path they belong at.
-
-    Every REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.
-    The check runs in the working environment, launched as every script is, and must exit 0.
-    """
+class ReservedScriptTemplates(BaseModel):
+    """The templates of a script an REE has once, and the reserved path it belongs at."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -117,28 +79,29 @@ class CheckWorkingEnvironmentScriptTemplates(BaseModel):
 
 
 class ExperimentScriptTemplates(BaseModel):
-    """Templates for per-experiment run scripts, plus the path convention they follow.
+    """The templates of a script every experiment has, and the path it belongs at.
 
-    The path patterns carry a ``{slug}`` placeholder: the experiment name with
-    whitespace collapsed to hyphens. Naming an experiment on the intent settles
-    its ``run_script`` to this convention server-side; the patterns are
-    published so clients can show the destination before the intent round-trips.
+    The pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    run_script_path_pattern: str
-    verify_script_path_pattern: str
+    path_pattern: str
     templates: list[ScriptTemplateEntry]
 
 
 class ScriptTemplateCatalog(BaseModel):
+    """Each script kind's templates and where its scripts belong."""
+
     model_config = ConfigDict(extra="forbid")
 
-    build_experiment_environment: BuildExperimentEnvironmentScriptTemplates
-    activate_experiment_environment: ActivateExperimentEnvironmentScriptTemplates
-    launch: LaunchScriptTemplates
-    check_working_environment: CheckWorkingEnvironmentScriptTemplates
-    experiment: ExperimentScriptTemplates
-    # Verify scripts are shared by every experiment, so their templates are catalog-wide.
-    verify: list[ScriptTemplateEntry]
+    build_experiment_environment: ReservedScriptTemplates
+    activate_experiment_environment: ReservedScriptTemplates
+    launch: ReservedScriptTemplates
+    check_working_environment: ReservedScriptTemplates
+    experiment_run: ExperimentScriptTemplates
+    experiment_verify: ExperimentScriptTemplates
+
+    def of(self, kind: TargetKind) -> ReservedScriptTemplates | ExperimentScriptTemplates:
+        templates: ReservedScriptTemplates | ExperimentScriptTemplates = getattr(self, kind)
+        return templates

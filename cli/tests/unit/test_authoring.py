@@ -12,7 +12,7 @@ from click.testing import CliRunner, Result
 
 import repo2ree_cli.cli as cli_module
 import repo2ree_core.operations.session as session_module
-from repo2ree_authoring.templates import experiment_run_templates, verify_templates
+from repo2ree_authoring.templates import experiment_run_templates, experiment_verify_templates
 from repo2ree_cli.cli import REFUSED, cli
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
@@ -139,7 +139,10 @@ def test_define_declares_an_experiment_with_its_scripts_and_removes_them_with_it
     assert "declare its experiment first" in undeclared.stderr
 
     assert ree(root, "patch-ree-definition", "--experiment", "fig", "--output", "out.txt").exit_code == 0
-    assert (run.read_text(), verify.read_text()) == (experiment_run_templates()[0].body, verify_templates()[0].body)
+    assert (run.read_text(), verify.read_text()) == (
+        experiment_run_templates()[0].body,
+        experiment_verify_templates()[0].body,
+    )
     assert ree(root, "write-script", "experiment_run:fig", input="echo hi > out.txt\n").exit_code == 0
     assert ree(root, "patch-ree-definition", "--experiment", "fig", "--output", "out.csv").exit_code == 0
 

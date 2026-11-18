@@ -404,10 +404,8 @@ def run() -> None:
     catalog = call("GET", f"/api/v1/rees/{ree_id}/script-templates")
     build_experiment_environment_script_path = catalog["build_experiment_environment"]["path"]
     activate_script_path = catalog["activate_experiment_environment"]["path"]
-    experiment_run_script_path = catalog["experiment"]["run_script_path_pattern"].replace("{slug}", EXPERIMENT_NAME)
-    experiment_verify_script_path = catalog["experiment"]["verify_script_path_pattern"].replace(
-        "{slug}", EXPERIMENT_NAME
-    )
+    experiment_run_script_path = catalog["experiment_run"]["path_pattern"].replace("{slug}", EXPERIMENT_NAME)
+    experiment_verify_script_path = catalog["experiment_verify"]["path_pattern"].replace("{slug}", EXPERIMENT_NAME)
     check(
         build_experiment_environment_script_path and activate_script_path,
         "catalog did not resolve the reserved paths",

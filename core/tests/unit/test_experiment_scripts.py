@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo2ree_authoring.templates import experiment_run_templates, verify_templates
+from repo2ree_authoring.templates import experiment_run_templates, experiment_verify_templates
 from repo2ree_core.operations.handlers.author.patch_ree_definition import handle_patch_ree_definition
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -34,8 +34,8 @@ def test_a_declared_experiment_starts_with_the_default_scripts_and_verifies_by_p
     store = ReeDirectory(layout)
     [experiment] = store.read_ree().subject.definition.experiments
     assert store.overlay.read_text(experiment_run_script_path("fig one")) == experiment_run_templates()[0].body
-    assert store.overlay.read_text(experiment_verify_script_path("fig one")) == verify_templates()[0].body
-    assert store.workspace.read_text(experiment_verify_script_path("fig one")) == verify_templates()[0].body
+    assert store.overlay.read_text(experiment_verify_script_path("fig one")) == experiment_verify_templates()[0].body
+    assert store.workspace.read_text(experiment_verify_script_path("fig one")) == experiment_verify_templates()[0].body
     assert experiment.verify_script_path == experiment_verify_script_path("fig one")
 
 

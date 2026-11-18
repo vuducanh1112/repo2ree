@@ -1253,16 +1253,6 @@ export interface components {
             launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
         };
-        /**
-         * ActivateExperimentEnvironmentScriptTemplates
-         * @description The activate experiment environment templates and the reserved path they all belong at.
-         */
-        ActivateExperimentEnvironmentScriptTemplates: {
-            /** Path */
-            path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
-        };
         /** ActivationOutcome */
         ActivationOutcome: {
             /**
@@ -1502,20 +1492,6 @@ export interface components {
             launched?: components["schemas"]["Launched"] | null;
         };
         /**
-         * BuildExperimentEnvironmentScriptTemplates
-         * @description The build-script templates and the reserved path they all belong at.
-         *
-         *     One entry per standard runtime-packaging strategy; the default entry for an
-         *     environment (``is_default``) is the content a fresh REE's build script there is
-         *     seeded with.
-         */
-        BuildExperimentEnvironmentScriptTemplates: {
-            /** Path */
-            path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
-        };
-        /**
          * BuildInfo
          * @description A component's package version and exact source revision.
          *
@@ -1708,19 +1684,6 @@ export interface components {
             /** Launch Script Digest */
             launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
-        };
-        /**
-         * CheckWorkingEnvironmentScriptTemplates
-         * @description The check-script templates and the reserved path they belong at.
-         *
-         *     Every REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.
-         *     The check runs in the working environment, launched as every script is, and must exit 0.
-         */
-        CheckWorkingEnvironmentScriptTemplates: {
-            /** Path */
-            path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
         };
         /** CommandCandidatesBinding */
         CommandCandidatesBinding: {
@@ -2449,18 +2412,13 @@ export interface components {
         };
         /**
          * ExperimentScriptTemplates
-         * @description Templates for per-experiment run scripts, plus the path convention they follow.
+         * @description The templates of a script every experiment has, and the path it belongs at.
          *
-         *     The path patterns carry a ``{slug}`` placeholder: the experiment name with
-         *     whitespace collapsed to hyphens. Naming an experiment on the intent settles
-         *     its ``run_script`` to this convention server-side; the patterns are
-         *     published so clients can show the destination before the intent round-trips.
+         *     The pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens.
          */
         ExperimentScriptTemplates: {
-            /** Run Script Path Pattern */
-            run_script_path_pattern: string;
-            /** Verify Script Path Pattern */
-            verify_script_path_pattern: string;
+            /** Path Pattern */
+            path_pattern: string;
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
         };
@@ -2841,19 +2799,6 @@ export interface components {
             launch_script_digest: string;
             /** Launch Script Size */
             launch_script_size: number;
-        };
-        /**
-         * LaunchScriptTemplates
-         * @description The launch-script templates and the reserved path they belong at.
-         *
-         *     Optional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run
-         *     each script through it, ``sh launch.sh <command>``.
-         */
-        LaunchScriptTemplates: {
-            /** Path */
-            path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
         };
         /**
          * Launched
@@ -3563,6 +3508,16 @@ export interface components {
             /** Digest */
             digest: string;
         };
+        /**
+         * ReservedScriptTemplates
+         * @description The templates of a script an REE has once, and the reserved path it belongs at.
+         */
+        ReservedScriptTemplates: {
+            /** Path */
+            path: string;
+            /** Templates */
+            templates: components["schemas"]["ScriptTemplateEntry"][];
+        };
         /** ResolveNode */
         ResolveNode: {
             /** Id */
@@ -4162,15 +4117,17 @@ export interface components {
             /** Experiment Name */
             experiment_name?: string | null;
         };
-        /** ScriptTemplateCatalog */
+        /**
+         * ScriptTemplateCatalog
+         * @description Each script kind's templates and where its scripts belong.
+         */
         ScriptTemplateCatalog: {
-            build_experiment_environment: components["schemas"]["BuildExperimentEnvironmentScriptTemplates"];
-            activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentScriptTemplates"];
-            launch: components["schemas"]["LaunchScriptTemplates"];
-            check_working_environment: components["schemas"]["CheckWorkingEnvironmentScriptTemplates"];
-            experiment: components["schemas"]["ExperimentScriptTemplates"];
-            /** Verify */
-            verify: components["schemas"]["ScriptTemplateEntry"][];
+            build_experiment_environment: components["schemas"]["ReservedScriptTemplates"];
+            activate_experiment_environment: components["schemas"]["ReservedScriptTemplates"];
+            launch: components["schemas"]["ReservedScriptTemplates"];
+            check_working_environment: components["schemas"]["ReservedScriptTemplates"];
+            experiment_run: components["schemas"]["ExperimentScriptTemplates"];
+            experiment_verify: components["schemas"]["ExperimentScriptTemplates"];
         };
         /**
          * ScriptTemplateEntry

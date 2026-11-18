@@ -133,6 +133,11 @@ VOCABULARIES = (
         "*:/$defs/ScriptState/properties/kind/enum",
         "openapi:/components/schemas/ScriptTarget*/properties/kind/enum",
     ),
+    _contract(
+        "script.templates",
+        "The script template catalogue: each kind's templates and where its scripts belong.",
+        "*:/*ScriptTemplateCatalog/properties",
+    ),
     # ---- source: the literals the contracts render from ----
     _source(
         "protocol.operation_name", "protocol/src/repo2ree_protocol/command.py::OperationName", "A command's operation."
@@ -175,7 +180,6 @@ VOCABULARIES = (
         "core/src/repo2ree_core/operations/handlers/author/definition_authoring.py::FIXED_SCRIPTS",
         "The definition's declarations of the scripts every REE has.",
     ),
-    _source("cli.script_templates", "cli/src/repo2ree_cli/cli.py::_template.entries", "The templates of each kind."),
     _source(
         "authoring.fixed_targets",
         "authoring/src/repo2ree_authoring/targets.py::resolve_target.path",
@@ -242,6 +246,7 @@ EDGES = (
     Edge("run.operations", DERIVED, ("protocol.operation_name",)),
     Edge("protocol.step_key", EQUALS, ("steps",)),
     Edge("protocol.target_kind", EQUALS, ("script.kinds",)),
+    Edge("script.templates", EQUALS, ("script.kinds",)),
     Edge("ree.review_step_key", EQUALS, ("review.steps",)),
     Edge("telemetry.author_api_action", EQUALS, ("behaviour.author_api_actions",)),
     # ---- hand-written copies ----
@@ -254,7 +259,6 @@ EDGES = (
     Edge("cli.review_all", EQUALS, ("review_operations",)),
     Edge("core.runnable_kind", WITHIN, ("operations",)),
     Edge("core.fixed_scripts", WITHIN, ("ree.definition",)),
-    Edge("cli.script_templates", EQUALS, ("script.kinds",)),
     Edge("authoring.fixed_targets", WITHIN, ("script.kinds",)),
     Edge("core.fixed_targets", WITHIN, ("script.kinds",)),
     Edge("core.inference_dags", WITHIN, ("script.kinds",)),
@@ -267,11 +271,6 @@ EDGES = (
 _GUI = "the GUI's vocabularies are deferred: they are to be generated from the contracts"
 
 GAPS = (
-    Gap(
-        "*:/*ScriptTemplateCatalog/properties",
-        "the template catalog says experiment and verify where the script kinds say experiment_run and "
-        "experiment_verify",
-    ),
     *(
         Gap(f"gui/src/{site}", _GUI)
         for site in (

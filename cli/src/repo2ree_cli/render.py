@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, get_args
 
 from repo2ree_protocol.audit import ReeAudit, StepAudit
-from repo2ree_protocol.catalog import ReeStepKey, ReeSteps, ScriptTemplateCatalog
+from repo2ree_protocol.catalog import ReeStepKey, ReeSteps, ReservedScriptTemplates, ScriptTemplateCatalog
 from repo2ree_protocol.document import ReeStatusReport, WorkbenchReeDocument
 from repo2ree_protocol.history import OperationHistory
 from repo2ree_protocol.inference import InferenceReport, TargetInferenceResult
@@ -163,17 +163,19 @@ def review(record: ReviewRecord) -> str:
 
 def templates(catalog: ScriptTemplateCatalog) -> str:
     sections = (
-        (catalog.check_working_environment.path, catalog.check_working_environment.templates),
-        (catalog.launch.path, catalog.launch.templates),
-        (catalog.build_experiment_environment.path, catalog.build_experiment_environment.templates),
-        (catalog.activate_experiment_environment.path, catalog.activate_experiment_environment.templates),
-        (catalog.experiment.run_script_path_pattern, catalog.experiment.templates),
-        (catalog.experiment.verify_script_path_pattern, catalog.verify),
+        catalog.check_working_environment,
+        catalog.launch,
+        catalog.build_experiment_environment,
+        catalog.activate_experiment_environment,
+        catalog.experiment_run,
+        catalog.experiment_verify,
     )
     lines = []
-    for path, entries in sections:
-        lines.append(path)
-        lines += [f"  {entry.key:<24} {entry.label}{'  (default)' if entry.is_default else ''}" for entry in entries]
+    for section in sections:
+        lines.append(section.path if isinstance(section, ReservedScriptTemplates) else section.path_pattern)
+        lines += [
+            f"  {entry.key:<24} {entry.label}{'  (default)' if entry.is_default else ''}" for entry in section.templates
+        ]
     return "\n".join(lines)
 
 

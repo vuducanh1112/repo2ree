@@ -973,15 +973,7 @@ def edit_cmd(script: ScriptTargetSelectorArg) -> None:
 
 
 def _template(kind: TargetKind) -> str:
-    catalog = script_template_catalog()
-    entries = {
-        "build_experiment_environment": catalog.build_experiment_environment.templates,
-        "activate_experiment_environment": catalog.activate_experiment_environment.templates,
-        "launch": catalog.launch.templates,
-        "check_working_environment": catalog.check_working_environment.templates,
-        "experiment_run": catalog.experiment.templates,
-        "experiment_verify": catalog.verify,
-    }[kind]
+    entries = script_template_catalog().of(kind).templates
     return next((entry.body for entry in entries if entry.is_default), entries[0].body if entries else "")
 
 

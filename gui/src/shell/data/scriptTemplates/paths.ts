@@ -13,18 +13,12 @@ export function experimentRunScriptPath(
   catalog: ScriptTemplateCatalog,
   experimentName: string,
 ): string {
-  return catalog.experiment.run_script_path_pattern.replace(
-    "{slug}",
-    experimentSlug(experimentName),
-  );
+  return catalog.experiment_run.path_pattern.replace("{slug}", experimentSlug(experimentName));
 }
 
 export function experimentVerifyScriptPath(
   catalog: ScriptTemplateCatalog,
   experimentName: string,
 ): string {
-  return catalog.experiment.verify_script_path_pattern.replace(
-    "{slug}",
-    experimentSlug(experimentName),
-  );
+  return catalog.experiment_verify.path_pattern.replace("{slug}", experimentSlug(experimentName));
 }

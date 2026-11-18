@@ -519,12 +519,8 @@ const reviews = {
 const scriptTemplates = {
   build_experiment_environment: { path: "overlay/build.sh", templates: [] },
   activate_experiment_environment: { path: "overlay/activate.sh", templates: [] },
-  experiment: {
-    run_script_path_pattern: "overlay/experiments/{slug}.sh",
-    verify_script_path_pattern: "overlay/experiments/{slug}-verify.sh",
-    templates: [],
-  },
-  verify: [],
+  experiment_run: { path_pattern: "overlay/experiments/{slug}.sh", templates: [] },
+  experiment_verify: { path_pattern: "overlay/experiments/{slug}-verify.sh", templates: [] },
 };
 
 function responseFor(request: Request): unknown {

@@ -127,10 +127,12 @@ export const scriptTemplateCatalog = {
     path: "overlay/build.sh",
     templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
   },
-  experiment: {
-    run_script_path_pattern: "overlay/experiments/{slug}.sh",
-    verify_script_path_pattern: "overlay/experiments/{slug}-verify.sh",
+  experiment_run: {
+    path_pattern: "overlay/experiments/{slug}.sh",
     templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
   },
-  verify: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
+  experiment_verify: {
+    path_pattern: "overlay/experiments/{slug}-verify.sh",
+    templates: [{ id: "default", label: "Default", body: "#!/bin/sh", is_default: true }],
+  },
 };

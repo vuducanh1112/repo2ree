@@ -6,8 +6,8 @@ from repo2ree_authoring.templates import (
     activate_experiment_environment_templates,
     build_templates,
     experiment_run_templates,
+    experiment_verify_templates,
     script_template_catalog,
-    verify_templates,
 )
 from repo2ree_protocol.catalog import ScriptTemplateEntry
 from repo2ree_ree.reserved_paths import (
@@ -43,15 +43,12 @@ def test_the_catalog_names_every_script_kind_and_where_it_belongs() -> None:
     )
     assert catalog.activate_experiment_environment.templates[0].key == "venv"
 
-    # Experiment templates state the path convention and the run variants.
-    experiment = catalog.experiment
-    assert experiment.run_script_path_pattern == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
-    assert experiment.verify_script_path_pattern == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
-    _assert_entries_match(experiment.templates, [t.key for t in experiment_run_templates()])
-    assert experiment.templates[0].key == "command"
-
-    # The verify templates mirror the packaged registry, default first.
-    _assert_entries_match(catalog.verify, [t.key for t in verify_templates()])
+    # Each experiment script kind states its path convention and its variants.
+    assert catalog.experiment_run.path_pattern == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
+    _assert_entries_match(catalog.experiment_run.templates, [t.key for t in experiment_run_templates()])
+    assert catalog.experiment_run.templates[0].key == "command"
+    assert catalog.experiment_verify.path_pattern == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.verify.sh"
+    _assert_entries_match(catalog.experiment_verify.templates, [t.key for t in experiment_verify_templates()])
 
 
 def test_the_default_templates_need_no_container_engine() -> None:

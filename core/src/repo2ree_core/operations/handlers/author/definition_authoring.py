@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from repo2ree_authoring.templates import experiment_run_templates, verify_templates
+from repo2ree_authoring.templates import experiment_run_templates, experiment_verify_templates
 from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import ReeDefinition, SourceDefinition
@@ -70,12 +70,12 @@ def experiment_scripts(current: ReeDefinition, patch: dict[str, Any], layout: Re
         for source, target in zip(experiment_script_paths(renamed), experiment_script_paths(name), strict=True)
         if source != target and layout.overlay_file(source).is_file() and not layout.overlay_file(target).is_file()
     }
-    run_default = experiment_run_templates()[0].body
-    verify_default = verify_templates()[0].body
+    defaults = (experiment_run_templates()[0].body, experiment_verify_templates()[0].body)
     seeded = {
-        path: verify_default if path.endswith(".verify.sh") else run_default
-        for path in sorted(declared - set(moved.values()))
-        if not layout.overlay_file(path).is_file()
+        path: default
+        for name in names
+        for path, default in zip(experiment_script_paths(name), defaults, strict=True)
+        if path not in moved.values() and not layout.overlay_file(path).is_file()
     }
     removed = tuple(
         sorted(

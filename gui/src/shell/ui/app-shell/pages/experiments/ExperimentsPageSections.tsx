@@ -139,7 +139,7 @@ export function ExperimentDetail({
             disabled={locked || !scriptPath}
             label="Experiment run script"
             helper="Saved to the workspace overlay and run from the workspace root."
-            templates={templates?.experiment.templates}
+            templates={templates?.experiment_run.templates}
             externalEdit={runScriptExternalEdit}
             generateSlot={
               <GenerateScriptControl
@@ -178,7 +178,7 @@ export function ExperimentDetail({
             disabled={locked || !verifyScriptPath}
             label="Experiment verify script"
             helper="Runs from the workspace root after the run script; its exit code is the verdict (0 = pass). Reads outputs straight from the workspace — no injected variables."
-            templates={templates?.verify}
+            templates={templates?.experiment_verify.templates}
             saveButtonContent="Save verify script"
             savedLabel="Saved verify script"
             unsavedLabel="Unsaved verify script"

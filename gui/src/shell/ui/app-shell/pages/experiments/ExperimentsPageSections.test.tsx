@@ -8,12 +8,8 @@ import type { RunState } from "./useExperimentRun";
 vi.mock("@shell/data/scriptTemplates/catalog", () => ({
   useScriptTemplates: () => ({
     data: {
-      experiment: {
-        run_script_path_pattern: "overlay/experiments/{slug}.sh",
-        verify_script_path_pattern: "overlay/experiments/{slug}-verify.sh",
-        templates: [],
-      },
-      verify: [],
+      experiment_run: { path_pattern: "overlay/experiments/{slug}.sh", templates: [] },
+      experiment_verify: { path_pattern: "overlay/experiments/{slug}-verify.sh", templates: [] },
     },
   }),
 }));

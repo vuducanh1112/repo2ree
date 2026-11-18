@@ -1726,29 +1726,6 @@
       "title": "ActivateExperimentEnvironmentReceipt",
       "type": "object"
     },
-    "ActivateExperimentEnvironmentScriptTemplates": {
-      "additionalProperties": false,
-      "description": "The activate experiment environment templates and the reserved path they all belong at.",
-      "properties": {
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "templates": {
-          "items": {
-            "$ref": "#/$defs/ScriptTemplateEntry"
-          },
-          "title": "Templates",
-          "type": "array"
-        }
-      },
-      "required": [
-        "path",
-        "templates"
-      ],
-      "title": "ActivateExperimentEnvironmentScriptTemplates",
-      "type": "object"
-    },
     "ActivationOutcome": {
       "additionalProperties": false,
       "properties": {
@@ -2026,29 +2003,6 @@
         "launch_script_digest"
       ],
       "title": "BuildExperimentEnvironmentReceipt",
-      "type": "object"
-    },
-    "BuildExperimentEnvironmentScriptTemplates": {
-      "additionalProperties": false,
-      "description": "The build-script templates and the reserved path they all belong at.\n\nOne entry per standard runtime-packaging strategy; the default entry for an\nenvironment (``is_default``) is the content a fresh REE's build script there is\nseeded with.",
-      "properties": {
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "templates": {
-          "items": {
-            "$ref": "#/$defs/ScriptTemplateEntry"
-          },
-          "title": "Templates",
-          "type": "array"
-        }
-      },
-      "required": [
-        "path",
-        "templates"
-      ],
-      "title": "BuildExperimentEnvironmentScriptTemplates",
       "type": "object"
     },
     "BundleContents": {
@@ -2461,29 +2415,6 @@
         "launch_script_digest"
       ],
       "title": "CheckWorkingEnvironmentReceipt",
-      "type": "object"
-    },
-    "CheckWorkingEnvironmentScriptTemplates": {
-      "additionalProperties": false,
-      "description": "The check-script templates and the reserved path they belong at.\n\nEvery REE starts with the first, which checks nothing and passes; the author uncomments what the scripts need.\nThe check runs in the working environment, launched as every script is, and must exit 0.",
-      "properties": {
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "templates": {
-          "items": {
-            "$ref": "#/$defs/ScriptTemplateEntry"
-          },
-          "title": "Templates",
-          "type": "array"
-        }
-      },
-      "required": [
-        "path",
-        "templates"
-      ],
-      "title": "CheckWorkingEnvironmentScriptTemplates",
       "type": "object"
     },
     "CommandCandidatesBinding": {
@@ -4180,14 +4111,10 @@
     },
     "ExperimentScriptTemplates": {
       "additionalProperties": false,
-      "description": "Templates for per-experiment run scripts, plus the path convention they follow.\n\nThe path patterns carry a ``{slug}`` placeholder: the experiment name with\nwhitespace collapsed to hyphens. Naming an experiment on the intent settles\nits ``run_script`` to this convention server-side; the patterns are\npublished so clients can show the destination before the intent round-trips.",
+      "description": "The templates of a script every experiment has, and the path it belongs at.\n\nThe pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens.",
       "properties": {
-        "run_script_path_pattern": {
-          "title": "Run Script Path Pattern",
-          "type": "string"
-        },
-        "verify_script_path_pattern": {
-          "title": "Verify Script Path Pattern",
+        "path_pattern": {
+          "title": "Path Pattern",
           "type": "string"
         },
         "templates": {
@@ -4199,8 +4126,7 @@
         }
       },
       "required": [
-        "run_script_path_pattern",
-        "verify_script_path_pattern",
+        "path_pattern",
         "templates"
       ],
       "title": "ExperimentScriptTemplates",
@@ -5159,29 +5085,6 @@
         "launch_script_size"
       ],
       "title": "LaunchDefinition",
-      "type": "object"
-    },
-    "LaunchScriptTemplates": {
-      "additionalProperties": false,
-      "description": "The launch-script templates and the reserved path they belong at.\n\nOptional: an REE with no launch script runs every script directly. With one, the workbench and ``run.sh`` run\neach script through it, ``sh launch.sh <command>``.",
-      "properties": {
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "templates": {
-          "items": {
-            "$ref": "#/$defs/ScriptTemplateEntry"
-          },
-          "title": "Templates",
-          "type": "array"
-        }
-      },
-      "required": [
-        "path",
-        "templates"
-      ],
-      "title": "LaunchScriptTemplates",
       "type": "object"
     },
     "Launched": {
@@ -6532,6 +6435,29 @@
         "digest"
       ],
       "title": "RequirementsProjectBinding",
+      "type": "object"
+    },
+    "ReservedScriptTemplates": {
+      "additionalProperties": false,
+      "description": "The templates of a script an REE has once, and the reserved path it belongs at.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "templates"
+      ],
+      "title": "ReservedScriptTemplates",
       "type": "object"
     },
     "ResolveNode": {
@@ -7995,28 +7921,25 @@
     },
     "ScriptTemplateCatalog": {
       "additionalProperties": false,
+      "description": "Each script kind's templates and where its scripts belong.",
       "properties": {
         "build_experiment_environment": {
-          "$ref": "#/$defs/BuildExperimentEnvironmentScriptTemplates"
+          "$ref": "#/$defs/ReservedScriptTemplates"
         },
         "activate_experiment_environment": {
-          "$ref": "#/$defs/ActivateExperimentEnvironmentScriptTemplates"
+          "$ref": "#/$defs/ReservedScriptTemplates"
         },
         "launch": {
-          "$ref": "#/$defs/LaunchScriptTemplates"
+          "$ref": "#/$defs/ReservedScriptTemplates"
         },
         "check_working_environment": {
-          "$ref": "#/$defs/CheckWorkingEnvironmentScriptTemplates"
+          "$ref": "#/$defs/ReservedScriptTemplates"
         },
-        "experiment": {
+        "experiment_run": {
           "$ref": "#/$defs/ExperimentScriptTemplates"
         },
-        "verify": {
-          "items": {
-            "$ref": "#/$defs/ScriptTemplateEntry"
-          },
-          "title": "Verify",
-          "type": "array"
+        "experiment_verify": {
+          "$ref": "#/$defs/ExperimentScriptTemplates"
         }
       },
       "required": [
@@ -8024,8 +7947,8 @@
         "activate_experiment_environment",
         "launch",
         "check_working_environment",
-        "experiment",
-        "verify"
+        "experiment_run",
+        "experiment_verify"
       ],
       "title": "ScriptTemplateCatalog",
       "type": "object"
