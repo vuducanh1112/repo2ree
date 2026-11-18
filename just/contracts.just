@@ -37,7 +37,7 @@ generate-behaviour-schema:
 check-contracts: _check-write-hint
     python -m scripts.contracts check
 
-# Hold every set of names the repository spells to the operation catalogue, and find those nothing holds; lists the known gaps.
+# Hold every set of names the repository spells to the operation catalogue, and find those nothing holds.
 [group('Checks')]
 check-vocabulary:
     python -m scripts.vocabulary check

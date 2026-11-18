@@ -114,10 +114,6 @@ def page_vocabulary_graph(graph: VocabularyGraph) -> Page:
         ],
         "vocabulary-list",
     )
-    gaps = table(
-        ["Site", "Why nothing holds it yet", "Names"],
-        [[f"<code>{esc(gap.site)}</code>", prose(gap.reason), _names(gap.names)] for gap in graph.gaps],
-    )
     exceptions = table(
         ["Site", "Why it is no vocabulary"],
         [[f"<code>{esc(item.site)}</code>", prose(item.reason)] for item in graph.exceptions],
@@ -129,12 +125,9 @@ def page_vocabulary_graph(graph: VocabularyGraph) -> Page:
         + "<h3 id='vocabularies'>Vocabularies</h3>"
         + filter_box("vocabulary-list", "Filter vocabularies, places and names…")
         + vocabularies
-        + "<h3 id='gaps'>Known gaps</h3>"
-        '<p class="lede">Sets of names found that nothing holds yet, each kept visible with its reason.</p>'
-        + gaps
         + "<h3 id='exceptions'>Exceptions</h3>"
         '<p class="lede">Sets of names found that share one with the catalogue but are no vocabulary.</p>' + exceptions
     )
     state = f"{len(failing)} failing edges, {len(loose)} unanchored" if failing or loose else "every edge holds"
-    teaser = f"{len(graph.vocabularies)} vocabularies, {len(graph.edges)} edges: {state}; {len(graph.gaps)} known gaps"
+    teaser = f"{len(graph.vocabularies)} vocabularies, {len(graph.edges)} edges: {state}"
     return Page(VOCABULARY_GRAPH, "Vocabulary graph", teaser, section(VOCABULARY_GRAPH, "Vocabulary graph", lede, body))

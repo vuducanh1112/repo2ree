@@ -342,7 +342,6 @@ class GraphEdge(Document):
 class GraphClaim(Document):
     site: str
     reason: str
-    names: tuple[str, ...] = ()
 
 
 class VocabularyGraph(Export):
@@ -353,7 +352,6 @@ class VocabularyGraph(Export):
     roots: tuple[str, ...]
     vocabularies: tuple[GraphVocabulary, ...]
     edges: tuple[GraphEdge, ...]
-    gaps: tuple[GraphClaim, ...]
     exceptions: tuple[GraphClaim, ...]
     problems: tuple[str, ...]
 

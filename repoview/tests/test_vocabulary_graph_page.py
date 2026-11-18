@@ -44,23 +44,21 @@ def graph(problems: tuple[str, ...] = ()) -> VocabularyGraph:
                     "problems": list(problems),
                 },
             ],
-            "gaps": [{"site": "gui/src/a.ts::KEYS", "reason": "deferred", "names": ["build"]}],
             "exceptions": [{"site": "x.py::Y", "reason": "an output's fields"}],
             "problems": list(problems),
         }
     )
 
 
-def test_the_page_draws_every_vocabulary_and_lists_its_gaps_and_exceptions() -> None:
+def test_the_page_draws_every_vocabulary_and_lists_its_exceptions() -> None:
     page = page_vocabulary_graph(graph())
     assert page.slug == "vocabulary-graph"
     assert "<svg" in page.body
     assert 'id="vocabulary-steps"' in page.body
     assert "within <code>operations</code>" in page.body
     assert "+metadata" in page.body
-    assert "gui/src/a.ts::KEYS" in page.body
     assert "an output&#x27;s fields" in page.body
-    assert page.teaser == "3 vocabularies, 1 edges: 0 failing edges, 1 unanchored; 1 known gaps"
+    assert page.teaser == "3 vocabularies, 1 edges: 0 failing edges, 1 unanchored"
 
 
 def test_a_failing_edge_and_what_the_check_found_are_on_the_page() -> None:
