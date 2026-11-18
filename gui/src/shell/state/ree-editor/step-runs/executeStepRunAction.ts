@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
 import type { LogEntry, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -15,7 +16,7 @@ import type { ShowToast } from "../types";
 import { executeStepCommands, type ReeEditorDispatch } from "./stepActionEffects";
 
 interface ExecuteStepRunActionArgs {
-  key: string;
+  key: ReeRunOperation;
   params: GenericReeStepParams;
   ree: ReeEditorViewModel;
   workspaceFiles: FileTreeNode[];
@@ -27,7 +28,7 @@ interface ExecuteStepRunActionArgs {
   reeId: string;
   queryClient: QueryClient;
   startReeRun: (
-    scriptKey: string,
+    operation: ReeRunOperation,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<ReeRun>;
   ports: AppShellRuntimePorts;

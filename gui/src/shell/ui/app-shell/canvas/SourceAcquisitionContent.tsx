@@ -51,8 +51,8 @@ export function SourceAcquisitionContent({
 
   const sourceLog = useStepRunLogEntry({
     reeId,
-    runId: activeRunIds.source,
-    fallbackTimestamp: timestamps.source,
+    runId: activeRunIds.acquire_source,
+    fallbackTimestamp: timestamps.acquire_source,
   });
 
   const [originTypeDraft, setOriginTypeDraft] = useState<SourceTypeOption | "">(
@@ -80,7 +80,7 @@ export function SourceAcquisitionContent({
 
   const focus = (key: string) => commands.setFocusedField(key);
 
-  const running = actionStates.source === "loading";
+  const running = actionStates.acquire_source === "loading";
   const downloadRunning = running;
   const sourceInWorkspace = !!workspaceSourceState.sourceAvailable;
   const sourceFromUpload = workspaceSourceState.sourceAcquiredBy === "upload" && sourceInWorkspace;
@@ -159,7 +159,7 @@ export function SourceAcquisitionContent({
         setOriginTypeDraft={setOriginTypeDraft}
         setRevisionDraft={setRevisionDraft}
         onDownloadSource={commands.onDownloadSourceFiles}
-        onCancelSource={() => commands.onCancelAction("source")}
+        onCancelSource={() => commands.onCancelAction("acquire_source")}
         onWorkspaceUpload={(payload: SourceUploadCommit) => commands.onWorkspaceUpload(payload)}
       />
 

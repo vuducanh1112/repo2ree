@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { RawReeIntentSlices } from "../ree/mapRawReeIntent";
 import type { ReeSpec } from "../ree/ReeSpec";
 import type { LogLine, ReeFile } from "../ree/ReeTypes";
@@ -33,7 +34,7 @@ interface WorkspaceSnapshot {
 
 interface ReeRunRunner {
   startReeRun: (
-    key: string,
+    operation: ReeRunOperation,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<{ runId: string }>;
   pollRun: (
@@ -43,7 +44,7 @@ interface ReeRunRunner {
 }
 
 interface ExecuteStepRunArgs {
-  key: string;
+  key: ReeRunOperation;
   params: GenericReeStepParams;
   ree: Pick<ReeSpec, "experimentEnvironmentPath">;
   workspaceFiles: FileTreeNode[];

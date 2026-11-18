@@ -119,11 +119,11 @@ describe("executeStepRun", () => {
     });
   });
 
-  it("writes no spec patch for a deposit step", async () => {
+  it("writes no spec patch for a run that is no step's", async () => {
     const executeCommands = vi.fn();
 
     await executeStepRun({
-      key: "swh",
+      key: "cross_check_sbom",
       params: {},
       ree: buildRee(),
       workspaceFiles: [],

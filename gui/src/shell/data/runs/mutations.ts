@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useReeRuntime } from "../apiRuntime";
 import { resolveReeId } from "../client";
@@ -13,8 +14,13 @@ export function useStartReeRunMutation(reeId?: string) {
   const resolvedReeId = resolveReeId(runtime, reeId);
 
   return useMutation({
-    mutationFn: ({ scriptKey, params = {} }: { scriptKey: string; params?: ReeRunParams }) =>
-      executionRunsClient.startReeRun(resolvedReeId, scriptKey, params),
+    mutationFn: ({
+      scriptKey,
+      params = {},
+    }: {
+      scriptKey: ReeRunOperation;
+      params?: ReeRunParams;
+    }) => executionRunsClient.startReeRun(resolvedReeId, scriptKey, params),
     onSuccess: async (run) => {
       queryClient.setQueryData(queryKeys.stepRuns(resolvedReeId, run.runId), run);
       await Promise.all([

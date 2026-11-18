@@ -1,4 +1,5 @@
 import type { AppShellPage } from "@core/app-shell/pages";
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { InclusionOpts } from "@core/ree/InclusionOpts";
 import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { ReeStepParams, SourceUploadCommit } from "@core/ree/ReeTypes";
@@ -18,7 +19,7 @@ import type React from "react";
 
 interface CreateReeEditorCommandsArgs {
   dispatch: React.Dispatch<AppShellAction>;
-  runAction: (key: string, params?: GenericReeStepParams) => Promise<void>;
+  runAction: (key: ReeRunOperation, params?: GenericReeStepParams) => Promise<void>;
   runStep: <K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>) => Promise<void>;
   cancelAction: (key: string) => Promise<void>;
   persistWorkspaceFile: (path: string, content: string) => Promise<void>;
@@ -63,7 +64,7 @@ export interface EditorWorkflowCommands {
   onWorkspaceUpload(payload: SourceUploadCommit): void;
   onRemoveWorkspaceSource(): void;
   onDownloadWorkspaceFile(path: string, suggestedName?: string): Promise<void>;
-  onRunAction(key: string, params?: GenericReeStepParams): Promise<void>;
+  onRunAction(key: ReeRunOperation, params?: GenericReeStepParams): Promise<void>;
   onCancelAction(key: string): Promise<void>;
   onRunStep<K extends ReeStepKey>(key: K, params: ReeStepRunParams<K>): Promise<void>;
   onPersistWorkspaceFile(path: string, content: string): Promise<void>;

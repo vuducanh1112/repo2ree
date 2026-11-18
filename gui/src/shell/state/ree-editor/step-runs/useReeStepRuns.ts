@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { initialReeStepParams, mergeStepParams } from "@core/ree-steps/stepCatalog";
 import { createStepCommandPlanners } from "@core/ree-steps/stepCommands";
@@ -74,7 +75,10 @@ export function useReeStepRuns({
     [dispatch],
   );
   const startRun = useCallback(
-    (scriptKey: string, params?: Record<string, string | boolean | number | null | undefined>) =>
+    (
+      scriptKey: ReeRunOperation,
+      params?: Record<string, string | boolean | number | null | undefined>,
+    ) =>
       startReeRun({
         scriptKey,
         params: params as GenericReeStepParams | undefined,

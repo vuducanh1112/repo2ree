@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { WorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
 import { parseWorkspaceResetPayload } from "../../core/workspace/WorkspaceReset";
 import type { ReeRunPollResult, ReeRunUpdate } from "../ree-steps/stepRunLifecycle";
@@ -20,7 +21,7 @@ interface SourceReeRunner {
 interface SourceExecutionPoller {
   startReeRun: (
     id: string,
-    scriptKey: string,
+    operation: ReeRunOperation,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<{ runId: string }>;
 }
@@ -59,7 +60,7 @@ export async function runSourceWorkspaceAction({
 
   return runExecutionLifecycle({
     startReeRun: (scriptKey, params) => executionRunClient.startReeRun(reeId, scriptKey, params),
-    request: { key: "source", scriptKey: "acquire_source", params: runParams },
+    request: { key: "acquire_source", scriptKey: "acquire_source", params: runParams },
     pollRun: (runId, onUpdate) => pollRun(reeId, runId, onUpdate),
     onRunStarted,
     onRunFinished,

@@ -1,4 +1,5 @@
 import type { ReeRunLogs } from "@core/ree/ReeTypes";
+import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
 import { lazy } from "react";
@@ -48,7 +49,11 @@ export function ArchivePageContainer({
         badges={badges}
         logs={logs}
         actionStates={actionStates}
-        onRun={commands.onRunAction}
+        onDeposit={(repo) => {
+          const label =
+            ARCHIVE_REPOSITORIES.find((candidate) => candidate.key === repo)?.label ?? repo;
+          commands.showToast(`Depositing to ${label} from the GUI is not available yet.`, "error");
+        }}
         onGo={commands.setPage}
       />
     </ContentSection>

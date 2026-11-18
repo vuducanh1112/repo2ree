@@ -10,7 +10,7 @@ import { renderWithShell } from "../../../../../../tests/support/renderApp";
 import { PageArchive } from "./ArchivePage";
 
 function renderArchive(reeOverrides: ReeEditorViewModelPatch = {}) {
-  const onRun = vi.fn();
+  const onDeposit = vi.fn();
   const onGo = vi.fn();
   renderWithShell(
     <PageArchive
@@ -19,11 +19,11 @@ function renderArchive(reeOverrides: ReeEditorViewModelPatch = {}) {
       badges={{}}
       logs={{}}
       actionStates={{}}
-      onRun={onRun}
+      onDeposit={onDeposit}
       onGo={onGo}
     />,
   );
-  return { onRun, onGo };
+  return { onDeposit, onGo };
 }
 
 describe("PageArchive workflow", () => {
@@ -36,12 +36,12 @@ describe("PageArchive workflow", () => {
 
   it("collects destination parameters and submits a ready deposit", async () => {
     const user = userEvent.setup();
-    const { onRun } = renderArchive({ source: { sourceAvailable: true } });
+    const { onDeposit } = renderArchive({ source: { sourceAvailable: true } });
     await user.selectOptions(screen.getByLabelText("Visit type", { exact: false }), "tar");
     await user.click(screen.getByTitle("No"));
     await user.click(screen.getByRole("button", { name: "Deposit to Software Heritage" }));
 
-    expect(onRun).toHaveBeenCalledWith("swh", {
+    expect(onDeposit).toHaveBeenCalledWith("swh", {
       // biome-ignore lint/style/useNamingConvention: archive wire parameter
       visit_type: "tar",
       // biome-ignore lint/style/useNamingConvention: archive wire parameter

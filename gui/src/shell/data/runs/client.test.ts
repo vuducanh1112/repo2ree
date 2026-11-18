@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import { asReeId } from "@core/ree/ReeId";
 import type { RunSummary } from "@shell/infra/api/apiTypes";
 import { describe, expect, it, vi } from "vitest";
@@ -136,7 +137,8 @@ describe("createReeRunsClient", () => {
 
   it("rejects unsupported operations", async () => {
     const { client } = harness();
-    await expect(client.startReeRun("ree-1", "unknown")).rejects.toThrow(
+    // An operation the client does not dispatch on, as one from an older contract would arrive.
+    await expect(client.startReeRun("ree-1", "unknown" as ReeRunOperation)).rejects.toThrow(
       "Unsupported execution run operation",
     );
     await expect(client.startReeRun("ree-1", "acquire_source", { mode: "other" })).rejects.toThrow(

@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { RawReeIntentSlices } from "@core/ree/mapRawReeIntent";
 import type { LogEntry, ReeFile } from "@core/ree/ReeTypes";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -31,7 +32,7 @@ interface CreateStepRunGatewayArgs {
   reeId: string;
   queryClient: QueryClient;
   startReeRun: (
-    scriptKey: string,
+    operation: ReeRunOperation,
     params?: Record<string, string | boolean | number | null | undefined>,
   ) => Promise<ReeRun>;
   cancelReeRun?: (runId: string) => Promise<unknown>;
@@ -61,7 +62,10 @@ export function createStepRunGateway({
   refreshWorkspace,
   getActiveRunId,
 }: CreateStepRunGatewayArgs) {
-  const executeAction = async (key: string, params: GenericReeStepParams = {}): Promise<LogEntry> =>
+  const executeAction = async (
+    key: ReeRunOperation,
+    params: GenericReeStepParams = {},
+  ): Promise<LogEntry> =>
     executeStepRunAction({
       key,
       params,
@@ -79,7 +83,7 @@ export function createStepRunGateway({
       refreshWorkspace,
     });
 
-  const runAction = async (key: string, params: GenericReeStepParams = {}) => {
+  const runAction = async (key: ReeRunOperation, params: GenericReeStepParams = {}) => {
     if (isReeStepKey(key)) {
       persistStepParams(key, params);
     }

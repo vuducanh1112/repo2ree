@@ -224,7 +224,7 @@ export function mapSourceCommandsToEffects(commands: SourceCommand[]): StepEffec
           type: "dispatchStateCommand" as const,
           command: {
             type: "setStepRunLoading" as const,
-            key: "source",
+            key: "acquire_source",
           },
         },
       ];

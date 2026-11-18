@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { ReeId } from "@core/ree/ReeId";
 import type { ReeRun, ReeRunFailure, ReeRunLogChunk, ReeRunSummary } from "@core/runs/ReeRun";
 import type { ReeRunStatus } from "@core/runs/ReeRunStatus";
@@ -27,7 +28,7 @@ export interface ReeRunsClient {
   loadReeBundle(id: ReeId | string, bundle: File): Promise<ReeRun>;
   startReeRun(
     id: ReeId | string,
-    scriptKey: string,
+    operation: ReeRunOperation,
     params?: Record<string, string | boolean | number | null | undefined>,
   ): Promise<ReeRun>;
   /**

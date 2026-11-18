@@ -1,6 +1,7 @@
 import type { ReeRunLogs } from "@core/ree/ReeTypes";
 import type {
   ArchiveRepo,
+  ArchiveRepoKey,
   GenericReeStepParams,
   ReeStepRequirement,
 } from "@core/ree-steps/stepTypes";
@@ -20,7 +21,7 @@ interface ArchiveActionPanelProps {
   running: boolean;
   missing: ReeStepRequirement[];
   logs: ReeRunLogs;
-  onRun: (key: string, params: GenericReeStepParams) => void;
+  onDeposit: (repo: ArchiveRepoKey, params: GenericReeStepParams) => void;
   getParam: (repoKey: string, paramKey: string) => string | boolean;
 }
 
@@ -31,7 +32,7 @@ export function ArchiveActionPanel({
   running,
   missing,
   logs,
-  onRun,
+  onDeposit,
   getParam,
 }: ArchiveActionPanelProps) {
   const tone = archiveTone(repo.key);
@@ -66,7 +67,7 @@ export function ArchiveActionPanel({
           tint={tone}
           onRun={() =>
             canRun &&
-            onRun(
+            onDeposit(
               repo.key,
               Object.fromEntries(repo.params.map((p) => [p.key, getParam(repo.key, p.key)])),
             )

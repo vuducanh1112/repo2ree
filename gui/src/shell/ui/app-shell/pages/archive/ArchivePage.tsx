@@ -9,7 +9,7 @@ import {
 import { isAuditCurrent } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import { ARCHIVE_REPOSITORIES } from "@core/ree-steps/archiveRepositories";
-import type { GenericReeStepParams } from "@core/ree-steps/stepTypes";
+import type { ArchiveRepoKey, GenericReeStepParams } from "@core/ree-steps/stepTypes";
 import { Badge } from "@shell/ui/shared/components/Badge";
 import { Ic } from "@shell/ui/shared/components/Icon";
 import { archiveTone } from "@shell/ui/theme/appearance";
@@ -37,7 +37,7 @@ interface PageArchiveProps {
   badges: Badges;
   logs: ReeRunLogs;
   actionStates: ActionStates;
-  onRun: (key: string, params: GenericReeStepParams) => void;
+  onDeposit: (repo: ArchiveRepoKey, params: GenericReeStepParams) => void;
   onGo: (key: AppShellPage) => void;
 }
 
@@ -47,7 +47,7 @@ export function PageArchive({
   badges,
   logs,
   actionStates,
-  onRun,
+  onDeposit,
 }: PageArchiveProps) {
   const [activeRepo, setActiveRepo] = useState("swh");
   const repo =
@@ -151,7 +151,7 @@ export function PageArchive({
             running={running}
             missing={missing}
             logs={logs}
-            onRun={onRun}
+            onDeposit={onDeposit}
             getParam={getParam}
           />
           <ArchiveReadinessAside

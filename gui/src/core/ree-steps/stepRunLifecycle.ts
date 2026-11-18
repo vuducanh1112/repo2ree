@@ -1,3 +1,4 @@
+import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { LogLine } from "../ree/ReeTypes";
 import type { ReeRunStatus } from "../runs/ReeRunStatus";
 
@@ -26,10 +27,10 @@ interface ReeRunResult extends ReeRunPollResult {
 }
 
 interface RunExecutionLifecycleArgs {
-  startReeRun: (key: string, params?: ReeRunParams) => Promise<ReeRunRecord>;
+  startReeRun: (operation: ReeRunOperation, params?: ReeRunParams) => Promise<ReeRunRecord>;
   request: {
     key: string;
-    scriptKey: string;
+    scriptKey: ReeRunOperation;
     params: ReeRunParams;
   };
   pollRun: (runId: string, onUpdate?: (update: ReeRunUpdate) => void) => Promise<ReeRunPollResult>;

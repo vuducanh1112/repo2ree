@@ -24,7 +24,7 @@ export type StepCommands = Pick<
   | "onPersistWorkspaceFile"
 >;
 
-type ArchiveCommands = Pick<ReeEditorCommands, "onRunAction" | "setPage">;
+type ArchiveCommands = Pick<ReeEditorCommands, "showToast" | "setPage">;
 
 export interface MetadataPageContainerProps {
   reeIntent: ReeIntentState;
