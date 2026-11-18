@@ -349,6 +349,19 @@ def test_evidence_a_commit_does_not_carry_is_not_judged_and_evidence_it_carries_
     ]
 
 
+def test_a_built_environment_is_the_file_at_the_path_its_receipt_recorded_even_once_undeclared() -> None:
+    document, files = authored()
+    files = files | committed({"artifacts/runtime.tar": "the environment"})
+    receipt = document["subject"]["receipts"]["build_experiment_environment"]
+    receipt["produced_artifact_digest"] = files["artifacts/runtime.tar"].digest
+    document["subject"]["definition"]["experiment_environment"].pop("artifact_path")
+    assert not findings(snapshot(document, files))["carried-evidence-is-its-digests"]
+    receipt["produced_artifact_digest"] = "sha256:" + "0" * 64
+    assert findings(snapshot(document, files))["carried-evidence-is-its-digests"][0].startswith(
+        "receipts.build_experiment_environment.produced_artifact_digest: records"
+    )
+
+
 def sealed(document: dict[str, Any], files: dict[str, CommittedFile]) -> dict[str, Any]:
     subject = copy.deepcopy(document["subject"])
     subject["contents"] = {
