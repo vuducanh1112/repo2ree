@@ -59,7 +59,7 @@ def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() 
         "write_script",
         "load_ree_bundle",
     }
-    assert allowed("field", "definition.catalog.contributors", CREATED, "unset") == {"initialize_ree"}
+    assert allowed("field", "definition.catalog.*", CREATED, "unset") == {"initialize_ree"}
     # An item of a keyed field starts when it is declared or restored, not with the REE.
     assert allowed("field", "definition.experiments[*]", CREATED, "set") == {"patch_ree_definition", "load_ree_bundle"}
 
@@ -137,6 +137,32 @@ def test_a_receipt_starts_applicable_only_when_what_it_is_about_is_declared_from
     assert allowed("receipt", "run_experiment", CREATED, "missing") == {"patch_ree_definition"}
 
 
+def test_what_a_receipt_rests_on_and_is_made_from_is_read_off_its_basis() -> None:
+    build = ree().receipts["build_experiment_environment"]
+    assert set(build.rests_on) == {
+        "definition.experiment_environment",
+        "definition.experiment_environment.artifact_path",
+        "definition.launch",
+    }
+    assert build.made_from == ("acquire_source",)
+    # An item's own declaration is the keyed field it falls in.
+    assert "definition.experiments[*]" in ree().receipts["run_experiment"].rests_on
+
+
+def test_the_evaluation_rests_on_the_source_alone() -> None:
+    assert ree().receipts["evaluate_reproducibility"].made_from == ("acquire_source",)
+    assert "write_script" not in allowed("receipt", "evaluate_reproducibility", "current", "stale")
+
+
+def test_a_wildcard_field_is_one_machine_for_every_member_of_its_object() -> None:
+    evidence = authored()
+    member = change(4900, "definition.catalog.version", None, "1", "patch_ree_definition", "operation")
+    moves = counted(evidence.model_copy(update={"changes": (*evidence.changes, member)}))
+    assert moves[("definition.catalog.*", "unset", "set", "patch_ree_definition")] == 1
+    history = histories(load_spec(), evidence.model_copy(update={"changes": (*evidence.changes, member)}))[0]
+    assert "definition.catalog.version" in {part.name for part in history.parts}
+
+
 def test_whole_document_operations_are_marked_bulk_for_views() -> None:
     assert set(machine("receipt", "build_experiment_environment").bulk) == {"load_ree_bundle", "remove_source"}
     assert machine("field", "definition.name").bulk == ("load_ree_bundle",)
@@ -152,14 +178,44 @@ def mutated(change: Any) -> dict[str, Any]:
     ("change", "message"),
     [
         (
-            lambda a: a["receipts"]["build_experiment_environment"].update(rests_on=["definition.nothing"]),
-            "names undeclared fields",
+            lambda a: a["receipts"]["build_experiment_environment"]["basis"].append(
+                {"recorded": "x", "now": "definition.nothing"}
+            ),
+            "which no field or receipt holds",
+        ),
+        (
+            lambda a: a["receipts"]["build_experiment_environment"].update(rests_on=["definition.launch"]),
+            "read off its basis, never stated beside it",
+        ),
+        (
+            lambda a: a["receipts"]["generate_sbom"]["basis"].append(
+                {"recorded": "x", "now": "definition.experiments[$name].run_script_digest"}
+            ),
+            "only a keyed receipt's basis names its own item",
+        ),
+        (
+            lambda a: (
+                a["receipts"]["generate_sbom"]["basis"].append({"recorded": "x.y", "now": "definition.launch"})
+                or a["receipts"]["generate_sbom"]["basis"].append({"recorded": "items[*]", "now": "definition.launch"})
+            ),
+            "records values of the receipt itself",
+        ),
+        (
+            lambda a: a["fields"].update(
+                {"definition.hbom.*": {"group": "observe_hardware", "initial": "unset", "files": ["x.sh"]}}
+            ),
+            "claim no files",
         ),
         (
             lambda a: a["receipts"]["build_experiment_environment"].update(about=["definition.experiments[*]"]),
             "is not keyed",
         ),
-        (lambda a: a["receipts"]["generate_sbom"].update(made_from=["run_experiment"]), "other, unkeyed receipts"),
+        (
+            lambda a: a["receipts"]["generate_sbom"]["basis"].append(
+                {"recorded": "x", "now": "receipts.experiments.one.run_script_digest"}
+            ),
+            "other, unkeyed receipts",
+        ),
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
         (lambda a: a.update(writes_nothing=["write_script"]), "write nothing take edges"),
         (lambda a: a.pop("overlay"), "names no overlay"),
@@ -407,7 +463,6 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
     assert moves[("lifecycle", "draft", "sealed", "seal_ree")] == 1
     # Unkeyed fields start where the creating commit left them, whether it held them or not.
     assert moves[("definition.name", CREATED, "set", "initialize_ree")] == 1
-    assert moves[("definition.catalog.version", CREATED, "unset", "initialize_ree")] == 1
     assert moves[("definition.experiment_environment.artifact_path", "unset", "set", "patch_ree_definition")] == 1
     # A keyed item starts when it is declared; the parts inside it are not fields of their own.
     assert moves[("definition.experiments[*]", CREATED, "set", "patch_ree_definition")] == 1

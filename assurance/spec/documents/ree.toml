@@ -1,0 +1,64 @@
+# What one commit of the REE document says of itself and of the files it holds. Each rule reads one
+# capture commit alone: its ree.json and its files. The checker computes every digest, in the encodings
+# contracts/ree/fixtures pins; a file the commit does not hold, an LFS payload before the seal, leaves a
+# pair the commit cannot evidence rather than a violation, where a rule says so.
+
+aggregate = "Ree"
+
+[[rule]]
+id = "standings-are-the-receipts-basis"
+pattern = "standing"
+summary = "The standing core records for each receipt is the one the receipt's basis gives in the same commit."
+
+[[rule]]
+id = "scripts-are-their-digests"
+pattern = "digest"
+kind = "file"
+summary = "Every script digest and size the definition records is that of the overlay file it names."
+pairs = [
+    { digest = "definition.experiment_environment.build_experiment_environment_script_digest", size = "definition.experiment_environment.build_experiment_environment_script_size", file = "definition.experiment_environment.build_experiment_environment_script_path", root = "overlay/" },
+    { digest = "definition.activate_experiment_environment.activate_experiment_environment_script_digest", size = "definition.activate_experiment_environment.activate_experiment_environment_script_size", file = "definition.activate_experiment_environment.activate_experiment_environment_script_path", root = "overlay/" },
+    { digest = "definition.check_working_environment.check_working_environment_script_digest", size = "definition.check_working_environment.check_working_environment_script_size", file = "definition.check_working_environment.check_working_environment_script_path", root = "overlay/" },
+    { digest = "definition.launch.launch_script_digest", size = "definition.launch.launch_script_size", file = "definition.launch.launch_script_path", root = "overlay/" },
+    { digest = "definition.experiments[*].run_script_digest", size = "definition.experiments[*].run_script_size", file = "definition.experiments[*].run_script_path", root = "overlay/" },
+    { digest = "definition.experiments[*].verify_script_digest", size = "definition.experiments[*].verify_script_size", file = "definition.experiments[*].verify_script_path", root = "overlay/" },
+]
+
+[[rule]]
+id = "carried-evidence-is-its-digests"
+pattern = "digest"
+kind = "file"
+absent = "unevidenced"
+summary = "Every file a receipt digested is, wherever the commit holds it, the file with that digest."
+pairs = [
+    { digest = "receipts.acquire_source.snapshot_digest", path = "snapshot.tar.gz" },
+    { digest = "receipts.evaluate_reproducibility.report_digest", path = "artifacts/reproducibility-report.json" },
+    { digest = "receipts.generate_sbom.sbom_digest", path = "artifacts/sbom.json" },
+    { digest = "receipts.build_experiment_environment.produced_artifact_digest", file = "definition.experiment_environment.artifact_path", root = "artifacts/" },
+]
+
+[[rule]]
+id = "the-seal-is-the-subject"
+pattern = "digest"
+kind = "canonical"
+sealed = true
+summary = "A seal's digest is the canonical digest of the subject it seals."
+pairs = [{ digest = "seal.ree_digest", part = "subject", domain = "org.repo2ree.ree-subject" }]
+
+[[rule]]
+id = "contents-are-the-bundle"
+pattern = "digest"
+kind = "inventory"
+sealed = true
+summary = "A sealed REE's contents list exactly the files its commit holds, each by its digest and size."
+inventory = "contents.entries"
+except = ["ree.json"]
+
+[[rule]]
+id = "sealed-results-are-what-ran"
+pattern = "digest"
+kind = "paths"
+sealed = true
+absent = "unevidenced"
+summary = "A sealed REE that carries an experiment's results carries the outputs its receipt digested."
+pairs = [{ digest = "receipts.experiments[*].produced_output_digest", paths = "definition.experiments[*].output_paths", root = "results/{slug}/" }]

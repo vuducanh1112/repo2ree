@@ -38,6 +38,7 @@ class Documents:
     invariants: dict[str, Any]
     components: dict[str, Any]
     aggregates: list[dict[str, Any]]
+    rules: list[dict[str, Any]]
 
     def words(self, name: str) -> dict[str, Any]:
         return next(document for document in self.vocabulary if document["name"] == name)
@@ -47,7 +48,13 @@ class Documents:
 
     def parse(self) -> Spec:
         return parse_spec(
-            self.vocabulary, self.entities, self.boundaries, self.invariants, self.components, self.aggregates
+            self.vocabulary,
+            self.entities,
+            self.boundaries,
+            self.invariants,
+            self.components,
+            self.aggregates,
+            self.rules,
         )
 
 
@@ -62,6 +69,7 @@ def documents() -> Documents:
         tomllib.loads((SPEC_DIR / "invariants.toml").read_text()),
         tomllib.loads((SPEC_DIR / "components.toml").read_text()),
         [with_tree(document, read_from_root) for document in read("aggregates")],
+        read("documents"),
     )
 
 

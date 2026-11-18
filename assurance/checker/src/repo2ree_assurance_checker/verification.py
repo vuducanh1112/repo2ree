@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from repo2ree_assurance_checker.check import CheckResult, Judgement, check, judge_occurrences, replay
+from repo2ree_assurance_checker.check import CheckResult, Judgement, check, judge_occurrences, replay, witness
 from repo2ree_assurance_checker.check.aggregates import histories
 from repo2ree_assurance_checker.check.results import AggregateHistory, Part, StateStep
 from repo2ree_assurance_checker.evidence import Event, Evidence, EvidenceModel
@@ -62,6 +62,7 @@ class Verification(EvidenceModel):
 
 def verify(spec: Spec, evidence: Evidence, dossier: str | None = None) -> Verification:
     """Judge the evidence once; everything after reads the result."""
+    evidence = witness(spec, evidence)
     result = check(spec, evidence)
     model, _, _ = replay(spec, evidence)
     index = {id(event): position for position, event in enumerate(evidence.events)}

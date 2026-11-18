@@ -1,0 +1,100 @@
+{
+  "tree": [
+    {
+      "name": "an empty tree",
+      "files": {},
+      "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "one file",
+      "files": {
+        "run.sh": "echo hi\n"
+      },
+      "digest": "sha256:705508e31a4eb8089975196fd72584aa7c73f9c8985edf97dd9f75c349da5d83"
+    },
+    {
+      "name": "paths order by their parts, not by their characters",
+      "files": {
+        "a/b": "1",
+        "a-b": "2",
+        "a.b": "3"
+      },
+      "digest": "sha256:95c6f9925012dc15b5d1e210469d00eb1c8284beb5e2c5c30a5a28e21a4e14c9"
+    },
+    {
+      "name": "nested directories",
+      "files": {
+        "ree-scripts/launch.sh": "exec \"$@\"\n",
+        "ree-scripts/experiments/one.sh": "true\n",
+        "ree-scripts/experiments/one.verify.sh": "true\n"
+      },
+      "digest": "sha256:27762fe1292fd91c18cb5a4181bd3445e887d62827d3d58d8d15f23ec493bdf5"
+    },
+    {
+      "name": "names are UTF-8",
+      "files": {
+        "daten/größe.txt": "äöü"
+      },
+      "digest": "sha256:6f40c96bf703cd89ac37bf591bdeac54fc5069b522ddd9395d9ac0d503af356e"
+    }
+  ],
+  "paths": [
+    {
+      "name": "no declared output",
+      "files": {
+        "result.txt": "x"
+      },
+      "paths": [],
+      "digest": null
+    },
+    {
+      "name": "a declared file",
+      "files": {
+        "result.txt": "42\n",
+        "other.txt": "no"
+      },
+      "paths": [
+        "result.txt"
+      ],
+      "digest": "sha256:f6bec4dde0346fbf19d4b7a3ea69524d43bb34f12f58146e1eca76cd072fbd42"
+    },
+    {
+      "name": "a declared directory, by every file below it",
+      "files": {
+        "figures/a.png": "a",
+        "figures/sub/b.png": "b",
+        "figures-x": "c"
+      },
+      "paths": [
+        "figures"
+      ],
+      "digest": "sha256:36b0333c6ed554071f3ad27e73da2b71397cdb33624307d3d2a138affa48fb0b"
+    },
+    {
+      "name": "a declared path that is absent adds nothing",
+      "files": {
+        "result.txt": "42\n"
+      },
+      "paths": [
+        "result.txt",
+        "missing.txt"
+      ],
+      "digest": "sha256:f6bec4dde0346fbf19d4b7a3ea69524d43bb34f12f58146e1eca76cd072fbd42"
+    },
+    {
+      "name": "each declared path once, in their order as strings",
+      "files": {
+        "b.txt": "b",
+        "a/x.txt": "a",
+        "a-y.txt": "y"
+      },
+      "paths": [
+        "b.txt",
+        "a-y.txt",
+        "a",
+        "b.txt"
+      ],
+      "digest": "sha256:122e3b310fc674c2cfe302a715dca3c6050437d1d03ccee2f48a5a693b8d620c"
+    }
+  ]
+}

@@ -9,13 +9,21 @@ import re
 import subprocess
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
-from repo2ree_assurance_checker.evidence import Event, Evidence, FieldChange, FileChange, Source
+from repo2ree_assurance_checker.evidence import (
+    CommittedFile,
+    Event,
+    Evidence,
+    FieldChange,
+    FileChange,
+    Snapshot,
+    Source,
+)
 
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
@@ -293,6 +301,51 @@ def committed_tree(executable: str, repository: Path, commit: str, read: dict[st
     return {path: (blob, "lfs" if path in lfs else "git") for path, blob in files.items()}
 
 
+LFS_POINTER = re.compile(
+    rb"^version https://git-lfs\.github\.com/spec/v1\noid sha256:(?P<oid>[0-9a-f]{64})\nsize (?P<size>[0-9]+)\n"
+)
+
+
+class BlobDigests:
+    """The digest and size of each blob's content, each blob read once: an LFS pointer stands for its payload."""
+
+    def __init__(self, executable: str, repository: Path) -> None:
+        self._executable = executable
+        self._repository = repository
+        self._known: dict[str, tuple[str, int]] = {}
+
+    def of(self, committed: Committed) -> dict[str, CommittedFile]:
+        unknown = sorted({blob for blob, _ in committed.values()} - self._known.keys())
+        if unknown:
+            self._read(unknown)
+        files: dict[str, CommittedFile] = {}
+        for path, (blob, storage) in committed.items():
+            digest, size = self._known[blob]
+            files[path] = CommittedFile(digest=digest, size=size, storage=storage)
+        return files
+
+    def _read(self, blobs: list[str]) -> None:
+        output = subprocess.run(
+            [self._executable, "--no-pager", "--git-dir", str(self._repository / ".git"), "cat-file", "--batch"],
+            input="".join(f"{blob}\n" for blob in blobs).encode(),
+            capture_output=True,
+            check=True,
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0", "GIT_NO_REPLACE_OBJECTS": "1", "GIT_CONFIG_NOSYSTEM": "1"},
+        ).stdout
+        offset = 0
+        for blob in blobs:
+            end = output.index(b"\n", offset)
+            header = output[offset:end].split()
+            size = int(header[2])
+            content = output[end + 1 : end + 1 + size]
+            offset = end + 1 + size + 1
+            pointer = LFS_POINTER.match(content)
+            if pointer is not None:
+                self._known[blob] = (f"sha256:{pointer['oid'].decode()}", int(pointer["size"]))
+            else:
+                self._known[blob] = (f"sha256:{hashlib.sha256(content).hexdigest()}", size)
+
+
 def path_fields(value: JsonValue, path: str = "") -> Iterator[tuple[str, str]]:
     """Each path a document's ``*_path`` and ``*_paths`` fields hold, under the field's path (lists by item name)."""
     if isinstance(value, dict):
@@ -480,98 +533,87 @@ def attempt_events(
     ]
 
 
-def step_kind(step: str) -> str:
-    return "run_experiment" if step.startswith("run_experiment:") else step
-
-
-@dataclass
-class StepTracker:
-    """Turns successive audits into Receipt transitions for one REE."""
-
-    source_id: str
-    ree_id: str
-    states: dict[str, str] = field(default_factory=dict)
-
-    def observe(
-        self, standing: dict[str, str], base: int, locator: str, cause: str, record: dict[str, Any] | None
-    ) -> list[Event]:
-        operation = ((record or {}).get("command") or {}).get("operation")
-        attempt_id = (record or {}).get("attempt_id")
-        events: list[Event] = []
-        names = sorted(set(standing) | set(self.states))
-        for offset, step in enumerate(names):
-            target = standing.get(step, "not_applicable")
-            current = self.states.get(step)
-            if target == current:
-                continue
-            facts: dict[str, JsonValue] = {
-                "step": step,
-                "kind": step_kind(step),
-                "operation": operation,
-                "attempt_id": attempt_id,
-                "cause": cause,
-            }
-            events.append(
-                Event(
-                    source=self.source_id,
-                    position=base + offset,
-                    kind="transition",
-                    owner="core",
-                    subject="Receipt",
-                    key=f"{self.ree_id}/{step}",
-                    partition=self.ree_id,
-                    source_state=current,
-                    target_state=target,
-                    facts=facts,
-                    locator=locator,
-                )
-            )
-            self.states[step] = target
-        return events
+def recorded_standings(record: dict[str, Any] | None) -> dict[str, str] | None:
+    """The standings core recorded after an attempt, if it recorded them as standings."""
+    after = (record or {}).get("step_evidence_after")
+    if not isinstance(after, dict) or not all(isinstance(value, str) for value in after.values()):
+        return None
+    return {str(step): str(standing) for step, standing in after.items()}
 
 
 def ree_events(
     executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit]
-) -> tuple[list[Event], list[FieldChange], list[FileChange], list[str]]:
-    """Witnessed Ree transitions, document and overlay changes, and recorded Receipt transitions, commit by commit."""
+) -> tuple[list[Event], list[FieldChange], list[FileChange], list[Snapshot], list[str]]:
+    """Witnessed Ree transitions, document and file changes, and each capture commit read whole, commit by commit."""
     events: list[Event] = []
     changes: list[FieldChange] = []
     found_files: list[FileChange] = []
+    snapshots: list[Snapshot] = []
     files: Committed = {}
     attributes: dict[str, frozenset[str]] = {}
+    digests = BlobDigests(executable, repository)
     problems: list[str] = []
-    steps = StepTracker(source_id, ree_id)
     state: str | None = None
     # The document as last read; None after one that could not be read, whose changes no operation can own.
     parts: dict[str, str] | None = {}
+    document: dict[str, Any] | None = None
+    held: dict[str, CommittedFile] = {}
     for index, commit in enumerate(commits):
         base = (index + 1) * 1000
         locator = f"git:{label}@{commit.id[:12]}"
         metadata = commit.metadata or {}
         record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
-        if isinstance(record, dict):
-            before, after = record.get("step_evidence_before"), record.get("step_evidence_after")
-            if isinstance(before, dict):
-                audited = "external" if steps.states else "baseline"
-                events.extend(steps.observe(before, base + 100, locator, audited, None))
-            if isinstance(after, dict):
-                events.extend(steps.observe(after, base + 300, locator, "operation", record))
+        record = record if isinstance(record, dict) else None
         changed = commit.tree != commit.parent_tree
+        cause: Literal["created", "operation", "external"] = (
+            "operation" if record is not None else "created" if state is None else "external"
+        )
+        operation = ((record or {}).get("command") or {}).get("operation")
         if state is not None and not changed:
+            if record is not None:
+                snapshots.append(
+                    Snapshot(
+                        source=source_id,
+                        position=base + 300,
+                        subject="Ree",
+                        partition=ree_id,
+                        locator=locator,
+                        cause=cause,
+                        operation=operation,
+                        attempt_id=record.get("attempt_id"),
+                        document=document,
+                        files=held,
+                        recorded=recorded_standings(record),
+                    )
+                )
             continue
         document = committed_document(executable, repository, commit.id)
+        committed = committed_tree(executable, repository, commit.id, attributes)
+        held = digests.of(committed)
+        snapshots.append(
+            Snapshot(
+                source=source_id,
+                position=base + 300,
+                subject="Ree",
+                partition=ree_id,
+                locator=locator,
+                cause=cause,
+                operation=operation,
+                attempt_id=(record or {}).get("attempt_id"),
+                document=document,
+                files=held,
+                recorded=recorded_standings(record),
+            )
+        )
         if document is None:
             problems.append(f"{commit.id[:12]}: committed ree.json is unreadable")
             parts = None
             continue
         target = "sealed" if document.get("seal") is not None else "draft"
-        cause: Literal["created", "operation", "external"] = (
-            "operation" if isinstance(record, dict) else "created" if state is None else "external"
-        )
         facts: dict[str, JsonValue] = {
             "commit": commit.id,
             "operation": commit.subject,
-            "attempt_id": record.get("attempt_id") if isinstance(record, dict) else None,
+            "attempt_id": record.get("attempt_id") if record is not None else None,
             "cause": cause,
         }
         now = document_parts(document.get("subject") or {})
@@ -592,7 +634,6 @@ def ree_events(
                 if parts.get(path) != now.get(path)
             )
         parts = now
-        committed = committed_tree(executable, repository, commit.id, attributes)
         found_files.extend(
             changed_files(
                 files,
@@ -623,7 +664,7 @@ def ree_events(
             )
         )
         state = target
-    return events, changes, found_files, problems
+    return events, changes, found_files, snapshots, problems
 
 
 def scope_files(
@@ -677,6 +718,7 @@ def read_git_history(
     events: list[Event] = []
     changes: list[FieldChange] = []
     file_changes: list[FileChange] = []
+    snapshots: list[Snapshot] = []
     try:
         commits, found = history_commits(executable, repository)
         problems.extend(found)
@@ -708,7 +750,7 @@ def read_git_history(
         events = [event.model_copy(update={"partition": ree}) for event in events]
         ree_ids = {ree}
     if author and len(ree_ids) == 1:
-        found_events, changes, file_changes, found = ree_events(
+        found_events, changes, file_changes, snapshots, found = ree_events(
             executable, repository, source_id, label, next(iter(ree_ids)), commits
         )
         events.extend(found_events)
@@ -728,7 +770,13 @@ def read_git_history(
         partitions=frozenset(ree_ids),
         problems=tuple(problems),
     )
-    return Evidence(sources=(source,), events=tuple(events), changes=tuple(changes), files=tuple(file_changes))
+    return Evidence(
+        sources=(source,),
+        events=tuple(events),
+        changes=tuple(changes),
+        files=tuple(file_changes),
+        snapshots=tuple(snapshots),
+    )
 
 
 def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, str]]:
@@ -837,8 +885,11 @@ def load_evidence(
         if not (root / ".git").is_dir():
             problems.append(f"{root} is not an REE repository")
             continue
+        # An author REE no control plane named is named by the history it was collected under.
         histories.extend(
-            read_git_history(repository, label, git_executable, author=not scope, scope=scope)
+            read_git_history(
+                repository, label, git_executable, author=not scope, scope=scope, ree=None if scope else label
+            )
             for repository, label, scope in git_repositories(root)
         )
     for directory in stores:
@@ -859,4 +910,6 @@ def combine(*parts: Evidence) -> Evidence:
         problems=tuple(problem for part in parts for problem in part.problems),
         changes=tuple(change for part in parts for change in part.changes),
         files=tuple(change for part in parts for change in part.files),
+        snapshots=tuple(snapshot for part in parts for snapshot in part.snapshots),
+        witnessed=any(part.witnessed for part in parts),
     )

@@ -46,6 +46,7 @@ def load_spec(directory: Path = SPEC_DIR) -> Spec:
         single("invariants.toml"),
         single("components.toml"),
         [with_tree(document, read_from_root) for document in documents("aggregates")],
+        documents("documents"),
     )
     if problems := operation_problems(spec):
         raise ValueError("; ".join(problems))
@@ -78,6 +79,7 @@ def load_spec_at(revision: str, executable: str = "git") -> Spec:
         documents.get(f"{relative}/invariants.toml", {}),
         documents.get(f"{relative}/components.toml", {}),
         [with_tree(document, lambda path: run("show", f"{revision}:{path}")) for document in under("aggregates")],
+        under("documents"),
     )
 
 

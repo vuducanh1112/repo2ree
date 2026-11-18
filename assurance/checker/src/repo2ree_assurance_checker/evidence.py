@@ -4,13 +4,24 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, JsonValue, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_serializer
 
 from repo2ree_assurance_dossier import Cut
 
 type Scalar = str | int | bool | None
 
-__all__ = ["Cut", "Event", "Evidence", "EvidenceModel", "FieldChange", "FileChange", "Scalar", "Source"]
+__all__ = [
+    "CommittedFile",
+    "Cut",
+    "Event",
+    "Evidence",
+    "EvidenceModel",
+    "FieldChange",
+    "FileChange",
+    "Scalar",
+    "Snapshot",
+    "Source",
+]
 
 
 class EvidenceModel(BaseModel):
@@ -136,6 +147,37 @@ class FileChange(EvidenceModel):
         return self.locator
 
 
+class CommittedFile(EvidenceModel):
+    """One file a capture commit holds: the digest of its content, an LFS payload's by its pointer."""
+
+    digest: str
+    size: int
+    storage: Literal["git", "lfs"]
+
+
+class Snapshot(EvidenceModel):
+    """One capture commit of an REE as the checker reads it: its document, every file it holds, and what
+    core recorded of its receipts' standings, which the checker compares with its own."""
+
+    source: str
+    position: int  # The capture commit's place in its source, as its events have it.
+    subject: str  # The entity whose document it commits.
+    partition: str
+    locator: str
+    cause: Literal["created", "operation", "external"]
+    operation: str | None = None  # The operation of the attempt that made it, if one did.
+    attempt_id: str | None = None
+    # The committed ree.json; None where it cannot be read.
+    document: dict[str, JsonValue] | None = None
+    files: dict[str, CommittedFile] = {}
+    # Each receipt's standing as core recorded it after the attempt; None where it recorded none.
+    recorded: dict[str, str] | None = None
+
+    @property
+    def ref(self) -> str:
+        return self.locator
+
+
 class Evidence(EvidenceModel):
     sources: tuple[Source, ...]
     events: tuple[Event, ...]
@@ -144,6 +186,10 @@ class Evidence(EvidenceModel):
     changes: tuple[FieldChange, ...] = ()
     # What each capture commit changed in the overlay it committed: aggregate evidence, never an event.
     files: tuple[FileChange, ...] = ()
+    # Every capture commit, read whole, for the document rules; never written out with the evidence.
+    snapshots: tuple[Snapshot, ...] = Field(default=(), exclude=True)
+    # Whether the receipts' standings the snapshots give are already among the events.
+    witnessed: bool = False
 
     def source(self, source_id: str) -> Source:
         return next(source for source in self.sources if source.id == source_id)

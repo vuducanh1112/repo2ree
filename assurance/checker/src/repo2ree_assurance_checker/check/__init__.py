@@ -16,8 +16,9 @@ never used, and nothing is assumed about where the receiver did its work.
 
 The package is laid out by concern: ``results`` (what checking finds), ``replay`` (records
 through machines and exchanges), ``order`` (what the evidence can order and could have
-recorded), ``patterns`` (the invariants), ``reconciliation`` (stores against journals), and
-``aggregates`` (every part of a committed document, one rule per aggregate).
+recorded), ``patterns`` (the invariants), ``reconciliation`` (stores against journals),
+``aggregates`` (every part of a committed document, one rule per aggregate), and ``documents`` (each commit of
+a document alone: its receipts' standings, which the checker witnesses, and the digests it records).
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from repo2ree_assurance_checker.check.aggregates import aggregate_rule, check_aggregates
+from repo2ree_assurance_checker.check.documents import check_documents, witness
 from repo2ree_assurance_checker.check.order import Model
 from repo2ree_assurance_checker.check.patterns import Occurrence, check_invariant, judge, judge_occurrences, occurrences
 from repo2ree_assurance_checker.check.reconciliation import check_reconciliation, states_around
@@ -138,6 +140,7 @@ def replay(spec: Spec, evidence: Evidence) -> tuple[Model, list[RuleResult], Cov
 
 
 def check(spec: Spec, evidence: Evidence) -> CheckResult:
+    evidence = witness(spec, evidence)
     model, replayed, coverage = replay(spec, evidence)
     rules = [check_evidence(spec, evidence), *replayed]
     rules.extend(check_invariant(model, invariant) for invariant in spec.invariants)
@@ -146,6 +149,7 @@ def check(spec: Spec, evidence: Evidence) -> CheckResult:
         rules.append(check_reconciliation(model, observed))
     aggregates = check_aggregates(spec, evidence)
     rules.extend(aggregate_rule(result) for result in aggregates)
+    rules.extend(check_documents(spec, evidence))
     return CheckResult(
         spec_digest=spec.digest,
         vocabulary_digest=spec.vocabulary_digest,
@@ -174,6 +178,7 @@ __all__ = [
     "RuleResult",
     "check",
     "check_aggregates",
+    "check_documents",
     "check_invariant",
     "check_reconciliation",
     "judge",
@@ -181,4 +186,5 @@ __all__ = [
     "occurrences",
     "replay",
     "states_around",
+    "witness",
 ]

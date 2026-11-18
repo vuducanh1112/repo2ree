@@ -36,6 +36,7 @@ summary = "What a sealed REE document must keep meaning, in any implementation."
 [spec.groups.format.paths]
 "contracts/ree/fixtures/sealed/" = "Sealed documents whose seals must keep verifying"
 "contracts/ree/fixtures/canonical.json" = "Canonical JSON and instant encodings with their digests"
+"contracts/ree/fixtures/digests.json" = "Digests of a directory tree and of declared output paths, over the files they cover"
 "contracts/ree/fixtures/invalid.json" = "Documents the format refuses, as patches of a sealed one"
 "ree/tests/test_contract.py" = "Reads every format fixture against the implementation"
 

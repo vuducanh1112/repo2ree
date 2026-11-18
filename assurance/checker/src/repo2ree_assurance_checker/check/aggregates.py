@@ -22,7 +22,7 @@ from repo2ree_assurance_checker.check.results import (
     StateStep,
 )
 from repo2ree_assurance_checker.evidence import Evidence, FieldChange, FileChange
-from repo2ree_assurance_checker.spec import CREATED, KEYED, AggregateSpec, Spec, SubMachine, place
+from repo2ree_assurance_checker.spec import CREATED, KEYED, WILDCARD, AggregateSpec, Spec, SubMachine, place
 
 # Where a move was made between operations rather than by one.
 EXTERNAL = "(between operations)"
@@ -43,7 +43,11 @@ class Move:
 
     @property
     def part(self) -> str:
-        return f"{self.machine.name.removesuffix(KEYED)}[{self.item}]" if self.item else self.machine.name
+        if not self.item:
+            return self.machine.name
+        if self.machine.wildcard:
+            return f"{self.machine.name.removesuffix(WILDCARD)}.{self.item}"
+        return f"{self.machine.name.removesuffix(KEYED)}[{self.item}]"
 
     @property
     def allowed(self) -> bool:
@@ -278,6 +282,16 @@ def _instance_fields(
                     source = _held(change.before) if item in seen else CREATED
                     seen.add(item)
                     yield move(machine, item, source, _held(change.after), change)
+            continue
+        if machine.wildcard:
+            # Each member starts with the document, unset unless the creating commit set it.
+            members = re.compile(re.escape(machine.name.removesuffix(WILDCARD)) + r"\.(?P<item>[a-z_]+)$")
+            for change in ordered:
+                if (match := members.match(change.path)) is not None:
+                    if change.cause == "created":
+                        yield move(machine, match["item"], CREATED, _held(change.after), change)
+                    else:
+                        yield move(machine, match["item"], _held(change.before), _held(change.after), change)
             continue
         own = [change for change in ordered if change.path == machine.name]
         if creation is not None:

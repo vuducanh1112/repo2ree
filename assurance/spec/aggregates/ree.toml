@@ -28,42 +28,8 @@ group = "catalog"
 initial = "set"
 change = ["patch_ree_definition"]
 
-[fields."definition.catalog.description"]
-group = "catalog"
-initial = "unset"
-set = ["patch_ree_definition"]
-change = ["patch_ree_definition"]
-clear = ["patch_ree_definition"]
-
-[fields."definition.catalog.version"]
-group = "catalog"
-initial = "unset"
-set = ["patch_ree_definition"]
-change = ["patch_ree_definition"]
-clear = ["patch_ree_definition"]
-
-[fields."definition.catalog.website"]
-group = "catalog"
-initial = "unset"
-set = ["patch_ree_definition"]
-change = ["patch_ree_definition"]
-clear = ["patch_ree_definition"]
-
-[fields."definition.catalog.keywords"]
-group = "catalog"
-initial = "unset"
-set = ["patch_ree_definition"]
-change = ["patch_ree_definition"]
-clear = ["patch_ree_definition"]
-
-[fields."definition.catalog.contributors"]
-group = "catalog"
-initial = "unset"
-set = ["patch_ree_definition"]
-change = ["patch_ree_definition"]
-clear = ["patch_ree_definition"]
-
-[fields."definition.catalog.corresponding_author_identifier"]
+# Every member of the catalog entry: what the REE says of itself, changed only by declaring it.
+[fields."definition.catalog.*"]
 group = "catalog"
 initial = "unset"
 set = ["patch_ree_definition"]
@@ -140,56 +106,97 @@ group = "bundle"
 initial = "set"
 change = ["seal_ree"]
 
+# ---- Receipts ------------------------------------------------------------------------------------
+#
+# A receipt is current exactly when it is applicable and every pair of its basis agrees: the value it
+# recorded, and the value of what that pair names in the same commit. What it rests on and is made
+# from are read off its basis.
+#
+#   applicable  receipt  basis agrees  standing
+#   no          no       -             not_applicable
+#   yes         no       -             missing
+#   yes         yes      yes           current
+#   yes         yes      no            stale
+#   no          yes      -             stale (orphaned)
+
 [receipts.acquire_source]
 about = ["definition.source"]
-rests_on = ["definition.source"]
+basis = [
+    { recorded = "origin_url", now = "definition.source.origin_url" },
+    { recorded = "source_type", now = "definition.source.source_type" },
+    { recorded = "requested_ref", now = "definition.source.requested_ref" },
+]
 cleared_by = ["remove_source"]
 
+# The evaluation reads the dependencies the source declares, and nothing beside it.
 [receipts.evaluate_reproducibility]
 about = ["definition.source"]
-made_from = ["acquire_source"]
+basis = [{ recorded = "snapshot_digest", now = "receipts.acquire_source.snapshot_digest" }]
 cleared_by = ["remove_source"]
 
 [receipts.observe_hardware]
 about = ["definition.hbom"]
 applies_without_declaration = true
+basis = []
 
 # The check, run in the working environment; it rests on no source, so removing the source keeps it.
 [receipts.check_working_environment]
 about = ["definition.check_working_environment"]
-rests_on = ["definition.check_working_environment", "definition.launch"]
+basis = [
+    { recorded = "check_working_environment_script_digest", now = "definition.check_working_environment.check_working_environment_script_digest" },
+    { recorded = "launch_script_digest", now = "definition.launch.launch_script_digest" },
+]
 
 [receipts.build_experiment_environment]
 about = ["definition.experiment_environment.artifact_path"]
-rests_on = ["definition.experiment_environment", "definition.launch"]
-made_from = ["acquire_source"]
+basis = [
+    { recorded = "snapshot_digest", now = "receipts.acquire_source.snapshot_digest" },
+    { recorded = "build_experiment_environment_script_digest", now = "definition.experiment_environment.build_experiment_environment_script_digest" },
+    { recorded = "artifact_path", now = "definition.experiment_environment.artifact_path" },
+    { recorded = "launch_script_digest", now = "definition.launch.launch_script_digest" },
+]
 cleared_by = ["remove_source"]
 
 [receipts.generate_sbom]
 about = ["definition.experiment_environment.artifact_path"]
-made_from = ["build_experiment_environment"]
+basis = [
+    { recorded = "experiment_environment_digest", now = "receipts.build_experiment_environment.produced_artifact_digest" },
+]
 cleared_by = ["remove_source"]
 
 [receipts.cross_check_sbom]
 about = ["definition.source", "definition.experiment_environment.artifact_path"]
-made_from = ["generate_sbom", "evaluate_reproducibility"]
+basis = [
+    { recorded = "sbom_digest", now = "receipts.generate_sbom.sbom_digest" },
+    { recorded = "report_digest", now = "receipts.evaluate_reproducibility.report_digest" },
+]
 cleared_by = ["remove_source"]
 
 # The activation run alone, around a command that does nothing: it enters the experiment environment and hands over.
 [receipts.activate_experiment_environment]
 about = ["definition.activate_experiment_environment"]
-rests_on = ["definition.activate_experiment_environment", "definition.launch"]
-made_from = ["acquire_source", "build_experiment_environment"]
+basis = [
+    { recorded = "snapshot_digest", now = "receipts.acquire_source.snapshot_digest" },
+    { recorded = "experiment_environment_digest", now = "receipts.build_experiment_environment.produced_artifact_digest" },
+    { recorded = "activate_experiment_environment_script_digest", now = "definition.activate_experiment_environment.activate_experiment_environment_script_digest" },
+    { recorded = "launch_script_digest", now = "definition.launch.launch_script_digest" },
+]
 cleared_by = ["remove_source"]
 
+# An experiment runs inside the activation, in the environment the activation entered: only while both
+# still stand as it found them.
 [receipts.run_experiment]
 keyed = true
+at = "receipts.experiments"
 about = ["definition.experiments[*]"]
-rests_on = [
-    "definition.experiments[*]",
-    "definition.activate_experiment_environment",
-    "definition.launch",
+basis = [
+    { recorded = "snapshot_digest", now = "receipts.acquire_source.snapshot_digest" },
+    { recorded = "experiment_environment_digest", now = "receipts.build_experiment_environment.produced_artifact_digest" },
+    { recorded = "experiment_environment_digest", now = "receipts.activate_experiment_environment.experiment_environment_digest" },
+    { recorded = "activate_experiment_environment_script_digest", now = "receipts.activate_experiment_environment.activate_experiment_environment_script_digest" },
+    { recorded = "activate_experiment_environment_script_digest", now = "definition.activate_experiment_environment.activate_experiment_environment_script_digest" },
+    { recorded = "run_script_digest", now = "definition.experiments[$name].run_script_digest" },
+    { recorded = "verify_script_digest", now = "definition.experiments[$name].verify_script_digest" },
+    { recorded = "launch_script_digest", now = "definition.launch.launch_script_digest" },
 ]
-# An experiment runs inside the activation, so only while the activation's evidence is current.
-made_from = ["acquire_source", "build_experiment_environment", "activate_experiment_environment"]
 cleared_by = ["remove_source"]

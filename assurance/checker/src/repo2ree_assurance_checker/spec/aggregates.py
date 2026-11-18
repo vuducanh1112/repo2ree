@@ -20,12 +20,19 @@ from repo2ree_assurance_checker.spec.base import CREATED, Name, SpecModel
 FIELD_STATES: Final = ("unset", "set")
 STANDINGS: Final = ("not_applicable", "missing", "current", "stale")
 KEYED: Final = "[*]"
+# Ends a field that stands for each of an object's members, one machine each.
+WILDCARD: Final = ".*"
+# A keyed item's own name, where a path names one item of a keyed list.
+ITEM: Final = "[$name]"
 # Where a keyed field's file names its item: the item's name as a slug.
 SLUG: Final = "{slug}"
 
 type Operation = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
-# A path into the document, relative to its subject; ``[*]`` ends a list keyed by name.
-type FieldPath = Annotated[str, Field(pattern=r"^[a-z_]+(\.[a-z_]+)*(\[\*\])?$")]
+# A path into the document, relative to its subject; ``[*]`` ends a list keyed by name, ``.*`` an object's members.
+type FieldPath = Annotated[str, Field(pattern=r"^[a-z_]+(\.[a-z_]+)*(\[\*\]|\.\*)?$")]
+# A path to a value of the document, relative to its subject (``seal`` from the document itself): ``[*]`` is every
+# item of a list keyed by name or of an object keyed by it, ``[$name]`` the item being judged.
+type DocumentPath = Annotated[str, Field(pattern=r"^[a-z_]+(\.[a-z_]+|\[\*\]|\[\$name\])*$")]
 type MachineKind = Literal["lifecycle", "field", "receipt"]
 type EdgeOperations = dict[tuple[str, str], set[str]]
 
@@ -48,6 +55,8 @@ class SubMachine(SpecModel):
     edges: tuple[Edge, ...]
     bulk: tuple[Operation, ...] = ()
     keyed: bool = False
+    # One machine per member of an object, each starting with the document.
+    wildcard: bool = False
 
     @cached_property
     def _by_edge(self) -> dict[tuple[str, str], frozenset[str]]:
@@ -90,18 +99,86 @@ class FieldMachine(SpecModel):
         return frozenset((*self.set_by, *self.changed_by, *self.cleared_by))
 
 
+class BasisPair(SpecModel):
+    """A value the receipt recorded, and what it must still equal for the receipt to be current."""
+
+    recorded: DocumentPath  # In the receipt.
+    now: DocumentPath
+
+
 class ReceiptMachine(SpecModel):
     """A receipt's standings; its edges follow from what it depends on (``AggregateSpec.receipt_machine``).
 
-    A receipt is named after the operation that produces it: the name is the producer, said once.
+    A receipt is named after the operation that produces it: the name is the producer, said once. It is
+    current exactly when it is applicable and every pair of its ``basis`` agrees; what it rests on and is
+    made from are read off the basis, never stated beside it.
     """
 
     about: tuple[FieldPath, ...] = ()
     applies_without_declaration: bool = False
+    # Where the receipt sits in the document; a keyed receipt's items are keyed by name there.
+    at: DocumentPath | None = None
+    basis: tuple[BasisPair, ...] | None = None
     rests_on: tuple[FieldPath, ...] = ()
     made_from: tuple[Name, ...] = ()
     cleared_by: tuple[Operation, ...] = ()
     keyed: bool = False
+
+
+def field_of(fields: Iterable[str], path: str) -> str | None:
+    """The declared field a document path falls in: the most specific one holding it."""
+    path = path.replace(ITEM, KEYED)
+    holding = []
+    for name in fields:
+        head = name.removesuffix(WILDCARD) if name.endswith(WILDCARD) else name
+        if path == name or path.startswith(f"{head}."):
+            holding.append(name)
+    return max(holding, key=len, default=None)
+
+
+def _derived_from_basis(document: dict[str, object]) -> dict[str, object]:
+    """Each receipt with a basis, with what it rests on and is made from read off that basis."""
+    declared = document.get("fields")
+    fields = list(declared) if isinstance(declared, dict) else []
+    receipts = document.get("receipts")
+    if not isinstance(receipts, dict):
+        return document
+    locations = {
+        name: str(receipt.get("at") or f"receipts.{name}")
+        for name, receipt in receipts.items()
+        if isinstance(receipt, dict)
+    }
+    derived: dict[str, object] = {}
+    for name, receipt in receipts.items():
+        if not isinstance(receipt, dict) or receipt.get("basis") is None:
+            derived[name] = receipt
+            continue
+        rests_on: list[str] = []
+        made_from: list[str] = []
+        for pair in receipt["basis"]:
+            now = pair.get("now") if isinstance(pair, dict) else None
+            if not isinstance(now, str):
+                continue
+            if ITEM in now and not receipt.get("keyed"):
+                raise ValueError(f"receipt {name}: only a keyed receipt's basis names its own item")
+            source = next(
+                (other for other, at in locations.items() if now == at or now.startswith((f"{at}.", f"{at}["))), None
+            )
+            if source is not None:
+                made_from.append(source)
+            elif (field := field_of(fields, now)) is not None:
+                rests_on.append(field)
+            else:
+                raise ValueError(f"receipt {name}: its basis names {now}, which no field or receipt holds")
+        spelled = {
+            "rests_on": list(dict.fromkeys(rests_on)),
+            "made_from": list(dict.fromkeys(made_from)),
+        }
+        for key, value in spelled.items():
+            if key in receipt and receipt[key] != value:
+                raise ValueError(f"receipt {name}: {key} is read off its basis, never stated beside it")
+        derived[name] = receipt | spelled
+    return document | {"receipts": derived}
 
 
 # The REE tree as its contract states it (contracts/ree/layout.json); the checker's own reading of that file.
@@ -173,6 +250,11 @@ class AggregateSpec(SpecModel):
     fields: dict[FieldPath, FieldMachine]
     receipts: dict[Operation, ReceiptMachine]
 
+    @model_validator(mode="before")
+    @classmethod
+    def receipts_read_off_their_basis(cls, data: object) -> object:
+        return _derived_from_basis(data) if isinstance(data, dict) else data
+
     @model_validator(mode="after")
     def coherent_aggregate(self) -> Self:
         if (self.tree is None) != (self.layout is None):
@@ -180,6 +262,8 @@ class AggregateSpec(SpecModel):
         for path, field in self.fields.items():
             if path.endswith(KEYED) == (field.initial is not None):
                 raise ValueError(f"{self.name}: {path} needs an initial state exactly when it is not keyed")
+            if path.endswith(WILDCARD) and field.files:
+                raise ValueError(f"{self.name}: {path} stands for an object's members, which claim no files")
             if field.files and self.overlay is None:
                 raise ValueError(f"{self.name}: {path} claims files, but the aggregate names no overlay")
             for file in field.files:
@@ -200,6 +284,10 @@ class AggregateSpec(SpecModel):
                 raise ValueError(f"{self.name}: receipt {name} is made from undeclared receipts {sorted(unknown)}")
             if name in receipt.made_from or any(self.receipts[other].keyed for other in receipt.made_from):
                 raise ValueError(f"{self.name}: receipt {name} must be made from other, unkeyed receipts")
+            if receipt.basis is not None and any(
+                ITEM in pair.recorded or KEYED in pair.recorded for pair in receipt.basis
+            ):
+                raise ValueError(f"{self.name}: receipt {name}'s basis records values of the receipt itself")
         taking = {op for machine in self.machines for edge in machine.edges for op in edge.by}
         if moving := set(self.writes_nothing) & taking:
             raise ValueError(f"{self.name}: operations that write nothing take edges: {sorted(moving)}")
@@ -265,7 +353,12 @@ class AggregateSpec(SpecModel):
             edges=_edges(moves),
             bulk=(self.restored_by,),
             keyed=field.initial is None,
+            wildcard=path.endswith(WILDCARD),
         )
+
+    def location(self, name: str) -> str:
+        """Where a receipt sits in the document."""
+        return self.receipts[name].at or f"receipts.{name}"
 
     def receipt_machine(self, name: str) -> SubMachine:
         """Applicable while what it is about is set; stale when what it rests on or is made from moves."""

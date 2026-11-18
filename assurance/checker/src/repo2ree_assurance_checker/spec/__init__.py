@@ -6,7 +6,8 @@ facts with their types and where they are required; and the catalogue of the ope
 core runs. The rules (``entities/*.toml``,
 ``boundaries/*.toml``, ``invariants.toml``) are what the checker holds the evidence to.
 Aggregate machines (``aggregates/*.toml``) follow every part of a document an entity
-commits; a move no edge allows violates the aggregate's rule. Only the vocabulary is published to the product
+commits; a move no edge allows violates the aggregate's rule. Document rules (``documents/*.toml``)
+read one commit of that document at a time, with the files it holds. Only the vocabulary is published to the product
 (``contracts/behaviour``).
 
 The package keeps each part apart: ``base`` (what they share), ``vocabulary`` (what owners
@@ -26,10 +27,14 @@ from pydantic import Field, model_validator
 
 from repo2ree_assurance_checker.spec.aggregates import (
     FIELD_STATES,
+    ITEM,
     KEYED,
     STANDINGS,
     TREE_FORMAT,
+    WILDCARD,
     AggregateSpec,
+    BasisPair,
+    DocumentPath,
     Edge,
     FieldMachine,
     Lifecycle,
@@ -38,9 +43,18 @@ from repo2ree_assurance_checker.spec.aggregates import (
     ReceiptMachine,
     SubMachine,
     TreeEntry,
+    field_of,
     place,
 )
 from repo2ree_assurance_checker.spec.base import CREATED, OWN_KEY, Condition, FactType, Name, SpecModel
+from repo2ree_assurance_checker.spec.documents import (
+    CanonicalPair,
+    DigestKind,
+    DocumentRule,
+    DocumentRules,
+    FilePair,
+    PathsPair,
+)
 from repo2ree_assurance_checker.spec.facts import absent, declared_facts, fact_problems, matches
 from repo2ree_assurance_checker.spec.invariants import (
     EntityRequirement,
@@ -87,6 +101,7 @@ class Spec(SpecModel):
     boundaries: dict[Name, BoundarySpec]
     invariants: tuple[Invariant, ...]
     aggregates: dict[Name, AggregateSpec] = Field(default_factory=dict)
+    documents: dict[Name, DocumentRules] = Field(default_factory=dict)
     operations: dict[Name, str] = Field(default_factory=dict)
     review_operations: dict[Name, str] = Field(default_factory=dict)
 
@@ -170,6 +185,14 @@ class Spec(SpecModel):
             self._check_invariant(invariant)
         for aggregate in self.aggregates.values():
             self._check_aggregate(aggregate)
+        for name, rules in self.documents.items():
+            judged = self.aggregates.get(name)
+            if judged is None:
+                raise ValueError(f"document rules for {name}, which is no aggregate")
+            standing = [rule.id for rule in rules.rules if rule.pattern == "standing"]
+            unread = [receipt for receipt, machine in judged.receipts.items() if machine.basis is None]
+            if standing and unread:
+                raise ValueError(f"{standing[0]}: receipts {unread} of {name} have no basis to stand on")
         return self
 
     def _check_aggregate(self, aggregate: AggregateSpec) -> None:
@@ -306,6 +329,7 @@ def parse_spec(
     invariants: dict[str, Any],
     components: dict[str, Any],
     aggregates: Sequence[dict[str, Any]] = (),
+    documents: Sequence[dict[str, Any]] = (),
 ) -> Spec:
     """Build the specification from already-parsed TOML documents: the vocabulary, then the rules."""
     component_specs = [Component.model_validate(item) for item in components.get("component", [])]
@@ -349,6 +373,9 @@ def parse_spec(
     aggregate_specs = [AggregateSpec.model_validate(document) for document in aggregates]
     if len({aggregate.name for aggregate in aggregate_specs}) != len(aggregate_specs):
         raise ValueError("aggregate names must be unique")
+    document_specs = [DocumentRules.model_validate(document) for document in documents]
+    if len({rules.aggregate for rules in document_specs}) != len(document_specs):
+        raise ValueError("one file of document rules per aggregate")
     return Spec(
         components={component.name: component for component in component_specs},
         entities={entity.name: entity for entity in entity_specs},
@@ -357,6 +384,7 @@ def parse_spec(
             Invariant.model_validate(spell_out_groups(item, groups)) for item in invariants.get("invariant", [])
         ),
         aggregates={aggregate.name: aggregate for aggregate in aggregate_specs},
+        documents={rules.aggregate: rules for rules in document_specs},
         operations=catalogues[0].operations if catalogues else {},
         review_operations=catalogues[0].review_operations if catalogues else {},
     )
@@ -365,13 +393,17 @@ def parse_spec(
 __all__ = [
     "CREATED",
     "FIELD_STATES",
+    "ITEM",
     "KEYED",
     "OWN_KEY",
     "STANDINGS",
     "TREE_FORMAT",
+    "WILDCARD",
     "AggregateSpec",
+    "BasisPair",
     "BoundarySpec",
     "BoundaryVocabulary",
+    "CanonicalPair",
     "Catalogue",
     "Citation",
     "CitedEntity",
@@ -380,6 +412,10 @@ __all__ = [
     "CitingMessage",
     "Component",
     "Condition",
+    "DigestKind",
+    "DocumentPath",
+    "DocumentRule",
+    "DocumentRules",
     "Edge",
     "EntityRequirement",
     "EntitySpec",
@@ -392,6 +428,7 @@ __all__ = [
     "FactGroups",
     "FactType",
     "FieldMachine",
+    "FilePair",
     "GuardRequirement",
     "Invariant",
     "Lifecycle",
@@ -400,6 +437,7 @@ __all__ = [
     "MessageRequirement",
     "MessageTrigger",
     "Name",
+    "PathsPair",
     "Placed",
     "ReceiptMachine",
     "Requirement",
@@ -414,6 +452,7 @@ __all__ = [
     "declared_facts",
     "fact_problems",
     "fact_types",
+    "field_of",
     "matches",
     "operation_problems",
     "parse_spec",

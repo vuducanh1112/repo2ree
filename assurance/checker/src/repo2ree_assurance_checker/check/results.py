@@ -22,7 +22,7 @@ class Finding(EvidenceModel):
 
 class RuleResult(EvidenceModel):
     rule: str
-    kind: Literal["evidence", "machine", "boundary", "invariant", "reconciliation", "aggregate"]
+    kind: Literal["evidence", "machine", "boundary", "invariant", "reconciliation", "aggregate", "document"]
     summary: str
     triggered: int = 0
     open: int = 0
