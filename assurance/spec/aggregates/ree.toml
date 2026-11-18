@@ -71,27 +71,27 @@ change = ["patch_ree_definition"]
 clear = ["patch_ree_definition"]
 
 [fields."definition.source"]
-group = "source"
+group = "acquire_source"
 initial = "unset"
 set = ["acquire_source"]
 clear = ["remove_source"]
 
-[fields."definition.hardware"]
-group = "hardware"
+[fields."definition.hbom"]
+group = "observe_hardware"
 initial = "unset"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
 clear = ["patch_ree_definition"]
 
 [fields."definition.experiment_environment"]
-group = "experiment_environment"
+group = "build_experiment_environment"
 initial = "set"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition", "write_script"]
 files = ["ree-scripts/build_experiment_environment.sh"]
 
 [fields."definition.experiment_environment.artifact_path"]
-group = "experiment_environment"
+group = "build_experiment_environment"
 initial = "unset"
 set = ["patch_ree_definition"]
 change = ["patch_ree_definition"]
@@ -140,53 +140,53 @@ group = "bundle"
 initial = "set"
 change = ["seal_ree"]
 
-[receipts.source]
+[receipts.acquire_source]
 about = ["definition.source"]
 rests_on = ["definition.source"]
 produced_by = "acquire_source"
 cleared_by = ["remove_source"]
 
-[receipts.evaluation]
+[receipts.evaluate_reproducibility]
 about = ["definition.source"]
-made_from = ["source"]
+made_from = ["acquire_source"]
 produced_by = "evaluate_reproducibility"
 cleared_by = ["remove_source"]
 
-[receipts.hardware]
-about = ["definition.hardware"]
+[receipts.observe_hardware]
+about = ["definition.hbom"]
 applies_without_declaration = true
 produced_by = "observe_hardware"
 
 # The check, run in the working environment; it rests on no source, so removing the source keeps it.
-[receipts.working_environment_check]
+[receipts.check_working_environment]
 about = ["definition.check_working_environment"]
 rests_on = ["definition.check_working_environment", "definition.launch"]
 produced_by = "check_working_environment"
 
-[receipts.experiment_environment]
+[receipts.build_experiment_environment]
 about = ["definition.experiment_environment.artifact_path"]
 rests_on = ["definition.experiment_environment", "definition.launch"]
-made_from = ["source"]
+made_from = ["acquire_source"]
 produced_by = "build_experiment_environment"
 cleared_by = ["remove_source"]
 
-[receipts.sbom]
+[receipts.generate_sbom]
 about = ["definition.experiment_environment.artifact_path"]
-made_from = ["experiment_environment"]
+made_from = ["build_experiment_environment"]
 produced_by = "generate_sbom"
 cleared_by = ["remove_source"]
 
-[receipts.sbom_cross_check]
+[receipts.cross_check_sbom]
 about = ["definition.source", "definition.experiment_environment.artifact_path"]
-made_from = ["sbom", "evaluation"]
+made_from = ["generate_sbom", "evaluate_reproducibility"]
 produced_by = "cross_check_sbom"
 cleared_by = ["remove_source"]
 
 # The activation run alone, around a command that does nothing: it enters the experiment environment and hands over.
-[receipts.activation]
+[receipts.activate_experiment_environment]
 about = ["definition.activate_experiment_environment"]
 rests_on = ["definition.activate_experiment_environment", "definition.launch"]
-made_from = ["source", "experiment_environment"]
+made_from = ["acquire_source", "build_experiment_environment"]
 produced_by = "activate_experiment_environment"
 cleared_by = ["remove_source"]
 
@@ -199,6 +199,6 @@ rests_on = [
     "definition.launch",
 ]
 # An experiment runs inside the activation, so only while the activation's evidence is current.
-made_from = ["source", "experiment_environment", "activation"]
+made_from = ["acquire_source", "build_experiment_environment", "activate_experiment_environment"]
 produced_by = "run_experiment"
 cleared_by = ["remove_source"]

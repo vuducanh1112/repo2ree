@@ -11,7 +11,7 @@ def standing(api: Api, ree_id: str) -> tuple[str, str, str]:
     """The experiment environment, its SBOM, and the cross-check of that SBOM against the evaluation."""
     audit = api.audit(ree_id)
     experiment_environment, sbom, cross_check = (
-        str(audit[step]["evidence"]) for step in ("experiment_environment", "sbom", "sbom_cross_check")
+        str(audit[step]["evidence"]) for step in ("build_experiment_environment", "generate_sbom", "cross_check_sbom")
     )
     return experiment_environment, sbom, cross_check
 
@@ -54,14 +54,14 @@ def test_removing_the_source_clears_the_sbom_and_its_cross_check(api: Api, new_r
     api.succeed(ree_id, "generate-sbom")
     api.succeed(ree_id, "cross-check-sbom")
 
-    api.request("DELETE", f"/api/v1/rees/{ree_id}/source")
+    api.request("POST", f"/api/v1/rees/{ree_id}/remove-source")
     _, sbom, cross_check = standing(api, ree_id)
     assert cross_check == "not_applicable"
     assert sbom in {"missing", "not_applicable"}
 
     api.acquire(ree_id)
     assert standing(api, ree_id)[2] == "missing"
-    api.succeed(ree_id, "evaluate")
+    api.succeed(ree_id, "evaluate-reproducibility")
     api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
     api.succeed(ree_id, "build-experiment-environment")
     api.succeed(ree_id, "generate-sbom")

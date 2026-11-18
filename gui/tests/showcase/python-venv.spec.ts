@@ -1,5 +1,6 @@
 import { expect, test } from "../helpers/fixtures";
 import {
+  activateExperimentEnvironment,
   buildExperimentEnvironment,
   commandScript,
   EXPERIMENT_OUTPUT_FILE,
@@ -14,7 +15,6 @@ import {
   saveActivateScript,
   sealRee,
   startReeCreation,
-  testActivation,
   uploadSource,
 } from "../helpers/flow";
 
@@ -133,7 +133,7 @@ test.describe("REE pip pipeline", () => {
     });
 
     await test.step("test activation", async () => {
-      await testActivation(page);
+      await activateExperimentEnvironment(page);
     });
 
     await test.step("run experiment", async () => {

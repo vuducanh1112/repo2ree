@@ -73,13 +73,13 @@ describe("shell data hooks", () => {
       ree: { subject: { definition: { name: "Demo" } } },
       status: "draft",
       audit: {
-        source: { evidence: "not_applicable", payload: "absent" },
-        experiment_environment: { evidence: "not_applicable", payload: "absent" },
+        acquire_source: { evidence: "not_applicable", payload: "absent" },
+        build_experiment_environment: { evidence: "not_applicable", payload: "absent" },
       },
       workspace_files: [],
       ree_files: [],
     });
-    const getEvaluateReport = vi.fn().mockResolvedValue({ dependencies: [], threats: [] });
+    const getReproducibilityReport = vi.fn().mockResolvedValue({ dependencies: [], threats: [] });
     const listReviews = vi.fn().mockResolvedValue({ reviews: [] });
     const listReeIndex = vi.fn().mockResolvedValue({
       items: [
@@ -103,7 +103,7 @@ describe("shell data hooks", () => {
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
       services: fakeApiServices({
-        ree: { getRee, getEvaluateReport, listReviews, listReeIndex },
+        ree: { getRee, getReproducibilityReport, listReviews, listReeIndex },
       }),
     });
     const { result } = renderHook(
@@ -167,7 +167,7 @@ describe("shell data hooks", () => {
         catalog: {},
         experiment_environment: {},
         experiments: [],
-        hardware: {},
+        hbom: {},
       }),
     );
     await act(() => result.current.generate.mutateAsync());

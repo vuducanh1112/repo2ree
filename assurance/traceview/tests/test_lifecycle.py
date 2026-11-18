@@ -92,8 +92,8 @@ def test_actions_no_entry_draws_are_placed_by_journal_position_and_reads_are_lef
     s = recorded()
     requested(s, 25.0, "act-write", "write_script", "failed", path="notes.txt", http_status=503)
     requested(s, 26.0, "act-view", "view_action", "succeeded", about_action_id="act-run-build")
-    s.operation("run-test", "test_activation", "a-test", "test_activation", 30.0)
-    s.commit(5, "a-test", "test_activation", "run-test", [], ("draft", "draft"))
+    s.operation("run-test", "activate_experiment_environment", "a-test", "activate_experiment_environment", 30.0)
+    s.commit(5, "a-test", "activate_experiment_environment", "run-test", [], ("draft", "draft"))
     requested(s, 60.0, "act-delete", "delete_ree", "succeeded", store_id="lab-1")
     lifecycle = trace_of(s).lifecycle
     assert lifecycle is not None
@@ -103,7 +103,7 @@ def test_actions_no_entry_draws_are_placed_by_journal_position_and_reads_are_lef
         ("operation", "build_experiment_environment", "succeeded"),
         ("operation", "generate_sbom", "succeeded"),
         ("action", "write_script", "failed"),
-        ("operation", "test_activation", "succeeded"),
+        ("operation", "activate_experiment_environment", "succeeded"),
         ("action", "delete_ree", "succeeded"),
     ]
     assert not any("view_action" in row.label for row in lifecycle.rows)

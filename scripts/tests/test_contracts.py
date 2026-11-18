@@ -146,8 +146,8 @@ def test_the_export_lists_every_contract_with_what_renders_it() -> None:
 def test_an_operation_a_route_starts_has_a_route_named_after_it(root: Path) -> None:
     registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
     paths = {
-        "/build": {"post": {"operationId": "startBuild", "x-operations": ["build"]}},
-        "/run": {"post": {"operationId": "run", "x-operations": ["run"]}},
+        "/api/v1/rees/{ree_id}/start-build": {"post": {"operationId": "startBuild", "x-operations": ["build"]}},
+        "/api/v1/rees/{ree_id}/run/{name}": {"post": {"operationId": "run", "x-operations": ["run"]}},
         "/upload": {"post": {"operationId": "completeUpload", "x-operations": ["run"]}},
         "/runs": {"get": {"operationId": "listRuns"}},
     }
@@ -157,4 +157,23 @@ def test_an_operation_a_route_starts_has_a_route_named_after_it(root: Path) -> N
 
     assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
         ("unrouted", "build: no route build declares it")
+    ]
+
+
+def test_the_route_named_after_an_operation_is_a_post_to_its_words(root: Path) -> None:
+    registry = operation_contracts(root, cli_runs=["build", "run", "review_run"], protocol_names="build")
+    paths = {
+        "/api/v1/rees/{ree_id}/build": {"put": {"operationId": "build", "x-operations": ["build"]}},
+        "/api/v1/rees/{ree_id}/runs/{name}:run": {"post": {"operationId": "run", "x-operations": ["run"]}},
+        "/api/v1/rees/{ree_id}/reviews/{review_id}/run/{name}": {
+            "post": {"operationId": "reviewRun", "x-operations": ["review_run"]}
+        },
+    }
+    text = json.dumps({"paths": paths}) + "\n"
+    put(root, PurePosixPath("contracts/openapi.json"), text)
+    registry = (*registry, contract(Name.OPENAPI, PurePosixPath("contracts/openapi.json"), text))
+
+    assert [(problem.kind, problem.hint) for problem in check(registry=registry, root=root)] == [
+        ("misrouted", "build: PUT /api/v1/rees/{ree_id}/build, not POST /api/v1/rees/{ree_id}/build"),
+        ("misrouted", "run: POST /api/v1/rees/{ree_id}/runs/{name}:run, not POST /api/v1/rees/{ree_id}/run"),
     ]

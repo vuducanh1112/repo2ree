@@ -11,7 +11,7 @@ export interface ReeIntentPatch extends Record<string, unknown> {
   catalog: Record<string, unknown>;
   experiment_environment: Record<string, unknown>;
   experiments: Array<Record<string, unknown>>;
-  hardware: Record<string, unknown>;
+  hbom: Record<string, unknown>;
 }
 
 interface ReePatchSlices {
@@ -108,6 +108,6 @@ export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatc
     // the REE already owns.
     experiment_environment: { artifact_path: reeSpec.experimentEnvironmentPath || null },
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
-    hardware: serializeHbom(reeSpec.hardwareDescription),
+    hbom: serializeHbom(reeSpec.hbom),
   };
 }

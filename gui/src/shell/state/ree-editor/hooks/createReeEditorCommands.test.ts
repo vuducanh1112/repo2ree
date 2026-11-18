@@ -98,8 +98,8 @@ describe("createReeEditorCommands", () => {
     commands.setPage(PAGE.METADATA);
     expect(state.uiChrome.page).toBe(PAGE.METADATA);
 
-    commands.setPage(PAGE.HBOM);
-    expect(state.uiChrome.page).toBe(PAGE.HBOM);
+    commands.setPage(PAGE.OBSERVE_HARDWARE);
+    expect(state.uiChrome.page).toBe(PAGE.OBSERVE_HARDWARE);
 
     commands.setPage(PAGE.CANVAS);
     expect(state.uiChrome.page).toBe(PAGE.CANVAS);

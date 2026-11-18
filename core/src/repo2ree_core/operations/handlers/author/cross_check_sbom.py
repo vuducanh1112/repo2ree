@@ -92,14 +92,14 @@ def _check_preconditions(ree: Ree, layout: ReeLayout) -> None:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot cross-check its SBOM")
     ree_audit = audit(ree)
-    if ree_audit.evaluation.evidence != "current":
-        detail = "; ".join(ree_audit.evaluation.reasons) or "reproducibility evidence is not current"
+    if ree_audit.evaluate_reproducibility.evidence != "current":
+        detail = "; ".join(ree_audit.evaluate_reproducibility.reasons) or "reproducibility evidence is not current"
         raise ReePreconditionError(detail)
-    if ree_audit.sbom.evidence != "current":
-        detail = "; ".join(ree_audit.sbom.reasons) or "SBOM evidence is not current"
+    if ree_audit.generate_sbom.evidence != "current":
+        detail = "; ".join(ree_audit.generate_sbom.reasons) or "SBOM evidence is not current"
         raise ReePreconditionError(detail)
-    evaluation = ree.subject.receipts.evaluation
-    sbom = ree.subject.receipts.sbom
+    evaluation = ree.subject.receipts.evaluate_reproducibility
+    sbom = ree.subject.receipts.generate_sbom
     if evaluation is None or sbom is None:
         raise ReePreconditionError("evaluation and SBOM receipts are required")
     if not layout.reproducibility_report.is_file():

@@ -70,7 +70,7 @@ export function PageRepoAnalysis({
     <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={IC(24)}
-        tint={stageTone(PAGE.EVALUATE)}
+        tint={stageTone(PAGE.EVALUATE_REPRODUCIBILITY)}
         title={step.label}
         subtitle={step.desc}
         badges={

@@ -36,7 +36,13 @@ def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[
     api.author(ree_id, FIXTURE)
 
     audit = api.audit(ree_id)
-    for step in ("source", "evaluation", "hardware", "experiment_environment", "activation"):
+    for step in (
+        "acquire_source",
+        "evaluate_reproducibility",
+        "observe_hardware",
+        "build_experiment_environment",
+        "activate_experiment_environment",
+    ):
         assert audit[step]["evidence"] == "current", (step, audit[step])
     assert [(item["name"], item["run"]["evidence"]) for item in audit["experiments"]] == [
         (FIXTURE.experiment, "current")
@@ -53,17 +59,17 @@ def test_author_seal_and_download_on_a_docker_bench(api: Api, new_ree: Callable[
 def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) -> None:
     ree_id = new_ree()
     api.acquire(ree_id, FIXTURE)
-    api.succeed(ree_id, "evaluate")
+    api.succeed(ree_id, "evaluate-reproducibility")
 
     failed = api.build_experiment_environment(ree_id, FAILING_DOCKER_BUILD, fixture=FIXTURE)
     assert failed["status"] == "failed"
     assert "step failing" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
+    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
 
     # The author's own recipe then builds on the same bench.
     assert api.build_experiment_environment(ree_id, fixture=FIXTURE)["status"] == "succeeded"
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
 
 
 def test_reviewer_reproduces_a_sealed_docker_ree(api: Api, new_ree: Callable[..., str]) -> None:
@@ -80,17 +86,17 @@ def test_reviewer_reproduces_a_sealed_docker_ree(api: Api, new_ree: Callable[...
         {"file_name": "ree.zip", "size": len(data), "content_type": "application/zip"},
     )
     api.request("PUT", upload["upload_url"], content=data)
-    api.succeed(reviewer, "ree:load", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
+    api.succeed(reviewer, "load-ree-bundle", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
 
-    source = api.stage(reviewer, "reviews/source:reproduce", {"basis": "auto"})
+    source = api.stage(reviewer, "reviews/acquire-source", {"basis": "auto"})
     assert source["status"] == "succeeded", api.logs(reviewer, source["run_id"])
     review_id = api.get(f"/api/v1/rees/{reviewer}/reviews")["reviews"][0]["review_id"]
 
     for stage in (
-        "build-experiment-environment:reproduce",
-        "activation:reproduce",
-        f"experiments/{FIXTURE.experiment}:reproduce",
+        "build-experiment-environment",
+        "activate-experiment-environment",
+        f"run-experiment/{FIXTURE.experiment}",
     ):
-        payload = {"basis": "auto"} if stage == "build-experiment-environment:reproduce" else {}
+        payload = {"basis": "auto"} if stage == "build-experiment-environment" else {}
         run = api.stage(reviewer, f"reviews/{review_id}/{stage}", payload)
         assert run["status"] == "succeeded", (stage, api.logs(reviewer, run["run_id"]))

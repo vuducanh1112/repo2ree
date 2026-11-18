@@ -23,8 +23,8 @@ const document = (experimentEnvironmentReceiptRunId?: string) => ({
   status: "draft" as const,
   ree: { subject: { definition: { name: "hello" } } },
   audit: {
-    source: { evidence: "current", payload: "present", receipt_run_id: "source-1" },
-    experiment_environment: experimentEnvironmentReceiptRunId
+    acquire_source: { evidence: "current", payload: "present", receipt_run_id: "source-1" },
+    build_experiment_environment: experimentEnvironmentReceiptRunId
       ? {
           evidence: "current",
           payload: "present",
@@ -94,7 +94,7 @@ describe("useReeDocumentFollowsRuns", () => {
   });
 
   it("does not wait on a run that files no receipt", async () => {
-    const { awaiting, getRee, settle } = follow("seal", [document()]);
+    const { awaiting, getRee, settle } = follow("seal_ree", [document()]);
     await settle();
 
     await waitFor(() => expect(getRee).toHaveBeenCalledTimes(2));

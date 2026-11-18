@@ -80,7 +80,7 @@ def test_a_build_runs_through_the_declared_launch_and_its_receipt_says_where(
     store = _workbench(tmp_path, monkeypatch, _launch())
     assert _build(store.layout) == "succeeded"
     assert store.workspace.read_bytes("runtime.tar") == b"4711"
-    receipt = store.read_ree().subject.receipts.experiment_environment
+    receipt = store.read_ree().subject.receipts.build_experiment_environment
     assert receipt is not None
     assert receipt.launch_script_digest == digest_bytes(_LAUNCH)
     assert receipt.launched is not None
@@ -93,7 +93,7 @@ def test_a_launch_script_edited_since_it_was_declared_stops_the_build(
     store = _workbench(tmp_path, monkeypatch, _launch())
     store.workspace.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH + b"# edited\n")
     assert _build(store.layout) == "failed"
-    assert store.read_ree().subject.receipts.experiment_environment is None
+    assert store.read_ree().subject.receipts.build_experiment_environment is None
 
 
 def test_a_step_that_ran_under_another_launch_is_stale(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -101,8 +101,8 @@ def test_a_step_that_ran_under_another_launch_is_stale(tmp_path: Path, monkeypat
     after = _launch(_LAUNCH + b"# another launcher\n")
     assert _build(store.layout) == "succeeded"
     ree = store.read_ree()
-    assert audit(ree).experiment_environment.evidence == "current"
+    assert audit(ree).build_experiment_environment.evidence == "current"
     relaunched = replace_definition(ree, ree.subject.definition.model_copy(update={"launch": after}))
-    step = audit(relaunched).experiment_environment
+    step = audit(relaunched).build_experiment_environment
     assert step.evidence != "current"
     assert "launch script changed" in step.reasons

@@ -166,7 +166,7 @@ class CrossCheckSbomReceipt(ReceiptEnvelope):
     observed_total: int = Field(ge=0)
 
 
-class ActivationReceipt(ReceiptEnvelope):
+class ActivateExperimentEnvironmentReceipt(ReceiptEnvelope):
     """The activate experiment environment script ran a command that does nothing, which exited 0."""
 
     operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
@@ -209,7 +209,7 @@ RunReceipt = Annotated[
     | BuildExperimentEnvironmentReceipt
     | GenerateSbomReceipt
     | CrossCheckSbomReceipt
-    | ActivationReceipt
+    | ActivateExperimentEnvironmentReceipt
     | RunExperimentReceipt,
     Field(discriminator="operation"),
 ]

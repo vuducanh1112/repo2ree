@@ -48,29 +48,32 @@ export interface ReeRun {
 }
 
 /** The operation a run runs, by the specification's catalogue name, as recorded on every run summary. */
-export type ReeRunOperation =
-  | "initialize_ree"
-  | "acquire_source"
-  | "remove_source"
-  | "load_ree_bundle"
-  | "patch_ree_definition"
-  | "write_script"
-  | "suggest_scripts"
-  | "lint_scripts"
-  | "evaluate_reproducibility"
-  | "observe_hardware"
-  | "check_working_environment"
-  | "materialize_workspace"
-  | "build_experiment_environment"
-  | "generate_sbom"
-  | "cross_check_sbom"
-  | "activate_experiment_environment"
-  | "run_experiment"
-  | "seal_ree"
-  | "review_acquire_source"
-  | "review_build_experiment_environment"
-  | "review_activate_experiment_environment"
-  | "review_run_experiment";
+export const REE_RUN_OPERATIONS = [
+  "initialize_ree",
+  "acquire_source",
+  "remove_source",
+  "load_ree_bundle",
+  "patch_ree_definition",
+  "write_script",
+  "suggest_scripts",
+  "lint_scripts",
+  "evaluate_reproducibility",
+  "observe_hardware",
+  "check_working_environment",
+  "materialize_workspace",
+  "build_experiment_environment",
+  "generate_sbom",
+  "cross_check_sbom",
+  "activate_experiment_environment",
+  "run_experiment",
+  "seal_ree",
+  "review_acquire_source",
+  "review_build_experiment_environment",
+  "review_activate_experiment_environment",
+  "review_run_experiment",
+] as const;
+
+export type ReeRunOperation = (typeof REE_RUN_OPERATIONS)[number];
 
 /** The operations whose successful run files a receipt under its own run id. */
 const RECEIPT_OPERATIONS: ReadonlySet<ReeRunOperation> = new Set([

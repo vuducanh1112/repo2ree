@@ -7,8 +7,8 @@ type StepRee = Pick<ReeSpec, "experimentEnvironmentPath">;
 type StepRequestParamValue = string | boolean | number | null | undefined;
 
 interface ReeStepRunRequestByKey {
-  evaluate: {
-    scriptKey: "evaluate";
+  evaluate_reproducibility: {
+    scriptKey: "evaluate_reproducibility";
     params: {
       strict: boolean;
       idempotencyKey?: string;
@@ -20,20 +20,20 @@ interface ReeStepRunRequestByKey {
       idempotencyKey?: string;
     };
   };
-  hbom: {
-    scriptKey: "hbom";
+  observe_hardware: {
+    scriptKey: "observe_hardware";
     params: {
       idempotencyKey?: string;
     };
   };
-  sbom: {
-    scriptKey: "sbom";
+  generate_sbom: {
+    scriptKey: "generate_sbom";
     params: {
       idempotencyKey?: string;
     };
   };
-  activation: {
-    scriptKey: "activation";
+  activate_experiment_environment: {
+    scriptKey: "activate_experiment_environment";
     params: {
       idempotencyKey?: string;
     };
@@ -43,10 +43,10 @@ interface ReeStepRunRequestByKey {
 type ReeStepRunRequest<K extends ReeStepKey = ReeStepKey> = ReeStepRunRequestByKey[K];
 
 export function buildEvaluateStepRunRequest(
-  params: ReeStepRunParamsByKey["evaluate"],
-): ReeStepRunRequestByKey["evaluate"] {
+  params: ReeStepRunParamsByKey["evaluate_reproducibility"],
+): ReeStepRunRequestByKey["evaluate_reproducibility"] {
   return {
-    scriptKey: "evaluate",
+    scriptKey: "evaluate_reproducibility",
     params: {
       strict: Boolean(params.strict),
     },
@@ -65,32 +65,32 @@ export function buildBuildStepRunRequest(
 }
 
 function buildHbomStepRunRequest(
-  _params: ReeStepRunParamsByKey["hbom"],
-): ReeStepRunRequestByKey["hbom"] {
+  _params: ReeStepRunParamsByKey["observe_hardware"],
+): ReeStepRunRequestByKey["observe_hardware"] {
   return {
-    scriptKey: "hbom",
+    scriptKey: "observe_hardware",
     params: {},
   };
 }
 
 export function buildSbomStepRunRequest(
-  _params: ReeStepRunParamsByKey["sbom"],
+  _params: ReeStepRunParamsByKey["generate_sbom"],
   _ree: StepRee,
-): ReeStepRunRequestByKey["sbom"] {
+): ReeStepRunRequestByKey["generate_sbom"] {
   // The scan targets the runtime the build recipe declares; there is nothing
   // to send that the REE does not already hold.
   return {
-    scriptKey: "sbom",
+    scriptKey: "generate_sbom",
     params: {},
   };
 }
 
 export function buildActivationStepRunRequest(
-  _params: ReeStepRunParamsByKey["activation"],
+  _params: ReeStepRunParamsByKey["activate_experiment_environment"],
   _ree: StepRee,
-): ReeStepRunRequestByKey["activation"] {
+): ReeStepRunRequestByKey["activate_experiment_environment"] {
   return {
-    scriptKey: "activation",
+    scriptKey: "activate_experiment_environment",
     params: {},
   };
 }
@@ -101,27 +101,27 @@ export function buildStepRunRequest<K extends ReeStepKey>(
   ree: StepRee,
 ): ReeStepRunRequest<K> {
   switch (key) {
-    case "evaluate":
+    case "evaluate_reproducibility":
       return buildEvaluateStepRunRequest(
-        params as ReeStepRunParamsByKey["evaluate"],
+        params as ReeStepRunParamsByKey["evaluate_reproducibility"],
       ) as ReeStepRunRequest<K>;
     case "build_experiment_environment":
       return buildBuildStepRunRequest(
         params as ReeStepRunParamsByKey["build_experiment_environment"],
         ree,
       ) as ReeStepRunRequest<K>;
-    case "hbom":
+    case "observe_hardware":
       return buildHbomStepRunRequest(
-        params as ReeStepRunParamsByKey["hbom"],
+        params as ReeStepRunParamsByKey["observe_hardware"],
       ) as ReeStepRunRequest<K>;
-    case "sbom":
+    case "generate_sbom":
       return buildSbomStepRunRequest(
-        params as ReeStepRunParamsByKey["sbom"],
+        params as ReeStepRunParamsByKey["generate_sbom"],
         ree,
       ) as ReeStepRunRequest<K>;
-    case "activation":
+    case "activate_experiment_environment":
       return buildActivationStepRunRequest(
-        params as ReeStepRunParamsByKey["activation"],
+        params as ReeStepRunParamsByKey["activate_experiment_environment"],
         ree,
       ) as ReeStepRunRequest<K>;
   }
@@ -141,11 +141,11 @@ export function buildStepRunParams(
 }
 
 const REE_STEP_KEYS: readonly ReeStepKey[] = [
-  "evaluate",
+  "evaluate_reproducibility",
   "build_experiment_environment",
-  "hbom",
-  "sbom",
-  "activation",
+  "observe_hardware",
+  "generate_sbom",
+  "activate_experiment_environment",
 ];
 
 function isReeStepKey(key: string): key is ReeStepKey {

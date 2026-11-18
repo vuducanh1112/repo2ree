@@ -19,10 +19,10 @@ from repo2ree_ree.review import (
     ExperimentComparison,
     ExperimentEnvironmentComparison,
     ReviewAcquireSourceReceipt,
-    ReviewActivationReceipt,
+    ReviewActivateExperimentEnvironmentReceipt,
     ReviewBuildExperimentEnvironmentReceipt,
-    ReviewExperimentReceipt,
     ReviewRecord,
+    ReviewRunExperimentReceipt,
     ReviewSet,
     ReviewStepKey,
     SourceComparison,
@@ -45,7 +45,7 @@ def write_review_source_evidence(
     receipt: ReviewAcquireSourceReceipt,
     comparison: SourceComparison,
 ) -> None:
-    _write_review_evidence(layout, receipt, "source", comparison.model_dump(mode="json"))
+    _write_review_evidence(layout, receipt, "acquire_source", comparison.model_dump(mode="json"))
 
 
 def write_review_build_evidence(
@@ -56,24 +56,24 @@ def write_review_build_evidence(
     _write_review_evidence(layout, receipt, "build_experiment_environment", comparison.model_dump(mode="json"))
 
 
-def write_review_activation_evidence(
+def write_review_activate_experiment_environment_evidence(
     layout: ReviewLayout,
-    receipt: ReviewActivationReceipt,
+    receipt: ReviewActivateExperimentEnvironmentReceipt,
     outcome: ActivationOutcome,
 ) -> None:
     """Persist the activation beside the other steps' evidence.
 
-    Filed under ``comparisons/activation.json`` despite not being a comparison:
+    Filed under ``comparisons/activate_experiment_environment.json`` despite not being a comparison:
     the directory is the attempt's per-step verdict store, and giving activation
     its own would split one lookup into two for a distinction the reader already
     gets from the document's ``policy``.
     """
-    _write_review_evidence(layout, receipt, "activation", outcome.model_dump(mode="json"))
+    _write_review_evidence(layout, receipt, "activate_experiment_environment", outcome.model_dump(mode="json"))
 
 
 def write_review_experiment_evidence(
     layout: ReviewLayout,
-    receipt: ReviewExperimentReceipt,
+    receipt: ReviewRunExperimentReceipt,
     comparison: ExperimentComparison,
 ) -> None:
     """Persist one experiment's evidence under its own slug.
@@ -91,7 +91,9 @@ def write_review_experiment_evidence(
 
 def _write_review_evidence(
     layout: ReviewLayout,
-    receipt: ReviewAcquireSourceReceipt | ReviewBuildExperimentEnvironmentReceipt | ReviewActivationReceipt,
+    receipt: ReviewAcquireSourceReceipt
+    | ReviewBuildExperimentEnvironmentReceipt
+    | ReviewActivateExperimentEnvironmentReceipt,
     step: ReviewStepKey,
     comparison: dict[str, object],
 ) -> None:

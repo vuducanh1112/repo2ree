@@ -33,7 +33,7 @@ from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.receipt import RunExperimentReceipt
-from repo2ree_ree.review import EvidenceBasis, ExperimentComparison, ReviewExperimentReceipt, ReviewRecord
+from repo2ree_ree.review import EvidenceBasis, ExperimentComparison, ReviewRecord, ReviewRunExperimentReceipt
 
 
 def _admit(record: ReviewRecord, _certified: CertifiedExperimentEnvironment) -> str | None:
@@ -77,7 +77,7 @@ def _step(experiment_name: str) -> ReviewRunnableStep:
         step="experiments",
         noun="review experiment",
         subject="the experiment",
-        requires="activation",
+        requires="activate_experiment_environment",
         requires_message="Probe the experiment environment before reproducing results in it",
         experiment_environment_purpose="to run experiments in",
         experiment_environment_retry_purpose="to reproduce results",
@@ -134,7 +134,7 @@ def handle_review_run_experiment(
         return opened.step.stop("failed", "the experiment run script disappeared after it ran")
     if activate_script_digest is None:
         return opened.step.stop("failed", "the activate experiment environment script disappeared after it ran")
-    receipt = ReviewExperimentReceipt(
+    receipt = ReviewRunExperimentReceipt(
         **review_receipt_envelope(
             run_id,
             timing,

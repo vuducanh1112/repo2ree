@@ -57,19 +57,19 @@ describe("floor projection", () => {
 describe("layout offsets", () => {
   it("starts at the default, which is no offsets at all", () => {
     expect(isDefaultLayout(DEFAULT_LAYOUT)).toBe(true);
-    expect(offsetOf(DEFAULT_LAYOUT, PAGE.SEAL)).toEqual({ dx: 0, dy: 0 });
+    expect(offsetOf(DEFAULT_LAYOUT, PAGE.SEAL_REE)).toEqual({ dx: 0, dy: 0 });
   });
 
   it("places a moved node away from where the ring put it", () => {
-    const seal = nodeFor(PAGE.SEAL);
-    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL, { dx: 120, dy: -40 });
+    const seal = nodeFor(PAGE.SEAL_REE);
+    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL_REE, { dx: 120, dy: -40 });
     expect(placedNode(seal, layout)).toMatchObject({ x: seal.x + 120, y: seal.y - 40 });
   });
 
   it("leaves untouched nodes identical, not merely equal", () => {
     // Placement runs on every render; an untouched node must not churn its
     // identity and invalidate everything memoised downstream of it.
-    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL, { dx: 10, dy: 10 });
+    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL_REE, { dx: 10, dy: 10 });
     const build = nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(placedNode(build, layout)).toBe(build);
   });
@@ -87,9 +87,9 @@ describe("layout offsets", () => {
   });
 
   it("places the whole bench in one pass", () => {
-    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SOURCE, { dx: 5, dy: 5 });
+    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.ACQUIRE_SOURCE, { dx: 5, dy: 5 });
     expect(placedNodes(layout)).toHaveLength(CANVAS_NODES.length);
-    expect(placedNodes(layout)[0].x).toBe(nodeFor(PAGE.SOURCE).x + 5);
+    expect(placedNodes(layout)[0].x).toBe(nodeFor(PAGE.ACQUIRE_SOURCE).x + 5);
   });
 });
 
@@ -98,7 +98,11 @@ describe("dragging", () => {
     // The floor is tilted and in perspective, so equal screen deltas are
     // unequal bench distances. What has to hold is that the panel ends up under
     // the pointer — which is a statement about the projection, not the floor.
-    for (const node of [nodeFor(PAGE.SEAL), nodeFor(PAGE.EVALUATE), nodeFor(PAGE.SOURCE)]) {
+    for (const node of [
+      nodeFor(PAGE.SEAL_REE),
+      nodeFor(PAGE.EVALUATE_REPRODUCIBILITY),
+      nodeFor(PAGE.ACQUIRE_SOURCE),
+    ]) {
       const delta = { dx: 90, dy: -60 };
       const offset = nodeOffsetAfterDrag(node, { dx: 0, dy: 0 }, delta);
       const before = screenPointFromFloor(node);
@@ -118,7 +122,11 @@ describe("dragging", () => {
   });
 
   it("is a no-op for a pointer that has not moved", () => {
-    const offset = nodeOffsetAfterDrag(nodeFor(PAGE.SBOM), { dx: 0, dy: 0 }, { dx: 0, dy: 0 });
+    const offset = nodeOffsetAfterDrag(
+      nodeFor(PAGE.GENERATE_SBOM),
+      { dx: 0, dy: 0 },
+      { dx: 0, dy: 0 },
+    );
     expect(offset.dx).toBeCloseTo(0, 6);
     expect(offset.dy).toBeCloseTo(0, 6);
   });
@@ -126,7 +134,7 @@ describe("dragging", () => {
 
 describe("stored layouts", () => {
   it("round-trips an arrangement", () => {
-    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL, { dx: 12, dy: -8 });
+    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL_REE, { dx: 12, dy: -8 });
     expect(parseStoredLayout(serializeLayout(layout))).toEqual(layout);
   });
 
@@ -138,7 +146,7 @@ describe("stored layouts", () => {
   it("discards an arrangement written against a different default ring", () => {
     const stale = JSON.stringify({
       version: LAYOUT_VERSION + 1,
-      offsets: { [PAGE.SEAL]: { dx: 30, dy: 30 } },
+      offsets: { [PAGE.SEAL_REE]: { dx: 30, dy: 30 } },
     });
     expect(parseStoredLayout(stale)).toEqual(DEFAULT_LAYOUT);
   });
@@ -155,8 +163,8 @@ describe("stored layouts", () => {
       offsets: {
         [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: { dx: 20, dy: 5 },
         gone: { dx: 10, dy: 10 },
-        [PAGE.SBOM]: { dx: "12", dy: 4 },
-        [PAGE.SEAL]: { dx: Number.NaN, dy: 0 },
+        [PAGE.GENERATE_SBOM]: { dx: "12", dy: 4 },
+        [PAGE.SEAL_REE]: { dx: Number.NaN, dy: 0 },
       },
     });
     expect(parseStoredLayout(raw)).toEqual({
@@ -169,7 +177,7 @@ describe("bounds under an arrangement", () => {
   it("follows a panel the user has dragged away from the ring", () => {
     // `fitView` has to frame what is actually on the bench, not where the ring
     // would have put it — otherwise moving a panel outward hides it.
-    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SOURCE, { dx: -600, dy: 0 });
+    const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.ACQUIRE_SOURCE, { dx: -600, dy: 0 });
     const moved = canvasWorldBounds(placedNodes(layout));
     expect(moved.left).toBeLessThan(canvasWorldBounds().left);
   });

@@ -105,7 +105,7 @@ const visualRee = {
           activate_experiment_environment_script_digest: "sha256:activation-script",
           activate_experiment_environment_script_size: 312,
         },
-        hardware: {
+        hbom: {
           cpus: {
             "Intel Xeon Gold 6338": {
               vendor: "Intel",
@@ -148,7 +148,7 @@ const visualRee = {
         ],
       },
       receipts: {
-        source: {
+        acquire_source: {
           schema_version: 1,
           run_id: "run-source",
           started_at: TS,
@@ -163,7 +163,7 @@ const visualRee = {
           observed_swhid: "swh:1:dir:77f2d4ac15b0f86d25af6f5e70c1271e6c7f95b1",
           snapshot_digest: "sha256:source-snapshot",
         },
-        evaluation: {
+        evaluate_reproducibility: {
           schema_version: 1,
           run_id: "run-evaluate",
           started_at: TS,
@@ -183,7 +183,7 @@ const visualRee = {
           report_digest: "sha256:evaluation",
           analyzer_version: "1.4.0",
         },
-        experiment_environment: {
+        build_experiment_environment: {
           schema_version: 1,
           run_id: "run-build",
           started_at: "2026-04-12T09:31:10Z",
@@ -198,7 +198,7 @@ const visualRee = {
           artifact_path: "artifacts/climate-runtime.tar",
           produced_artifact_digest: "sha256:experiment-environment",
         },
-        activation: {
+        activate_experiment_environment: {
           schema_version: 1,
           run_id: "run-activation",
           started_at: "2026-04-12T09:35:00Z",
@@ -238,13 +238,13 @@ const visualRee = {
   status: "draft",
   steps: visualSteps,
   audit: {
-    source: auditStep,
-    evaluation: auditStep,
-    hardware: auditStep,
-    experiment_environment: auditStep,
-    sbom: auditStep,
-    sbom_cross_check: auditStep,
-    activation: auditStep,
+    acquire_source: auditStep,
+    evaluate_reproducibility: auditStep,
+    observe_hardware: auditStep,
+    build_experiment_environment: auditStep,
+    generate_sbom: auditStep,
+    cross_check_sbom: auditStep,
+    activate_experiment_environment: auditStep,
     experiments: [{ name: "regional-forecast", ...auditStep }],
   },
   location_id: "lab-oslo",
@@ -539,7 +539,7 @@ function responseFor(request: Request): unknown {
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/script-templates`) return scriptTemplates;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/state`) return reeState;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/runs`) return runs;
-  if (path === `/api/v1/rees/${VISUAL_REE_ID}/evaluate/report`) return evaluateReport;
+  if (path === `/api/v1/rees/${VISUAL_REE_ID}/reproducibility-report`) return evaluateReport;
   if (path === `/api/v1/rees/${VISUAL_REE_ID}/reviews`) return reviews;
   throw new Error(`Unexpected visual API request: ${request.method()} ${path}`);
 }

@@ -17,9 +17,9 @@ describe("reviewDag", () => {
   it("counts terminal evidentiary steps, including differences and failures", () => {
     expect(
       settledReviewStepCount({
-        source: "succeeded",
+        acquire_source: "succeeded",
         [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "running",
-        activation: "failed",
+        activate_experiment_environment: "failed",
         experiments: "different",
       }),
     ).toBe(3);

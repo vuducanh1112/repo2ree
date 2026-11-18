@@ -1,6 +1,6 @@
 """The source step: bring an upstream snapshot into the REE, or take it back out.
 
-Two ways in — by reference (``source:acquire``) or by upload (the
+Two ways in — by reference (``acquire-source``) or by upload (the
 init/PUT/complete sequence) — and both settle into the same
 ``AcquireSourceCommand`` in the workbench. The staging mechanics themselves live
 in :mod:`repo2ree_api.workbench.uploads` (receiving bytes) and
@@ -15,9 +15,9 @@ from fastapi import APIRouter, Request
 from repo2ree_api.authoring.upload_runs import StagedUploadLog, start_staged_upload_run
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
+    AcquireSourcePayload,
     ReeDocument,
     RunSummary,
-    SourceAcquirePayload,
     SourceUploadCompletePayload,
     UploadInitPayload,
     UploadInitResponse,
@@ -35,14 +35,14 @@ source_router = APIRouter()
 
 
 @source_router.post(
-    "/api/v1/rees/{ree_id}/source:acquire",
+    "/api/v1/rees/{ree_id}/acquire-source",
     tags=["rees", "sources"],
     operation_id="acquireSource",
     openapi_extra=runs("acquire_source"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSummary:
+def acquire_source_route(ree_id: str, payload: AcquireSourcePayload) -> RunSummary:
     request_payload = {
         "mode": "download",
         "origin_url": payload.origin_url,
@@ -62,7 +62,6 @@ def acquire_source_route(ree_id: str, payload: SourceAcquirePayload) -> RunSumma
             )
         ),
         request_payload=request_payload,
-        run_id_prefix="source",
         canceled_message="Source acquisition canceled",
         fallback_outputs=request_payload,
         idempotency_key=payload.idempotency_key,
@@ -114,7 +113,6 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
         archive_name=payload.archive_name,
         purpose="source",
         action="upload_source",
-        run_id_prefix="source",
         command=AcquireSourceCommand(
             args=AcquireSourceArgs(
                 mode="upload",
@@ -138,8 +136,8 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
     return RunSummary.model_validate(run_summary(run_state))
 
 
-@source_router.delete(
-    "/api/v1/rees/{ree_id}/source",
+@source_router.post(
+    "/api/v1/rees/{ree_id}/remove-source",
     tags=["rees", "sources"],
     operation_id="removeSource",
     openapi_extra=runs("remove_source"),

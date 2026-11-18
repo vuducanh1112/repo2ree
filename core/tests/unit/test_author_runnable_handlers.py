@@ -30,7 +30,7 @@ from repo2ree_ree.primitives import (
 )
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
-    ActivationReceipt,
+    ActivateExperimentEnvironmentReceipt,
     BuildExperimentEnvironmentReceipt,
     WorkspaceDrift,
 )
@@ -81,8 +81,10 @@ def _build_receipt() -> BuildExperimentEnvironmentReceipt:
     )
 
 
-def _activation_receipt(*, experiment_environment: bool = True, script: bytes = _ACTIVATE_SCRIPT) -> ActivationReceipt:
-    return ActivationReceipt(
+def _activation_receipt(
+    *, experiment_environment: bool = True, script: bytes = _ACTIVATE_SCRIPT
+) -> ActivateExperimentEnvironmentReceipt:
+    return ActivateExperimentEnvironmentReceipt(
         run_id=RunId("activation-0"),
         started_at=_NOW,
         finished_at=_NOW,
@@ -194,7 +196,7 @@ def test_activation_runs_alone_and_commits_exact_input_receipt(
         layout=_layout,
     )
 
-    receipt = store.read_ree().subject.receipts.activation
+    receipt = store.read_ree().subject.receipts.activate_experiment_environment
     assert result.status == "succeeded"
     assert [(spec.activate_script, spec.run_script, spec.verify_script) for spec in ran] == [  # type: ignore[attr-defined]
         (RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, "", "")
@@ -222,7 +224,7 @@ def test_native_activation_has_no_experiment_environment_binding(
         layout=_layout,
     )
 
-    receipt = store.read_ree().subject.receipts.activation
+    receipt = store.read_ree().subject.receipts.activate_experiment_environment
     assert result.status == "succeeded"
     assert receipt is not None
     assert receipt.experiment_environment_path is None
@@ -323,7 +325,7 @@ def test_unsuccessful_attempt_commits_no_receipt(
     )
 
     assert result.status == status
-    assert store.read_ree().subject.receipts.activation is None
+    assert store.read_ree().subject.receipts.activate_experiment_environment is None
 
 
 @pytest.mark.parametrize(
@@ -362,7 +364,7 @@ def test_activation_preconditions_reject_invalid_evidence_before_execution(
     assert result.failure.category == "precondition"
     assert message in result.failure.message
     assert executed is False
-    assert store.read_ree().subject.receipts.activation is None
+    assert store.read_ree().subject.receipts.activate_experiment_environment is None
 
 
 def test_changed_script_is_rejected_before_execution(
@@ -445,4 +447,4 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure is not None
     assert result.failure.category == "conflict"
     assert result.failure.retryable is True
-    assert store.read_ree().subject.receipts.activation is None
+    assert store.read_ree().subject.receipts.activate_experiment_environment is None

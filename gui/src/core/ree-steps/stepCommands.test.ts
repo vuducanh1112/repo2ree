@@ -23,10 +23,10 @@ describe("serviceRunCommands", () => {
     });
     const commands = [
       ...planners.build_experiment_environment({} as never),
-      ...planners.hbom({} as never),
-      ...planners.sbom({} as never),
-      ...planners.activation({} as never),
-      ...planners.evaluate({ strict: true }),
+      ...planners.observe_hardware({} as never),
+      ...planners.generate_sbom({} as never),
+      ...planners.activate_experiment_environment({} as never),
+      ...planners.evaluate_reproducibility({ strict: true }),
     ];
     expect(commands.filter((command) => command.type === "toast")).toHaveLength(5);
     expect(commands.length).toBeGreaterThan(5);

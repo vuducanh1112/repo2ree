@@ -5,7 +5,7 @@ by a recipe, by ``write``, or by hand. ``check`` holds every contract to that, a
 nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. It holds the
 contracts to the specification's catalogue of operations too: each operation a contract names is catalogued, and
 each catalogued one is run by the `ree` command spelled as its name in kebab case, and each one a route starts has a
-route whose operationId is its name in camel case.
+route whose operationId is its name in camel case: a POST to the path ``route_path`` spells for it.
 
     python -m scripts.contracts write [NAME...]   # every contract, in the order below, or the named ones
     python -m scripts.contracts check             # exit 1 on a missing, stale or unaccounted file
@@ -150,7 +150,7 @@ REGISTRY: tuple[Contract, ...] = (
     ),
 )
 
-ProblemKind = Literal["missing", "stale", "unaccounted", "uncatalogued", "unrun", "unrouted"]
+ProblemKind = Literal["missing", "stale", "unaccounted", "uncatalogued", "unrun", "unrouted", "misrouted"]
 
 
 @dataclass(frozen=True)
@@ -232,19 +232,44 @@ def operation_problems(*, registry: Sequence[Contract] = REGISTRY, root: Path = 
         )
     if Name.OPENAPI in documents:
         openapi_path, openapi = documents[Name.OPENAPI]
-        routes = [route for methods in openapi["paths"].values() for route in methods.values()]
-        declared = {operation for route in routes for operation in route.get("x-operations", [])}
-        routed = {
-            operation
-            for route in routes
+        routes = [
+            (path, method, route) for path, methods in openapi["paths"].items() for method, route in methods.items()
+        ]
+        declared = {operation for _, _, route in routes for operation in route.get("x-operations", [])}
+        named = {
+            operation: (path, method)
+            for path, method, route in routes
             for operation in route.get("x-operations", [])
             if route["operationId"] == camel_case(operation)
         }
         problems.extend(
             Problem(openapi_path, "unrouted", f"{name}: no route {camel_case(name)} declares it")
-            for name in sorted(declared - routed)
+            for name in sorted(declared - set(named))
+        )
+        problems.extend(
+            Problem(openapi_path, "misrouted", f"{name}: {method.upper()} {path}, not POST {route_path(name, path)}")
+            for name, (path, method) in sorted(named.items())
+            if (path, method) != (route_path(name, path), "post")
         )
     return problems
+
+
+def route_path(operation: str, path: str) -> str:
+    """The path of the route named after ``operation``: its words under the REE, a review's under its review.
+
+    ``review_run_experiment`` is ``/api/v1/rees/{ree_id}/reviews/{review_id}/run-experiment``; the parameters
+    ``path`` names after those words, such as an experiment's name, follow them.
+    """
+    *review, words = words_of(operation)
+    base = "/api/v1/rees/{ree_id}"
+    if review:
+        base += "/reviews" if operation == "review_acquire_source" else "/reviews/{review_id}"
+    prefix = f"{base}/{words}"
+    rest = path.removeprefix(prefix) if path.startswith(prefix) else ""
+    parameters = [part for part in rest.split("/") if part]
+    if all(part.startswith("{") and part.endswith("}") for part in parameters):
+        return prefix + rest
+    return prefix
 
 
 def camel_case(operation: str) -> str:

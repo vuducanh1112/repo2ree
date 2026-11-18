@@ -1,6 +1,6 @@
 """The seal step, and the bundle that carries a sealed REE somewhere else.
 
-Sealing freezes the manifest; the archive is how it travels, and ``ree:load`` is
+Sealing freezes the manifest; the archive is how it travels, and ``load-ree-bundle`` is
 the other end of that journey — the upload sequence that makes a fresh REE *be*
 a bundle someone else downloaded. Load is grouped with seal rather than with
 source acquisition because it restores a whole REE (intent, source, evidence),
@@ -18,9 +18,9 @@ from fastapi.responses import StreamingResponse
 from repo2ree_api.authoring.upload_runs import StagedUploadLog, start_staged_upload_run
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
-    ReeBundleLoadPayload,
-    ReeSealPayload,
+    LoadReeBundlePayload,
     RunSummary,
+    SealReePayload,
     UploadInitPayload,
     UploadInitResponse,
     UploadStoredResponse,
@@ -51,7 +51,7 @@ seal_router = APIRouter(tags=["rees"])
     responses=ERROR_RESPONSES,
 )
 def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
-    """Open a staging slot for a downloaded REE bundle (see ``ree:load``)."""
+    """Open a staging slot for a downloaded REE bundle (see ``load-ree-bundle``)."""
     return UploadInitResponse.model_validate(
         mint_upload_token(ree_id, payload, upload_route="ree:upload", purpose="bundle", action="load_ree_bundle")
     )
@@ -70,13 +70,13 @@ async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Requ
 
 
 @seal_router.post(
-    "/api/v1/rees/{ree_id}/ree:load",
+    "/api/v1/rees/{ree_id}/load-ree-bundle",
     operation_id="loadReeBundle",
     openapi_extra=runs("load_ree_bundle"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSummary:
+def load_ree_bundle_route(ree_id: str, payload: LoadReeBundlePayload) -> RunSummary:
     """Make this REE be the uploaded bundle: intent, source, evidence, and all.
 
     The counterpart of ``ree-archive``. Intended right after ``createRee`` —
@@ -89,7 +89,6 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
         archive_name=payload.archive_name,
         purpose="bundle",
         action="load_ree_bundle",
-        run_id_prefix="ree-load",
         command=LoadReeBundleCommand(
             args=LoadReeBundleArgs(
                 upload_token=payload.upload_token,
@@ -109,13 +108,13 @@ def load_ree_bundle_route(ree_id: str, payload: ReeBundleLoadPayload) -> RunSumm
 
 
 @seal_router.post(
-    "/api/v1/rees/{ree_id}/ree:seal",
+    "/api/v1/rees/{ree_id}/seal-ree",
     operation_id="sealRee",
     openapi_extra=runs("seal_ree"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
+def seal_ree_route(ree_id: str, payload: SealReePayload) -> RunSummary:
     """Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal."""
 
     def record_sealed_ree(handle: ReeRoute, result: ActionResult) -> ActionResult:
@@ -133,7 +132,6 @@ def seal_ree_route(ree_id: str, payload: ReeSealPayload) -> RunSummary:
                 results_included=payload.include_results,
             )
         ),
-        run_id_prefix="seal",
         request_payload=payload.model_dump(),
         canceled_message="REE sealing canceled",
         after_success=record_sealed_ree,

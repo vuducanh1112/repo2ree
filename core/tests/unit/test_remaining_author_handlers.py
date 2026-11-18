@@ -241,9 +241,9 @@ def test_hardware_observation_commits_receipt_without_rewriting_declaration(
 
     persisted = store.read_ree()
     assert result.status == "succeeded"
-    assert persisted.subject.definition.hardware is None
-    assert persisted.subject.receipts.hardware_observation is not None
-    assert persisted.subject.receipts.hardware_observation.observation == observed
+    assert persisted.subject.definition.hbom is None
+    assert persisted.subject.receipts.observe_hardware is not None
+    assert persisted.subject.receipts.observe_hardware.observation == observed
 
 
 def test_cross_check_commits_inline_receipt_and_preserves_evaluation_report(
@@ -263,7 +263,7 @@ def test_cross_check_commits_inline_receipt_and_preserves_evaluation_report(
         run_id="cross-check-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
     )
 
-    receipt = store.read_ree().subject.receipts.sbom_cross_check
+    receipt = store.read_ree().subject.receipts.cross_check_sbom
     assert result.status == "succeeded"
     assert receipt is not None
     assert receipt.run_id == "cross-check-1"

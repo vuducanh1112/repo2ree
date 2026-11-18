@@ -1,5 +1,6 @@
 import { expect, test } from "../helpers/fixtures";
 import {
+  activateExperimentEnvironment,
   buildExperimentEnvironment,
   commandScript,
   dockerActivateScript,
@@ -15,7 +16,6 @@ import {
   saveActivateScript,
   sealRee,
   startReeCreation,
-  testActivation,
   uploadSource,
 } from "../helpers/flow";
 
@@ -70,7 +70,7 @@ test.describe("Java with Maven", () => {
     });
 
     await test.step("test activation: it enters the container and hands over", async () => {
-      await testActivation(page);
+      await activateExperimentEnvironment(page);
     });
 
     await test.step("run the experiment", async () => {

@@ -14,9 +14,14 @@ def ree() -> Aggregate:
 
 def test_re_running_a_receipt_stales_everything_made_from_it() -> None:
     downstream = stales(ree())
-    assert downstream["experiment_environment"] == ("activation", "experiment", "sbom", "sbom_cross_check")
-    assert downstream["activation"] == ("experiment",)
-    assert downstream["sbom"] == ("sbom_cross_check",)
+    assert downstream["build_experiment_environment"] == (
+        "activate_experiment_environment",
+        "cross_check_sbom",
+        "experiment",
+        "generate_sbom",
+    )
+    assert downstream["activate_experiment_environment"] == ("experiment",)
+    assert downstream["generate_sbom"] == ("cross_check_sbom",)
     assert downstream["experiment"] == ()
 
 
@@ -30,6 +35,6 @@ def test_the_graph_draws_every_dependency_the_specification_states() -> None:
         for source in (*receipt.made_from, *(f"field:{path}" for path in (*receipt.about, *receipt.rests_on)))
     }
     assert drawn == stated
-    assert ("field:definition.check_working_environment", "working_environment_check") in drawn
-    assert ("field:definition.activate_experiment_environment", "activation") in drawn
-    assert ("activation", "experiment") in drawn
+    assert ("field:definition.check_working_environment", "check_working_environment") in drawn
+    assert ("field:definition.activate_experiment_environment", "activate_experiment_environment") in drawn
+    assert ("activate_experiment_environment", "experiment") in drawn

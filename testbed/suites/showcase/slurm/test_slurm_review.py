@@ -12,7 +12,7 @@ F = SLURM
 def test_a_reviewer_on_the_cluster_reproduces_the_experiment_as_a_job(client: Client, new_ree: NewRee) -> None:
     reproduction = client.reproduced(new_ree, F)
 
-    [receipt] = reproduction.review.experiment_receipts
+    [receipt] = reproduction.review.receipts.experiments
     assert receipt.launched is not None
     assert receipt.launched.slurm_job_id is not None
     assert [(item.experiment_name, item.verdict) for item in reproduction.review.experiment_comparisons] == [

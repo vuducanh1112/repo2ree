@@ -33,13 +33,13 @@ function harness() {
     loadReeBundle: vi.fn().mockResolvedValue(wireRun()),
   };
   const runsApi = {
-    createBuildExperimentEnvironmentRun: vi.fn().mockResolvedValue(wireRun()),
-    createGenerateHbomRun: vi.fn().mockResolvedValue(wireRun()),
-    createGenerateSbomRun: vi.fn().mockResolvedValue(wireRun()),
-    createCrossCheckSbomRun: vi.fn().mockResolvedValue(wireRun()),
-    createActivationTestRun: vi.fn().mockResolvedValue(wireRun()),
-    createEvaluateRun: vi.fn().mockResolvedValue(wireRun()),
-    createExperimentRun: vi.fn().mockResolvedValue(wireRun()),
+    buildExperimentEnvironment: vi.fn().mockResolvedValue(wireRun()),
+    observeHardware: vi.fn().mockResolvedValue(wireRun()),
+    generateSbom: vi.fn().mockResolvedValue(wireRun()),
+    crossCheckSbom: vi.fn().mockResolvedValue(wireRun()),
+    activateExperimentEnvironment: vi.fn().mockResolvedValue(wireRun()),
+    evaluateReproducibility: vi.fn().mockResolvedValue(wireRun()),
+    runExperiment: vi.fn().mockResolvedValue(wireRun()),
     listRuns: vi.fn().mockResolvedValue({ runs: [wireRun()], next_cursor: null }),
     getRun: vi.fn().mockResolvedValue(wireRun()),
     listRunLogs: vi.fn().mockResolvedValue({
@@ -95,33 +95,33 @@ describe("createReeRunsClient", () => {
   it("maps every named execution operation", async () => {
     const { client, runsApi } = harness();
     await client.startReeRun("ree-1", "build_experiment_environment", { idempotencyKey: "b-1" });
-    await client.startReeRun("ree-1", "hbom", { idempotencyKey: "h-1" });
-    await client.startReeRun("ree-1", "sbom");
-    await client.startReeRun("ree-1", "crosscheck");
-    await client.startReeRun("ree-1", "activation");
-    await client.startReeRun("ree-1", "evaluate", { strict: true });
+    await client.startReeRun("ree-1", "observe_hardware", { idempotencyKey: "h-1" });
+    await client.startReeRun("ree-1", "generate_sbom");
+    await client.startReeRun("ree-1", "cross_check_sbom");
+    await client.startReeRun("ree-1", "activate_experiment_environment");
+    await client.startReeRun("ree-1", "evaluate_reproducibility", { strict: true });
 
-    expect(runsApi.createBuildExperimentEnvironmentRun).toHaveBeenCalledWith("ree-1", {
+    expect(runsApi.buildExperimentEnvironment).toHaveBeenCalledWith("ree-1", {
       idempotency_key: "b-1",
     });
-    expect(runsApi.createGenerateHbomRun).toHaveBeenCalledWith("ree-1", {
+    expect(runsApi.observeHardware).toHaveBeenCalledWith("ree-1", {
       idempotency_key: "h-1",
     });
-    expect(runsApi.createGenerateSbomRun).toHaveBeenCalled();
-    expect(runsApi.createCrossCheckSbomRun).toHaveBeenCalled();
-    expect(runsApi.createActivationTestRun).toHaveBeenCalled();
-    expect(runsApi.createEvaluateRun).toHaveBeenCalledWith("ree-1", { strict: true });
+    expect(runsApi.generateSbom).toHaveBeenCalled();
+    expect(runsApi.crossCheckSbom).toHaveBeenCalled();
+    expect(runsApi.activateExperimentEnvironment).toHaveBeenCalled();
+    expect(runsApi.evaluateReproducibility).toHaveBeenCalledWith("ree-1", { strict: true });
   });
 
   it("maps source download and upload operations", async () => {
     const { client, reeApi } = harness();
-    await client.startReeRun("ree-1", "source", {
+    await client.startReeRun("ree-1", "acquire_source", {
       mode: "download",
       source: "https://example.test/repo.git",
       sourceType: "git",
       revision: "main",
     });
-    await client.startReeRun("ree-1", "source", {
+    await client.startReeRun("ree-1", "acquire_source", {
       mode: "upload",
       archiveName: "source.tgz",
       archiveContentBase64: "AQID",
@@ -139,7 +139,7 @@ describe("createReeRunsClient", () => {
     await expect(client.startReeRun("ree-1", "unknown")).rejects.toThrow(
       "Unsupported execution run operation",
     );
-    await expect(client.startReeRun("ree-1", "source", { mode: "other" })).rejects.toThrow(
+    await expect(client.startReeRun("ree-1", "acquire_source", { mode: "other" })).rejects.toThrow(
       "Unsupported source acquisition mode",
     );
   });

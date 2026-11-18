@@ -23,10 +23,10 @@ type SealStepSpec = { key: string; label: string } & (
 
 const SEAL_STEPS: readonly SealStepSpec[] = [
   { key: PAGE.METADATA, label: "Metadata", page: PAGE.METADATA },
-  { key: PAGE.HBOM, label: "HBOM", page: PAGE.HBOM },
-  { key: PAGE.SOURCE, label: "Source", page: PAGE.SOURCE },
+  { key: PAGE.OBSERVE_HARDWARE, label: "HBOM", page: PAGE.OBSERVE_HARDWARE },
+  { key: PAGE.ACQUIRE_SOURCE, label: "Source", page: PAGE.ACQUIRE_SOURCE },
   {
-    key: "experiment_environment",
+    key: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
     label: "Experiment environment",
     page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
   },
@@ -34,10 +34,18 @@ const SEAL_STEPS: readonly SealStepSpec[] = [
   // from the acquired tree and asserts nothing about any archive holding it.
   // The one entry that is not a step — there is no run, so no receipt to read.
   { key: "swh", label: "Source identity", done: (ree) => !!ree.spec.swhid },
-  { key: "sbom", label: "SBOM", page: PAGE.SBOM },
-  { key: "evaluate", label: "Reproducibility Readiness", page: PAGE.EVALUATE },
+  { key: PAGE.GENERATE_SBOM, label: "SBOM", page: PAGE.GENERATE_SBOM },
+  {
+    key: PAGE.EVALUATE_REPRODUCIBILITY,
+    label: "Reproducibility Readiness",
+    page: PAGE.EVALUATE_REPRODUCIBILITY,
+  },
   { key: "experiments", label: "Experiments", page: PAGE.EXPERIMENTS },
-  { key: "activation", label: "Test Activation", page: PAGE.ACTIVATION },
+  {
+    key: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
+    label: "Test Activation",
+    page: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
+  },
   // Deposit is deliberately absent. An archive accepting the bundle is not a
   // precondition of a complete REE — the Archive page says so itself — and an
   // entry that can never be done left the seal permanently "incomplete".

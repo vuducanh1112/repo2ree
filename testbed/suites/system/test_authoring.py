@@ -8,7 +8,13 @@ from collections.abc import Callable
 
 from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT, RESULT, Api
 
-AUTHORED_STEPS = ("source", "evaluation", "hardware", "experiment_environment", "activation")
+AUTHORED_STEPS = (
+    "acquire_source",
+    "evaluate_reproducibility",
+    "observe_hardware",
+    "build_experiment_environment",
+    "activate_experiment_environment",
+)
 
 
 def test_author_seal_and_download(api: Api, new_ree: Callable[..., str]) -> None:
@@ -24,7 +30,13 @@ def test_author_seal_and_download(api: Api, new_ree: Callable[..., str]) -> None
     sealed = api.ree(ree_id)
     assert sealed["seal"]["ree_digest"].startswith("sha256:")
     receipts = sealed["subject"]["receipts"]
-    for name in ("source", "evaluation", "hardware_observation", "experiment_environment", "activation"):
+    for name in (
+        "acquire_source",
+        "evaluate_reproducibility",
+        "observe_hardware",
+        "build_experiment_environment",
+        "activate_experiment_environment",
+    ):
         assert receipts[name] is not None, name
     assert EXPERIMENT in receipts["experiments"]
 
@@ -77,7 +89,7 @@ def test_a_bundle_never_loads_into_a_sealed_ree(api: Api, new_ree: Callable[...,
         api.request("PUT", upload.json()["upload_url"], content=data)
         loading = api.request(
             "POST",
-            f"/api/v1/rees/{ree_id}/ree:load",
+            f"/api/v1/rees/{ree_id}/load-ree-bundle",
             json={"upload_token": upload.json()["upload_token"], "archive_name": "ree.zip"},
             expect=None,
         )
@@ -102,13 +114,13 @@ def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..
         "GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": f"workspace/{BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}"}
     ).text
     api.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, body + "# touched after the build\n")
-    stale = api.audit(ree_id)["experiment_environment"]
+    stale = api.audit(ree_id)["build_experiment_environment"]
     assert stale["evidence"] == "stale", stale
     assert "build experiment environment script changed" in stale["reasons"], stale
 
     sealing = api.request(
         "POST",
-        f"/api/v1/rees/{ree_id}/ree:seal",
+        f"/api/v1/rees/{ree_id}/seal-ree",
         json={"include_source": True, "include_experiment_environment": True, "include_results": True},
         expect=None,
     )
@@ -121,7 +133,7 @@ def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..
     # Rebuilding returns the experiment environment to current; whatever ran on the old experiment environment runs
     # again.
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
     assert api.activate(ree_id)["status"] == "succeeded"
     assert api.experiment(ree_id)["status"] == "succeeded"
     assert api.seal(ree_id)["status"] == "succeeded"
@@ -142,12 +154,12 @@ def test_sealed_bundle_loads_into_a_fresh_ree(api: Api, new_ree: Callable[..., s
         {"file_name": "ree.zip", "size": len(data), "content_type": "application/zip"},
     )
     api.request("PUT", upload["upload_url"], content=data)
-    loaded = api.stage(reader, "ree:load", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
+    loaded = api.stage(reader, "load-ree-bundle", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
     assert loaded["status"] == "succeeded", api.logs(reader, loaded["run_id"])
 
     restored = api.ree(reader)
     assert restored["seal"] == sealed["seal"]
     assert (
-        restored["subject"]["receipts"]["experiment_environment"]
-        == sealed["subject"]["receipts"]["experiment_environment"]
+        restored["subject"]["receipts"]["build_experiment_environment"]
+        == sealed["subject"]["receipts"]["build_experiment_environment"]
     )

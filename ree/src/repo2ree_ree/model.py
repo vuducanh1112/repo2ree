@@ -18,8 +18,8 @@ from repo2ree_ree.primitives import (
 )
 from repo2ree_ree.receipt import (
     AcquireSourceReceipt,
+    ActivateExperimentEnvironmentReceipt,
     ActivateScriptDigest,
-    ActivationReceipt,
     BuildExperimentEnvironmentReceipt,
     BuildScriptDigest,
     CheckScriptDigest,
@@ -174,7 +174,7 @@ class ReeDefinition(_DomainModel):
     activate_experiment_environment: ActivateExperimentEnvironmentDefinition
     check_working_environment: CheckWorkingEnvironmentDefinition
     launch: LaunchDefinition
-    hardware: HardwareDefinition | None = None
+    hbom: HardwareDefinition | None = None
     experiments: tuple[ExperimentDefinition, ...] = ()
 
     @model_validator(mode="after")
@@ -189,14 +189,14 @@ class ReeDefinition(_DomainModel):
 
 
 class ReeReceipts(_DomainModel):
-    source: AcquireSourceReceipt | None = None
-    evaluation: EvaluateReproducibilityReceipt | None = None
-    hardware_observation: ObserveHardwareReceipt | None = None
-    working_environment_check: CheckWorkingEnvironmentReceipt | None = None
-    experiment_environment: BuildExperimentEnvironmentReceipt | None = None
-    sbom: GenerateSbomReceipt | None = None
-    sbom_cross_check: CrossCheckSbomReceipt | None = None
-    activation: ActivationReceipt | None = None
+    acquire_source: AcquireSourceReceipt | None = None
+    evaluate_reproducibility: EvaluateReproducibilityReceipt | None = None
+    observe_hardware: ObserveHardwareReceipt | None = None
+    check_working_environment: CheckWorkingEnvironmentReceipt | None = None
+    build_experiment_environment: BuildExperimentEnvironmentReceipt | None = None
+    generate_sbom: GenerateSbomReceipt | None = None
+    cross_check_sbom: CrossCheckSbomReceipt | None = None
+    activate_experiment_environment: ActivateExperimentEnvironmentReceipt | None = None
     experiments: dict[str, RunExperimentReceipt] = Field(default_factory=dict)
 
     @model_validator(mode="after")

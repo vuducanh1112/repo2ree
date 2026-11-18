@@ -91,7 +91,7 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
 
     assert result.status == "succeeded", result.model_dump(mode="json")
     assert layout.sbom.is_file()
-    receipt = store.read_ree().subject.receipts.sbom
+    receipt = store.read_ree().subject.receipts.generate_sbom
     assert receipt is not None
     assert receipt.run_id == "sbom-local"
     assert receipt.experiment_environment_digest == digest_bytes(experiment_environment)

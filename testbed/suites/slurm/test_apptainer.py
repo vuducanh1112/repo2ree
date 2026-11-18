@@ -17,7 +17,7 @@ PLACED = r"ran in container \S*runtime\.sif"
 
 def built(api: Api, ree_id: str) -> None:
     api.acquire(ree_id, APPTAINER)
-    api.succeed(ree_id, "evaluate")
+    api.succeed(ree_id, "evaluate-reproducibility")
     run = api.build_experiment_environment(ree_id, fixture=APPTAINER)
     assert run["status"] == "succeeded", api.logs(ree_id, run["run_id"])
 
@@ -46,7 +46,7 @@ def test_a_reviewer_on_the_cluster_reproduces_the_experiment_from_the_sif(client
     reproduction = client.reproduced(new_ree, APPTAINER)
 
     assert re.search(PLACED, reproduction.logs)
-    [receipt] = reproduction.review.experiment_receipts
+    [receipt] = reproduction.review.receipts.experiments
     assert receipt.launched is not None
     assert receipt.launched.slurm_job_id is not None
     assert [(item.experiment_name, item.verdict) for item in reproduction.review.experiment_comparisons] == [
@@ -70,4 +70,4 @@ def test_a_sif_has_no_sbom_and_the_ree_says_so(api: Api, new_ree: Callable[..., 
     built(api, ree_id)
 
     assert api.stage(ree_id, "generate-sbom")["status"] == "failed"
-    assert api.audit(ree_id)["sbom"]["evidence"] == "missing"
+    assert api.audit(ree_id)["generate_sbom"]["evidence"] == "missing"

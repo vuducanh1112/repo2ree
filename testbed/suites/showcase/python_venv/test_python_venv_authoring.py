@@ -26,7 +26,7 @@ def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, ne
 
     run = client.build_experiment_environment(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
-    checked = client.ree(ree_id).subject.receipts.working_environment_check
+    checked = client.ree(ree_id).subject.receipts.check_working_environment
     assert checked is not None
     assert checked.working_environment.container, "the check ran on the showcase's machine, a container"
 

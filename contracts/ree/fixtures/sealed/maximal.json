@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:807e17ec5384d7f31c433ef26dcf4b70600ffcfe76bda230bc06e879fd56d980",
+    "ree_digest": "sha256:15dbf44bd89095d1c2dca3e7ea92a76005786926fd9014a411f7cdfc2bc564f8",
     "sealed_at": "2026-10-01T09:30:00.123456Z",
     "signature": {
       "algorithm": "ed25519",
@@ -79,7 +79,7 @@
           "verify_script_size": 16
         }
       ],
-      "hardware": {
+      "hbom": {
         "cpus": {
           "AMD EPYC 9654": {
             "architecture": "x86_64",
@@ -162,7 +162,7 @@
       }
     },
     "receipts": {
-      "activation": {
+      "activate_experiment_environment": {
         "activate_experiment_environment_script_digest": "sha256:183733af0324aac89b7e8fc7c7b313745e1360259f5311bddcdda0d5a9276df0",
         "duration_ms": 5000,
         "exit_code": 0,
@@ -190,7 +190,7 @@
           }
         }
       },
-      "evaluation": {
+      "evaluate_reproducibility": {
         "analyzer_version": "1.4.0",
         "dependency_count": 42,
         "dependency_level": 3,
@@ -210,7 +210,7 @@
         "started_at": "2026-10-01T08:01:00.000000Z",
         "strict": true
       },
-      "experiment_environment": {
+      "build_experiment_environment": {
         "artifact_path": "runtime",
         "build_experiment_environment_script_digest": "sha256:44575cf5b28512d75644bf54a517dcef304ff809fd511747621b4d64f19aac66",
         "build_experiment_environment_script_path": "ree-scripts/build_experiment_environment.sh",
@@ -279,7 +279,7 @@
           }
         }
       },
-      "hardware_observation": {
+      "observe_hardware": {
         "duration_ms": 999,
         "finished_at": "2026-10-01T08:02:00.999999Z",
         "observation": {
@@ -359,7 +359,7 @@
         "schema_version": 1,
         "started_at": "2026-10-01T08:02:00.000001Z"
       },
-      "sbom": {
+      "generate_sbom": {
         "duration_ms": 30000,
         "experiment_environment_digest": "sha256:d92c6a81b2ff50096bcda80885427d1f59a25b5f483f7055523504925d16ab23",
         "experiment_environment_path": "runtime",
@@ -374,7 +374,7 @@
         "started_at": "2026-10-01T08:14:00.000000Z",
         "tool_version": "syft 1.20.0"
       },
-      "sbom_cross_check": {
+      "cross_check_sbom": {
         "declared_direct_total": 10,
         "duration_ms": 1000,
         "finished_at": "2026-10-01T08:15:01.000000Z",
@@ -390,7 +390,7 @@
         "undeclared_same_ecosystem": 3,
         "version_mismatches": 1
       },
-      "source": {
+      "acquire_source": {
         "duration_ms": 1250,
         "finished_at": "2026-10-01T08:00:01.250000Z",
         "observed_swhid": "swh:1:rev:0123456789abcdef0123456789abcdef01234567",
@@ -405,7 +405,7 @@
         "source_type": "git",
         "started_at": "2026-10-01T08:00:00.000000Z"
       },
-      "working_environment_check": {
+      "check_working_environment": {
         "check_working_environment_script_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "duration_ms": 1000,
         "exit_code": 0,

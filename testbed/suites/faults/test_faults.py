@@ -53,7 +53,7 @@ def built(api: Api, ree_id: str, run: dict[str, Any]) -> None:
     """The build ran to its end through the fault: it succeeded, and what it built is the REE's evidence."""
     settled = api.wait(ree_id, run, timeout=300)
     assert settled["status"] == "succeeded", settled
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
 
 
 def serving(api: Api, ree_id: str) -> str:
@@ -180,7 +180,7 @@ def test_a_build_whose_capture_fails_leaves_nothing_behind_and_the_ree_builds_af
 
     # The author is told the build failed, and the REE shows nothing of it: no experiment environment evidence.
     assert settled["status"] == "failed", settled
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
     assert refused.status_code >= 400, refused.text
     assert launch_script(api, ree_id) == launch_before
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"

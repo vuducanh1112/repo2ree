@@ -8,9 +8,9 @@ import { STATUS_LABEL } from "./ReviewStepCard";
 import type { ReviewWorkflowModel } from "./useReviewWorkflowModel";
 
 const STEP_LABEL: Record<ReviewStepKey, string> = {
-  source: "Source",
+  acquire_source: "Source",
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "Build Experiment Environment",
-  activation: "Activation",
+  activate_experiment_environment: "Activation",
   experiments: "Experiments",
 };
 
@@ -70,7 +70,7 @@ export function ReviewEvidence({
             ) : null,
           );
         }
-        if (key === "activation") {
+        if (key === "activate_experiment_environment") {
           return section(
             key,
             attempt?.activationOutcome ? <ActivationOutcomeDetail attempt={attempt} /> : null,

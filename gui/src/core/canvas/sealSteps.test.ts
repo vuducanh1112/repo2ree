@@ -1,3 +1,4 @@
+import { PAGE } from "@core/app-shell/pages";
 import { PROCESS_STEPS, resolveNavCompleted } from "@core/app-shell/processSteps";
 import type { Badges } from "@core/ree/ReeTypes";
 import { describe, expect, it } from "vitest";
@@ -9,7 +10,7 @@ import {
 } from "../ree-editor/reeEditorViewModel";
 import { buildSealStepItems, SEAL_STEPS } from "./sealSteps";
 
-const activationStep: EvidenceStep = "activation";
+const activationStep: EvidenceStep = "activate_experiment_environment";
 
 /** Half-authored: some steps hold a receipt, some only a declaration. */
 function halfAuthoredRee() {
@@ -21,7 +22,7 @@ function halfAuthoredRee() {
       sbom: "artifacts/sbom.json",
     },
     source: { sourceAvailable: true },
-    audit: { evaluation: "current", [activationStep]: "current" },
+    audit: { evaluate_reproducibility: "current", [activationStep]: "current" },
   });
 }
 
@@ -54,11 +55,15 @@ describe("buildSealStepItems", () => {
 
   // The drift this file used to pin: a declared path is not a built runtime.
   it.each([
-    ["experiment_environment", "artifacts/climate-runtime.tar"],
-    ["sbom", "artifacts/sbom.json"],
-  ])("does not call %s done on a declaration with no receipt", (key, declaration) => {
+    [
+      PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
+      "experimentEnvironmentPath",
+      "artifacts/climate-runtime.tar",
+    ],
+    [PAGE.GENERATE_SBOM, "sbom", "artifacts/sbom.json"],
+  ])("does not call %s done on a declaration with no receipt", (key, field, declaration) => {
     const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-      spec: { [key]: declaration },
+      spec: { [field]: declaration },
       audit: {},
     });
 

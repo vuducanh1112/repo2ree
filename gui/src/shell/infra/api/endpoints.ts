@@ -8,55 +8,55 @@ export const endpoints = {
   buildInfo: () => `${API_V1_BASE}/system/build-info`,
   ree: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}`,
   reeState: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/state`,
-  reeDefinition: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/definition`,
-  reeSourceAcquire: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:acquire`,
+  patchReeDefinition: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/patch-ree-definition`,
+  acquireSource: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/acquire-source`,
   reeSourceUploadInit: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:upload-init`,
   reeSourceUploadComplete: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source:upload-complete`,
   reeBundleUploadInit: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:upload-init`,
-  reeBundleLoad: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:load`,
-  reeSource: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/source`,
-  reeFileContent: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/content`,
+  loadReeBundle: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/load-ree-bundle`,
+  removeSource: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/remove-source`,
+  writeScript: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/write-script`,
   reeFileRaw: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/files/raw`,
-  reeScriptInferences: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-inferences:generate`,
-  reeScriptLints: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-lints:run`,
+  suggestScripts: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/suggest-scripts`,
+  lintScripts: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/lint-scripts`,
   reeScriptTemplates: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-templates`,
   reeScriptLintDraft: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/script-lints:draft`,
-  reeSeal: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree:seal`,
+  sealRee: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/seal-ree`,
   operationHistory: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/history`,
   reeArchive: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/ree-archive`,
-  reeBuildExperimentEnvironment: (reeId: string) =>
+  buildExperimentEnvironment: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/build-experiment-environment`,
-  reeGenerateHbom: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/generate-hbom`,
-  reeGenerateSbom: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/generate-sbom`,
-  reeCrossCheckSbom: (reeId: string) =>
+  observeHardware: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/observe-hardware`,
+  generateSbom: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/generate-sbom`,
+  crossCheckSbom: (reeId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/cross-check-sbom`,
-  reeActivationTest: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/activation-test`,
-  reeEvaluate: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate`,
-  reeExperimentRun: (reeId: string, experimentName: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/experiments/${encodeURIComponent(experimentName)}:run`,
-  reeEvaluateReport: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate/report`,
+  activateExperimentEnvironment: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/activate-experiment-environment`,
+  evaluateReproducibility: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/evaluate-reproducibility`,
+  runExperiment: (reeId: string, experimentName: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/run-experiment/${encodeURIComponent(experimentName)}`,
+  reproducibilityReport: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reproducibility-report`,
   reeReviews: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews`,
-  reeSourceReview: (reeId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/source:reproduce`,
-  reeBuildReview: (reeId: string, reviewId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/build-experiment-environment:reproduce`,
-  reeActivationReview: (reeId: string, reviewId: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/activation:reproduce`,
-  reeExperimentReview: (reeId: string, reviewId: string, experimentName: string) =>
-    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/experiments/${encodeURIComponent(experimentName)}:reproduce`,
+  reviewAcquireSource: (reeId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/acquire-source`,
+  reviewBuildExperimentEnvironment: (reeId: string, reviewId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/build-experiment-environment`,
+  reviewActivateExperimentEnvironment: (reeId: string, reviewId: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/activate-experiment-environment`,
+  reviewRunExperiment: (reeId: string, reviewId: string, experimentName: string) =>
+    `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/reviews/${encodeURIComponent(reviewId)}/run-experiment/${encodeURIComponent(experimentName)}`,
   reeRuns: (reeId: string) => `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs`,
   reeRun: (reeId: string, runId: string) =>
     `${API_V1_BASE}/rees/${encodeURIComponent(reeId)}/runs/${encodeURIComponent(runId)}`,

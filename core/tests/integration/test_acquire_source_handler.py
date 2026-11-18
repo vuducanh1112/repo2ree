@@ -67,13 +67,13 @@ def test_local_git_download_remove_and_reacquire(
     assert acquired.status == "succeeded"
     assert layout.snapshot_archive.is_file()
     assert (layout.workspace / "hello.txt").read_text() == "first\n"
-    first_receipt = store.read_ree().subject.receipts.source
+    first_receipt = store.read_ree().subject.receipts.acquire_source
     assert first_receipt is not None
     assert first_receipt.resolved_revision == first_revision
 
     removed = remove_source.handle_remove_source(log=lambda *args: None, is_canceled=lambda: False, layout=layout)
     assert removed.status == "succeeded"
-    assert store.read_ree().subject.receipts.source is None
+    assert store.read_ree().subject.receipts.acquire_source is None
     assert not layout.snapshot_archive.exists()
 
     second_revision = _commit(origin, "second\n")
@@ -92,7 +92,7 @@ def test_local_git_download_remove_and_reacquire(
 
     assert reacquired.status == "succeeded"
     assert (layout.workspace / "hello.txt").read_text() == "second\n"
-    second_receipt = store.read_ree().subject.receipts.source
+    second_receipt = store.read_ree().subject.receipts.acquire_source
     assert second_receipt is not None
     assert second_receipt.resolved_revision == second_revision
 
@@ -120,7 +120,7 @@ def test_staged_zip_upload_is_snapshotted_extracted_and_committed(
     assert not staged.exists()
     assert layout.snapshot_archive.is_file()
     assert (layout.workspace / "uploaded.txt").read_text() == "uploaded\n"
-    receipt = store.read_ree().subject.receipts.source
+    receipt = store.read_ree().subject.receipts.acquire_source
     assert receipt is not None
     assert receipt.origin_url is None
     assert receipt.source_type == "zip"

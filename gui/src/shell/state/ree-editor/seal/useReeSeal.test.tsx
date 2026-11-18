@@ -14,8 +14,8 @@ const sealedDocument = {
     seal: { sealed_at: "2026-01-01T00:00:00Z", ree_digest: "sha256:abc" },
   },
   audit: {
-    source: { evidence: "current", payload: "present" },
-    experiment_environment: { evidence: "current", payload: "present" },
+    acquire_source: { evidence: "current", payload: "present" },
+    build_experiment_environment: { evidence: "current", payload: "present" },
   },
   workspace_files: [{ path: "README.md", kind: "source", content: "hello", size: 5 }],
   ree_files: [{ path: "artifacts/sbom.json", tag: "Artifact", content: "{}", size: 2 }],
@@ -26,7 +26,7 @@ describe("useReeSeal", () => {
     const sealedRun = {
       run_id: "seal-1",
       ree_id: "ree-1",
-      operation: "seal" as const,
+      operation: "seal_ree" as const,
       status: "succeeded" as const,
       created_at: "2026-01-01T00:00:00Z",
       started_at: "2026-01-01T00:00:00Z",

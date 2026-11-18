@@ -18,7 +18,7 @@ import styles from "./SealContent.module.css";
 import { SealBundleContents } from "./seal/SealBundleContents";
 import { SealedSummary } from "./seal/SealedSummary";
 
-const SEAL_PAGE_COLOR = stageTone(PAGE.SEAL);
+const SEAL_PAGE_COLOR = stageTone(PAGE.SEAL_REE);
 
 interface SealContentProps {
   ree: ReeEditorViewModel;

@@ -26,7 +26,7 @@
   },
   "steps": [
     {
-      "key": "source",
+      "key": "acquire_source",
       "order": 1,
       "label": "Source Acquisition",
       "requires": [],
@@ -44,7 +44,7 @@
       ]
     },
     {
-      "key": "hbom",
+      "key": "observe_hardware",
       "order": 3,
       "label": "Hardware BOM",
       "requires": [],
@@ -65,11 +65,11 @@
       ]
     },
     {
-      "key": "evaluate",
+      "key": "evaluate_reproducibility",
       "order": 5,
       "label": "Reproducibility Readiness",
       "requires": [
-        "source"
+        "acquire_source"
       ],
       "commands": [
         "evaluate-reproducibility"
@@ -80,7 +80,7 @@
       "order": 6,
       "label": "Build Experiment Environment",
       "requires": [
-        "source"
+        "acquire_source"
       ],
       "commands": [
         "build-experiment-environment",
@@ -89,7 +89,7 @@
       ]
     },
     {
-      "key": "sbom",
+      "key": "generate_sbom",
       "order": 7,
       "label": "Generate SBOM",
       "requires": [
@@ -100,19 +100,19 @@
       ]
     },
     {
-      "key": "crosscheck",
+      "key": "cross_check_sbom",
       "order": 8,
       "label": "Cross-check SBOM",
       "requires": [
-        "sbom",
-        "evaluate"
+        "generate_sbom",
+        "evaluate_reproducibility"
       ],
       "commands": [
         "cross-check-sbom"
       ]
     },
     {
-      "key": "activation",
+      "key": "activate_experiment_environment",
       "order": 9,
       "label": "Test Activation",
       "requires": [
@@ -137,7 +137,7 @@
       ]
     },
     {
-      "key": "seal",
+      "key": "seal_ree",
       "order": 11,
       "label": "Seal",
       "requires": [],
@@ -1577,87 +1577,7 @@
       "title": "ActivateExperimentEnvironmentDefinition",
       "type": "object"
     },
-    "ActivateExperimentEnvironmentScriptTemplates": {
-      "additionalProperties": false,
-      "description": "The activate experiment environment templates and the reserved path they all belong at.",
-      "properties": {
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "templates": {
-          "items": {
-            "$ref": "#/$defs/ScriptTemplateEntry"
-          },
-          "title": "Templates",
-          "type": "array"
-        }
-      },
-      "required": [
-        "path",
-        "templates"
-      ],
-      "title": "ActivateExperimentEnvironmentScriptTemplates",
-      "type": "object"
-    },
-    "ActivationOutcome": {
-      "additionalProperties": false,
-      "properties": {
-        "policy": {
-          "const": "activation",
-          "default": "activation",
-          "title": "Policy",
-          "type": "string"
-        },
-        "basis": {
-          "enum": [
-            "independent",
-            "bundled"
-          ],
-          "title": "Basis",
-          "type": "string"
-        },
-        "verdict": {
-          "enum": [
-            "passed",
-            "failed"
-          ],
-          "title": "Verdict",
-          "type": "string"
-        },
-        "experiment_environment_digest": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Experiment Environment Digest"
-        },
-        "exit_code": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Exit Code"
-        }
-      },
-      "required": [
-        "basis",
-        "verdict"
-      ],
-      "title": "ActivationOutcome",
-      "type": "object"
-    },
-    "ActivationReceipt": {
+    "ActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
       "description": "The activate experiment environment script ran a command that does nothing, which exited 0.",
       "properties": {
@@ -1803,7 +1723,87 @@
         "activate_experiment_environment_script_digest",
         "launch_script_digest"
       ],
-      "title": "ActivationReceipt",
+      "title": "ActivateExperimentEnvironmentReceipt",
+      "type": "object"
+    },
+    "ActivateExperimentEnvironmentScriptTemplates": {
+      "additionalProperties": false,
+      "description": "The activate experiment environment templates and the reserved path they all belong at.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "templates": {
+          "items": {
+            "$ref": "#/$defs/ScriptTemplateEntry"
+          },
+          "title": "Templates",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "templates"
+      ],
+      "title": "ActivateExperimentEnvironmentScriptTemplates",
+      "type": "object"
+    },
+    "ActivationOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "policy": {
+          "const": "activation",
+          "default": "activation",
+          "title": "Policy",
+          "type": "string"
+        },
+        "basis": {
+          "enum": [
+            "independent",
+            "bundled"
+          ],
+          "title": "Basis",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "passed",
+            "failed"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "experiment_environment_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment Environment Digest"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        }
+      },
+      "required": [
+        "basis",
+        "verdict"
+      ],
+      "title": "ActivationOutcome",
       "type": "object"
     },
     "ArgvCommandCandidate": {
@@ -5971,28 +5971,28 @@
     "ReeAudit": {
       "additionalProperties": false,
       "properties": {
-        "source": {
+        "acquire_source": {
           "$ref": "#/$defs/StepAudit"
         },
-        "evaluation": {
+        "evaluate_reproducibility": {
           "$ref": "#/$defs/StepAudit"
         },
-        "hardware": {
+        "observe_hardware": {
           "$ref": "#/$defs/StepAudit"
         },
-        "working_environment_check": {
+        "check_working_environment": {
           "$ref": "#/$defs/StepAudit"
         },
-        "experiment_environment": {
+        "build_experiment_environment": {
           "$ref": "#/$defs/StepAudit"
         },
-        "sbom": {
+        "generate_sbom": {
           "$ref": "#/$defs/StepAudit"
         },
-        "sbom_cross_check": {
+        "cross_check_sbom": {
           "$ref": "#/$defs/StepAudit"
         },
-        "activation": {
+        "activate_experiment_environment": {
           "$ref": "#/$defs/StepAudit"
         },
         "experiments": {
@@ -6005,14 +6005,14 @@
         }
       },
       "required": [
-        "source",
-        "evaluation",
-        "hardware",
-        "working_environment_check",
-        "experiment_environment",
-        "sbom",
-        "sbom_cross_check",
-        "activation"
+        "acquire_source",
+        "evaluate_reproducibility",
+        "observe_hardware",
+        "check_working_environment",
+        "build_experiment_environment",
+        "generate_sbom",
+        "cross_check_sbom",
+        "activate_experiment_environment"
       ],
       "title": "ReeAudit",
       "type": "object"
@@ -6101,7 +6101,7 @@
         "launch": {
           "$ref": "#/$defs/LaunchDefinition"
         },
-        "hardware": {
+        "hbom": {
           "anyOf": [
             {
               "$ref": "#/$defs/HardwareDefinition"
@@ -6176,7 +6176,7 @@
     "ReeReceipts": {
       "additionalProperties": false,
       "properties": {
-        "source": {
+        "acquire_source": {
           "anyOf": [
             {
               "$ref": "#/$defs/AcquireSourceReceipt"
@@ -6187,7 +6187,7 @@
           ],
           "default": null
         },
-        "evaluation": {
+        "evaluate_reproducibility": {
           "anyOf": [
             {
               "$ref": "#/$defs/EvaluateReproducibilityReceipt"
@@ -6198,7 +6198,7 @@
           ],
           "default": null
         },
-        "hardware_observation": {
+        "observe_hardware": {
           "anyOf": [
             {
               "$ref": "#/$defs/ObserveHardwareReceipt"
@@ -6209,7 +6209,7 @@
           ],
           "default": null
         },
-        "working_environment_check": {
+        "check_working_environment": {
           "anyOf": [
             {
               "$ref": "#/$defs/CheckWorkingEnvironmentReceipt"
@@ -6220,7 +6220,7 @@
           ],
           "default": null
         },
-        "experiment_environment": {
+        "build_experiment_environment": {
           "anyOf": [
             {
               "$ref": "#/$defs/BuildExperimentEnvironmentReceipt"
@@ -6231,7 +6231,7 @@
           ],
           "default": null
         },
-        "sbom": {
+        "generate_sbom": {
           "anyOf": [
             {
               "$ref": "#/$defs/GenerateSbomReceipt"
@@ -6242,7 +6242,7 @@
           ],
           "default": null
         },
-        "sbom_cross_check": {
+        "cross_check_sbom": {
           "anyOf": [
             {
               "$ref": "#/$defs/CrossCheckSbomReceipt"
@@ -6253,10 +6253,10 @@
           ],
           "default": null
         },
-        "activation": {
+        "activate_experiment_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ActivationReceipt"
+              "$ref": "#/$defs/ActivateExperimentEnvironmentReceipt"
             },
             {
               "type": "null"
@@ -6371,17 +6371,17 @@
       "properties": {
         "key": {
           "enum": [
-            "source",
+            "acquire_source",
             "metadata",
-            "hbom",
+            "observe_hardware",
             "check_working_environment",
-            "evaluate",
+            "evaluate_reproducibility",
             "build_experiment_environment",
-            "sbom",
-            "crosscheck",
-            "activation",
+            "generate_sbom",
+            "cross_check_sbom",
+            "activate_experiment_environment",
             "experiments",
-            "seal"
+            "seal_ree"
           ],
           "title": "Key",
           "type": "string"
@@ -6397,17 +6397,17 @@
         "requires": {
           "items": {
             "enum": [
-              "source",
+              "acquire_source",
               "metadata",
-              "hbom",
+              "observe_hardware",
               "check_working_environment",
-              "evaluate",
+              "evaluate_reproducibility",
               "build_experiment_environment",
-              "sbom",
-              "crosscheck",
-              "activation",
+              "generate_sbom",
+              "cross_check_sbom",
+              "activate_experiment_environment",
               "experiments",
-              "seal"
+              "seal_ree"
             ],
             "type": "string"
           },
@@ -6455,17 +6455,17 @@
           "anyOf": [
             {
               "enum": [
-                "source",
+                "acquire_source",
                 "metadata",
-                "hbom",
+                "observe_hardware",
                 "check_working_environment",
-                "evaluate",
+                "evaluate_reproducibility",
                 "build_experiment_environment",
-                "sbom",
-                "crosscheck",
-                "activation",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
                 "experiments",
-                "seal"
+                "seal_ree"
               ],
               "type": "string"
             },
@@ -6764,7 +6764,7 @@
           "type": "string"
         },
         "receipt": {
-          "$ref": "#/$defs/ReviewActivationReceipt"
+          "$ref": "#/$defs/ReviewActivateExperimentEnvironmentReceipt"
         },
         "outcome": {
           "$ref": "#/$defs/ActivationOutcome"
@@ -6778,7 +6778,7 @@
       "title": "ReviewActivateExperimentEnvironmentOutputs",
       "type": "object"
     },
-    "ReviewActivationReceipt": {
+    "ReviewActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
       "description": "The author's activation, run alone in the review's workspace around a command that does nothing.",
       "properties": {
@@ -6888,7 +6888,7 @@
         "experiment_environment_path",
         "experiment_environment_digest"
       ],
-      "title": "ReviewActivationReceipt",
+      "title": "ReviewActivateExperimentEnvironmentReceipt",
       "type": "object"
     },
     "ReviewBuildExperimentEnvironmentOutputs": {
@@ -7035,7 +7035,239 @@
       "title": "ReviewBuildExperimentEnvironmentReceipt",
       "type": "object"
     },
-    "ReviewExperimentReceipt": {
+    "ReviewLaunch": {
+      "additionalProperties": false,
+      "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does.",
+      "properties": {
+        "mode": {
+          "default": "author",
+          "enum": [
+            "author",
+            "native"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "options": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Options",
+          "type": "array"
+        }
+      },
+      "title": "ReviewLaunch",
+      "type": "object"
+    },
+    "ReviewReceipts": {
+      "additionalProperties": false,
+      "properties": {
+        "acquire_source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewAcquireSourceReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "build_experiment_environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewBuildExperimentEnvironmentReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "activate_experiment_environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewActivateExperimentEnvironmentReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiments": {
+          "items": {
+            "$ref": "#/$defs/ReviewRunExperimentReceipt"
+          },
+          "title": "Experiments",
+          "type": "array"
+        }
+      },
+      "title": "ReviewReceipts",
+      "type": "object"
+    },
+    "ReviewRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "running",
+            "completed",
+            "failed",
+            "canceled"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "launch": {
+          "$ref": "#/$defs/ReviewLaunch"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/ReviewStepState"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "receipts": {
+          "$ref": "#/$defs/ReviewReceipts"
+        },
+        "source_comparison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SourceComparison"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiment_environment_comparison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExperimentEnvironmentComparison"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "activation_outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActivationOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiment_comparisons": {
+          "items": {
+            "$ref": "#/$defs/ExperimentComparison"
+          },
+          "title": "Experiment Comparisons",
+          "type": "array"
+        },
+        "failure": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failure"
+        }
+      },
+      "required": [
+        "review_id",
+        "created_at",
+        "updated_at",
+        "status"
+      ],
+      "title": "ReviewRecord",
+      "type": "object"
+    },
+    "ReviewRun": {
+      "additionalProperties": false,
+      "description": "``review all``: the review, each step it ran, and the review as it stands after them.",
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/StepRun"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReviewRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "review_id"
+      ],
+      "title": "ReviewRun",
+      "type": "object"
+    },
+    "ReviewRunExperimentOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "experiment_name": {
+          "title": "Experiment Name",
+          "type": "string"
+        },
+        "receipt": {
+          "$ref": "#/$defs/ReviewRunExperimentReceipt"
+        },
+        "comparison": {
+          "$ref": "#/$defs/ExperimentComparison"
+        }
+      },
+      "required": [
+        "review_id",
+        "experiment_name",
+        "receipt",
+        "comparison"
+      ],
+      "title": "ReviewRunExperimentOutputs",
+      "type": "object"
+    },
+    "ReviewRunExperimentReceipt": {
       "additionalProperties": false,
       "properties": {
         "schema_version": {
@@ -7228,229 +7460,7 @@
         "run_script_path",
         "run_script_digest"
       ],
-      "title": "ReviewExperimentReceipt",
-      "type": "object"
-    },
-    "ReviewLaunch": {
-      "additionalProperties": false,
-      "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does.",
-      "properties": {
-        "mode": {
-          "default": "author",
-          "enum": [
-            "author",
-            "native"
-          ],
-          "title": "Mode",
-          "type": "string"
-        },
-        "options": {
-          "default": [],
-          "items": {
-            "type": "string"
-          },
-          "title": "Options",
-          "type": "array"
-        }
-      },
-      "title": "ReviewLaunch",
-      "type": "object"
-    },
-    "ReviewRecord": {
-      "additionalProperties": false,
-      "properties": {
-        "review_id": {
-          "title": "Review Id",
-          "type": "string"
-        },
-        "created_at": {
-          "title": "Created At",
-          "type": "string"
-        },
-        "updated_at": {
-          "title": "Updated At",
-          "type": "string"
-        },
-        "status": {
-          "enum": [
-            "running",
-            "completed",
-            "failed",
-            "canceled"
-          ],
-          "title": "Status",
-          "type": "string"
-        },
-        "launch": {
-          "$ref": "#/$defs/ReviewLaunch"
-        },
-        "steps": {
-          "items": {
-            "$ref": "#/$defs/ReviewStepState"
-          },
-          "title": "Steps",
-          "type": "array"
-        },
-        "source_receipt": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReviewAcquireSourceReceipt"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "source_comparison": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/SourceComparison"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "experiment_environment_receipt": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReviewBuildExperimentEnvironmentReceipt"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "experiment_environment_comparison": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ExperimentEnvironmentComparison"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "activation_receipt": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReviewActivationReceipt"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "activation_outcome": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ActivationOutcome"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        },
-        "experiment_receipts": {
-          "items": {
-            "$ref": "#/$defs/ReviewExperimentReceipt"
-          },
-          "title": "Experiment Receipts",
-          "type": "array"
-        },
-        "experiment_comparisons": {
-          "items": {
-            "$ref": "#/$defs/ExperimentComparison"
-          },
-          "title": "Experiment Comparisons",
-          "type": "array"
-        },
-        "failure": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Failure"
-        }
-      },
-      "required": [
-        "review_id",
-        "created_at",
-        "updated_at",
-        "status"
-      ],
-      "title": "ReviewRecord",
-      "type": "object"
-    },
-    "ReviewRun": {
-      "additionalProperties": false,
-      "description": "``review all``: the review, each step it ran, and the review as it stands after them.",
-      "properties": {
-        "review_id": {
-          "title": "Review Id",
-          "type": "string"
-        },
-        "steps": {
-          "items": {
-            "$ref": "#/$defs/StepRun"
-          },
-          "title": "Steps",
-          "type": "array"
-        },
-        "review": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ReviewRecord"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
-        }
-      },
-      "required": [
-        "review_id"
-      ],
-      "title": "ReviewRun",
-      "type": "object"
-    },
-    "ReviewRunExperimentOutputs": {
-      "additionalProperties": false,
-      "properties": {
-        "review_id": {
-          "title": "Review Id",
-          "type": "string"
-        },
-        "experiment_name": {
-          "title": "Experiment Name",
-          "type": "string"
-        },
-        "receipt": {
-          "$ref": "#/$defs/ReviewExperimentReceipt"
-        },
-        "comparison": {
-          "$ref": "#/$defs/ExperimentComparison"
-        }
-      },
-      "required": [
-        "review_id",
-        "experiment_name",
-        "receipt",
-        "comparison"
-      ],
-      "title": "ReviewRunExperimentOutputs",
+      "title": "ReviewRunExperimentReceipt",
       "type": "object"
     },
     "ReviewSet": {
@@ -7472,9 +7482,9 @@
       "properties": {
         "step": {
           "enum": [
-            "source",
+            "acquire_source",
             "build_experiment_environment",
-            "activation",
+            "activate_experiment_environment",
             "experiments"
           ],
           "title": "Step",
@@ -7759,7 +7769,7 @@
         "receipt": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ActivationReceipt"
+              "$ref": "#/$defs/ActivateExperimentEnvironmentReceipt"
             },
             {
               "$ref": "#/$defs/RunExperimentReceipt"

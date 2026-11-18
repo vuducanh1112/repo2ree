@@ -31,7 +31,7 @@ TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 UploadRoutes = tuple[str, str, str, dict[str, Any]]
 
 _SOURCE: UploadRoutes = ("source:upload-init", "source:upload", "source:upload-complete", {"mode": "upload"})
-_BUNDLE: UploadRoutes = ("ree:upload-init", "ree:upload", "ree:load", {})
+_BUNDLE: UploadRoutes = ("ree:upload-init", "ree:upload", "load-ree-bundle", {})
 
 
 def _await_run(client: TestClient, ree_id: str, run_id: str) -> dict[str, Any]:

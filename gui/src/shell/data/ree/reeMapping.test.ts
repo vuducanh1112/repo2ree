@@ -27,18 +27,22 @@ function baseRee(overrides: Partial<ReeDocument> = {}): ReeDocument {
     },
     status: "draft",
     audit: {
-      source: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      evaluation: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      working_environment_check: {
+      acquire_source: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      evaluate_reproducibility: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      observe_hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      check_working_environment: {
         evidence: "not_applicable",
         payload: "not_applicable",
         reasons: [],
       },
-      experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      sbom_cross_check: { evidence: "missing", payload: "not_applicable", reasons: [] },
-      activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      build_experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      generate_sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      cross_check_sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
+      activate_experiment_environment: {
+        evidence: "missing",
+        payload: "not_applicable",
+        reasons: [],
+      },
       experiments: [],
     },
     steps: { steps: [], next: null },
@@ -63,7 +67,7 @@ describe("shell/data/ree/reeMapping", () => {
     const document = baseRee();
     const receipts = document.ree.subject?.receipts;
     if (!receipts) throw new Error("incomplete subject fixture");
-    receipts.source = {
+    receipts.acquire_source = {
       schema_version: 1,
       run_id: "run-source",
       started_at: "2026-01-01T00:00:00Z",
@@ -173,7 +177,7 @@ describe("shell/data/ree/reeMapping", () => {
       origin_url: "https://example.test/repo",
       source_type: "git",
     };
-    subjectWithReceipt.receipts.source = {
+    subjectWithReceipt.receipts.acquire_source = {
       schema_version: 1,
       run_id: "run",
       started_at: "start",

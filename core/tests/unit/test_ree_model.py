@@ -76,7 +76,7 @@ def test_the_ree_document_round_trips_through_disk_under_one_name(tmp_path: Path
 
     assert store.layout.manifest.name == "ree.json"
     assert store.read_ree() == draft
-    assert audit(draft).source.payload == "not_applicable"
+    assert audit(draft).acquire_source.payload == "not_applicable"
 
 
 def test_experiment_slug_collisions_are_rejected() -> None:
@@ -115,12 +115,12 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
 
     updated = commit_receipt(ree, receipt)
 
-    assert updated.subject.receipts.experiment_environment == receipt
+    assert updated.subject.receipts.build_experiment_environment == receipt
     assert canonical_subject_digest(updated.subject) != before
     # The build definition is intentionally absent, so this receipt attests a
     # recipe the REE does not declare. Present and unbacked is stale, not
     # not_applicable — the latter would keep it out of the seal gate's reach.
-    assert audit(updated).experiment_environment.evidence == "stale"
+    assert audit(updated).build_experiment_environment.evidence == "stale"
 
 
 def test_seal_binds_and_freezes_the_subject() -> None:
@@ -169,7 +169,7 @@ def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> N
 
     assert cleared.subject.definition.source is None
     assert cleared.subject.definition.experiment_environment == ree.subject.definition.experiment_environment
-    assert cleared.subject.receipts.source is None
+    assert cleared.subject.receipts.acquire_source is None
     assert cleared.subject.contents.entries == ()
 
 
@@ -190,8 +190,8 @@ def test_bundle_payload_is_not_audited_until_the_ree_is_sealed() -> None:
         receipt,
     )
 
-    assert audit(draft).source.evidence == "current"
-    assert audit(draft).source.payload == "not_applicable"
+    assert audit(draft).acquire_source.evidence == "current"
+    assert audit(draft).acquire_source.payload == "not_applicable"
 
     inventoried = draft.model_copy(
         update={
@@ -206,4 +206,4 @@ def test_bundle_payload_is_not_audited_until_the_ree_is_sealed() -> None:
     )
     sealed = record_seal(inventoried, sealed_at=_NOW)
 
-    assert audit(sealed).source.payload == "present"
+    assert audit(sealed).acquire_source.payload == "present"

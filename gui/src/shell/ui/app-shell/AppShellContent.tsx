@@ -56,7 +56,7 @@ function activePageContent(page: AppShellPage, props: Omit<AppShellContentProps,
           commands={commands}
         />
       );
-    case PAGE.HBOM:
+    case PAGE.OBSERVE_HARDWARE:
       return (
         <HardwareBomPageContainer
           ree={ree}
@@ -74,10 +74,10 @@ function activePageContent(page: AppShellPage, props: Omit<AppShellContentProps,
           commands={commands}
         />
       );
-    case PAGE.EVALUATE:
+    case PAGE.EVALUATE_REPRODUCIBILITY:
     case PAGE.BUILD_EXPERIMENT_ENVIRONMENT:
-    case PAGE.SBOM:
-    case PAGE.ACTIVATION:
+    case PAGE.GENERATE_SBOM:
+    case PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT:
       return (
         <StepPageContainer
           page={page}

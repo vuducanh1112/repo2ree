@@ -221,7 +221,7 @@ def test_a_workbench_lost_while_sending_the_archive_yields_503_not_400(
 _REE_READ_ROUTES = [
     "/api/v1/rees/{ree_id}",
     "/api/v1/rees/{ree_id}/reviews",
-    "/api/v1/rees/{ree_id}/evaluate/report",
+    "/api/v1/rees/{ree_id}/reproducibility-report",
     "/api/v1/rees/{ree_id}/receipts/author",
     "/api/v1/rees/{ree_id}/runs",
 ]

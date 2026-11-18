@@ -1,7 +1,7 @@
 export type ReviewStepKey =
-  | "source"
+  | "acquire_source"
   | "build_experiment_environment"
-  | "activation"
+  | "activate_experiment_environment"
   | "experiments";
 
 /**
@@ -37,14 +37,18 @@ interface ReviewStepDefinition {
  * own, so it does not get a button in the reviewer-facing graph.
  */
 export const REVIEW_STEPS: readonly ReviewStepDefinition[] = [
-  { key: "source", label: "Source", dependencies: [] },
+  { key: "acquire_source", label: "Source", dependencies: [] },
   {
     key: "build_experiment_environment",
     label: "Build Experiment Environment",
-    dependencies: ["source"],
+    dependencies: ["acquire_source"],
   },
-  { key: "activation", label: "Activation", dependencies: ["build_experiment_environment"] },
-  { key: "experiments", label: "Experiments", dependencies: ["activation"] },
+  {
+    key: "activate_experiment_environment",
+    label: "Activation",
+    dependencies: ["build_experiment_environment"],
+  },
+  { key: "experiments", label: "Experiments", dependencies: ["activate_experiment_environment"] },
 ];
 
 export function reviewStep(key: ReviewStepKey): ReviewStepDefinition {

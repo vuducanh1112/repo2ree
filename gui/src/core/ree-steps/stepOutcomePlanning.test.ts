@@ -60,7 +60,7 @@ describe("stepOutcomePlanning", () => {
 
   it("builds evaluate step effect plans through a single entry point", () => {
     const result = planStepServiceEffect({
-      key: "evaluate",
+      key: "evaluate_reproducibility",
       params: {},
       ree: buildRee(),
       timestamp: "2026-01-01T00:00:00Z",

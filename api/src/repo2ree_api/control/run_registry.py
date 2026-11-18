@@ -315,7 +315,6 @@ class RunRegistry:
         ree_id: str,
         operation: RunOperation,
         request_payload: dict[str, Any],
-        run_id_prefix: str,
         runner: Callable[[str, str], ActionResult],
         *,
         action: AuthorApiActionName | None = None,
@@ -337,7 +336,6 @@ class RunRegistry:
                 ree_id,
                 operation,
                 request_payload,
-                run_id_prefix,
                 runner,
                 action=action,
                 action_id=action_id,
@@ -356,7 +354,6 @@ class RunRegistry:
         ree_id: str,
         operation: RunOperation,
         request_payload: dict[str, Any],
-        run_id_prefix: str,
         runner: Callable[[str, str], ActionResult],
         *,
         action: AuthorApiActionName | None,
@@ -375,7 +372,7 @@ class RunRegistry:
         # Capture request context before persistence: if the tracing provider
         # itself is broken, no durable queued run is left without a worker.
         request_link = current_span_link()
-        run_id = f"{run_id_prefix}-{uuid4().hex}"
+        run_id = f"{operation}-{uuid4().hex}"
         proposed = StoredRun(
             run_id=run_id,
             ree_id=ree_id,

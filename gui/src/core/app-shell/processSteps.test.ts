@@ -21,15 +21,15 @@ const NO_BADGES = {} as Badges;
 
 describe("authoring step navCompleted", () => {
   const cases = [
-    { page: PAGE.SOURCE, step: "source" },
+    { page: PAGE.ACQUIRE_SOURCE, step: "acquire_source" },
     { page: PAGE.METADATA, step: "metadata" },
-    { page: PAGE.HBOM, step: "hbom" },
-    { page: PAGE.EVALUATE, step: "evaluate" },
+    { page: PAGE.OBSERVE_HARDWARE, step: "observe_hardware" },
+    { page: PAGE.EVALUATE_REPRODUCIBILITY, step: "evaluate_reproducibility" },
     { page: PAGE.BUILD_EXPERIMENT_ENVIRONMENT, step: "build_experiment_environment" },
-    { page: PAGE.SBOM, step: "sbom" },
-    { page: PAGE.ACTIVATION, step: "activation" },
+    { page: PAGE.GENERATE_SBOM, step: "generate_sbom" },
+    { page: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT, step: "activate_experiment_environment" },
     { page: PAGE.EXPERIMENTS, step: "experiments" },
-    { page: PAGE.SEAL, step: "seal" },
+    { page: PAGE.SEAL_REE, step: "seal_ree" },
   ] as const;
 
   for (const { page, step } of cases) {

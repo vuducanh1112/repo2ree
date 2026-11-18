@@ -4,7 +4,7 @@ Binds the single synchronous ``suggestScripts`` operation to the
 workbench command of the same name. Inference scans the immutable upstream tree,
 runs the versioned decision DAGs, and returns the full ``InferenceReport`` — it
 persists nothing and writes no files. Turning a returned candidate into an
-actual script stays on the existing ``writeScript`` (PUT .../files/content)
+actual script stays on the existing ``writeScript`` (PUT .../write-script)
 path; there is no apply or resolve endpoint here.
 """
 
@@ -52,7 +52,7 @@ class ScriptTargetSelectorPayload(ScriptTargetSelectorArg):
     """
 
 
-class GenerateScriptCandidatesPayload(BaseModel):
+class SuggestScriptsPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     targets: list[ScriptTargetSelectorPayload]
@@ -64,13 +64,13 @@ class GenerateScriptCandidatesPayload(BaseModel):
 
 
 @inference_router.post(
-    "/api/v1/rees/{ree_id}/script-inferences:generate",
+    "/api/v1/rees/{ree_id}/suggest-scripts",
     operation_id="suggestScripts",
     openapi_extra=runs("suggest_scripts"),
     response_model=InferenceReport,
     responses=ERROR_RESPONSES,
 )
-def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandidatesPayload) -> InferenceReport:
+def suggest_scripts_route(ree_id: str, payload: SuggestScriptsPayload) -> InferenceReport:
     """Synchronously generate candidate scripts for the requested targets, from the REE's own project.
 
     This proposes the build script (from a Dockerfile or a requirements.txt, say)
@@ -85,7 +85,7 @@ def generate_script_candidates_route(ree_id: str, payload: GenerateScriptCandida
         return _suggest(ree_id, payload)
 
 
-def _suggest(ree_id: str, payload: GenerateScriptCandidatesPayload) -> InferenceReport:
+def _suggest(ree_id: str, payload: SuggestScriptsPayload) -> InferenceReport:
     handle = require_handle(ree_id)
     with ree_command_span("generate-script-candidates", ree_id):
         cmd = SuggestScriptsCommand(

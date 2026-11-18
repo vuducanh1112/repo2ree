@@ -29,24 +29,32 @@ describe("shell/data/ree/mapping", () => {
       },
       status: "draft",
       audit: {
-        source: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        evaluation: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        working_environment_check: {
+        acquire_source: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        evaluate_reproducibility: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        observe_hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        check_working_environment: {
           evidence: "not_applicable",
           payload: "not_applicable",
           reasons: [],
         },
-        experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        sbom_cross_check: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        build_experiment_environment: {
+          evidence: "missing",
+          payload: "not_applicable",
+          reasons: [],
+        },
+        generate_sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        cross_check_sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        activate_experiment_environment: {
+          evidence: "missing",
+          payload: "not_applicable",
+          reasons: [],
+        },
         experiments: [],
       },
       steps: {
         steps: [
           {
-            key: "source",
+            key: "acquire_source",
             order: 1,
             label: "Source Acquisition",
             requires: [],
@@ -54,7 +62,7 @@ describe("shell/data/ree/mapping", () => {
             status: "ready",
           },
         ],
-        next: "source",
+        next: "acquire_source",
       },
       workspace_files: [],
       ree_files: [],
@@ -65,7 +73,7 @@ describe("shell/data/ree/mapping", () => {
     expect(mapped.reeSpec.name).toBe("workspace-demo");
     expect(mapped.reeSpec.originUrl).toBe("https://example.org/archive.tar.gz");
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(false);
-    expect(mapped.steps.next).toBe("source");
+    expect(mapped.steps.next).toBe("acquire_source");
     expect(mapped.steps.steps.map((step) => step.status)).toEqual(["ready"]);
   });
 
@@ -97,18 +105,26 @@ describe("shell/data/ree/mapping", () => {
       },
       status: "draft",
       audit: {
-        source: { evidence: "current", payload: "not_applicable", reasons: [] },
-        evaluation: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        working_environment_check: {
+        acquire_source: { evidence: "current", payload: "not_applicable", reasons: [] },
+        evaluate_reproducibility: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        observe_hardware: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        check_working_environment: {
           evidence: "not_applicable",
           payload: "not_applicable",
           reasons: [],
         },
-        experiment_environment: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        sbom_cross_check: { evidence: "missing", payload: "not_applicable", reasons: [] },
-        activation: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        build_experiment_environment: {
+          evidence: "missing",
+          payload: "not_applicable",
+          reasons: [],
+        },
+        generate_sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        cross_check_sbom: { evidence: "missing", payload: "not_applicable", reasons: [] },
+        activate_experiment_environment: {
+          evidence: "missing",
+          payload: "not_applicable",
+          reasons: [],
+        },
         experiments: [],
       },
       steps: { steps: [], next: null },
@@ -123,13 +139,13 @@ describe("shell/data/ree/mapping", () => {
     // Every audited step's standing travels into the editor state, so step
     // doneness survives a reload without being remembered per session.
     expect(mapped.stepEvidence).toEqual({
-      source: "current",
-      evaluation: "missing",
-      hardware: "missing",
-      experiment_environment: "missing",
-      sbom: "missing",
-      sbom_cross_check: "missing",
-      activation: "missing",
+      acquire_source: "current",
+      evaluate_reproducibility: "missing",
+      observe_hardware: "missing",
+      build_experiment_environment: "missing",
+      generate_sbom: "missing",
+      cross_check_sbom: "missing",
+      activate_experiment_environment: "missing",
     });
   });
 });

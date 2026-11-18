@@ -273,14 +273,14 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
 
     # A new REE declares its activation, and no experiment environment yet: as core's first audit finds it.
     created = [
-        ("experiment_environment", None, "not_applicable", "baseline"),
-        ("sbom", None, "not_applicable", "baseline"),
-        ("activation", None, "missing", "baseline"),
+        ("build_experiment_environment", None, "not_applicable", "baseline"),
+        ("generate_sbom", None, "not_applicable", "baseline"),
+        ("activate_experiment_environment", None, "missing", "baseline"),
     ]
     s.commit(1, None, "initialize_ree", "", created, (None, "draft"))
     declared = [
-        ("experiment_environment", "not_applicable", "missing", "operation"),
-        ("sbom", "not_applicable", "missing", "operation"),
+        ("build_experiment_environment", "not_applicable", "missing", "operation"),
+        ("generate_sbom", "not_applicable", "missing", "operation"),
     ]
     s.commit(2, "a-patch", "patch_ree_definition", "patch-definition", declared, ("draft", "draft"))
     s.commit(
@@ -288,19 +288,24 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
         "a-build",
         "build_experiment_environment",
         "run-build",
-        [("experiment_environment", "missing", "current", "operation")],
+        [("build_experiment_environment", "missing", "current", "operation")],
         ("draft", "draft"),
     )
     s.commit(
-        4, "a-sbom", "generate_sbom", "run-sbom", [("sbom", "missing", "current", "operation")], ("draft", "draft")
+        4,
+        "a-sbom",
+        "generate_sbom",
+        "run-sbom",
+        [("generate_sbom", "missing", "current", "operation")],
+        ("draft", "draft"),
     )
     if sealed:
-        edited = [("experiment_environment", "current", "stale", "operation")]
+        edited = [("build_experiment_environment", "current", "stale", "operation")]
         rebuilt = [
-            ("experiment_environment", "stale", "current", "operation"),
-            ("sbom", "current", "stale", "operation"),
+            ("build_experiment_environment", "stale", "current", "operation"),
+            ("generate_sbom", "current", "stale", "operation"),
         ]
-        rescanned = [("sbom", "stale", "current", "operation")]
+        rescanned = [("generate_sbom", "stale", "current", "operation")]
         s.commit(5, "a-edit", "patch_ree_definition", "patch-definition", edited, ("draft", "draft"))
         s.commit(6, "a-rebuild", "build_experiment_environment", "run-rebuild", rebuilt, ("draft", "draft"))
         s.commit(7, "a-rescan", "generate_sbom", "run-rescan", rescanned, ("draft", "draft"))

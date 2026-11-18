@@ -16,11 +16,11 @@ export function projectCurrentSourceRun(
   audit: ReeAudit,
   runs: readonly ReeRunSummary[],
 ): SourceRunProjection {
-  if (!isAuditCurrent(audit, "source")) {
+  if (!isAuditCurrent(audit, "acquire_source")) {
     return { sourceState: {} };
   }
 
-  const receiptRunId = auditReceiptRunId(audit, "source");
+  const receiptRunId = auditReceiptRunId(audit, "acquire_source");
   const run = receiptRunId
     ? runs.find((candidate) => candidate.runId === receiptRunId)
     : runs.find(

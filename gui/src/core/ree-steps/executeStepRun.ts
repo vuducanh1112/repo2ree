@@ -173,19 +173,23 @@ function getStepCommands(
   key: keyof StepCommandPlannerMap,
   params: GenericReeStepParams,
 ): StepCommand[] {
-  if (key === "evaluate") {
-    return planners.evaluate(params as ReeStepRunParamsByKey["evaluate"]);
+  if (key === "evaluate_reproducibility") {
+    return planners.evaluate_reproducibility(
+      params as ReeStepRunParamsByKey["evaluate_reproducibility"],
+    );
   }
-  if (key === "hbom") {
-    return planners.hbom(params as ReeStepRunParamsByKey["hbom"]);
+  if (key === "observe_hardware") {
+    return planners.observe_hardware(params as ReeStepRunParamsByKey["observe_hardware"]);
   }
   if (key === "build_experiment_environment") {
     return planners.build_experiment_environment(
       params as ReeStepRunParamsByKey["build_experiment_environment"],
     );
   }
-  if (key === "sbom") {
-    return planners.sbom(params as ReeStepRunParamsByKey["sbom"]);
+  if (key === "generate_sbom") {
+    return planners.generate_sbom(params as ReeStepRunParamsByKey["generate_sbom"]);
   }
-  return planners.activation(params as ReeStepRunParamsByKey["activation"]);
+  return planners.activate_experiment_environment(
+    params as ReeStepRunParamsByKey["activate_experiment_environment"],
+  );
 }

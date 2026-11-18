@@ -103,9 +103,9 @@ describe("useStepPageController", () => {
   it("supplies defaults and directs missing requirements to their editor page", () => {
     const initialStepParams = createInitialStepRunState().stepParams;
     const { args, setPage, setStepParams } = controllerArgs({
-      page: PAGE.EVALUATE,
+      page: PAGE.EVALUATE_REPRODUCIBILITY,
       ree: { source: { sourceAvailable: false } },
-      steps: authoringProgress({ source: "ready" }),
+      steps: authoringProgress({ acquire_source: "ready" }),
       stepRuns: { stepParams: initialStepParams },
     });
     const { result } = renderHook(() => useStepPageController(args));
@@ -117,21 +117,21 @@ describe("useStepPageController", () => {
 
     act(() => result.current?.setParam("strict", true));
     const update = setStepParams.mock.calls[0][0];
-    expect(update(initialStepParams).evaluate).toEqual({ strict: true });
+    expect(update(initialStepParams).evaluate_reproducibility).toEqual({ strict: true });
 
     act(() => result.current?.goToRequirements());
-    expect(setPage).toHaveBeenCalledWith(PAGE.SOURCE);
+    expect(setPage).toHaveBeenCalledWith(PAGE.ACQUIRE_SOURCE);
   });
 
   it("preserves existing parameters and falls back to metadata when nothing is missing", () => {
     const stepParams = {
       ...createInitialStepRunState().stepParams,
-      evaluate: { strict: true },
+      evaluate_reproducibility: { strict: true },
     };
     const { args, setPage, setStepParams } = controllerArgs({
-      page: PAGE.EVALUATE,
+      page: PAGE.EVALUATE_REPRODUCIBILITY,
       ree: { source: { sourceAvailable: true } },
-      steps: authoringProgress({ source: "complete", evaluate: "ready" }),
+      steps: authoringProgress({ acquire_source: "complete", evaluate_reproducibility: "ready" }),
       stepRuns: { stepParams },
     });
     const { result } = renderHook(() => useStepPageController(args));
@@ -139,7 +139,7 @@ describe("useStepPageController", () => {
     expect(result.current?.params).toEqual({ strict: true });
     act(() => result.current?.setParam("strict", false));
     const update = setStepParams.mock.calls[0][0];
-    expect(update(stepParams).evaluate).toEqual({ strict: false });
+    expect(update(stepParams).evaluate_reproducibility).toEqual({ strict: false });
     act(() => result.current?.goToRequirements());
     expect(setPage).toHaveBeenCalledWith(PAGE.METADATA);
   });
@@ -159,7 +159,7 @@ describe("useStepPageController", () => {
       },
     ];
     const { args } = controllerArgs({
-      ree: earned ? { audit: { experiment_environment: "current" } } : undefined,
+      ree: earned ? { audit: { build_experiment_environment: "current" } } : undefined,
     });
     const { result } = renderHook(() => useStepPageController(args));
 

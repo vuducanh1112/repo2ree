@@ -10,7 +10,7 @@ type ReeStep = ReeStepDefinition & { key: ReeStepKey };
 
 export const REE_STEPS: ReeStep[] = [
   {
-    key: "evaluate",
+    key: "evaluate_reproducibility",
     label: "Reproducibility Readiness",
     iconKey: "star",
     outcomeLabel: "Evaluated",
@@ -34,7 +34,7 @@ export const REE_STEPS: ReeStep[] = [
     params: [],
   },
   {
-    key: "hbom",
+    key: "observe_hardware",
     label: "Profile Machine",
     iconKey: "chip",
     outcomeLabel: "HBOM profiled",
@@ -42,7 +42,7 @@ export const REE_STEPS: ReeStep[] = [
     params: [],
   },
   {
-    key: "sbom",
+    key: "generate_sbom",
     label: "Generate SBOM",
     iconKey: "package",
     outcomeLabel: "SBOM ready",
@@ -50,7 +50,7 @@ export const REE_STEPS: ReeStep[] = [
     params: [],
   },
   {
-    key: "activation",
+    key: "activate_experiment_environment",
     label: "Test Activation",
     iconKey: "shield",
     outcomeLabel: "Activation passed",
@@ -60,11 +60,11 @@ export const REE_STEPS: ReeStep[] = [
 ];
 
 const DEFAULT_REE_STEP_PARAMS: ReeStepParams = {
-  evaluate: { strict: false },
+  evaluate_reproducibility: { strict: false },
   build_experiment_environment: {},
-  hbom: {},
-  sbom: {},
-  activation: {},
+  observe_hardware: {},
+  generate_sbom: {},
+  activate_experiment_environment: {},
 };
 
 export function defaultParamsForReeStep<K extends ReeStepKey>(key: K): ReeStepParamsByKey[K] {
@@ -73,11 +73,11 @@ export function defaultParamsForReeStep<K extends ReeStepKey>(key: K): ReeStepPa
 
 export function initialReeStepParams(): ReeStepParams {
   return {
-    evaluate: { ...DEFAULT_REE_STEP_PARAMS.evaluate },
+    evaluate_reproducibility: { ...DEFAULT_REE_STEP_PARAMS.evaluate_reproducibility },
     build_experiment_environment: { ...DEFAULT_REE_STEP_PARAMS.build_experiment_environment },
-    hbom: { ...DEFAULT_REE_STEP_PARAMS.hbom },
-    sbom: { ...DEFAULT_REE_STEP_PARAMS.sbom },
-    activation: { ...DEFAULT_REE_STEP_PARAMS.activation },
+    observe_hardware: { ...DEFAULT_REE_STEP_PARAMS.observe_hardware },
+    generate_sbom: { ...DEFAULT_REE_STEP_PARAMS.generate_sbom },
+    activate_experiment_environment: { ...DEFAULT_REE_STEP_PARAMS.activate_experiment_environment },
   };
 }
 

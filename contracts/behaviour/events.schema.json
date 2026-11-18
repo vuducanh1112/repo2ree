@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:7e54a32eb5c44761218f3d04ba33c376e803bb57624cfb2c98c95a3037527eb0",
+  "x-vocabulary": "sha256:5655f7f9bbb44f4388d2c165dc08e771ed1c8ebe05ba7670d781cbd721ac7d08",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -674,7 +674,7 @@
                 "read_file",
                 "list_receipts",
                 "view_history",
-                "view_evaluation_report",
+                "view_reproducibility_report",
                 "download_ree",
                 "list_actions",
                 "view_action",
@@ -790,7 +790,7 @@
                       "read_file",
                       "list_receipts",
                       "view_history",
-                      "view_evaluation_report",
+                      "view_reproducibility_report",
                       "download_ree",
                       "list_actions",
                       "view_action",
@@ -1363,14 +1363,14 @@
             },
             "kind": {
               "enum": [
-                "source",
-                "evaluation",
-                "hardware",
-                "working_environment_check",
-                "experiment_environment",
-                "sbom",
-                "sbom_cross_check",
-                "activation",
+                "acquire_source",
+                "evaluate_reproducibility",
+                "observe_hardware",
+                "check_working_environment",
+                "build_experiment_environment",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
                 "experiment"
               ]
             },
@@ -1444,14 +1444,14 @@
                   },
                   "kind": {
                     "enum": [
-                      "source",
-                      "evaluation",
-                      "hardware",
-                      "working_environment_check",
-                      "experiment_environment",
-                      "sbom",
-                      "sbom_cross_check",
-                      "activation",
+                      "acquire_source",
+                      "evaluate_reproducibility",
+                      "observe_hardware",
+                      "check_working_environment",
+                      "build_experiment_environment",
+                      "generate_sbom",
+                      "cross_check_sbom",
+                      "activate_experiment_environment",
                       "experiment"
                     ]
                   },

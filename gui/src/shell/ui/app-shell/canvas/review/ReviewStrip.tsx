@@ -20,16 +20,16 @@ function presentation(key: ReviewStepKey) {
       icon: stepIcon(shared.iconKey)(14),
     };
   }
-  if (key === "source") {
-    return { label: "Source", color: stageTone(PAGE.SOURCE), icon: Ic.globe(14) };
+  if (key === "acquire_source") {
+    return { label: "Source", color: stageTone(PAGE.ACQUIRE_SOURCE), icon: Ic.globe(14) };
   }
   return { label: "Experiments", color: stageTone(PAGE.EXPERIMENTS), icon: Ic.terminal(14) };
 }
 
 const STEP_SUBJECT: Record<ReviewStepKey, string> = {
-  source: "SWHID",
+  acquire_source: "SWHID",
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experiment environment · SBOM diff",
-  activation: "experiment environment entry",
+  activate_experiment_environment: "experiment environment entry",
   experiments: "declared experiments",
 };
 

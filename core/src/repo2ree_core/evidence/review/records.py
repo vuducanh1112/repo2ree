@@ -19,7 +19,7 @@ Schemas plus the pure record algebra over them. How a verdict is *reached* is
 from __future__ import annotations
 
 from collections.abc import Collection
-from typing import TypedDict
+from typing import TypedDict, get_args
 
 from repo2ree_core.time_utils import OperationTiming
 from repo2ree_protocol.command import ReviewBasis
@@ -28,9 +28,9 @@ from repo2ree_ree.review import (
     EvidenceBasis,
     ExperimentComparison,
     ReviewExecutionStatus,
-    ReviewExperimentReceipt,
     ReviewLaunch,
     ReviewRecord,
+    ReviewRunExperimentReceipt,
     ReviewStatus,
     ReviewStepKey,
     ReviewStepState,
@@ -113,7 +113,7 @@ def with_step(
 
 def with_experiment(
     record: ReviewRecord,
-    receipt: ReviewExperimentReceipt,
+    receipt: ReviewRunExperimentReceipt,
     comparison: ExperimentComparison,
 ) -> ReviewRecord:
     """The record with one experiment's evidence written, replacing any prior run.
@@ -125,11 +125,16 @@ def with_experiment(
     keyed replace rather than an append.
     """
     name = comparison.experiment_name
-    receipts = [other for other in record.experiment_receipts if other.experiment_name != name] + [receipt]
+    receipts = [other for other in record.receipts.experiments if other.experiment_name != name] + [receipt]
     comparisons = [other for other in record.experiment_comparisons if other.experiment_name != name] + [comparison]
     receipts.sort(key=lambda entry: entry.experiment_name)
     comparisons.sort(key=lambda entry: entry.experiment_name)
-    return record.model_copy(update={"experiment_receipts": receipts, "experiment_comparisons": comparisons})
+    return record.model_copy(
+        update={
+            "receipts": record.receipts.model_copy(update={"experiments": receipts}),
+            "experiment_comparisons": comparisons,
+        }
+    )
 
 
 def experiment_comparison(record: ReviewRecord, experiment_name: str) -> ExperimentComparison | None:
@@ -212,5 +217,4 @@ def _latest_failure(steps: list[ReviewStepState]) -> str | None:
 
 def _step_order(state: ReviewStepState) -> int:
     """Lifecycle order, so a persisted record always reads front to back."""
-    order: list[ReviewStepKey] = ["source", "build_experiment_environment", "activation", "experiments"]
-    return order.index(state.step)
+    return get_args(ReviewStepKey).index(state.step)

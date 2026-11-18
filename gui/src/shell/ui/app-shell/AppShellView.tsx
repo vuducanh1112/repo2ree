@@ -31,7 +31,7 @@ interface AppShellViewProps {
 // Pages whose canvas node carries a compact label; the window says the longer
 // name. Everything else takes its node's own label.
 const WINDOW_TITLE: Partial<Record<AppShellPage, string>> = {
-  [PAGE.SOURCE]: "Source Acquisition",
+  [PAGE.ACQUIRE_SOURCE]: "Source Acquisition",
 };
 
 const drawerTitle = (page: AppShellPage) => WINDOW_TITLE[page];
@@ -128,7 +128,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   // the canvas preserves the overview without asking authors to arrange windows.
   const drawerBody = useMemo(() => {
     if (!drawerOpen) return null;
-    if (page === PAGE.SOURCE) {
+    if (page === PAGE.ACQUIRE_SOURCE) {
       return (
         <SourceAcquisitionContent
           ree={ree}
@@ -139,7 +139,7 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
         />
       );
     }
-    if (page === PAGE.SEAL) {
+    if (page === PAGE.SEAL_REE) {
       return (
         <SealContent
           ree={ree}

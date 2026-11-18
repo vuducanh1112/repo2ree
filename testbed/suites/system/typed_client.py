@@ -75,14 +75,14 @@ class Client(Protocol):
     def seal(self, ree_id: str, *, watch: RunWatch = ...) -> Run: ...
     def archive(self, ree_id: str, label: str) -> Path: ...
     def load(self, ree_id: str, bundle: bytes) -> None: ...
-    def review_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = ...) -> Run: ...
+    def review_acquire_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = ...) -> Run: ...
     def reviews(self, ree_id: str) -> tuple[Review, ...]: ...
     def review(self, ree_id: str, review_id: str) -> Review: ...
     def review_build_experiment_environment(
         self, ree_id: str, review_id: str, basis: ReviewBasis, *, watch: RunWatch = ...
     ) -> Run: ...
-    def review_activation(self, ree_id: str, review_id: str, *, watch: RunWatch = ...) -> Run: ...
-    def review_experiment(self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = ...) -> Run: ...
+    def review_activate_experiment_environment(self, ree_id: str, review_id: str, *, watch: RunWatch = ...) -> Run: ...
+    def review_run_experiment(self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = ...) -> Run: ...
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction: ...
 
 
@@ -120,7 +120,7 @@ class ApiClient:
 
     def fetch_source(self, ree_id: str, origin_url: str, source_type: AcquirableSourceType) -> Run:
         request = SourceAcquire(origin_url=origin_url, source_type=source_type)
-        run = self.api.post(f"/api/v1/rees/{ree_id}/source:acquire", request.model_dump())
+        run = self.api.post(f"/api/v1/rees/{ree_id}/acquire-source", request.model_dump())
         return Run.model_validate(self.api.wait(ree_id, run))
 
     # ---- definition ------------------------------------------------------------
@@ -132,7 +132,7 @@ class ApiClient:
         self._patch(ree_id, DefinitionPatch(catalog=CatalogPatch(version=version, description=description)))
 
     def declare_cpu(self, ree_id: str, model: str, cpu: Cpu) -> None:
-        self._patch(ree_id, DefinitionPatch(hardware=HardwarePatch(cpus={model: cpu})))
+        self._patch(ree_id, DefinitionPatch(hbom=HardwarePatch(cpus={model: cpu})))
 
     def declare_experiment(self, ree_id: str, fixture: Project) -> None:
         experiment = ExperimentPatch(name=fixture.experiment, output_paths=fixture.outputs)
@@ -143,13 +143,11 @@ class ApiClient:
     # ---- authoring -------------------------------------------------------------
 
     def evaluate(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._stage(ree_id, "evaluate", watch=watch)
+        return self._stage(ree_id, "evaluate-reproducibility", watch=watch)
 
     def infer(self, ree_id: str, kind: ScriptKind, *, experiment: str | None = None) -> InferenceResult:
         request = GenerateScripts(targets=(ScriptTarget(kind=kind, experiment_name=experiment),))
-        response = self.api.post(
-            f"/api/v1/rees/{ree_id}/script-inferences:generate", request.model_dump(exclude_none=True)
-        )
+        response = self.api.post(f"/api/v1/rees/{ree_id}/suggest-scripts", request.model_dump(exclude_none=True))
         [result] = InferenceReport.model_validate(response).results
         return result
 
@@ -200,8 +198,8 @@ class ApiClient:
     def author(self, ree_id: str, fixture: Project) -> None:
         """Every authoring stage, inference asked for each script before the recipe's is written."""
         self.api.acquire(ree_id, fixture)
-        self.api.succeed(ree_id, "evaluate", watch=fixture.watch)
-        self.api.succeed(ree_id, "generate-hbom")
+        self.api.succeed(ree_id, "evaluate-reproducibility", watch=fixture.watch)
+        self.api.succeed(ree_id, "observe-hardware")
         for label, run in (
             ("build_experiment_environment", lambda: self.build_experiment_environment(ree_id, fixture)),
             ("activation", lambda: self.activate(ree_id, fixture)),
@@ -223,9 +221,9 @@ class ApiClient:
     def load(self, ree_id: str, bundle: bytes) -> None:
         self.api.load(ree_id, bundle)
 
-    def review_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
+    def review_acquire_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
         request = SourceReviewRequest(basis=basis)
-        run = self.api.stage(ree_id, "reviews/source:reproduce", request.model_dump(), watch=watch)
+        run = self.api.stage(ree_id, "reviews/acquire-source", request.model_dump(), watch=watch)
         return Run.model_validate(run)
 
     def reviews(self, ree_id: str) -> tuple[Review, ...]:
@@ -239,15 +237,19 @@ class ApiClient:
     ) -> Run:
         request = BuildExperimentEnvironmentReviewRequest(basis=basis)
         run = self.api.stage(
-            ree_id, f"reviews/{review_id}/build-experiment-environment:reproduce", request.model_dump(), watch=watch
+            ree_id, f"reviews/{review_id}/build-experiment-environment", request.model_dump(), watch=watch
         )
         return Run.model_validate(run)
 
-    def review_activation(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._stage(ree_id, f"reviews/{review_id}/activation:reproduce", watch=watch)
+    def review_activate_experiment_environment(
+        self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN
+    ) -> Run:
+        return self._stage(ree_id, f"reviews/{review_id}/activate-experiment-environment", watch=watch)
 
-    def review_experiment(self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._stage(ree_id, f"reviews/{review_id}/experiments/{experiment}:reproduce", watch=watch)
+    def review_run_experiment(
+        self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = INSTANT_RUN
+    ) -> Run:
+        return self._stage(ree_id, f"reviews/{review_id}/run-experiment/{experiment}", watch=watch)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
         """Author and seal ``fixture``, and reproduce it in a second REE."""
@@ -260,15 +262,15 @@ class ApiClient:
         reviewer = new_ree("reviewer")
         self.load(reviewer, archive.read_bytes())
 
-        source = self.review_source(reviewer, "auto", watch=fixture.watch)
+        source = self.review_acquire_source(reviewer, "auto", watch=fixture.watch)
         assert source.status == "succeeded", self.logs(reviewer, source)
         review_id = self.reviews(reviewer)[0].review_id
 
         build = self.review_build_experiment_environment(reviewer, review_id, "auto", watch=fixture.watch)
         assert build.status == "succeeded", self.logs(reviewer, build)
-        activation = self.review_activation(reviewer, review_id, watch=fixture.watch)
+        activation = self.review_activate_experiment_environment(reviewer, review_id, watch=fixture.watch)
         assert activation.status == "succeeded", self.logs(reviewer, activation)
-        experiment = self.review_experiment(reviewer, review_id, fixture.experiment, watch=fixture.watch)
+        experiment = self.review_run_experiment(reviewer, review_id, fixture.experiment, watch=fixture.watch)
         logs = self.logs(reviewer, experiment)
         assert experiment.status == "succeeded", logs
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)

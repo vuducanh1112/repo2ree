@@ -36,7 +36,7 @@ require = { where = { operation = { in = ["acquire_source", "load_ree_bundle"] }
 entity = "Receipt"
 from = ["(none)", "missing", "not_applicable"]
 to = ["current", "stale"]
-where = { kind = "source" }
+where = { kind = "acquire_source" }
 """
 )["invariant"]
 
@@ -663,25 +663,25 @@ def test_an_attempt_without_a_dispatch_is_violated() -> None:
 
 def test_evidence_from_a_successful_attempt_passes() -> None:
     recorder = Recorder()
-    recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
+    recorder.receipt("build_experiment_environment", None, "missing", attempt_id=None, cause="baseline")
     recorder.attempt("a1")
-    recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
+    recorder.receipt("build_experiment_environment", "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"
 
 
 def test_evidence_from_a_failed_attempt_is_violated() -> None:
     recorder = Recorder()
-    recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
+    recorder.receipt("build_experiment_environment", None, "missing", attempt_id=None, cause="baseline")
     recorder.attempt("a1", outcome="failed")
-    recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
+    recorder.receipt("build_experiment_environment", "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "violated"
 
 
 def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> None:
     recorder = Recorder()
-    recorder.receipt("experiment_environment", None, "missing", attempt_id=None, cause="baseline")
+    recorder.receipt("build_experiment_environment", None, "missing", attempt_id=None, cause="baseline")
     recorder.attempt("a1", operation="write_script")
-    recorder.receipt("experiment_environment", "missing", "current", attempt_id="a1")
+    recorder.receipt("build_experiment_environment", "missing", "current", attempt_id="a1")
     assert findings(recorder, "receipts-come-from-their-producers") == [
         "violated: Attempt a1 reached captured with {'outcome': 'succeeded', 'operation': 'write_script'}"
     ]
@@ -690,7 +690,7 @@ def test_evidence_from_an_operation_that_does_not_produce_it_is_violated() -> No
 def test_evidence_restored_by_a_bundle_load_passes_for_every_kind() -> None:
     recorder = Recorder()
     recorder.attempt("a1", operation="load_ree_bundle")
-    for step in ("source", "experiment_environment", "activation"):
+    for step in ("acquire_source", "build_experiment_environment", "activate_experiment_environment"):
         recorder.receipt(step, None, "missing", attempt_id=None, cause="baseline")
         recorder.receipt(step, "missing", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "passed"
@@ -698,18 +698,18 @@ def test_evidence_restored_by_a_bundle_load_passes_for_every_kind() -> None:
 
 def test_evidence_going_stale_and_current_again_is_not_appearing() -> None:
     recorder = Recorder()
-    recorder.receipt("experiment_environment", None, "current", attempt_id=None, cause="baseline")
+    recorder.receipt("build_experiment_environment", None, "current", attempt_id=None, cause="baseline")
     recorder.attempt("a1", outcome="failed")
-    recorder.receipt("experiment_environment", "current", "stale", attempt_id="a1")
-    recorder.receipt("experiment_environment", "stale", "current", attempt_id="a1")
+    recorder.receipt("build_experiment_environment", "current", "stale", attempt_id="a1")
+    recorder.receipt("build_experiment_environment", "stale", "current", attempt_id="a1")
     assert verdicts(recorder)["receipts-come-from-their-producers"] == "not_triggered"
 
 
 def test_an_entity_without_a_machine_still_has_its_records_checked_but_covers_nothing() -> None:
     recorder = Recorder()
-    recorder.receipt("experiment_environment", None, "stale", attempt_id=None, cause="baseline")
-    recorder.receipt("experiment_environment", "stale", "not_applicable", attempt_id=None, cause="external")
-    recorder.receipt("experiment_environment", "missing", "current", attempt_id=None, cause="external")
+    recorder.receipt("build_experiment_environment", None, "stale", attempt_id=None, cause="baseline")
+    recorder.receipt("build_experiment_environment", "stale", "not_applicable", attempt_id=None, cause="external")
+    recorder.receipt("build_experiment_environment", "missing", "current", attempt_id=None, cause="external")
     assert findings(recorder, "machine:Receipt") == ["violated: recorded missing -> current after not_applicable"]
     result = check(SPEC, Evidence(sources=(journal(), git(REE)), events=tuple(recorder.events)))
     assert result.coverage.transitions["Receipt"] == {}

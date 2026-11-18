@@ -62,7 +62,7 @@ AuthorApiActionName = Literal[
     "read_file",
     "list_receipts",
     "view_history",
-    "view_evaluation_report",
+    "view_reproducibility_report",
     "download_ree",
     "list_actions",
     "view_action",

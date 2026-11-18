@@ -62,7 +62,7 @@ describe("ReeApi", () => {
       source_type: "git",
     });
     await api.removeSource(reeId);
-    await api.putFileContent(reeId, { path: "run.sh", content: "echo ok" });
+    await api.writeScript(reeId, { path: "run.sh", content: "echo ok" });
     await api.suggestScripts(reeId, [{ kind: "build_experiment_environment" }]);
     await api.lintScripts(reeId, [{ kind: "build_experiment_environment" }]);
     await api.checkScriptDraft(reeId, { kind: "build_experiment_environment" }, "set -eu\n", {
@@ -80,14 +80,14 @@ describe("ReeApi", () => {
       ["/api/v1/rees/ree%2F1", "GET"],
       ["/api/v1/rees/ree%2F1/script-templates", "GET"],
       ["/api/v1/rees/ree%2F1/state", "GET"],
-      ["/api/v1/rees/ree%2F1/definition", "PATCH"],
-      ["/api/v1/rees/ree%2F1/source:acquire", "POST"],
-      ["/api/v1/rees/ree%2F1/source", "DELETE"],
-      ["/api/v1/rees/ree%2F1/files/content", "PUT"],
-      ["/api/v1/rees/ree%2F1/script-inferences:generate", "POST"],
-      ["/api/v1/rees/ree%2F1/script-lints:run", "POST"],
+      ["/api/v1/rees/ree%2F1/patch-ree-definition", "POST"],
+      ["/api/v1/rees/ree%2F1/acquire-source", "POST"],
+      ["/api/v1/rees/ree%2F1/remove-source", "POST"],
+      ["/api/v1/rees/ree%2F1/write-script", "POST"],
+      ["/api/v1/rees/ree%2F1/suggest-scripts", "POST"],
+      ["/api/v1/rees/ree%2F1/lint-scripts", "POST"],
       ["/api/v1/rees/ree%2F1/script-lints:draft", "POST"],
-      ["/api/v1/rees/ree%2F1/ree:seal", "POST"],
+      ["/api/v1/rees/ree%2F1/seal-ree", "POST"],
       ["/api/v1/rees/ree%2F1", "DELETE"],
     ]);
     // The draft carries only the declarations lint reads — no digest, no
@@ -114,7 +114,7 @@ describe("ReeApi", () => {
       ["/api/v1/rees/ree-1/source:upload-init", "POST"],
       ["/api/v1/rees/ree-1/source:upload-complete", "POST"],
       ["/api/v1/rees/ree-1/ree:upload-init", "POST"],
-      ["/api/v1/rees/ree-1/ree:load", "POST"],
+      ["/api/v1/rees/ree-1/load-ree-bundle", "POST"],
       ["/api/v1/uploads/token", "PUT"],
     ]);
     expect(client.request.mock.calls[4]?.[1].headers).toEqual({
@@ -125,7 +125,7 @@ describe("ReeApi", () => {
   it("maps reports and reviews", async () => {
     const { api, client } = harness();
     const reeId = asReeId("ree-1");
-    await api.getEvaluateReport(reeId);
+    await api.getReproducibilityReport(reeId);
     await api.listReviews(reeId);
     await api.reviewAcquireSource(reeId, { basis: "auto" });
     await api.reviewBuildExperimentEnvironment(reeId, "review/1", {
@@ -136,12 +136,12 @@ describe("ReeApi", () => {
     await api.reviewRunExperiment(reeId, "review/1", "hello world");
 
     expect(client.request.mock.calls.map(([path]) => path)).toEqual([
-      "/api/v1/rees/ree-1/evaluate/report",
+      "/api/v1/rees/ree-1/reproducibility-report",
       "/api/v1/rees/ree-1/reviews",
-      "/api/v1/rees/ree-1/reviews/source:reproduce",
-      "/api/v1/rees/ree-1/reviews/review%2F1/build-experiment-environment:reproduce",
-      "/api/v1/rees/ree-1/reviews/review%2F1/activation:reproduce",
-      "/api/v1/rees/ree-1/reviews/review%2F1/experiments/hello%20world:reproduce",
+      "/api/v1/rees/ree-1/reviews/acquire-source",
+      "/api/v1/rees/ree-1/reviews/review%2F1/build-experiment-environment",
+      "/api/v1/rees/ree-1/reviews/review%2F1/activate-experiment-environment",
+      "/api/v1/rees/ree-1/reviews/review%2F1/run-experiment/hello%20world",
     ]);
   });
 

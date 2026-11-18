@@ -6,7 +6,7 @@ import { createReeClient } from "./client";
 
 function harness() {
   const reeApi = {
-    putFileContent: vi.fn().mockResolvedValue({}),
+    writeScript: vi.fn().mockResolvedValue({}),
     patchReeDefinition: vi.fn().mockResolvedValue({}),
     getReeFileBytes: vi.fn().mockResolvedValue(new ArrayBuffer(2)),
     sealRee: vi.fn().mockResolvedValue({ ree_id: "ree-1" }),
@@ -35,7 +35,7 @@ describe("createReeClient", () => {
       catalog: {},
       experiment_environment: {},
       experiments: [],
-      hardware: {},
+      hbom: {},
     });
     await expect(client.getReeFileBytes("ree-1", "result.txt")).resolves.toBeInstanceOf(
       ArrayBuffer,
@@ -47,7 +47,7 @@ describe("createReeClient", () => {
     });
     await expect(client.getReeArchive("ree-1")).resolves.toMatchObject({ fileName: "ree.zip" });
 
-    expect(reeApi.putFileContent).toHaveBeenCalledWith("ree-1", {
+    expect(reeApi.writeScript).toHaveBeenCalledWith("ree-1", {
       path: "run.sh",
       content: "echo ok",
     });

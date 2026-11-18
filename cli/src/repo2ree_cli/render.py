@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import difflib
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, get_args
 
 from repo2ree_protocol.audit import ReeAudit, StepAudit
 from repo2ree_protocol.catalog import ReeStepKey, ReeSteps, ScriptTemplateCatalog
@@ -21,25 +21,25 @@ _EVIDENCE = {"current": "current", "stale": "STALE", "missing": "missing", "not_
 
 # What to run for each step, as a person types it.
 HINTS: dict[ReeStepKey, str] = {
-    "source": "ree acquire-source --archive PATH, or ree acquire-source --origin-url URL",
+    "acquire_source": "ree acquire-source --archive PATH, or ree acquire-source --origin-url URL",
     "metadata": "ree patch-ree-definition --name NAME --version VERSION --description TEXT",
-    "hbom": "ree observe-hardware",
+    "observe_hardware": "ree observe-hardware",
     "check_working_environment": "ree edit check_working_environment, then ree check-working-environment",
-    "evaluate": "ree evaluate-reproducibility",
+    "evaluate_reproducibility": "ree evaluate-reproducibility",
     "build_experiment_environment": (
         "ree patch-ree-definition --artifact-path PATH, "
         "ree suggest-scripts --target build_experiment_environment --write, then ree build-experiment-environment"
     ),
-    "sbom": "ree generate-sbom",
-    "crosscheck": "ree cross-check-sbom",
-    "activation": (
+    "generate_sbom": "ree generate-sbom",
+    "cross_check_sbom": "ree cross-check-sbom",
+    "activate_experiment_environment": (
         "ree suggest-scripts --target activate_experiment_environment --write, then ree activate-experiment-environment"
     ),
     "experiments": (
         "ree edit experiment_run:NAME, ree patch-ree-definition --experiment NAME --output PATH, "
         "then ree run-experiment NAME"
     ),
-    "seal": "ree seal-ree",
+    "seal_ree": "ree seal-ree",
 }
 
 
@@ -74,15 +74,8 @@ def status(report: ReeStatusReport) -> str:
 
 
 def _step_evidence(audit: ReeAudit) -> dict[ReeStepKey, StepAudit]:
-    return {
-        "source": audit.source,
-        "evaluate": audit.evaluation,
-        "check_working_environment": audit.working_environment_check,
-        "build_experiment_environment": audit.experiment_environment,
-        "sbom": audit.sbom,
-        "crosscheck": audit.sbom_cross_check,
-        "activation": audit.activation,
-    }
+    """Each step's evidence: a step keyed as an audited receipt is that receipt's."""
+    return {key: step for key in get_args(ReeStepKey) if isinstance(step := getattr(audit, key, None), StepAudit)}
 
 
 def _evidence_word(step: StepAudit) -> str:
@@ -98,7 +91,7 @@ def document(doc: WorkbenchReeDocument) -> str:
         lines.append(f"  {definition.catalog.version}  {definition.catalog.description}".rstrip())
     if doc.ree.seal is not None:
         lines.append(f"  sealed {doc.ree.seal.sealed_at}: {doc.ree.seal.ree_digest}")
-    source = receipts.source
+    source = receipts.acquire_source
     if source is not None:
         origin = source.origin_url or "uploaded archive"
         lines.append(f"source: {source.source_type} from {origin}, {source.observed_swhid}")
@@ -112,14 +105,14 @@ def document(doc: WorkbenchReeDocument) -> str:
         lines.append(f"experiment {experiment.name}: {outputs}")
     lines += ["", "evidence:"]
     named = (
-        ("source", doc.audit.source),
-        ("evaluation", doc.audit.evaluation),
-        ("hardware", doc.audit.hardware),
-        ("working environment check", doc.audit.working_environment_check),
-        ("experiment environment", doc.audit.experiment_environment),
-        ("sbom", doc.audit.sbom),
-        ("sbom cross-check", doc.audit.sbom_cross_check),
-        ("activation", doc.audit.activation),
+        ("source", doc.audit.acquire_source),
+        ("evaluation", doc.audit.evaluate_reproducibility),
+        ("hardware", doc.audit.observe_hardware),
+        ("working environment check", doc.audit.check_working_environment),
+        ("experiment environment", doc.audit.build_experiment_environment),
+        ("sbom", doc.audit.generate_sbom),
+        ("sbom cross-check", doc.audit.cross_check_sbom),
+        ("activation", doc.audit.activate_experiment_environment),
         *((f"experiment {item.name}", item.run) for item in doc.audit.experiments),
     )
     lines += [f"  {name}: {_evidence_word(step)}" for name, step in named]

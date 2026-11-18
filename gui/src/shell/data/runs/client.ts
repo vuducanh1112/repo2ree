@@ -70,32 +70,32 @@ export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
       let run: RunSummary;
       switch (scriptKey) {
         case "build_experiment_environment":
-          run = await runtime.runsApi.createBuildExperimentEnvironmentRun(reeId, {
+          run = await runtime.runsApi.buildExperimentEnvironment(reeId, {
             idempotency_key:
               params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });
           break;
-        case "hbom":
-          run = await runtime.runsApi.createGenerateHbomRun(reeId, {
+        case "observe_hardware":
+          run = await runtime.runsApi.observeHardware(reeId, {
             idempotency_key:
               params.idempotencyKey == null ? undefined : String(params.idempotencyKey),
           });
           break;
-        case "sbom":
-          run = await runtime.runsApi.createGenerateSbomRun(reeId, {});
+        case "generate_sbom":
+          run = await runtime.runsApi.generateSbom(reeId, {});
           break;
-        case "crosscheck":
-          run = await runtime.runsApi.createCrossCheckSbomRun(reeId, {});
+        case "cross_check_sbom":
+          run = await runtime.runsApi.crossCheckSbom(reeId, {});
           break;
-        case "activation":
-          run = await runtime.runsApi.createActivationTestRun(reeId, {});
+        case "activate_experiment_environment":
+          run = await runtime.runsApi.activateExperimentEnvironment(reeId, {});
           break;
-        case "evaluate":
-          run = await runtime.runsApi.createEvaluateRun(reeId, {
+        case "evaluate_reproducibility":
+          run = await runtime.runsApi.evaluateReproducibility(reeId, {
             strict: Boolean(params.strict),
           });
           break;
-        case "source": {
+        case "acquire_source": {
           const mode = String(params.mode || "");
           if (mode === "download") {
             run = await runtime.reeApi.acquireSource(
@@ -131,7 +131,7 @@ export function createReeRunsClient(runtime: ReeRuntimeValue): ReeRunsClient {
     },
     async startExperimentRun(id, experimentName) {
       const reeId = requireReeId(runtime, id);
-      const run = await runtime.runsApi.createExperimentRun(reeId, experimentName, {});
+      const run = await runtime.runsApi.runExperiment(reeId, experimentName, {});
       return { reeId, run: mapRun(run) };
     },
     async listReeRuns(id) {

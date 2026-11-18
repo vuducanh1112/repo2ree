@@ -73,20 +73,20 @@ def test_declared_hardware_experiment_environment_activation_and_experiments_com
     api.author(ree_id)
 
     # Declaring hardware makes the step ask for an observation; clearing it leaves the observation standing.
-    api.patch(ree_id, {"hardware": HARDWARE})
-    api.patch(ree_id, {"hardware": {**HARDWARE, "extra_info": {"note": "any machine"}}})
-    api.succeed(ree_id, "generate-hbom")
-    api.patch(ree_id, {"hardware": None})
-    assert api.audit(ree_id)["hardware"]["evidence"] == "current"
+    api.patch(ree_id, {"hbom": HARDWARE})
+    api.patch(ree_id, {"hbom": {**HARDWARE, "extra_info": {"note": "any machine"}}})
+    api.succeed(ree_id, "observe-hardware")
+    api.patch(ree_id, {"hbom": None})
+    assert api.audit(ree_id)["observe_hardware"]["evidence"] == "current"
 
     # Undeclaring what a receipt is about orphans the receipt; declaring it again asks for it anew.
     api.patch(ree_id, {"experiment_environment": {"artifact_path": None}})
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "stale"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "stale"
     api.patch(ree_id, {"experiment_environment": {"artifact_path": f"{EXPERIMENT_ENVIRONMENT}.renamed"}})
     api.patch(ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT}})
     # The activation is never undeclared: every REE has its script, and its evidence stands.
     api.patch(ree_id, {"activate_experiment_environment": None}, expect=400)
-    assert api.audit(ree_id)["activation"]["evidence"] == "current"
+    assert api.audit(ree_id)["activate_experiment_environment"]["evidence"] == "current"
 
     experiment = {"name": EXPERIMENT, "output_paths": [RESULT]}
     api.patch(ree_id, {"experiments": [{**experiment, "output_paths": [RESULT, "extra.txt"]}]})

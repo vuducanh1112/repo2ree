@@ -10,7 +10,7 @@ function buildReeDraft() {
     sbom: "artifacts/sbom.json",
     swhid: "swh:1:dir:test",
     detectedDependencies: "4 dependencies",
-    hardwareDescription: {
+    hbom: {
       cpus: {},
       gpus: {},
       memory: {},

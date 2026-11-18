@@ -110,9 +110,9 @@ def test_successful_acquisition_commits_definition_and_one_receipt(
     assert result.status == "succeeded"
     assert committed.subject.definition.source is not None
     assert committed.subject.definition.source.requested_ref == "main"
-    assert committed.subject.receipts.source is not None
-    assert committed.subject.receipts.source.resolved_revision == "abc123"
-    assert committed.subject.receipts.source.snapshot_digest == snapshot_digest
+    assert committed.subject.receipts.acquire_source is not None
+    assert committed.subject.receipts.acquire_source.resolved_revision == "abc123"
+    assert committed.subject.receipts.acquire_source.snapshot_digest == snapshot_digest
 
 
 def test_failed_execution_commits_neither_definition_nor_receipt(
@@ -141,7 +141,7 @@ def test_failed_execution_commits_neither_definition_nor_receipt(
     committed = store.read_ree()
     assert result.status == "failed"
     assert committed.subject.definition.source is None
-    assert committed.subject.receipts.source is None
+    assert committed.subject.receipts.acquire_source is None
 
 
 def test_identity_validation_failure_commits_no_source_evidence(
@@ -174,7 +174,7 @@ def test_identity_validation_failure_commits_no_source_evidence(
     assert result.failure is not None
     assert result.failure.category == "validation"
     assert committed.subject.definition.source is None
-    assert committed.subject.receipts.source is None
+    assert committed.subject.receipts.acquire_source is None
 
 
 def test_materialization_failure_happens_after_source_commit(
@@ -209,8 +209,8 @@ def test_materialization_failure_happens_after_source_commit(
 
     committed = store.read_ree()
     assert result.status == "failed"
-    assert committed.subject.receipts.source is not None
-    assert committed.subject.receipts.source.snapshot_digest == snapshot_digest
+    assert committed.subject.receipts.acquire_source is not None
+    assert committed.subject.receipts.acquire_source.snapshot_digest == snapshot_digest
 
 
 def test_dirty_source_slot_rejects_acquisition_before_execution(
@@ -274,6 +274,6 @@ def test_upload_acquisition_commits_archive_source_type(
     committed = store.read_ree()
     assert result.status == "succeeded"
     assert committed.subject.definition.source == SourceDefinition(source_type="zip")
-    assert committed.subject.receipts.source is not None
-    assert committed.subject.receipts.source.source_type == "zip"
-    assert committed.subject.receipts.source.resolved_revision is None
+    assert committed.subject.receipts.acquire_source is not None
+    assert committed.subject.receipts.acquire_source.source_type == "zip"
+    assert committed.subject.receipts.acquire_source.resolved_revision is None

@@ -77,7 +77,7 @@ def test_status_tells_a_person_what_to_run_next(root: Path) -> None:
 def test_status_gives_an_agent_the_revision_and_the_digest_of_each_script(root: Path) -> None:
     report = status(root)
 
-    assert report.steps.next == "source"
+    assert report.steps.next == "acquire_source"
     assert report.running is None
     build = next(script for script in report.scripts if script.kind == "build_experiment_environment")
     assert build.path == BUILD_SCRIPT

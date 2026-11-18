@@ -85,7 +85,7 @@ internet and always yields the same commit.
 
 Complete REEs, packaged the way `ree-archive` downloads them — the shape the
 app loads back (workbench step → "Load REE bundle", or `POST
-/api/v1/rees/{id}/ree:load`).
+/api/v1/rees/{id}/load-ree-bundle`).
 
 ### `ree-hello-world.zip`
 

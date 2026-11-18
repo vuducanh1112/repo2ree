@@ -141,8 +141,8 @@ def _built_ree(*, build_experiment_environment_script_digest: Digest = _DIGEST) 
 def test_a_receipt_matching_what_the_ree_declares_is_current() -> None:
     result = audit(_built_ree())
 
-    assert result.source.evidence == "current"
-    assert result.experiment_environment.evidence == "current"
+    assert result.acquire_source.evidence == "current"
+    assert result.build_experiment_environment.evidence == "current"
     assert result.stale_steps() == ()
 
 
@@ -161,7 +161,7 @@ def test_editing_the_build_experiment_environment_script_leaves_the_build_receip
         ),
     )
 
-    experiment_environment = audit(edited).experiment_environment
+    experiment_environment = audit(edited).build_experiment_environment
     assert experiment_environment.evidence == "stale"
     assert experiment_environment.reasons == ("build experiment environment script changed",)
     # The receipt is kept, not deleted: it is still what that run recorded.
@@ -177,7 +177,7 @@ def test_repointing_the_source_leaves_the_source_receipt_stale() -> None:
         ),
     )
 
-    assert audit(repointed).source.reasons == ("source origin changed",)
+    assert audit(repointed).acquire_source.reasons == ("source origin changed",)
 
 
 def test_stale_steps_names_every_stale_step_including_experiments() -> None:
@@ -208,7 +208,7 @@ def test_stale_steps_names_every_stale_step_including_experiments() -> None:
 
     stale = audit(edited).stale_steps()
 
-    assert [name for name, _ in stale] == ["experiment_environment", f"experiment '{_EXPERIMENT_NAME}'"]
+    assert [name for name, _ in stale] == ["build_experiment_environment", f"experiment '{_EXPERIMENT_NAME}'"]
     assert [step.reasons for _, step in stale] == [
         ("build experiment environment script changed",),
         ("experiment run script changed",),
@@ -282,12 +282,12 @@ def _cross_checked_ree(
 
 
 def test_a_cross_check_over_the_current_documents_is_current() -> None:
-    assert audit(_cross_checked_ree()).sbom_cross_check.evidence == "current"
+    assert audit(_cross_checked_ree()).cross_check_sbom.evidence == "current"
 
 
 def test_regenerating_either_cross_checked_document_leaves_the_cross_check_stale() -> None:
-    rescanned = audit(_cross_checked_ree(sbom_digest=_OTHER_DIGEST)).sbom_cross_check
-    reevaluated = audit(_cross_checked_ree(report_digest=_OTHER_DIGEST)).sbom_cross_check
+    rescanned = audit(_cross_checked_ree(sbom_digest=_OTHER_DIGEST)).cross_check_sbom
+    reevaluated = audit(_cross_checked_ree(report_digest=_OTHER_DIGEST)).cross_check_sbom
 
     assert rescanned.reasons == ("SBOM changed",)
     assert reevaluated.reasons == ("reproducibility report changed",)
@@ -298,7 +298,7 @@ def test_a_stale_cross_check_reaches_the_seal_gate() -> None:
     """It is a step like any other: the generic walk must pick it up."""
     stale = audit(_cross_checked_ree(sbom_digest=_OTHER_DIGEST)).stale_steps()
 
-    assert [name for name, _ in stale] == ["sbom_cross_check"]
+    assert [name for name, _ in stale] == ["cross_check_sbom"]
 
 
 def test_stale_steps_walks_every_step_the_audit_reports() -> None:
@@ -326,9 +326,9 @@ def test_removing_the_source_declaration_leaves_its_receipt_stale() -> None:
 
     result = audit(orphaned)
 
-    assert result.source.evidence == "stale"
-    assert result.source.reasons == ("the REE no longer declares what this evidence is about",)
-    assert "source" in {name for name, _ in result.stale_steps()}
+    assert result.acquire_source.evidence == "stale"
+    assert result.acquire_source.reasons == ("the REE no longer declares what this evidence is about",)
+    assert "acquire_source" in {name for name, _ in result.stale_steps()}
 
 
 def test_a_step_with_neither_declaration_nor_receipt_stays_not_applicable() -> None:
@@ -336,8 +336,8 @@ def test_a_step_with_neither_declaration_nor_receipt_stays_not_applicable() -> N
 
     result = audit(bare)
 
-    assert result.experiment_environment.evidence == "not_applicable"
-    assert result.experiment_environment.reasons == ()
+    assert result.build_experiment_environment.evidence == "not_applicable"
+    assert result.build_experiment_environment.reasons == ()
     assert result.stale_steps() == ()
 
 
@@ -366,7 +366,7 @@ def test_an_observed_hardware_receipt_stands_without_a_declaration() -> None:
     """The observation is the content, not evidence for something declared.
 
     ``observe_hardware`` files this receipt and never declares
-    ``definition.hardware`` — an author may observe the machine without stating
+    ``definition.hbom`` — an author may observe the machine without stating
     a requirement. Reading that as an orphan would refuse the seal on a
     perfectly consistent REE.
     """
@@ -385,13 +385,13 @@ def test_an_observed_hardware_receipt_stands_without_a_declaration() -> None:
 
     result = audit(observed)
 
-    assert observed.subject.definition.hardware is None
-    assert result.hardware.evidence == "current"
+    assert observed.subject.definition.hbom is None
+    assert result.observe_hardware.evidence == "current"
     assert result.stale_steps() == ()
 
 
 def test_hardware_is_not_applicable_when_neither_declared_nor_observed() -> None:
-    assert audit(_built_ree()).hardware.evidence == "not_applicable"
+    assert audit(_built_ree()).observe_hardware.evidence == "not_applicable"
 
 
 def _sealed_with(*paths: str) -> Ree:
@@ -439,5 +439,5 @@ def test_editing_the_activate_script_leaves_what_ran_through_it_stale_but_not_th
 
     result = audit(edited)
 
-    assert result.experiment_environment.evidence == "current"
+    assert result.build_experiment_environment.evidence == "current"
     assert result.experiments[0].run.reasons == ("activate experiment environment script changed",)

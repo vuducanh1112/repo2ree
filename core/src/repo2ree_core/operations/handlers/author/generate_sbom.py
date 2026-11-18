@@ -150,10 +150,10 @@ def _check_preconditions(
         raise ReePreconditionError("no experiment environment artifact path is declared")
     if not is_experiment_environment_archive(str(experiment_environment.artifact_path)):
         raise ValueError("SBOM generation currently supports experiment environment tarballs only")
-    build = ree.subject.receipts.experiment_environment
+    build = ree.subject.receipts.build_experiment_environment
     if build is None:
         raise ReePreconditionError("experiment environment has not been built")
-    experiment_environment_audit = audit(ree).experiment_environment
+    experiment_environment_audit = audit(ree).build_experiment_environment
     if experiment_environment_audit.evidence != "current":
         detail = "; ".join(experiment_environment_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)

@@ -22,7 +22,7 @@ import type { StepPageProps } from "../sharedStepUi";
 import styles from "./GenerateSbomPage.module.css";
 import { CrossCheckCard, ExperimentEnvironmentScanTargetCard, SbomOutputCard } from "./sections";
 
-const SBOM_PAGE_COLOR = stageTone(PAGE.SBOM);
+const SBOM_PAGE_COLOR = stageTone(PAGE.GENERATE_SBOM);
 
 export function PageGenerateSbom({
   step,
@@ -82,7 +82,7 @@ export function PageGenerateSbom({
             label={running ? "Generating…" : runDone ? "Regenerate" : "Generate"}
             running={running}
             disabled={disabled}
-            onRun={() => onRun(step.key, params as ReeStepRunParams<"sbom">)}
+            onRun={() => onRun(step.key, params as ReeStepRunParams<"generate_sbom">)}
             onCancel={() => onCancel?.(step.key)}
           />
         }

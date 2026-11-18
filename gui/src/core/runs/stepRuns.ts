@@ -1,22 +1,14 @@
-import type { ReeRunOperation, ReeRunSummary } from "./ReeRun";
+import { REE_RUN_OPERATIONS, type ReeRunOperation, type ReeRunSummary } from "./ReeRun";
 import { isTerminalReeRunStatus } from "./ReeRunStatus";
 
-/** The operation whose run advances each step, by the step's key. */
-const STEP_OPERATION: ReadonlyMap<string, ReeRunOperation> = new Map<string, ReeRunOperation>([
-  ["source", "acquire_source"],
-  ["hbom", "observe_hardware"],
-  ["check_working_environment", "check_working_environment"],
-  ["evaluate", "evaluate_reproducibility"],
-  ["build_experiment_environment", "build_experiment_environment"],
-  ["sbom", "generate_sbom"],
-  ["crosscheck", "cross_check_sbom"],
-  ["activation", "activate_experiment_environment"],
-  ["experiments", "run_experiment"],
-  ["seal", "seal_ree"],
-]);
+/** The operation whose run advances a step: the one the step is keyed by, and for the experiments, running one. */
+function stepOperation(step: string): ReeRunOperation | undefined {
+  if (step === "experiments") return "run_experiment";
+  return REE_RUN_OPERATIONS.find((operation) => operation === step);
+}
 
 function runsForStep(runs: readonly ReeRunSummary[], step: string): ReeRunSummary[] {
-  const operation = STEP_OPERATION.get(step);
+  const operation = stepOperation(step);
   return [...runs]
     .filter((run) => run.operation === operation)
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));

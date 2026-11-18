@@ -37,10 +37,10 @@ export type ExperimentComparisonWire = Schema<"ExperimentComparison">;
 
 export type ReviewSetWire = Schema<"ReviewSet">;
 
-export type CreateSourceReviewPayload = Schema<"CreateSourceReviewPayload">;
+export type ReviewAcquireSourcePayload = Schema<"ReviewAcquireSourcePayload">;
 
-export type CreateBuildExperimentEnvironmentReviewPayload =
-  Schema<"CreateBuildExperimentEnvironmentReviewPayload">;
+export type ReviewBuildExperimentEnvironmentPayload =
+  Schema<"ReviewBuildExperimentEnvironmentPayload">;
 
 export type ReeDocument = Schema<"ReeDocument">;
 export type ReeState = Schema<"ReeState">;
@@ -66,12 +66,12 @@ export type ReeIndexEntryWire = Schema<"ReeIndexEntry">;
 
 export type ReeIndexList = Schema<"ReeIndexList">;
 
-export type ReeDefinitionPatchPayload = Schema<"ReeDefinitionPatchPayload">;
+export type PatchReeDefinitionPayload = Schema<"PatchReeDefinitionPayload">;
 
-export type SourceAcquirePayload = Schema<"SourceAcquirePayload">;
+export type AcquireSourcePayload = Schema<"AcquireSourcePayload">;
 
 /**
- * Shape an {@link SourceAcquirePayload} from loosely-typed download inputs,
+ * Shape an {@link AcquireSourcePayload} from loosely-typed download inputs,
  * applying the one normalization rule both acquire call sites (source execution
  * and workspace-reset fallback) must agree on: trim the revision and omit it
  * when blank, so the backend sees no revision rather than an empty string. Kept
@@ -81,11 +81,11 @@ export function toSourceAcquireRequest(input: {
   origin_url?: unknown;
   source_type?: unknown;
   revision?: unknown;
-}): SourceAcquirePayload {
+}): AcquireSourcePayload {
   const revision = typeof input.revision === "string" ? input.revision.trim() : "";
   return {
     origin_url: String(input.origin_url ?? ""),
-    source_type: String(input.source_type ?? "git") as SourceAcquirePayload["source_type"],
+    source_type: String(input.source_type ?? "git") as AcquireSourcePayload["source_type"],
     ...(revision ? { revision } : {}),
   };
 }
@@ -94,22 +94,21 @@ export type UploadInitPayload = Schema<"UploadInitPayload">;
 
 export type UploadInitResponse = Schema<"UploadInitResponse">;
 
-export type CreateExperimentRunPayload = Schema<"CreateExperimentRunPayload">;
+export type RunExperimentPayload = Schema<"RunExperimentPayload">;
 
 export type RunStatus = Schema<"RunSummary">["status"];
 
-export type CreateBuildExperimentEnvironmentRunPayload =
-  Schema<"CreateBuildExperimentEnvironmentRunPayload">;
+export type BuildExperimentEnvironmentPayload = Schema<"BuildExperimentEnvironmentPayload">;
 
-export type CreateGenerateSbomRunPayload = Schema<"CreateGenerateSbomRunPayload">;
+export type GenerateSbomPayload = Schema<"GenerateSbomPayload">;
 
-export type CreateGenerateHbomRunPayload = Schema<"CreateGenerateHbomRunPayload">;
+export type ObserveHardwarePayload = Schema<"ObserveHardwarePayload">;
 
-export type CreateCrossCheckSbomRunPayload = Schema<"CreateCrossCheckSbomRunPayload">;
+export type CrossCheckSbomPayload = Schema<"CrossCheckSbomPayload">;
 
-export type CreateActivationTestRunPayload = Schema<"CreateActivationTestRunPayload">;
+export type ActivateExperimentEnvironmentPayload = Schema<"ActivateExperimentEnvironmentPayload">;
 
-export type CreateEvaluateRunPayload = Schema<"CreateEvaluateRunPayload">;
+export type EvaluateReproducibilityPayload = Schema<"EvaluateReproducibilityPayload">;
 
 export type RunSummary = Schema<"RunSummary">;
 
@@ -124,7 +123,7 @@ export type FileMutationResponse = NullableToOptional<Schema<"FileMutationRespon
 /** A caller-supplied inference target (kind only; the backend resolves the path). */
 export type ScriptTargetSelector = Schema<"ScriptTargetSelectorPayload">;
 
-/** Read-only script inference over the current source (POST .../script-inferences:generate). */
+/** Read-only script inference over the current source (POST .../suggest-scripts). */
 export type InferenceReport = Schema<"InferenceReport">;
 
 /** Static checks over one script: the findings and which tiers produced them. */

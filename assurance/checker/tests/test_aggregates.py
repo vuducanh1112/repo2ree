@@ -67,34 +67,34 @@ def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() 
 def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
     # The build experiment environment script is a file: writing it changes the declaration the experiment environment
     # rests on.
-    assert {"write_script", "acquire_source"} <= allowed("receipt", "experiment_environment", "current", "stale")
+    assert {"write_script", "acquire_source"} <= allowed("receipt", "build_experiment_environment", "current", "stale")
     # A new experiment environment makes everything run on the old one stale, but never the experiment environment
     # itself.
-    assert "build_experiment_environment" in allowed("receipt", "activation", "current", "stale")
-    assert "build_experiment_environment" not in allowed("receipt", "experiment_environment", "current", "stale")
-    assert allowed("receipt", "experiment_environment", "missing", "current") == {
+    assert "build_experiment_environment" in allowed("receipt", "activate_experiment_environment", "current", "stale")
+    assert "build_experiment_environment" not in allowed("receipt", "build_experiment_environment", "current", "stale")
+    assert allowed("receipt", "build_experiment_environment", "missing", "current") == {
         "build_experiment_environment",
         "load_ree_bundle",
     }
 
 
 def test_what_runs_through_the_activation_rests_on_it_and_the_build_does_not() -> None:
-    for name in ("activation", "experiment"):
+    for name in ("activate_experiment_environment", "experiment"):
         assert "definition.activate_experiment_environment" in ree().receipts[name].rests_on
-    assert "definition.activate_experiment_environment" not in ree().receipts["experiment_environment"].rests_on
+    assert "definition.activate_experiment_environment" not in ree().receipts["build_experiment_environment"].rests_on
     assert "write_script" in allowed("receipt", "experiment", "current", "stale")
 
 
 def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_its_script() -> None:
-    assert ree().receipts["activation"].about == ("definition.activate_experiment_environment",)
-    assert "activation" in ree().receipts["experiment"].made_from
+    assert ree().receipts["activate_experiment_environment"].about == ("definition.activate_experiment_environment",)
+    assert "activate_experiment_environment" in ree().receipts["experiment"].made_from
     # Testing the activation again may stale every experiment run through the one before.
     assert "activate_experiment_environment" in allowed("receipt", "experiment", "current", "stale")
 
 
 def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch() -> None:
     # The REE declares no working environment: its check says what the scripts need, and what ran it is the launch.
-    assert ree().receipts["working_environment_check"].rests_on == (
+    assert ree().receipts["check_working_environment"].rests_on == (
         "definition.check_working_environment",
         "definition.launch",
     )
@@ -104,38 +104,41 @@ def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
     # Standing is the receipt against the document as it now stands: undoing an edit undoes its staleness.
     assert {"patch_ree_definition", "write_script", "build_experiment_environment"} <= allowed(
-        "receipt", "activation", "stale", "current"
+        "receipt", "activate_experiment_environment", "stale", "current"
     )
-    assert allowed("receipt", "experiment_environment", "current", "stale") <= allowed(
-        "receipt", "experiment_environment", "stale", "current"
+    assert allowed("receipt", "build_experiment_environment", "current", "stale") <= allowed(
+        "receipt", "build_experiment_environment", "stale", "current"
     )
     # Declaring an orphaned receipt's subject again makes it speak for the REE again.
-    assert "patch_ree_definition" in allowed("receipt", "experiment_environment", "stale", "current")
+    assert "patch_ree_definition" in allowed("receipt", "build_experiment_environment", "stale", "current")
 
 
 def test_undeclaring_a_keyed_item_discards_its_receipt() -> None:
     for source in ("current", "stale", "missing"):
         assert "patch_ree_definition" in allowed("receipt", "experiment", source, "not_applicable")
     # An unkeyed receipt is orphaned instead, and only removing the source clears it.
-    assert allowed("receipt", "experiment_environment", "current", "not_applicable") == {
+    assert allowed("receipt", "build_experiment_environment", "current", "not_applicable") == {
         "remove_source",
         "load_ree_bundle",
     }
 
 
 def test_an_observation_applies_without_a_declaration_and_nothing_makes_it_stale() -> None:
-    assert allowed("receipt", "hardware", "not_applicable", "current") == {"observe_hardware", "load_ree_bundle"}
-    assert allowed("receipt", "hardware", "current", "stale") == {"load_ree_bundle"}
+    assert allowed("receipt", "observe_hardware", "not_applicable", "current") == {
+        "observe_hardware",
+        "load_ree_bundle",
+    }
+    assert allowed("receipt", "observe_hardware", "current", "stale") == {"load_ree_bundle"}
 
 
 def test_a_receipt_starts_applicable_only_when_what_it_is_about_is_declared_from_the_start() -> None:
-    assert allowed("receipt", "activation", CREATED, "missing") == {"initialize_ree"}
-    assert allowed("receipt", "experiment_environment", CREATED, "not_applicable") == {"initialize_ree"}
+    assert allowed("receipt", "activate_experiment_environment", CREATED, "missing") == {"initialize_ree"}
+    assert allowed("receipt", "build_experiment_environment", CREATED, "not_applicable") == {"initialize_ree"}
     assert allowed("receipt", "experiment", CREATED, "missing") == {"patch_ree_definition"}
 
 
 def test_whole_document_operations_are_marked_bulk_for_views() -> None:
-    assert set(machine("receipt", "experiment_environment").bulk) == {"load_ree_bundle", "remove_source"}
+    assert set(machine("receipt", "build_experiment_environment").bulk) == {"load_ree_bundle", "remove_source"}
     assert machine("field", "definition.name").bulk == ("load_ree_bundle",)
 
 
@@ -149,11 +152,14 @@ def mutated(change: Any) -> dict[str, Any]:
     ("change", "message"),
     [
         (
-            lambda a: a["receipts"]["experiment_environment"].update(rests_on=["definition.nothing"]),
+            lambda a: a["receipts"]["build_experiment_environment"].update(rests_on=["definition.nothing"]),
             "names undeclared fields",
         ),
-        (lambda a: a["receipts"]["experiment_environment"].update(about=["definition.experiments[*]"]), "is not keyed"),
-        (lambda a: a["receipts"]["sbom"].update(made_from=["experiment"]), "other, unkeyed receipts"),
+        (
+            lambda a: a["receipts"]["build_experiment_environment"].update(about=["definition.experiments[*]"]),
+            "is not keyed",
+        ),
+        (lambda a: a["receipts"]["generate_sbom"].update(made_from=["experiment"]), "other, unkeyed receipts"),
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
         (lambda a: a.update(writes_nothing=["write_script"]), "write nothing take edges"),
         (lambda a: a.pop("overlay"), "names no overlay"),
@@ -177,7 +183,7 @@ def test_incoherent_aggregates_are_rejected(change: Any, message: str) -> None:
 
 def test_an_aggregate_must_describe_exactly_the_receipt_kinds_its_receipt_entity_lists() -> None:
     docs = documents()
-    del docs.aggregates[0]["receipts"]["sbom_cross_check"]
+    del docs.aggregates[0]["receipts"]["cross_check_sbom"]
     with pytest.raises(ValidationError, match="are not the kinds Receipt lists"):
         docs.parse()
 
@@ -350,9 +356,13 @@ def authored() -> Evidence:
         sources=(git_source(),),
         events=(
             lifecycle(1900, None, "draft", "initialize_ree", "created"),
-            receipt(2100, "experiment_environment", None, "not_applicable", None, "baseline"),
-            receipt(2300, "experiment_environment", "not_applicable", "missing", "patch_ree_definition", "operation"),
-            receipt(3300, "experiment_environment", "missing", "current", "build_experiment_environment", "operation"),
+            receipt(2100, "build_experiment_environment", None, "not_applicable", None, "baseline"),
+            receipt(
+                2300, "build_experiment_environment", "not_applicable", "missing", "patch_ree_definition", "operation"
+            ),
+            receipt(
+                3300, "build_experiment_environment", "missing", "current", "build_experiment_environment", "operation"
+            ),
             receipt(4300, "experiment:one", None, "missing", "patch_ree_definition", "operation"),
             receipt(5300, "experiment:one", "missing", "current", "run_experiment", "operation"),
             lifecycle(6900, "draft", "sealed", "seal_ree", "operation"),
@@ -402,7 +412,7 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
     # A keyed item starts when it is declared; the parts inside it are not fields of their own.
     assert moves[("definition.experiments[*]", CREATED, "set", "patch_ree_definition")] == 1
     # A receipt's first audited standing is the one the REE was created with.
-    assert moves[("experiment_environment", CREATED, "not_applicable", "initialize_ree")] == 1
+    assert moves[("build_experiment_environment", CREATED, "not_applicable", "initialize_ree")] == 1
     assert moves[("experiment", "missing", "current", "run_experiment")] == 1
     assert not check_aggregate(ree(), authored()).findings
 
@@ -410,18 +420,22 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
 def test_a_move_no_edge_allows_is_reported_with_its_evidence() -> None:
     evidence = authored()
     late = change(7900, "definition.catalog.version", None, "2", "run_experiment", "operation")
-    drift = receipt(7100, "experiment_environment", "current", "stale", None, "external")
+    drift = receipt(7100, "build_experiment_environment", "current", "stale", None, "external")
     result = check_aggregate(
         ree(), evidence.model_copy(update={"changes": (*evidence.changes, late), "events": (*evidence.events, drift)})
     )
     reasons = sorted((finding.subject, finding.reason, finding.evidence) for finding in result.findings)
     assert reasons == [
         (
+            f"Ree {REE} build_experiment_environment",
+            f"current -> stale by {EXTERNAL}, which no edge allows",
+            ("git:ree@c7",),
+        ),
+        (
             f"Ree {REE} definition.catalog.version",
             "unset -> set by run_experiment, which no edge allows",
             ("git:ree@c7",),
         ),
-        (f"Ree {REE} experiment_environment", f"current -> stale by {EXTERNAL}, which no edge allows", ("git:ree@c7",)),
     ]
 
 
@@ -451,7 +465,7 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     assert ("patch_ree_definition", ("experiment[one]", "definition.experiments[one]")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle", "contents"))
     final = replayed.steps[-1].states
-    assert (final["lifecycle"], final["experiment_environment"], final["experiment[one]"]) == (
+    assert (final["lifecycle"], final["build_experiment_environment"], final["experiment[one]"]) == (
         "sealed",
         "current",
         "current",
@@ -459,7 +473,7 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
     names = [part.name for part in replayed.parts]
     # Drawing order: the lifecycle, each receipt after what it is about, the other groups last.
     assert names[0] == "lifecycle"
-    assert names.index("definition.experiment_environment.artifact_path") < names.index("experiment_environment")
+    assert names.index("definition.experiment_environment.artifact_path") < names.index("build_experiment_environment")
     assert names.index("experiment[one]") < names.index("definition.name")
     item = next(part for part in replayed.parts if part.name == "experiment[one]")
     assert (item.machine, item.item, item.group) == ("experiment", "one", "experiment")
@@ -561,7 +575,7 @@ def test_a_file_no_field_claims_violates_the_aggregate_rule() -> None:
         f"Ree {REE} {extra}: is committed, but no entry of the tree is it (it falls in overlay)",
     ]
     # Taking it away again is what the rule asks for.
-    assert overlay_findings(file(5900, extra, "m", None, "delete_file", "operation")) == []
+    assert overlay_findings(file(5900, extra, "m", None, "write_script", "operation")) == []
 
 
 @pytest.mark.skipif(GIT is None, reason="needs git")
@@ -642,7 +656,7 @@ def test_a_file_stored_otherwise_than_the_tree_says_violates_the_aggregate_rule(
         f"Ree {REE} artifacts/sbom.json: is stored as lfs, but the tree stores artifacts/sbom.json as git",
     ]
     # A removal is not judged: the file is no longer committed.
-    assert tree_findings(file(1900, "notes.txt", "n", None, "delete_file", "operation")) == []
+    assert tree_findings(file(1900, "notes.txt", "n", None, "write_script", "operation")) == []
 
 
 @pytest.mark.skipif(GIT is None, reason="needs git")

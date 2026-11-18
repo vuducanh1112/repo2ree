@@ -71,7 +71,7 @@ def test_build_experiment_environment_script_runs_and_commits_the_produced_exper
 
     assert result.status == "succeeded"
     assert (layout.workspace / "runtime.tar").read_bytes() == b"local experiment environment"
-    receipt = store.read_ree().subject.receipts.experiment_environment
+    receipt = store.read_ree().subject.receipts.build_experiment_environment
     assert receipt is not None
     assert receipt.run_id == "build-local"
     assert receipt.produced_artifact_digest == digest_bytes(b"local experiment environment")

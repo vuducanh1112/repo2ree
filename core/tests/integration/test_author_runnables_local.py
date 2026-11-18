@@ -107,8 +107,8 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     assert activation_result.status == "succeeded"
     assert experiment_result.status == "succeeded"
     persisted = store.read_ree().subject.receipts
-    assert persisted.activation is not None
-    assert persisted.activation.run_id == "activation-local"
+    assert persisted.activate_experiment_environment is not None
+    assert persisted.activate_experiment_environment.run_id == "activation-local"
     # The activation ran twice: alone, and around the experiment.
     assert (layout.workspace / "activation.out").read_text() == "enteredentered"
     # Alone, it hands over a command with no options: a tool it wraps (srun) would parse them as its own.

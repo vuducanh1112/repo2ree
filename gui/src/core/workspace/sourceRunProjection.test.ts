@@ -4,7 +4,7 @@ import type { ReeRunSummary } from "../runs/ReeRun";
 import { projectCurrentSourceRun } from "./sourceRunProjection";
 
 const audit: ReeAudit = {
-  source: {
+  acquire_source: {
     evidence: "current",
     payload: "missing",
     receiptRunId: "source-run",

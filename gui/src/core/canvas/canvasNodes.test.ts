@@ -51,15 +51,15 @@ describe("CANVAS_NODES", () => {
   it("carries one node per pipeline page, and no workbench node", () => {
     // The workbench is the lab the pod sits in, not a node orbiting it.
     expect(CANVAS_NODES.map((node) => node.key)).toEqual([
-      PAGE.SOURCE,
+      PAGE.ACQUIRE_SOURCE,
       PAGE.METADATA,
-      PAGE.HBOM,
-      PAGE.EVALUATE,
+      PAGE.OBSERVE_HARDWARE,
+      PAGE.EVALUATE_REPRODUCIBILITY,
       PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-      PAGE.SBOM,
-      PAGE.ACTIVATION,
+      PAGE.GENERATE_SBOM,
+      PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
       PAGE.EXPERIMENTS,
-      PAGE.SEAL,
+      PAGE.SEAL_REE,
       PAGE.ARCHIVE,
     ]);
   });
@@ -81,7 +81,7 @@ describe("ring placement", () => {
   });
 
   it("finishes authoring at the seal, dead centre in front of the pod", () => {
-    const seal = nodeFor(PAGE.SEAL);
+    const seal = nodeFor(PAGE.SEAL_REE);
     expect(seal.angle).toBe(180);
     expect(seal.x).toBe(0);
     // Positive y is the near side of the bench: closest to the viewer, and the
@@ -90,14 +90,14 @@ describe("ring placement", () => {
   });
 
   it("puts archive past the seal, off the authoring arc", () => {
-    expect(nodeFor(PAGE.ARCHIVE).angle).toBeGreaterThan(nodeFor(PAGE.SEAL).angle);
+    expect(nodeFor(PAGE.ARCHIVE).angle).toBeGreaterThan(nodeFor(PAGE.SEAL_REE).angle);
   });
 
   it("leaves a sector of the ring open", () => {
     // The gap between the last node and the first is the canvas's breathing
     // room — a horseshoe, not a closed ring.
     const last = nodeFor(PAGE.ARCHIVE).angle;
-    const first = nodeFor(PAGE.SOURCE).angle;
+    const first = nodeFor(PAGE.ACQUIRE_SOURCE).angle;
     expect(first - last).toBeGreaterThan(40);
   });
 
@@ -139,8 +139,8 @@ describe("billboard correction", () => {
   });
 
   it("shrinks near panels and enlarges far ones", () => {
-    expect(nodeScale(nodeFor(PAGE.SEAL))).toBeLessThan(1);
-    expect(nodeScale(nodeFor(PAGE.EVALUATE))).toBeGreaterThan(1);
+    expect(nodeScale(nodeFor(PAGE.SEAL_REE))).toBeLessThan(1);
+    expect(nodeScale(nodeFor(PAGE.EVALUATE_REPRODUCIBILITY))).toBeGreaterThan(1);
   });
 });
 
@@ -192,9 +192,9 @@ describe("canvasWorldBounds", () => {
 
 describe("node state", () => {
   it("marks exactly the node whose page is open", () => {
-    const active = CANVAS_NODES.filter((node) => isNodeActive(node, PAGE.SBOM));
+    const active = CANVAS_NODES.filter((node) => isNodeActive(node, PAGE.GENERATE_SBOM));
     expect(active).toHaveLength(1);
-    expect(activeNode(PAGE.SBOM)?.label).toBe("SBOM");
+    expect(activeNode(PAGE.GENERATE_SBOM)?.label).toBe("SBOM");
   });
 
   it("has no active node while the hub canvas itself is showing", () => {
@@ -206,7 +206,7 @@ describe("node state", () => {
   it("reads a node as done when the REE says its step is complete", () => {
     const ree = {
       ...patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-        audit: { experiment_environment: "current" },
+        audit: { build_experiment_environment: "current" },
       }),
       steps: authoringProgress({ build_experiment_environment: "complete" }),
     };
@@ -216,7 +216,7 @@ describe("node state", () => {
 
   it("reads a stale node as not done, and names it stale", () => {
     const ree = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
-      audit: { experiment_environment: "stale" },
+      audit: { build_experiment_environment: "stale" },
     });
     expect(isNodeDone(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree, {})).toBe(false);
     expect(isNodeStale(nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT), ree)).toBe(true);
@@ -225,7 +225,7 @@ describe("node state", () => {
   it("has no staleness to report for a node with no receipt behind it", () => {
     const ree = createEmptyReeEditorViewModel();
     expect(isNodeStale(nodeFor(PAGE.METADATA), ree)).toBe(false);
-    expect(isNodeStale(nodeFor(PAGE.SEAL), ree)).toBe(false);
+    expect(isNodeStale(nodeFor(PAGE.SEAL_REE), ree)).toBe(false);
   });
 });
 
@@ -233,7 +233,7 @@ describe("nodeSummary", () => {
   it("shows nothing but empty rows for a fresh REE", () => {
     // Two nodes report a standing rather than an absence, and always have a
     // value: Evaluate scores every axis from zero, and Seal reads "draft".
-    const alwaysPopulated: string[] = [PAGE.EVALUATE, PAGE.SEAL];
+    const alwaysPopulated: string[] = [PAGE.EVALUATE_REPRODUCIBILITY, PAGE.SEAL_REE];
     for (const node of CANVAS_NODES) {
       if (alwaysPopulated.includes(node.key)) continue;
       for (const row of nodeSummary(node, createEmptyReeEditorViewModel())) {
@@ -254,7 +254,7 @@ describe("nodeSummary", () => {
     };
 
     it("falls back to the declared origin before any source is in the workspace", () => {
-      const summary = summaryOf(PAGE.SOURCE, {
+      const summary = summaryOf(PAGE.ACQUIRE_SOURCE, {
         spec: { originUrl: "https://github.com/example/hello" },
       });
       expect(summary.Origin).toBe("github.com");
@@ -263,11 +263,13 @@ describe("nodeSummary", () => {
 
     it("ignores backend metadata until the source is actually available", () => {
       // `sourceAvailable` is the gate: stale repo stats must not show through.
-      expect(summaryOf(PAGE.SOURCE, { source: { sourceAvailable: false } }, repo).SWHID).toBeNull();
+      expect(
+        summaryOf(PAGE.ACQUIRE_SOURCE, { source: { sourceAvailable: false } }, repo).SWHID,
+      ).toBeNull();
     });
 
     it("surfaces the backend-computed stats once the source lands", () => {
-      const summary = summaryOf(PAGE.SOURCE, { source: { sourceAvailable: true } }, repo);
+      const summary = summaryOf(PAGE.ACQUIRE_SOURCE, { source: { sourceAvailable: true } }, repo);
       expect(summary).toMatchObject({
         Size: "4.0 KB",
         Origin: "github.com",
@@ -277,9 +279,9 @@ describe("nodeSummary", () => {
 
     it("shortens an origin to its host, and survives one that is not a URL", () => {
       const local = { ...repo, origin: "not a url/at all" };
-      expect(summaryOf(PAGE.SOURCE, { source: { sourceAvailable: true } }, local).Origin).toBe(
-        "not a url",
-      );
+      expect(
+        summaryOf(PAGE.ACQUIRE_SOURCE, { source: { sourceAvailable: true } }, local).Origin,
+      ).toBe("not a url");
     });
   });
 
@@ -307,14 +309,14 @@ describe("nodeSummary", () => {
   });
 
   it("reports the seal as the draft/sealed distinction", () => {
-    expect(summaryOf(PAGE.SEAL).State).toBe("draft");
-    expect(summaryOf(PAGE.SEAL, { artifact: { sealedAt: "2026-07-30T12:00:00Z" } }).State).toBe(
+    expect(summaryOf(PAGE.SEAL_REE).State).toBe("draft");
+    expect(summaryOf(PAGE.SEAL_REE, { artifact: { sealedAt: "2026-07-30T12:00:00Z" } }).State).toBe(
       "sealed",
     );
   });
 
   it("always shows all three reproducibility axes, scored or not", () => {
-    const fresh = summaryOf(PAGE.EVALUATE);
+    const fresh = summaryOf(PAGE.EVALUATE_REPRODUCIBILITY);
     expect(fresh).toEqual({
       Dependencies: "None",
       Environment: "None",
@@ -322,7 +324,7 @@ describe("nodeSummary", () => {
       "Detected deps": null,
     });
 
-    const scored = summaryOf(PAGE.EVALUATE, {
+    const scored = summaryOf(PAGE.EVALUATE_REPRODUCIBILITY, {
       evaluation: { dependencyLevel: 3, environmentLevel: 1 },
     });
     expect(scored).toMatchObject({ Dependencies: "Locked", Environment: "Container" });
@@ -354,7 +356,7 @@ describe("nodeOverview", () => {
 
   it("previews the saved build script and its receipt evidence", () => {
     const [receipt] = parseAuthorReceipts({
-      experiment_environment: {
+      build_experiment_environment: {
         operation: "build_experiment_environment",
         run_id: "run-build",
         duration_ms: 12_400,

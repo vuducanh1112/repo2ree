@@ -53,10 +53,10 @@ def test_a_declaration_and_the_receipts_that_ran_it_meet_at_the_file_they_are_di
     assert Link("definition:experiments", "run_script_digest", "definition", script) in links
     assert Link("receipt:experiments", "run_script_digest", "receipt", script) in links
     assert {link.node for link in links if link.entry == "snapshot.tar.gz"} == {
-        "receipt:source",
-        "receipt:evaluation",
-        "receipt:experiment_environment",
-        "receipt:activation",
+        "receipt:acquire_source",
+        "receipt:evaluate_reproducibility",
+        "receipt:build_experiment_environment",
+        "receipt:activate_experiment_environment",
         "receipt:experiments",
     }
     # The seal is the digest of the document's subject; a bundle entry, of the file its path names.
@@ -79,11 +79,11 @@ def test_every_digest_field_drawn_points_into_the_tree_unless_it_is_of_something
 def test_a_declared_field_no_file_joins_is_paired_with_the_receipt_field_that_records_it() -> None:
     pairs = set(drawn().pairs)
     assert Pair("experiments", "name", "experiments", "experiment_name", "field") in pairs
-    assert Pair("source", "origin_url", "source", "origin_url", "field") in pairs
+    assert Pair("source", "origin_url", "acquire_source", "origin_url", "field") in pairs
     # Where a step ran is observed, not declared: nothing in the definition pairs with it.
     assert not [pair for pair in pairs if pair.receipt_field == "working_environment"]
     # The hardware observation repeats no field by name, but holds the declaration's very fields.
-    assert Pair("hardware", None, "hardware_observation", "observation", "same fields") in pairs
+    assert Pair("hbom", None, "observe_hardware", "observation", "same fields") in pairs
     # A field every receipt carries joins nothing.
     assert not [pair for pair in pairs if pair.receipt_field in drawn().shared]
 

@@ -3,16 +3,16 @@
 // the GUI says what `ree status` says.
 
 export const AUTHORING_STEP_KEYS = [
-  "source",
+  "acquire_source",
   "metadata",
-  "hbom",
-  "evaluate",
+  "observe_hardware",
+  "evaluate_reproducibility",
   "build_experiment_environment",
-  "sbom",
-  "crosscheck",
-  "activation",
+  "generate_sbom",
+  "cross_check_sbom",
+  "activate_experiment_environment",
   "experiments",
-  "seal",
+  "seal_ree",
 ] as const;
 
 export type AuthoringStepKey = (typeof AUTHORING_STEP_KEYS)[number];

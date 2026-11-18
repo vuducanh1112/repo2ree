@@ -33,7 +33,7 @@ from repo2ree_ree.review import ReviewLaunch
 review_stages_router = APIRouter(tags=["reviews"])
 
 
-class CreateSourceReviewPayload(CreateRunPayload):
+class ReviewAcquireSourcePayload(CreateRunPayload):
     """Start a fresh isolated review attempt at source acquisition.
 
     ``basis`` chooses what to reproduce from: the recorded origin, or the
@@ -47,7 +47,7 @@ class CreateSourceReviewPayload(CreateRunPayload):
     launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
 
 
-class CreateBuildExperimentEnvironmentReviewPayload(CreateRunPayload):
+class ReviewBuildExperimentEnvironmentPayload(CreateRunPayload):
     """Reproduce the experiment environment build inside an existing review attempt."""
 
     # The rebuilt workspace is kept, because activation and the experiments run
@@ -58,13 +58,13 @@ class CreateBuildExperimentEnvironmentReviewPayload(CreateRunPayload):
 
 
 @review_stages_router.post(
-    "/api/v1/rees/{ree_id}/reviews/source:reproduce",
+    "/api/v1/rees/{ree_id}/reviews/acquire-source",
     operation_id="reviewAcquireSource",
     openapi_extra=runs("review_acquire_source"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunSummary:
+def review_acquire_source_route(ree_id: str, payload: ReviewAcquireSourcePayload) -> RunSummary:
     review_id = f"review-{uuid4().hex[:12]}"
     command = ReviewAcquireSourceCommand(
         args=ReviewAcquireSourceArgs(review_id=review_id, basis=payload.basis, launch=payload.launch)
@@ -75,7 +75,6 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
                 ree_id,
                 action=None,
                 command=command,
-                run_id_prefix="review-source",
                 request_payload={},
                 canceled_message="Source review canceled",
                 fallback_outputs={"review_id": review_id},
@@ -86,14 +85,14 @@ def start_source_review(ree_id: str, payload: CreateSourceReviewPayload) -> RunS
 
 
 @review_stages_router.post(
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce",
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment",
     operation_id="reviewBuildExperimentEnvironment",
     openapi_extra=runs("review_build_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def start_build_review(
-    ree_id: str, review_id: str, payload: CreateBuildExperimentEnvironmentReviewPayload
+def review_build_experiment_environment_route(
+    ree_id: str, review_id: str, payload: ReviewBuildExperimentEnvironmentPayload
 ) -> RunSummary:
     """Rebuild the experiment environment inside an attempt whose source was already reproduced.
 
@@ -114,7 +113,6 @@ def start_build_review(
                 ree_id,
                 action=None,
                 command=command,
-                run_id_prefix="review-build",
                 request_payload={"review_id": review_id},
                 canceled_message="Build review canceled",
                 fallback_outputs={"review_id": review_id},
@@ -125,13 +123,13 @@ def start_build_review(
 
 
 @review_stages_router.post(
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce",
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/activate-experiment-environment",
     operation_id="reviewActivateExperimentEnvironment",
     openapi_extra=runs("review_activate_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPayload) -> RunSummary:
+def review_activate_experiment_environment_route(ree_id: str, review_id: str, payload: CreateRunPayload) -> RunSummary:
     """Run the author's activation alone in the experiment environment this attempt certified.
 
     Takes no ``basis``, unlike the two steps before it: activation runs in the
@@ -147,7 +145,6 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
                 ree_id,
                 action=None,
                 command=command,
-                run_id_prefix="review-activation",
                 request_payload={"review_id": review_id},
                 canceled_message="Activation review canceled",
                 fallback_outputs={"review_id": review_id},
@@ -158,13 +155,13 @@ def start_activation_review(ree_id: str, review_id: str, payload: CreateRunPaylo
 
 
 @review_stages_router.post(
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce",
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/run-experiment/{experiment_name}",
     operation_id="reviewRunExperiment",
     openapi_extra=runs("review_run_experiment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def start_experiment_review(
+def review_run_experiment_route(
     ree_id: str,
     review_id: str,
     experiment_name: str,
@@ -173,7 +170,7 @@ def start_experiment_review(
     """Reproduce one experiment's result inside an attempt whose experiment environment came up.
 
     One experiment per call, addressed by name — the same shape as the author's
-    ``experiments/{name}:run``. Reproducing every experiment is the client
+    ``run-experiment/{name}``. Reproducing every experiment is the client
     issuing this in sequence rather than a batch route: each run then has its own
     log, receipt, and cancel point, and a reviewer watching a slow experiment can
     stop that one without discarding the verdicts already settled.
@@ -192,7 +189,6 @@ def start_experiment_review(
                 ree_id,
                 action=None,
                 command=command,
-                run_id_prefix="review-experiment",
                 request_payload={"review_id": review_id, "experiment_name": experiment_name},
                 canceled_message="Experiment review canceled",
                 fallback_outputs={"review_id": review_id, "subject_name": experiment_name},

@@ -6,7 +6,7 @@ import type { ReeProject, WorkspaceBinaryDownload } from "@core/workspace/Worksp
 import { useMemo } from "react";
 import { ApiRequestError } from "../../infra/api/ApiClient";
 import {
-  type ReeDefinitionPatchPayload,
+  type PatchReeDefinitionPayload,
   type RunSummary,
   toSourceAcquireRequest,
 } from "../../infra/api/apiTypes";
@@ -46,14 +46,14 @@ export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode,
     },
     async updateFile(id, path, content) {
       const reeId = requireReeId(runtime, id);
-      await runtime.reeApi.putFileContent(reeId, { path, content });
+      await runtime.reeApi.writeScript(reeId, { path, content });
     },
     async updateReeIntent(id, intentPatch) {
       const reeId = requireReeId(runtime, id);
       // The domain serializers emit loosely-typed records in the wire's shape;
       // the backend validates the patch strictly (unknown keys are rejected).
       await runtime.reeApi.patchReeDefinition(reeId, {
-        definition_patch: intentPatch as ReeDefinitionPatchPayload["definition_patch"],
+        definition_patch: intentPatch as PatchReeDefinitionPayload["definition_patch"],
       });
     },
     async getReeFileBytes(id, path) {

@@ -584,7 +584,7 @@ def _sealing_confirmed(invocation: Invocation, layout: ReeLayout) -> bool:
     if invocation.machine or not _at_terminal():
         return True
     steps = get_ree_steps(layout).steps
-    open_steps = [step.label for step in steps if step.key != "seal" and step.status != "complete"]
+    open_steps = [step.label for step in steps if step.key != "seal_ree" and step.status != "complete"]
     if open_steps:
         click.echo(f"Not complete: {', '.join(open_steps)}.", err=True)
     return click.confirm("Sealing freezes this REE: it takes no edit after it. Seal it?", err=True)

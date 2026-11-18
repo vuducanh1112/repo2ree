@@ -143,8 +143,8 @@ def _step(
     )
 
 
-def _audit_source_step(subject: _Subject) -> StepAudit:
-    declared, receipt = subject.definition.source, subject.receipts.source
+def _audit_acquire_source(subject: _Subject) -> StepAudit:
+    declared, receipt = subject.definition.source, subject.receipts.acquire_source
     reasons: list[str] = []
     if declared is not None and receipt is not None:
         if receipt.origin_url != declared.origin_url:
@@ -161,8 +161,8 @@ def _audit_source_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_evaluation_step(subject: _Subject) -> StepAudit:
-    receipt, source = subject.receipts.evaluation, subject.receipts.source
+def _audit_evaluate_reproducibility(subject: _Subject) -> StepAudit:
+    receipt, source = subject.receipts.evaluate_reproducibility, subject.receipts.acquire_source
     reasons: list[str] = []
     if receipt and source and receipt.snapshot_digest != source.snapshot_digest:
         reasons.append("source snapshot changed")
@@ -174,13 +174,13 @@ def _audit_evaluation_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_hardware_step(subject: _Subject) -> StepAudit:
+def _audit_observe_hardware(subject: _Subject) -> StepAudit:
     """The one step whose receipt needs no declaration to mean something.
 
     Every other receipt attests that a *declared* thing was done, so it is
     orphaned once that declaration goes. A hardware observation is not evidence
     for a declaration at all — it is a record of the machine the work ran on,
-    complete in itself. ``definition.hardware`` is a separate, optional
+    complete in itself. ``definition.hbom`` is a separate, optional
     statement about what the REE *requires*, and an author may observe without
     requiring, or require without having observed yet.
 
@@ -189,17 +189,17 @@ def _audit_hardware_step(subject: _Subject) -> StepAudit:
     holding a receipt — harmless while that verdict hid the receipt, and a
     refused seal once it stopped.
     """
-    receipt = subject.receipts.hardware_observation
+    receipt = subject.receipts.observe_hardware
     return _step(
         receipt.run_id if receipt else None,
         () if receipt else ("hardware has not been observed",),
-        applicable=subject.definition.hardware is not None or receipt is not None,
+        applicable=subject.definition.hbom is not None or receipt is not None,
     )
 
 
-def _audit_working_environment_check_step(subject: _Subject) -> StepAudit:
+def _audit_check_working_environment(subject: _Subject) -> StepAudit:
     """The author's check, as it last passed: against the check script and working environment declared now."""
-    declared, receipt = subject.definition.check_working_environment, subject.receipts.working_environment_check
+    declared, receipt = subject.definition.check_working_environment, subject.receipts.check_working_environment
     reasons: list[str] = []
     if receipt:
         if receipt.check_working_environment_script_digest != declared.check_working_environment_script_digest:
@@ -213,11 +213,14 @@ def _audit_working_environment_check_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_experiment_environment_step(subject: _Subject) -> StepAudit:
-    build, receipt = subject.definition.experiment_environment, subject.receipts.experiment_environment
+def _audit_build_experiment_environment(subject: _Subject) -> StepAudit:
+    build, receipt = subject.definition.experiment_environment, subject.receipts.build_experiment_environment
     reasons: list[str] = []
     if receipt:
-        if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
+        if (
+            subject.receipts.acquire_source
+            and receipt.snapshot_digest != subject.receipts.acquire_source.snapshot_digest
+        ):
             reasons.append("source snapshot changed")
         if receipt.build_experiment_environment_script_digest != build.build_experiment_environment_script_digest:
             reasons.append("build experiment environment script changed")
@@ -243,8 +246,8 @@ def _experiment_environment_is_declared(subject: _Subject) -> bool:
     return subject.definition.experiment_environment.artifact_path is not None
 
 
-def _audit_sbom_step(subject: _Subject) -> StepAudit:
-    receipt, build = subject.receipts.sbom, subject.receipts.experiment_environment
+def _audit_generate_sbom(subject: _Subject) -> StepAudit:
+    receipt, build = subject.receipts.generate_sbom, subject.receipts.build_experiment_environment
     reasons: list[str] = []
     if receipt and build and receipt.experiment_environment_digest != build.produced_artifact_digest:
         reasons.append("experiment environment changed")
@@ -259,7 +262,7 @@ def _audit_sbom_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
+def _audit_cross_check_sbom(subject: _Subject) -> StepAudit:
     """The cross-check rests on two documents, and both can move under it.
 
     Reconciling an experiment environment SBOM against the source's declared dependencies is a
@@ -267,8 +270,8 @@ def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
     experiment environment rescanned, a re-run evaluation — and the counts this receipt
     carries describe a comparison nobody made.
     """
-    receipt = subject.receipts.sbom_cross_check
-    sbom, evaluation = subject.receipts.sbom, subject.receipts.evaluation
+    receipt = subject.receipts.cross_check_sbom
+    sbom, evaluation = subject.receipts.generate_sbom, subject.receipts.evaluate_reproducibility
     reasons: list[str] = []
     if receipt:
         if sbom and receipt.sbom_digest != sbom.sbom_digest:
@@ -284,20 +287,23 @@ def _audit_sbom_cross_check_step(subject: _Subject) -> StepAudit:
     )
 
 
-def _audit_activation_step(subject: _Subject) -> StepAudit:
+def _audit_activate_experiment_environment(subject: _Subject) -> StepAudit:
     """The activation, run alone: what it ran with, against what the REE now declares and was built from."""
-    receipt = subject.receipts.activation
+    receipt = subject.receipts.activate_experiment_environment
     reasons: list[str] = []
     if receipt:
-        if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
+        if (
+            subject.receipts.acquire_source
+            and receipt.snapshot_digest != subject.receipts.acquire_source.snapshot_digest
+        ):
             reasons.append("source snapshot changed")
         reasons.extend(_activation_reasons(subject, receipt.activate_experiment_environment_script_digest))
         if _launch_changed(subject, receipt.launch_script_digest):
             reasons.append("launch script changed")
         if (
-            subject.receipts.experiment_environment
+            subject.receipts.build_experiment_environment
             and receipt.experiment_environment_digest
-            != subject.receipts.experiment_environment.produced_artifact_digest
+            != subject.receipts.build_experiment_environment.produced_artifact_digest
         ):
             reasons.append("experiment environment changed")
     return _step(
@@ -314,13 +320,16 @@ def _activation_reasons(subject: _Subject, ran_with: Digest) -> tuple[str, ...]:
     return ()
 
 
-def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
+def _audit_experiments(subject: _Subject) -> tuple[ExperimentAudit, ...]:
     audits: list[ExperimentAudit] = []
     for experiment in subject.definition.experiments:
         receipt = subject.receipts.experiments.get(experiment.name)
         reasons: list[str] = []
         if receipt:
-            if subject.receipts.source and receipt.snapshot_digest != subject.receipts.source.snapshot_digest:
+            if (
+                subject.receipts.acquire_source
+                and receipt.snapshot_digest != subject.receipts.acquire_source.snapshot_digest
+            ):
                 reasons.append("source snapshot changed")
             if receipt.run_script_digest != experiment.run_script_digest:
                 reasons.append("experiment run script changed")
@@ -330,12 +339,12 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
             if _launch_changed(subject, receipt.launch_script_digest):
                 reasons.append("launch script changed")
             if (
-                subject.receipts.experiment_environment
+                subject.receipts.build_experiment_environment
                 and receipt.experiment_environment_digest
-                != subject.receipts.experiment_environment.produced_artifact_digest
+                != subject.receipts.build_experiment_environment.produced_artifact_digest
             ):
                 reasons.append("experiment environment changed")
-            if (activation := subject.receipts.activation) and (
+            if (activation := subject.receipts.activate_experiment_environment) and (
                 receipt.activate_experiment_environment_script_digest
                 != activation.activate_experiment_environment_script_digest
                 or receipt.experiment_environment_digest != activation.experiment_environment_digest
@@ -362,24 +371,24 @@ def _audit_experiments_step(subject: _Subject) -> tuple[ExperimentAudit, ...]:
 def audit(ree: Ree) -> ReeAudit:
     subject = _Subject.of(ree)
 
-    source_audit = _audit_source_step(subject)
-    evaluation_audit = _audit_evaluation_step(subject)
-    hardware_audit = _audit_hardware_step(subject)
-    working_environment_check_audit = _audit_working_environment_check_step(subject)
-    experiment_environment_audit = _audit_experiment_environment_step(subject)
-    sbom_audit = _audit_sbom_step(subject)
-    sbom_cross_check_audit = _audit_sbom_cross_check_step(subject)
-    activation_audit = _audit_activation_step(subject)
-    experiments_audit = _audit_experiments_step(subject)
+    acquire_source_audit = _audit_acquire_source(subject)
+    evaluate_reproducibility_audit = _audit_evaluate_reproducibility(subject)
+    observe_hardware_audit = _audit_observe_hardware(subject)
+    check_working_environment_audit = _audit_check_working_environment(subject)
+    build_experiment_environment_audit = _audit_build_experiment_environment(subject)
+    generate_sbom_audit = _audit_generate_sbom(subject)
+    cross_check_sbom_audit = _audit_cross_check_sbom(subject)
+    activate_experiment_environment_audit = _audit_activate_experiment_environment(subject)
+    experiments_audit = _audit_experiments(subject)
 
     return ReeAudit(
-        source=source_audit,
-        evaluation=evaluation_audit,
-        hardware=hardware_audit,
-        working_environment_check=working_environment_check_audit,
-        experiment_environment=experiment_environment_audit,
-        sbom=sbom_audit,
-        sbom_cross_check=sbom_cross_check_audit,
-        activation=activation_audit,
+        acquire_source=acquire_source_audit,
+        evaluate_reproducibility=evaluate_reproducibility_audit,
+        observe_hardware=observe_hardware_audit,
+        check_working_environment=check_working_environment_audit,
+        build_experiment_environment=build_experiment_environment_audit,
+        generate_sbom=generate_sbom_audit,
+        cross_check_sbom=cross_check_sbom_audit,
+        activate_experiment_environment=activate_experiment_environment_audit,
         experiments=experiments_audit,
     )

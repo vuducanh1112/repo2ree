@@ -37,11 +37,11 @@ describe("appearance", () => {
 
   it("resolves the wash of every stage that shows an earned-outcome chip", () => {
     for (const stage of [
-      PAGE.EVALUATE,
+      PAGE.EVALUATE_REPRODUCIBILITY,
       PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-      PAGE.HBOM,
-      PAGE.SBOM,
-      PAGE.ACTIVATION,
+      PAGE.OBSERVE_HARDWARE,
+      PAGE.GENERATE_SBOM,
+      PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
     ]) {
       expect(declared(stageTone(stage, "wash")), `${stage} wash`).toBe(true);
     }
@@ -72,8 +72,8 @@ describe("appearance", () => {
   });
 
   it("composes alpha instead of appending it, which a var() reference cannot take", () => {
-    expect(translucent(stageTone(PAGE.SOURCE), 25)).toBe(
-      "color-mix(in srgb, var(--stage-source-line) 25%, transparent)",
+    expect(translucent(stageTone(PAGE.ACQUIRE_SOURCE), 25)).toBe(
+      "color-mix(in srgb, var(--stage-acquire_source-line) 25%, transparent)",
     );
   });
 });

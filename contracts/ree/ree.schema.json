@@ -160,7 +160,7 @@
       "title": "ActivateExperimentEnvironmentDefinition",
       "type": "object"
     },
-    "ActivationReceipt": {
+    "ActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
       "description": "The activate experiment environment script ran a command that does nothing, which exited 0.",
       "properties": {
@@ -306,7 +306,7 @@
         "activate_experiment_environment_script_digest",
         "launch_script_digest"
       ],
-      "title": "ActivationReceipt",
+      "title": "ActivateExperimentEnvironmentReceipt",
       "type": "object"
     },
     "BuildExperimentEnvironmentReceipt": {
@@ -1811,7 +1811,7 @@
         "launch": {
           "$ref": "#/$defs/LaunchDefinition"
         },
-        "hardware": {
+        "hbom": {
           "anyOf": [
             {
               "$ref": "#/$defs/HardwareDefinition"
@@ -1843,7 +1843,7 @@
     "ReeReceipts": {
       "additionalProperties": false,
       "properties": {
-        "source": {
+        "acquire_source": {
           "anyOf": [
             {
               "$ref": "#/$defs/AcquireSourceReceipt"
@@ -1854,7 +1854,7 @@
           ],
           "default": null
         },
-        "evaluation": {
+        "evaluate_reproducibility": {
           "anyOf": [
             {
               "$ref": "#/$defs/EvaluateReproducibilityReceipt"
@@ -1865,7 +1865,7 @@
           ],
           "default": null
         },
-        "hardware_observation": {
+        "observe_hardware": {
           "anyOf": [
             {
               "$ref": "#/$defs/ObserveHardwareReceipt"
@@ -1876,7 +1876,7 @@
           ],
           "default": null
         },
-        "working_environment_check": {
+        "check_working_environment": {
           "anyOf": [
             {
               "$ref": "#/$defs/CheckWorkingEnvironmentReceipt"
@@ -1887,7 +1887,7 @@
           ],
           "default": null
         },
-        "experiment_environment": {
+        "build_experiment_environment": {
           "anyOf": [
             {
               "$ref": "#/$defs/BuildExperimentEnvironmentReceipt"
@@ -1898,7 +1898,7 @@
           ],
           "default": null
         },
-        "sbom": {
+        "generate_sbom": {
           "anyOf": [
             {
               "$ref": "#/$defs/GenerateSbomReceipt"
@@ -1909,7 +1909,7 @@
           ],
           "default": null
         },
-        "sbom_cross_check": {
+        "cross_check_sbom": {
           "anyOf": [
             {
               "$ref": "#/$defs/CrossCheckSbomReceipt"
@@ -1920,10 +1920,10 @@
           ],
           "default": null
         },
-        "activation": {
+        "activate_experiment_environment": {
           "anyOf": [
             {
-              "$ref": "#/$defs/ActivationReceipt"
+              "$ref": "#/$defs/ActivateExperimentEnvironmentReceipt"
             },
             {
               "type": "null"

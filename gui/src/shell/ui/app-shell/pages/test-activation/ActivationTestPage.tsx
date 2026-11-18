@@ -26,7 +26,7 @@ import type { StepPageProps } from "../sharedStepUi";
 import styles from "./ActivationTestPage.module.css";
 import { ActivationTargetCard } from "./sections";
 
-const ACTIVATION_PAGE_COLOR = stageTone(PAGE.ACTIVATION);
+const ACTIVATION_PAGE_COLOR = stageTone(PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT);
 
 /** What the activation test runs inside the experiment environment: a command that does nothing. */
 const NOTHING = "true";
@@ -66,7 +66,8 @@ export function PageTestActivation({
   const sbomPath = resolvedSbomPath(ree.spec.sbom);
   const sbomPathExists = !!findSbomArtifact(reeFiles, sbomPath);
 
-  const activationParams: ReeStepRunParams<"activation"> = params as ReeStepRunParams<"activation">;
+  const activationParams: ReeStepRunParams<"activate_experiment_environment"> =
+    params as ReeStepRunParams<"activate_experiment_environment">;
 
   const canRun = canRunActivation({
     running,

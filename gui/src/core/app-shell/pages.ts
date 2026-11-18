@@ -2,21 +2,21 @@ import type { ReeSpec } from "@core/ree/ReeSpec";
 import type { WorkspaceSourceState } from "@core/workspace/WorkspaceSourceState";
 
 // Workspace shell pages.
+// A page that does one of the REE's steps is keyed by that step.
 export const PAGE = {
   WORKBENCH: "workbench",
-  SOURCE: "source",
+  ACQUIRE_SOURCE: "acquire_source",
   METADATA: "metadata",
   EXPERIMENTS: "experiments",
-  HBOM: "hbom",
+  OBSERVE_HARDWARE: "observe_hardware",
   // The hub canvas itself: no dock is open, the pod and its nodes fill the view.
   CANVAS: "canvas",
-  SEAL: "seal",
+  SEAL_REE: "seal_ree",
   ARCHIVE: "archive",
-  // Step pages — keys match the runs API's operation keys.
-  EVALUATE: "evaluate",
+  EVALUATE_REPRODUCIBILITY: "evaluate_reproducibility",
   BUILD_EXPERIMENT_ENVIRONMENT: "build_experiment_environment",
-  SBOM: "sbom",
-  ACTIVATION: "activation",
+  GENERATE_SBOM: "generate_sbom",
+  ACTIVATE_EXPERIMENT_ENVIRONMENT: "activate_experiment_environment",
 } as const;
 
 export const APP_ROUTE = {
@@ -49,14 +49,14 @@ const WORKSPACE_SHELL_PAGES = Object.values(PAGE) as AppShellPage[];
 type EditorField = keyof ReeSpec | keyof WorkspaceSourceState;
 
 const FIELD_TO_PAGE: Partial<Record<EditorField, AppShellPage>> = {
-  originUrl: PAGE.SOURCE,
-  sourceType: PAGE.SOURCE,
+  originUrl: PAGE.ACQUIRE_SOURCE,
+  sourceType: PAGE.ACQUIRE_SOURCE,
   experiments: PAGE.EXPERIMENTS,
-  sourceAvailable: PAGE.SOURCE,
-  sourceAcquiredBy: PAGE.SOURCE,
-  hardwareDescription: PAGE.HBOM,
+  sourceAvailable: PAGE.ACQUIRE_SOURCE,
+  sourceAcquiredBy: PAGE.ACQUIRE_SOURCE,
+  hbom: PAGE.OBSERVE_HARDWARE,
   experimentEnvironmentPath: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-  sbom: PAGE.SBOM,
+  sbom: PAGE.GENERATE_SBOM,
   swhid: PAGE.ARCHIVE,
 };
 

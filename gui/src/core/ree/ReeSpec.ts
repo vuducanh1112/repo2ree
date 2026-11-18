@@ -139,7 +139,7 @@ export interface ReeSpec {
    *  archive-binding attestations, not on the spec. */
   swhid: string;
   experiments?: ReeExperiment[];
-  hardwareDescription: Hbom;
+  hbom: Hbom;
 }
 
 // ================================================
@@ -205,7 +205,7 @@ export function createEmptyReeSpec(): ReeSpec {
     sbom: "",
     swhid: "",
     experiments: [],
-    hardwareDescription: {
+    hbom: {
       cpus: {},
       gpus: {},
       memory: {},

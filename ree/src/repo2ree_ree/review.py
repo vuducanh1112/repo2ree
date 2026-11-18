@@ -8,7 +8,9 @@ from repo2ree_ree.primitives import Digest, LaunchOption, ReePath, RunId, Source
 from repo2ree_ree.receipt import Launched
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
-ReviewStepKey = Literal["source", "build_experiment_environment", "activation", "experiments"]
+ReviewStepKey = Literal[
+    "acquire_source", "build_experiment_environment", "activate_experiment_environment", "experiments"
+]
 ComparisonVerdict = Literal["identical", "different", "inconclusive"]
 ExperimentEnvironmentVerdict = Literal["identical", "equivalent", "different", "inconclusive"]
 ActivationVerdict = Literal["passed", "failed"]
@@ -74,7 +76,7 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
     launched: Launched | None = None
 
 
-class ReviewActivationReceipt(ReviewReceiptEnvelope):
+class ReviewActivateExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
     """The author's activation, run alone in the review's workspace around a command that does nothing."""
 
     operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
@@ -87,7 +89,7 @@ class ReviewActivationReceipt(ReviewReceiptEnvelope):
     launched: Launched | None = None
 
 
-class ReviewExperimentReceipt(ReviewReceiptEnvelope):
+class ReviewRunExperimentReceipt(ReviewReceiptEnvelope):
     operation: Literal["run_experiment"] = "run_experiment"
     experiment_name: str = Field(min_length=1)
     activate_experiment_environment_script_digest: Digest
@@ -179,6 +181,13 @@ class ReviewStepState(_ReviewModel):
     failure: str | None = None
 
 
+class ReviewReceipts(_ReviewModel):
+    acquire_source: ReviewAcquireSourceReceipt | None = None
+    build_experiment_environment: ReviewBuildExperimentEnvironmentReceipt | None = None
+    activate_experiment_environment: ReviewActivateExperimentEnvironmentReceipt | None = None
+    experiments: list[ReviewRunExperimentReceipt] = Field(default_factory=list)
+
+
 class ReviewRecord(_ReviewModel):
     review_id: str
     created_at: str
@@ -186,13 +195,10 @@ class ReviewRecord(_ReviewModel):
     status: ReviewStatus
     launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
     steps: list[ReviewStepState] = Field(default_factory=list)
-    source_receipt: ReviewAcquireSourceReceipt | None = None
+    receipts: ReviewReceipts = Field(default_factory=ReviewReceipts)
     source_comparison: SourceComparison | None = None
-    experiment_environment_receipt: ReviewBuildExperimentEnvironmentReceipt | None = None
     experiment_environment_comparison: ExperimentEnvironmentComparison | None = None
-    activation_receipt: ReviewActivationReceipt | None = None
     activation_outcome: ActivationOutcome | None = None
-    experiment_receipts: list[ReviewExperimentReceipt] = Field(default_factory=list)
     experiment_comparisons: list[ExperimentComparison] = Field(default_factory=list)
     failure: str | None = None
 

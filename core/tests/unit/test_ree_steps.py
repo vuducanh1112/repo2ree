@@ -38,14 +38,14 @@ def _audit_with(**current: bool) -> ReeAudit:
         return StepAudit(evidence="current" if current.get(name) else "missing", payload="not_applicable")
 
     return ReeAudit(
-        source=step("source"),
-        evaluation=step("evaluation"),
-        hardware=step("hardware"),
-        working_environment_check=step("working_environment_check"),
-        experiment_environment=step("experiment_environment"),
-        sbom=step("sbom"),
-        sbom_cross_check=step("sbom_cross_check"),
-        activation=step("activation"),
+        acquire_source=step("acquire_source"),
+        evaluate_reproducibility=step("evaluate_reproducibility"),
+        observe_hardware=step("observe_hardware"),
+        check_working_environment=step("check_working_environment"),
+        build_experiment_environment=step("build_experiment_environment"),
+        generate_sbom=step("generate_sbom"),
+        cross_check_sbom=step("cross_check_sbom"),
+        activate_experiment_environment=step("activate_experiment_environment"),
     )
 
 
@@ -68,35 +68,35 @@ def test_a_fresh_ree_starts_with_its_source() -> None:
     steps = ree_steps(bare_ree(), audit(bare_ree()))
     statuses = {step.key: step.status for step in steps.steps}
 
-    assert steps.next == "source"
-    assert statuses["source"] == "ready"
-    assert statuses["evaluate"] == "blocked"
-    assert statuses["crosscheck"] == "blocked"
+    assert steps.next == "acquire_source"
+    assert statuses["acquire_source"] == "ready"
+    assert statuses["evaluate_reproducibility"] == "blocked"
+    assert statuses["cross_check_sbom"] == "blocked"
     assert "complete" not in statuses.values()
 
 
 def test_a_current_receipt_completes_its_step_and_readies_what_needs_it() -> None:
-    statuses = _statuses(bare_ree(), _audit_with(source=True, experiment_environment=True))
+    statuses = _statuses(bare_ree(), _audit_with(acquire_source=True, build_experiment_environment=True))
 
-    assert statuses["source"] == "complete"
+    assert statuses["acquire_source"] == "complete"
     assert statuses["build_experiment_environment"] == "complete"
-    assert statuses["evaluate"] == "ready"
-    assert statuses["sbom"] == "ready"
-    assert statuses["crosscheck"] == "blocked"
+    assert statuses["evaluate_reproducibility"] == "ready"
+    assert statuses["generate_sbom"] == "ready"
+    assert statuses["cross_check_sbom"] == "blocked"
 
 
 def test_a_stale_receipt_completes_nothing() -> None:
-    stale = _audit_with(source=True).model_copy(
-        update={"experiment_environment": StepAudit(evidence="stale", payload="not_applicable")}
+    stale = _audit_with(acquire_source=True).model_copy(
+        update={"build_experiment_environment": StepAudit(evidence="stale", payload="not_applicable")}
     )
     statuses = _statuses(bare_ree(), stale)
 
     assert statuses["build_experiment_environment"] == "ready"
-    assert statuses["sbom"] == "blocked"
+    assert statuses["generate_sbom"] == "blocked"
 
 
 def test_the_next_step_is_the_first_ready_one() -> None:
-    assert ree_steps(bare_ree(), _audit_with(source=True)).next == "metadata"
+    assert ree_steps(bare_ree(), _audit_with(acquire_source=True)).next == "metadata"
 
 
 def test_metadata_needs_a_name_a_version_and_a_description() -> None:
@@ -108,10 +108,10 @@ def test_metadata_needs_a_name_a_version_and_a_description() -> None:
 
 
 def test_hardware_is_described_once_it_names_a_component() -> None:
-    described = ree_definition(hardware=HardwareDefinition(cpus={"Xeon": CPUDefinition(quantity=2)}))
+    described = ree_definition(hbom=HardwareDefinition(cpus={"Xeon": CPUDefinition(quantity=2)}))
 
-    assert _statuses(_with(ree_definition(hardware=HardwareDefinition())))["hbom"] == "ready"
-    assert _statuses(_with(described))["hbom"] == "complete"
+    assert _statuses(_with(ree_definition(hbom=HardwareDefinition())))["observe_hardware"] == "ready"
+    assert _statuses(_with(described))["observe_hardware"] == "complete"
 
 
 def test_experiments_are_complete_once_one_is_declared() -> None:
@@ -135,4 +135,4 @@ def test_a_sealed_ree_has_completed_its_seal() -> None:
         seal=ReeSeal(sealed_at=parse_utc_instant("2026-11-15T00:00:00Z"), ree_digest=canonical_subject_digest(subject)),
     )
 
-    assert _statuses(sealed)["seal"] == "complete"
+    assert _statuses(sealed)["seal_ree"] == "complete"

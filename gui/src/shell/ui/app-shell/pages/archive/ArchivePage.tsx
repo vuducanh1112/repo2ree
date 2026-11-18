@@ -78,9 +78,9 @@ export function PageArchive({
   // cards below already render their placeholder in that state.
   const assignedId: string | undefined = undefined;
 
-  const buildDone = isAuditCurrent(ree.audit, "experiment_environment");
-  const sbomDone = isAuditCurrent(ree.audit, "sbom");
-  const activationDone = isAuditCurrent(ree.audit, "activation");
+  const buildDone = isAuditCurrent(ree.audit, "build_experiment_environment");
+  const sbomDone = isAuditCurrent(ree.audit, "generate_sbom");
+  const activationDone = isAuditCurrent(ree.audit, "activate_experiment_environment");
   const capstoneReady = buildDone && sbomDone && activationDone;
   const isSealed = !!artifactStatus.sealedAt;
   const depositedAnywhere = ["swh", "zenodo", "dataverse"].some((key) =>

@@ -37,7 +37,7 @@ def test_evaluate_report_crosses_as_the_core_models_camelcase_dump(
     artifact = json.dumps(report.model_dump(by_alias=True)).encode()
     monkeypatch.setattr(command_dispatcher, "read_ree_file_bytes", lambda handle, name: artifact)
 
-    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/evaluate/report")
+    resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/reproducibility-report")
 
     assert resp.status_code == 200
     wire = resp.json()
@@ -66,13 +66,13 @@ def test_author_receipts_cross_as_a_typed_document(
     assert response.status_code == 200
     payload = response.json()
     assert payload == {
-        "source": None,
-        "evaluation": None,
-        "hardware_observation": None,
-        "working_environment_check": None,
-        "experiment_environment": None,
-        "sbom": None,
-        "sbom_cross_check": None,
-        "activation": None,
+        "acquire_source": None,
+        "evaluate_reproducibility": None,
+        "observe_hardware": None,
+        "check_working_environment": None,
+        "build_experiment_environment": None,
+        "generate_sbom": None,
+        "cross_check_sbom": None,
+        "activate_experiment_environment": None,
         "experiments": {},
     }

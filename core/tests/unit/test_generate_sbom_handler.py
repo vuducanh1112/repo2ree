@@ -117,7 +117,7 @@ def test_success_commits_inline_receipt_and_publishes_document(
 
     result = _run(layout)
 
-    receipt = store.read_ree().subject.receipts.sbom
+    receipt = store.read_ree().subject.receipts.generate_sbom
     assert result.status == "succeeded"
     assert layout.sbom.read_bytes() == _SBOM
     assert receipt is not None
@@ -162,7 +162,7 @@ def test_invalid_scan_result_preserves_existing_document_and_commits_no_receipt(
     assert result.failure is not None
     assert message in result.failure.message
     assert layout.sbom.read_bytes() == b"old sbom"
-    assert store.read_ree().subject.receipts.sbom is None
+    assert store.read_ree().subject.receipts.generate_sbom is None
     assert not list(layout.artifacts.glob(".sbom.json.*.tmp"))
 
 
@@ -184,7 +184,7 @@ def test_canceled_scan_preserves_existing_document_and_commits_no_receipt(
 
     assert result.status == "canceled"
     assert layout.sbom.read_bytes() == b"old sbom"
-    assert store.read_ree().subject.receipts.sbom is None
+    assert store.read_ree().subject.receipts.generate_sbom is None
     assert not list(layout.artifacts.glob(".sbom.json.*.tmp"))
 
 
@@ -230,7 +230,7 @@ def test_preconditions_reject_invalid_experiment_environment_evidence_before_sca
     assert result.failure.category == category
     assert message in result.failure.message
     assert scanned is False
-    assert store.read_ree().subject.receipts.sbom is None
+    assert store.read_ree().subject.receipts.generate_sbom is None
 
 
 def test_revision_conflict_does_not_select_the_new_receipt(
@@ -251,5 +251,5 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure is not None
     assert result.failure.category == "conflict"
     assert result.failure.retryable is True
-    assert store.read_ree().subject.receipts.sbom is None
+    assert store.read_ree().subject.receipts.generate_sbom is None
     assert layout.sbom.read_bytes() == _SBOM

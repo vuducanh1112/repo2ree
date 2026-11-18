@@ -70,40 +70,40 @@ export function createStepCommandPlanners({
           namespaceSuffix: String(clock.nowMillis()),
         }),
       ),
-    hbom: (runParams) =>
+    observe_hardware: (runParams) =>
       stepEffectPlanToCommands(
         planStepServiceEffect({
-          key: "hbom",
+          key: "observe_hardware",
           params: runParams as GenericReeStepParams,
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
         }),
       ),
-    sbom: (runParams) =>
+    generate_sbom: (runParams) =>
       stepEffectPlanToCommands(
         planStepServiceEffect({
-          key: "sbom",
+          key: "generate_sbom",
           params: runParams as GenericReeStepParams,
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
         }),
       ),
-    activation: (runParams) =>
+    activate_experiment_environment: (runParams) =>
       stepEffectPlanToCommands(
         planStepServiceEffect({
-          key: "activation",
+          key: "activate_experiment_environment",
           params: runParams as GenericReeStepParams,
           ree,
           timestamp: clock.nowIso(),
           namespaceSuffix: String(clock.nowMillis()),
         }),
       ),
-    evaluate: (runParams) =>
+    evaluate_reproducibility: (runParams) =>
       stepEffectPlanToCommands(
         planStepServiceEffect({
-          key: "evaluate",
+          key: "evaluate_reproducibility",
           params: runParams as GenericReeStepParams,
           ree,
           timestamp: clock.nowIso(),

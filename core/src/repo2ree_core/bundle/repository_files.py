@@ -29,7 +29,9 @@ def prepare_reproducer(layout: ReeLayout, ree: Ree) -> None:
         origin_url=source.origin_url or "" if source else "",
         source_type=source.source_type if source else "",
         revision=source.requested_ref or "" if source else "",
-        swhid=str(ree.subject.receipts.source.observed_swhid or "") if ree.subject.receipts.source else "",
+        swhid=str(ree.subject.receipts.acquire_source.observed_swhid or "")
+        if ree.subject.receipts.acquire_source
+        else "",
         launch_script=str(definition.launch.launch_script_path),
         check_script=str(definition.check_working_environment.check_working_environment_script_path),
     ):

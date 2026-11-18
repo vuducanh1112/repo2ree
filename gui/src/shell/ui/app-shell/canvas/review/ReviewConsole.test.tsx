@@ -20,8 +20,8 @@ function ReviewWorkflowPanel({ experiments }: { experiments: readonly ReeExperim
   const model = useReviewWorkflowModel({ experiments, active: true });
   return (
     <>
-      <ReviewStrip model={model} openStep="source" onOpenStep={vi.fn()} />
-      <ReviewEvidence model={model} focusStep="source" />
+      <ReviewStrip model={model} openStep="acquire_source" onOpenStep={vi.fn()} />
+      <ReviewEvidence model={model} focusStep="acquire_source" />
     </>
   );
 }

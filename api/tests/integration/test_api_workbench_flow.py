@@ -113,8 +113,8 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     assert any(f.get("path") == "README.md" for f in workspace["workspace_files"])
 
     # --- write a file over HTTP, read the raw bytes back ----------------
-    resp = client.put(
-        f"/api/v1/rees/{ree_id}/files/content",
+    resp = client.post(
+        f"/api/v1/rees/{ree_id}/write-script",
         json={"path": "ree-scripts/build_experiment_environment.sh", "content": "echo build\n"},
     )
     assert resp.status_code == 200, resp.text
@@ -126,7 +126,7 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     assert resp.content == b"echo build\n"
 
     # --- seal, then download the sealed archive -------------------------
-    resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={})
+    resp = client.post(f"/api/v1/rees/{ree_id}/seal-ree", json={})
     assert resp.status_code == 200, resp.text
     seal_run = resp.json()
     assert seal_run["operation"] == "seal_ree"

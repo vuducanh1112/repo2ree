@@ -73,7 +73,7 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
     monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/ree:load",
+        f"/api/v1/rees/{online_ree.ree_id}/load-ree-bundle",
         json={"upload_token": token, "archive_name": "author.zip"},
     )
 
@@ -111,7 +111,7 @@ def test_load_fails_the_run_when_the_upload_never_landed(
     monkeypatch.setattr(command_dispatcher, "dispatch_action", dispatch_action)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/ree:load",
+        f"/api/v1/rees/{online_ree.ree_id}/load-ree-bundle",
         json={"upload_token": token, "archive_name": "author.zip"},
     )
 
@@ -123,7 +123,7 @@ def test_load_fails_the_run_when_the_upload_never_landed(
 
 def test_load_rejects_a_malformed_upload_token(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/ree:load",
+        f"/api/v1/rees/{online_ree.ree_id}/load-ree-bundle",
         json={"upload_token": "../escape", "archive_name": "author.zip"},
     )
 
@@ -132,7 +132,7 @@ def test_load_rejects_a_malformed_upload_token(client: TestClient, online_ree: R
 
 def test_load_for_unknown_ree_is_404(client: TestClient, staging_dir: Path) -> None:
     response = client.post(
-        "/api/v1/rees/nope/ree:load",
+        "/api/v1/rees/nope/load-ree-bundle",
         json={"upload_token": "tok-1", "archive_name": "author.zip"},
     )
 

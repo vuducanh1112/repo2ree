@@ -52,10 +52,10 @@ def test_the_steps_are_where_the_ree_stands(client: TestClient, listed: ReeRoute
     body = client.get(f"/api/v1/rees/{listed.ree_id}/ree-steps").json()
 
     assert [step["key"] for step in body["steps"]] == [step.key for step in REE_STEPS]
-    assert body["next"] == "source"
+    assert body["next"] == "acquire_source"
     statuses = {step["key"]: step["status"] for step in body["steps"]}
-    assert statuses["source"] == "ready"
-    assert statuses["sbom"] == "blocked"
+    assert statuses["acquire_source"] == "ready"
+    assert statuses["generate_sbom"] == "blocked"
 
 
 def test_every_step_has_operations_that_advance_it() -> None:
@@ -70,7 +70,7 @@ def test_script_inference_is_how_a_step_gets_its_script(client: TestClient, list
     for step in ("build_experiment_environment", "experiments"):
         assert "suggestScripts" in actions[step]
     # The activation runs a script the build step authors, alone: it has nothing of its own to write.
-    assert actions["activation"] == ["activateExperimentEnvironment"]
+    assert actions["activate_experiment_environment"] == ["activateExperimentEnvironment"]
 
 
 @pytest.mark.parametrize("catalog", ["ree-steps", "script-templates"])

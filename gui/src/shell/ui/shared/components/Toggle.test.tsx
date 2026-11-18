@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Toggle } from "./Toggle";
 
-const tint = "var(--stage-seal-line)";
+const tint = "var(--stage-seal_ree-line)";
 const ariaLabel = "Include source in bundle";
 
 describe("Toggle", () => {

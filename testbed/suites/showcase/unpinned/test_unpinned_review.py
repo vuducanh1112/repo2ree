@@ -14,15 +14,15 @@ F = UNPINNED
 def reviewed(client: Client, reviewer: str, build: ReviewBasis) -> Review:
     """One review attempt, end to end, with the experiment environment from ``build``."""
     before = {review.review_id for review in client.reviews(reviewer)}
-    source = client.review_source(reviewer, "auto", watch=F.watch)
+    source = client.review_acquire_source(reviewer, "auto", watch=F.watch)
     assert source.status == "succeeded", client.logs(reviewer, source)
     [review_id] = [review.review_id for review in client.reviews(reviewer) if review.review_id not in before]
 
     experiment_environment = client.review_build_experiment_environment(reviewer, review_id, build, watch=F.watch)
     assert experiment_environment.status == "succeeded", client.logs(reviewer, experiment_environment)
-    activation = client.review_activation(reviewer, review_id, watch=F.watch)
+    activation = client.review_activate_experiment_environment(reviewer, review_id, watch=F.watch)
     assert activation.status == "succeeded", client.logs(reviewer, activation)
-    experiment = client.review_experiment(reviewer, review_id, F.experiment, watch=F.watch)
+    experiment = client.review_run_experiment(reviewer, review_id, F.experiment, watch=F.watch)
     assert experiment.status == "succeeded", client.logs(reviewer, experiment)
     review: Review = client.review(reviewer, review_id)
     return review

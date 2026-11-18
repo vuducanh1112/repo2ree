@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Response
 
-from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, WorkspaceFileContentPayload
+from repo2ree_api.contracts import ERROR_RESPONSES, FileMutationResponse, WriteScriptPayload
 from repo2ree_api.contracts.runs import runs
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
@@ -44,14 +44,14 @@ def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
         return Response(content=content, media_type="application/octet-stream")
 
 
-@files_router.put(
-    "/api/v1/rees/{ree_id}/files/content",
+@files_router.post(
+    "/api/v1/rees/{ree_id}/write-script",
     operation_id="writeScript",
     openapi_extra=runs("write_script"),
     response_model=FileMutationResponse,
     responses=ERROR_RESPONSES,
 )
-def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
+def write_script_route(ree_id: str, payload: WriteScriptPayload) -> FileMutationResponse:
     """Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
 
     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
@@ -61,7 +61,7 @@ def put_workspace_file_content_route(ree_id: str, payload: WorkspaceFileContentP
         return _write_file(ree_id, payload)
 
 
-def _write_file(ree_id: str, payload: WorkspaceFileContentPayload) -> FileMutationResponse:
+def _write_file(ree_id: str, payload: WriteScriptPayload) -> FileMutationResponse:
     handle = require_handle(ree_id)
     with ree_command_span("write-file", ree_id):
         # The if_match check rides inside the command so the workbench verifies

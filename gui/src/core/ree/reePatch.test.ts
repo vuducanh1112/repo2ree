@@ -87,7 +87,7 @@ describe("toReePatchFromSlices", () => {
           output_paths: ["results/benchmark.json"],
         },
       ],
-      hardware: {
+      hbom: {
         cpus: {},
         gpus: {},
         memory: {},
@@ -146,17 +146,17 @@ describe("toReePatchFromSlices", () => {
       network: { NIC: { bandwidth_mbps: 25_000 } },
     });
     const patch = toReePatchFromSlices({
-      reeSpec: { ...empty, hardwareDescription: hbom },
+      reeSpec: { ...empty, hbom: hbom },
       workspaceSourceState: {},
       artifactStatus: {},
       evaluationState: {},
     });
-    expect(patch.hardware).toMatchObject({
+    expect(patch.hbom).toMatchObject({
       gpus: { "GPU X": { memory_bytes: 24 * 1024 ** 3 } },
       memory: { DIMM: { capacity_bytes: 32 * 1024 ** 3 } },
       storage: { Disk: { capacity_bytes: 1024 ** 4 } },
       network: { NIC: { bandwidth_mbps: 25_000 } },
     });
-    expect(JSON.stringify(patch.hardware)).not.toMatch(/_gb"|_gbps"/);
+    expect(JSON.stringify(patch.hbom)).not.toMatch(/_gb"|_gbps"/);
   });
 });

@@ -35,7 +35,7 @@ vi.mock("@shell/data/runs/queries", async (importOriginal) => {
 const services = fakeApiServices({
   ree: {
     listScriptTemplates: vi.fn().mockResolvedValue(scriptTemplateCatalog),
-    getEvaluateReport: vi.fn().mockResolvedValue({}),
+    getReproducibilityReport: vi.fn().mockResolvedValue({}),
   },
   runs: { listRuns: vi.fn().mockResolvedValue({ runs: [], next_cursor: null }) },
 });
@@ -109,11 +109,11 @@ describe("AppShellContent", () => {
   it.each([
     [PAGE.METADATA, "Metadata"],
     [PAGE.EXPERIMENTS, "Experiments"],
-    [PAGE.HBOM, "Hardware BOM"],
-    [PAGE.EVALUATE, "Reproducibility Readiness"],
+    [PAGE.OBSERVE_HARDWARE, "Hardware BOM"],
+    [PAGE.EVALUATE_REPRODUCIBILITY, "Reproducibility Readiness"],
     [PAGE.BUILD_EXPERIMENT_ENVIRONMENT, "Build Experiment Environment"],
-    [PAGE.SBOM, "Generate SBOM"],
-    [PAGE.ACTIVATION, "Test Activation"],
+    [PAGE.GENERATE_SBOM, "Generate SBOM"],
+    [PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT, "Test Activation"],
     [PAGE.ARCHIVE, "Deposit & Share"],
   ] as const)("renders the %s page through its container", async (page, title) => {
     renderWithShell(<AppShellContent {...contentProps(page)} />, {
@@ -128,7 +128,7 @@ describe("AppShellContent", () => {
 
   it("renders the window-owned step rather than the globally focused step", async () => {
     const props = contentProps(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
-    props.uiChrome.page = PAGE.SBOM;
+    props.uiChrome.page = PAGE.GENERATE_SBOM;
 
     renderWithShell(<AppShellContent {...props} />, { reeId: "ree-1", services });
 

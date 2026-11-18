@@ -104,7 +104,6 @@ def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
         online_ree.ree_id,
         "build_experiment_environment",
         {},
-        "history",
         lambda *_: ActionResult(status="succeeded"),
     )
     assert _wait_for_run(client, online_ree.ree_id, run["run_id"]) == "succeeded"
@@ -281,7 +280,6 @@ def test_cancel_of_active_run_signals_workbench(
         ree_id=online_ree.ree_id,
         operation="build_experiment_environment",
         request_payload={},
-        run_id_prefix="build_experiment_environment",
         runner=_runner,
     )
 

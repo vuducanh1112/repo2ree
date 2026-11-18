@@ -57,7 +57,7 @@ def handle_suggest_scripts(
     definition = ree.subject.definition if ree else None
     # The receipt-chain root that already identifies the acquired source. Read
     # from the aggregate loaded above rather than re-reading the manifest.
-    source_receipt = ree.subject.receipts.source if ree else None
+    source_receipt = ree.subject.receipts.acquire_source if ree else None
     snapshot_digest = str(source_receipt.snapshot_digest) if source_receipt else None
     experiment_environment_inputs = build_experiment_environment_inputs(layout, definition)
 

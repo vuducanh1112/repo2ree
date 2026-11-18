@@ -266,8 +266,8 @@ describe("AppShellView", () => {
   it.each([
     PAGE.METADATA,
     PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-    PAGE.SOURCE,
-    PAGE.SEAL,
+    PAGE.ACQUIRE_SOURCE,
+    PAGE.SEAL_REE,
   ] as const)("closes the %s drawer back to the canvas", (page) => {
     const commands = controller(page);
     render(<AppShellView onBack={vi.fn()} />);
@@ -317,7 +317,7 @@ describe("AppShellView", () => {
   });
 
   it("runs seal and enabled download actions and clears a toast", () => {
-    const commands = controller(PAGE.SEAL);
+    const commands = controller(PAGE.SEAL_REE);
     shell.value = {
       ...shell.value,
       model: {
@@ -325,7 +325,7 @@ describe("AppShellView", () => {
         workspaceRemote: { artifactStatus: { sealedAt: "now" }, workspaceFiles: [] },
       },
       chrome: {
-        page: PAGE.SEAL,
+        page: PAGE.SEAL_REE,
         toast: { message: "Saved", type: "info" },
         locked: false,
         filesConsoleOpen: false,

@@ -7,17 +7,17 @@ import re
 
 from typed_client import Client, NewRee
 
-from repo2ree_testbed.api_models import AcquirableSourceType, SourceReceipt
+from repo2ree_testbed.api_models import AcquirableSourceType, AcquireSourceReceipt
 
 SWHID = r"swh:1:dir:[0-9a-f]{40}"
 GIT_ORIGIN = os.environ.get("E2E_GIT_ORIGIN_URL", "")
 TARBALL_ORIGIN = os.environ.get("E2E_TARBALL_ORIGIN_URL", "")
 
 
-def fetched(client: Client, ree_id: str, url: str, source_type: AcquirableSourceType) -> SourceReceipt:
+def fetched(client: Client, ree_id: str, url: str, source_type: AcquirableSourceType) -> AcquireSourceReceipt:
     run = client.fetch_source(ree_id, url, source_type)
     assert run.status == "succeeded", client.logs(ree_id, run)
-    receipt: SourceReceipt | None = client.ree(ree_id).subject.receipts.source
+    receipt: AcquireSourceReceipt | None = client.ree(ree_id).subject.receipts.acquire_source
     assert receipt is not None
     assert receipt.origin_url == url
     assert receipt.source_type == source_type
@@ -39,7 +39,7 @@ def test_source_reproduction_refetches_the_pinned_origin_and_reports_identical(c
     ree_id = new_ree()
     fetched(client, ree_id, GIT_ORIGIN, "git")
 
-    run = client.review_source(ree_id, "independent")
+    run = client.review_acquire_source(ree_id, "independent")
     assert run.status == "succeeded", client.logs(ree_id, run)
 
     [review] = client.reviews(ree_id)

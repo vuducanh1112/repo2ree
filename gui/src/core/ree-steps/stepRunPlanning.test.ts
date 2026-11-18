@@ -19,14 +19,14 @@ describe("stepRunPlanning", () => {
   it("sends empty params for activation and build runs", () => {
     const ree = buildRee();
 
-    expect(buildStepRunParams("activation", {}, ree)).toEqual({});
+    expect(buildStepRunParams("activate_experiment_environment", {}, ree)).toEqual({});
     expect(buildStepRunParams("build_experiment_environment", {}, ree)).toEqual({});
   });
 
   it("marks only build-ish runs for workspace refresh", () => {
     expect(shouldRefreshWorkspaceAfterStep("build_experiment_environment")).toBe(true);
-    expect(shouldRefreshWorkspaceAfterStep("hbom")).toBe(true);
-    expect(shouldRefreshWorkspaceAfterStep("evaluate")).toBe(false);
+    expect(shouldRefreshWorkspaceAfterStep("observe_hardware")).toBe(true);
+    expect(shouldRefreshWorkspaceAfterStep("evaluate_reproducibility")).toBe(false);
   });
 
   it("plans generic step run completion state", () => {

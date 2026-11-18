@@ -55,17 +55,17 @@ STEP_ACTIONS_EXTENSION = "x-repo2ree-step-actions"
 # than one call (an alternate path, or an init/commit pair); order is
 # most-direct first.
 _STEP_ACTIONS: dict[ReeStepKey, list[str]] = {
-    "source": ["acquireSource", "initializeSourceUpload", "completeSourceUpload"],
+    "acquire_source": ["acquireSource", "initializeSourceUpload", "completeSourceUpload"],
     "metadata": ["patchReeDefinition"],
-    "hbom": ["observeHardware", "patchReeDefinition"],
+    "observe_hardware": ["observeHardware", "patchReeDefinition"],
     "check_working_environment": ["writeScript", "patchReeDefinition", "checkWorkingEnvironment"],
-    "evaluate": ["evaluateReproducibility"],
+    "evaluate_reproducibility": ["evaluateReproducibility"],
     "build_experiment_environment": ["buildExperimentEnvironment", "suggestScripts", "writeScript"],
-    "sbom": ["generateSbom"],
-    "crosscheck": ["crossCheckSbom"],
-    "activation": ["activateExperimentEnvironment"],
+    "generate_sbom": ["generateSbom"],
+    "cross_check_sbom": ["crossCheckSbom"],
+    "activate_experiment_environment": ["activateExperimentEnvironment"],
     "experiments": ["runExperiment", "patchReeDefinition", "suggestScripts", "writeScript"],
-    "seal": ["sealRee"],
+    "seal_ree": ["sealRee"],
 }
 
 

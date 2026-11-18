@@ -10,7 +10,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import Digest, UtcInstant
 from repo2ree_ree.receipt import (
-    ActivationReceipt,
+    ActivateExperimentEnvironmentReceipt,
     BuildExperimentEnvironmentReceipt,
     CheckWorkingEnvironmentReceipt,
     CrossCheckSbomReceipt,
@@ -23,9 +23,9 @@ from repo2ree_ree.review import (
     ExperimentComparison,
     ExperimentEnvironmentComparison,
     ReviewAcquireSourceReceipt,
-    ReviewActivationReceipt,
+    ReviewActivateExperimentEnvironmentReceipt,
     ReviewBuildExperimentEnvironmentReceipt,
-    ReviewExperimentReceipt,
+    ReviewRunExperimentReceipt,
     SourceComparison,
 )
 
@@ -54,7 +54,7 @@ class ReviewActivateExperimentEnvironmentOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: str
-    receipt: ReviewActivationReceipt
+    receipt: ReviewActivateExperimentEnvironmentReceipt
     outcome: ActivationOutcome
 
 
@@ -63,7 +63,7 @@ class ReviewRunExperimentOutputs(BaseModel):
 
     review_id: str
     experiment_name: str
-    receipt: ReviewExperimentReceipt
+    receipt: ReviewRunExperimentReceipt
     comparison: ExperimentComparison
 
 
@@ -158,7 +158,7 @@ class RunnableOperationOutputs(BaseModel):
     verify_exit_code: int | None = None
     verdict: Literal["pass", "fail"] | None = None
     experiment_environment_path: str = ""
-    receipt: ActivationReceipt | RunExperimentReceipt | CheckWorkingEnvironmentReceipt | None = None
+    receipt: ActivateExperimentEnvironmentReceipt | RunExperimentReceipt | CheckWorkingEnvironmentReceipt | None = None
 
 
 class ObserveHardwareOutputs(BaseModel):

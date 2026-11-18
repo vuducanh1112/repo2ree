@@ -266,7 +266,7 @@ def put_file(ree_id: str, path: str, content: str) -> None:
     """Author a workspace file (writeScript). Used for the REE recipe scripts —
     the build, activation, and experiment scripts live in the workspace and are
     referenced by path from the typed definition."""
-    call("PUT", f"/api/v1/rees/{ree_id}/files/content", {"path": path, "content": content})
+    call("POST", f"/api/v1/rees/{ree_id}/write-script", {"path": path, "content": content})
 
 
 def run_stage(ree_id: str, method: str, path: str, payload: dict[str, Any], *, what: str) -> dict[str, Any]:
@@ -291,7 +291,7 @@ def run_stage(ree_id: str, method: str, path: str, payload: dict[str, Any], *, w
 
 def generate_scripts(ree_id: str, targets: list[dict[str, Any]]) -> dict[str, Any]:
     """Run read-only inference for the requested targets and return the report."""
-    return call("POST", f"/api/v1/rees/{ree_id}/script-inferences:generate", {"targets": targets})
+    return call("POST", f"/api/v1/rees/{ree_id}/suggest-scripts", {"targets": targets})
 
 
 def _inference_result(report: dict[str, Any], kind: str, experiment_name: str | None = None) -> dict[str, Any]:
@@ -391,13 +391,13 @@ def run() -> None:
     note("listReeSteps publishes the authoring steps, their prerequisites, and where this REE stands on each")
     steps_catalog = call("GET", f"/api/v1/rees/{ree_id}/ree-steps")
     step_keys = [step["key"] for step in steps_catalog["steps"]]
-    check("build_experiment_environment" in step_keys and "seal" in step_keys, "step catalog missing core steps")
+    check("build_experiment_environment" in step_keys and "seal_ree" in step_keys, "step catalog missing core steps")
     # The catalog is the DAG as data: `requires` names each step's prerequisites,
     # `actions` the operationIds that advance it — enough to plan a traversal
     # without hardcoding the pipeline shape.
-    sbom_step = next(step for step in steps_catalog["steps"] if step["key"] == "sbom")
+    sbom_step = next(step for step in steps_catalog["steps"] if step["key"] == "generate_sbom")
     check(sbom_step["requires"] == ["build_experiment_environment"], "sbom should require build")
-    check(steps_catalog["next"] == "source", "a fresh REE should start with its source")
+    check(steps_catalog["next"] == "acquire_source", "a fresh REE should start with its source")
     ok(f"{len(step_keys)} authoring steps discovered: {' → '.join(step_keys)}; next: {steps_catalog['next']}")
 
     note("listScriptTemplates publishes where each REE-owned script belongs — no hardcoded paths")
@@ -460,8 +460,8 @@ def run() -> None:
 
     chapter("5. Record the portable definition")
     patched = call(
-        "PATCH",
-        f"/api/v1/rees/{ree_id}/definition",
+        "POST",
+        f"/api/v1/rees/{ree_id}/patch-ree-definition",
         {
             "definition_patch": {
                 "name": "workbench-authored-ree",
@@ -478,8 +478,8 @@ def run() -> None:
 
     chapter("6. Evaluate reproducibility readiness")
     note("scans the sources for dependency signals; the report backs the SBOM cross-check")
-    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/evaluate", {}, what="evaluate")
-    report = call("GET", f"/api/v1/rees/{ree_id}/evaluate/report")
+    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/evaluate-reproducibility", {}, what="evaluate")
+    report = call("GET", f"/api/v1/rees/{ree_id}/reproducibility-report")
     check(isinstance(report, dict) and report, "evaluate produced no report")
     ok("reproducibility report generated")
 
@@ -519,8 +519,8 @@ def run() -> None:
     # is the convention the inferred script already carries, read back out above.
     note("declare where the build will leave its experiment environment — the build refuses without it")
     declared = call(
-        "PATCH",
-        f"/api/v1/rees/{ree_id}/definition",
+        "POST",
+        f"/api/v1/rees/{ree_id}/patch-ree-definition",
         {"definition_patch": {"experiment_environment": {"artifact_path": experiment_environment_artifact}}},
     )
     experiment_environment = declared["ree"]["subject"]["definition"]["experiment_environment"]
@@ -541,17 +541,17 @@ def run() -> None:
     chapter("8. Record the hardware BOM")
     note("the machine the experiment environment was built on — an observation about the build that just happened")
     declared = call(
-        "PATCH",
-        f"/api/v1/rees/{ree_id}/definition",
+        "POST",
+        f"/api/v1/rees/{ree_id}/patch-ree-definition",
         {
             "definition_patch": {
-                "hardware": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
+                "hbom": {"cpus": {"Intel Core i9-14900K": {"vendor": "Intel", "cores_per_cpu": 24}}},
             }
         },
     )
     definition = declared["ree"]["subject"]["definition"]
     check(
-        "Intel Core i9-14900K" in definition["hardware"]["cpus"],
+        "Intel Core i9-14900K" in definition["hbom"]["cpus"],
         "hardware BOM entry not recorded",
     )
     check(
@@ -574,7 +574,7 @@ def run() -> None:
     # rather than in the materialized tree the next step's drift check watches.
     scanned = call("GET", f"/api/v1/rees/{ree_id}/state")
     check(
-        scanned["ree"]["subject"]["receipts"]["sbom"]["sbom_path"] == SBOM_ARTIFACT_PATH,
+        scanned["ree"]["subject"]["receipts"]["generate_sbom"]["sbom_path"] == SBOM_ARTIFACT_PATH,
         f"SBOM receipt should bind {SBOM_ARTIFACT_PATH}",
     )
     check(
@@ -605,14 +605,14 @@ def run() -> None:
     )
     put_file(ree_id, activate_script_path, activate_script)
     note("the activation test runs the activate script alone, around a command that does nothing")
-    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/activation-test", {}, what="activation")
+    run_stage(ree_id, "POST", f"/api/v1/rees/{ree_id}/activate-experiment-environment", {}, what="activation")
     ok("the activation enters the experiment environment and hands over")
 
     chapter("11. Infer the experiment scaffold, then run it")
     note("declare a named experiment: it gets a starter run script and a verify script that passes")
     experiment_declared = call(
-        "PATCH",
-        f"/api/v1/rees/{ree_id}/definition",
+        "POST",
+        f"/api/v1/rees/{ree_id}/patch-ree-definition",
         {
             "definition_patch": {
                 "experiments": [
@@ -647,7 +647,7 @@ def run() -> None:
     run_stage(
         ree_id,
         "POST",
-        f"/api/v1/rees/{ree_id}/experiments/{EXPERIMENT_NAME}:run",
+        f"/api/v1/rees/{ree_id}/run-experiment/{EXPERIMENT_NAME}",
         {},
         what="experiment",
     )
@@ -657,14 +657,21 @@ def run() -> None:
     note("getReeState carries the aggregate audit for each authoring step")
     state = call("GET", f"/api/v1/rees/{ree_id}/state")
     ree_audit = state["audit"]
-    for step_key in ("source", "evaluation", "experiment_environment", "sbom", "sbom_cross_check", "activation"):
+    for step_key in (
+        "acquire_source",
+        "evaluate_reproducibility",
+        "build_experiment_environment",
+        "generate_sbom",
+        "cross_check_sbom",
+        "activate_experiment_environment",
+    ):
         check(ree_audit[step_key]["evidence"] == "current", f"step {step_key} is not current")
     check(ree_audit["experiments"][0]["run"]["evidence"] == "current", "experiment is not current")
     ok("every authored receipt is current — nothing has moved under one")
 
     chapter("13. Read the reproducibility axes")
     note("the axes are evaluate's own finding, carried by the receipt that recorded it")
-    evaluation = state["ree"]["subject"]["receipts"]["evaluation"]
+    evaluation = state["ree"]["subject"]["receipts"]["evaluate_reproducibility"]
     check(bool(evaluation), "the REE carries no evaluation receipt")
     axes = {axis: evaluation[f"{axis}_level"] for axis in ("dependency", "environment", "machine")}
     ok(f"reproducibility axes {axes}")
@@ -674,7 +681,7 @@ def run() -> None:
     run_stage(
         ree_id,
         "POST",
-        f"/api/v1/rees/{ree_id}/ree:seal",
+        f"/api/v1/rees/{ree_id}/seal-ree",
         {"include_source": True, "include_results": True},
         what="seal",
     )

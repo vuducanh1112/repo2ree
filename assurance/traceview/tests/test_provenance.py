@@ -14,7 +14,7 @@ def test_the_sealed_scenario_conforms() -> None:
 def test_the_history_shows_evidence_going_stale_and_current_again() -> None:
     history = trace_of(recorded(sealed=True)).history
     assert history is not None
-    experiment_environment = [step.states.get("experiment_environment") for step in history.steps]
+    experiment_environment = [step.states.get("build_experiment_environment") for step in history.steps]
     assert experiment_environment == [
         "not_applicable",
         "missing",
@@ -45,23 +45,29 @@ def test_each_step_is_traced_to_the_operation_that_last_produced_it() -> None:
     provenance = build_provenance(trace_of(recorded(sealed=True)))
     assert provenance is not None
     origins = {origin.step: origin for origin in provenance.steps}
-    assert provenance.standing == {"experiment_environment": "current", "sbom": "current", "activation": "missing"}
+    assert provenance.standing == {
+        "build_experiment_environment": "current",
+        "generate_sbom": "current",
+        "activate_experiment_environment": "missing",
+    }
     # Experiment environment went stale and was rebuilt: its receipt is the first build's, refreshed in place.
-    assert origins["experiment_environment"].produced_by == "build_experiment_environment"
-    assert origins["experiment_environment"].later == (
+    assert origins["build_experiment_environment"].produced_by == "build_experiment_environment"
+    assert origins["build_experiment_environment"].later == (
         "current → stale by authoring",
         "stale → current by build_experiment_environment",
     )
-    assert origins["activation"].change is None
+    assert origins["activate_experiment_environment"].change is None
     # Declared from the start, and never run.
-    assert origins["activation"].history == ("missing",)
+    assert origins["activate_experiment_environment"].history == ("missing",)
     assert provenance.after_seal == 0
 
 
 def test_every_link_carries_the_rules_its_own_events_triggered() -> None:
     provenance = build_provenance(trace_of(recorded(sealed=True), build_spans()))
     assert provenance is not None
-    experiment_environment = next(origin for origin in provenance.steps if origin.step == "experiment_environment")
+    experiment_environment = next(
+        origin for origin in provenance.steps if origin.step == "build_experiment_environment"
+    )
     # Which rules a subject triggers is the specification's to say; each link holds only its own subject's.
     assert {rule.rule for rule in experiment_environment.rules} <= triggered_by("Receipt")
     links = {link.label.split(" ", 1)[0]: link for link in experiment_environment.chain}
@@ -86,7 +92,7 @@ def test_provenance_renders_as_a_tree() -> None:
     assert provenance is not None
     text = render_text(provenance)
     assert "SEALED @c8000000" in text
-    assert "└─ activation" in text
+    assert "└─ activate_experiment_environment" in text
     assert "never produced: missing" in text
     tree = text.split("\n[git]")[0]  # Above the legend.
     assert "✗" not in tree

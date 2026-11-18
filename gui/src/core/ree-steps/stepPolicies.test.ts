@@ -31,15 +31,17 @@ describe("stepPolicies", () => {
 
   it("requires only experiment environment for activation", () => {
     const reeNoExperimentEnvironment = buildRee();
-    expect(missingReeStepRequirements("activation", reeNoExperimentEnvironment)).toEqual([
-      { field: "experimentEnvironmentPath", label: "Experiment environment" },
-    ]);
+    expect(
+      missingReeStepRequirements("activate_experiment_environment", reeNoExperimentEnvironment),
+    ).toEqual([{ field: "experimentEnvironmentPath", label: "Experiment environment" }]);
 
     const reeWithExperimentEnvironment = {
       ...buildRee(),
       experimentEnvironmentPath: "runtime.tar.gz",
     };
-    expect(missingReeStepRequirements("activation", reeWithExperimentEnvironment)).toEqual([]);
+    expect(
+      missingReeStepRequirements("activate_experiment_environment", reeWithExperimentEnvironment),
+    ).toEqual([]);
   });
 
   it("marks only file-producing steps for workspace refresh", () => {

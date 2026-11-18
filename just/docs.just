@@ -85,7 +85,7 @@ publish-doc-demo-assets:
     copy_step generate-a-build-script-from-the-repository 04-infer-build.png
     copy_step build-experiment-environment 05-build.png
     copy_step cross-check-sbom-against-declared-dependencies 06-sbom.png
-    copy_step test-activation 07-activation.png
+    copy_step activate-experiment-environment 07-activation.png
     copy_step run-experiment 08-experiment.png
     copy_step seal-and-download 09-seal.png
     echo "Published tutorial screenshots and video under {{ DOCS_DEMO_ASSET_DIR }}/"

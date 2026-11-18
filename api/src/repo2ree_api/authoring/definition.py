@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
-    ReeDefinitionPatchPayload,
+    PatchReeDefinitionPayload,
     ReeDefinitionReplacePayload,
     ReeDocument,
 )
@@ -19,20 +19,20 @@ from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinition
 definition_router = APIRouter(tags=["rees"])
 
 
-@definition_router.patch(
-    "/api/v1/rees/{ree_id}/definition",
+@definition_router.post(
+    "/api/v1/rees/{ree_id}/patch-ree-definition",
     operation_id="patchReeDefinition",
     openapi_extra=runs("patch_ree_definition"),
     response_model=ReeDocument,
     responses=ERROR_RESPONSES,
 )
-def patch_ree_definition_route(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDocument:
+def patch_ree_definition_route(ree_id: str, payload: PatchReeDefinitionPayload) -> ReeDocument:
     """Replace top-level fields of the definition and return the whole REE document."""
     with author_api_action("patch_ree_definition", ree_id):
         return _patch_definition(ree_id, payload)
 
 
-def _patch_definition(ree_id: str, payload: ReeDefinitionPatchPayload) -> ReeDocument:
+def _patch_definition(ree_id: str, payload: PatchReeDefinitionPayload) -> ReeDocument:
     handle = require_handle(ree_id)
     with ree_command_span("patch-definition", ree_id):
         command = PatchReeDefinitionCommand(
@@ -61,7 +61,7 @@ def replace_ree_definition_route(ree_id: str, payload: ReeDefinitionReplacePaylo
     with author_api_action("patch_ree_definition", ree_id):
         return _patch_definition(
             ree_id,
-            ReeDefinitionPatchPayload(
+            PatchReeDefinitionPayload(
                 definition_patch=payload.definition.model_dump(mode="json"),
                 expected_version=payload.expected_version,
             ),

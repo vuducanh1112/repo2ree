@@ -90,7 +90,7 @@ export const CanvasHub = memo(function CanvasHub({
   // so a step a workbench service (or another tab) is running lights up here too.
   const { data: runs } = useReeRunsQuery();
   const activity = useMemo(
-    () => canvasActivity(runs ?? [], sealRunning ? [PAGE.SEAL] : []),
+    () => canvasActivity(runs ?? [], sealRunning ? [PAGE.SEAL_REE] : []),
     [runs, sealRunning],
   );
   // The arrangement is saved per REE, under the same scope the data hooks use.

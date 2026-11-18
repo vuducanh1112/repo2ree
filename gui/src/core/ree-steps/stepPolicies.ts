@@ -6,24 +6,26 @@ import type { ReeStepKey } from "./stepRunParams";
 import type { ReeStepRequirement } from "./stepTypes";
 
 const REE_STEP_REQUIREMENTS: Record<ReeStepKey, ReeStepRequirement[]> = {
-  evaluate: [{ field: "sourceAvailable", label: "Source loaded in workspace" }],
+  evaluate_reproducibility: [{ field: "sourceAvailable", label: "Source loaded in workspace" }],
   build_experiment_environment: [{ field: "sourceAvailable", label: "Source available" }],
-  hbom: [],
-  sbom: [{ field: "experimentEnvironmentPath", label: "Experiment environment" }],
-  activation: [{ field: "experimentEnvironmentPath", label: "Experiment environment" }],
+  observe_hardware: [],
+  generate_sbom: [{ field: "experimentEnvironmentPath", label: "Experiment environment" }],
+  activate_experiment_environment: [
+    { field: "experimentEnvironmentPath", label: "Experiment environment" },
+  ],
 };
 
 const WORKSPACE_REFRESH_STEPS = new Set<ReeStepKey>([
   "build_experiment_environment",
-  "hbom",
-  "sbom",
+  "observe_hardware",
+  "generate_sbom",
 ]);
 const REE_STEP_KEYS = new Set<ReeStepKey>([
-  "evaluate",
+  "evaluate_reproducibility",
   "build_experiment_environment",
-  "hbom",
-  "sbom",
-  "activation",
+  "observe_hardware",
+  "generate_sbom",
+  "activate_experiment_environment",
 ]);
 
 export function isReeStepKey(key: string): key is ReeStepKey {

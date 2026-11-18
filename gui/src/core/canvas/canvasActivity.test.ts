@@ -31,7 +31,9 @@ describe("canvasActivity", () => {
   });
 
   it("reads the cross-check as the SBOM panel", () => {
-    expect([...canvasActivity([run("cross_check_sbom", "running")]).nodeKeys]).toEqual([PAGE.SBOM]);
+    expect([...canvasActivity([run("cross_check_sbom", "running")]).nodeKeys]).toEqual([
+      PAGE.GENERATE_SBOM,
+    ]);
   });
 
   it("ignores operations that raise the lab rather than a panel", () => {
@@ -43,8 +45,8 @@ describe("canvasActivity", () => {
   });
 
   it("carries client-driven work that has no run of its own", () => {
-    const activity = canvasActivity([], [PAGE.SEAL]);
-    expect([...activity.nodeKeys]).toEqual([PAGE.SEAL]);
+    const activity = canvasActivity([], [PAGE.SEAL_REE]);
+    expect([...activity.nodeKeys]).toEqual([PAGE.SEAL_REE]);
     expect([...activity.zones]).toEqual(["outer"]);
   });
 

@@ -1,29 +1,29 @@
 import type { ReeId } from "@core/ree/ReeId";
 import type { ApiClient } from "./ApiClient";
 import type {
+  AcquireSourcePayload,
   ApiListResponse,
   BuildInfo,
-  CreateBuildExperimentEnvironmentReviewPayload,
-  CreateSourceReviewPayload,
   DeleteReeResponse,
   FileMutationResponse,
   InferenceReport,
   LintReport,
   LintScriptsResponse,
   OperationHistoryWire,
+  PatchReeDefinitionPayload,
   ReeCreatePayload,
-  ReeDefinitionPatchPayload,
   ReeDocument,
   ReeIndexList,
   ReeState,
   ReeSummary,
   ReproducibilityReportWire,
+  ReviewAcquireSourcePayload,
+  ReviewBuildExperimentEnvironmentPayload,
   ReviewSetWire,
   RunSummary,
   ScriptDeclarations,
   ScriptTargetSelector,
   ScriptTemplateCatalog,
-  SourceAcquirePayload,
   StoreList,
   UploadInitPayload,
   UploadInitResponse,
@@ -155,8 +155,8 @@ export class ReeApi {
     return this.client.request<ReeState>(endpoints.reeState(reeId), { method: "GET" });
   }
 
-  async getEvaluateReport(reeId: ReeId): Promise<ReproducibilityReportWire> {
-    return this.client.request<ReproducibilityReportWire>(endpoints.reeEvaluateReport(reeId), {
+  async getReproducibilityReport(reeId: ReeId): Promise<ReproducibilityReportWire> {
+    return this.client.request<ReproducibilityReportWire>(endpoints.reproducibilityReport(reeId), {
       method: "GET",
     });
   }
@@ -173,9 +173,9 @@ export class ReeApi {
 
   async reviewAcquireSource(
     reeId: ReeId | string,
-    payload: CreateSourceReviewPayload,
+    payload: ReviewAcquireSourcePayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeSourceReview(reeId), {
+    return this.client.request<RunSummary>(endpoints.reviewAcquireSource(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -184,12 +184,15 @@ export class ReeApi {
   async reviewBuildExperimentEnvironment(
     reeId: ReeId | string,
     reviewId: string,
-    payload: CreateBuildExperimentEnvironmentReviewPayload,
+    payload: ReviewBuildExperimentEnvironmentPayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeBuildReview(reeId, reviewId), {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    return this.client.request<RunSummary>(
+      endpoints.reviewBuildExperimentEnvironment(reeId, reviewId),
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    );
   }
 
   /**
@@ -209,7 +212,7 @@ export class ReeApi {
     experimentName: string,
   ): Promise<RunSummary> {
     return this.client.request<RunSummary>(
-      endpoints.reeExperimentReview(reeId, reviewId, experimentName),
+      endpoints.reviewRunExperiment(reeId, reviewId, experimentName),
       { method: "POST", body: JSON.stringify({}) },
     );
   }
@@ -218,15 +221,18 @@ export class ReeApi {
     reeId: ReeId | string,
     reviewId: string,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeActivationReview(reeId, reviewId), {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
+    return this.client.request<RunSummary>(
+      endpoints.reviewActivateExperimentEnvironment(reeId, reviewId),
+      {
+        method: "POST",
+        body: JSON.stringify({}),
+      },
+    );
   }
 
-  async patchReeDefinition(reeId: ReeId, payload: ReeDefinitionPatchPayload): Promise<ReeDocument> {
-    return this.client.request<ReeDocument>(endpoints.reeDefinition(reeId), {
-      method: "PATCH",
+  async patchReeDefinition(reeId: ReeId, payload: PatchReeDefinitionPayload): Promise<ReeDocument> {
+    return this.client.request<ReeDocument>(endpoints.patchReeDefinition(reeId), {
+      method: "POST",
       body: JSON.stringify(payload),
     });
   }
@@ -237,8 +243,8 @@ export class ReeApi {
     });
   }
 
-  async acquireSource(reeId: ReeId, payload: SourceAcquirePayload): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeSourceAcquire(reeId), {
+  async acquireSource(reeId: ReeId, payload: AcquireSourcePayload): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.acquireSource(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -262,7 +268,7 @@ export class ReeApi {
     });
   }
 
-  /** Open a staging slot for a downloaded REE bundle (the `ree:load` counterpart of `initUpload`). */
+  /** Open a staging slot for a downloaded REE bundle (the `load-ree-bundle` counterpart of `initUpload`). */
   async initBundleUpload(reeId: ReeId, payload: UploadInitPayload): Promise<UploadInitResponse> {
     return this.client.request<UploadInitResponse>(endpoints.reeBundleUploadInit(reeId), {
       method: "POST",
@@ -272,15 +278,15 @@ export class ReeApi {
 
   /** Make the REE be the staged bundle: intent, source, and author evidence. */
   async loadReeBundle(reeId: ReeId, uploadToken: string, archiveName: string): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeBundleLoad(reeId), {
+    return this.client.request<RunSummary>(endpoints.loadReeBundle(reeId), {
       method: "POST",
       body: JSON.stringify({ upload_token: uploadToken, archive_name: archiveName }),
     });
   }
 
   async removeSource(reeId: ReeId): Promise<void> {
-    await this.client.request<unknown>(endpoints.reeSource(reeId), {
-      method: "DELETE",
+    await this.client.request<unknown>(endpoints.removeSource(reeId), {
+      method: "POST",
     });
   }
 
@@ -301,7 +307,7 @@ export class ReeApi {
       includeResults: boolean;
     },
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeSeal(reeId), {
+    return this.client.request<RunSummary>(endpoints.sealRee(reeId), {
       method: "POST",
       body: JSON.stringify({
         include_source: opts.includeSource,
@@ -321,12 +327,12 @@ export class ReeApi {
     };
   }
 
-  async putFileContent(
+  async writeScript(
     reeId: ReeId,
     payload: PutReeFileContentRequest,
   ): Promise<FileMutationResponse> {
-    return this.client.request<FileMutationResponse>(endpoints.reeFileContent(reeId), {
-      method: "PUT",
+    return this.client.request<FileMutationResponse>(endpoints.writeScript(reeId), {
+      method: "POST",
       body: JSON.stringify(payload),
     });
   }
@@ -335,13 +341,13 @@ export class ReeApi {
    * Read-only inference of the REE-owned scripts for the requested targets.
    * Recomputed on every call and persists nothing; the returned candidate
    * bytes become a script only when the caller writes them via
-   * {@link putFileContent}.
+   * {@link writeScript}.
    */
   async suggestScripts(
     reeId: ReeId | string,
     targets: ScriptTargetSelector[],
   ): Promise<InferenceReport> {
-    return this.client.request<InferenceReport>(endpoints.reeScriptInferences(reeId), {
+    return this.client.request<InferenceReport>(endpoints.suggestScripts(reeId), {
       method: "POST",
       body: JSON.stringify({ targets }),
     });
@@ -356,7 +362,7 @@ export class ReeApi {
     reeId: ReeId | string,
     targets: ScriptTargetSelector[],
   ): Promise<LintScriptsResponse> {
-    return this.client.request<LintScriptsResponse>(endpoints.reeScriptLints(reeId), {
+    return this.client.request<LintScriptsResponse>(endpoints.lintScripts(reeId), {
       method: "POST",
       body: JSON.stringify({ targets }),
     });

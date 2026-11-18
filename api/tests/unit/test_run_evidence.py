@@ -27,7 +27,7 @@ def test_postprocessing_retains_execution_evidence(online_ree, monkeypatch, post
     monkeypatch.setattr(orchestration, "is_cancel_requested", lambda *args: False)
     results = []
 
-    def start(ree_id, operation, request_payload, prefix, runner, **kwargs):
+    def start(ree_id, operation, request_payload, runner, **kwargs):
         results.append(runner(ree_id, "run"))
         return {}
 
@@ -41,7 +41,6 @@ def test_postprocessing_retains_execution_evidence(online_ree, monkeypatch, post
         online_ree.ree_id,
         action="seal_ree",
         command=SealReeCommand(),
-        run_id_prefix="seal",
         request_payload={},
         canceled_message="canceled",
         after_success=after_success,

@@ -55,7 +55,7 @@
                 "selector": {
                   "kind": "typeProperty"
                 },
-                "match": "__brand|(.+)",
+                "match": "__brand|acquire_source|observe_hardware|check_working_environment|evaluate_reproducibility|build_experiment_environment|generate_sbom|cross_check_sbom|activate_experiment_environment|seal_ree|(.+)",
                 "formats": [
                   "camelCase",
                   "PascalCase",
@@ -66,6 +66,7 @@
                 "selector": {
                   "kind": "objectLiteralProperty"
                 },
+                "match": "acquire_source|observe_hardware|check_working_environment|evaluate_reproducibility|build_experiment_environment|generate_sbom|cross_check_sbom|activate_experiment_environment|seal_ree|(.+)",
                 "formats": [
                   "camelCase",
                   "PascalCase",

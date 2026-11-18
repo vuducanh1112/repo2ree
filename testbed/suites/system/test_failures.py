@@ -30,7 +30,7 @@ SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 120\n"
 
 def prepared(api: Api, ree_id: str) -> None:
     api.acquire(ree_id)
-    api.succeed(ree_id, "evaluate")
+    api.succeed(ree_id, "evaluate-reproducibility")
 
 
 def test_failing_build_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) -> None:
@@ -40,12 +40,12 @@ def test_failing_build_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) 
     failed = api.build_experiment_environment(ree_id, FAILING_BUILD)
     assert failed["status"] == "failed"
     assert "resolving dependencies" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
+    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
 
     # The author fixes the script; the same REE then builds.
     assert api.build_experiment_environment(ree_id)["status"] == "succeeded"
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "current"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
 
 
 def test_build_that_produces_no_experiment_environment_fails(api: Api, new_ree: Callable[..., str]) -> None:
@@ -55,7 +55,7 @@ def test_build_that_produces_no_experiment_environment_fails(api: Api, new_ree: 
     failed = api.build_experiment_environment(ree_id, SILENT_BUILD)
     assert failed["status"] == "failed"
     assert f"did not produce {EXPERIMENT_ENVIRONMENT}" in api.logs(ree_id, failed["run_id"])
-    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
 
 
 def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api, new_ree: Callable[..., str]) -> None:
@@ -64,7 +64,7 @@ def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api
     assert api.build_experiment_environment(ree_id)["status"] == "succeeded"
 
     assert api.activate(ree_id, "#!/usr/bin/env sh\nexit 7\n")["status"] == "failed"
-    assert api.ree(ree_id)["subject"]["receipts"]["activation"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["activate_experiment_environment"] is None
     # An experiment runs inside the activation, so only once the activation has been tested.
     assert api.experiment(ree_id)["status"] == "failed"
     assert EXPERIMENT not in api.ree(ree_id)["subject"]["receipts"]["experiments"]
@@ -91,7 +91,7 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     settled = api.wait(ree_id, run, timeout=60)
     assert settled["status"] == "canceled"
     assert time.monotonic() - started < 30, "cancel waited for the script instead of stopping it"
-    assert api.ree(ree_id)["subject"]["receipts"]["experiment_environment"] is None
+    assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
     # The attempt ended, it was not abandoned: captured, and canceled. (That its capture changed
     # nothing is witnessed from Git by the behaviour check: canceled-attempts-change-nothing.)
     attempts = [
@@ -126,7 +126,7 @@ def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree:
         assert time.monotonic() < deadline, answer.text
         time.sleep(1)
     assert answer.status_code == 200, answer.text
-    assert api.audit(ree_id)["experiment_environment"]["evidence"] == "missing"
+    assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
     # Its executor died with it, so the restarted workbench had core roll the attempt back and capture it.
     attempts = [
         item for item in api.get(f"/api/v1/rees/{ree_id}/history")["operations"] if item["run_id"] == run["run_id"]
@@ -144,8 +144,8 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
 
     # It waits a minute for the build to end, which takes two, and is refused.
     busy = api.request(
-        "PUT",
-        f"/api/v1/rees/{ree_id}/files/content",
+        "POST",
+        f"/api/v1/rees/{ree_id}/write-script",
         json={"path": LAUNCH_SCRIPT, "content": "#!/bin/sh\n"},
         expect=None,
         timeout=120.0,

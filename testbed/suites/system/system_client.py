@@ -181,18 +181,16 @@ class Api:
 
     def write(self, ree_id: str, path: str, content: str, *, expect: int | None = 200) -> httpx.Response:
         return self.request(
-            "PUT", f"/api/v1/rees/{ree_id}/files/content", json={"path": path, "content": content}, expect=expect
+            "POST", f"/api/v1/rees/{ree_id}/write-script", json={"path": path, "content": content}, expect=expect
         )
 
     def patch(self, ree_id: str, patch: dict[str, Any], *, expect: int | None = 200) -> httpx.Response:
         return self.request(
-            "PATCH", f"/api/v1/rees/{ree_id}/definition", json={"definition_patch": patch}, expect=expect
+            "POST", f"/api/v1/rees/{ree_id}/patch-ree-definition", json={"definition_patch": patch}, expect=expect
         )
 
     def infer(self, ree_id: str, kind: str, **selector: str) -> dict[str, Any]:
-        report = self.post(
-            f"/api/v1/rees/{ree_id}/script-inferences:generate", {"targets": [{"kind": kind, **selector}]}
-        )
+        report = self.post(f"/api/v1/rees/{ree_id}/suggest-scripts", {"targets": [{"kind": kind, **selector}]})
         return dict(report["results"][0])
 
     def proposed(self, ree_id: str, kind: str, rule: str, **selector: str) -> str:
@@ -211,7 +209,7 @@ class Api:
 
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
         payload = {"include_source": True, "include_experiment_environment": True, "include_results": True}
-        return self.stage(ree_id, "ree:seal", payload, watch=watch)
+        return self.stage(ree_id, "seal-ree", payload, watch=watch)
 
     def load(self, ree_id: str, bundle: bytes) -> None:
         """Seat a sealed REE's archive in ``ree_id``, as a reviewer does."""
@@ -220,7 +218,7 @@ class Api:
             {"file_name": "ree.zip", "size": len(bundle), "content_type": "application/zip"},
         )
         self.request("PUT", upload["upload_url"], content=bundle)
-        self.succeed(ree_id, "ree:load", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
+        self.succeed(ree_id, "load-ree-bundle", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
 
     # ---- a fixture project, step by step ------------------------------------
 
@@ -269,7 +267,7 @@ class Api:
             script = self.proposed(ree_id, "activate_experiment_environment", rule)
         if script is not None:
             self.write(ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, script)
-        return self.stage(ree_id, "activation-test", watch=fixture.watch)
+        return self.stage(ree_id, "activate-experiment-environment", watch=fixture.watch)
 
     def experiment(
         self, ree_id: str, *, run: str | None = None, verify: str | None = None, fixture: Project = INSTANT
@@ -277,13 +275,13 @@ class Api:
         self.patch(ree_id, {"experiments": [{"name": fixture.experiment, "output_paths": list(fixture.outputs)}]})
         self.write(ree_id, fixture.experiment_script, run or fixture.recipe("experiment.sh"))
         self.write(ree_id, fixture.experiment_verify, verify or fixture.recipe("experiment.verify.sh"))
-        return self.stage(ree_id, f"experiments/{fixture.experiment}:run", watch=fixture.watch)
+        return self.stage(ree_id, f"run-experiment/{fixture.experiment}", watch=fixture.watch)
 
     def author(self, ree_id: str, fixture: Project = INSTANT) -> None:
         """Every authoring stage of a fixture project, each required to succeed."""
         self.acquire(ree_id, fixture)
-        self.succeed(ree_id, "evaluate", watch=fixture.watch)
-        self.succeed(ree_id, "generate-hbom")
+        self.succeed(ree_id, "evaluate-reproducibility", watch=fixture.watch)
+        self.succeed(ree_id, "observe-hardware")
         steps = (
             ("build_experiment_environment", self.build_experiment_environment(ree_id, fixture=fixture)),
             ("activation", self.activate(ree_id, fixture=fixture)),

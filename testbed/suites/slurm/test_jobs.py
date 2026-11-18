@@ -30,7 +30,7 @@ sleep 5
 
 def built(api: Api, ree_id: str) -> None:
     api.acquire(ree_id, SLURM)
-    api.succeed(ree_id, "evaluate")
+    api.succeed(ree_id, "evaluate-reproducibility")
     assert api.build_experiment_environment(ree_id, fixture=SLURM)["status"] == "succeeded"
     assert api.activate(ree_id, fixture=SLURM)["status"] == "succeeded"
 
@@ -46,7 +46,7 @@ def canceled_once_running(api: Api, ree_id: str, script: str, marker: str) -> No
     api.patch(ree_id, {"experiments": [{"name": SLURM.experiment, "output_paths": [RESULT]}]})
     api.write(ree_id, SLURM.experiment_script, script)
     api.write(ree_id, SLURM.experiment_verify, NOTHING_TO_VERIFY)
-    run = api.post(f"/api/v1/rees/{ree_id}/experiments/{SLURM.experiment}:run")
+    run = api.post(f"/api/v1/rees/{ree_id}/run-experiment/{SLURM.experiment}")
 
     deadline = time.monotonic() + 60
     while marker not in api.logs(ree_id, run["run_id"]):

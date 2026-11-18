@@ -11,19 +11,19 @@ import {
 describe("mapRawStepEvidence", () => {
   it("reads each audited step's standing off the wire audit", () => {
     const evidence = mapRawStepEvidence({
-      source: { evidence: "current", payload: "present", reasons: [] },
-      experiment_environment: {
+      acquire_source: { evidence: "current", payload: "present", reasons: [] },
+      build_experiment_environment: {
         evidence: "stale",
         payload: "not_applicable",
         reasons: ["build script changed"],
       },
-      sbom_cross_check: { evidence: "not_applicable", payload: "not_applicable" },
+      cross_check_sbom: { evidence: "not_applicable", payload: "not_applicable" },
     });
 
     expect(evidence).toEqual({
-      source: "current",
-      experiment_environment: "stale",
-      sbom_cross_check: "not_applicable",
+      acquire_source: "current",
+      build_experiment_environment: "stale",
+      cross_check_sbom: "not_applicable",
     });
   });
 
@@ -37,14 +37,14 @@ describe("mapRawStepEvidence", () => {
 
   it("reads an absent audit as an REE that has recorded nothing", () => {
     expect(mapRawStepEvidence(undefined)).toEqual({});
-    expect(isEvidenceCurrent(mapRawStepEvidence(null), "experiment_environment")).toBe(false);
+    expect(isEvidenceCurrent(mapRawStepEvidence(null), "build_experiment_environment")).toBe(false);
   });
 });
 
 describe("mapRawReeAudit", () => {
   it("retains backend reasons, payload standing, receipt run ids, and experiments", () => {
     const audit = mapRawReeAudit({
-      experiment_environment: {
+      build_experiment_environment: {
         evidence: "stale",
         payload: "present",
         receipt_run_id: "run-build-1",
@@ -58,13 +58,13 @@ describe("mapRawReeAudit", () => {
       ],
     });
 
-    expect(audit.experiment_environment).toEqual({
+    expect(audit.build_experiment_environment).toEqual({
       evidence: "stale",
       payload: "present",
       receiptRunId: "run-build-1",
       reasons: ["build script changed"],
     });
-    expect(auditReceiptRunId(audit, "experiment_environment")).toBe("run-build-1");
+    expect(auditReceiptRunId(audit, "build_experiment_environment")).toBe("run-build-1");
     expect(audit.experiments?.[0]).toMatchObject({
       name: "demo",
       run: { evidence: "current", receiptRunId: "run-exp-1" },
@@ -76,28 +76,35 @@ describe("evidence standing", () => {
   // The whole point of the split: a stale receipt is still on the aggregate,
   // so it is not "missing" — but it does not make its step done either.
   it("counts only a current receipt as done, and names a stale one as stale", () => {
-    expect(isEvidenceCurrent({ experiment_environment: "current" }, "experiment_environment")).toBe(
-      true,
-    );
-    expect(isEvidenceCurrent({ experiment_environment: "stale" }, "experiment_environment")).toBe(
-      false,
-    );
-    expect(isEvidenceStale({ experiment_environment: "stale" }, "experiment_environment")).toBe(
-      true,
-    );
-    expect(isEvidenceStale({ experiment_environment: "current" }, "experiment_environment")).toBe(
-      false,
-    );
-    expect(isEvidenceStale({}, "experiment_environment")).toBe(false);
+    expect(
+      isEvidenceCurrent(
+        { build_experiment_environment: "current" },
+        "build_experiment_environment",
+      ),
+    ).toBe(true);
+    expect(
+      isEvidenceCurrent({ build_experiment_environment: "stale" }, "build_experiment_environment"),
+    ).toBe(false);
+    expect(
+      isEvidenceStale({ build_experiment_environment: "stale" }, "build_experiment_environment"),
+    ).toBe(true);
+    expect(
+      isEvidenceStale({ build_experiment_environment: "current" }, "build_experiment_environment"),
+    ).toBe(false);
+    expect(isEvidenceStale({}, "build_experiment_environment")).toBe(false);
   });
 });
 
 describe("auditReceiptRunIds", () => {
   it("names every run that produced a receipt, experiments included", () => {
     const audit = mapRawReeAudit({
-      source: { evidence: "current", payload: "present", receipt_run_id: "source-1" },
-      experiment_environment: { evidence: "stale", payload: "present", receipt_run_id: "build-1" },
-      sbom: { evidence: "missing", payload: "missing" },
+      acquire_source: { evidence: "current", payload: "present", receipt_run_id: "source-1" },
+      build_experiment_environment: {
+        evidence: "stale",
+        payload: "present",
+        receipt_run_id: "build-1",
+      },
+      generate_sbom: { evidence: "missing", payload: "missing" },
       experiments: [
         {
           name: "hello",

@@ -13,7 +13,7 @@ function mapSourceRepo(ree: ReeDocument): SourceRepoMetadata | undefined {
   if (!source) {
     return undefined;
   }
-  const receipt = ree.ree.subject?.receipts?.source;
+  const receipt = ree.ree.subject?.receipts?.acquire_source;
   const origin = source.origin_url ?? "";
   return {
     name: definition?.name || origin,

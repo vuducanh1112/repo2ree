@@ -90,7 +90,7 @@ def handle_review_build_experiment_environment(
 
     halted = require_completed_step(
         started,
-        "source",
+        "acquire_source",
         stop=stop,
         message="Reproduce the source before certifying the experiment environment",
     )
@@ -232,7 +232,10 @@ def handle_review_build_experiment_environment(
     _log_verdict(comparison, log=log)
     step.settle(
         started.model_copy(
-            update={"experiment_environment_receipt": receipt, "experiment_environment_comparison": comparison}
+            update={
+                "receipts": started.receipts.model_copy(update={"build_experiment_environment": receipt}),
+                "experiment_environment_comparison": comparison,
+            }
         ),
         timing,
         verdict=comparison.verdict,
@@ -289,8 +292,8 @@ def _certify(
     Returns ``None`` when the scan was *canceled*, which is deliberately not one
     of those cases: the caller halts the step instead of settling a verdict.
     """
-    author_build = ree.subject.receipts.experiment_environment
-    author_sbom_receipt = ree.subject.receipts.sbom
+    author_build = ree.subject.receipts.build_experiment_environment
+    author_sbom_receipt = ree.subject.receipts.generate_sbom
 
     expected_artifact_digest = _author_experiment_environment_digest(author_build, experiment_environment_path)
     expected_sbom_digest = (

@@ -44,13 +44,13 @@ class ScriptDraftPayload(BaseModel):
 
 
 @lint_router.post(
-    "/api/v1/rees/{ree_id}/script-lints:run",
+    "/api/v1/rees/{ree_id}/lint-scripts",
     operation_id="lintScripts",
     openapi_extra=runs("lint_scripts"),
     response_model=LintScriptsResponse,
     responses=ERROR_RESPONSES,
 )
-def lint_ree_scripts_route(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
+def lint_scripts_route(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
     """Statically check persisted scripts on every available tier."""
     with author_api_action("lint_scripts", ree_id):
         return _lint(ree_id, payload)

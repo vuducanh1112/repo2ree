@@ -85,9 +85,13 @@ class Launched(_Response):
     slurm_job_id: str | None = None
 
 
-class ReviewExperimentReceipt(_Response):
+class ReviewRunExperimentReceipt(_Response):
     experiment_name: str
     launched: Launched | None = None
+
+
+class ReviewReceipts(_Response):
+    experiments: tuple[ReviewRunExperimentReceipt, ...] = ()
 
 
 class Review(_Response):
@@ -96,21 +100,21 @@ class Review(_Response):
     source_comparison: SourceComparison | None = None
     experiment_environment_comparison: ExperimentEnvironmentComparison | None = None
     experiment_comparisons: tuple[ExperimentComparison, ...] = ()
-    experiment_receipts: tuple[ReviewExperimentReceipt, ...] = ()
+    receipts: ReviewReceipts = ReviewReceipts()
 
 
 class ReviewSet(_Response):
     reviews: tuple[Review, ...] = ()
 
 
-class SourceReceipt(_Response):
+class AcquireSourceReceipt(_Response):
     source_type: ReceiptSourceType
     origin_url: str | None = None
     resolved_revision: str | None = None
     observed_swhid: str | None = None
 
 
-class SbomReceipt(_Response):
+class GenerateSbomReceipt(_Response):
     sbom_path: str | None = None
 
 
@@ -118,25 +122,25 @@ class WorkingEnvironment(_Response):
     container: bool
 
 
-class WorkingEnvironmentCheckReceipt(_Response):
+class CheckWorkingEnvironmentReceipt(_Response):
     working_environment: WorkingEnvironment
 
 
-class ExperimentEnvironmentReceipt(_Response):
+class BuildExperimentEnvironmentReceipt(_Response):
     working_environment: WorkingEnvironment | None = None
 
 
-class ExperimentReceipt(_Response):
+class RunExperimentReceipt(_Response):
     launched: Launched | None = None
     working_environment: WorkingEnvironment | None = None
 
 
 class Receipts(_Response):
-    source: SourceReceipt | None = None
-    working_environment_check: WorkingEnvironmentCheckReceipt | None = None
-    experiment_environment: ExperimentEnvironmentReceipt | None = None
-    sbom: SbomReceipt | None = None
-    experiments: dict[str, ExperimentReceipt] = Field(default_factory=dict)
+    acquire_source: AcquireSourceReceipt | None = None
+    check_working_environment: CheckWorkingEnvironmentReceipt | None = None
+    build_experiment_environment: BuildExperimentEnvironmentReceipt | None = None
+    generate_sbom: GenerateSbomReceipt | None = None
+    experiments: dict[str, RunExperimentReceipt] = Field(default_factory=dict)
 
 
 class Catalog(_Response):
@@ -156,7 +160,7 @@ class Hardware(_Response):
 class Definition(_Response):
     name: str = ""
     catalog: Catalog = Catalog()
-    hardware: Hardware | None = None
+    hbom: Hardware | None = None
 
 
 class Subject(_Response):
@@ -182,12 +186,12 @@ class StepAudit(_Response):
 
 
 class Audit(_Response):
-    source: StepAudit
-    evaluation: StepAudit
-    experiment_environment: StepAudit
-    sbom: StepAudit
-    sbom_cross_check: StepAudit
-    activation: StepAudit
+    acquire_source: StepAudit
+    evaluate_reproducibility: StepAudit
+    build_experiment_environment: StepAudit
+    generate_sbom: StepAudit
+    cross_check_sbom: StepAudit
+    activate_experiment_environment: StepAudit
 
 
 class ReeState(_Response):
@@ -267,7 +271,7 @@ class ExperimentEnvironmentPatch(_Payload):
 class DefinitionPatch(_Payload):
     name: str | None = None
     catalog: CatalogPatch | None = None
-    hardware: HardwarePatch | None = None
+    hbom: HardwarePatch | None = None
     experiment_environment: ExperimentEnvironmentPatch | None = None
     experiments: tuple[ExperimentPatch, ...] | None = None
 
@@ -279,10 +283,11 @@ CONTRACT_SCHEMAS: dict[type[BaseModel], str] = {
     ExperimentComparison: "ExperimentComparison",
     Review: "ReviewRecord",
     ReviewSet: "ReviewSet",
-    SourceReceipt: "AcquireSourceReceipt",
-    SbomReceipt: "GenerateSbomReceipt",
-    ExperimentReceipt: "RunExperimentReceipt",
-    ReviewExperimentReceipt: "ReviewExperimentReceipt",
+    ReviewReceipts: "ReviewReceipts",
+    AcquireSourceReceipt: "AcquireSourceReceipt",
+    GenerateSbomReceipt: "GenerateSbomReceipt",
+    RunExperimentReceipt: "RunExperimentReceipt",
+    ReviewRunExperimentReceipt: "ReviewRunExperimentReceipt",
     Launched: "Launched",
     Receipts: "ReeReceipts",
     Catalog: "ReeCatalogMetadata",
@@ -299,11 +304,11 @@ CONTRACT_SCHEMAS: dict[type[BaseModel], str] = {
     Decision: "DecisionTrace",
     InferenceResult: "TargetInferenceResult",
     InferenceReport: "InferenceReport",
-    SourceAcquire: "SourceAcquirePayload",
-    SourceReviewRequest: "CreateSourceReviewPayload",
-    BuildExperimentEnvironmentReviewRequest: "CreateBuildExperimentEnvironmentReviewPayload",
+    SourceAcquire: "AcquireSourcePayload",
+    SourceReviewRequest: "ReviewAcquireSourcePayload",
+    BuildExperimentEnvironmentReviewRequest: "ReviewBuildExperimentEnvironmentPayload",
     ScriptTarget: "ScriptTargetSelectorPayload",
-    GenerateScripts: "GenerateScriptCandidatesPayload",
+    GenerateScripts: "SuggestScriptsPayload",
     CatalogPatch: "ReeCatalogMetadata",
     HardwarePatch: "HardwareDefinition",
     ExperimentPatch: "ExperimentDefinition",

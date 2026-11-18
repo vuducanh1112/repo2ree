@@ -4,21 +4,23 @@ import { initialReeStepParams, mergeStepParams } from "./stepCatalog";
 describe("mergeStepParams", () => {
   it("merges automation step params into the existing step param map", () => {
     expect(
-      mergeStepParams(initialReeStepParams(), "evaluate", {
+      mergeStepParams(initialReeStepParams(), "evaluate_reproducibility", {
         strict: true,
       }),
     ).toEqual({
-      evaluate: { strict: true },
+      evaluate_reproducibility: { strict: true },
       build_experiment_environment: {},
-      hbom: {},
-      sbom: {},
-      activation: {},
+      observe_hardware: {},
+      generate_sbom: {},
+      activate_experiment_environment: {},
     });
   });
 
   it("leaves other steps untouched", () => {
-    const merged = mergeStepParams(initialReeStepParams(), "evaluate", { strict: true });
-    expect(merged.sbom).toEqual({});
-    expect(merged.evaluate).toEqual({ strict: true });
+    const merged = mergeStepParams(initialReeStepParams(), "evaluate_reproducibility", {
+      strict: true,
+    });
+    expect(merged.generate_sbom).toEqual({});
+    expect(merged.evaluate_reproducibility).toEqual({ strict: true });
   });
 });

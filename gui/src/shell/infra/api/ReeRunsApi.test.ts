@@ -13,13 +13,13 @@ function harness() {
 describe("ReeRunsApi", () => {
   it("maps each run operation onto its endpoint and payload", async () => {
     const { api, request } = harness();
-    await api.createBuildExperimentEnvironmentRun("ree/1", { idempotency_key: "build-1" });
-    await api.createGenerateHbomRun("ree/1", {});
-    await api.createGenerateSbomRun("ree/1", {});
-    await api.createCrossCheckSbomRun("ree/1", {});
-    await api.createActivationTestRun("ree/1", {});
-    await api.createEvaluateRun("ree/1", { strict: true });
-    await api.createExperimentRun("ree/1", "hello world", {});
+    await api.buildExperimentEnvironment("ree/1", { idempotency_key: "build-1" });
+    await api.observeHardware("ree/1", {});
+    await api.generateSbom("ree/1", {});
+    await api.crossCheckSbom("ree/1", {});
+    await api.activateExperimentEnvironment("ree/1", {});
+    await api.evaluateReproducibility("ree/1", { strict: true });
+    await api.runExperiment("ree/1", "hello world", {});
 
     expect(request.mock.calls.map(([path, init]) => [path, init.method, init.body])).toEqual([
       [
@@ -27,12 +27,12 @@ describe("ReeRunsApi", () => {
         "POST",
         '{"idempotency_key":"build-1"}',
       ],
-      ["/api/v1/rees/ree%2F1/generate-hbom", "POST", "{}"],
+      ["/api/v1/rees/ree%2F1/observe-hardware", "POST", "{}"],
       ["/api/v1/rees/ree%2F1/generate-sbom", "POST", "{}"],
       ["/api/v1/rees/ree%2F1/cross-check-sbom", "POST", "{}"],
-      ["/api/v1/rees/ree%2F1/activation-test", "POST", "{}"],
-      ["/api/v1/rees/ree%2F1/evaluate", "POST", '{"strict":true}'],
-      ["/api/v1/rees/ree%2F1/experiments/hello%20world:run", "POST", "{}"],
+      ["/api/v1/rees/ree%2F1/activate-experiment-environment", "POST", "{}"],
+      ["/api/v1/rees/ree%2F1/evaluate-reproducibility", "POST", '{"strict":true}'],
+      ["/api/v1/rees/ree%2F1/run-experiment/hello%20world", "POST", "{}"],
     ]);
   });
 

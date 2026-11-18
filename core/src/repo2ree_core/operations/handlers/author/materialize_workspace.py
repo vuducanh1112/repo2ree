@@ -83,6 +83,6 @@ def handle_materialize_workspace(
     is_canceled: CancelCheck,
 ) -> ActionResult:
     store = ReeDirectory(layout)
-    source_receipt = store.read_ree().subject.receipts.source if store.manifest_exists() else None
+    source_receipt = store.read_ree().subject.receipts.acquire_source if store.manifest_exists() else None
     committed_digest = source_receipt.snapshot_digest if source_receipt else None
     return materialize_workspace(layout, snapshot_digest=committed_digest, log=log, is_canceled=is_canceled)

@@ -21,5 +21,5 @@ def test_a_machine_missing_what_the_check_asks_for_fails_at_the_check_before_any
     assert run.status == "failed"
     assert MISSING in client.logs(ree_id, run)
     receipts = client.ree(ree_id).subject.receipts
-    assert receipts.working_environment_check is None
-    assert receipts.experiment_environment is None
+    assert receipts.check_working_environment is None
+    assert receipts.build_experiment_environment is None

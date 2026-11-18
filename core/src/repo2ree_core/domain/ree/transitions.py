@@ -12,17 +12,7 @@ from repo2ree_ree.model import (
     canonical_subject_digest,
 )
 from repo2ree_ree.primitives import Digest, UtcInstant
-from repo2ree_ree.receipt import (
-    AcquireSourceReceipt,
-    ActivationReceipt,
-    BuildExperimentEnvironmentReceipt,
-    CheckWorkingEnvironmentReceipt,
-    CrossCheckSbomReceipt,
-    EvaluateReproducibilityReceipt,
-    GenerateSbomReceipt,
-    ObserveHardwareReceipt,
-    RunReceipt,
-)
+from repo2ree_ree.receipt import RunExperimentReceipt, RunReceipt
 
 
 class ReePreconditionError(ValueError):
@@ -60,26 +50,10 @@ def commit_receipt(ree: Ree, receipt: RunReceipt) -> Ree:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot accept new receipts")
     updates: dict[str, object]
-    if isinstance(receipt, AcquireSourceReceipt):
-        updates = {"source": receipt}
-    elif isinstance(receipt, EvaluateReproducibilityReceipt):
-        updates = {"evaluation": receipt}
-    elif isinstance(receipt, ObserveHardwareReceipt):
-        updates = {"hardware_observation": receipt}
-    elif isinstance(receipt, BuildExperimentEnvironmentReceipt):
-        updates = {"experiment_environment": receipt}
-    elif isinstance(receipt, GenerateSbomReceipt):
-        updates = {"sbom": receipt}
-    elif isinstance(receipt, CrossCheckSbomReceipt):
-        updates = {"sbom_cross_check": receipt}
-    elif isinstance(receipt, ActivationReceipt):
-        updates = {"activation": receipt}
-    elif isinstance(receipt, CheckWorkingEnvironmentReceipt):
-        updates = {"working_environment_check": receipt}
+    if isinstance(receipt, RunExperimentReceipt):
+        updates = {"experiments": {**ree.subject.receipts.experiments, receipt.experiment_name: receipt}}
     else:
-        experiments = dict(ree.subject.receipts.experiments)
-        experiments[receipt.experiment_name] = receipt
-        updates = {"experiments": experiments}
+        updates = {receipt.operation: receipt}
     receipts = ree.subject.receipts.model_copy(update=updates)
     return ree.model_copy(update={"subject": ree.subject.model_copy(update={"receipts": receipts})})
 
@@ -91,8 +65,8 @@ def clear_source(ree: Ree) -> Ree:
     definition = ree.subject.definition.model_copy(update={"source": None})
     # What rests on no source stays: the observed hardware, and the check of the working environment.
     receipts = ReeReceipts(
-        hardware_observation=ree.subject.receipts.hardware_observation,
-        working_environment_check=ree.subject.receipts.working_environment_check,
+        observe_hardware=ree.subject.receipts.observe_hardware,
+        check_working_environment=ree.subject.receipts.check_working_environment,
     )
     contents = BundleContents()
     subject = ree.subject.model_copy(update={"definition": definition, "receipts": receipts, "contents": contents})

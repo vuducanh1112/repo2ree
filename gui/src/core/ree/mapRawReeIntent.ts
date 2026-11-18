@@ -143,7 +143,7 @@ export function mapRawReeIntentToSlices({
       sbom: String(intent.sbom ?? ""),
       swhid: String(intent.swhid ?? ""),
       experiments,
-      hardwareDescription: normalizeHBOM(intent.hardware_description),
+      hbom: normalizeHBOM(intent.hbom),
     },
     workspaceSourceState: {
       sourceAvailable: Boolean(session.source_available),

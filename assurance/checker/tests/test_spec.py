@@ -189,8 +189,8 @@ def producers(docs: Documents) -> dict[str, Any]:
             r"unlisted \['painting'\]",
         ),
         (
-            lambda docs: producers(docs)["in"]["experiment_environment"].append("build_runtim"),
-            r"operation for kind experiment_environment names values its declaration does not list",
+            lambda docs: producers(docs)["in"]["build_experiment_environment"].append("build_runtim"),
+            r"operation for kind build_experiment_environment names values its declaration does not list",
         ),
         (lambda docs: producers(docs).update(per="outcome"), "'per' names 'outcome', which is not a trigger fact"),
     ],
@@ -358,7 +358,9 @@ def test_incoherent_value_lists_are_rejected(declaration: dict[str, Any], messag
 
 
 def test_a_group_condition_is_spelled_out_as_the_groups_values() -> None:
-    groups = {"AuthorApiAction": {"action": {"editing": ("write_script", "delete_file"), "reading": ("read_file",)}}}
+    groups = {
+        "AuthorApiAction": {"action": {"editing": ("write_script", "patch_ree_definition"), "reading": ("read_file",)}}
+    }
     invariant = {
         "id": "x",
         "when": {
@@ -369,7 +371,7 @@ def test_a_group_condition_is_spelled_out_as_the_groups_values() -> None:
         "require": {"where": {"action": {"group": "reading"}}},
     }
     spelled = spell_out_groups(invariant, groups)
-    assert spelled["when"]["where"] == {"action": {"in": ["write_script", "delete_file", "read_file"]}}
+    assert spelled["when"]["where"] == {"action": {"in": ["write_script", "patch_ree_definition", "read_file"]}}
     assert spelled["require"]["where"] == {"action": {"in": ["read_file"]}}
     with pytest.raises(ValueError, match="declares no groups"):
         spell_out_groups(invariant | {"require": {"where": {"action": {"group": "painting"}}}}, groups)

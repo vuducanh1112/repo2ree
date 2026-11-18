@@ -7,17 +7,17 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 ReeStepKey = Literal[
-    "source",
+    "acquire_source",
     "metadata",
-    "hbom",
+    "observe_hardware",
     "check_working_environment",
-    "evaluate",
+    "evaluate_reproducibility",
     "build_experiment_environment",
-    "sbom",
-    "crosscheck",
-    "activation",
+    "generate_sbom",
+    "cross_check_sbom",
+    "activate_experiment_environment",
     "experiments",
-    "seal",
+    "seal_ree",
 ]
 # ``complete``: the REE's records show the step done and still true of the REE as it stands.
 # ``ready``: every step it needs is complete. ``blocked``: some step it needs is not.

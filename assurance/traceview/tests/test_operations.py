@@ -22,15 +22,15 @@ def test_operations_are_attempts_with_a_run_and_authoring_is_collapsed_between_t
     authoring = trace.entries[1]
     assert (authoring.operations, authoring.attempts, authoring.failed) == ({"patch_ree_definition": 1}, 1, 0)
     assert [(c.step, c.before, c.after) for c in trace.entries[2].changes] == [
-        ("experiment_environment", "missing", "current")
+        ("build_experiment_environment", "missing", "current")
     ]
 
 
 def test_the_baseline_is_each_steps_standing_before_the_first_capture() -> None:
     assert trace_of(recorded()).baseline == {
-        "experiment_environment": "not_applicable",
-        "sbom": "not_applicable",
-        "activation": "missing",
+        "build_experiment_environment": "not_applicable",
+        "generate_sbom": "not_applicable",
+        "activate_experiment_environment": "missing",
     }
 
 
@@ -137,8 +137,8 @@ def two_rees() -> Scenario:
         "build_experiment_environment",
         "run-build-2",
         [
-            ("experiment_environment", None, "missing", "baseline"),
-            ("experiment_environment", "missing", "current", "operation"),
+            ("build_experiment_environment", None, "missing", "baseline"),
+            ("build_experiment_environment", "missing", "current", "operation"),
         ],
         ("draft", "draft"),
     )
@@ -154,7 +154,7 @@ def test_each_ree_gets_only_its_own_operations() -> None:
         ("operation", "build_experiment_environment"),
     ]
     assert second.history is not None
-    assert second.history.steps[-1].states["experiment_environment"] == "current"
+    assert second.history.steps[-1].states["build_experiment_environment"] == "current"
     assert second.entries[1].run is not None
     assert second.entries[1].run.key == "act-run-build-2"
 
@@ -176,7 +176,7 @@ def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between()
     s.operation("run-build", "build_experiment_environment", "a-build", "build_experiment_environment", 10.0)
     # Another REE is created before the SBOM run.
     s.provision("run-reprovision", 16.0)
-    s.operation("run-sbom", "sbom", "a-sbom", "generate_sbom", 25.0)
+    s.operation("run-sbom", "generate_sbom", "a-sbom", "generate_sbom", 25.0)
     s.commit(1, None, "initialize_ree", "", [], (None, "draft"))
     s.commit(
         2,
@@ -184,12 +184,14 @@ def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between()
         "build_experiment_environment",
         "run-build",
         [
-            ("experiment_environment", None, "missing", "baseline"),
-            ("experiment_environment", "missing", "current", "operation"),
+            ("build_experiment_environment", None, "missing", "baseline"),
+            ("build_experiment_environment", "missing", "current", "operation"),
         ],
         ("draft", "draft"),
     )
-    s.commit(3, "a-sbom", "generate_sbom", "run-sbom", [("sbom", None, "current", "operation")], ("draft", "draft"))
+    s.commit(
+        3, "a-sbom", "generate_sbom", "run-sbom", [("generate_sbom", None, "current", "operation")], ("draft", "draft")
+    )
     entries = [(entry.name, entry.outcome) for entry in trace_of(s).entries]
     assert entries == [
         ("provision", "succeeded"),
@@ -204,19 +206,19 @@ def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it()
     assert history is not None
     assert [(row.label, row.group) for row in history.rows] == [
         ("lifecycle", "lifecycle"),
-        ("receipt", "experiment_environment"),
-        ("receipt", "sbom"),
-        ("receipt", "activation"),
+        ("receipt", "build_experiment_environment"),
+        ("receipt", "generate_sbom"),
+        ("receipt", "activate_experiment_environment"),
     ]
     steps = [(step.operation, step.moved) for step in history.steps]
     # Creation moves nothing yet; a new experiment environment makes the SBOM made from the old one stale in the same
     # step.
     assert steps[0] == ("initialize_ree", ())
-    assert ("build_experiment_environment", ("experiment_environment", "sbom")) in steps
+    assert ("build_experiment_environment", ("build_experiment_environment", "generate_sbom")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle",))
     assert history.steps[-1].states == {
         "lifecycle": "sealed",
-        "experiment_environment": "current",
-        "sbom": "current",
-        "activation": "missing",
+        "build_experiment_environment": "current",
+        "generate_sbom": "current",
+        "activate_experiment_environment": "missing",
     }

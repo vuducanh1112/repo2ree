@@ -35,20 +35,20 @@ def test_reviewer_reproduces_a_sealed_ree(api: Api, new_ree: Callable[..., str])
         {"file_name": "ree.zip", "size": len(data), "content_type": "application/zip"},
     )
     api.request("PUT", upload["upload_url"], content=data)
-    api.succeed(reviewer, "ree:load", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
+    api.succeed(reviewer, "load-ree-bundle", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
 
-    source = api.stage(reviewer, "reviews/source:reproduce", {"basis": "auto"})
+    source = api.stage(reviewer, "reviews/acquire-source", {"basis": "auto"})
     assert source["status"] == "succeeded", api.logs(reviewer, source["run_id"])
     reviews = api.get(f"/api/v1/rees/{reviewer}/reviews")["reviews"]
     assert reviews, "a source review opens a review"
     review_id = reviews[0]["review_id"]
 
     for stage in (
-        "build-experiment-environment:reproduce",
-        "activation:reproduce",
-        f"experiments/{EXPERIMENT}:reproduce",
+        "build-experiment-environment",
+        "activate-experiment-environment",
+        f"run-experiment/{EXPERIMENT}",
     ):
-        payload = {"basis": "auto"} if stage == "build-experiment-environment:reproduce" else {}
+        payload = {"basis": "auto"} if stage == "build-experiment-environment" else {}
         run = api.stage(reviewer, f"reviews/{review_id}/{stage}", payload)
         assert run["status"] == "succeeded", (stage, api.logs(reviewer, run["run_id"]))
 

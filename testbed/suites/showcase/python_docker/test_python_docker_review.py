@@ -17,10 +17,10 @@ def test_a_reviewer_reproduces_another_authors_source_experiment_environment_act
     reviewer = new_ree("reviewer")
     client.load(reviewer, BUNDLE.read_bytes())
 
-    refused = client.review_source(reviewer, "independent", watch=F.watch)
+    refused = client.review_acquire_source(reviewer, "independent", watch=F.watch)
     assert refused.status == "failed", "the bundle's source was uploaded: it has no origin to fetch"
 
-    source = client.review_source(reviewer, "bundled", watch=F.watch)
+    source = client.review_acquire_source(reviewer, "bundled", watch=F.watch)
     assert source.status == "succeeded", client.logs(reviewer, source)
     settled = [item for item in client.reviews(reviewer) if item.source_comparison is not None]
     assert [
@@ -36,10 +36,10 @@ def test_a_reviewer_reproduces_another_authors_source_experiment_environment_act
     assert comparison.basis == "independent", "the bundle ships no experiment environment: only a rebuild can answer"
     assert (comparison.missing_count, comparison.extra_count) == (0, 0)
 
-    activation = client.review_activation(reviewer, review_id, watch=F.watch)
+    activation = client.review_activate_experiment_environment(reviewer, review_id, watch=F.watch)
     assert activation.status == "succeeded", client.logs(reviewer, activation)
 
-    experiment = client.review_experiment(reviewer, review_id, F.experiment, watch=F.watch)
+    experiment = client.review_run_experiment(reviewer, review_id, F.experiment, watch=F.watch)
     assert experiment.status == "succeeded", client.logs(reviewer, experiment)
     review = client.review(reviewer, review_id)
     assert [(item.experiment_name, item.verdict) for item in review.experiment_comparisons] == [

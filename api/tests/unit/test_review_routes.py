@@ -75,7 +75,7 @@ def test_start_source_review_dispatches_review_command(
     monkeypatch.setattr(review_routes, "start_single_command_run", start)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/acquire-source",
         json={},
     )
 
@@ -113,7 +113,7 @@ def test_start_build_review_targets_the_named_attempt(
     monkeypatch.setattr(review_routes, "start_single_command_run", start)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build-experiment-environment:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build-experiment-environment",
         json={},
     )
 
@@ -153,7 +153,7 @@ def test_start_activation_review_targets_the_named_attempt(
     monkeypatch.setattr(review_routes, "start_single_command_run", start)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/activation:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/activate-experiment-environment",
         json={},
     )
 
@@ -174,7 +174,7 @@ def test_activation_takes_no_basis_at_the_edge(
     monkeypatch.setattr(review_routes, "start_single_command_run", lambda *a, **k: {})
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/activation:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/activate-experiment-environment",
         json={"basis": "independent"},
     )
 
@@ -205,7 +205,7 @@ def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
     monkeypatch.setattr(review_routes, "start_single_command_run", start)
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/experiments/headline result:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/run-experiment/headline result",
         json={},
     )
 
@@ -228,7 +228,7 @@ def test_experiment_review_takes_no_basis_at_the_edge(
     monkeypatch.setattr(review_routes, "start_single_command_run", lambda *a, **k: {})
 
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/experiments/one:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/run-experiment/one",
         json={"basis": "independent"},
     )
 
@@ -300,14 +300,14 @@ def test_a_requested_basis_reaches_the_workbench_command(
     monkeypatch.setattr(review_routes, "start_single_command_run", start)
 
     source = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/acquire-source",
         json={"basis": "bundled"},
     )
     assert source.status_code == 200
     assert captured["command"].args.basis == "bundled"
 
     build = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build-experiment-environment:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/review-one/build-experiment-environment",
         json={"basis": "bundled"},
     )
     assert build.status_code == 200
@@ -319,7 +319,7 @@ def test_an_unknown_basis_is_rejected_at_the_edge(
     online_ree: ReeRoute,
 ) -> None:
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/acquire-source",
         json={"basis": "whatever"},
     )
 
@@ -338,7 +338,7 @@ def test_starting_a_source_review_names_the_attempt_it_opened(
     address the *previous* one and silently certify the wrong evidence.
     """
     response = client.post(
-        f"/api/v1/rees/{online_ree.ree_id}/reviews/source:reproduce",
+        f"/api/v1/rees/{online_ree.ree_id}/reviews/acquire-source",
         json={},
     )
 

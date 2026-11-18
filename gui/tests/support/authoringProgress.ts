@@ -6,26 +6,24 @@ import {
 } from "@core/ree/AuthoringProgress";
 
 const LABELS: Readonly<Record<AuthoringStepKey, string>> = {
-  source: "Source Acquisition",
+  acquire_source: "Source Acquisition",
   metadata: "Provide Metadata",
-  hbom: "Hardware BOM",
-  evaluate: "Reproducibility Readiness",
-  // biome-ignore lint/style/useNamingConvention: an authoring step key, as the REE names it
+  observe_hardware: "Hardware BOM",
+  evaluate_reproducibility: "Reproducibility Readiness",
   build_experiment_environment: "Build Experiment Environment",
-  sbom: "Generate SBOM",
-  crosscheck: "Cross-check SBOM",
-  activation: "Test Activation",
+  generate_sbom: "Generate SBOM",
+  cross_check_sbom: "Cross-check SBOM",
+  activate_experiment_environment: "Test Activation",
   experiments: "Experiments",
-  seal: "Seal",
+  seal_ree: "Seal",
 };
 
 const REQUIRES: Readonly<Partial<Record<AuthoringStepKey, readonly AuthoringStepKey[]>>> = {
-  evaluate: ["source"],
-  // biome-ignore lint/style/useNamingConvention: an authoring step key, as the REE names it
-  build_experiment_environment: ["source"],
-  sbom: ["build_experiment_environment"],
-  crosscheck: ["sbom", "evaluate"],
-  activation: ["build_experiment_environment"],
+  evaluate_reproducibility: ["acquire_source"],
+  build_experiment_environment: ["acquire_source"],
+  generate_sbom: ["build_experiment_environment"],
+  cross_check_sbom: ["generate_sbom", "evaluate_reproducibility"],
+  activate_experiment_environment: ["build_experiment_environment"],
   experiments: ["build_experiment_environment"],
 };
 

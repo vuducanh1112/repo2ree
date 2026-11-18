@@ -111,7 +111,7 @@ describe("mapRawReeIntentToSlices", () => {
         experiment_environment_path: "runtime.tar",
         sbom: "sbom.json",
         swhid: "swh:1:dir:test",
-        hardware_description: {},
+        hbom: {},
         experiments: [null],
       },
       reeSession: {
@@ -170,12 +170,19 @@ describe("mapRawReeIntentToSlices", () => {
     const mapped = mapRawReeIntentToSlices({
       reeIntent: {},
       audit: {
-        experiment_environment: { evidence: "current", payload: "present", reasons: [] },
-        sbom: { evidence: "stale", payload: "not_applicable", reasons: ["source re-pointed"] },
+        build_experiment_environment: { evidence: "current", payload: "present", reasons: [] },
+        generate_sbom: {
+          evidence: "stale",
+          payload: "not_applicable",
+          reasons: ["source re-pointed"],
+        },
       },
       fallbackName: "demo",
     });
-    expect(mapped.stepEvidence).toEqual({ experiment_environment: "current", sbom: "stale" });
+    expect(mapped.stepEvidence).toEqual({
+      build_experiment_environment: "current",
+      generate_sbom: "stale",
+    });
   });
 
   it("uses fallbacks and defaults for null or malformed slices", () => {

@@ -18,7 +18,7 @@ function buildRee() {
 describe("stepRunRequests", () => {
   it("builds explicit evaluate request payloads", () => {
     expect(buildEvaluateStepRunRequest({ strict: true })).toEqual({
-      scriptKey: "evaluate",
+      scriptKey: "evaluate_reproducibility",
       params: {
         strict: true,
       },
@@ -36,11 +36,11 @@ describe("stepRunRequests", () => {
     const ree = buildRee();
 
     expect(buildSbomStepRunRequest({}, ree)).toEqual({
-      scriptKey: "sbom",
+      scriptKey: "generate_sbom",
       params: {},
     });
     expect(buildActivationStepRunRequest({}, ree)).toEqual({
-      scriptKey: "activation",
+      scriptKey: "activate_experiment_environment",
       params: {},
     });
   });

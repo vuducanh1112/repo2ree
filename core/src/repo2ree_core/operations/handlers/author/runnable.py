@@ -34,7 +34,7 @@ from repo2ree_ree.model import (
     Ree,
 )
 from repo2ree_ree.primitives import ExperimentEnvironmentPath
-from repo2ree_ree.receipt import ActivationReceipt, Launched, RunExperimentReceipt
+from repo2ree_ree.receipt import ActivateExperimentEnvironmentReceipt, Launched, RunExperimentReceipt
 from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
 RunnableKind = Literal["activate_experiment_environment", "run_experiment"]
@@ -161,7 +161,7 @@ def _check_preconditions(
     definition: RunnableDefinition,
     layout: ReeLayout,
 ) -> tuple[ExperimentEnvironmentPath | None, Digest | None]:
-    if ree.subject.receipts.source is None:
+    if ree.subject.receipts.acquire_source is None:
         raise ReePreconditionError("source has not been acquired")
     if isinstance(definition, ExperimentDefinition):
         _check_experiment_scripts(definition, layout)
@@ -170,10 +170,10 @@ def _check_preconditions(
     experiment_environment = ree.subject.definition.experiment_environment
     if experiment_environment.artifact_path is None:
         return None, None
-    build = ree.subject.receipts.experiment_environment
+    build = ree.subject.receipts.build_experiment_environment
     if build is None:
         raise ReePreconditionError("experiment environment has not been built")
-    experiment_environment_audit = audit(ree).experiment_environment
+    experiment_environment_audit = audit(ree).build_experiment_environment
     if experiment_environment_audit.evidence != "current":
         detail = "; ".join(experiment_environment_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
@@ -205,7 +205,7 @@ def _check_experiment_scripts(definition: ExperimentDefinition, layout: ReeLayou
 
 def _check_activation_evidence(ree: Ree) -> None:
     """An experiment runs inside the activation, so only once the activation has run and still speaks for the REE."""
-    activation_audit = audit(ree).activation
+    activation_audit = audit(ree).activate_experiment_environment
     if activation_audit.evidence != "current":
         raise ReePreconditionError("; ".join(activation_audit.reasons) or "the activation has not been tested")
 
@@ -257,7 +257,7 @@ def _launch_digest(ree: Ree) -> Digest:
 
 
 def _source_snapshot(ree: Ree) -> Digest:
-    source = ree.subject.receipts.source
+    source = ree.subject.receipts.acquire_source
     if source is None:
         raise AssertionError("runnable preconditions admitted a REE without source evidence")
     return source.snapshot_digest
@@ -276,10 +276,10 @@ def _successful_receipt(
     working_environment: WorkingEnvironmentObservation,
     launch_script_digest: Digest,
     launched: Launched | None,
-) -> ActivationReceipt | RunExperimentReceipt:
+) -> ActivateExperimentEnvironmentReceipt | RunExperimentReceipt:
     envelope = receipt_envelope(run_id, timing)
     if not isinstance(definition, ExperimentDefinition):
-        return ActivationReceipt(
+        return ActivateExperimentEnvironmentReceipt(
             **envelope,
             snapshot_digest=snapshot_digest,
             experiment_environment_path=experiment_environment_path,

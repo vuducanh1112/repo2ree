@@ -84,7 +84,7 @@ def handle_build_experiment_environment(
         return ActionResult.failed("execution", message)
 
     timing = timer.finish()
-    source = ree.subject.receipts.source
+    source = ree.subject.receipts.acquire_source
     if source is None:  # guarded by _check_preconditions
         raise AssertionError("build preconditions admitted a REE without source evidence")
     receipt = BuildExperimentEnvironmentReceipt(
@@ -142,7 +142,7 @@ def _check_preconditions(
     # it would spend minutes producing an experiment environment the seal gate then refuses for
     # the staleness that was already visible here. Same check the SBOM and
     # runnable steps make against the build receipt.
-    source_audit = audit(ree).source
+    source_audit = audit(ree).acquire_source
     if source_audit.evidence != "current":
         # The audit names what moved when a receipt has gone stale. It has
         # nothing to say when no source is declared at all — a fresh REE seeded

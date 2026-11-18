@@ -132,14 +132,14 @@ outcome = "succeeded"
 per = "kind"
 
 [invariant.require.where.operation.in]
-source = ["acquire_source", "load_ree_bundle"]
-evaluation = ["evaluate_reproducibility", "load_ree_bundle"]
-hardware = ["observe_hardware", "load_ree_bundle"]
-working_environment_check = ["check_working_environment", "load_ree_bundle"]
-experiment_environment = ["build_experiment_environment", "load_ree_bundle"]
-sbom = ["generate_sbom", "load_ree_bundle"]
-sbom_cross_check = ["cross_check_sbom", "load_ree_bundle"]
-activation = ["activate_experiment_environment", "load_ree_bundle"]
+acquire_source = ["acquire_source", "load_ree_bundle"]
+evaluate_reproducibility = ["evaluate_reproducibility", "load_ree_bundle"]
+observe_hardware = ["observe_hardware", "load_ree_bundle"]
+check_working_environment = ["check_working_environment", "load_ree_bundle"]
+build_experiment_environment = ["build_experiment_environment", "load_ree_bundle"]
+generate_sbom = ["generate_sbom", "load_ree_bundle"]
+cross_check_sbom = ["cross_check_sbom", "load_ree_bundle"]
+activate_experiment_environment = ["activate_experiment_environment", "load_ree_bundle"]
 experiment = ["run_experiment", "load_ree_bundle"]
 
 [[invariant]]

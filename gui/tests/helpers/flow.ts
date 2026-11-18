@@ -197,8 +197,7 @@ export async function generateScript(
   const [response] = await Promise.all([
     page.waitForResponse(
       (candidate) =>
-        candidate.url().includes("script-inferences:generate") &&
-        candidate.request().method() === "POST",
+        candidate.url().includes("suggest-scripts") && candidate.request().method() === "POST",
       { timeout: 30000 },
     ),
     trigger.click(),
@@ -231,7 +230,7 @@ export async function generateScript(
 }
 
 /**
- * Await the definition PATCH a declaration settles through — and fail here if
+ * Await the definition patch a declaration settles through — and fail here if
  * the backend rejected it. A rejected patch leaves the declaration unmade, so a
  * helper that merely waited for *a* response would hand the spec a REE missing
  * what it just declared, and the failure would surface pages later as something
@@ -241,18 +240,18 @@ async function waitForDefinitionPatch(
   page: Page,
   { expectOk = true, carrying }: { expectOk?: boolean; carrying?: string } = {},
 ) {
-  // With `carrying`, only the PATCH whose body holds that value: another, earlier
-  // PATCH (a debounced save from the step before) must not stand in for it.
+  // With `carrying`, only the patch whose body holds that value: another, earlier
+  // patch (a debounced save from the step before) must not stand in for it.
   const response = await page.waitForResponse(
     (res) =>
-      res.url().includes("/definition") &&
-      res.request().method() === "PATCH" &&
+      res.url().includes("/patch-ree-definition") &&
+      res.request().method() === "POST" &&
       (carrying === undefined ||
         (res.request().postData() ?? "").includes(JSON.stringify(carrying))),
   );
   if (expectOk && !response.ok()) {
     throw new Error(
-      `definition PATCH rejected with ${response.status()}: ${await response.text()}`,
+      `definition patch rejected with ${response.status()}: ${await response.text()}`,
     );
   }
   return response;
@@ -261,7 +260,7 @@ async function waitForDefinitionPatch(
 /**
  * Await the workspace-file write a script save always performs.
  *
- * Prefer this over {@link waitForDefinitionPatch} for a save whose definition PATCH
+ * Prefer this over {@link waitForDefinitionPatch} for a save whose definition patch
  * is *conditional* — the experiment page only re-declares a script path when it
  * differs from the one already on the definition, so once the backend has settled
  * that path (naming an experiment does exactly that) a save writes the file and
@@ -269,7 +268,7 @@ async function waitForDefinitionPatch(
  */
 function waitForFileWrite(page: Page) {
   return page.waitForResponse(
-    (res) => res.url().includes("/files/content") && res.request().method() === "PUT",
+    (res) => res.url().includes("/write-script") && res.request().method() === "POST",
   );
 }
 
@@ -550,7 +549,7 @@ export async function runBuild(
   await scriptSaved;
 
   // A rebuild keeps the declaration the first build made: re-entering the same
-  // path changes nothing, so no PATCH would fire to wait on.
+  // path changes nothing, so no patch would fire to wait on.
   if (!rebuild) await declareExperimentEnvironmentArtifact(page, producedExperimentEnvironmentPath);
 
   // Settled whatever its outcome unless asked: a caller may be building to watch it fail.
@@ -602,7 +601,7 @@ async function declareExperimentEnvironmentArtifact(
   page: Page,
   producedExperimentEnvironmentPath: string,
 ) {
-  // Declaring the runtime is a debounced intent PATCH. The build reads the
+  // Declaring the runtime is a debounced intent patch. The build reads the
   // declaration server-side, and anything else that asks the backend about the
   // runtime next (script inference, most obviously) must not race it, so settle
   // the declaration here rather than in each caller.
@@ -684,8 +683,8 @@ export async function crossCheckSbom(page: Page) {
  * the activate experiment environment script the build step wrote, alone, around a command
  * that does nothing: it enters the experiment environment and hands over.
  */
-export async function testActivation(page: Page) {
-  await stepShot(page, "test-activation", "before");
+export async function activateExperimentEnvironment(page: Page) {
+  await stepShot(page, "activate-experiment-environment", "before");
   await openPort(page, "Activation");
   await expect(main(page).getByText("What Runs", { exact: true })).toBeVisible();
   await expect(main(page).getByText(/activate_experiment_environment\.sh true/)).toBeVisible();
@@ -698,7 +697,7 @@ export async function testActivation(page: Page) {
   // Re-run appears for failed runs too; the earned-outcome badge is
   // success-only.
   await expect(main(page).getByRole("status", { name: "Activation passed" })).toBeVisible();
-  await stepShot(page, "test-activation", "after");
+  await stepShot(page, "activate-experiment-environment", "after");
 }
 
 /**
@@ -755,7 +754,7 @@ export async function runExperiment(
 
   // Naming the experiment already settled its reserved run-script path on the
   // intent, so this save writes the file and re-declares nothing — wait on the
-  // write itself rather than an intent PATCH that legitimately never fires.
+  // write itself rather than an intent patch that legitimately never fires.
   const runScriptWritten = waitForFileWrite(page);
   await saveRunScript(
     page,

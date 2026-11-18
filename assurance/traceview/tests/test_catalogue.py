@@ -51,7 +51,7 @@ def test_each_line_counts_the_instances_that_show_it() -> None:
 
 def test_requests_matched_only_by_time_are_not_part_of_the_operation() -> None:
     trace = trace_of(recorded(), build_spans())
-    earlier = Row(t=0.0, lane="client", to="api", label="PUT /rees/{id}/files/content", provenance="time")
+    earlier = Row(t=0.0, lane="client", to="api", label="PUT /rees/{id}/write-script", provenance="time")
 
     def with_earlier(entry: Entry) -> Entry:
         if entry.name != "build_experiment_environment" or entry.sequence is None:

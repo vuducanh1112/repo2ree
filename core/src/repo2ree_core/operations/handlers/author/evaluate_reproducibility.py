@@ -42,7 +42,7 @@ def handle_evaluate_reproducibility(
         return failed_from_exception(exc, f"failed to load REE: {exc}")
     if ree.seal is not None:
         return ActionResult.failed("precondition", "a sealed REE cannot be evaluated")
-    source = ree.subject.receipts.source
+    source = ree.subject.receipts.acquire_source
     if source is None:
         return ActionResult.failed("precondition", "source has not been acquired")
 

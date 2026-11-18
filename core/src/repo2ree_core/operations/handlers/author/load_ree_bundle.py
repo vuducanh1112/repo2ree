@@ -115,7 +115,7 @@ def _rebuild_derived_trees(
     failure = _run_script(layout.materialize_script, what="materialize", log=log, is_canceled=is_canceled)
     if failure is not None:
         return failure
-    source_receipt = store.read_ree().subject.receipts.source
+    source_receipt = store.read_ree().subject.receipts.acquire_source
     record_materialization(
         layout,
         snapshot_digest=source_receipt.snapshot_digest if source_receipt else None,

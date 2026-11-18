@@ -59,6 +59,7 @@ from repo2ree_ree.review import (
     ExperimentEnvironmentComparison,
     ReviewBuildExperimentEnvironmentReceipt,
     ReviewLaunch,
+    ReviewReceipts,
     SourceComparison,
 )
 
@@ -161,7 +162,7 @@ def _workbench(
         target.write_bytes(contents)
 
     record = new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z", launch=reviewer_launch)
-    record = with_step(record, "source", status="completed", at="2026-08-03T00:00:01Z")
+    record = with_step(record, "acquire_source", status="completed", at="2026-08-03T00:00:01Z")
     record = with_step(record, "build_experiment_environment", status="completed", at="2026-08-03T00:00:02Z")
     record = record.model_copy(
         update={
@@ -169,15 +170,17 @@ def _workbench(
             "experiment_environment_comparison": ExperimentEnvironmentComparison(
                 basis="independent", verdict="identical"
             ),
-            "experiment_environment_receipt": ReviewBuildExperimentEnvironmentReceipt(
-                run_id=RunId("review-build"),
-                started_at=_NOW,
-                finished_at=_NOW,
-                duration_ms=0,
-                recorded_at=_NOW,
-                status="succeeded",
-                artifact_path=WorkspacePath(_EXPERIMENT_ENVIRONMENT_PATH),
-                produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
+            "receipts": ReviewReceipts(
+                build_experiment_environment=ReviewBuildExperimentEnvironmentReceipt(
+                    run_id=RunId("review-build"),
+                    started_at=_NOW,
+                    finished_at=_NOW,
+                    duration_ms=0,
+                    recorded_at=_NOW,
+                    status="succeeded",
+                    artifact_path=WorkspacePath(_EXPERIMENT_ENVIRONMENT_PATH),
+                    produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
+                )
             ),
         }
     )
@@ -227,7 +230,7 @@ def test_source_review_reads_definition_and_author_receipt(
                         source=SourceDefinition(origin_url=str(origin), source_type="git", requested_ref=revision)
                     ),
                     receipts=ReeReceipts(
-                        source=AcquireSourceReceipt(
+                        acquire_source=AcquireSourceReceipt(
                             run_id=RunId("author-source"),
                             started_at=_NOW,
                             finished_at=_NOW,
@@ -283,7 +286,7 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
     review.upstream.mkdir(parents=True)
     record = with_step(
         new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z"),
-        "source",
+        "acquire_source",
         status="completed",
         at="2026-08-03T00:00:01Z",
     ).model_copy(update={"source_comparison": SourceComparison(basis="bundled", verdict="identical")})
@@ -333,7 +336,7 @@ def test_a_review_runs_the_authors_check_before_anything_else_runs_there(
     review.upstream.mkdir(parents=True)
     record = with_step(
         new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z"),
-        "source",
+        "acquire_source",
         status="completed",
         at="2026-08-03T00:00:01Z",
     ).model_copy(update={"source_comparison": SourceComparison(basis="bundled", verdict="identical")})
@@ -369,7 +372,7 @@ def test_failed_activation_is_completed_review_evidence(
     assert result.outputs["receipt"]["exit_code"] == 7
     record = read_review_record(layout.review(_REVIEW_ID))
     assert record is not None
-    assert step_state(record, "activation").status == "completed"  # type: ignore[union-attr]
+    assert step_state(record, "activate_experiment_environment").status == "completed"  # type: ignore[union-attr]
 
 
 def test_experiment_uses_definition_and_author_receipt_baseline(
@@ -393,7 +396,7 @@ def test_experiment_uses_definition_and_author_receipt_baseline(
     assert result.outputs["receipt"]["verify_script_digest"] == digest_bytes(_EXPERIMENT_VERIFY)
     record = read_review_record(layout.review(_REVIEW_ID))
     assert record is not None
-    assert [receipt.experiment_name for receipt in record.experiment_receipts] == [_EXPERIMENT_NAME]
+    assert [receipt.experiment_name for receipt in record.receipts.experiments] == [_EXPERIMENT_NAME]
 
 
 def test_an_experiment_run_through_another_activate_script_is_inconclusive(

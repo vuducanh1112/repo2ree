@@ -7,7 +7,7 @@ import { useWorkspaceFilePersistence } from "./useWorkspaceFilePersistence";
 describe("useWorkspaceFilePersistence", () => {
   it("saves, refreshes, and reports success in order", async () => {
     const calls: string[] = [];
-    const putFileContent = vi.fn(async () => {
+    const writeScript = vi.fn(async () => {
       calls.push("update");
       return {};
     });
@@ -18,7 +18,7 @@ describe("useWorkspaceFilePersistence", () => {
     const showToast = vi.fn(() => calls.push("toast"));
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { putFileContent } }),
+      services: fakeApiServices({ ree: { writeScript } }),
     });
     const { result } = renderHook(
       () => useWorkspaceFilePersistence({ refreshWorkspaceFiles, showToast }),
@@ -28,7 +28,7 @@ describe("useWorkspaceFilePersistence", () => {
     await act(() => result.current.persistWorkspaceFile(" new.txt ", "hello"));
 
     expect(calls).toEqual(["update", "refresh", "toast"]);
-    expect(putFileContent).toHaveBeenCalledWith("ree-1", {
+    expect(writeScript).toHaveBeenCalledWith("ree-1", {
       path: "new.txt",
       content: "hello",
     });
@@ -36,12 +36,12 @@ describe("useWorkspaceFilePersistence", () => {
   });
 
   it("turns persistence failures into an actionable error toast", async () => {
-    const putFileContent = vi.fn().mockRejectedValue(new Error("disk full"));
+    const writeScript = vi.fn().mockRejectedValue(new Error("disk full"));
     const showToast = vi.fn();
     const refreshWorkspaceFiles = vi.fn().mockResolvedValue([]);
     const { Wrapper } = createShellWrapper({
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { putFileContent } }),
+      services: fakeApiServices({ ree: { writeScript } }),
     });
     const { result } = renderHook(
       () => useWorkspaceFilePersistence({ refreshWorkspaceFiles, showToast }),

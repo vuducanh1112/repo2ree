@@ -255,7 +255,7 @@ export function canvasWorldBounds(nodes: readonly CanvasNode[] = CANVAS_NODES): 
 // the ends of the major axis, which is exactly where this ring is busiest.
 const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
   {
-    key: PAGE.SOURCE,
+    key: PAGE.ACQUIRE_SOURCE,
     label: "Source",
     zone: "outer",
     angle: 265,
@@ -271,7 +271,7 @@ const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
     iconKey: "grid",
   },
   {
-    key: PAGE.HBOM,
+    key: PAGE.OBSERVE_HARDWARE,
     label: "Hardware",
     zone: "inner",
     angle: 342.4,
@@ -279,7 +279,7 @@ const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
     iconKey: "chip",
   },
   {
-    key: PAGE.EVALUATE,
+    key: PAGE.EVALUATE_REPRODUCIBILITY,
     label: "Reproducibility Readiness",
     zone: "inner",
     angle: 7,
@@ -300,7 +300,7 @@ const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
     iconKey: "cpu",
   },
   {
-    key: PAGE.SBOM,
+    key: PAGE.GENERATE_SBOM,
     label: "SBOM",
     zone: "inner",
     angle: 68.3,
@@ -308,7 +308,7 @@ const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
     iconKey: "package",
   },
   {
-    key: PAGE.ACTIVATION,
+    key: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
     label: "Activation",
     zone: "inner",
     angle: 124.1,
@@ -324,7 +324,7 @@ const CANVAS_NODE_PLACEMENTS: CanvasNodePlacement[] = [
     iconKey: "terminal",
   },
   {
-    key: PAGE.SEAL,
+    key: PAGE.SEAL_REE,
     label: "Seal",
     zone: "outer",
     angle: 180,
@@ -437,7 +437,7 @@ export function nodeSummary(
   context: CanvasNodeOverviewContext = {},
 ): SummaryRow[] {
   switch (node.key) {
-    case PAGE.SOURCE: {
+    case PAGE.ACQUIRE_SOURCE: {
       // Once a source is in the workspace, surface the backend-computed stats;
       // before that, fall back to the declared origin so the card isn't empty.
       const repo = ree.source.sourceAvailable ? sourceRepo : undefined;
@@ -479,8 +479,8 @@ export function nodeSummary(
           value: ree.spec.catalogMetadata?.correspondingAuthorIdentifier || null,
         },
       ];
-    case PAGE.HBOM: {
-      const hbom = ree.spec.hardwareDescription;
+    case PAGE.OBSERVE_HARDWARE: {
+      const hbom = ree.spec.hbom;
       const cpus = Object.values(hbom.cpus).reduce((total, cpu) => total + cpu.quantity, 0);
       const cores = Object.values(hbom.cpus).reduce(
         (total, cpu) => total + cpu.quantity * cpu.coresPerCpu,
@@ -520,7 +520,7 @@ export function nodeSummary(
         { label: "Verify", value: verifyCount > 0 ? `${verifyCount} defined` : null },
       ];
     }
-    case PAGE.EVALUATE:
+    case PAGE.EVALUATE_REPRODUCIBILITY:
       // Always surface each axis's standing — level 0 reads as "None", so the
       // three axes are visible whether or not the REE has been scored yet.
       return [
@@ -544,7 +544,7 @@ export function nodeSummary(
               : null,
         },
       ];
-    case PAGE.SBOM: {
+    case PAGE.GENERATE_SBOM: {
       const sbom = ree.spec.sbom || "";
       const crossCheck = context.crossCheck;
       return [
@@ -561,7 +561,7 @@ export function nodeSummary(
         },
       ];
     }
-    case PAGE.ACTIVATION:
+    case PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT:
       return [
         {
           label: "Runs",
@@ -574,7 +574,7 @@ export function nodeSummary(
         { label: "DOI", value: null },
         { label: "SWHID", value: ree.spec.swhid || null, title: ree.spec.swhid },
       ];
-    case PAGE.SEAL: {
+    case PAGE.SEAL_REE: {
       const hash = ree.artifact.sealHash || "";
       return [
         { label: "State", value: ree.artifact.sealedAt ? "sealed" : "draft" },
@@ -587,12 +587,12 @@ export function nodeSummary(
 }
 
 const RECEIPT_OPERATIONS_BY_PAGE: Readonly<Partial<Record<AppShellPage, readonly string[]>>> = {
-  [PAGE.SOURCE]: ["acquire_source"],
-  [PAGE.HBOM]: ["observe_hardware"],
-  [PAGE.EVALUATE]: ["evaluate_reproducibility"],
+  [PAGE.ACQUIRE_SOURCE]: ["acquire_source"],
+  [PAGE.OBSERVE_HARDWARE]: ["observe_hardware"],
+  [PAGE.EVALUATE_REPRODUCIBILITY]: ["evaluate_reproducibility"],
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: ["build_experiment_environment"],
-  [PAGE.SBOM]: ["generate_sbom", "cross_check_sbom"],
-  [PAGE.ACTIVATION]: ["activate_experiment_environment"],
+  [PAGE.GENERATE_SBOM]: ["generate_sbom", "cross_check_sbom"],
+  [PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT]: ["activate_experiment_environment"],
   [PAGE.EXPERIMENTS]: ["run_experiment"],
 };
 
@@ -603,7 +603,7 @@ function receiptField(receipt: ReceiptView, key: string): string {
 function scriptDigest(node: CanvasNode, receipt: ReceiptView): string {
   if (node.key === PAGE.BUILD_EXPERIMENT_ENVIRONMENT)
     return receiptField(receipt, "build_experiment_environment_script_digest");
-  if (node.key === PAGE.ACTIVATION || node.key === PAGE.EXPERIMENTS) {
+  if (node.key === PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT || node.key === PAGE.EXPERIMENTS) {
     return receiptField(receipt, "run_script_digest");
   }
   return "";
@@ -682,7 +682,7 @@ export function nodeOverview(
         3,
       ),
     ];
-  } else if (node.key === PAGE.ACTIVATION) {
+  } else if (node.key === PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT) {
     scripts = [
       scriptPreview(
         files,

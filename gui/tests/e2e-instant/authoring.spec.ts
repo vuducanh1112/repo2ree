@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "../helpers/fixtures";
 import {
+  activateExperimentEnvironment,
   buildExperimentEnvironment,
   generateScript,
   INSTANT_EXPERIMENT_ENVIRONMENT_PATH,
@@ -15,7 +16,6 @@ import {
   saveActivateScript,
   sealRee,
   startReeCreation,
-  testActivation,
   uploadSource,
 } from "../helpers/flow";
 
@@ -68,7 +68,7 @@ test.describe("Instant authoring", () => {
     });
 
     await test.step("test activation", async () => {
-      await testActivation(page);
+      await activateExperimentEnvironment(page);
     });
 
     await test.step("run the experiment", async () => {

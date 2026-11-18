@@ -11,15 +11,15 @@ const PAGE_BY_OPERATION: ReadonlyMap<ReeRunOperation, AppShellPage> = new Map<
   ReeRunOperation,
   AppShellPage
 >([
-  ["acquire_source", PAGE.SOURCE],
+  ["acquire_source", PAGE.ACQUIRE_SOURCE],
   ["build_experiment_environment", PAGE.BUILD_EXPERIMENT_ENVIRONMENT],
-  ["generate_sbom", PAGE.SBOM],
+  ["generate_sbom", PAGE.GENERATE_SBOM],
   // The cross-check is the second operation on the SBOM page.
-  ["cross_check_sbom", PAGE.SBOM],
-  ["activate_experiment_environment", PAGE.ACTIVATION],
-  ["observe_hardware", PAGE.HBOM],
-  ["evaluate_reproducibility", PAGE.EVALUATE],
-  ["seal_ree", PAGE.SEAL],
+  ["cross_check_sbom", PAGE.GENERATE_SBOM],
+  ["activate_experiment_environment", PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT],
+  ["observe_hardware", PAGE.OBSERVE_HARDWARE],
+  ["evaluate_reproducibility", PAGE.EVALUATE_REPRODUCIBILITY],
+  ["seal_ree", PAGE.SEAL_REE],
   ["run_experiment", PAGE.EXPERIMENTS],
 ]);
 

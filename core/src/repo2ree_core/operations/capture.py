@@ -335,13 +335,13 @@ def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
     standing = {
         name: step.evidence
         for name in (
-            "source",
-            "evaluation",
-            "hardware",
-            "experiment_environment",
-            "sbom",
-            "sbom_cross_check",
-            "activation",
+            "acquire_source",
+            "evaluate_reproducibility",
+            "observe_hardware",
+            "build_experiment_environment",
+            "generate_sbom",
+            "cross_check_sbom",
+            "activate_experiment_environment",
         )
         if (step := getattr(report, name)) is not None
     }

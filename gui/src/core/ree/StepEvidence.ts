@@ -8,13 +8,13 @@ export type EvidenceStatus = "missing" | "current" | "stale" | "not_applicable";
 
 /** The audit's own step names. The domain names its steps; pages are the shell's word. */
 export type EvidenceStep =
-  | "source"
-  | "evaluation"
-  | "hardware"
-  | "experiment_environment"
-  | "sbom"
-  | "sbom_cross_check"
-  | "activation";
+  | "acquire_source"
+  | "evaluate_reproducibility"
+  | "observe_hardware"
+  | "build_experiment_environment"
+  | "generate_sbom"
+  | "cross_check_sbom"
+  | "activate_experiment_environment";
 
 export type StepEvidence = Partial<Record<EvidenceStep, EvidenceStatus>>;
 
@@ -36,24 +36,24 @@ export interface ExperimentAudit {
  * projection this retains the receipt/run binding and the backend's reasons.
  */
 export interface ReeAudit {
-  source?: StepAudit | EvidenceStatus;
-  evaluation?: StepAudit | EvidenceStatus;
-  hardware?: StepAudit | EvidenceStatus;
-  experiment_environment?: StepAudit | EvidenceStatus;
-  sbom?: StepAudit | EvidenceStatus;
-  sbom_cross_check?: StepAudit | EvidenceStatus;
-  activation?: StepAudit | EvidenceStatus;
+  acquire_source?: StepAudit | EvidenceStatus;
+  evaluate_reproducibility?: StepAudit | EvidenceStatus;
+  observe_hardware?: StepAudit | EvidenceStatus;
+  build_experiment_environment?: StepAudit | EvidenceStatus;
+  generate_sbom?: StepAudit | EvidenceStatus;
+  cross_check_sbom?: StepAudit | EvidenceStatus;
+  activate_experiment_environment?: StepAudit | EvidenceStatus;
   experiments?: ExperimentAudit[];
 }
 
 const EVIDENCE_STEPS: readonly EvidenceStep[] = [
-  "source",
-  "evaluation",
-  "hardware",
-  "experiment_environment",
-  "sbom",
-  "sbom_cross_check",
-  "activation",
+  "acquire_source",
+  "evaluate_reproducibility",
+  "observe_hardware",
+  "build_experiment_environment",
+  "generate_sbom",
+  "cross_check_sbom",
+  "activate_experiment_environment",
 ];
 
 const EVIDENCE_STATUSES: readonly EvidenceStatus[] = [

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "repo2ree Control API",
-    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   every script it has: starter build and activate scripts, a launch that runs each\n   script directly, and a check of the working environment that passes as it comes.\n   `writeScript` overwrites a script; none is ever deleted.\n3. Bring in source, either by reference (`acquireSource`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `suggestScripts` proposes a build script from the project.\n   `writeScript` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `buildExperimentEnvironment`.\n6. `suggestScripts` also proposes the activate experiment environment script;\n   `writeScript` writes it, then `activateExperimentEnvironment` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `patchReeDefinition` declares it, which\n   gives it a starter run script and a verify script that passes; removing or\n   renaming it takes its scripts with it. `suggestScripts` with its name\n   proposes a run script; `writeScript` writes that and, if the experiment checks\n   its result, the verify script; then `runExperiment`.\n8. Optionally assess: `evaluateReproducibility` / `getEvaluateReport`, `generateSbom`,\n   `crossCheckSbom`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `reviewAcquireSource` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `reviewBuildExperimentEnvironment`, `reviewActivateExperimentEnvironment`, and `reviewRunExperiment` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
+    "description": "Author and execute reusable execution environments (REEs) through connected\nworkbench services.\n\n## Authoring lifecycle\n\nCreating an REE, source extraction, every execution stage, and sealing are\nasynchronous: they return a `run_id`. `observeRun` waits until there are new log\nentries or the run ends, so it can return while the run is still `running`: call\nit again with `next_cursor` until `run.status` is terminal (`succeeded`, `failed`,\n`canceled`). Definition and file edits, reads, and generating script candidates\nare synchronous. A REE is authored end to end in this order:\n\n1. Discover: `listStores` says which machine each store's workbench runs an REE's\n   scripts on (`machine`). `listReeSteps` gives the steps, their prerequisites,\n   where the REE stands on each and which is next, and the operations that\n   advance each. `listScriptTemplates` gives the starter\n   scripts and where they belong.\n2. `createRee` \u2014 create the REE in a store; await the returned run. It starts with\n   every script it has: starter build and activate scripts, a launch that runs each\n   script directly, and a check of the working environment that passes as it comes.\n   `writeScript` overwrites a script; none is ever deleted.\n3. Bring in source, either by reference (`acquireSource`) or by upload \u2014\n   `initializeSourceUpload`, then `uploadSourceBytes` (raw bytes to the returned\n   `upload_url`, relative to this API), then `completeSourceUpload`; await the\n   extraction run.\n4. `getReeState` \u2014 compact durable state plus file metadata, never inline contents;\n   read file bytes via `readReeFile`. Its `audit` says what is still missing and why.\n5. Build: `suggestScripts` proposes a build script from the project.\n   `writeScript` writes it, `patchReeDefinition` declares its\n   `build_experiment_environment.experiment_environment_path`, then `buildExperimentEnvironment`.\n6. `suggestScripts` also proposes the activate experiment environment script;\n   `writeScript` writes it, then `activateExperimentEnvironment` runs it alone, around a command\n   that does nothing. Experiments run only while that activation's evidence is current.\n7. For each experiment, in this order: `patchReeDefinition` declares it, which\n   gives it a starter run script and a verify script that passes; removing or\n   renaming it takes its scripts with it. `suggestScripts` with its name\n   proposes a run script; `writeScript` writes that and, if the experiment checks\n   its result, the verify script; then `runExperiment`.\n8. Optionally assess: `evaluateReproducibility` / `getReproducibilityReport`, `generateSbom`,\n   `crossCheckSbom`, and record catalog metadata via `patchReeDefinition`.\n9. `sealRee` \u2014 freeze the REE; await the returned run, after which `getRee` carries\n   `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.\n10. `deleteRee` \u2014 delete the REE from its store.\n\nTo replace a source, `removeSource` keeps the REE's scripts and definition; bring\nin the new one as in step 3.\n\n## Reviewing a sealed REE\n\n1. `createRee`, then `initializeReeBundleUpload`, `uploadReeBundleBytes`, and\n   `loadReeBundle` with the archive; await the load run.\n2. `reviewAcquireSource` opens the review and its run reproduces the source;\n   `listReviews` gives its `review_id`.\n3. `reviewBuildExperimentEnvironment`, `reviewActivateExperimentEnvironment`, and `reviewRunExperiment` for each\n   experiment; await each run. A review's `status` is about the runs so far, so run\n   every step you want checked.\n4. `getReview` gives each step's verdict and the basis it was reached on: `bundled`\n   evidence the archive carries, or an `independent` rebuild.\n\nThe external documentation link is a walkthrough of this sequence as real `curl`\ncalls.\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1637,7 +1637,7 @@
           }
         },
         "x-repo2ree-step-actions": {
-          "source": [
+          "acquire_source": [
             "acquireSource",
             "initializeSourceUpload",
             "completeSourceUpload"
@@ -1645,7 +1645,7 @@
           "metadata": [
             "patchReeDefinition"
           ],
-          "hbom": [
+          "observe_hardware": [
             "observeHardware",
             "patchReeDefinition"
           ],
@@ -1654,7 +1654,7 @@
             "patchReeDefinition",
             "checkWorkingEnvironment"
           ],
-          "evaluate": [
+          "evaluate_reproducibility": [
             "evaluateReproducibility"
           ],
           "build_experiment_environment": [
@@ -1662,13 +1662,13 @@
             "suggestScripts",
             "writeScript"
           ],
-          "sbom": [
+          "generate_sbom": [
             "generateSbom"
           ],
-          "crosscheck": [
+          "cross_check_sbom": [
             "crossCheckSbom"
           ],
-          "activation": [
+          "activate_experiment_environment": [
             "activateExperimentEnvironment"
           ],
           "experiments": [
@@ -1677,7 +1677,7 @@
             "suggestScripts",
             "writeScript"
           ],
-          "seal": [
+          "seal_ree": [
             "sealRee"
           ]
         }
@@ -1816,7 +1816,7 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/source:acquire": {
+    "/api/v1/rees/{ree_id}/acquire-source": {
       "post": {
         "tags": [
           "rees",
@@ -1840,7 +1840,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SourceAcquirePayload"
+                "$ref": "#/components/schemas/AcquireSourcePayload"
               }
             }
           }
@@ -2395,8 +2395,8 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/source": {
-      "delete": {
+    "/api/v1/rees/{ree_id}/remove-source": {
+      "post": {
         "tags": [
           "rees",
           "sources"
@@ -2532,8 +2532,8 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/definition": {
-      "patch": {
+    "/api/v1/rees/{ree_id}/patch-ree-definition": {
+      "post": {
         "tags": [
           "rees"
         ],
@@ -2556,7 +2556,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReeDefinitionPatchPayload"
+                "$ref": "#/components/schemas/PatchReeDefinitionPayload"
               }
             }
           }
@@ -2676,7 +2676,9 @@
         "x-operations": [
           "patch_ree_definition"
         ]
-      },
+      }
+    },
+    "/api/v1/rees/{ree_id}/definition": {
       "put": {
         "tags": [
           "rees"
@@ -2964,13 +2966,13 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/files/content": {
-      "put": {
+    "/api/v1/rees/{ree_id}/write-script": {
+      "post": {
         "tags": [
           "rees",
           "files"
         ],
-        "summary": "Put Workspace File Content Route",
+        "summary": "Write Script Route",
         "description": "Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.\n\n``listScriptTemplates`` says where each script belongs. ``if_match`` refuses\nthe write if the file has changed since its etag was read.",
         "operationId": "writeScript",
         "parameters": [
@@ -2989,7 +2991,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/WorkspaceFileContentPayload"
+                "$ref": "#/components/schemas/WriteScriptPayload"
               }
             }
           }
@@ -3111,12 +3113,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/script-inferences:generate": {
+    "/api/v1/rees/{ree_id}/suggest-scripts": {
       "post": {
         "tags": [
           "files"
         ],
-        "summary": "Generate Script Candidates Route",
+        "summary": "Suggest Scripts Route",
         "description": "Synchronously generate candidate scripts for the requested targets, from the REE's own project.\n\nThis proposes the build script (from a Dockerfile or a requirements.txt, say)\nand scaffolds the activation and experiment scripts. Nothing is written:\n``writeScript`` is how a candidate is adopted.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
         "operationId": "suggestScripts",
         "parameters": [
@@ -3135,7 +3137,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/GenerateScriptCandidatesPayload"
+                "$ref": "#/components/schemas/SuggestScriptsPayload"
               }
             }
           }
@@ -3257,12 +3259,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/script-lints:run": {
+    "/api/v1/rees/{ree_id}/lint-scripts": {
       "post": {
         "tags": [
           "files"
         ],
-        "summary": "Lint Ree Scripts Route",
+        "summary": "Lint Scripts Route",
         "description": "Statically check persisted scripts on every available tier.",
         "operationId": "lintScripts",
         "parameters": [
@@ -3546,12 +3548,12 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/generate-hbom": {
+    "/api/v1/rees/{ree_id}/observe-hardware": {
       "post": {
         "tags": [
           "runs"
         ],
-        "summary": "Create Generate Hbom Run",
+        "summary": "Observe Hardware Route",
         "operationId": "observeHardware",
         "parameters": [
           {
@@ -3569,7 +3571,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateGenerateHbomRunPayload"
+                "$ref": "#/components/schemas/ObserveHardwarePayload"
               }
             }
           }
@@ -3691,12 +3693,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/evaluate": {
+    "/api/v1/rees/{ree_id}/evaluate-reproducibility": {
       "post": {
         "tags": [
           "runs"
         ],
-        "summary": "Create Evaluate Run",
+        "summary": "Evaluate Reproducibility Route",
         "operationId": "evaluateReproducibility",
         "parameters": [
           {
@@ -3714,7 +3716,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateEvaluateRunPayload"
+                "$ref": "#/components/schemas/EvaluateReproducibilityPayload"
               }
             }
           }
@@ -3836,14 +3838,14 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/evaluate/report": {
+    "/api/v1/rees/{ree_id}/reproducibility-report": {
       "get": {
         "tags": [
           "runs"
         ],
-        "summary": "Get Ree Evaluate Report",
+        "summary": "Get Reproducibility Report Route",
         "description": "The persisted evaluate-run report artifact.\n\nA threat's ``blocking`` means it holds its axis at its current level. Nothing\nrefuses to run or seal because of one.",
-        "operationId": "getEvaluateReport",
+        "operationId": "getReproducibilityReport",
         "parameters": [
           {
             "name": "ree_id",
@@ -3974,7 +3976,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Build Experiment Environment Run",
+        "summary": "Build Experiment Environment Route",
         "operationId": "buildExperimentEnvironment",
         "parameters": [
           {
@@ -3992,7 +3994,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBuildExperimentEnvironmentRunPayload"
+                "$ref": "#/components/schemas/BuildExperimentEnvironmentPayload"
               }
             }
           }
@@ -4119,7 +4121,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Generate Sbom Run",
+        "summary": "Generate Sbom Route",
         "operationId": "generateSbom",
         "parameters": [
           {
@@ -4137,7 +4139,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateGenerateSbomRunPayload"
+                "$ref": "#/components/schemas/GenerateSbomPayload"
               }
             }
           }
@@ -4264,7 +4266,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Cross Check Sbom Run",
+        "summary": "Cross Check Sbom Route",
         "operationId": "crossCheckSbom",
         "parameters": [
           {
@@ -4282,7 +4284,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateCrossCheckSbomRunPayload"
+                "$ref": "#/components/schemas/CrossCheckSbomPayload"
               }
             }
           }
@@ -4404,12 +4406,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/activation-test": {
+    "/api/v1/rees/{ree_id}/activate-experiment-environment": {
       "post": {
         "tags": [
           "runs"
         ],
-        "summary": "Create Activation Test Run",
+        "summary": "Activate Experiment Environment Route",
         "operationId": "activateExperimentEnvironment",
         "parameters": [
           {
@@ -4427,7 +4429,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateActivationTestRunPayload"
+                "$ref": "#/components/schemas/ActivateExperimentEnvironmentPayload"
               }
             }
           }
@@ -4554,7 +4556,7 @@
         "tags": [
           "runs"
         ],
-        "summary": "Create Check Working Environment Run",
+        "summary": "Check Working Environment Route",
         "operationId": "checkWorkingEnvironment",
         "parameters": [
           {
@@ -4572,7 +4574,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateCheckWorkingEnvironmentRunPayload"
+                "$ref": "#/components/schemas/CheckWorkingEnvironmentPayload"
               }
             }
           }
@@ -4694,12 +4696,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run": {
+    "/api/v1/rees/{ree_id}/run-experiment/{experiment_name}": {
       "post": {
         "tags": [
           "runs"
         ],
-        "summary": "Create Experiment Run",
+        "summary": "Run Experiment Route",
         "operationId": "runExperiment",
         "parameters": [
           {
@@ -4726,7 +4728,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateExperimentRunPayload"
+                "$ref": "#/components/schemas/RunExperimentPayload"
               }
             }
           }
@@ -4987,7 +4989,7 @@
           "rees"
         ],
         "summary": "Bundle Upload Init Route",
-        "description": "Open a staging slot for a downloaded REE bundle (see ``ree:load``).",
+        "description": "Open a staging slot for a downloaded REE bundle (see ``load-ree-bundle``).",
         "operationId": "initializeReeBundleUpload",
         "parameters": [
           {
@@ -5265,7 +5267,7 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/ree:load": {
+    "/api/v1/rees/{ree_id}/load-ree-bundle": {
       "post": {
         "tags": [
           "rees"
@@ -5289,7 +5291,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReeBundleLoadPayload"
+                "$ref": "#/components/schemas/LoadReeBundlePayload"
               }
             }
           }
@@ -5411,7 +5413,7 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/ree:seal": {
+    "/api/v1/rees/{ree_id}/seal-ree": {
       "post": {
         "tags": [
           "rees"
@@ -5435,7 +5437,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReeSealPayload"
+                "$ref": "#/components/schemas/SealReePayload"
               }
             }
           }
@@ -6263,12 +6265,12 @@
         }
       }
     },
-    "/api/v1/rees/{ree_id}/reviews/source:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/acquire-source": {
       "post": {
         "tags": [
           "reviews"
         ],
-        "summary": "Start Source Review",
+        "summary": "Review Acquire Source Route",
         "operationId": "reviewAcquireSource",
         "parameters": [
           {
@@ -6286,7 +6288,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateSourceReviewPayload"
+                "$ref": "#/components/schemas/ReviewAcquireSourcePayload"
               }
             }
           }
@@ -6408,12 +6410,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment": {
       "post": {
         "tags": [
           "reviews"
         ],
-        "summary": "Start Build Review",
+        "summary": "Review Build Experiment Environment Route",
         "description": "Rebuild the experiment environment inside an attempt whose source was already reproduced.\n\nAddressed by review id rather than minting a new one: the build is only\nmeaningful against the source *this* attempt fetched for itself, and the\nworkbench rejects the command outright when that step has not settled.",
         "operationId": "reviewBuildExperimentEnvironment",
         "parameters": [
@@ -6441,7 +6443,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBuildExperimentEnvironmentReviewPayload"
+                "$ref": "#/components/schemas/ReviewBuildExperimentEnvironmentPayload"
               }
             }
           }
@@ -6563,12 +6565,12 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/activate-experiment-environment": {
       "post": {
         "tags": [
           "reviews"
         ],
-        "summary": "Start Activation Review",
+        "summary": "Review Activate Experiment Environment Route",
         "description": "Run the author's activation alone in the experiment environment this attempt certified.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).",
         "operationId": "reviewActivateExperimentEnvironment",
         "parameters": [
@@ -6718,13 +6720,13 @@
         ]
       }
     },
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/run-experiment/{experiment_name}": {
       "post": {
         "tags": [
           "reviews"
         ],
-        "summary": "Start Experiment Review",
-        "description": "Reproduce one experiment's result inside an attempt whose experiment environment came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``experiments/{name}:run``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
+        "summary": "Review Run Experiment Route",
+        "description": "Reproduce one experiment's result inside an attempt whose experiment environment came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``run-experiment/{name}``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
         "operationId": "reviewRunExperiment",
         "parameters": [
           {
@@ -8084,6 +8086,52 @@
   },
   "components": {
     "schemas": {
+      "AcquireSourcePayload": {
+        "properties": {
+          "origin_url": {
+            "type": "string",
+            "title": "Origin Url"
+          },
+          "source_type": {
+            "type": "string",
+            "enum": [
+              "git",
+              "tarball",
+              "zip"
+            ],
+            "title": "Source Type"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "origin_url",
+          "source_type"
+        ],
+        "title": "AcquireSourcePayload"
+      },
       "AcquireSourceReceipt": {
         "properties": {
           "schema_version": {
@@ -8295,54 +8343,9 @@
         ],
         "title": "ActivateExperimentEnvironmentDefinition"
       },
-      "ActivateExperimentEnvironmentScriptTemplates": {
+      "ActivateExperimentEnvironmentPayload": {
         "properties": {
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "templates": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTemplateEntry"
-            },
-            "type": "array",
-            "title": "Templates"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path",
-          "templates"
-        ],
-        "title": "ActivateExperimentEnvironmentScriptTemplates",
-        "description": "The activate experiment environment templates and the reserved path they all belong at."
-      },
-      "ActivationOutcome": {
-        "properties": {
-          "policy": {
-            "type": "string",
-            "const": "activation",
-            "title": "Policy",
-            "default": "activation"
-          },
-          "basis": {
-            "type": "string",
-            "enum": [
-              "independent",
-              "bundled"
-            ],
-            "title": "Basis"
-          },
-          "verdict": {
-            "type": "string",
-            "enum": [
-              "passed",
-              "failed"
-            ],
-            "title": "Verdict"
-          },
-          "experiment_environment_digest": {
+          "idempotency_key": {
             "anyOf": [
               {
                 "type": "string"
@@ -8351,29 +8354,15 @@
                 "type": "null"
               }
             ],
-            "title": "Experiment Environment Digest"
-          },
-          "exit_code": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exit Code"
+            "title": "Idempotency Key"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "basis",
-          "verdict"
-        ],
-        "title": "ActivationOutcome"
+        "title": "ActivateExperimentEnvironmentPayload",
+        "description": "Run the activate experiment environment script alone. Takes no parameters of its own."
       },
-      "ActivationReceipt": {
+      "ActivateExperimentEnvironmentReceipt": {
         "properties": {
           "schema_version": {
             "type": "integer",
@@ -8512,8 +8501,86 @@
           "activate_experiment_environment_script_digest",
           "launch_script_digest"
         ],
-        "title": "ActivationReceipt",
+        "title": "ActivateExperimentEnvironmentReceipt",
         "description": "The activate experiment environment script ran a command that does nothing, which exited 0."
+      },
+      "ActivateExperimentEnvironmentScriptTemplates": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTemplateEntry"
+            },
+            "type": "array",
+            "title": "Templates"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "templates"
+        ],
+        "title": "ActivateExperimentEnvironmentScriptTemplates",
+        "description": "The activate experiment environment templates and the reserved path they all belong at."
+      },
+      "ActivationOutcome": {
+        "properties": {
+          "policy": {
+            "type": "string",
+            "const": "activation",
+            "title": "Policy",
+            "default": "activation"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed"
+            ],
+            "title": "Verdict"
+          },
+          "experiment_environment_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment Environment Digest"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "basis",
+          "verdict"
+        ],
+        "title": "ActivationOutcome"
       },
       "ArchiveBindingAttestation": {
         "properties": {
@@ -8801,6 +8868,25 @@
         ],
         "title": "BehaviourState",
         "description": "The owners' persisted state, read between two sets of journal positions."
+      },
+      "BuildExperimentEnvironmentPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BuildExperimentEnvironmentPayload",
+        "description": "Run the reserved build script. Takes no parameters of its own."
       },
       "BuildExperimentEnvironmentReceipt": {
         "properties": {
@@ -9248,6 +9334,25 @@
         "title": "CheckWorkingEnvironmentDefinition",
         "description": "The script that checks the working environment offers what the REE's scripts need, run there before them."
       },
+      "CheckWorkingEnvironmentPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CheckWorkingEnvironmentPayload",
+        "description": "Run the REE's check script in its working environment. Takes no parameters of its own."
+      },
       "CheckWorkingEnvironmentReceipt": {
         "properties": {
           "schema_version": {
@@ -9510,196 +9615,6 @@
         "type": "object",
         "title": "Contributor"
       },
-      "CreateActivationTestRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateActivationTestRunPayload",
-        "description": "Run the activate experiment environment script alone. Takes no parameters of its own."
-      },
-      "CreateBuildExperimentEnvironmentReviewPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          },
-          "prune_workspace": {
-            "type": "boolean",
-            "title": "Prune Workspace",
-            "default": false
-          },
-          "basis": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "independent",
-              "bundled"
-            ],
-            "title": "Basis",
-            "default": "auto"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateBuildExperimentEnvironmentReviewPayload",
-        "description": "Reproduce the experiment environment build inside an existing review attempt."
-      },
-      "CreateBuildExperimentEnvironmentRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateBuildExperimentEnvironmentRunPayload",
-        "description": "Run the reserved build script. Takes no parameters of its own."
-      },
-      "CreateCheckWorkingEnvironmentRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateCheckWorkingEnvironmentRunPayload",
-        "description": "Run the REE's check script in its working environment. Takes no parameters of its own."
-      },
-      "CreateCrossCheckSbomRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateCrossCheckSbomRunPayload",
-        "description": "Cross-check the recorded SBOM against the built experiment environment. No parameters."
-      },
-      "CreateEvaluateRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          },
-          "strict": {
-            "type": "boolean",
-            "title": "Strict",
-            "default": false
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateEvaluateRunPayload"
-      },
-      "CreateExperimentRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateExperimentRunPayload",
-        "description": "No fields of its own yet \u2014 the extension point for future run options."
-      },
-      "CreateGenerateHbomRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateGenerateHbomRunPayload",
-        "description": "Profile the workbench host's hardware. Takes no parameters of its own."
-      },
-      "CreateGenerateSbomRunPayload": {
-        "properties": {
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "CreateGenerateSbomRunPayload",
-        "description": "Scan the declared experiment environment artifact. Takes no parameters of its own.\n\nWhich artifact gets scanned is the build recipe's ``experiment_environment_path``, which\nthe author declared before the build ran and the build receipt binds. The\nhandler reads it there; a client cannot name a different one."
-      },
       "CreateRunPayload": {
         "properties": {
           "idempotency_key": {
@@ -9719,7 +9634,7 @@
         "title": "CreateRunPayload",
         "description": "The body every \"start a run\" route accepts.\n\nRoutes that need nothing else subclass it as-is; the two that take\nparameters (sbom, evaluate) add their fields. Subclassing rather than\nsharing one model keeps each route's schema named after its operation."
       },
-      "CreateSourceReviewPayload": {
+      "CrossCheckSbomPayload": {
         "properties": {
           "idempotency_key": {
             "anyOf": [
@@ -9731,25 +9646,12 @@
               }
             ],
             "title": "Idempotency Key"
-          },
-          "basis": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "independent",
-              "bundled"
-            ],
-            "title": "Basis",
-            "default": "auto"
-          },
-          "launch": {
-            "$ref": "#/components/schemas/ReviewLaunch"
           }
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateSourceReviewPayload",
-        "description": "Start a fresh isolated review attempt at source acquisition.\n\n``basis`` chooses what to reproduce from: the recorded origin, or the\nsnapshot the REE carries. The default settles it from what the baseline\nhas, preferring the origin (see :data:`ReviewBasis`)."
+        "title": "CrossCheckSbomPayload",
+        "description": "Cross-check the recorded SBOM against the built experiment environment. No parameters."
       },
       "CrossCheckSbomReceipt": {
         "properties": {
@@ -10442,6 +10344,29 @@
           "error"
         ],
         "title": "ErrorEnvelope"
+      },
+      "EvaluateReproducibilityPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "strict": {
+            "type": "boolean",
+            "title": "Strict",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EvaluateReproducibilityPayload"
       },
       "EvaluateReproducibilityReceipt": {
         "properties": {
@@ -11762,6 +11687,25 @@
         "type": "object",
         "title": "GPUDefinition"
       },
+      "GenerateSbomPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GenerateSbomPayload",
+        "description": "Scan the declared experiment environment artifact. Takes no parameters of its own.\n\nWhich artifact gets scanned is the build recipe's ``experiment_environment_path``, which\nthe author declared before the build ran and the build receipt binds. The\nhandler reads it there; a client cannot name a different one."
+      },
       "GenerateSbomReceipt": {
         "properties": {
           "schema_version": {
@@ -11868,23 +11812,6 @@
           "tool_version"
         ],
         "title": "GenerateSbomReceipt"
-      },
-      "GenerateScriptCandidatesPayload": {
-        "properties": {
-          "targets": {
-            "items": {
-              "$ref": "#/components/schemas/ScriptTargetSelectorPayload"
-            },
-            "type": "array",
-            "title": "Targets"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "targets"
-        ],
-        "title": "GenerateScriptCandidatesPayload"
       },
       "HBOM": {
         "properties": {
@@ -12590,6 +12517,37 @@
         "title": "LintScriptsResponse",
         "description": "Reports for existing scripts and paths for requested scripts that are absent."
       },
+      "LoadReeBundlePayload": {
+        "properties": {
+          "upload_token": {
+            "type": "string",
+            "title": "Upload Token"
+          },
+          "archive_name": {
+            "type": "string",
+            "title": "Archive Name"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "upload_token",
+          "archive_name"
+        ],
+        "title": "LoadReeBundlePayload",
+        "description": "Load a staged REE bundle into this (freshly provisioned) REE."
+      },
       "LogicalRootObservation": {
         "properties": {
           "kind": {
@@ -12782,6 +12740,25 @@
         "additionalProperties": false,
         "type": "object",
         "title": "NetworkDefinition"
+      },
+      "ObserveHardwarePayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ObserveHardwarePayload",
+        "description": "Profile the workbench host's hardware. Takes no parameters of its own."
       },
       "ObserveHardwareReceipt": {
         "properties": {
@@ -13110,6 +13087,31 @@
         ],
         "title": "PackageDeltaRecord"
       },
+      "PatchReeDefinitionPayload": {
+        "properties": {
+          "definition_patch": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Definition Patch",
+            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"experiment_environment\": {\"artifact_path\": \"runtime.tar\"}}` or, once its run script is written, `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PatchReeDefinitionPayload",
+        "description": "Replace top-level fields of the current portable REE definition."
+      },
       "PathMatchesObservation": {
         "properties": {
           "kind": {
@@ -13192,28 +13194,28 @@
       },
       "ReeAudit": {
         "properties": {
-          "source": {
+          "acquire_source": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "evaluation": {
+          "evaluate_reproducibility": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "hardware": {
+          "observe_hardware": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "working_environment_check": {
+          "check_working_environment": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "experiment_environment": {
+          "build_experiment_environment": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "sbom": {
+          "generate_sbom": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "sbom_cross_check": {
+          "cross_check_sbom": {
             "$ref": "#/components/schemas/StepAudit"
           },
-          "activation": {
+          "activate_experiment_environment": {
             "$ref": "#/components/schemas/StepAudit"
           },
           "experiments": {
@@ -13228,47 +13230,16 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "source",
-          "evaluation",
-          "hardware",
-          "working_environment_check",
-          "experiment_environment",
-          "sbom",
-          "sbom_cross_check",
-          "activation"
+          "acquire_source",
+          "evaluate_reproducibility",
+          "observe_hardware",
+          "check_working_environment",
+          "build_experiment_environment",
+          "generate_sbom",
+          "cross_check_sbom",
+          "activate_experiment_environment"
         ],
         "title": "ReeAudit"
-      },
-      "ReeBundleLoadPayload": {
-        "properties": {
-          "upload_token": {
-            "type": "string",
-            "title": "Upload Token"
-          },
-          "archive_name": {
-            "type": "string",
-            "title": "Archive Name"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "upload_token",
-          "archive_name"
-        ],
-        "title": "ReeBundleLoadPayload",
-        "description": "Load a staged REE bundle into this (freshly provisioned) REE."
       },
       "ReeCatalogMetadata": {
         "properties": {
@@ -13344,7 +13315,7 @@
           "store_id"
         ],
         "title": "ReeCreatePayload",
-        "description": "Create a new empty REE in a store.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``source:acquire`` or the upload-init/upload/complete sequence."
+        "description": "Create a new empty REE in a store.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``acquire-source`` or the upload-init/upload/complete sequence."
       },
       "ReeDefinition-Input": {
         "properties": {
@@ -13378,7 +13349,7 @@
           "launch": {
             "$ref": "#/components/schemas/LaunchDefinition"
           },
-          "hardware": {
+          "hbom": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/HardwareDefinition"
@@ -13439,7 +13410,7 @@
           "launch": {
             "$ref": "#/components/schemas/LaunchDefinition"
           },
-          "hardware": {
+          "hbom": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/HardwareDefinition"
@@ -13467,31 +13438,6 @@
           "launch"
         ],
         "title": "ReeDefinition"
-      },
-      "ReeDefinitionPatchPayload": {
-        "properties": {
-          "definition_patch": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Definition Patch",
-            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"experiment_environment\": {\"artifact_path\": \"runtime.tar\"}}` or, once its run script is written, `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
-          },
-          "expected_version": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Version"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "ReeDefinitionPatchPayload",
-        "description": "Replace top-level fields of the current portable REE definition."
       },
       "ReeDefinitionReplacePayload": {
         "properties": {
@@ -13729,7 +13675,7 @@
       },
       "ReeReceipts": {
         "properties": {
-          "source": {
+          "acquire_source": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/AcquireSourceReceipt"
@@ -13739,7 +13685,7 @@
               }
             ]
           },
-          "evaluation": {
+          "evaluate_reproducibility": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/EvaluateReproducibilityReceipt"
@@ -13749,7 +13695,7 @@
               }
             ]
           },
-          "hardware_observation": {
+          "observe_hardware": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ObserveHardwareReceipt"
@@ -13759,7 +13705,7 @@
               }
             ]
           },
-          "working_environment_check": {
+          "check_working_environment": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CheckWorkingEnvironmentReceipt"
@@ -13769,7 +13715,7 @@
               }
             ]
           },
-          "experiment_environment": {
+          "build_experiment_environment": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/BuildExperimentEnvironmentReceipt"
@@ -13779,7 +13725,7 @@
               }
             ]
           },
-          "sbom": {
+          "generate_sbom": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/GenerateSbomReceipt"
@@ -13789,7 +13735,7 @@
               }
             ]
           },
-          "sbom_cross_check": {
+          "cross_check_sbom": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CrossCheckSbomReceipt"
@@ -13799,10 +13745,10 @@
               }
             ]
           },
-          "activation": {
+          "activate_experiment_environment": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ActivationReceipt"
+                "$ref": "#/components/schemas/ActivateExperimentEnvironmentReceipt"
               },
               {
                 "type": "null"
@@ -13852,31 +13798,6 @@
           "ree_digest"
         ],
         "title": "ReeSeal"
-      },
-      "ReeSealPayload": {
-        "properties": {
-          "include_source": {
-            "type": "boolean",
-            "title": "Include Source",
-            "description": "Put the source snapshot in the sealed archive.",
-            "default": false
-          },
-          "include_experiment_environment": {
-            "type": "boolean",
-            "title": "Include Experiment Environment",
-            "description": "Put the declared experiment environment artifact in the sealed archive.",
-            "default": false
-          },
-          "include_results": {
-            "type": "boolean",
-            "title": "Include Results",
-            "description": "Put everything under results/ in the sealed archive.",
-            "default": false
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "ReeSealPayload"
       },
       "ReeState": {
         "properties": {
@@ -13953,17 +13874,17 @@
               {
                 "type": "string",
                 "enum": [
-                  "source",
+                  "acquire_source",
                   "metadata",
-                  "hbom",
+                  "observe_hardware",
                   "check_working_environment",
-                  "evaluate",
+                  "evaluate_reproducibility",
                   "build_experiment_environment",
-                  "sbom",
-                  "crosscheck",
-                  "activation",
+                  "generate_sbom",
+                  "cross_check_sbom",
+                  "activate_experiment_environment",
                   "experiments",
-                  "seal"
+                  "seal_ree"
                 ]
               },
               {
@@ -13982,17 +13903,17 @@
           "key": {
             "type": "string",
             "enum": [
-              "source",
+              "acquire_source",
               "metadata",
-              "hbom",
+              "observe_hardware",
               "check_working_environment",
-              "evaluate",
+              "evaluate_reproducibility",
               "build_experiment_environment",
-              "sbom",
-              "crosscheck",
-              "activation",
+              "generate_sbom",
+              "cross_check_sbom",
+              "activate_experiment_environment",
               "experiments",
-              "seal"
+              "seal_ree"
             ],
             "title": "Key"
           },
@@ -14008,17 +13929,17 @@
             "items": {
               "type": "string",
               "enum": [
-                "source",
+                "acquire_source",
                 "metadata",
-                "hbom",
+                "observe_hardware",
                 "check_working_environment",
-                "evaluate",
+                "evaluate_reproducibility",
                 "build_experiment_environment",
-                "sbom",
-                "crosscheck",
-                "activation",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
                 "experiments",
-                "seal"
+                "seal_ree"
               ]
             },
             "type": "array",
@@ -14064,17 +13985,17 @@
           "key": {
             "type": "string",
             "enum": [
-              "source",
+              "acquire_source",
               "metadata",
-              "hbom",
+              "observe_hardware",
               "check_working_environment",
-              "evaluate",
+              "evaluate_reproducibility",
               "build_experiment_environment",
-              "sbom",
-              "crosscheck",
-              "activation",
+              "generate_sbom",
+              "cross_check_sbom",
+              "activate_experiment_environment",
               "experiments",
-              "seal"
+              "seal_ree"
             ],
             "title": "Key"
           },
@@ -14090,17 +14011,17 @@
             "items": {
               "type": "string",
               "enum": [
-                "source",
+                "acquire_source",
                 "metadata",
-                "hbom",
+                "observe_hardware",
                 "check_working_environment",
-                "evaluate",
+                "evaluate_reproducibility",
                 "build_experiment_environment",
-                "sbom",
-                "crosscheck",
-                "activation",
+                "generate_sbom",
+                "cross_check_sbom",
+                "activate_experiment_environment",
                 "experiments",
-                "seal"
+                "seal_ree"
               ]
             },
             "type": "array",
@@ -14148,17 +14069,17 @@
               {
                 "type": "string",
                 "enum": [
-                  "source",
+                  "acquire_source",
                   "metadata",
-                  "hbom",
+                  "observe_hardware",
                   "check_working_environment",
-                  "evaluate",
+                  "evaluate_reproducibility",
                   "build_experiment_environment",
-                  "sbom",
-                  "crosscheck",
-                  "activation",
+                  "generate_sbom",
+                  "cross_check_sbom",
+                  "activate_experiment_environment",
                   "experiments",
-                  "seal"
+                  "seal_ree"
                 ]
               },
               {
@@ -14411,6 +14332,38 @@
         ],
         "title": "ResultNode"
       },
+      "ReviewAcquireSourcePayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "auto"
+          },
+          "launch": {
+            "$ref": "#/components/schemas/ReviewLaunch"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReviewAcquireSourcePayload",
+        "description": "Start a fresh isolated review attempt at source acquisition.\n\n``basis`` chooses what to reproduce from: the recorded origin, or the\nsnapshot the REE carries. The default settles it from what the baseline\nhas, preferring the origin (see :data:`ReviewBasis`)."
+      },
       "ReviewAcquireSourceReceipt": {
         "properties": {
           "schema_version": {
@@ -14526,7 +14479,7 @@
         ],
         "title": "ReviewAcquireSourceReceipt"
       },
-      "ReviewActivationReceipt": {
+      "ReviewActivateExperimentEnvironmentReceipt": {
         "properties": {
           "schema_version": {
             "type": "integer",
@@ -14630,8 +14583,42 @@
           "experiment_environment_path",
           "experiment_environment_digest"
         ],
-        "title": "ReviewActivationReceipt",
+        "title": "ReviewActivateExperimentEnvironmentReceipt",
         "description": "The author's activation, run alone in the review's workspace around a command that does nothing."
+      },
+      "ReviewBuildExperimentEnvironmentPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          },
+          "prune_workspace": {
+            "type": "boolean",
+            "title": "Prune Workspace",
+            "default": false
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "independent",
+              "bundled"
+            ],
+            "title": "Basis",
+            "default": "auto"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReviewBuildExperimentEnvironmentPayload",
+        "description": "Reproduce the experiment environment build inside an existing review attempt."
       },
       "ReviewBuildExperimentEnvironmentReceipt": {
         "properties": {
@@ -14748,7 +14735,172 @@
         ],
         "title": "ReviewBuildExperimentEnvironmentReceipt"
       },
-      "ReviewExperimentReceipt": {
+      "ReviewLaunch": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "author",
+              "native"
+            ],
+            "title": "Mode",
+            "default": "author"
+          },
+          "options": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Options",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReviewLaunch",
+        "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does."
+      },
+      "ReviewReceipts": {
+        "properties": {
+          "acquire_source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewAcquireSourceReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "build_experiment_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewBuildExperimentEnvironmentReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activate_experiment_environment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewActivateExperimentEnvironmentReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "experiments": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRunExperimentReceipt"
+            },
+            "type": "array",
+            "title": "Experiments"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReviewReceipts"
+      },
+      "ReviewRecord": {
+        "properties": {
+          "review_id": {
+            "type": "string",
+            "title": "Review Id"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "completed",
+              "failed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "launch": {
+            "$ref": "#/components/schemas/ReviewLaunch"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewStepState"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "receipts": {
+            "$ref": "#/components/schemas/ReviewReceipts"
+          },
+          "source_comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "experiment_environment_comparison": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExperimentEnvironmentComparison"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activation_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivationOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "experiment_comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentComparison"
+            },
+            "type": "array",
+            "title": "Experiment Comparisons"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "review_id",
+          "created_at",
+          "updated_at",
+          "status"
+        ],
+        "title": "ReviewRecord"
+      },
+      "ReviewRunExperimentReceipt": {
         "properties": {
           "schema_version": {
             "type": "integer",
@@ -14930,162 +15082,7 @@
           "run_script_path",
           "run_script_digest"
         ],
-        "title": "ReviewExperimentReceipt"
-      },
-      "ReviewLaunch": {
-        "properties": {
-          "mode": {
-            "type": "string",
-            "enum": [
-              "author",
-              "native"
-            ],
-            "title": "Mode",
-            "default": "author"
-          },
-          "options": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Options",
-            "default": []
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "ReviewLaunch",
-        "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does."
-      },
-      "ReviewRecord": {
-        "properties": {
-          "review_id": {
-            "type": "string",
-            "title": "Review Id"
-          },
-          "created_at": {
-            "type": "string",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "title": "Updated At"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "running",
-              "completed",
-              "failed",
-              "canceled"
-            ],
-            "title": "Status"
-          },
-          "launch": {
-            "$ref": "#/components/schemas/ReviewLaunch"
-          },
-          "steps": {
-            "items": {
-              "$ref": "#/components/schemas/ReviewStepState"
-            },
-            "type": "array",
-            "title": "Steps"
-          },
-          "source_receipt": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReviewAcquireSourceReceipt"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "source_comparison": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SourceComparison"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "experiment_environment_receipt": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReviewBuildExperimentEnvironmentReceipt"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "experiment_environment_comparison": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ExperimentEnvironmentComparison"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "activation_receipt": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ReviewActivationReceipt"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "activation_outcome": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ActivationOutcome"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "experiment_receipts": {
-            "items": {
-              "$ref": "#/components/schemas/ReviewExperimentReceipt"
-            },
-            "type": "array",
-            "title": "Experiment Receipts"
-          },
-          "experiment_comparisons": {
-            "items": {
-              "$ref": "#/components/schemas/ExperimentComparison"
-            },
-            "type": "array",
-            "title": "Experiment Comparisons"
-          },
-          "failure": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Failure"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "review_id",
-          "created_at",
-          "updated_at",
-          "status"
-        ],
-        "title": "ReviewRecord"
+        "title": "ReviewRunExperimentReceipt"
       },
       "ReviewSet": {
         "properties": {
@@ -15106,9 +15103,9 @@
           "step": {
             "type": "string",
             "enum": [
-              "source",
+              "acquire_source",
               "build_experiment_environment",
-              "activation",
+              "activate_experiment_environment",
               "experiments"
             ],
             "title": "Step"
@@ -15152,6 +15149,25 @@
           "updated_at"
         ],
         "title": "ReviewStepState"
+      },
+      "RunExperimentPayload": {
+        "properties": {
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RunExperimentPayload",
+        "description": "No fields of its own yet \u2014 the extension point for future run options."
       },
       "RunExperimentReceipt": {
         "properties": {
@@ -16008,6 +16024,31 @@
         "title": "ScriptValidation",
         "description": "Execution validation of a *written* script \u2014 distinct from inference.\n\nFor a candidate that has not been written, ``script_digest`` is the\ncandidate's own byte digest and ``status`` is ``not_run``; the other digests\nstay absent until a real run produces a receipt."
       },
+      "SealReePayload": {
+        "properties": {
+          "include_source": {
+            "type": "boolean",
+            "title": "Include Source",
+            "description": "Put the source snapshot in the sealed archive.",
+            "default": false
+          },
+          "include_experiment_environment": {
+            "type": "boolean",
+            "title": "Include Experiment Environment",
+            "description": "Put the declared experiment environment artifact in the sealed archive.",
+            "default": false
+          },
+          "include_results": {
+            "type": "boolean",
+            "title": "Include Results",
+            "description": "Put everything under results/ in the sealed archive.",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SealReePayload"
+      },
       "Severity": {
         "type": "string",
         "enum": [
@@ -16200,52 +16241,6 @@
         ],
         "title": "SlurmProbe",
         "description": "Whether a script run for this REE can launch Slurm job steps, as probed where it runs.\n\n``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;\n``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence."
-      },
-      "SourceAcquirePayload": {
-        "properties": {
-          "origin_url": {
-            "type": "string",
-            "title": "Origin Url"
-          },
-          "source_type": {
-            "type": "string",
-            "enum": [
-              "git",
-              "tarball",
-              "zip"
-            ],
-            "title": "Source Type"
-          },
-          "revision": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Revision"
-          },
-          "idempotency_key": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Idempotency Key"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "origin_url",
-          "source_type"
-        ],
-        "title": "SourceAcquirePayload"
       },
       "SourceComparison": {
         "properties": {
@@ -16697,6 +16692,23 @@
           "outcomes"
         ],
         "title": "StrategyOutcomesObservation"
+      },
+      "SuggestScriptsPayload": {
+        "properties": {
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/ScriptTargetSelectorPayload"
+            },
+            "type": "array",
+            "title": "Targets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "targets"
+        ],
+        "title": "SuggestScriptsPayload"
       },
       "TargetInferenceResult": {
         "properties": {
@@ -17212,7 +17224,7 @@
         "title": "WorkspaceFile",
         "description": "One file projected from the materialized workspace subtree."
       },
-      "WorkspaceFileContentPayload": {
+      "WriteScriptPayload": {
         "properties": {
           "path": {
             "type": "string",
@@ -17240,7 +17252,7 @@
           "path",
           "content"
         ],
-        "title": "WorkspaceFileContentPayload"
+        "title": "WriteScriptPayload"
       }
     }
   },

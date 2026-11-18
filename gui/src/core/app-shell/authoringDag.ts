@@ -2,18 +2,17 @@ import type { AuthoringStepKey } from "../ree/AuthoringProgress";
 import { type AppShellPage, PAGE } from "./pages";
 
 const PAGE_BY_STEP: Readonly<Record<AuthoringStepKey, AppShellPage>> = {
-  source: PAGE.SOURCE,
+  acquire_source: PAGE.ACQUIRE_SOURCE,
   metadata: PAGE.METADATA,
-  hbom: PAGE.HBOM,
-  evaluate: PAGE.EVALUATE,
-  // biome-ignore lint/style/useNamingConvention: an authoring step key, as the REE names it
+  observe_hardware: PAGE.OBSERVE_HARDWARE,
+  evaluate_reproducibility: PAGE.EVALUATE_REPRODUCIBILITY,
   build_experiment_environment: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
-  sbom: PAGE.SBOM,
+  generate_sbom: PAGE.GENERATE_SBOM,
   // The cross-check is the second operation on the SBOM page.
-  crosscheck: PAGE.SBOM,
-  activation: PAGE.ACTIVATION,
+  cross_check_sbom: PAGE.GENERATE_SBOM,
+  activate_experiment_environment: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
   experiments: PAGE.EXPERIMENTS,
-  seal: PAGE.SEAL,
+  seal_ree: PAGE.SEAL_REE,
 };
 
 export function authoringPageForStep(key: AuthoringStepKey): AppShellPage {

@@ -37,7 +37,7 @@ def test_a_command_that_runs_names_its_operations_and_a_read_none() -> None:
     assert command("suggest-scripts")["operations"] == ["suggest_scripts", "write_script"]
     assert command("review", "all")["operations"][0] == "review_acquire_source"
     assert command("status")["operations"] == []
-    assert [step["commands"] for step in DOCUMENT["steps"] if step["key"] == "seal"] == [["seal-ree"]]
+    assert [step["commands"] for step in DOCUMENT["steps"] if step["key"] == "seal_ree"] == [["seal-ree"]]
 
 
 def test_what_ree_prints_conforms_to_the_contract(tmp_path: Path) -> None:

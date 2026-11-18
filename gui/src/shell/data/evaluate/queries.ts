@@ -24,7 +24,7 @@ export function useEvaluateReportQuery({
     queryKey: queryKeys.evaluateReport(resolvedReeId),
     queryFn: async () => {
       const realReeId = requireReeId(runtime, reeId);
-      const raw = await runtime.reeApi.getEvaluateReport(realReeId);
+      const raw = await runtime.reeApi.getReproducibilityReport(realReeId);
       return parseReproducibilityReport(raw);
     },
     enabled: enabled && !!resolvedReeId,

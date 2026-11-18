@@ -73,17 +73,17 @@ export function useReviewWorkflowModel({
   const { attempt, pending } = selectReviewAttempt(reviews.data, openedReviewId);
 
   const pendingStep: ReviewStepKey | undefined = reviewAcquireSource.isPending
-    ? "source"
+    ? "acquire_source"
     : reviewBuildExperimentEnvironment.isPending
       ? "build_experiment_environment"
       : reviewActivateExperimentEnvironment.isPending
-        ? "activation"
+        ? "activate_experiment_environment"
         : reviewRunExperiment.isPending
           ? "experiments"
           : // An attempt opened but not yet readable is the source step still
             // going, which also keeps every later step disabled until it lands.
             pending
-            ? "source"
+            ? "acquire_source"
             : undefined;
   const statuses = reviewStepStatuses(attempt, { pendingStep });
   const enabledSteps = runnableReviewSteps(statuses);
@@ -136,14 +136,14 @@ export function useReviewWorkflowModel({
 
   const invokeStep = (step: ReviewStepKey) => {
     if (!enabledSteps.has(step)) return;
-    if (step === "source") reviewAcquireSource.mutate(basis);
+    if (step === "acquire_source") reviewAcquireSource.mutate(basis);
     // Build joins the attempt source opened; without one there is nothing to
     // build against, which is also why the DAG leaves it disabled until then.
     if (step === "build_experiment_environment" && attempt)
       reviewBuildExperimentEnvironment.mutate({ reviewId: attempt.reviewId, basis });
     // Activation takes no basis: it probes whatever runtime the build left in
     // the attempt's workspace and inherits what that evidence is worth.
-    if (step === "activation" && attempt)
+    if (step === "activate_experiment_environment" && attempt)
       reviewActivateExperimentEnvironment.mutate({ reviewId: attempt.reviewId });
     // The graph node stands for the whole set, so it sweeps; one experiment at
     // a time is the panel's job.

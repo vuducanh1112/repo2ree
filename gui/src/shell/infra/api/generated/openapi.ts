@@ -210,7 +210,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/source:acquire": {
+    "/api/v1/rees/{ree_id}/acquire-source": {
         parameters: {
             query?: never;
             header?: never;
@@ -284,7 +284,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/source": {
+    "/api/v1/rees/{ree_id}/remove-source": {
         parameters: {
             query?: never;
             header?: never;
@@ -293,12 +293,32 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
         /**
          * Remove Source Route
          * @description Remove the source, keeping the REE's scripts and definition, so another can be brought in.
          */
-        delete: operations["removeSource"];
+        post: operations["removeSource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/patch-ree-definition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Patch Ree Definition Route
+         * @description Replace top-level fields of the definition and return the whole REE document.
+         */
+        post: operations["patchReeDefinition"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -318,11 +338,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /**
-         * Patch Ree Definition Route
-         * @description Replace top-level fields of the definition and return the whole REE document.
-         */
-        patch: operations["patchReeDefinition"];
+        patch?: never;
         trace?: never;
     };
     "/api/v1/rees/{ree_id}/files/raw": {
@@ -342,30 +358,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/files/content": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Put Workspace File Content Route
-         * @description Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
-         *
-         *     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
-         *     the write if the file has changed since its etag was read.
-         */
-        put: operations["writeScript"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/rees/{ree_id}/script-inferences:generate": {
+    "/api/v1/rees/{ree_id}/write-script": {
         parameters: {
             query?: never;
             header?: never;
@@ -375,7 +368,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Generate Script Candidates Route
+         * Write Script Route
+         * @description Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
+         *
+         *     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
+         *     the write if the file has changed since its etag was read.
+         */
+        post: operations["writeScript"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rees/{ree_id}/suggest-scripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suggest Scripts Route
          * @description Synchronously generate candidate scripts for the requested targets, from the REE's own project.
          *
          *     This proposes the build script (from a Dockerfile or a requirements.txt, say)
@@ -393,7 +409,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/script-lints:run": {
+    "/api/v1/rees/{ree_id}/lint-scripts": {
         parameters: {
             query?: never;
             header?: never;
@@ -403,7 +419,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Lint Ree Scripts Route
+         * Lint Scripts Route
          * @description Statically check persisted scripts on every available tier.
          */
         post: operations["lintScripts"];
@@ -433,7 +449,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/generate-hbom": {
+    "/api/v1/rees/{ree_id}/observe-hardware": {
         parameters: {
             query?: never;
             header?: never;
@@ -442,7 +458,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Generate Hbom Run */
+        /** Observe Hardware Route */
         post: operations["observeHardware"];
         delete?: never;
         options?: never;
@@ -450,7 +466,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/evaluate": {
+    "/api/v1/rees/{ree_id}/evaluate-reproducibility": {
         parameters: {
             query?: never;
             header?: never;
@@ -459,7 +475,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Evaluate Run */
+        /** Evaluate Reproducibility Route */
         post: operations["evaluateReproducibility"];
         delete?: never;
         options?: never;
@@ -467,7 +483,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/evaluate/report": {
+    "/api/v1/rees/{ree_id}/reproducibility-report": {
         parameters: {
             query?: never;
             header?: never;
@@ -475,13 +491,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Ree Evaluate Report
+         * Get Reproducibility Report Route
          * @description The persisted evaluate-run report artifact.
          *
          *     A threat's ``blocking`` means it holds its axis at its current level. Nothing
          *     refuses to run or seal because of one.
          */
-        get: operations["getEvaluateReport"];
+        get: operations["getReproducibilityReport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -499,7 +515,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Build Experiment Environment Run */
+        /** Build Experiment Environment Route */
         post: operations["buildExperimentEnvironment"];
         delete?: never;
         options?: never;
@@ -516,7 +532,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Generate Sbom Run */
+        /** Generate Sbom Route */
         post: operations["generateSbom"];
         delete?: never;
         options?: never;
@@ -533,7 +549,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Cross Check Sbom Run */
+        /** Cross Check Sbom Route */
         post: operations["crossCheckSbom"];
         delete?: never;
         options?: never;
@@ -541,7 +557,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/activation-test": {
+    "/api/v1/rees/{ree_id}/activate-experiment-environment": {
         parameters: {
             query?: never;
             header?: never;
@@ -550,7 +566,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Activation Test Run */
+        /** Activate Experiment Environment Route */
         post: operations["activateExperimentEnvironment"];
         delete?: never;
         options?: never;
@@ -567,7 +583,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Check Working Environment Run */
+        /** Check Working Environment Route */
         post: operations["checkWorkingEnvironment"];
         delete?: never;
         options?: never;
@@ -575,7 +591,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run": {
+    "/api/v1/rees/{ree_id}/run-experiment/{experiment_name}": {
         parameters: {
             query?: never;
             header?: never;
@@ -584,7 +600,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Experiment Run */
+        /** Run Experiment Route */
         post: operations["runExperiment"];
         delete?: never;
         options?: never;
@@ -623,7 +639,7 @@ export interface paths {
         put?: never;
         /**
          * Bundle Upload Init Route
-         * @description Open a staging slot for a downloaded REE bundle (see ``ree:load``).
+         * @description Open a staging slot for a downloaded REE bundle (see ``load-ree-bundle``).
          */
         post: operations["initializeReeBundleUpload"];
         delete?: never;
@@ -649,7 +665,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/ree:load": {
+    "/api/v1/rees/{ree_id}/load-ree-bundle": {
         parameters: {
             query?: never;
             header?: never;
@@ -673,7 +689,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/ree:seal": {
+    "/api/v1/rees/{ree_id}/seal-ree": {
         parameters: {
             query?: never;
             header?: never;
@@ -795,7 +811,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/reviews/source:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/acquire-source": {
         parameters: {
             query?: never;
             header?: never;
@@ -804,7 +820,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Start Source Review */
+        /** Review Acquire Source Route */
         post: operations["reviewAcquireSource"];
         delete?: never;
         options?: never;
@@ -812,7 +828,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/build-experiment-environment": {
         parameters: {
             query?: never;
             header?: never;
@@ -822,7 +838,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Start Build Review
+         * Review Build Experiment Environment Route
          * @description Rebuild the experiment environment inside an attempt whose source was already reproduced.
          *
          *     Addressed by review id rather than minting a new one: the build is only
@@ -836,7 +852,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/activation:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/activate-experiment-environment": {
         parameters: {
             query?: never;
             header?: never;
@@ -846,7 +862,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Start Activation Review
+         * Review Activate Experiment Environment Route
          * @description Run the author's activation alone in the experiment environment this attempt certified.
          *
          *     Takes no ``basis``, unlike the two steps before it: activation runs in the
@@ -860,7 +876,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/rees/{ree_id}/reviews/{review_id}/experiments/{experiment_name}:reproduce": {
+    "/api/v1/rees/{ree_id}/reviews/{review_id}/run-experiment/{experiment_name}": {
         parameters: {
             query?: never;
             header?: never;
@@ -870,11 +886,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Start Experiment Review
+         * Review Run Experiment Route
          * @description Reproduce one experiment's result inside an attempt whose experiment environment came up.
          *
          *     One experiment per call, addressed by name — the same shape as the author's
-         *     ``experiments/{name}:run``. Reproducing every experiment is the client
+         *     ``run-experiment/{name}``. Reproducing every experiment is the client
          *     issuing this in sequence rather than a batch route: each run then has its own
          *     log, receipt, and cancel point, and a reviewer watching a slow experiment can
          *     stop that one without discarding the verdicts already settled.
@@ -1094,6 +1110,20 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcquireSourcePayload */
+        AcquireSourcePayload: {
+            /** Origin Url */
+            origin_url: string;
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "git" | "tarball" | "zip";
+            /** Revision */
+            revision?: string | null;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
         /** AcquireSourceReceipt */
         AcquireSourceReceipt: {
             /**
@@ -1170,43 +1200,18 @@ export interface components {
             activate_experiment_environment_script_size: number;
         };
         /**
-         * ActivateExperimentEnvironmentScriptTemplates
-         * @description The activate experiment environment templates and the reserved path they all belong at.
+         * ActivateExperimentEnvironmentPayload
+         * @description Run the activate experiment environment script alone. Takes no parameters of its own.
          */
-        ActivateExperimentEnvironmentScriptTemplates: {
-            /** Path */
-            path: string;
-            /** Templates */
-            templates: components["schemas"]["ScriptTemplateEntry"][];
-        };
-        /** ActivationOutcome */
-        ActivationOutcome: {
-            /**
-             * Policy
-             * @default activation
-             * @constant
-             */
-            policy: "activation";
-            /**
-             * Basis
-             * @enum {string}
-             */
-            basis: "independent" | "bundled";
-            /**
-             * Verdict
-             * @enum {string}
-             */
-            verdict: "passed" | "failed";
-            /** Experiment Environment Digest */
-            experiment_environment_digest?: string | null;
-            /** Exit Code */
-            exit_code?: number | null;
+        ActivateExperimentEnvironmentPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
         };
         /**
-         * ActivationReceipt
+         * ActivateExperimentEnvironmentReceipt
          * @description The activate experiment environment script ran a command that does nothing, which exited 0.
          */
-        ActivationReceipt: {
+        ActivateExperimentEnvironmentReceipt: {
             /**
              * Schema Version
              * @default 1
@@ -1247,6 +1252,39 @@ export interface components {
             /** Launch Script Digest */
             launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
+        };
+        /**
+         * ActivateExperimentEnvironmentScriptTemplates
+         * @description The activate experiment environment templates and the reserved path they all belong at.
+         */
+        ActivateExperimentEnvironmentScriptTemplates: {
+            /** Path */
+            path: string;
+            /** Templates */
+            templates: components["schemas"]["ScriptTemplateEntry"][];
+        };
+        /** ActivationOutcome */
+        ActivationOutcome: {
+            /**
+             * Policy
+             * @default activation
+             * @constant
+             */
+            policy: "activation";
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "independent" | "bundled";
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "passed" | "failed";
+            /** Experiment Environment Digest */
+            experiment_environment_digest?: string | null;
+            /** Exit Code */
+            exit_code?: number | null;
         };
         /**
          * ArchiveBindingAttestation
@@ -1414,6 +1452,14 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+        };
+        /**
+         * BuildExperimentEnvironmentPayload
+         * @description Run the reserved build script. Takes no parameters of its own.
+         */
+        BuildExperimentEnvironmentPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
         };
         /** BuildExperimentEnvironmentReceipt */
         BuildExperimentEnvironmentReceipt: {
@@ -1616,6 +1662,14 @@ export interface components {
             check_working_environment_script_size: number;
         };
         /**
+         * CheckWorkingEnvironmentPayload
+         * @description Run the REE's check script in its working environment. Takes no parameters of its own.
+         */
+        CheckWorkingEnvironmentPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
+        /**
          * CheckWorkingEnvironmentReceipt
          * @description The author's check of the working environment ran there, launched as every script is, and exited 0.
          */
@@ -1752,95 +1806,6 @@ export interface components {
             affiliation_identifier: string;
         };
         /**
-         * CreateActivationTestRunPayload
-         * @description Run the activate experiment environment script alone. Takes no parameters of its own.
-         */
-        CreateActivationTestRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /**
-         * CreateBuildExperimentEnvironmentReviewPayload
-         * @description Reproduce the experiment environment build inside an existing review attempt.
-         */
-        CreateBuildExperimentEnvironmentReviewPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-            /**
-             * Prune Workspace
-             * @default false
-             */
-            prune_workspace: boolean;
-            /**
-             * Basis
-             * @default auto
-             * @enum {string}
-             */
-            basis: "auto" | "independent" | "bundled";
-        };
-        /**
-         * CreateBuildExperimentEnvironmentRunPayload
-         * @description Run the reserved build script. Takes no parameters of its own.
-         */
-        CreateBuildExperimentEnvironmentRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /**
-         * CreateCheckWorkingEnvironmentRunPayload
-         * @description Run the REE's check script in its working environment. Takes no parameters of its own.
-         */
-        CreateCheckWorkingEnvironmentRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /**
-         * CreateCrossCheckSbomRunPayload
-         * @description Cross-check the recorded SBOM against the built experiment environment. No parameters.
-         */
-        CreateCrossCheckSbomRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /** CreateEvaluateRunPayload */
-        CreateEvaluateRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-            /**
-             * Strict
-             * @default false
-             */
-            strict: boolean;
-        };
-        /**
-         * CreateExperimentRunPayload
-         * @description No fields of its own yet — the extension point for future run options.
-         */
-        CreateExperimentRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /**
-         * CreateGenerateHbomRunPayload
-         * @description Profile the workbench host's hardware. Takes no parameters of its own.
-         */
-        CreateGenerateHbomRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /**
-         * CreateGenerateSbomRunPayload
-         * @description Scan the declared experiment environment artifact. Takes no parameters of its own.
-         *
-         *     Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
-         *     the author declared before the build ran and the build receipt binds. The
-         *     handler reads it there; a client cannot name a different one.
-         */
-        CreateGenerateSbomRunPayload: {
-            /** Idempotency Key */
-            idempotency_key?: string | null;
-        };
-        /**
          * CreateRunPayload
          * @description The body every "start a run" route accepts.
          *
@@ -1853,23 +1818,12 @@ export interface components {
             idempotency_key?: string | null;
         };
         /**
-         * CreateSourceReviewPayload
-         * @description Start a fresh isolated review attempt at source acquisition.
-         *
-         *     ``basis`` chooses what to reproduce from: the recorded origin, or the
-         *     snapshot the REE carries. The default settles it from what the baseline
-         *     has, preferring the origin (see :data:`ReviewBasis`).
+         * CrossCheckSbomPayload
+         * @description Cross-check the recorded SBOM against the built experiment environment. No parameters.
          */
-        CreateSourceReviewPayload: {
+        CrossCheckSbomPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
-            /**
-             * Basis
-             * @default auto
-             * @enum {string}
-             */
-            basis: "auto" | "independent" | "bundled";
-            launch?: components["schemas"]["ReviewLaunch"];
         };
         /** CrossCheckSbomReceipt */
         CrossCheckSbomReceipt: {
@@ -2114,6 +2068,16 @@ export interface components {
         /** ErrorEnvelope */
         ErrorEnvelope: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /** EvaluateReproducibilityPayload */
+        EvaluateReproducibilityPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Strict
+             * @default false
+             */
+            strict: boolean;
         };
         /** EvaluateReproducibilityReceipt */
         EvaluateReproducibilityReceipt: {
@@ -2621,6 +2585,18 @@ export interface components {
                 [key: string]: string | boolean | number | null;
             };
         };
+        /**
+         * GenerateSbomPayload
+         * @description Scan the declared experiment environment artifact. Takes no parameters of its own.
+         *
+         *     Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
+         *     the author declared before the build ran and the build receipt binds. The
+         *     handler reads it there; a client cannot name a different one.
+         */
+        GenerateSbomPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
         /** GenerateSbomReceipt */
         GenerateSbomReceipt: {
             /**
@@ -2657,11 +2633,6 @@ export interface components {
             sbom_format: string;
             /** Tool Version */
             tool_version: string;
-        };
-        /** GenerateScriptCandidatesPayload */
-        GenerateScriptCandidatesPayload: {
-            /** Targets */
-            targets: components["schemas"]["ScriptTargetSelectorPayload"][];
         };
         /** HBOM */
         HBOM: {
@@ -2936,6 +2907,18 @@ export interface components {
             /** Missing Scripts */
             missing_scripts?: string[];
         };
+        /**
+         * LoadReeBundlePayload
+         * @description Load a staged REE bundle into this (freshly provisioned) REE.
+         */
+        LoadReeBundlePayload: {
+            /** Upload Token */
+            upload_token: string;
+            /** Archive Name */
+            archive_name: string;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
         /** LogicalRootObservation */
         LogicalRootObservation: {
             /**
@@ -3056,6 +3039,14 @@ export interface components {
                 [key: string]: string | boolean | number | null;
             };
         };
+        /**
+         * ObserveHardwarePayload
+         * @description Profile the workbench host's hardware. Takes no parameters of its own.
+         */
+        ObserveHardwarePayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+        };
         /** ObserveHardwareReceipt */
         ObserveHardwareReceipt: {
             /**
@@ -3163,6 +3154,21 @@ export interface components {
             /** Observed Version */
             observed_version?: string | null;
         };
+        /**
+         * PatchReeDefinitionPayload
+         * @description Replace top-level fields of the current portable REE definition.
+         */
+        PatchReeDefinitionPayload: {
+            /**
+             * Definition Patch
+             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"experiment_environment": {"artifact_path": "runtime.tar"}}` or, once its run script is written, `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
+             */
+            definition_patch?: {
+                [key: string]: unknown;
+            };
+            /** Expected Version */
+            expected_version?: string | null;
+        };
         /** PathMatchesObservation */
         PathMatchesObservation: {
             /**
@@ -3197,31 +3203,19 @@ export interface components {
         };
         /** ReeAudit */
         ReeAudit: {
-            source: components["schemas"]["StepAudit"];
-            evaluation: components["schemas"]["StepAudit"];
-            hardware: components["schemas"]["StepAudit"];
-            working_environment_check: components["schemas"]["StepAudit"];
-            experiment_environment: components["schemas"]["StepAudit"];
-            sbom: components["schemas"]["StepAudit"];
-            sbom_cross_check: components["schemas"]["StepAudit"];
-            activation: components["schemas"]["StepAudit"];
+            acquire_source: components["schemas"]["StepAudit"];
+            evaluate_reproducibility: components["schemas"]["StepAudit"];
+            observe_hardware: components["schemas"]["StepAudit"];
+            check_working_environment: components["schemas"]["StepAudit"];
+            build_experiment_environment: components["schemas"]["StepAudit"];
+            generate_sbom: components["schemas"]["StepAudit"];
+            cross_check_sbom: components["schemas"]["StepAudit"];
+            activate_experiment_environment: components["schemas"]["StepAudit"];
             /**
              * Experiments
              * @default []
              */
             experiments: components["schemas"]["ExperimentAudit"][];
-        };
-        /**
-         * ReeBundleLoadPayload
-         * @description Load a staged REE bundle into this (freshly provisioned) REE.
-         */
-        ReeBundleLoadPayload: {
-            /** Upload Token */
-            upload_token: string;
-            /** Archive Name */
-            archive_name: string;
-            /** Idempotency Key */
-            idempotency_key?: string | null;
         };
         /** ReeCatalogMetadata */
         ReeCatalogMetadata: {
@@ -3258,7 +3252,7 @@ export interface components {
          * @description Create a new empty REE in a store.
          *
          *     Source acquisition is intentionally a separate lifecycle operation through
-         *     ``source:acquire`` or the upload-init/upload/complete sequence.
+         *     ``acquire-source`` or the upload-init/upload/complete sequence.
          */
         ReeCreatePayload: {
             /** Name */
@@ -3279,7 +3273,7 @@ export interface components {
             activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentDefinition"];
             check_working_environment: components["schemas"]["CheckWorkingEnvironmentDefinition"];
             launch: components["schemas"]["LaunchDefinition"];
-            hardware?: components["schemas"]["HardwareDefinition"] | null;
+            hbom?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
              * @default []
@@ -3299,27 +3293,12 @@ export interface components {
             activate_experiment_environment: components["schemas"]["ActivateExperimentEnvironmentDefinition"];
             check_working_environment: components["schemas"]["CheckWorkingEnvironmentDefinition"];
             launch: components["schemas"]["LaunchDefinition"];
-            hardware?: components["schemas"]["HardwareDefinition"] | null;
+            hbom?: components["schemas"]["HardwareDefinition"] | null;
             /**
              * Experiments
              * @default []
              */
             experiments: components["schemas"]["ExperimentDefinition"][];
-        };
-        /**
-         * ReeDefinitionPatchPayload
-         * @description Replace top-level fields of the current portable REE definition.
-         */
-        ReeDefinitionPatchPayload: {
-            /**
-             * Definition Patch
-             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"experiment_environment": {"artifact_path": "runtime.tar"}}` or, once its run script is written, `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
-             */
-            definition_patch?: {
-                [key: string]: unknown;
-            };
-            /** Expected Version */
-            expected_version?: string | null;
         };
         /** ReeDefinitionReplacePayload */
         ReeDefinitionReplacePayload: {
@@ -3407,14 +3386,14 @@ export interface components {
         };
         /** ReeReceipts */
         ReeReceipts: {
-            source?: components["schemas"]["AcquireSourceReceipt"] | null;
-            evaluation?: components["schemas"]["EvaluateReproducibilityReceipt"] | null;
-            hardware_observation?: components["schemas"]["ObserveHardwareReceipt"] | null;
-            working_environment_check?: components["schemas"]["CheckWorkingEnvironmentReceipt"] | null;
-            experiment_environment?: components["schemas"]["BuildExperimentEnvironmentReceipt"] | null;
-            sbom?: components["schemas"]["GenerateSbomReceipt"] | null;
-            sbom_cross_check?: components["schemas"]["CrossCheckSbomReceipt"] | null;
-            activation?: components["schemas"]["ActivationReceipt"] | null;
+            acquire_source?: components["schemas"]["AcquireSourceReceipt"] | null;
+            evaluate_reproducibility?: components["schemas"]["EvaluateReproducibilityReceipt"] | null;
+            observe_hardware?: components["schemas"]["ObserveHardwareReceipt"] | null;
+            check_working_environment?: components["schemas"]["CheckWorkingEnvironmentReceipt"] | null;
+            build_experiment_environment?: components["schemas"]["BuildExperimentEnvironmentReceipt"] | null;
+            generate_sbom?: components["schemas"]["GenerateSbomReceipt"] | null;
+            cross_check_sbom?: components["schemas"]["CrossCheckSbomReceipt"] | null;
+            activate_experiment_environment?: components["schemas"]["ActivateExperimentEnvironmentReceipt"] | null;
             /** Experiments */
             experiments?: {
                 [key: string]: components["schemas"]["RunExperimentReceipt"];
@@ -3427,27 +3406,6 @@ export interface components {
             /** Ree Digest */
             ree_digest: string;
             signature?: components["schemas"]["Signature"] | null;
-        };
-        /** ReeSealPayload */
-        ReeSealPayload: {
-            /**
-             * Include Source
-             * @description Put the source snapshot in the sealed archive.
-             * @default false
-             */
-            include_source: boolean;
-            /**
-             * Include Experiment Environment
-             * @description Put the declared experiment environment artifact in the sealed archive.
-             * @default false
-             */
-            include_experiment_environment: boolean;
-            /**
-             * Include Results
-             * @description Put everything under results/ in the sealed archive.
-             * @default false
-             */
-            include_results: boolean;
         };
         /**
          * ReeState
@@ -3477,7 +3435,7 @@ export interface components {
             /** Steps */
             steps?: components["schemas"]["ReeStepCatalogEntry"][];
             /** Next */
-            next?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
+            next?: ("acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree") | null;
         };
         /**
          * ReeStepCatalogEntry
@@ -3488,13 +3446,13 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
+            key: "acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree";
             /** Order */
             order: number;
             /** Label */
             label: string;
             /** Requires */
-            requires?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
+            requires?: ("acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree")[];
             /** Commands */
             commands?: string[];
             /**
@@ -3514,13 +3472,13 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal";
+            key: "acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree";
             /** Order */
             order: number;
             /** Label */
             label: string;
             /** Requires */
-            requires?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal")[];
+            requires?: ("acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree")[];
             /** Commands */
             commands?: string[];
             /**
@@ -3537,7 +3495,7 @@ export interface components {
             /** Steps */
             steps?: components["schemas"]["ReeStepState"][];
             /** Next */
-            next?: ("source" | "metadata" | "hbom" | "check_working_environment" | "evaluate" | "build_experiment_environment" | "sbom" | "crosscheck" | "activation" | "experiments" | "seal") | null;
+            next?: ("acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree") | null;
         };
         /** ReeSubject */
         ReeSubject: {
@@ -3643,6 +3601,25 @@ export interface components {
              */
             application: "automatic_allowed" | "confirmation_required" | "unavailable";
         };
+        /**
+         * ReviewAcquireSourcePayload
+         * @description Start a fresh isolated review attempt at source acquisition.
+         *
+         *     ``basis`` chooses what to reproduce from: the recorded origin, or the
+         *     snapshot the REE carries. The default settles it from what the baseline
+         *     has, preferring the origin (see :data:`ReviewBasis`).
+         */
+        ReviewAcquireSourcePayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Basis
+             * @default auto
+             * @enum {string}
+             */
+            basis: "auto" | "independent" | "bundled";
+            launch?: components["schemas"]["ReviewLaunch"];
+        };
         /** ReviewAcquireSourceReceipt */
         ReviewAcquireSourceReceipt: {
             /**
@@ -3687,10 +3664,10 @@ export interface components {
             observed_swhid?: string | null;
         };
         /**
-         * ReviewActivationReceipt
+         * ReviewActivateExperimentEnvironmentReceipt
          * @description The author's activation, run alone in the review's workspace around a command that does nothing.
          */
-        ReviewActivationReceipt: {
+        ReviewActivateExperimentEnvironmentReceipt: {
             /**
              * Schema Version
              * @default 1
@@ -3729,6 +3706,25 @@ export interface components {
             /** Launch Script Digest */
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
+        };
+        /**
+         * ReviewBuildExperimentEnvironmentPayload
+         * @description Reproduce the experiment environment build inside an existing review attempt.
+         */
+        ReviewBuildExperimentEnvironmentPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /**
+             * Prune Workspace
+             * @default false
+             */
+            prune_workspace: boolean;
+            /**
+             * Basis
+             * @default auto
+             * @enum {string}
+             */
+            basis: "auto" | "independent" | "bundled";
         };
         /** ReviewBuildExperimentEnvironmentReceipt */
         ReviewBuildExperimentEnvironmentReceipt: {
@@ -3771,8 +3767,62 @@ export interface components {
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
         };
-        /** ReviewExperimentReceipt */
-        ReviewExperimentReceipt: {
+        /**
+         * ReviewLaunch
+         * @description The reviewer's choice of launch, kept for the whole attempt.
+         *
+         *     ``author`` runs every script through the author's launch script where the REE declares one, with ``options``
+         *     added to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them
+         *     directly, as an REE with no launch does.
+         */
+        ReviewLaunch: {
+            /**
+             * Mode
+             * @default author
+             * @enum {string}
+             */
+            mode: "author" | "native";
+            /**
+             * Options
+             * @default []
+             */
+            options: string[];
+        };
+        /** ReviewReceipts */
+        ReviewReceipts: {
+            acquire_source?: components["schemas"]["ReviewAcquireSourceReceipt"] | null;
+            build_experiment_environment?: components["schemas"]["ReviewBuildExperimentEnvironmentReceipt"] | null;
+            activate_experiment_environment?: components["schemas"]["ReviewActivateExperimentEnvironmentReceipt"] | null;
+            /** Experiments */
+            experiments?: components["schemas"]["ReviewRunExperimentReceipt"][];
+        };
+        /** ReviewRecord */
+        ReviewRecord: {
+            /** Review Id */
+            review_id: string;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "completed" | "failed" | "canceled";
+            launch?: components["schemas"]["ReviewLaunch"];
+            /** Steps */
+            steps?: components["schemas"]["ReviewStepState"][];
+            receipts?: components["schemas"]["ReviewReceipts"];
+            source_comparison?: components["schemas"]["SourceComparison"] | null;
+            experiment_environment_comparison?: components["schemas"]["ExperimentEnvironmentComparison"] | null;
+            activation_outcome?: components["schemas"]["ActivationOutcome"] | null;
+            /** Experiment Comparisons */
+            experiment_comparisons?: components["schemas"]["ExperimentComparison"][];
+            /** Failure */
+            failure?: string | null;
+        };
+        /** ReviewRunExperimentReceipt */
+        ReviewRunExperimentReceipt: {
             /**
              * Schema Version
              * @default 1
@@ -3826,56 +3876,6 @@ export interface components {
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
         };
-        /**
-         * ReviewLaunch
-         * @description The reviewer's choice of launch, kept for the whole attempt.
-         *
-         *     ``author`` runs every script through the author's launch script where the REE declares one, with ``options``
-         *     added to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them
-         *     directly, as an REE with no launch does.
-         */
-        ReviewLaunch: {
-            /**
-             * Mode
-             * @default author
-             * @enum {string}
-             */
-            mode: "author" | "native";
-            /**
-             * Options
-             * @default []
-             */
-            options: string[];
-        };
-        /** ReviewRecord */
-        ReviewRecord: {
-            /** Review Id */
-            review_id: string;
-            /** Created At */
-            created_at: string;
-            /** Updated At */
-            updated_at: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "running" | "completed" | "failed" | "canceled";
-            launch?: components["schemas"]["ReviewLaunch"];
-            /** Steps */
-            steps?: components["schemas"]["ReviewStepState"][];
-            source_receipt?: components["schemas"]["ReviewAcquireSourceReceipt"] | null;
-            source_comparison?: components["schemas"]["SourceComparison"] | null;
-            experiment_environment_receipt?: components["schemas"]["ReviewBuildExperimentEnvironmentReceipt"] | null;
-            experiment_environment_comparison?: components["schemas"]["ExperimentEnvironmentComparison"] | null;
-            activation_receipt?: components["schemas"]["ReviewActivationReceipt"] | null;
-            activation_outcome?: components["schemas"]["ActivationOutcome"] | null;
-            /** Experiment Receipts */
-            experiment_receipts?: components["schemas"]["ReviewExperimentReceipt"][];
-            /** Experiment Comparisons */
-            experiment_comparisons?: components["schemas"]["ExperimentComparison"][];
-            /** Failure */
-            failure?: string | null;
-        };
         /** ReviewSet */
         ReviewSet: {
             /** Reviews */
@@ -3887,7 +3887,7 @@ export interface components {
              * Step
              * @enum {string}
              */
-            step: "source" | "build_experiment_environment" | "activation" | "experiments";
+            step: "acquire_source" | "build_experiment_environment" | "activate_experiment_environment" | "experiments";
             /**
              * Status
              * @enum {string}
@@ -3899,6 +3899,14 @@ export interface components {
             updated_at: string;
             /** Failure */
             failure?: string | null;
+        };
+        /**
+         * RunExperimentPayload
+         * @description No fields of its own yet — the extension point for future run options.
+         */
+        RunExperimentPayload: {
+            /** Idempotency Key */
+            idempotency_key?: string | null;
         };
         /** RunExperimentReceipt */
         RunExperimentReceipt: {
@@ -4206,6 +4214,27 @@ export interface components {
             /** Matching Run Id */
             matching_run_id?: string | null;
         };
+        /** SealReePayload */
+        SealReePayload: {
+            /**
+             * Include Source
+             * @description Put the source snapshot in the sealed archive.
+             * @default false
+             */
+            include_source: boolean;
+            /**
+             * Include Experiment Environment
+             * @description Put the declared experiment environment artifact in the sealed archive.
+             * @default false
+             */
+            include_experiment_environment: boolean;
+            /**
+             * Include Results
+             * @description Put everything under results/ in the sealed archive.
+             * @default false
+             */
+            include_results: boolean;
+        };
         /**
          * Severity
          * @enum {string}
@@ -4298,20 +4327,6 @@ export interface components {
              * @default
              */
             detail: string;
-        };
-        /** SourceAcquirePayload */
-        SourceAcquirePayload: {
-            /** Origin Url */
-            origin_url: string;
-            /**
-             * Source Type
-             * @enum {string}
-             */
-            source_type: "git" | "tarball" | "zip";
-            /** Revision */
-            revision?: string | null;
-            /** Idempotency Key */
-            idempotency_key?: string | null;
         };
         /** SourceComparison */
         SourceComparison: {
@@ -4493,6 +4508,11 @@ export interface components {
             kind: "strategy_outcomes";
             /** Outcomes */
             outcomes: components["schemas"]["StrategyOutcomeObservation"][];
+        };
+        /** SuggestScriptsPayload */
+        SuggestScriptsPayload: {
+            /** Targets */
+            targets: components["schemas"]["ScriptTargetSelectorPayload"][];
         };
         /** TargetInferenceResult */
         TargetInferenceResult: {
@@ -4718,8 +4738,8 @@ export interface components {
             /** Content */
             content?: string | null;
         };
-        /** WorkspaceFileContentPayload */
-        WorkspaceFileContentPayload: {
+        /** WriteScriptPayload */
+        WriteScriptPayload: {
             /** Path */
             path: string;
             /** Content */
@@ -6109,7 +6129,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SourceAcquirePayload"];
+                "application/json": components["schemas"]["AcquireSourcePayload"];
             };
         };
         responses: {
@@ -6671,7 +6691,7 @@ export interface operations {
             };
         };
     };
-    replaceReeDefinition: {
+    patchReeDefinition: {
         parameters: {
             query?: never;
             header?: never;
@@ -6682,7 +6702,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReeDefinitionReplacePayload"];
+                "application/json": components["schemas"]["PatchReeDefinitionPayload"];
             };
         };
         responses: {
@@ -6787,7 +6807,7 @@ export interface operations {
             };
         };
     };
-    patchReeDefinition: {
+    replaceReeDefinition: {
         parameters: {
             query?: never;
             header?: never;
@@ -6798,7 +6818,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReeDefinitionPatchPayload"];
+                "application/json": components["schemas"]["ReeDefinitionReplacePayload"];
             };
         };
         responses: {
@@ -7028,7 +7048,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WorkspaceFileContentPayload"];
+                "application/json": components["schemas"]["WriteScriptPayload"];
             };
         };
         responses: {
@@ -7144,7 +7164,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["GenerateScriptCandidatesPayload"];
+                "application/json": components["schemas"]["SuggestScriptsPayload"];
             };
         };
         responses: {
@@ -7492,7 +7512,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateGenerateHbomRunPayload"];
+                "application/json": components["schemas"]["ObserveHardwarePayload"];
             };
         };
         responses: {
@@ -7608,7 +7628,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateEvaluateRunPayload"];
+                "application/json": components["schemas"]["EvaluateReproducibilityPayload"];
             };
         };
         responses: {
@@ -7713,7 +7733,7 @@ export interface operations {
             };
         };
     };
-    getEvaluateReport: {
+    getReproducibilityReport: {
         parameters: {
             query?: never;
             header?: never;
@@ -7836,7 +7856,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateBuildExperimentEnvironmentRunPayload"];
+                "application/json": components["schemas"]["BuildExperimentEnvironmentPayload"];
             };
         };
         responses: {
@@ -7952,7 +7972,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateGenerateSbomRunPayload"];
+                "application/json": components["schemas"]["GenerateSbomPayload"];
             };
         };
         responses: {
@@ -8068,7 +8088,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateCrossCheckSbomRunPayload"];
+                "application/json": components["schemas"]["CrossCheckSbomPayload"];
             };
         };
         responses: {
@@ -8184,7 +8204,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateActivationTestRunPayload"];
+                "application/json": components["schemas"]["ActivateExperimentEnvironmentPayload"];
             };
         };
         responses: {
@@ -8300,7 +8320,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateCheckWorkingEnvironmentRunPayload"];
+                "application/json": components["schemas"]["CheckWorkingEnvironmentPayload"];
             };
         };
         responses: {
@@ -8417,7 +8437,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateExperimentRunPayload"];
+                "application/json": components["schemas"]["RunExperimentPayload"];
             };
         };
         responses: {
@@ -8874,7 +8894,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReeBundleLoadPayload"];
+                "application/json": components["schemas"]["LoadReeBundlePayload"];
             };
         };
         responses: {
@@ -8990,7 +9010,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReeSealPayload"];
+                "application/json": components["schemas"]["SealReePayload"];
             };
         };
         responses: {
@@ -9669,7 +9689,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateSourceReviewPayload"];
+                "application/json": components["schemas"]["ReviewAcquireSourcePayload"];
             };
         };
         responses: {
@@ -9786,7 +9806,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateBuildExperimentEnvironmentReviewPayload"];
+                "application/json": components["schemas"]["ReviewBuildExperimentEnvironmentPayload"];
             };
         };
         responses: {

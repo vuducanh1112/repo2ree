@@ -40,8 +40,8 @@ describe("buildCables", () => {
 
   it("skips a terminal that has not been measured yet", () => {
     const nodeRects = allNodeRects();
-    delete nodeRects[PAGE.SBOM];
-    expect(ids(buildCables(scene({ nodeRects })))).not.toContain(PAGE.SBOM);
+    delete nodeRects[PAGE.GENERATE_SBOM];
+    expect(ids(buildCables(scene({ nodeRects })))).not.toContain(PAGE.GENERATE_SBOM);
   });
 
   it("lands the pod end exactly on the pod surface", () => {
@@ -51,7 +51,9 @@ describe("buildCables", () => {
   });
 
   it("lands the terminal end on that terminal's border", () => {
-    const [cable] = buildCables(scene({ nodeRects: { [PAGE.SOURCE]: rectAt(100, 300) } })).cables;
+    const [cable] = buildCables(
+      scene({ nodeRects: { [PAGE.ACQUIRE_SOURCE]: rectAt(100, 300) } }),
+    ).cables;
     expect(cable.x1).toBeCloseTo(140);
     expect(cable.y1).toBeCloseTo(300);
   });
@@ -65,9 +67,9 @@ describe("buildCables", () => {
 
   it("lights only cables whose step is done", () => {
     const geo = buildCables(
-      scene({ doneKeys: new Set([PAGE.SOURCE, PAGE.BUILD_EXPERIMENT_ENVIRONMENT]) }),
+      scene({ doneKeys: new Set([PAGE.ACQUIRE_SOURCE, PAGE.BUILD_EXPERIMENT_ENVIRONMENT]) }),
     );
     const connected = geo.cables.filter((cable) => cable.connected).map((cable) => cable.id);
-    expect(connected).toEqual([PAGE.SOURCE, PAGE.BUILD_EXPERIMENT_ENVIRONMENT]);
+    expect(connected).toEqual([PAGE.ACQUIRE_SOURCE, PAGE.BUILD_EXPERIMENT_ENVIRONMENT]);
   });
 });

@@ -74,8 +74,8 @@ export function SealBundleContents({
         label="Source"
         available={sourceAvailable}
         included={includeSource}
-        tintLine={stageTone(PAGE.SOURCE)}
-        tintInk={stageTone(PAGE.SOURCE, "ink")}
+        tintLine={stageTone(PAGE.ACQUIRE_SOURCE)}
+        tintInk={stageTone(PAGE.ACQUIRE_SOURCE, "ink")}
         onToggle={onToggleSource}
       />
       <Row

@@ -57,7 +57,7 @@ def handle_review_acquire_source(
     step = begin_review_step(
         review_layout,
         new_review_record(args.review_id, at=format_utc_instant(timer.started_at), launch=args.launch),
-        "source",
+        "acquire_source",
         review_id=args.review_id,
         timer=timer,
         log=log,
@@ -86,7 +86,7 @@ def handle_review_acquire_source(
 
     observed_swhid = directory_swhid(review_layout.upstream)
     source = ree.subject.definition.source
-    author_source = ree.subject.receipts.source
+    author_source = ree.subject.receipts.acquire_source
     expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
     comparison = compare_source_swhids(expected_swhid, observed_swhid, basis=basis)
     timing = timer.finish()
@@ -115,7 +115,12 @@ def handle_review_acquire_source(
             "so it is an integrity check rather than an independent reproduction",
         )
     step.settle(
-        started.model_copy(update={"source_receipt": receipt, "source_comparison": comparison}),
+        started.model_copy(
+            update={
+                "receipts": started.receipts.model_copy(update={"acquire_source": receipt}),
+                "source_comparison": comparison,
+            }
+        ),
         timing,
         verdict=comparison.verdict,
         basis=basis,
@@ -184,14 +189,14 @@ def _stage_acquisition(
     if basis == "bundled":
         shutil.copyfile(ree_layout.snapshot_archive, review_layout.snapshot_archive)
         log("system", "info", f"staged the author snapshot into {review_layout.snapshot_archive}")
-        author_source = ree.subject.receipts.source
+        author_source = ree.subject.receipts.acquire_source
         expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
         write_atomic(review_layout.acquire_script, build_acquire_sh(swhid=expected_swhid))
         return
     source = ree.subject.definition.source
     if source is None:
         raise ValueError("independent source acquisition requires a source definition")
-    author_source = ree.subject.receipts.source
+    author_source = ree.subject.receipts.acquire_source
     expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
     review_layout.snapshot_archive.unlink(missing_ok=True)
     write_atomic(

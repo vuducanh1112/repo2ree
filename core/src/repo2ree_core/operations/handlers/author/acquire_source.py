@@ -156,7 +156,7 @@ def _acquisition_from(args: AcquireSourceArgs) -> _Acquisition:
 def _check_preconditions(ree: Ree, acquisition: _Acquisition, layout: ReeLayout) -> None:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot acquire a source")
-    if ree.subject.receipts.source is not None:
+    if ree.subject.receipts.acquire_source is not None:
         raise ReePreconditionError("this REE already has a source; remove it before acquiring another")
     current = ree.subject.definition.source
     if current is not None and current != acquisition.definition:

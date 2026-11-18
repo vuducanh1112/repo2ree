@@ -105,12 +105,12 @@ def _stage(client: TestClient, ree_id: str, path: str, payload: dict[str, Any], 
 
 
 def _put_file(client: TestClient, ree_id: str, path: str, content: str) -> None:
-    response = client.put(f"/api/v1/rees/{ree_id}/files/content", json={"path": path, "content": content})
+    response = client.post(f"/api/v1/rees/{ree_id}/write-script", json={"path": path, "content": content})
     assert response.status_code == 200, f"write {path}: {response.text}"
 
 
 def _patch_definition(client: TestClient, ree_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    response = client.patch(f"/api/v1/rees/{ree_id}/definition", json={"definition_patch": patch})
+    response = client.post(f"/api/v1/rees/{ree_id}/patch-ree-definition", json={"definition_patch": patch})
     assert response.status_code == 200, response.text
     definition: dict[str, Any] = response.json()["ree"]["subject"]["definition"]
     return definition
@@ -148,17 +148,17 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     filmstrip.frame(ree_id, "created")
 
     # --- source ---------------------------------------------------------
-    _await_run(client, ree_id, _upload_source(client, ree_id, _project_zip()), what="source")
+    _await_run(client, ree_id, _upload_source(client, ree_id, _project_zip()), what="acquire_source")
 
-    filmstrip.frame(ree_id, "source")
+    filmstrip.frame(ree_id, "acquire_source")
 
     # --- evaluate: reads the declared dependencies off the source --------
-    _stage(client, ree_id, "evaluate", {}, what="evaluate")
+    _stage(client, ree_id, "evaluate-reproducibility", {}, what="evaluate")
 
     filmstrip.frame(ree_id, "evaluate")
 
     # --- hardware: an observation of the machine this runs on ------------
-    _stage(client, ree_id, "generate-hbom", {}, what="hbom")
+    _stage(client, ree_id, "observe-hardware", {}, what="hbom")
 
     filmstrip.frame(ree_id, "hbom")
 
@@ -194,23 +194,23 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
         BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT_BODY + "# touched after the build\n",
     )
     stale = client.get(f"/api/v1/rees/{ree_id}/state").json()["audit"]
-    assert stale["experiment_environment"]["evidence"] == "stale", stale["experiment_environment"]
-    assert "build experiment environment script changed" in stale["experiment_environment"]["reasons"], stale[
-        "experiment_environment"
+    assert stale["build_experiment_environment"]["evidence"] == "stale", stale["build_experiment_environment"]
+    assert "build experiment environment script changed" in stale["build_experiment_environment"]["reasons"], stale[
+        "build_experiment_environment"
     ]
     filmstrip.frame(ree_id, "edit build script")
 
     _stage(client, ree_id, "build-experiment-environment", {}, what="rebuild")
     recovered = client.get(f"/api/v1/rees/{ree_id}/state").json()["audit"]
-    assert recovered["experiment_environment"]["evidence"] == "current", recovered["experiment_environment"]
+    assert recovered["build_experiment_environment"]["evidence"] == "current", recovered["build_experiment_environment"]
     filmstrip.frame(ree_id, "rebuild")
 
     # --- sbom: scan what the build produced, then reconcile it -----------
     # The scan reads the experiment environment archive, not the source; the cross-check then
     # compares that against the dependencies the evaluate stage read off the
     # source, so it needs both of the stages above to have run.
-    _stage(client, ree_id, "generate-sbom", {}, what="sbom")
-    filmstrip.frame(ree_id, "sbom")
+    _stage(client, ree_id, "generate-sbom", {}, what="generate_sbom")
+    filmstrip.frame(ree_id, "generate_sbom")
     _stage(client, ree_id, "cross-check-sbom", {}, what="sbom cross-check")
 
     filmstrip.frame(ree_id, "sbom cross-check")
@@ -218,9 +218,9 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     # --- activation: does it enter the experiment environment and hand over ---------------
     _put_file(client, ree_id, ACTIVATE_SCRIPT, '#!/bin/sh\nset -eu\ntar -tf runtime.tar > /dev/null\nexec "$@"\n')
     filmstrip.frame(ree_id, "write activation")
-    _stage(client, ree_id, "activation-test", {}, what="activation")
+    _stage(client, ree_id, "activate-experiment-environment", {}, what="activate_experiment_environment")
 
-    filmstrip.frame(ree_id, "activation")
+    filmstrip.frame(ree_id, "activate_experiment_environment")
 
     # --- experiment: the runnable the REE exists to reproduce ------------
     definition = _patch_definition(
@@ -236,7 +236,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
         f"#!/bin/sh\nset -eu\nmkdir -p results\necho 'experiment output' > {EXPERIMENT_OUTPUT}\n",
     )
     filmstrip.frame(ree_id, "declare experiment")
-    _stage(client, ree_id, f"experiments/{EXPERIMENT_NAME}:run", {}, what="experiment")
+    _stage(client, ree_id, f"run-experiment/{EXPERIMENT_NAME}", {}, what="experiment")
 
     filmstrip.frame(ree_id, "experiment")
 
@@ -273,7 +273,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     # --- seal: refused if any receipt above has gone stale ---------------
     response = client.post(
-        f"/api/v1/rees/{ree_id}/ree:seal",
+        f"/api/v1/rees/{ree_id}/seal-ree",
         json={"include_source": True, "include_experiment_environment": True, "include_results": True},
     )
     assert response.status_code == 200, response.text
@@ -284,13 +284,13 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     # Every stage that ran left a receipt the seal is now bound to.
     receipts = sealed["subject"]["receipts"]
-    assert receipts["source"] is not None
-    assert receipts["evaluation"] is not None
-    assert receipts["hardware_observation"] is not None
-    assert receipts["experiment_environment"] is not None
-    assert receipts["sbom"] is not None
-    assert receipts["sbom_cross_check"] is not None
-    assert receipts["activation"] is not None
+    assert receipts["acquire_source"] is not None
+    assert receipts["evaluate_reproducibility"] is not None
+    assert receipts["observe_hardware"] is not None
+    assert receipts["build_experiment_environment"] is not None
+    assert receipts["generate_sbom"] is not None
+    assert receipts["cross_check_sbom"] is not None
+    assert receipts["activate_experiment_environment"] is not None
     assert EXPERIMENT_NAME in receipts["experiments"]
 
     response = client.get(f"/api/v1/rees/{ree_id}/ree-archive")
@@ -335,7 +335,7 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
         upload = upload_response.json()
         assert client.put(upload["upload_url"], content=downloaded).status_code == 200
         load_response = client.post(
-            f"/api/v1/rees/{reload_id}/ree:load",
+            f"/api/v1/rees/{reload_id}/load-ree-bundle",
             json={"upload_token": upload["upload_token"], "archive_name": "repository.zip"},
         )
         assert load_response.status_code == 200, load_response.text

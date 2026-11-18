@@ -12,13 +12,17 @@ function buildRee() {
 
 function buildHandlers(): StepCommandPlannerMap {
   return {
-    evaluate: () => [{ type: "toast", message: "Evaluate complete", toastType: "success" }],
+    evaluate_reproducibility: () => [
+      { type: "toast", message: "Evaluate complete", toastType: "success" },
+    ],
     build_experiment_environment: () => [
       { type: "toast", message: "Build complete", toastType: "success" },
     ],
-    hbom: () => [{ type: "toast", message: "HBOM complete", toastType: "success" }],
-    sbom: () => [{ type: "toast", message: "SBOM complete", toastType: "success" }],
-    activation: () => [{ type: "toast", message: "Activation complete", toastType: "success" }],
+    observe_hardware: () => [{ type: "toast", message: "HBOM complete", toastType: "success" }],
+    generate_sbom: () => [{ type: "toast", message: "SBOM complete", toastType: "success" }],
+    activate_experiment_environment: () => [
+      { type: "toast", message: "Activation complete", toastType: "success" },
+    ],
   };
 }
 

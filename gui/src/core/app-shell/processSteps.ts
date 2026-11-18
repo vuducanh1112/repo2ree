@@ -1,5 +1,9 @@
 import { type AppShellPage, PAGE } from "@core/app-shell/pages";
-import { type AuthoringStepKey, isAuthoringStepComplete } from "@core/ree/AuthoringProgress";
+import {
+  AUTHORING_STEP_KEYS,
+  type AuthoringStepKey,
+  isAuthoringStepComplete,
+} from "@core/ree/AuthoringProgress";
 import { type Badges, isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
 import type { EvidenceStep } from "@core/ree/StepEvidence";
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
@@ -24,7 +28,7 @@ const AUTOMATION_BY_KEY: Record<string, ReeStepDefinition> = Object.fromEntries(
 export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 1,
-    key: PAGE.SOURCE,
+    key: PAGE.ACQUIRE_SOURCE,
     label: "Source Acquisition",
     automation: null,
     desc: "Choose a source path, acquire the snapshot, and manage workspace source files",
@@ -38,16 +42,16 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
   {
     n: 3,
-    key: PAGE.HBOM,
+    key: PAGE.OBSERVE_HARDWARE,
     label: "Create HBOM",
     automation: null,
     desc: "Enter hardware bill of materials",
   },
   {
     n: 4,
-    key: PAGE.EVALUATE,
+    key: PAGE.EVALUATE_REPRODUCIBILITY,
     label: "Reproducibility Readiness",
-    automation: AUTOMATION_BY_KEY[PAGE.EVALUATE],
+    automation: AUTOMATION_BY_KEY[PAGE.EVALUATE_REPRODUCIBILITY],
     desc: "Analyze the source repository",
   },
   {
@@ -59,16 +63,16 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
   {
     n: 6,
-    key: PAGE.SBOM,
+    key: PAGE.GENERATE_SBOM,
     label: "Generate SBOM",
-    automation: AUTOMATION_BY_KEY[PAGE.SBOM],
+    automation: AUTOMATION_BY_KEY[PAGE.GENERATE_SBOM],
     desc: "Inventory the software in the experiment environment",
   },
   {
     n: 7,
-    key: PAGE.ACTIVATION,
+    key: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
     label: "Test Activation",
-    automation: AUTOMATION_BY_KEY[PAGE.ACTIVATION],
+    automation: AUTOMATION_BY_KEY[PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT],
     desc: "Verify the experiment environment starts and activates",
   },
   {
@@ -87,42 +91,33 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
   {
     n: 10,
-    key: PAGE.SEAL,
+    key: PAGE.SEAL_REE,
     label: "Seal",
     automation: null,
     desc: "Seal the REE",
   },
 ];
 
-/** The audit step whose receipt speaks for each page, for showing it stale. */
+/** The audit step whose receipt speaks for each page, for showing it stale: a page does the step it is keyed by. */
 export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, EvidenceStep>>> = {
-  [PAGE.SOURCE]: "source",
-  [PAGE.HBOM]: "hardware",
-  [PAGE.EVALUATE]: "evaluation",
-  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experiment_environment",
-  [PAGE.SBOM]: "sbom",
-  [PAGE.ACTIVATION]: "activation",
+  [PAGE.ACQUIRE_SOURCE]: PAGE.ACQUIRE_SOURCE,
+  [PAGE.OBSERVE_HARDWARE]: PAGE.OBSERVE_HARDWARE,
+  [PAGE.EVALUATE_REPRODUCIBILITY]: PAGE.EVALUATE_REPRODUCIBILITY,
+  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
+  [PAGE.GENERATE_SBOM]: PAGE.GENERATE_SBOM,
+  [PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT]: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
 };
 
-// The authoring step each page does. Whether it is done is the REE's own word
-// (the document's `steps`, what `ree status` prints), so a reload, a second tab or
-// a person at a terminal all see the same thing.
-const AUTHORING_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, AuthoringStepKey>>> = {
-  [PAGE.SOURCE]: "source",
-  [PAGE.METADATA]: "metadata",
-  [PAGE.HBOM]: "hbom",
-  [PAGE.EVALUATE]: "evaluate",
-  [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "build_experiment_environment",
-  [PAGE.SBOM]: "sbom",
-  [PAGE.ACTIVATION]: "activation",
-  [PAGE.EXPERIMENTS]: "experiments",
-  [PAGE.SEAL]: "seal",
-};
+// Whether a page's step is done is the REE's own word (the document's `steps`, what `ree status` prints), so a
+// reload, a second tab or a person at a terminal all see the same thing.
+function authoringStepOf(page: AppShellPage): AuthoringStepKey | undefined {
+  return AUTHORING_STEP_KEYS.find((key) => key === page);
+}
 
 // `badges` is the live outcome of runs started here. Deposits are not steps of
 // the REE, so they come from those durable run outcomes.
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
-  const authoringStep = AUTHORING_STEP_BY_PAGE[stepKey];
+  const authoringStep = authoringStepOf(stepKey);
   if (authoringStep) return isAuthoringStepComplete(ree.steps, authoringStep);
   if (stepKey === PAGE.ARCHIVE)
     return ["swh", "zenodo", "dataverse"].some((key) => isSuccessfulStepOutcome(badges?.[key]));

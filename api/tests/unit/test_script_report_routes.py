@@ -9,7 +9,7 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 
 
-@pytest.mark.parametrize("endpoint", ["script-inferences:generate", "script-lints:run"])
+@pytest.mark.parametrize("endpoint", ["suggest-scripts", "lint-scripts"])
 def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch, tmp_path, endpoint):
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="reports")
@@ -33,6 +33,6 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
     assert "history" not in outputs
     assert response.json() == {key: value for key, value in outputs.items() if key != "history"}
     assert len(read_operation_history(layout).operations) == 1
-    if endpoint == "script-inferences:generate":
+    if endpoint == "suggest-scripts":
         assert response.json()["dags"]
         assert response.json()["results"][0]["status"] == "complete"

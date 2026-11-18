@@ -28,7 +28,7 @@ READS = (
     "read_file",
     "list_receipts",
     "view_history",
-    "view_evaluation_report",
+    "view_reproducibility_report",
     "download_ree",
     "list_actions",
     "view_action",
@@ -60,13 +60,13 @@ STALE = "stale"
 MISSING = "missing"
 NOT_APPLICABLE = "not_applicable"
 STEP_ORDER = (
-    "source",
-    "evaluation",
-    "hardware",
-    "experiment_environment",
-    "sbom",
-    "sbom_cross_check",
-    "activation",
+    "acquire_source",
+    "evaluate_reproducibility",
+    "observe_hardware",
+    "build_experiment_environment",
+    "generate_sbom",
+    "cross_check_sbom",
+    "activate_experiment_environment",
 )
 
 # A workbench's connection, its store, the facts it is drawn by, and the state it opens in.

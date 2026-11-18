@@ -35,7 +35,7 @@ import {
   createStorageColumns,
 } from "./hardwareBomColumns";
 
-const HBOM_ACCENT = stageTone(PAGE.HBOM);
+const HBOM_ACCENT = stageTone(PAGE.OBSERVE_HARDWARE);
 
 function generateRowId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random()}`;
@@ -124,7 +124,7 @@ export function PageHardwareBom({
     setRows(key, next);
   };
 
-  const focusHardwareDescription = () => onFocusedFieldChange("hardwareDescription");
+  const focusHardwareDescription = () => onFocusedFieldChange("hbom");
 
   const cpuColumns = createCpuColumns({
     locked,
@@ -242,7 +242,7 @@ export function PageHardwareBom({
           variant="danger"
           size="small"
           aria-label="Cancel profiling"
-          onClick={() => onCancel("hbom")}
+          onClick={() => onCancel("observe_hardware")}
         >
           {Ic.x(13)}
         </Button>
@@ -254,7 +254,7 @@ export function PageHardwareBom({
         iconSize={13}
         variant="accent"
         tint={HBOM_ACCENT}
-        onRun={() => onRun("hbom", {})}
+        onRun={() => onRun("observe_hardware", {})}
       />
     </div>
   );

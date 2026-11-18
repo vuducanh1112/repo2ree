@@ -95,15 +95,15 @@ export function planStepServiceEffect(args: {
     return planBuildEffect({ ree: args.ree });
   }
 
-  if (args.key === "hbom") {
+  if (args.key === "observe_hardware") {
     return planHbomEffect();
   }
 
-  if (args.key === "sbom") {
+  if (args.key === "generate_sbom") {
     return planSbomEffect();
   }
 
-  if (args.key === "activation") {
+  if (args.key === "activate_experiment_environment") {
     return planActivationEffect();
   }
 

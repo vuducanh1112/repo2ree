@@ -22,7 +22,7 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
     ree_id = new_ree()
 
     client.upload_source(ree_id, F)
-    source = client.ree(ree_id).subject.receipts.source
+    source = client.ree(ree_id).subject.receipts.acquire_source
     assert source is not None
     assert source.source_type == "tarball"
     assert re.fullmatch(r"swh:1:dir:[0-9a-f]{40}", source.observed_swhid or "")
@@ -42,12 +42,12 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
     assert run.status == "succeeded", client.logs(ree_id, run)
 
     client.declare_cpu(ree_id, CPU_MODEL, CPU)
-    hardware = client.ree(ree_id).subject.definition.hardware
+    hardware = client.ree(ree_id).subject.definition.hbom
     assert hardware is not None
     assert hardware.cpus[CPU_MODEL] == CPU
 
     assert client.generate_sbom(ree_id, watch=F.watch).status == "succeeded"
-    sbom = client.ree(ree_id).subject.receipts.sbom
+    sbom = client.ree(ree_id).subject.receipts.generate_sbom
     assert sbom is not None
     assert sbom.sbom_path == SBOM
     assert client.cross_check_sbom(ree_id, watch=F.watch).status == "succeeded"
@@ -65,12 +65,12 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
 
     audit = client.audit(ree_id)
     for step in (
-        audit.source,
-        audit.evaluation,
-        audit.experiment_environment,
-        audit.sbom,
-        audit.sbom_cross_check,
-        audit.activation,
+        audit.acquire_source,
+        audit.evaluate_reproducibility,
+        audit.build_experiment_environment,
+        audit.generate_sbom,
+        audit.cross_check_sbom,
+        audit.activate_experiment_environment,
     ):
         assert step.evidence == "current", step
 

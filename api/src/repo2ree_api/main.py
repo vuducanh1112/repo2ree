@@ -131,7 +131,7 @@ are synchronous. A REE is authored end to end in this order:
    renaming it takes its scripts with it. `suggestScripts` with its name
    proposes a run script; `writeScript` writes that and, if the experiment checks
    its result, the verify script; then `runExperiment`.
-8. Optionally assess: `evaluateReproducibility` / `getEvaluateReport`, `generateSbom`,
+8. Optionally assess: `evaluateReproducibility` / `getReproducibilityReport`, `generateSbom`,
    `crossCheckSbom`, and record catalog metadata via `patchReeDefinition`.
 9. `sealRee` — freeze the REE; await the returned run, after which `getRee` carries
    `ree.seal.ree_digest`. Download the sealed archive via `downloadReeArchive`.

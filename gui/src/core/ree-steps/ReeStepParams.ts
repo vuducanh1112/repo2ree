@@ -1,18 +1,18 @@
 export type ReeStepKey =
-  | "evaluate"
+  | "evaluate_reproducibility"
   | "build_experiment_environment"
-  | "hbom"
-  | "sbom"
-  | "activation";
+  | "observe_hardware"
+  | "generate_sbom"
+  | "activate_experiment_environment";
 
 export interface ReeStepParamsByKey {
-  evaluate: {
+  evaluate_reproducibility: {
     strict: boolean;
   };
   build_experiment_environment: Record<string, never>;
-  hbom: Record<string, never>;
-  sbom: Record<string, never>;
-  activation: Record<string, never>;
+  observe_hardware: Record<string, never>;
+  generate_sbom: Record<string, never>;
+  activate_experiment_environment: Record<string, never>;
 }
 
 export type ReeStepParams = {

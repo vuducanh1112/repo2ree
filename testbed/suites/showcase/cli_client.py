@@ -238,7 +238,7 @@ class CliClient:
         self._outputs(ree_id, "patch-ree-definition", "--version", version, "--description", description)
 
     def declare_cpu(self, ree_id: str, model: str, cpu: Cpu) -> None:
-        patch = DefinitionPatch(hardware=HardwarePatch(cpus={model: cpu})).model_dump(exclude_none=True)
+        patch = DefinitionPatch(hbom=HardwarePatch(cpus={model: cpu})).model_dump(exclude_none=True)
         self._outputs(ree_id, "patch-ree-definition", stdin=json.dumps(patch).encode())
 
     def declare_experiment(self, ree_id: str, fixture: Project) -> None:
@@ -327,7 +327,7 @@ class CliClient:
     def load(self, ree_id: str, bundle: bytes) -> None:
         self._outputs(ree_id, "load-ree-bundle", "--archive", str(self._staged(bundle, "ree.zip")))
 
-    def review_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
+    def review_acquire_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "review", "acquire-source", "--basis", basis)
 
     def reviews(self, ree_id: str) -> tuple[Review, ...]:
@@ -341,10 +341,14 @@ class CliClient:
     ) -> Run:
         return self._step(ree_id, "review", "build-experiment-environment", "--basis", basis, "--review-id", review_id)
 
-    def review_activation(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
+    def review_activate_experiment_environment(
+        self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN
+    ) -> Run:
         return self._step(ree_id, "review", "activate-experiment-environment", "--review-id", review_id)
 
-    def review_experiment(self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
+    def review_run_experiment(
+        self, ree_id: str, review_id: str, experiment: str, *, watch: RunWatch = INSTANT_RUN
+    ) -> Run:
         return self._step(ree_id, "review", "run-experiment", "--review-id", review_id, experiment)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
@@ -358,15 +362,15 @@ class CliClient:
         reviewer = new_ree("reviewer")
         self.load(reviewer, archive.read_bytes())
 
-        source = self.review_source(reviewer, "auto", watch=fixture.watch)
+        source = self.review_acquire_source(reviewer, "auto", watch=fixture.watch)
         assert source.status == "succeeded", self.logs(reviewer, source)
         review_id = self.reviews(reviewer)[0].review_id
 
         build = self.review_build_experiment_environment(reviewer, review_id, "auto", watch=fixture.watch)
         assert build.status == "succeeded", self.logs(reviewer, build)
-        activation = self.review_activation(reviewer, review_id, watch=fixture.watch)
+        activation = self.review_activate_experiment_environment(reviewer, review_id, watch=fixture.watch)
         assert activation.status == "succeeded", self.logs(reviewer, activation)
-        experiment = self.review_experiment(reviewer, review_id, fixture.experiment, watch=fixture.watch)
+        experiment = self.review_run_experiment(reviewer, review_id, fixture.experiment, watch=fixture.watch)
         logs = self.logs(reviewer, experiment)
         assert experiment.status == "succeeded", logs
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)

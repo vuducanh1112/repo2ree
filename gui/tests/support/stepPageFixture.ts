@@ -51,28 +51,28 @@ export const exampleEditorRee = {
   // it is the one step this fixture has not run, so tests have a step that is
   // ready rather than complete.
   audit: {
-    source: "current" as const,
-    evaluation: "current" as const,
-    hardware: "current" as const,
-    experiment_environment: "current" as const,
-    sbom: "current" as const,
-    activation: "current" as const,
+    acquire_source: "current" as const,
+    evaluate_reproducibility: "current" as const,
+    observe_hardware: "current" as const,
+    build_experiment_environment: "current" as const,
+    generate_sbom: "current" as const,
+    activate_experiment_environment: "current" as const,
   },
   // What the REE says of its steps with these receipts and this definition.
   steps: authoringProgress(
     {
-      source: "complete",
+      acquire_source: "complete",
       metadata: "complete",
-      hbom: "ready",
-      evaluate: "complete",
+      observe_hardware: "ready",
+      evaluate_reproducibility: "complete",
       build_experiment_environment: "complete",
-      sbom: "complete",
-      crosscheck: "ready",
-      activation: "complete",
+      generate_sbom: "complete",
+      cross_check_sbom: "ready",
+      activate_experiment_environment: "complete",
       experiments: "ready",
-      seal: "ready",
+      seal_ree: "ready",
     },
-    "hbom",
+    "observe_hardware",
   ),
 };
 
@@ -112,7 +112,7 @@ export function createStepPageProps(
     onReeSpecChange: () => {},
     onPersistWorkspaceFile: async () => {},
     missing: [],
-    params: key === "evaluate" ? { strict: false } : {},
+    params: key === "evaluate_reproducibility" ? { strict: false } : {},
     setParam: () => {},
     ...overrides,
   };

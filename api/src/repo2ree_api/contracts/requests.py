@@ -40,7 +40,7 @@ class ReeCreatePayload(StrictRequestModel):
     """Create a new empty REE in a store.
 
     Source acquisition is intentionally a separate lifecycle operation through
-    ``source:acquire`` or the upload-init/upload/complete sequence.
+    ``acquire-source`` or the upload-init/upload/complete sequence.
     """
 
     name: str | None = None
@@ -48,7 +48,7 @@ class ReeCreatePayload(StrictRequestModel):
     store_id: str = Field(min_length=1)
 
 
-class ReeDefinitionPatchPayload(StrictRequestModel):
+class PatchReeDefinitionPayload(StrictRequestModel):
     """Replace top-level fields of the current portable REE definition."""
 
     definition_patch: dict[str, object] = Field(
@@ -66,7 +66,7 @@ class ReeDefinitionReplacePayload(StrictRequestModel):
     expected_version: str | None = None
 
 
-class SourceAcquirePayload(StrictRequestModel):
+class AcquireSourcePayload(StrictRequestModel):
     origin_url: str
     source_type: Literal["git", "tarball", "zip"]
     # Git revision (commit, branch, or tag) to pin the fetch to. Blank/omitted
@@ -89,7 +89,7 @@ class SourceUploadCompletePayload(StrictRequestModel):
     idempotency_key: str | None = None
 
 
-class ReeBundleLoadPayload(StrictRequestModel):
+class LoadReeBundlePayload(StrictRequestModel):
     """Load a staged REE bundle into this (freshly provisioned) REE."""
 
     upload_token: str
@@ -97,13 +97,13 @@ class ReeBundleLoadPayload(StrictRequestModel):
     idempotency_key: str | None = None
 
 
-class WorkspaceFileContentPayload(StrictRequestModel):
+class WriteScriptPayload(StrictRequestModel):
     path: str
     content: str
     if_match: str | None = None
 
 
-class ReeSealPayload(StrictRequestModel):
+class SealReePayload(StrictRequestModel):
     include_source: bool = Field(default=False, description="Put the source snapshot in the sealed archive.")
     include_experiment_environment: bool = Field(
         default=False, description="Put the declared experiment environment artifact in the sealed archive."

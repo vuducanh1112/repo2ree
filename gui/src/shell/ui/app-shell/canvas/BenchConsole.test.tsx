@@ -11,8 +11,8 @@ const reeDocument = {
   status: "draft" as const,
   ree: { subject: { definition: { name: "demo" } } },
   audit: {
-    source: { evidence: "current", payload: "absent" },
-    experiment_environment: { evidence: "current", payload: "absent" },
+    acquire_source: { evidence: "current", payload: "absent" },
+    build_experiment_environment: { evidence: "current", payload: "absent" },
   },
   workspace_files: [],
   ree_files: [],

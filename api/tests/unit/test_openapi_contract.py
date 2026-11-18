@@ -87,7 +87,7 @@ def test_creation_and_source_acquisition_are_separate_contracts() -> None:
     # request may enter here. What the REE's scripts need is its check, written afterwards.
     assert set(create_schema["properties"]) == {"name", "store_id"}
 
-    acquire_operation = schema["paths"]["/api/v1/rees/{ree_id}/source:acquire"]["post"]
+    acquire_operation = schema["paths"]["/api/v1/rees/{ree_id}/acquire-source"]["post"]
     acquire_ref = acquire_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     acquire_schema = schema["components"]["schemas"][acquire_ref.rsplit("/", 1)[-1]]
 

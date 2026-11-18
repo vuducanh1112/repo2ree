@@ -44,14 +44,14 @@ class ExperimentAudit(_AuditModel):
 
 
 class ReeAudit(_AuditModel):
-    source: StepAudit
-    evaluation: StepAudit
-    hardware: StepAudit
-    working_environment_check: StepAudit
-    experiment_environment: StepAudit
-    sbom: StepAudit
-    sbom_cross_check: StepAudit
-    activation: StepAudit
+    acquire_source: StepAudit
+    evaluate_reproducibility: StepAudit
+    observe_hardware: StepAudit
+    check_working_environment: StepAudit
+    build_experiment_environment: StepAudit
+    generate_sbom: StepAudit
+    cross_check_sbom: StepAudit
+    activate_experiment_environment: StepAudit
     experiments: tuple[ExperimentAudit, ...] = ()
 
     def stale_steps(self) -> tuple[tuple[str, StepAudit], ...]:

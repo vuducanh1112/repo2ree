@@ -86,7 +86,7 @@ def test_successful_build_commits_one_inline_receipt(
         run_id="build-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
     )
 
-    receipt = store.read_ree().subject.receipts.experiment_environment
+    receipt = store.read_ree().subject.receipts.build_experiment_environment
     assert result.status == "succeeded"
     assert receipt is not None
     assert receipt.run_id == "build-1"
@@ -122,7 +122,7 @@ def test_failed_build_process_commits_no_receipt(
     assert result.exit_code == 7
     assert result.failure is not None
     assert result.failure.category == "execution"
-    assert store.read_ree().subject.receipts.experiment_environment is None
+    assert store.read_ree().subject.receipts.build_experiment_environment is None
 
 
 def test_successful_exit_without_declared_artifact_commits_no_receipt(
@@ -146,7 +146,7 @@ def test_successful_exit_without_declared_artifact_commits_no_receipt(
     assert result.status == "failed"
     assert result.failure is not None
     assert "did not produce runtime.tar" in result.failure.message
-    assert store.read_ree().subject.receipts.experiment_environment is None
+    assert store.read_ree().subject.receipts.build_experiment_environment is None
 
 
 @pytest.mark.parametrize(
@@ -184,7 +184,7 @@ def test_build_preconditions_reject_incomplete_or_sealed_ree(
     assert result.failure is not None
     assert message in result.failure.message
     assert executed is False
-    assert store.read_ree().subject.receipts.experiment_environment is None
+    assert store.read_ree().subject.receipts.build_experiment_environment is None
 
 
 def test_changed_build_experiment_environment_script_is_rejected_before_execution(
@@ -238,7 +238,7 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure is not None
     assert result.failure.category == "conflict"
     assert result.failure.retryable is True
-    assert store.read_ree().subject.receipts.experiment_environment is None
+    assert store.read_ree().subject.receipts.build_experiment_environment is None
 
 
 def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
@@ -265,4 +265,4 @@ def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
     assert result.status == "failed"
     assert result.failure is not None
     assert "source origin changed" in result.failure.message
-    assert store.read_ree().subject.receipts.experiment_environment is None
+    assert store.read_ree().subject.receipts.build_experiment_environment is None

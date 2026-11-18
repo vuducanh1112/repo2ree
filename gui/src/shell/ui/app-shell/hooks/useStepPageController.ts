@@ -45,10 +45,10 @@ export function useStepPageController({
       return missingReeStepRequirements(step.key, { ...ree.spec, ...ree.source });
     }
     const navigationFieldByStep = {
-      source: "sourceAvailable",
+      [PAGE.ACQUIRE_SOURCE]: "sourceAvailable",
       [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: "experimentEnvironmentPath",
-      sbom: "sbom",
-      evaluate: "sourceAvailable",
+      [PAGE.GENERATE_SBOM]: "sbom",
+      [PAGE.EVALUATE_REPRODUCIBILITY]: "sourceAvailable",
     } as const;
     return catalogStep.requires
       .filter(

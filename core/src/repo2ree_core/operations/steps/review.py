@@ -301,7 +301,7 @@ def require_certified_experiment_environment(
     what *it* was trying to do.
     """
     basis = attempt_basis(record)
-    if basis is None or record.experiment_environment_receipt is None:
+    if basis is None or record.receipts.build_experiment_environment is None:
         return stop("failed", f"This attempt has recorded no experiment environment {purpose}")
 
     # Reclaiming the workspace is a supported choice at build time, so hitting
@@ -313,7 +313,7 @@ def require_certified_experiment_environment(
             f"This attempt's workspace was reclaimed after the build; re-run the build review {retry_purpose}",
         )
 
-    experiment_environment_path = (record.experiment_environment_receipt.artifact_path or "").strip()
+    experiment_environment_path = (record.receipts.build_experiment_environment.artifact_path or "").strip()
     experiment_environment = (
         workspace_experiment_environment(review_layout, experiment_environment_path)
         if experiment_environment_path
@@ -328,7 +328,7 @@ def require_certified_experiment_environment(
         )
     if (
         experiment_environment_path
-        and experiment_environment_digest != record.experiment_environment_receipt.produced_artifact_digest
+        and experiment_environment_digest != record.receipts.build_experiment_environment.produced_artifact_digest
     ):
         return stop(
             "failed",
@@ -338,7 +338,7 @@ def require_certified_experiment_environment(
 
     return CertifiedExperimentEnvironment(
         basis=basis,
-        experiment_environment_receipt=record.experiment_environment_receipt,
+        experiment_environment_receipt=record.receipts.build_experiment_environment,
         experiment_environment_path=experiment_environment_path,
         experiment_environment_digest=experiment_environment_digest,
     )

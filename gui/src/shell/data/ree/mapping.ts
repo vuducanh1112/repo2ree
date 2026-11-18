@@ -6,10 +6,10 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
   const definition = subject?.definition;
   const receipts = subject?.receipts;
   const source = definition?.source;
-  const sourceReceipt = receipts?.source;
+  const sourceReceipt = receipts?.acquire_source;
   // The axes are evaluate's own finding, so they are read from the receipt that
   // recorded them rather than from the audit, which reports evidence and nothing else.
-  const evaluation = receipts?.evaluation;
+  const evaluation = receipts?.evaluate_reproducibility;
 
   return mapRawReeIntentToSlices({
     // The audit is the REE's own word on whether each receipt still holds; the
@@ -23,7 +23,7 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       source_type: source?.source_type,
       revision: sourceReceipt?.resolved_revision ?? source?.requested_ref,
       experiment_environment_path: definition?.experiment_environment?.artifact_path,
-      sbom: receipts?.sbom?.sbom_path,
+      sbom: receipts?.generate_sbom?.sbom_path,
       swhid: sourceReceipt?.observed_swhid,
       experiments: (definition?.experiments ?? []).map((experiment) => ({
         name: experiment.name,
@@ -31,17 +31,17 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
         verify_script: experiment.verify_script_path,
         output_paths: experiment.output_paths,
       })),
-      hardware_description: definition?.hardware,
+      hbom: definition?.hbom,
     },
     reeSession: {
       // Payload speaks for a sealed bundle's inventory and nothing else — a
       // draft's reads not_applicable by construction. Whether the workspace
       // holds a source is what the acquisition receipt's standing says, so ask
       // evidence: `current` means the REE still declares the source it acquired.
-      source_available: ree.audit.source.evidence === "current",
-      source_included: ree.status === "sealed" && ree.audit.source.payload === "present",
+      source_available: ree.audit.acquire_source.evidence === "current",
+      source_included: ree.status === "sealed" && ree.audit.acquire_source.payload === "present",
       experiment_environment_included:
-        ree.status === "sealed" && ree.audit.experiment_environment.payload === "present",
+        ree.status === "sealed" && ree.audit.build_experiment_environment.payload === "present",
       sealed_at: ree.ree.seal?.sealed_at,
       seal_hash: ree.ree.seal?.ree_digest,
       dependency_level: evaluation?.dependency_level ?? 0,

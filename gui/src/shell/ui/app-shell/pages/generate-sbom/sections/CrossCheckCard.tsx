@@ -51,7 +51,7 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
             iconSize={13}
             variant="accent"
             tint={color}
-            onRun={() => startRun.mutate({ scriptKey: "crosscheck" })}
+            onRun={() => startRun.mutate({ scriptKey: "cross_check_sbom" })}
           />
         </div>
 

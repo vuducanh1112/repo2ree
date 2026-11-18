@@ -66,33 +66,39 @@ describe("WorkspaceStatusBar", () => {
           ...exampleEditorRee,
           source: { ...exampleEditorRee.source, sourceAvailable: true },
           // Source acquired and the runtime built; nothing downstream has run.
-          audit: { source: "current", experiment_environment: "current" },
+          audit: { acquire_source: "current", build_experiment_environment: "current" },
           steps: {
             steps: [
-              { key: "source", order: 1, label: "Source", requires: [], status: "complete" },
+              {
+                key: "acquire_source",
+                order: 1,
+                label: "Source",
+                requires: [],
+                status: "complete",
+              },
               {
                 key: "build_experiment_environment",
                 order: 2,
                 label: "Build Experiment Environment",
-                requires: ["source"],
+                requires: ["acquire_source"],
                 status: "complete",
               },
               {
-                key: "sbom",
+                key: "generate_sbom",
                 order: 3,
                 label: "Generate SBOM",
-                requires: ["evaluate"],
+                requires: ["evaluate_reproducibility"],
                 status: "blocked",
               },
               {
-                key: "crosscheck",
+                key: "cross_check_sbom",
                 order: 4,
                 label: "Cross-check SBOM",
                 requires: ["build_experiment_environment"],
                 status: "ready",
               },
             ],
-            next: "crosscheck",
+            next: "cross_check_sbom",
           },
         }}
         badges={{}}
@@ -138,7 +144,7 @@ describe("WorkspaceStatusBar", () => {
     expect(crossCheck).toHaveAttribute("data-next", "true");
     expect(screen.getAllByText("next")).toHaveLength(1);
     await user.click(crossCheck);
-    expect(onNavigate).toHaveBeenCalledWith(PAGE.SBOM);
+    expect(onNavigate).toHaveBeenCalledWith(PAGE.GENERATE_SBOM);
     expect(
       screen.getByRole("button", { name: /^Open Source authoring step, complete/ }),
     ).toHaveAttribute("data-status", "complete");

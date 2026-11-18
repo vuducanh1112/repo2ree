@@ -29,30 +29,30 @@
    *   ink  — its deep shade: cable shadow, knob stroke
    *   wash — its palest tint: earned-outcome badge background
    */
-  --stage-source-line: var(--palette-amber-500);
-  --stage-source-ink: var(--palette-amber-800);
-  --stage-source-wash: var(--palette-amber-050);
+  --stage-acquire_source-line: var(--palette-amber-500);
+  --stage-acquire_source-ink: var(--palette-amber-800);
+  --stage-acquire_source-wash: var(--palette-amber-050);
   --stage-metadata-line: var(--palette-green-500);
   --stage-metadata-ink: var(--palette-green-800);
   --stage-metadata-wash: var(--palette-green-050);
-  --stage-hbom-line: var(--palette-cyan-700);
-  --stage-hbom-ink: var(--palette-cyan-900);
-  --stage-hbom-wash: var(--palette-cyan-050);
+  --stage-observe_hardware-line: var(--palette-cyan-700);
+  --stage-observe_hardware-ink: var(--palette-cyan-900);
+  --stage-observe_hardware-wash: var(--palette-cyan-050);
   --stage-experiments-line: var(--palette-indigo-600);
   --stage-experiments-ink: var(--palette-indigo-800);
   --stage-experiments-wash: var(--palette-indigo-050);
-  --stage-evaluate-line: var(--palette-violet-600);
-  --stage-evaluate-ink: var(--palette-violet-950);
-  --stage-evaluate-wash: var(--palette-violet-050);
+  --stage-evaluate_reproducibility-line: var(--palette-violet-600);
+  --stage-evaluate_reproducibility-ink: var(--palette-violet-950);
+  --stage-evaluate_reproducibility-wash: var(--palette-violet-050);
   --stage-build_experiment_environment-line: var(--palette-cyan-600);
   --stage-build_experiment_environment-ink: var(--palette-cyan-900);
   --stage-build_experiment_environment-wash: var(--palette-cyan-050);
-  --stage-sbom-line: var(--palette-green-600);
-  --stage-sbom-ink: var(--palette-green-900);
-  --stage-sbom-wash: var(--palette-green-050);
-  --stage-activation-line: var(--palette-violet-600);
-  --stage-activation-ink: var(--palette-violet-950);
-  --stage-activation-wash: var(--palette-violet-050);
+  --stage-generate_sbom-line: var(--palette-green-600);
+  --stage-generate_sbom-ink: var(--palette-green-900);
+  --stage-generate_sbom-wash: var(--palette-green-050);
+  --stage-activate_experiment_environment-line: var(--palette-violet-600);
+  --stage-activate_experiment_environment-ink: var(--palette-violet-950);
+  --stage-activate_experiment_environment-wash: var(--palette-violet-050);
   --stage-archive-line: var(--palette-red-600);
   --stage-archive-ink: var(--palette-red-900);
   --stage-archive-wash: var(--palette-red-050);
@@ -61,9 +61,9 @@
    * are the system accent and the danger tone. Ink instead — the one
    * monochrome action in a product of coloured ones, and the colour a seal is
    * pressed in. */
-  --stage-seal-line: var(--palette-neutral-950);
-  --stage-seal-ink: var(--palette-neutral-950);
-  --stage-seal-wash: var(--palette-neutral-075);
+  --stage-seal_ree-line: var(--palette-neutral-950);
+  --stage-seal_ree-ink: var(--palette-neutral-950);
+  --stage-seal_ree-wash: var(--palette-neutral-075);
 
   /* --- Reproducibility axes --------------------------------------------- */
   --axis-dependency-line: var(--palette-blue-500);

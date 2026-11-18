@@ -5,28 +5,42 @@ describe("authoring progress", () => {
   it("reads the REE's steps as shipped", () => {
     const progress = mapRawAuthoringProgress({
       steps: [
-        { key: "source", order: 1, label: "Source Acquisition", requires: [], status: "complete" },
-        { key: "evaluate", order: 4, label: "Readiness", requires: ["source"], status: "ready" },
+        {
+          key: "acquire_source",
+          order: 1,
+          label: "Source Acquisition",
+          requires: [],
+          status: "complete",
+        },
+        {
+          key: "evaluate_reproducibility",
+          order: 4,
+          label: "Readiness",
+          requires: ["acquire_source"],
+          status: "ready",
+        },
       ],
-      next: "evaluate",
+      next: "evaluate_reproducibility",
     });
 
-    expect(progress.next).toBe("evaluate");
+    expect(progress.next).toBe("evaluate_reproducibility");
     expect(progress.steps.map((step) => step.status)).toEqual(["complete", "ready"]);
-    expect(isAuthoringStepComplete(progress, "source")).toBe(true);
-    expect(isAuthoringStepComplete(progress, "evaluate")).toBe(false);
+    expect(isAuthoringStepComplete(progress, "acquire_source")).toBe(true);
+    expect(isAuthoringStepComplete(progress, "evaluate_reproducibility")).toBe(false);
   });
 
   it("drops what it does not know and claims nothing done", () => {
     const progress = mapRawAuthoringProgress({
       steps: [
         { key: "unknown", order: 1, label: "?", status: "complete" },
-        { key: "seal", order: 10, label: "Seal", status: "finished" },
+        { key: "seal_ree", order: 10, label: "Seal", status: "finished" },
       ],
       next: "unknown",
     });
 
-    expect(progress.steps.map((step) => [step.key, step.status])).toEqual([["seal", "blocked"]]);
+    expect(progress.steps.map((step) => [step.key, step.status])).toEqual([
+      ["seal_ree", "blocked"],
+    ]);
     expect(progress.next).toBeUndefined();
     expect(mapRawAuthoringProgress(undefined)).toEqual({ steps: [], next: undefined });
   });
@@ -41,12 +55,18 @@ describe("authoring progress", () => {
           requires: [],
           status: "ready",
         },
-        { key: "evaluate", order: 5, label: "Readiness", requires: [], status: "ready" },
-        { key: "seal", order: 11, label: "Seal", requires: [], status: "ready" },
+        {
+          key: "evaluate_reproducibility",
+          order: 5,
+          label: "Readiness",
+          requires: [],
+          status: "ready",
+        },
+        { key: "seal_ree", order: 11, label: "Seal", requires: [], status: "ready" },
       ],
       next: "check_working_environment",
     });
 
-    expect(progress.next).toBe("evaluate");
+    expect(progress.next).toBe("evaluate_reproducibility");
   });
 });

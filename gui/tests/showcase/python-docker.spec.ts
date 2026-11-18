@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { expect, test } from "../helpers/fixtures";
 import {
+  activateExperimentEnvironment,
   buildExperimentEnvironment,
   commandScript,
   crossCheckSbom,
@@ -24,7 +25,6 @@ import {
   saveActivateScript,
   sealRee,
   startReeCreation,
-  testActivation,
   uploadSource,
 } from "../helpers/flow";
 import { reproduceOffline } from "../helpers/offline";
@@ -218,7 +218,7 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("test activation", async () => {
-      await testActivation(page);
+      await activateExperimentEnvironment(page);
       await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
       await narrate(
         page,

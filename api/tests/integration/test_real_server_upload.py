@@ -105,7 +105,7 @@ def test_upload_over_real_server(stack: Stack) -> None:
             assert any(f.get("path") == "README.md" for f in resp.json()["workspace_files"])
 
             # --- seal (with source), download an archive over one WS frame --
-            resp = client.post(f"/api/v1/rees/{ree_id}/ree:seal", json={"include_source": True})
+            resp = client.post(f"/api/v1/rees/{ree_id}/seal-ree", json={"include_source": True})
             assert resp.status_code == 200, resp.text
             seal_run = resp.json()
             assert _wait_for_run(client, ree_id, seal_run["run_id"]) == "succeeded"

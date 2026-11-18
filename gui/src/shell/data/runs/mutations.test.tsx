@@ -23,12 +23,12 @@ const run = {
 
 describe("run mutations", () => {
   it("starts normal and experiment runs and seeds their query cache", async () => {
-    const createBuildExperimentEnvironmentRun = vi.fn().mockResolvedValue(run);
-    const createExperimentRun = vi.fn().mockResolvedValue(run);
+    const buildExperimentEnvironment = vi.fn().mockResolvedValue(run);
+    const runExperiment = vi.fn().mockResolvedValue(run);
     const { Wrapper, queryClient } = createShellWrapper({
       reeId: "ree-1",
       services: fakeApiServices({
-        runs: { createBuildExperimentEnvironmentRun, createExperimentRun },
+        runs: { buildExperimentEnvironment, runExperiment },
       }),
     });
     const { result } = renderHook(
@@ -41,8 +41,8 @@ describe("run mutations", () => {
     );
     await act(() => result.current.experiment.mutateAsync({ experimentName: "hello" }));
 
-    expect(createBuildExperimentEnvironmentRun).toHaveBeenCalledWith("ree-1", {});
-    expect(createExperimentRun).toHaveBeenCalledWith("ree-1", "hello", {});
+    expect(buildExperimentEnvironment).toHaveBeenCalledWith("ree-1", {});
+    expect(runExperiment).toHaveBeenCalledWith("ree-1", "hello", {});
     expect(queryClient.getQueryData(["step-run", "ree-1", "run-1"])).toMatchObject({
       runId: "run-1",
     });

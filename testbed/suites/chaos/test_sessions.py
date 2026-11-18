@@ -88,10 +88,10 @@ class Session:
         return str(self.api.wait(self.ree_id, response.json())["status"])
 
     def write(self, path: str, content: str) -> None:
-        self.call("PUT", self.ree("files/content"), json={"path": path, "content": content})
+        self.call("POST", self.ree("write-script"), json={"path": path, "content": content})
 
     def patch(self, patch: dict[str, Any]) -> None:
-        self.call("PATCH", self.ree("definition"), json={"definition_patch": patch})
+        self.call("POST", self.ree("patch-ree-definition"), json={"definition_patch": patch})
 
     def bench(self) -> str | None:
         """The REE whose workbench a fault can hit now: its store answers."""
@@ -130,17 +130,17 @@ class Session:
 
     def activate(self) -> str:
         self.write(ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, recipe("activate_experiment_environment.sh"))
-        return self.stage("activation-test")
+        return self.stage("activate-experiment-environment")
 
     def experiment(self) -> str:
         self.patch({"experiments": [{"name": EXPERIMENT, "output_paths": [RESULT]}]})
         self.write(EXPERIMENT_SCRIPT, recipe("experiment.sh"))
         self.write(EXPERIMENT_VERIFY, recipe("experiment.verify.sh"))
-        return self.stage(f"experiments/{EXPERIMENT}:run")
+        return self.stage(f"run-experiment/{EXPERIMENT}")
 
     def seal(self) -> str:
         return self.stage(
-            "ree:seal", {"include_source": True, "include_experiment_environment": True, "include_results": True}
+            "seal-ree", {"include_source": True, "include_experiment_environment": True, "include_results": True}
         )
 
     def download(self) -> str:
@@ -184,8 +184,8 @@ class Session:
     def choices(self) -> dict[str, tuple[int, Callable[[], str]]]:
         return {
             "source": (3, self.source),
-            "evaluate": (3, lambda: self.stage("evaluate")),
-            "hbom": (2, lambda: self.stage("generate-hbom")),
+            "evaluate": (3, lambda: self.stage("evaluate-reproducibility")),
+            "hbom": (2, lambda: self.stage("observe-hardware")),
             "build_experiment_environment": (
                 3,
                 lambda: self.build_experiment_environment(recipe("build_experiment_environment.sh")),

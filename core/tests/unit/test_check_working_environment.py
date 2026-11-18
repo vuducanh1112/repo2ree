@@ -51,13 +51,13 @@ def _check(layout: ReeLayout) -> ActionResult:
 def test_a_passing_check_is_recorded_where_it_ran_and_completes_its_step(tmp_path: Path) -> None:
     layout = _declared(tmp_path)
     ree = ReeDirectory(layout).read_ree()
-    assert audit(ree).working_environment_check.evidence == "missing"
+    assert audit(ree).check_working_environment.evidence == "missing"
 
     result = _check(layout)
 
     assert result.status == "succeeded", result
     ree = ReeDirectory(layout).read_ree()
-    receipt = ree.subject.receipts.working_environment_check
+    receipt = ree.subject.receipts.check_working_environment
     assert receipt is not None
     assert receipt.working_environment.host.arch
     assert receipt.check_working_environment_script_digest == (
@@ -80,7 +80,7 @@ def test_a_failing_check_records_nothing_and_says_why(tmp_path: Path) -> None:
     assert result.status == "failed"
     assert result.exit_code == 1
     assert "cuda is missing" in "\n".join(lines)
-    assert ReeDirectory(layout).read_ree().subject.receipts.working_environment_check is None
+    assert ReeDirectory(layout).read_ree().subject.receipts.check_working_environment is None
 
 
 def test_every_ree_starts_with_a_check_that_passes_and_its_step_still_to_do(tmp_path: Path) -> None:
@@ -88,7 +88,7 @@ def test_every_ree_starts_with_a_check_that_passes_and_its_step_still_to_do(tmp_
     initialize_ree(layout, name="fresh")
     ree = ReeDirectory(layout).read_ree()
     assert ree.subject.definition.check_working_environment is not None
-    assert audit(ree).working_environment_check.evidence == "missing"
+    assert audit(ree).check_working_environment.evidence == "missing"
     assert {step.key: step.status for step in ree_steps(ree, audit(ree)).steps}["check_working_environment"] == "ready"
 
     assert _check(layout).status == "succeeded"
@@ -99,14 +99,14 @@ def test_editing_the_check_leaves_it_stale_and_removing_the_source_keeps_it(tmp_
     assert _check(layout).status == "succeeded"
 
     assert _run(layout, RemoveSourceCommand()).status in ("succeeded", "failed")
-    assert ReeDirectory(layout).read_ree().subject.receipts.working_environment_check is not None
+    assert ReeDirectory(layout).read_ree().subject.receipts.check_working_environment is not None
 
     edited = PASSES + "command -v sh >/dev/null\n"
     _run(
         layout, WriteScriptCommand(args=WriteScriptArgs(path=RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT, content=edited))
     )
     ree = ReeDirectory(layout).read_ree()
-    assert audit(ree).working_environment_check.reasons == ("check script changed",)
+    assert audit(ree).check_working_environment.reasons == ("check script changed",)
 
 
 def test_the_declared_check_cannot_be_undeclared(tmp_path: Path) -> None:

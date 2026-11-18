@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.evidence.review.records import review_receipt_envelope
-from repo2ree_core.evidence.review.store import write_review_activation_evidence
+from repo2ree_core.evidence.review.store import write_review_activate_experiment_environment_evidence
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.review import (
@@ -31,7 +31,12 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import WorkspacePath
-from repo2ree_ree.review import ActivationOutcome, ActivationVerdict, ReviewActivationReceipt, ReviewRecord
+from repo2ree_ree.review import (
+    ActivationOutcome,
+    ActivationVerdict,
+    ReviewActivateExperimentEnvironmentReceipt,
+    ReviewRecord,
+)
 
 
 def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
@@ -51,7 +56,7 @@ def _admit(_record: ReviewRecord, certified: CertifiedExperimentEnvironment) -> 
 
 
 _STEP = ReviewRunnableStep(
-    step="activation",
+    step="activate_experiment_environment",
     noun="review activation",
     subject="activation",
     requires="build_experiment_environment",
@@ -96,7 +101,7 @@ def handle_review_activate_experiment_environment(
         return opened.step.stop("failed", "the activate experiment environment script disappeared after it ran")
     if certified.experiment_environment_digest is None:
         return opened.step.stop("failed", "the certified experiment environment disappeared after activation")
-    receipt = ReviewActivationReceipt(
+    receipt = ReviewActivateExperimentEnvironmentReceipt(
         **review_receipt_envelope(
             run_id,
             timing,
@@ -115,14 +120,19 @@ def handle_review_activate_experiment_environment(
         experiment_environment_digest=certified.experiment_environment_digest,
         exit_code=outcome.run_outputs.exit_code,
     )
-    write_review_activation_evidence(opened.review_layout, receipt, activation_outcome)
+    write_review_activate_experiment_environment_evidence(opened.review_layout, receipt, activation_outcome)
     _log_outcome(activation_outcome, log=log)
     # Completed either way: an activation that will not hand over is this step
     # working, not failing. Recording it as a failure would put the attempt into
     # ``failed`` and lose the difference between "the review could not run" and
     # "the review found the experiment environment uninhabitable".
     opened.step.settle(
-        opened.step.record.model_copy(update={"activation_receipt": receipt, "activation_outcome": activation_outcome}),
+        opened.step.record.model_copy(
+            update={
+                "receipts": opened.step.record.receipts.model_copy(update={"activate_experiment_environment": receipt}),
+                "activation_outcome": activation_outcome,
+            }
+        ),
         timing,
         verdict=verdict,
         basis=certified.basis,

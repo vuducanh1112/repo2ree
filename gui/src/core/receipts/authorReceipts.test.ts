@@ -27,8 +27,8 @@ describe("formatReceiptDuration", () => {
 describe("parseAuthorReceipts", () => {
   it("flattens inline receipts in pipeline order", () => {
     const views = parseAuthorReceipts({
-      source: receipt("acquire_source"),
-      experiment_environment: receipt("build_experiment_environment"),
+      acquire_source: receipt("acquire_source"),
+      build_experiment_environment: receipt("build_experiment_environment"),
       experiments: {
         "figure-2": receipt("run_experiment", { experiment_name: "figure-2" }),
         "figure-1": receipt("run_experiment", { experiment_name: "figure-1" }),
@@ -46,7 +46,7 @@ describe("parseAuthorReceipts", () => {
 
   it("keeps operation payload fields and abbreviates digests", () => {
     const [view] = parseAuthorReceipts({
-      experiment_environment: receipt("build_experiment_environment", {
+      build_experiment_environment: receipt("build_experiment_environment", {
         build_experiment_environment_script_path: "scripts/build.sh",
         produced_artifact_digest: "sha256:0123456789abcdef0123456789abcdef",
         workspace_drift: { status: "modified", changed_path_count: 3 },
@@ -69,7 +69,7 @@ describe("parseAuthorReceipts", () => {
 
   it("uses the contract operation name for activation evidence", () => {
     const [view] = parseAuthorReceipts({
-      activation: receipt("activate_experiment_environment"),
+      activate_experiment_environment: receipt("activate_experiment_environment"),
     });
     expect(view.title).toBe("Activation tested");
   });

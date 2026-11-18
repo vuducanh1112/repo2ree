@@ -1,4 +1,4 @@
-import { PAGE } from "@core/app-shell/pages";
+import { type AppShellPage, PAGE } from "@core/app-shell/pages";
 import { isSuccessfulStepOutcome } from "@core/ree/ReeTypes";
 import { useReeId } from "@shell/data/apiRuntime";
 import { useStepRunLogEntry } from "@shell/state/ree-editor/step-runs/useStepRunLogEntry";
@@ -47,11 +47,13 @@ const PageTestActivation = lazy(() =>
   })),
 );
 
-const STEP_PAGE_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<StepPageProps>>> = {
-  evaluate: PageRepoAnalysis,
+const STEP_PAGE_COMPONENTS: Partial<
+  Record<AppShellPage, LazyExoticComponent<ComponentType<StepPageProps>>>
+> = {
+  [PAGE.EVALUATE_REPRODUCIBILITY]: PageRepoAnalysis,
   [PAGE.BUILD_EXPERIMENT_ENVIRONMENT]: PageBuildExperimentEnvironment,
-  sbom: PageGenerateSbom,
-  activation: PageTestActivation,
+  [PAGE.GENERATE_SBOM]: PageGenerateSbom,
+  [PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT]: PageTestActivation,
 };
 
 export function MetadataPageContainer({

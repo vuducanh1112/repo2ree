@@ -19,8 +19,8 @@ const reeDocument = {
   status: "draft" as const,
   ree: { subject: { definition: { name: "Python hello world" } } },
   audit: {
-    source: { evidence: "current", payload: "absent" },
-    experiment_environment: { evidence: "current", payload: "absent" },
+    acquire_source: { evidence: "current", payload: "absent" },
+    build_experiment_environment: { evidence: "current", payload: "absent" },
   },
   workspace_files: [],
   ree_files: [],
@@ -29,13 +29,13 @@ const reeDocument = {
 };
 
 const authorReceipts = parseAuthorReceipts({
-  source: {
+  acquire_source: {
     operation: "acquire_source",
     run_id: "run-source",
     duration_ms: 1000,
     recorded_at: "2026-01-01T00:00:01Z",
   },
-  experiment_environment: {
+  build_experiment_environment: {
     operation: "build_experiment_environment",
     run_id: "run-build",
     duration_ms: 2400,
@@ -103,7 +103,7 @@ describe("CanvasHub", () => {
         }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{ build_experiment_environment: true, sbom: "succeeded" }}
-        nextPage={PAGE.SBOM}
+        nextPage={PAGE.GENERATE_SBOM}
         provisioned
         onNavigate={onNavigate}
         workspaceFiles={[
@@ -223,16 +223,20 @@ describe("CanvasHub", () => {
         page={PAGE.CANVAS}
         ree={{
           ...exampleEditorRee,
-          audit: { source: "current", experiment_environment: "current", sbom: "stale" },
+          audit: {
+            acquire_source: "current",
+            build_experiment_environment: "current",
+            generate_sbom: "stale",
+          },
           steps: authoringProgress({
-            source: "complete",
+            acquire_source: "complete",
             build_experiment_environment: "complete",
           }),
         }}
         evaluation={{ dependencyLevel: 2, environmentLevel: 2, machineLevel: 1 }}
         badges={{}}
         provisioned
-        staleNodeKeys={new Set([PAGE.SBOM])}
+        staleNodeKeys={new Set([PAGE.GENERATE_SBOM])}
         onNavigate={vi.fn()}
         workspaceFiles={[]}
         reeFiles={[]}

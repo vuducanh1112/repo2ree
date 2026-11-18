@@ -34,8 +34,8 @@ def test_definition_version_conflict_reports_expected_and_actual_versions(
 
     monkeypatch.setattr(command_dispatcher, "dispatch_action", _dispatch)
 
-    resp = client.patch(
-        f"/api/v1/rees/{online_ree.ree_id}/definition",
+    resp = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/patch-ree-definition",
         json={"definition_patch": {"name": "changed"}, "expected_version": "v1"},
     )
 
@@ -76,8 +76,8 @@ def test_file_write_conflict_from_the_workbench_maps_to_409(
 
     monkeypatch.setattr(command_dispatcher, "dispatch_action", _dispatch)
 
-    resp = client.put(
-        f"/api/v1/rees/{online_ree.ree_id}/files/content",
+    resp = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/write-script",
         json={"path": "build.sh", "content": "next", "if_match": stale},
     )
 
@@ -101,8 +101,8 @@ def test_file_write_returns_new_content_etag(
         lambda handle, command, run_id, log: ActionResult(status="succeeded", exit_code=0),
     )
 
-    resp = client.put(
-        f"/api/v1/rees/{online_ree.ree_id}/files/content",
+    resp = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/write-script",
         json={"path": "build.sh", "content": "next", "if_match": _etag(b"current")},
     )
 
@@ -124,8 +124,8 @@ def test_workbench_command_failure_maps_to_400_with_operation_code(
         ),
     )
 
-    resp = client.put(
-        f"/api/v1/rees/{online_ree.ree_id}/files/content",
+    resp = client.post(
+        f"/api/v1/rees/{online_ree.ree_id}/write-script",
         json={"path": "build.sh", "content": "next"},
     )
 

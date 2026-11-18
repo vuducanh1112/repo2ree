@@ -134,16 +134,16 @@ describe("major step page workflows", () => {
     const user = userEvent.setup();
     const onRun = vi.fn();
     const listRuns = vi.fn().mockResolvedValue({ runs: [], next_cursor: null });
-    const getEvaluateReport = vi.fn().mockResolvedValue({});
-    renderWithShell(<PageGenerateSbom {...createStepPageProps("sbom", { onRun })} />, {
+    const getReproducibilityReport = vi.fn().mockResolvedValue({});
+    renderWithShell(<PageGenerateSbom {...createStepPageProps("generate_sbom", { onRun })} />, {
       reeId: "ree-1",
-      services: fakeApiServices({ ree: { getEvaluateReport }, runs: { listRuns } }),
+      services: fakeApiServices({ ree: { getReproducibilityReport }, runs: { listRuns } }),
     });
 
     expect(screen.getByText("SBOM ready")).toBeInTheDocument();
     expect(screen.getByText("CycloneDX")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Generate" }));
-    expect(onRun).toHaveBeenCalledWith("sbom", {});
+    expect(onRun).toHaveBeenCalledWith("generate_sbom", {});
     expect(await screen.findByRole("button", { name: "Cross-check" })).toBeDisabled();
     expect(screen.getByText(/Run Evaluate first/)).toBeInTheDocument();
   });
@@ -151,10 +151,13 @@ describe("major step page workflows", () => {
   it("shows the activate script it runs alone, and runs against the built experiment environment", async () => {
     const user = userEvent.setup();
     const onRun = vi.fn();
-    renderWithShell(<PageTestActivation {...createStepPageProps("activation", { onRun })} />, {
-      reeId: "ree-1",
-      services: catalogServices(),
-    });
+    renderWithShell(
+      <PageTestActivation {...createStepPageProps("activate_experiment_environment", { onRun })} />,
+      {
+        reeId: "ree-1",
+        services: catalogServices(),
+      },
+    );
 
     expect(await screen.findByText("runtime.tar")).toBeInTheDocument();
     expect(await screen.findByText("sh overlay/activate.sh true")).toBeInTheDocument();
@@ -164,7 +167,7 @@ describe("major step page workflows", () => {
     // The activation has no script of its own to write.
     expect(screen.queryByRole("button", { name: /Save/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Run activation" }));
-    expect(onRun).toHaveBeenCalledWith("activation", {});
+    expect(onRun).toHaveBeenCalledWith("activate_experiment_environment", {});
   });
 
   it("shows activation prerequisite, failed outcome, timestamp, and cancellation states", async () => {
@@ -172,7 +175,7 @@ describe("major step page workflows", () => {
     const onCancel = vi.fn();
     renderWithShell(
       <PageTestActivation
-        {...createStepPageProps("activation", {
+        {...createStepPageProps("activate_experiment_environment", {
           ree: {
             ...exampleEditorRee,
             spec: { ...exampleEditorRee.spec, experimentEnvironmentPath: "" },
@@ -182,7 +185,7 @@ describe("major step page workflows", () => {
           running: true,
           runDone: true,
           runFailed: true,
-          badge: { step: "activation", label: "failed" },
+          badge: { step: "activate_experiment_environment", label: "failed" },
           ts: "2026-01-01T00:00:00Z",
           missing: [{ field: "experimentEnvironmentPath", label: "Experiment environment" }],
           onCancel,
@@ -194,7 +197,7 @@ describe("major step page workflows", () => {
     expect(await screen.findByText("Activation pending")).toBeInTheDocument();
     expect(screen.getByText("Experiment environment")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /Cancel/ }));
-    expect(onCancel).toHaveBeenCalledWith("activation");
+    expect(onCancel).toHaveBeenCalledWith("activate_experiment_environment");
   });
 
   it("adds hardware rows across categories and invokes profiling", async () => {
@@ -227,20 +230,25 @@ describe("major step page workflows", () => {
     await user.click(screen.getByRole("button", { name: /Add network/ }));
     await user.click(screen.getByRole("button", { name: "Profile machine" }));
     expect(onReeSpecChange).toHaveBeenCalledTimes(5);
-    expect(onRun).toHaveBeenCalledWith("hbom", {});
+    expect(onRun).toHaveBeenCalledWith("observe_hardware", {});
   });
 
   it("shows repository analysis prerequisites and starts Evaluate", async () => {
     const user = userEvent.setup();
     const onRun = vi.fn();
-    renderWithShell(<PageRepoAnalysis {...createStepPageProps("evaluate", { onRun })} />, {
-      reeId: "ree-1",
-      services: fakeApiServices({ ree: { getEvaluateReport: vi.fn().mockResolvedValue({}) } }),
-    });
+    renderWithShell(
+      <PageRepoAnalysis {...createStepPageProps("evaluate_reproducibility", { onRun })} />,
+      {
+        reeId: "ree-1",
+        services: fakeApiServices({
+          ree: { getReproducibilityReport: vi.fn().mockResolvedValue({}) },
+        }),
+      },
+    );
     expect(await screen.findByText(/No Evaluate output yet/)).toBeInTheDocument();
     expect(screen.getByText("requirements.txt")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Run Evaluate" }));
-    expect(onRun).toHaveBeenCalledWith("evaluate", { strict: false });
+    expect(onRun).toHaveBeenCalledWith("evaluate_reproducibility", { strict: false });
   });
 
   it("adds, edits and removes an experiment in a controlled editor", async () => {

@@ -38,10 +38,10 @@ def _commands(*commands: type[BaseModel]) -> list[str]:
 
 
 REE_STEPS: tuple[ReeStep, ...] = (
-    ReeStep(key="source", order=1, label="Source Acquisition", commands=_commands(AcquireSourceCommand)),
+    ReeStep(key="acquire_source", order=1, label="Source Acquisition", commands=_commands(AcquireSourceCommand)),
     ReeStep(key="metadata", order=2, label="Provide Metadata", commands=_commands(PatchReeDefinitionCommand)),
     ReeStep(
-        key="hbom",
+        key="observe_hardware",
         order=3,
         label="Hardware BOM",
         commands=_commands(ObserveHardwareCommand, PatchReeDefinitionCommand),
@@ -53,35 +53,35 @@ REE_STEPS: tuple[ReeStep, ...] = (
         commands=_commands(WriteScriptCommand, PatchReeDefinitionCommand, CheckWorkingEnvironmentCommand),
     ),
     ReeStep(
-        key="evaluate",
+        key="evaluate_reproducibility",
         order=5,
         label="Reproducibility Readiness",
-        requires=["source"],
+        requires=["acquire_source"],
         commands=_commands(EvaluateReproducibilityCommand),
     ),
     ReeStep(
         key="build_experiment_environment",
         order=6,
         label="Build Experiment Environment",
-        requires=["source"],
+        requires=["acquire_source"],
         commands=_commands(BuildExperimentEnvironmentCommand, SuggestScriptsCommand, WriteScriptCommand),
     ),
     ReeStep(
-        key="sbom",
+        key="generate_sbom",
         order=7,
         label="Generate SBOM",
         requires=["build_experiment_environment"],
         commands=_commands(GenerateSbomCommand),
     ),
     ReeStep(
-        key="crosscheck",
+        key="cross_check_sbom",
         order=8,
         label="Cross-check SBOM",
-        requires=["sbom", "evaluate"],
+        requires=["generate_sbom", "evaluate_reproducibility"],
         commands=_commands(CrossCheckSbomCommand),
     ),
     ReeStep(
-        key="activation",
+        key="activate_experiment_environment",
         order=9,
         label="Test Activation",
         requires=["build_experiment_environment"],
@@ -94,7 +94,7 @@ REE_STEPS: tuple[ReeStep, ...] = (
         requires=["build_experiment_environment"],
         commands=_commands(RunExperimentCommand, PatchReeDefinitionCommand, SuggestScriptsCommand, WriteScriptCommand),
     ),
-    ReeStep(key="seal", order=11, label="Seal", commands=_commands(SealReeCommand)),
+    ReeStep(key="seal_ree", order=11, label="Seal", commands=_commands(SealReeCommand)),
 )
 
 
@@ -108,24 +108,24 @@ def _metadata_given(ree: Ree, _audit: ReeAudit) -> bool:
 
 
 def _hardware_described(ree: Ree, _audit: ReeAudit) -> bool:
-    hardware = ree.subject.definition.hardware
+    hardware = ree.subject.definition.hbom
     return hardware is not None and any(
         (hardware.cpus, hardware.gpus, hardware.memory, hardware.storage, hardware.network)
     )
 
 
 _COMPLETE: dict[ReeStepKey, Callable[[Ree, ReeAudit], bool]] = {
-    "source": _current(lambda audit: audit.source),
+    "acquire_source": _current(lambda audit: audit.acquire_source),
     "metadata": _metadata_given,
-    "hbom": _hardware_described,
-    "check_working_environment": _current(lambda audit: audit.working_environment_check),
-    "evaluate": _current(lambda audit: audit.evaluation),
-    "build_experiment_environment": _current(lambda audit: audit.experiment_environment),
-    "sbom": _current(lambda audit: audit.sbom),
-    "crosscheck": _current(lambda audit: audit.sbom_cross_check),
-    "activation": _current(lambda audit: audit.activation),
+    "observe_hardware": _hardware_described,
+    "check_working_environment": _current(lambda audit: audit.check_working_environment),
+    "evaluate_reproducibility": _current(lambda audit: audit.evaluate_reproducibility),
+    "build_experiment_environment": _current(lambda audit: audit.build_experiment_environment),
+    "generate_sbom": _current(lambda audit: audit.generate_sbom),
+    "cross_check_sbom": _current(lambda audit: audit.cross_check_sbom),
+    "activate_experiment_environment": _current(lambda audit: audit.activate_experiment_environment),
     "experiments": lambda ree, _audit: bool(ree.subject.definition.experiments),
-    "seal": lambda ree, _audit: ree.seal is not None,
+    "seal_ree": lambda ree, _audit: ree.seal is not None,
 }
 
 

@@ -1,12 +1,12 @@
 import type { ApiClient } from "./ApiClient";
 import type {
-  CreateActivationTestRunPayload,
-  CreateBuildExperimentEnvironmentRunPayload,
-  CreateCrossCheckSbomRunPayload,
-  CreateEvaluateRunPayload,
-  CreateExperimentRunPayload,
-  CreateGenerateHbomRunPayload,
-  CreateGenerateSbomRunPayload,
+  ActivateExperimentEnvironmentPayload,
+  BuildExperimentEnvironmentPayload,
+  CrossCheckSbomPayload,
+  EvaluateReproducibilityPayload,
+  GenerateSbomPayload,
+  ObserveHardwarePayload,
+  RunExperimentPayload,
   RunList,
   RunLogEntry,
   RunLogPage,
@@ -24,69 +24,63 @@ interface ListRunLogsQuery {
 export class ReeRunsApi {
   constructor(private readonly client: ApiClient) {}
 
-  async createBuildExperimentEnvironmentRun(
+  async buildExperimentEnvironment(
     reeId: string,
-    payload: CreateBuildExperimentEnvironmentRunPayload,
+    payload: BuildExperimentEnvironmentPayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeBuildExperimentEnvironment(reeId), {
+    return this.client.request<RunSummary>(endpoints.buildExperimentEnvironment(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async createGenerateSbomRun(
+  async generateSbom(reeId: string, payload: GenerateSbomPayload): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.generateSbom(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async crossCheckSbom(reeId: string, payload: CrossCheckSbomPayload = {}): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.crossCheckSbom(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async observeHardware(reeId: string, payload: ObserveHardwarePayload = {}): Promise<RunSummary> {
+    return this.client.request<RunSummary>(endpoints.observeHardware(reeId), {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async activateExperimentEnvironment(
     reeId: string,
-    payload: CreateGenerateSbomRunPayload,
+    payload: ActivateExperimentEnvironmentPayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeGenerateSbom(reeId), {
+    return this.client.request<RunSummary>(endpoints.activateExperimentEnvironment(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async createCrossCheckSbomRun(
+  async evaluateReproducibility(
     reeId: string,
-    payload: CreateCrossCheckSbomRunPayload = {},
+    payload: EvaluateReproducibilityPayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeCrossCheckSbom(reeId), {
+    return this.client.request<RunSummary>(endpoints.evaluateReproducibility(reeId), {
       method: "POST",
       body: JSON.stringify(payload),
     });
   }
 
-  async createGenerateHbomRun(
-    reeId: string,
-    payload: CreateGenerateHbomRunPayload = {},
-  ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeGenerateHbom(reeId), {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  }
-
-  async createActivationTestRun(
-    reeId: string,
-    payload: CreateActivationTestRunPayload,
-  ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeActivationTest(reeId), {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  }
-
-  async createEvaluateRun(reeId: string, payload: CreateEvaluateRunPayload): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeEvaluate(reeId), {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  }
-
-  async createExperimentRun(
+  async runExperiment(
     reeId: string,
     experimentName: string,
-    payload: CreateExperimentRunPayload,
+    payload: RunExperimentPayload,
   ): Promise<RunSummary> {
-    return this.client.request<RunSummary>(endpoints.reeExperimentRun(reeId, experimentName), {
+    return this.client.request<RunSummary>(endpoints.runExperiment(reeId, experimentName), {
       method: "POST",
       body: JSON.stringify(payload),
     });

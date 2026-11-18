@@ -53,25 +53,24 @@ stages_router = APIRouter(tags=["runs"])
 # ================================================
 
 
-class CreateGenerateHbomRunPayload(CreateRunPayload):
+class ObserveHardwarePayload(CreateRunPayload):
     """Profile the workbench host's hardware. Takes no parameters of its own."""
 
 
 @stages_router.post(
-    "/api/v1/rees/{ree_id}/generate-hbom",
+    "/api/v1/rees/{ree_id}/observe-hardware",
     operation_id="observeHardware",
     openapi_extra=runs("observe_hardware"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload) -> RunSummary:
+def observe_hardware_route(ree_id: str, payload: ObserveHardwarePayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="observe_hardware",
                 command=ObserveHardwareCommand(),
-                run_id_prefix="hbom",
                 request_payload={},
                 canceled_message="HBOM run canceled",
                 idempotency_key=payload.idempotency_key,
@@ -85,25 +84,24 @@ def create_generate_hbom_run(ree_id: str, payload: CreateGenerateHbomRunPayload)
 # ================================================
 
 
-class CreateEvaluateRunPayload(CreateRunPayload):
+class EvaluateReproducibilityPayload(CreateRunPayload):
     strict: bool = False
 
 
 @stages_router.post(
-    "/api/v1/rees/{ree_id}/evaluate",
+    "/api/v1/rees/{ree_id}/evaluate-reproducibility",
     operation_id="evaluateReproducibility",
     openapi_extra=runs("evaluate_reproducibility"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_evaluate_run(ree_id: str, payload: CreateEvaluateRunPayload) -> RunSummary:
+def evaluate_reproducibility_route(ree_id: str, payload: EvaluateReproducibilityPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="evaluate_reproducibility",
                 command=EvaluateReproducibilityCommand(args=EvaluateReproducibilityArgs(strict=payload.strict)),
-                run_id_prefix="evaluate",
                 request_payload={"strict": bool(payload.strict)},
                 canceled_message="Evaluate run canceled",
                 idempotency_key=payload.idempotency_key,
@@ -116,22 +114,22 @@ _REPORT_FILENAME = "reproducibility-report.json"
 
 
 @stages_router.get(
-    "/api/v1/rees/{ree_id}/evaluate/report",
-    operation_id="getEvaluateReport",
+    "/api/v1/rees/{ree_id}/reproducibility-report",
+    operation_id="getReproducibilityReport",
     response_model=ReproducibilityReport,
     responses=ERROR_RESPONSES,
 )
-def get_ree_evaluate_report(ree_id: str) -> dict[str, Any]:
+def get_reproducibility_report_route(ree_id: str) -> dict[str, Any]:
     """The persisted evaluate-run report artifact.
 
     A threat's ``blocking`` means it holds its axis at its current level. Nothing
     refuses to run or seal because of one.
     """
-    with author_api_action("view_evaluation_report", ree_id):
-        return _evaluation_report(ree_id)
+    with author_api_action("view_reproducibility_report", ree_id):
+        return _reproducibility_report(ree_id)
 
 
-def _evaluation_report(ree_id: str) -> dict[str, Any]:
+def _reproducibility_report(ree_id: str) -> dict[str, Any]:
     # An unknown or unreachable REE is resolved first, so "no report yet" is
     # never how a caller learns their REE is gone (404) or its workbench is
     # down (503).
@@ -152,7 +150,7 @@ def _evaluation_report(ree_id: str) -> dict[str, Any]:
 # ================================================
 
 
-class CreateBuildExperimentEnvironmentRunPayload(CreateRunPayload):
+class BuildExperimentEnvironmentPayload(CreateRunPayload):
     """Run the reserved build script. Takes no parameters of its own."""
 
 
@@ -163,16 +161,13 @@ class CreateBuildExperimentEnvironmentRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_build_experiment_environment_run(
-    ree_id: str, payload: CreateBuildExperimentEnvironmentRunPayload
-) -> RunSummary:
+def build_experiment_environment_route(ree_id: str, payload: BuildExperimentEnvironmentPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="build_experiment_environment",
                 command=BuildExperimentEnvironmentCommand(),
-                run_id_prefix="build_experiment_environment",
                 request_payload={
                     "build_experiment_environment_script_path": RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
                 },
@@ -191,7 +186,7 @@ def create_build_experiment_environment_run(
 # ================================================
 
 
-class CreateGenerateSbomRunPayload(CreateRunPayload):
+class GenerateSbomPayload(CreateRunPayload):
     """Scan the declared experiment environment artifact. Takes no parameters of its own.
 
     Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
@@ -207,14 +202,13 @@ class CreateGenerateSbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload) -> RunSummary:
+def generate_sbom_route(ree_id: str, payload: GenerateSbomPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="generate_sbom",
                 command=GenerateSbomCommand(),
-                run_id_prefix="sbom",
                 request_payload={},
                 canceled_message="SBOM run canceled",
                 idempotency_key=payload.idempotency_key,
@@ -228,7 +222,7 @@ def create_generate_sbom_run(ree_id: str, payload: CreateGenerateSbomRunPayload)
 # ================================================
 
 
-class CreateCrossCheckSbomRunPayload(CreateRunPayload):
+class CrossCheckSbomPayload(CreateRunPayload):
     """Cross-check the recorded SBOM against the built experiment environment. No parameters."""
 
 
@@ -239,14 +233,13 @@ class CreateCrossCheckSbomRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPayload) -> RunSummary:
+def cross_check_sbom_route(ree_id: str, payload: CrossCheckSbomPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="cross_check_sbom",
                 command=CrossCheckSbomCommand(args=CrossCheckSbomArgs()),
-                run_id_prefix="crosscheck",
                 request_payload={},
                 canceled_message="SBOM cross-check run canceled",
                 idempotency_key=payload.idempotency_key,
@@ -260,25 +253,24 @@ def create_cross_check_sbom_run(ree_id: str, payload: CreateCrossCheckSbomRunPay
 # ================================================
 
 
-class CreateActivationTestRunPayload(CreateRunPayload):
+class ActivateExperimentEnvironmentPayload(CreateRunPayload):
     """Run the activate experiment environment script alone. Takes no parameters of its own."""
 
 
 @stages_router.post(
-    "/api/v1/rees/{ree_id}/activation-test",
+    "/api/v1/rees/{ree_id}/activate-experiment-environment",
     operation_id="activateExperimentEnvironment",
     openapi_extra=runs("activate_experiment_environment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayload) -> RunSummary:
+def activate_experiment_environment_route(ree_id: str, payload: ActivateExperimentEnvironmentPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="activate_experiment_environment",
                 command=ActivateExperimentEnvironmentCommand(args=ActivateExperimentEnvironmentArgs()),
-                run_id_prefix="activation",
                 request_payload={},
                 canceled_message="Activation run canceled",
                 fallback_outputs={"subject_name": "activation"},
@@ -293,7 +285,7 @@ def create_activation_test_run(ree_id: str, payload: CreateActivationTestRunPayl
 # ================================================
 
 
-class CreateCheckWorkingEnvironmentRunPayload(CreateRunPayload):
+class CheckWorkingEnvironmentPayload(CreateRunPayload):
     """Run the REE's check script in its working environment. Takes no parameters of its own."""
 
 
@@ -304,14 +296,13 @@ class CreateCheckWorkingEnvironmentRunPayload(CreateRunPayload):
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_check_working_environment_run(ree_id: str, payload: CreateCheckWorkingEnvironmentRunPayload) -> RunSummary:
+def check_working_environment_route(ree_id: str, payload: CheckWorkingEnvironmentPayload) -> RunSummary:
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(
                 ree_id,
                 action="check_working_environment",
                 command=CheckWorkingEnvironmentCommand(),
-                run_id_prefix="check",
                 request_payload={},
                 canceled_message="Working environment check canceled",
                 fallback_outputs={"subject_name": "working environment"},
@@ -326,21 +317,21 @@ def create_check_working_environment_run(ree_id: str, payload: CreateCheckWorkin
 # ================================================
 
 
-class CreateExperimentRunPayload(CreateRunPayload):
+class RunExperimentPayload(CreateRunPayload):
     """No fields of its own yet — the extension point for future run options."""
 
 
 @stages_router.post(
-    "/api/v1/rees/{ree_id}/experiments/{experiment_name}:run",
+    "/api/v1/rees/{ree_id}/run-experiment/{experiment_name}",
     operation_id="runExperiment",
     openapi_extra=runs("run_experiment"),
     response_model=RunSummary,
     responses=ERROR_RESPONSES,
 )
-def create_experiment_run(
+def run_experiment_route(
     ree_id: str,
     experiment_name: str,
-    payload: CreateExperimentRunPayload,
+    payload: RunExperimentPayload,
 ) -> RunSummary:
     # No host-side resolution preflight: reading the intent costs a synchronous
     # round-trip into the workbench (~600ms on the click path) to re-check rules
@@ -354,7 +345,6 @@ def create_experiment_run(
                 ree_id,
                 action="run_experiment",
                 command=RunExperimentCommand(args=RunExperimentArgs(experiment_name=experiment_name)),
-                run_id_prefix="experiment",
                 request_payload={"experiment_name": experiment_name},
                 canceled_message="Experiment run canceled",
                 fallback_outputs={"subject_name": experiment_name},
