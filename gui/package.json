@@ -5,6 +5,7 @@
   "scripts": {
     "check:core-purity": "node scripts/checkCorePurity.mjs",
     "check:style-architecture": "node scripts/checkStyleArchitecture.mjs",
+    "vocabulary:sites": "node scripts/vocabularySites.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
