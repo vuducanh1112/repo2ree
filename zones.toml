@@ -77,6 +77,12 @@ summary = "The commit and publish gates, and the receipts every gate writes."
 "scripts/tests/test_publish_gate.py" = "Its tests"
 ".receipts/" = "Where receipts are written (ignored, except this directory's rules)"
 
+[gates.groups.vocabulary]
+summary = "Holds every set of names the repository spells to the operation catalogue, and finds those it does not."
+[gates.groups.vocabulary.paths]
+"scripts/vocabulary/" = "The vocabulary graph, its check, and the discovery of every set of names"
+"scripts/tests/test_vocabulary.py" = "Its tests"
+
 [gates.groups.guard]
 summary = "Keeps protected zones apart from the rest."
 [gates.groups.guard.paths]

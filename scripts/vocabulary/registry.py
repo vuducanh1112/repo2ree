@@ -1,0 +1,319 @@
+"""The repository's vocabulary graph. This file is protected (zones.toml, gates): a relation changes apart from
+the names it holds, so it cannot be loosened beside the code it would fail."""
+
+from __future__ import annotations
+
+from scripts.vocabulary.model import Edge, Gap, Graph, Ignored, Origin, Relation, Vocabulary
+from scripts.vocabulary.readers import (
+    CatalogueTable,
+    CommandsRunByName,
+    ContractSet,
+    OperationsNamed,
+    RoutedOperations,
+    SourceSet,
+    SpecFieldGroups,
+    SpecReceipts,
+)
+
+EQUALS, WITHIN, DERIVED = Relation.EQUALS, Relation.WITHIN, Relation.DERIVED
+SPEC, CONTRACT, SOURCE = Origin.SPEC, Origin.CONTRACT, Origin.SOURCE
+
+OPERATIONS = ("operations", "review_operations")
+# The author API's actions that run no operation: reads, and the REE's own creation, deletion and upload.
+API_ACTIONS = (
+    "create_ree",
+    "delete_ree",
+    "download_ree",
+    "list_actions",
+    "list_receipts",
+    "read_file",
+    "upload_source",
+    "view_action",
+    "view_action_log",
+    "view_history",
+    "view_ree",
+    "view_ree_state",
+    "view_reproducibility_report",
+    "watch_action",
+)
+# The REE definition's fields that are no stage's: what the REE is, and the parts its stages declare.
+DEFINITION_FIELDS = ("catalog", "experiment_environment", "experiments", "hbom", "launch", "name", "source")
+
+
+def _source(name: str, site: str, summary: str) -> Vocabulary:
+    return Vocabulary(name, SOURCE, SourceSet(site), summary)
+
+
+def _contract(name: str, summary: str, *patterns: str) -> Vocabulary:
+    return Vocabulary(name, CONTRACT, ContractSet(patterns), summary)
+
+
+VOCABULARIES = (
+    # ---- the roots ----
+    Vocabulary("operations", SPEC, CatalogueTable("operations"), "Every operation core runs on an REE."),
+    Vocabulary("review_operations", SPEC, CatalogueTable("review_operations"), "Every operation on a review."),
+    # ---- the specification ----
+    Vocabulary("spec.receipts", SPEC, SpecReceipts(), "The Ree aggregate's receipts."),
+    Vocabulary(
+        "spec.receipts.named_by_producer",
+        SPEC,
+        SpecReceipts(named_by_producer=True),
+        "Those of the aggregate's receipts named after the operation producing them.",
+    ),
+    Vocabulary("spec.groups", SPEC, SpecFieldGroups(), "The groups the aggregate's fields are drawn in."),
+    _contract(
+        "behaviour.receipt_kinds",
+        "A Receipt fact's kind, published from the specification.",
+        "behaviour:/$defs/Receipt/*/facts/properties/kind/enum",
+    ),
+    _contract(
+        "behaviour.operations",
+        "An Attempt's, an Execution's and a start_run's operation, published from the catalogue.",
+        "behaviour:/$defs/Attempt/*operation/enum",
+        "behaviour:/$defs/Execution/*operation/enum",
+        "behaviour:/$defs/start_run/*operation/enum",
+    ),
+    _contract(
+        "behaviour.author_api_actions",
+        "An AuthorApiAction fact's action.",
+        "behaviour:/$defs/AuthorApiAction/*/facts/properties/action/enum",
+    ),
+    # ---- what the contracts name ----
+    Vocabulary("contracts.operation_names", CONTRACT, OperationsNamed(), "Every operation a contract names."),
+    Vocabulary("cli.commands", CONTRACT, CommandsRunByName(), "The operations a `ree` command spelled as each runs."),
+    Vocabulary("http.declared", CONTRACT, RoutedOperations("declared"), "The operations a route starts."),
+    Vocabulary("http.named", CONTRACT, RoutedOperations("named"), "The operations a route is named after."),
+    Vocabulary(
+        "http.posted", CONTRACT, RoutedOperations("posted"), "The operations whose named route is placed right."
+    ),
+    _contract(
+        "run.operations", "A run's operation.", "openapi:/components/schemas/RunSummary/properties/operation/enum"
+    ),
+    # ---- the stages ----
+    _contract(
+        "ree.receipts",
+        "The REE's receipts: one slot per stage that files one.",
+        "*:/$defs/ReeReceipts/properties",
+        "openapi:/components/schemas/ReeReceipts/properties",
+    ),
+    _contract(
+        "ree.audit",
+        "What the audit reports on: one step audit per receipt.",
+        "*:/$defs/ReeAudit/properties",
+        "openapi:/components/schemas/ReeAudit/properties",
+    ),
+    _contract(
+        "steps",
+        "The steps of authoring an REE, as `ree status` and the API's step catalogue name them.",
+        "*:/$defs/ReeStepState/properties/key/enum",
+        "*:/$defs/ReeStepState/properties/requires/items/enum",
+        "*:/$defs/ReeSteps/properties/next/anyOf/0/enum",
+        "openapi:/components/schemas/ReeStep*/properties/key/enum",
+        "openapi:/components/schemas/ReeStep*/properties/requires/items/enum",
+        "openapi:/components/schemas/ReeStep*/properties/next/anyOf/0/enum",
+    ),
+    _contract(
+        "review.steps",
+        "The steps of a review attempt.",
+        "*:/$defs/ReviewStepState/properties/step/enum",
+        "openapi:/components/schemas/ReviewStepState/properties/step/enum",
+    ),
+    _contract(
+        "review.receipts",
+        "A review attempt's receipts.",
+        "*:/$defs/ReviewReceipts/properties",
+        "openapi:/components/schemas/ReviewReceipts/properties",
+    ),
+    _contract(
+        "ree.definition",
+        "The REE definition's fields: its declarations, some named for the stage that runs them.",
+        "*:/$defs/ReeDefinition/properties",
+        "openapi:/components/schemas/ReeDefinition-*/properties",
+    ),
+    _contract(
+        "script.kinds",
+        "The kinds of script an REE has: a stage's, the launch, an experiment's run and verify.",
+        "*:/$defs/ScriptTarget/properties/kind/enum",
+        "*:/$defs/ScriptTargetSelectorArg/properties/kind/enum",
+        "*:/$defs/LintDraftQuery/properties/kind/enum",
+        "*:/$defs/ScriptState/properties/kind/enum",
+        "openapi:/components/schemas/ScriptTarget*/properties/kind/enum",
+    ),
+    # ---- source: the literals the contracts render from ----
+    _source(
+        "protocol.operation_name", "protocol/src/repo2ree_protocol/command.py::OperationName", "A command's operation."
+    ),
+    _source("protocol.step_key", "protocol/src/repo2ree_protocol/catalog.py::ReeStepKey", "The step keys."),
+    _source("protocol.target_kind", "protocol/src/repo2ree_protocol/command.py::TargetKind", "The script kinds."),
+    _source("ree.review_step_key", "ree/src/repo2ree_ree/review.py::ReviewStepKey", "The review's step keys."),
+    _source(
+        "telemetry.author_api_action",
+        "telemetry/src/repo2ree_telemetry/behaviour/events.py::AuthorApiActionName",
+        "The author API's actions, as the telemetry records them.",
+    ),
+    # ---- source: hand-written copies, held here and nowhere else ----
+    _source(
+        "protocol.outputs", "protocol/src/repo2ree_protocol/outputs.py::OUTPUTS", "Each operation's outputs model."
+    ),
+    _source("core.step_complete", "core/src/repo2ree_core/domain/ree/steps.py::_COMPLETE", "When each step is done."),
+    _source("cli.step_hints", "cli/src/repo2ree_cli/render.py::HINTS", "What `ree status` says to run for each step."),
+    _source(
+        "api.step_actions", "api/src/repo2ree_api/authoring/catalog.py::_STEP_ACTIONS", "The routes advancing a step."
+    ),
+    _source(
+        "core.step_evidence",
+        "core/src/repo2ree_core/operations/capture.py::step_evidence.standing",
+        "The receipts whose standing a capture records.",
+    ),
+    _source(
+        "traceview.step_order",
+        "assurance/traceview/src/repo2ree_assurance_traceview/terms.py::STEP_ORDER",
+        "The order traceview draws receipts in.",
+    ),
+    _source("cli.review_all", "cli/src/repo2ree_cli/cli.py::review_all.operations", "What `ree review all` runs."),
+    _source(
+        "core.runnable_kind",
+        "core/src/repo2ree_core/operations/handlers/author/runnable.py::RunnableKind",
+        "The operations that run a script inside the experiment environment.",
+    ),
+    _source(
+        "core.fixed_scripts",
+        "core/src/repo2ree_core/operations/handlers/author/definition_authoring.py::FIXED_SCRIPTS",
+        "The definition's declarations of the scripts every REE has.",
+    ),
+    _source("cli.script_templates", "cli/src/repo2ree_cli/cli.py::_template.entries", "The templates of each kind."),
+    _source(
+        "authoring.fixed_targets",
+        "authoring/src/repo2ree_authoring/targets.py::resolve_target.path",
+        "Where each fixed script is.",
+    ),
+    _source(
+        "core.fixed_targets",
+        "core/src/repo2ree_core/operations/read_models/ree_document.py::_script_targets.fixed",
+        "The fixed scripts the REE document lists.",
+    ),
+    _source(
+        "core.inference_dags",
+        "core/src/repo2ree_core/author_recipes/inference/registry.py::DAG_FOR_TARGET_KIND",
+        "The script kinds inference proposes for.",
+    ),
+    _source(
+        "authoring.lint.exit_status",
+        "authoring/src/repo2ree_authoring/lint/rules/exit_status.py::PipeMaskingRule.applies_to",
+        "The kinds a lint rule reads.",
+    ),
+    _source(
+        "authoring.lint.experiment_environment_reference",
+        "authoring/src/repo2ree_authoring/lint/rules/experiment_environment_reference.py"
+        "::ExperimentEnvironmentReferenceRule.applies_to",
+        "The kinds a lint rule reads.",
+    ),
+    _source(
+        "authoring.lint.placeholders",
+        "authoring/src/repo2ree_authoring/lint/rules/placeholders.py::UneditedPlaceholderRule.applies_to",
+        "The kinds a lint rule reads.",
+    ),
+    _source(
+        "testbed.script_kind", "testbed/src/repo2ree_testbed/api_models.py::ScriptKind", "The testbed's script kinds."
+    ),
+)
+
+EDGES = (
+    # ---- operations, as the interfaces spell them ----
+    Edge("contracts.operation_names", WITHIN, OPERATIONS),
+    Edge("cli.commands", EQUALS, OPERATIONS),
+    Edge("http.declared", WITHIN, OPERATIONS),
+    Edge("http.named", EQUALS, ("http.declared",)),
+    Edge("http.posted", EQUALS, ("http.named",)),
+    Edge("run.operations", EQUALS, OPERATIONS),
+    Edge("behaviour.operations", DERIVED, OPERATIONS),
+    Edge("behaviour.author_api_actions", WITHIN, ("operations",), API_ACTIONS),
+    # ---- the stages ----
+    Edge("ree.receipts", WITHIN, ("operations",), ("experiments",)),
+    Edge("ree.audit", EQUALS, ("ree.receipts",)),
+    Edge("steps", WITHIN, ("operations",), ("experiments", "metadata")),
+    Edge("ree.receipts", WITHIN, ("steps",)),
+    Edge("review.steps", WITHIN, ("operations",), ("experiments",)),
+    Edge("review.receipts", EQUALS, ("review.steps",)),
+    # A receipt is named after the operation producing it, but the keyed one, which step ids spell experiment:<name>.
+    Edge("spec.receipts.named_by_producer", WITHIN, ("operations",)),
+    Edge("spec.receipts", EQUALS, ("spec.receipts.named_by_producer",), ("experiment",)),
+    Edge("ree.receipts", EQUALS, ("spec.receipts.named_by_producer",), ("experiments",)),
+    Edge("behaviour.receipt_kinds", DERIVED, ("spec.receipts",)),
+    Edge("spec.groups", WITHIN, ("spec.receipts",), ("bundle", "catalog", "launch")),
+    Edge("ree.definition", WITHIN, ("operations",), DEFINITION_FIELDS),
+    Edge("script.kinds", WITHIN, ("operations",), ("experiment_run", "experiment_verify", "launch")),
+    # ---- the literals the contracts render from ----
+    Edge("protocol.operation_name", EQUALS, ("run.operations",)),
+    Edge("run.operations", DERIVED, ("protocol.operation_name",)),
+    Edge("protocol.step_key", EQUALS, ("steps",)),
+    Edge("protocol.target_kind", EQUALS, ("script.kinds",)),
+    Edge("ree.review_step_key", EQUALS, ("review.steps",)),
+    Edge("telemetry.author_api_action", EQUALS, ("behaviour.author_api_actions",)),
+    # ---- hand-written copies ----
+    Edge("protocol.outputs", WITHIN, OPERATIONS),
+    Edge("core.step_complete", EQUALS, ("steps",)),
+    Edge("cli.step_hints", EQUALS, ("steps",)),
+    Edge("api.step_actions", EQUALS, ("steps",)),
+    Edge("core.step_evidence", WITHIN, ("ree.receipts",)),
+    Edge("traceview.step_order", WITHIN, ("spec.receipts",)),
+    Edge("cli.review_all", EQUALS, ("review_operations",)),
+    Edge("core.runnable_kind", WITHIN, ("operations",)),
+    Edge("core.fixed_scripts", WITHIN, ("ree.definition",)),
+    Edge("cli.script_templates", EQUALS, ("script.kinds",)),
+    Edge("authoring.fixed_targets", WITHIN, ("script.kinds",)),
+    Edge("core.fixed_targets", WITHIN, ("script.kinds",)),
+    Edge("core.inference_dags", WITHIN, ("script.kinds",)),
+    Edge("authoring.lint.exit_status", WITHIN, ("script.kinds",)),
+    Edge("authoring.lint.experiment_environment_reference", WITHIN, ("script.kinds",)),
+    Edge("authoring.lint.placeholders", WITHIN, ("script.kinds",)),
+    Edge("testbed.script_kind", EQUALS, ("script.kinds",)),
+)
+
+_GUI = "the GUI's vocabularies are deferred: they are to be generated from the contracts"
+
+GAPS = (
+    Gap(
+        "*:/*ScriptTemplateCatalog/properties",
+        "the template catalog says experiment and verify where the script kinds say experiment_run and "
+        "experiment_verify",
+    ),
+    *(
+        Gap(f"gui/src/{site}", _GUI)
+        for site in (
+            "core/app-shell/pages.ts::PAGE",
+            "core/canvas/canvasNodes.ts::RECEIPT_OPERATIONS_BY_PAGE",
+            "core/receipts/authorReceipts.ts::OPERATION_LABELS",
+            "core/receipts/authorReceipts.ts::OPERATION_ORDER",
+            "core/ree-steps/ReeStepParams.ts::ReeStepKey",
+            "core/ree-steps/stepCatalog.ts::DEFAULT_REE_STEP_PARAMS",
+            "core/ree-steps/stepCatalog.ts::initialReeStepParams",
+            "core/ree-steps/stepPolicies.ts::REE_STEP_KEYS",
+            "core/ree-steps/stepPolicies.ts::WORKSPACE_REFRESH_STEPS",
+            "core/ree-steps/stepRunRequests.ts::REE_STEP_KEYS",
+            "core/ree/AuthoringProgress.ts::AUTHORING_STEP_KEYS",
+            "core/ree/StepEvidence.ts::EVIDENCE_STEPS",
+            "core/ree/StepEvidence.ts::EvidenceStep",
+            "core/reviews/reviewDag.ts::ReviewStepKey",
+            "core/reviews/reviewStatuses.ts::IMPLEMENTED_STEPS",
+            "core/runs/ReeRun.ts::RECEIPT_OPERATIONS",
+            "core/runs/ReeRun.ts::REE_RUN_OPERATIONS",
+            "core/runs/runHud.ts::RUN_HUD_TABS*",
+            "shell/data/scriptInference/candidate.ts::ScriptTargetKind",
+            "shell/data/scriptLint/findings.ts::LintTargetKind",
+            "shell/ui/app-shell/canvas/review/ReviewEvidence.tsx::STEP_LABEL",
+            "shell/ui/app-shell/canvas/review/ReviewStrip.tsx::STEP_SUBJECT",
+        )
+    ),
+    Gap("gui/biome.json::match.*", _GUI),
+)
+
+IGNORED = (
+    Ignored("protocol:/$defs/InitRee/properties", "an output's fields: the REE it initialized, and its name"),
+    Ignored(
+        "core/src/repo2ree_core/domain/ree/steps.py::REE_STEPS.requires",
+        "one step's prerequisites, typed by the step key",
+    ),
+)
+
+GRAPH = Graph(roots=OPERATIONS, vocabularies=VOCABULARIES, edges=EDGES, gaps=GAPS, ignored=IGNORED)
