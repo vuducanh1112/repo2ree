@@ -17,6 +17,7 @@ COMMANDS = {
     "render-sessions": "repo2ree_testbed.runs.session_videos",
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
+    "exercise-coverage": "repo2ree_testbed.runs.exercise_coverage",
     "machine": "repo2ree_testbed.runs.machine",
     "record": "repo2ree_testbed.runs.record",
     "api-showcase": "repo2ree_testbed.runs.api_showcase",

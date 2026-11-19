@@ -1428,6 +1428,8 @@ source = { editable = "testbed" }
 dependencies = [
     { name = "coverage" },
     { name = "cryptography" },
+    { name = "hypothesis" },
+    { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "sigstore" },
@@ -1438,6 +1440,8 @@ dependencies = [
 requires-dist = [
     { name = "coverage", specifier = "~=7.16" },
     { name = "cryptography", specifier = "~=46.0.3" },
+    { name = "hypothesis", specifier = "~=6.170" },
+    { name = "jsonschema", specifier = "~=4.26" },
     { name = "pydantic", specifier = "~=2.12.0" },
     { name = "pytest", specifier = "~=9.1" },
     { name = "sigstore", specifier = "~=4.2.0" },

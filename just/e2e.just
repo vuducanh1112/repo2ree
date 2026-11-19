@@ -73,6 +73,26 @@ test-e2e-slurm jobs=E2E_JOBS *select: (_load-environment "slurm")
 test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
     CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
+# Replay the exercise cases in exercises/ through `ree` on this machine, not gated: each must show what it expects, that it conforms to `ree schema` and the specification, or exactly the problems it names. A failing one is kept under the run's exercises/.
+[group('E2E tests')]
+exercise-cli:
+    python -m pytest {{ quote(ROOT + "/testbed/suites/exercise") }} -m "not property" -p no:cacheprovider
+
+# Measure the code the exercise cases cover, each replayed through `ree` on this machine under coverage.py: the cases whose coverage is stale (a covered file changed) or not measured yet, or with `all` every case. Writes exercises/coverage/<digest>.json (e.g. `just re-measure-exercise-branch-cov all`).
+[group('E2E tests')]
+re-measure-exercise-branch-cov which="stale":
+    python -m repo2ree_testbed exercise-coverage {{ if which == "all" { "--all" } else { "" } }}
+
+# Search for exercises that break `ree schema` or the specification, steered toward the rules and transitions of the specification, not gated: Hypothesis draws `examples` exercises of up to `steps` steps, replays each through `ree` on this machine, and shrinks the first with a problem no case names into a new case in exercises/, expecting those problems. Each exercise's trace and what it reached are kept under the run's exercises/<run>/spec-cov/, each line of its coverage.ndjson naming the rules and transitions no exercise before it reached (e.g. `just pbt-cli-spec-cov 100`).
+[group('E2E tests')]
+pbt-cli-spec-cov examples="25" steps="30":
+    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_exercises.py::test_any_exercise_conforms_steered_by_spec_coverage") }} -p no:cacheprovider
+
+# The same search steered toward the arcs this implementation executes beyond those the exercise cases cover, each `ree` command measured by coverage.py, not gated: it measures stale cases first, and once it ends keeps up to `keep` conforming exercises that add the most new arcs as new cases with their coverage. Each exercise's trace and coverage data are kept under the run's exercises/<run>/branch-cov/ (e.g. `just pbt-cli-branch-cov 100 30 5`).
+[group('E2E tests')]
+pbt-cli-branch-cov examples="25" steps="30" keep="3":
+    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} EXERCISE_KEEP={{ quote(keep) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_exercises.py::test_any_exercise_conforms_steered_by_branch_coverage") }} -p no:cacheprovider
+
 # Fuzz every API operation against its contract on one stack, not gated.
 [group('E2E tests')]
 test-e2e-fuzz: build-e2e-bundles

@@ -316,6 +316,34 @@
         "type": "string"
       }
     },
+    "EXERCISE_CASES": {
+      "kind": "internal",
+      "owner": "exercise-suite",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "EXERCISE_EXAMPLES": {
+      "kind": "internal",
+      "owner": "exercise-suite",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "EXERCISE_KEEP": {
+      "kind": "internal",
+      "owner": "exercise-suite",
+      "schema": {
+        "type": "string"
+      }
+    },
+    "EXERCISE_STEPS": {
+      "kind": "internal",
+      "owner": "exercise-suite",
+      "schema": {
+        "type": "string"
+      }
+    },
     "GHCR_NAMESPACE": {
       "kind": "deployment",
       "owner": "publishing",
