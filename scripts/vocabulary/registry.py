@@ -15,6 +15,7 @@ from scripts.vocabulary.readers import (
     SourceSites,
     SpecFieldGroups,
     SpecReceipts,
+    SpecUnsettledStates,
 )
 
 EQUALS, WITHIN, DERIVED = Relation.EQUALS, Relation.WITHIN, Relation.DERIVED
@@ -61,6 +62,12 @@ VOCABULARIES = (
     # ---- the specification ----
     Vocabulary("spec.receipts", SPEC, SpecReceipts(), "The Ree aggregate's receipts."),
     Vocabulary("spec.groups", SPEC, SpecFieldGroups(), "The groups the aggregate's fields are drawn in."),
+    Vocabulary(
+        "spec.attempt_unsettled",
+        SPEC,
+        SpecUnsettledStates("Attempt"),
+        "The states an attempt passes before it settles.",
+    ),
     _contract(
         "behaviour.receipt_kinds",
         "A Receipt fact's kind, published from the specification.",
@@ -74,12 +81,18 @@ VOCABULARIES = (
         "behaviour:/$defs/start_run/*operation/enum",
     ),
     _contract(
+        "exercise.fault_points",
+        "Where in a step's attempt an exercise's fault lands.",
+        "exercise:/$defs/Fault/properties/at/enum",
+    ),
+    _contract(
         "behaviour.author_api_actions",
         "An AuthorApiAction fact's action.",
         "behaviour:/$defs/AuthorApiAction/*/facts/properties/action/enum",
     ),
     # ---- what the contracts name ----
     Vocabulary("contracts.operation_names", CONTRACT, OperationsNamed(), "Every operation a contract names."),
+    Vocabulary("exercise.operations", CONTRACT, OperationsNamed("exercise"), "The operations an exercise's steps run."),
     Vocabulary("cli.commands", CONTRACT, CommandsRunByName(), "The operations a `ree` command spelled as each runs."),
     Vocabulary("http.declared", CONTRACT, RoutedOperations("declared"), "The operations a route starts."),
     Vocabulary("http.named", CONTRACT, RoutedOperations("named"), "The operations a route is named after."),
@@ -137,6 +150,7 @@ VOCABULARIES = (
         "*:/$defs/ScriptTargetSelectorArg/properties/kind/enum",
         "*:/$defs/LintDraftQuery/properties/kind/enum",
         "*:/$defs/ScriptState/properties/kind/enum",
+        "exercise:/$defs/WriteScript/properties/script/enum",
         "openapi:/components/schemas/ScriptTarget*/properties/kind/enum",
     ),
     _contract(
@@ -311,6 +325,8 @@ VOCABULARIES = (
 EDGES = (
     # ---- operations, as the interfaces spell them ----
     Edge("contracts.operation_names", WITHIN, OPERATIONS),
+    Edge("exercise.operations", EQUALS, OPERATIONS),
+    Edge("exercise.fault_points", EQUALS, ("spec.attempt_unsettled",)),
     Edge("cli.commands", EQUALS, OPERATIONS),
     Edge("http.declared", WITHIN, OPERATIONS),
     Edge("http.named", EQUALS, ("http.declared",)),
@@ -396,4 +412,5 @@ IGNORED = (
     ),
 )
 
-GRAPH = Graph(roots=OPERATIONS, vocabularies=VOCABULARIES, edges=EDGES, ignored=IGNORED)
+# The catalogue, and the states the specification gives an attempt before it settles.
+GRAPH = Graph(roots=(*OPERATIONS, "spec.attempt_unsettled"), vocabularies=VOCABULARIES, edges=EDGES, ignored=IGNORED)

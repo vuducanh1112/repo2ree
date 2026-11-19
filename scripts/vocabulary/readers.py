@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from scripts.vocabulary.discover import ROOT, contract_sets
-from scripts.vocabulary.model import CONTRACTS, Context, Located, Reader
+from scripts.vocabulary.model import CONTRACTS, Context, Contract, Located, Reader
 
 # ================================================
 # Spelling: how an operation's name is written where it is not written as itself
@@ -68,6 +68,21 @@ class SpecReceipts(Reader):
     def read(self, context: Context) -> tuple[Located, ...]:
         receipts = context.spec().aggregates["Ree"].receipts
         return (Located("spec:aggregates.Ree.receipts", frozenset(receipts)),)
+
+
+@dataclass(frozen=True)
+class SpecUnsettledStates(Reader):
+    """An entity's states before it settles: every state of its vocabulary but its terminal ones."""
+
+    entity: str
+
+    def describe(self) -> str:
+        return f"the states {self.entity} passes before it settles (assurance/spec/vocabulary)"
+
+    def read(self, context: Context) -> tuple[Located, ...]:
+        entity = context.spec().entities[self.entity]
+        unsettled = frozenset(entity.states) - frozenset(entity.terminal)
+        return (Located(f"spec:entities.{self.entity}.states", unsettled),)
 
 
 @dataclass(frozen=True)
@@ -183,15 +198,21 @@ def _operations_named(document: object) -> set[str]:
 
 @dataclass(frozen=True)
 class OperationsNamed(Reader):
+    """The operations the contracts name, or only ``contract``'s when one is given."""
+
+    contract: Contract | None = None
+
     def describe(self) -> str:
-        return "every operation a contract names: an operation const, an operations or x-operations list"
+        named = f"{self.contract} names" if self.contract else "a contract names"
+        return f"every operation {named}: an operation const, an operations or x-operations list"
 
     def read(self, context: Context) -> tuple[Located, ...]:
+        contracts = [self.contract] if self.contract else [name for name in CONTRACTS if name != "behaviour"]
         names: set[str] = set()
-        for contract in CONTRACTS:
-            if contract != "behaviour":
-                names |= _operations_named(context.contract(contract))
-        return (Located("contracts:operation names", frozenset(names)),)
+        for contract in contracts:
+            names |= _operations_named(context.contract(contract))
+        where = f"{self.contract}:operation names" if self.contract else "contracts:operation names"
+        return (Located(where, frozenset(names)),)
 
 
 # ================================================

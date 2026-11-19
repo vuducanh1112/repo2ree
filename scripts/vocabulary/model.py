@@ -11,13 +11,14 @@ if TYPE_CHECKING:
     from repo2ree_assurance_checker.spec import Spec
 
 # A contract by the name the graph reads it under, and where it is.
-Contract = Literal["ree", "protocol", "openapi", "cli", "behaviour"]
+Contract = Literal["ree", "protocol", "openapi", "cli", "behaviour", "exercise"]
 CONTRACTS: dict[Contract, str] = {
     "ree": "contracts/ree/ree.schema.json",
     "protocol": "contracts/protocol/protocol.schema.json",
     "openapi": "contracts/openapi.json",
     "cli": "contracts/cli/cli.schema.json",
     "behaviour": "contracts/behaviour/events.schema.json",
+    "exercise": "contracts/exercise/exercise.schema.json",
 }
 
 
