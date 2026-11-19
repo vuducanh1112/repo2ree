@@ -1326,6 +1326,71 @@
     },
     {
       "words": [
+        "verify-signatures"
+      ],
+      "summary": "Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.",
+      "help": "Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.\n\nEach signature is held to what the REE says of it (the seal it names, its claim, a review's record), then to\nSigstore (the chain to the trust root, the transparency log, the key that signed), then to the policy. Nothing is\nwritten. Every signature is reported; the command fails unless there is one and each is verified.\n",
+      "runs": false,
+      "operations": [],
+      "params": [
+        {
+          "name": "--review-id",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Verify this review's signature, not the REE's own.",
+          "type": "text"
+        },
+        {
+          "name": "--policy",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "A verification policy (JSON): the trust root, and whose signature counts for each claim.",
+          "type": "file"
+        },
+        {
+          "name": "--identity",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "The one signer whose signature counts, for every claim; with --issuer.",
+          "type": "text"
+        },
+        {
+          "name": "--issuer",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "The OIDC issuer that proves --identity.",
+          "type": "text"
+        },
+        {
+          "name": "--staging",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Hold signatures to Sigstore's staging instance's trust root.",
+          "flag": true,
+          "default": false
+        },
+        {
+          "name": "--trust-config",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "A Sigstore client trust configuration naming another trust root, such as a local stack's.",
+          "type": "file"
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/SignatureVerifications"
+      }
+    },
+    {
+      "words": [
         "wait"
       ],
       "summary": "Wait until no command runs in the REE.",
@@ -8399,6 +8464,140 @@
       "title": "SignReviewOutputs",
       "type": "object"
     },
+    "SignatureVerification": {
+      "additionalProperties": false,
+      "description": "One signature, as the verifier found it: the signer it carries, when the log recorded it, and why it is not\nverified, where it is not.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "claim": {
+          "anyOf": [
+            {
+              "enum": [
+                "author_approval",
+                "review"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim"
+        },
+        "outcome": {
+          "enum": [
+            "verified",
+            "signer_unnamed",
+            "other_signer",
+            "not_this_ree",
+            "untrusted",
+            "unreadable"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "signer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Signer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "logged_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Logged At"
+        },
+        "reason": {
+          "default": "",
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "outcome"
+      ],
+      "title": "SignatureVerification",
+      "type": "object"
+    },
+    "SignatureVerifications": {
+      "additionalProperties": false,
+      "description": "Every signature of the REE's seal, or of one review of it, as one verifier found them under its policy.",
+      "properties": {
+        "ree_digest": {
+          "title": "Ree Digest",
+          "type": "string"
+        },
+        "review_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Id"
+        },
+        "policy": {
+          "$ref": "#/$defs/VerificationPolicy"
+        },
+        "signatures": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SignatureVerification"
+          },
+          "title": "Signatures",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ree_digest",
+        "policy"
+      ],
+      "title": "SignatureVerifications",
+      "type": "object"
+    },
+    "Signer": {
+      "additionalProperties": false,
+      "description": "An identity Sigstore certifies (an email address, or a CI workflow's URI), and the OIDC issuer that proved\nit.",
+      "properties": {
+        "identity": {
+          "minLength": 1,
+          "title": "Identity",
+          "type": "string"
+        },
+        "issuer": {
+          "minLength": 1,
+          "title": "Issuer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "identity",
+        "issuer"
+      ],
+      "title": "Signer",
+      "type": "object"
+    },
     "SlurmObservation": {
       "additionalProperties": false,
       "description": "A launch check's view of the Slurm probe.",
@@ -9079,6 +9278,39 @@
         "artifact_path"
       ],
       "title": "VenvExperimentEnvironmentContract",
+      "type": "object"
+    },
+    "VerificationPolicy": {
+      "additionalProperties": false,
+      "description": "Whose signature counts for which claim, under which Sigstore's trust root.",
+      "properties": {
+        "trust": {
+          "default": "production",
+          "enum": [
+            "production",
+            "staging"
+          ],
+          "title": "Trust",
+          "type": "string"
+        },
+        "signers": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/Signer"
+            },
+            "type": "array"
+          },
+          "propertyNames": {
+            "enum": [
+              "author_approval",
+              "review"
+            ]
+          },
+          "title": "Signers",
+          "type": "object"
+        }
+      },
+      "title": "VerificationPolicy",
       "type": "object"
     },
     "VersionConflictOutputs": {

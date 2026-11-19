@@ -390,16 +390,38 @@ class CliClient:
         local = local_sigstore()
         trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
         token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
-        return self._step(ree_id, "sign-ree", "--trust-config", str(trust), variables=token)
+        signed = self._step(ree_id, "sign-ree", "--trust-config", str(trust), variables=token)
+        if signed.status == "succeeded":
+            self._verified(ree_id)
+        return signed
 
     def sign_review(self, ree_id: str, review_id: str) -> Run:
         """Sign the review with the run's Sigstore, as its reviewer does: the record is the statement's predicate."""
         local = local_sigstore()
         trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
         token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
-        return self._step(
+        signed = self._step(
             ree_id, "sign-review", "--review-id", review_id, "--trust-config", str(trust), variables=token
         )
+        if signed.status == "succeeded":
+            self._verified(ree_id, "--review-id", review_id)
+            other = self._verification(ree_id, "--review-id", review_id, identity="someone-else@example.org")
+            assert [item["outcome"] for item in other["signatures"]] == ["other_signer"], other
+        return signed
+
+    def _verification(self, ree_id: str, *words: str, identity: str | None = None) -> dict[str, Any]:
+        """``ree verify-signatures`` against the run's Sigstore, under a policy naming its signer, or ``identity``."""
+        local = local_sigstore()
+        trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
+        policy = ("--identity", identity or local.identity, "--issuer", local.issuer, "--trust-config", str(trust))
+        _, result = self._result(ree_id, "verify-signatures", *words, *policy)
+        return result.outputs
+
+    def _verified(self, ree_id: str, *words: str) -> None:
+        """Every signature verifies, as its verifier finds it under a policy naming the run's signer."""
+        found = self._verification(ree_id, *words)
+        assert found["signatures"], found
+        assert all(item["outcome"] == "verified" for item in found["signatures"]), found
 
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"

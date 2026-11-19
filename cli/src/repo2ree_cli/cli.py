@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import click
 from click.shell_completion import get_completion_class
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from repo2ree_authoring.lint import CONTRACT_ONLY, lint_script
 from repo2ree_authoring.targets import resolve_target
@@ -97,10 +97,11 @@ from repo2ree_protocol.queries import (
 )
 from repo2ree_protocol.result import ActionResult, FailureCategory
 from repo2ree_protocol.verbs import REVIEW, SUMMARIES, VERBS
-from repo2ree_ree.layout import REE_MANIFEST
+from repo2ree_ree.layout import REE_MANIFEST, SIGNATURES
 from repo2ree_ree.primitives import Digest
 from repo2ree_ree.review import ReviewSet
-from repo2ree_ree.signature import PREDICATE_TYPES, REVIEW_PREDICATE_TYPE
+from repo2ree_ree.signature import PREDICATE_TYPES, REVIEW_PREDICATE_TYPE, SIGNATURE_SUFFIX, review_signature_path
+from repo2ree_ree.verification import SignatureVerifications, Signer, VerificationPolicy, VerifiedClaim
 from repo2ree_telemetry.command_line import (
     invocation_span,
     name_invocation,
@@ -1076,6 +1077,111 @@ def status_cmd() -> None:
     answer(
         invocation, "status", report, render_with=lambda outputs: render.status(type(report).model_validate(outputs))
     )
+
+
+@cli.command("verify-signatures", cls=ReeCommand, words=("verify-signatures",), outputs=SignatureVerifications)
+@click.option("--review-id", default=None, help="Verify this review's signature, not the REE's own.")
+@click.option(
+    "--policy",
+    "policy_file",
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
+    default=None,
+    help="A verification policy (JSON): the trust root, and whose signature counts for each claim.",
+)
+@click.option("--identity", default=None, help="The one signer whose signature counts, for every claim; with --issuer.")
+@click.option("--issuer", default=None, help="The OIDC issuer that proves --identity.")
+@click.option("--staging", is_flag=True, help="Hold signatures to Sigstore's staging instance's trust root.")
+@click.option(
+    "--trust-config",
+    "trust_config",
+    type=click.Path(dir_okay=False, exists=True, path_type=Path),
+    default=None,
+    help="A Sigstore client trust configuration naming another trust root, such as a local stack's.",
+)
+def verify_signatures_cmd(
+    review_id: str | None,
+    policy_file: Path | None,
+    identity: str | None,
+    issuer: str | None,
+    staging: bool,
+    trust_config: Path | None,
+) -> None:
+    """Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.
+
+    Each signature is held to what the REE says of it (the seal it names, its claim, a review's record), then to
+    Sigstore (the chain to the trust root, the transparency log, the key that signed), then to the policy. Nothing is
+    written. Every signature is reported; the command fails unless there is one and each is verified.
+    """
+    invocation = _invocation()
+    words = "verify-signatures"
+    layout = _layout_or_refuse(invocation, words)
+    if policy_file is not None and (identity or issuer):
+        refuse(invocation, words, "validation", "give a --policy, or one --identity with its --issuer, not both")
+    if (identity is None) != (issuer is None):
+        refuse(invocation, words, "validation", "give --identity with the --issuer that proves it")
+    if policy_file is not None:
+        policy = VerificationPolicy.model_validate_json(policy_file.read_text(encoding="utf-8"))
+    else:
+        signer = (Signer(identity=identity, issuer=issuer),) if identity and issuer else ()
+        policy = VerificationPolicy(signers=dict.fromkeys(("author_approval", "review"), signer) if signer else {})
+    if staging:
+        policy = policy.model_copy(update={"trust": "staging"})
+    record: JsonValue | None = None
+    if review_id is not None:
+        review = layout.review(review_id)
+        reviewed = read_review_record(review)
+        if reviewed is None:
+            refuse(invocation, words, "precondition", f"no review {review_id}")
+        if reviewed.subject.ree_digest is None:
+            refuse(invocation, words, "precondition", f"review {review_id} is of a draft, which no one signs")
+        seal = reviewed.subject.ree_digest
+        record = json.loads(review.metadata.read_bytes())
+        claim: VerifiedClaim = "review"
+        found: list[tuple[str, Path, VerifiedClaim | None]] = [
+            (review_signature_path(), review.root / review_signature_path(), claim)
+        ]
+    else:
+        sealed = ReeDirectory(layout).read_ree().seal
+        if sealed is None:
+            refuse(invocation, words, "precondition", "only a sealed REE is signed: run `ree seal-ree` first")
+        seal = sealed.ree_digest
+        found = [
+            (path.relative_to(layout.root).as_posix(), path, _claim_named(path.name))
+            for path in sorted((layout.root / SIGNATURES).glob(f"*{SIGNATURE_SUFFIX}"))
+        ]
+    try:
+        verified = tuple(
+            signing.verify_signature(
+                path.read_bytes(),
+                path=name,
+                claim=claim,
+                seal=seal,
+                record=record,
+                policy=policy,
+                trust_config=trust_config,
+            )
+            for name, path, claim in found
+            if path.is_file()
+        )
+    except ModuleNotFoundError:
+        refuse(invocation, words, "precondition", "this ree has no Sigstore client to verify with")
+    report = SignatureVerifications(ree_digest=seal, review_id=review_id, policy=policy, signatures=verified)
+    outputs = report.model_dump(mode="json")
+    unverified = [item for item in verified if item.outcome != "verified"]
+    if not verified or unverified:
+        message = (
+            "nothing here is signed"
+            if not verified
+            else "; ".join(f"{item.path} is {item.outcome}: {item.reason}" for item in unverified)
+        )
+        finish(invocation, words, ActionResult.failed("validation", message, origin="executor", outputs=outputs))
+    answer(invocation, words, report)
+
+
+def _claim_named(name: str) -> VerifiedClaim | None:
+    """The claim a signature of the REE is named for; None for a file named for none."""
+    claim = name.removesuffix(SIGNATURE_SUFFIX)
+    return "author_approval" if claim == "author_approval" else None
 
 
 @cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True, operations=("write_script",))
