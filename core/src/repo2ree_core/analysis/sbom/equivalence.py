@@ -33,10 +33,6 @@ from repo2ree_ree.dependency import Ecosystem
 
 ClosureVerdict = Literal["equivalent", "different", "inconclusive"]
 
-# Listed deltas are capped so a pathological image cannot balloon the record;
-# the counts carry the truth. Mirrors the cross-check's cap for the same reason.
-DELTA_LIST_CAP = 50
-
 # The bucket that cannot distinguish its own members (see the module docstring).
 _ADVISORY_ECOSYSTEM: Ecosystem = "other"
 
@@ -58,7 +54,7 @@ class ClosureDelta:
     ``missing`` is present for the author and absent for the reviewer;
     ``extra`` is the reverse. Deltas are split into the decisive rows (which
     settle the verdict) and the advisory ``other``-ecosystem rows. The ``*_count``
-    fields are the truth; the lists beside them are capped samples.
+    fields count the lists beside them, which hold every delta.
     """
 
     expected_total: int = 0
@@ -146,10 +142,10 @@ def compare_sbom_closures(
         extra_count=len(extra),
         version_mismatch_count=len(mismatched),
         advisory_count=len(advisory),
-        missing=_capped(missing),
-        extra=_capped(extra),
-        version_mismatches=_capped(mismatched),
-        advisory=_capped(advisory),
+        missing=_sorted(missing),
+        extra=_sorted(extra),
+        version_mismatches=_sorted(mismatched),
+        advisory=_sorted(advisory),
     )
 
 
@@ -189,5 +185,5 @@ def _route(advisory: list[PackageDelta], decisive: list[PackageDelta], delta: Pa
     (advisory if delta.ecosystem == _ADVISORY_ECOSYSTEM else decisive).append(delta)
 
 
-def _capped(deltas: list[PackageDelta]) -> list[PackageDelta]:
-    return sorted(deltas, key=lambda delta: (delta.ecosystem, delta.name))[:DELTA_LIST_CAP]
+def _sorted(deltas: list[PackageDelta]) -> list[PackageDelta]:
+    return sorted(deltas, key=lambda delta: (delta.ecosystem, delta.name))

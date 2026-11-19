@@ -28,10 +28,6 @@ from repo2ree_ree.reproducibility import (
     UndeclaredPackage,
 )
 
-# The listed undeclared packages are capped so a pathological image cannot
-# balloon the report; the count carries the truth.
-_UNDECLARED_LIST_CAP = 50
-
 
 @dataclass(frozen=True)
 class CrossCheckResult:
@@ -108,7 +104,7 @@ def cross_check(
         observed_total=len(observed),
         undeclared=[
             UndeclaredPackage(ecosystem=package.ecosystem, name=package.name, version=package.version)
-            for package in undeclared[:_UNDECLARED_LIST_CAP]
+            for package in undeclared
         ],
     )
     return CrossCheckResult(dependencies=merged, summary=summary)

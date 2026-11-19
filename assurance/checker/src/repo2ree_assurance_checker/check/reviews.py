@@ -122,8 +122,7 @@ def _settled(subject: str, part: JsonValue, ladder: str) -> Judged:
 
 
 def _counts(subject: str, comparison: Document) -> Iterator[Judged]:
-    """Each count against the list beside it: the count is the whole, the list a sample of it, so a list never
-    holds more than its count."""
+    """Each count against the list beside it, which holds every delta it counts."""
     for listed, count in (
         ("missing", "missing_count"),
         ("extra", "extra_count"),
@@ -133,7 +132,7 @@ def _counts(subject: str, comparison: Document) -> Iterator[Judged]:
         found = comparison.get(listed)
         length = len(found) if isinstance(found, list) else 0
         counted = comparison.get(count, 0)
-        if not isinstance(counted, int) or counted < length:
+        if counted != length:
             yield Judged(f"{subject} {count}", False, f"counts {counted!r}, but lists {length}")
         else:
             yield Judged(f"{subject} {count}", True)

@@ -172,17 +172,13 @@ def test_a_verdict_its_ladder_does_not_give_is_violated() -> None:
     ]
 
 
-def test_a_closure_that_lists_more_than_it_counts_is_violated() -> None:
+def test_a_closure_that_counts_otherwise_than_it_lists_is_violated() -> None:
     document = review()
     document["experiment_environment_comparison"]["missing"] = [{"ecosystem": "pypi", "name": "numpy"}]
-    sampled = review()
-    sampled["experiment_environment_comparison"]["advisory_count"] = 60
-    sampled["experiment_environment_comparison"]["advisory"] = [{"ecosystem": "other", "name": "a"}] * 50
 
     _, problems = findings(document)["review-verdicts-follow-their-ladders"]
 
     assert problems == [f"Review {REE} experiment_environment_comparison missing_count: counts 0, but lists 1"]
-    assert findings(sampled)["review-verdicts-follow-their-ladders"][1] == [], "a list is a sample of its count"
 
 
 def test_an_expectation_that_is_not_the_authors_is_violated() -> None:

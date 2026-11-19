@@ -51,7 +51,7 @@ pairs = [
 #   swhid             identical: both recorded and equal | different: both recorded, unequal | inconclusive: else
 #   sbom-closure      identical: the environment digests equal | inconclusive: a side has no packages |
 #                     equivalent: nothing missing, extra, or at another version | different: else;
-#                     and no list holds more than its count: the count is the whole, the list a sample
+#                     and each count is the length of the list it counts
 #   activation        passed: it exited 0 | failed: else
 #   verify-script     inconclusive: the author's verify did not pass, or the criterion or the activate script is
 #                     not the author's | different: the reviewer's verify did not pass |

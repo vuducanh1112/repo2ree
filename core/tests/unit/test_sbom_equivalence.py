@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage
 from repo2ree_core.analysis.sbom.equivalence import (
-    DELTA_LIST_CAP,
     closure_verdict,
     compare_sbom_closures,
 )
@@ -77,16 +76,16 @@ def test_an_empty_side_is_inconclusive_not_equivalent() -> None:
     assert closure_verdict(compare_sbom_closures([], [])) == "inconclusive"
 
 
-def test_delta_lists_are_capped_but_the_counts_are_whole() -> None:
-    author = [_pkg(f"pkg-{index:03d}") for index in range(DELTA_LIST_CAP + 20)]
+def test_delta_lists_hold_every_delta_their_counts_count() -> None:
+    author = [_pkg(f"pkg-{index:03d}") for index in range(70)]
 
     delta = compare_sbom_closures(author, [])
 
-    assert delta.missing_count == DELTA_LIST_CAP + 20
-    assert len(delta.missing) == DELTA_LIST_CAP
+    assert delta.missing_count == 70
+    assert [package.name for package in delta.missing] == sorted(package.name for package in author)
     # Inconclusive here (the reviewer side is empty), but the delta still records
     # everything the comparison saw.
-    assert delta.expected_total == DELTA_LIST_CAP + 20
+    assert delta.expected_total == 70
 
 
 def test_a_package_listed_twice_joins_once() -> None:
