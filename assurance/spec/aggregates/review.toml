@@ -1,0 +1,112 @@
+# One review's record (reviews/<review>/review.json per capture commit of the review's own history), one machine
+# per part. A move no edge allows violates the rule aggregate:Review.
+
+name = "Review"
+summary = "One review of a sealed REE: what each step it took found, and whether the reviewer signed it."
+reviews = "Ree"
+created_by = "review_acquire_source"
+restored_by = "load_ree_bundle"
+# The review, signed: added only by signing it, never changed or removed after, and the review final from then on.
+signatures = "signatures/"
+signed_by = ["sign_review"]
+signed_in = "signed"
+
+[lifecycle]
+initial = "open"
+
+[[lifecycle.transitions]]
+from = "open"
+to = "signed"
+by = ["sign_review", "load_ree_bundle"]
+why = "Loading a bundle restores the signature its review carried."
+
+# What the review is of and how it runs, fixed when the source step opens it; opening it again starts it afresh.
+[fields."review_id"]
+group = "review_acquire_source"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source"]
+
+[fields."subject"]
+group = "review_acquire_source"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source"]
+
+[fields."machine"]
+group = "review_acquire_source"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source"]
+
+[fields."launch"]
+group = "review_acquire_source"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source"]
+
+[fields."created_at"]
+group = "review_acquire_source"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source"]
+
+# Each step's verdict is its own step's to settle; a source acquired afresh opens the review afresh, without them.
+[fields."source_comparison"]
+group = "review_acquire_source"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source"]
+
+[fields."experiment_environment_comparison"]
+group = "review_build_experiment_environment"
+initial = "unset"
+set = ["review_build_experiment_environment"]
+change = ["review_build_experiment_environment"]
+clear = ["review_acquire_source"]
+
+[fields."activation_outcome"]
+group = "review_activate_experiment_environment"
+initial = "unset"
+set = ["review_activate_experiment_environment"]
+change = ["review_activate_experiment_environment"]
+clear = ["review_acquire_source"]
+
+[fields."experiment_comparisons"]
+group = "review_run_experiment"
+initial = "unset"
+set = ["review_run_experiment"]
+change = ["review_run_experiment"]
+clear = ["review_acquire_source"]
+
+# Where the steps stand, and the receipts they selected: every step writes them.
+[fields."status"]
+group = "steps"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]
+
+[fields."steps"]
+group = "steps"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]
+
+[fields."updated_at"]
+group = "steps"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]
+
+[fields."failure"]
+group = "steps"
+initial = "unset"
+set = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]
+change = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]
+clear = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]
+
+[fields."receipts"]
+group = "steps"
+initial = "unset"
+set = ["review_acquire_source"]
+change = ["review_acquire_source", "review_build_experiment_environment", "review_activate_experiment_environment", "review_run_experiment"]

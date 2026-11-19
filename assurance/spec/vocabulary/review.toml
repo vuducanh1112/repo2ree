@@ -1,0 +1,33 @@
+# The words for one review of an REE as its own Git history shows it.
+#
+# Every transition is witnessed rather than claimed: the checker derives it from the review's own capture commits,
+# reading whether the committed tree changed and whether it holds the review's signature. It has no machine: the
+# aggregate says which operation may move each part.
+
+name = "Review"
+kind = "entity"
+owner = "core"
+key = "review_id"
+partition = "ree_id"
+evidence = "git"
+summary = "One review of an REE: open while its steps run again, final once signed."
+
+[states]
+open = "Reviewing: each step's verdict is the one its latest run settled."
+signed = "Signed: the record is final; nothing in the review changes after."
+
+[facts]
+# The capture commit that produced this state.
+commit = "str"
+# The operation that changed the tree, or the snapshot kind for changes made outside operations.
+operation = "str"
+attempt_id = "str?"
+
+[facts.cause]
+type = "str"
+required = true
+
+[facts.cause.values]
+operation = "An attempt changed the tree."
+created = "The first snapshot of a new review."
+external = "A snapshot found the tree changed between operations."

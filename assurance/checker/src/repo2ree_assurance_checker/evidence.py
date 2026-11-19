@@ -113,6 +113,8 @@ class FieldChange(EvidenceModel):
     before: str | None
     after: str | None
     operation: str  # The operation the capture commit names.
+    # Whose document the part is of: the REE's, or one review's of it.
+    subject: str = "Ree"
     cause: Literal["created", "operation", "external"]
     locator: str
 
@@ -135,6 +137,9 @@ class FileChange(EvidenceModel):
     before: str | None
     after: str | None
     operation: str
+    # Whose history committed it: the REE's, or one review's, whose files sit under ``scope`` (``reviews/<id>/``).
+    subject: str = "Ree"
+    scope: str = ""
     cause: Literal["created", "operation", "external"]
     locator: str
     # How the commit stores it, by its .gitattributes; None once removed.

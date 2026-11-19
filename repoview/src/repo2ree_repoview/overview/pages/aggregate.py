@@ -42,7 +42,7 @@ def without_machine(spec: Spec) -> str:
     names = sorted(name for name, entity in spec.entities.items() if not entity.constrained)
     if not names:
         return ""
-    drawn = {name: a for a in spec.aggregates.values() for name in (a.name, a.receipt_entity)}
+    drawn = {name: a for a in spec.aggregates.values() for name in (a.name, a.receipt_entity) if name is not None}
     items = [
         codes([name])
         + (

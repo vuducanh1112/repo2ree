@@ -58,11 +58,21 @@ def check_aggregates(spec: Spec, evidence: Evidence) -> tuple[AggregateResult, .
     return tuple(check_aggregate(aggregate, evidence) for aggregate in spec.aggregates.values())
 
 
+def _own(aggregate: AggregateSpec, file: FileChange) -> str | None:
+    """A file's path in the aggregate's document's own tree; None for a file of another's history."""
+    return file.path.removeprefix(file.scope) if file.subject == aggregate.name else None
+
+
 def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateResult:
     found = moves(aggregate, evidence)
     files = [change for change in evidence.files if aggregate.overlay and change.path.startswith(aggregate.overlay)]
+    files = [change for change in files if change.subject == aggregate.name]
     committed = [change for change in evidence.files if aggregate.layout and change.after is not None]
-    signed = [file for file in evidence.files if aggregate.signatures and file.path.startswith(aggregate.signatures)]
+    signed = [
+        file
+        for file in evidence.files
+        if aggregate.signatures and (_own(aggregate, file) or "").startswith(aggregate.signatures)
+    ]
     tally = Counter((m.machine.kind, m.machine.name, m.source, m.target, m.operation, m.allowed) for m in found)
     return AggregateResult(
         aggregate=aggregate.name,
@@ -81,7 +91,7 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
             for move in found
             if not move.allowed
         )
-        + tuple(overlay_findings(aggregate, files, evidence.changes))
+        + tuple(overlay_findings(aggregate, files, [c for c in evidence.changes if c.subject == aggregate.name]))
         + tuple(tree_findings(aggregate, committed))
         + tuple(signature_findings(aggregate, evidence)),
         files=len(files),
@@ -137,11 +147,14 @@ def signature_findings(aggregate: AggregateSpec, evidence: Evidence) -> Iterator
         if event.subject == aggregate.name and event.kind == "transition"
     }
     for file in evidence.files:
-        subject = f"{aggregate.name} {file.partition} {file.path}"
+        own = _own(aggregate, file)
+        if own is None:
+            continue
+        subject = f"{aggregate.name} {file.partition} {own}"
         moved_by = operation(aggregate, file.cause, file.operation)
         signing = file.cause == "operation" and file.operation in aggregate.signed_by
         restoring = file.cause == "operation" and file.operation == aggregate.restored_by
-        if not file.path.startswith(directory):
+        if not own.startswith(directory):
             if signing:
                 yield _finding(subject, f"changed by {moved_by}, which only adds signatures", file)
         elif not (signing or restoring):
@@ -149,8 +162,8 @@ def signature_findings(aggregate: AggregateSpec, evidence: Evidence) -> Iterator
         elif signing and (file.before is not None or file.after is None):
             done = "removed" if file.after is None else "changed"
             yield _finding(subject, f"{done} by {moved_by}, but a signature, once added, stays as it is", file)
-        elif file.after is not None and states.get((file.partition, file.position)) != "sealed":
-            yield _finding(subject, f"added by {moved_by} to a document that is not sealed", file)
+        elif file.after is not None and states.get((file.partition, file.position)) != aggregate.signed_in:
+            yield _finding(subject, f"added by {moved_by} to a document that is not {aggregate.signed_in}", file)
 
 
 def tree_findings(aggregate: AggregateSpec, files: Sequence[FileChange]) -> Iterator[Finding]:
@@ -251,7 +264,11 @@ def moves(aggregate: AggregateSpec, evidence: Evidence) -> list[Move]:
     lifecycle = next(machine for machine in machines if machine.kind == "lifecycle")
     return [
         *lifecycle_moves(aggregate, lifecycle, evidence),
-        *field_moves(aggregate, [machine for machine in machines if machine.kind == "field"], evidence.changes),
+        *field_moves(
+            aggregate,
+            [machine for machine in machines if machine.kind == "field"],
+            [change for change in evidence.changes if change.subject == aggregate.name],
+        ),
         *receipt_moves(
             aggregate, {machine.name: machine for machine in machines if machine.kind == "receipt"}, evidence
         ),
@@ -340,6 +357,8 @@ def _held(digest: str | None) -> str:
 
 def receipt_moves(aggregate: AggregateSpec, receipts: Mapping[str, SubMachine], evidence: Evidence) -> Iterator[Move]:
     """Each receipt's standings, one machine per kind; a kind no machine describes allows nothing."""
+    if aggregate.receipt_entity is None:
+        return
     events = [e for e in evidence.events if e.subject == aggregate.receipt_entity and e.kind == "transition"]
     for event in evidence.ordered(events):
         kind = str(event.facts.get("kind", ""))

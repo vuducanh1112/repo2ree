@@ -167,6 +167,9 @@ def receipt_events(spec: Spec, evidence: Evidence) -> Iterator[Event]:
             by_instance[(snapshot.subject, snapshot.source, snapshot.partition)].append(snapshot)
     for (subject, _, partition), found in sorted(by_instance.items()):
         aggregate = aggregates[subject]
+        entity = aggregate.receipt_entity
+        if entity is None:
+            continue
         states: dict[str, str] = {}
         for snapshot in _ordered(evidence, found):
             now = standings(aggregate, snapshot)
@@ -178,8 +181,8 @@ def receipt_events(spec: Spec, evidence: Evidence) -> Iterator[Event]:
                     source=snapshot.source,
                     position=snapshot.position + offset,
                     kind="transition",
-                    owner=spec.entities[aggregate.receipt_entity].owner,
-                    subject=aggregate.receipt_entity,
+                    owner=spec.entities[entity].owner,
+                    subject=entity,
                     key=f"{partition}/{step}",
                     partition=partition,
                     source_state=states.get(step),

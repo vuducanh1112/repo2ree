@@ -240,19 +240,24 @@ class AggregateSpec(SpecModel):
     created_by: Operation
     restored_by: Operation  # May move any part.
     writes_nothing: tuple[Operation, ...] = ()
-    receipt_entity: Name  # Whose transitions are the receipt standings.
+    # Whose transitions are the receipt standings; None for a document with no receipts of its own to stand.
+    receipt_entity: Name | None = None
+    # The aggregate this one's documents review, beside them; its operations are review operations.
+    reviews: Name | None = None
     # The committed directory whose every file some field claims (``files``); None: no such directory.
     overlay: str | None = None
     # The committed directory of signed claims about the sealed document, beside what its seal covers: each file
     # added only by ``signed_by`` (or the restore) while sealed, and never changed or removed after.
     signatures: str | None = None
     signed_by: tuple[Operation, ...] = ()
+    # The state a document is in once a signature is added to it.
+    signed_in: Name = "sealed"
     # The contract stating the document's file tree, from the repository root; the loader reads it into ``layout``.
     tree: str | None = None
     layout: TreeEntry | None = None
     lifecycle: Lifecycle
     fields: dict[FieldPath, FieldMachine]
-    receipts: dict[Operation, ReceiptMachine]
+    receipts: dict[Operation, ReceiptMachine] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod

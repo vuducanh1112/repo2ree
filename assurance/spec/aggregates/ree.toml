@@ -4,8 +4,7 @@ name = "Ree"
 summary = "One author REE: what it declares, what its receipts prove, and whether it is sealed."
 created_by = "initialize_ree"
 restored_by = "load_ree_bundle"
-# sign_review writes to the review it signs, which is an REE root of its own, and never to the REE it reviews.
-writes_nothing = ["suggest_scripts", "lint_scripts", "materialize_workspace", "sign_review"]
+writes_nothing = ["suggest_scripts", "lint_scripts", "materialize_workspace"]
 receipt_entity = "Receipt"
 # The REE's authored files: its scripts, each the field's that declares it, and nothing else. A
 # write_script changes a file and the field claiming it together; an experiment's files, named by

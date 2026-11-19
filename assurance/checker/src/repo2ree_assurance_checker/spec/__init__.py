@@ -205,6 +205,10 @@ class Spec(SpecModel):
             raise ValueError(f"aggregate {aggregate.name}: not an entity whose evidence is its committed document")
         if unknown := set(aggregate.lifecycle.states) - set(entity.states):
             raise ValueError(f"aggregate {aggregate.name}: lifecycle names unknown states {sorted(unknown)}")
+        if aggregate.receipt_entity is None:
+            if aggregate.receipts:
+                raise ValueError(f"aggregate {aggregate.name}: has receipts, but names no entity whose they are")
+            return
         receipts = self.entities.get(aggregate.receipt_entity)
         if receipts is None or receipts.partition != entity.key:
             raise ValueError(f"aggregate {aggregate.name}: {aggregate.receipt_entity} is not partitioned by it")
@@ -304,9 +308,9 @@ def _named_operations(aggregate: AggregateSpec) -> set[str]:
 def operation_problems(spec: Spec) -> list[str]:
     """Where the specification names operations the catalogue does not, or leaves one of an REE's unsaid.
 
-    Every operation an aggregate names is catalogued and none is a review's, and each of an REE's operations is
-    named by an aggregate: what it may change, or that it writes nothing. A specification without a catalogue,
-    as older revisions are, has nothing to hold them to.
+    Every operation an aggregate names is catalogued and none is a review's but in an aggregate that reviews
+    another, and each of an REE's operations is named by an aggregate: what it may change, or that it writes
+    nothing. A specification without a catalogue, as older revisions are, has nothing to hold them to.
     """
     if not spec.operations:
         return []
@@ -317,7 +321,7 @@ def operation_problems(spec: Spec) -> list[str]:
         own = _named_operations(aggregate)
         if unknown := own - catalogued:
             problems.append(f"{aggregate.name} names operations the catalogue does not: {sorted(unknown)}")
-        if reviews := own & set(spec.review_operations):
+        if aggregate.reviews is None and (reviews := own & set(spec.review_operations)):
             problems.append(f"{aggregate.name} names review operations, which change no REE: {sorted(reviews)}")
         named |= own
     if spec.aggregates and (unsaid := set(spec.operations) - named):

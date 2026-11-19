@@ -79,7 +79,7 @@ def check(bundle: Path) -> list[str]:
             for rule in rules.rules
             if (rule.pattern == "signature" and not any((root / (rule.files or "")).glob("*")))
             or (rules.reviews is not None and not reviewed)
-        }
+        } | {f"aggregate:{name}" for name, aggregate in spec.aggregates.items() if aggregate.reviews and not reviewed}
         result = judge(spec, read_git_history(root, NAME, ree=NAME))
     problems = [
         f"{rule.rule} {rule.verdict}: "

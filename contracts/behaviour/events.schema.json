@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:5a888d4c6c1f2bbb57ae95280b957242da4994ec8e50fb724c5ce6ff8d63fe7d",
+  "x-vocabulary": "sha256:a1d1d657e65844509a65502237616baf2d70c47f8aab5bca50ba51a3cd746fb5",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -76,6 +76,9 @@
     },
     {
       "$ref": "#/$defs/Ree"
+    },
+    {
+      "$ref": "#/$defs/Review"
     },
     {
       "$ref": "#/$defs/WorkbenchSession"
@@ -221,6 +224,7 @@
               "Execution",
               "Receipt",
               "Ree",
+              "Review",
               "WorkbenchSession",
               "cancel_run",
               "follow_run",
@@ -1636,6 +1640,122 @@
         }
       ],
       "description": "The author REE's committed state: authored while draft, frozen once sealed. Evidence: git."
+    },
+    "Review": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Review"
+        },
+        "owner": {
+          "const": "core"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "open",
+            "signed"
+          ]
+        },
+        "to": {
+          "enum": [
+            "open",
+            "signed"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "cause": {
+              "enum": [
+                "operation",
+                "created",
+                "external"
+              ]
+            },
+            "commit": {
+              "type": "string"
+            },
+            "operation": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "open",
+                  "signed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "attempt_id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "cause": {
+                    "enum": [
+                      "operation",
+                      "created",
+                      "external"
+                    ]
+                  },
+                  "commit": {
+                    "type": "string"
+                  },
+                  "operation": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "cause"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One review of an REE: open while its steps run again, final once signed. Evidence: git."
     },
     "WorkbenchSession": {
       "type": "object",

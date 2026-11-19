@@ -261,8 +261,9 @@ class Aggregate(Document):
     """A document an entity commits, with a machine for every part; a move no edge allows violates its rule."""
 
     name: str
-    receipt_entity: str
-    receipts: dict[str, AggregateReceipt]
+    # None for a document with no receipts of its own, such as a review's.
+    receipt_entity: str | None = None
+    receipts: dict[str, AggregateReceipt] = Field(default_factory=dict)
     machines: tuple[SubMachine, ...]
 
 

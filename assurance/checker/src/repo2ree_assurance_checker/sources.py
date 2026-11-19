@@ -274,6 +274,11 @@ def committed_files(executable: str, repository: Path, commit: str, directory: s
     return files
 
 
+# A review's record, and where its signature sits, from the review's root.
+REVIEW_RECORD = "review.json"
+REVIEW_SIGNATURE = "signatures/review.sigstore.json"
+
+
 type Storage = Literal["git", "lfs"]
 type Committed = dict[str, tuple[str, Storage]]
 # A path in .gitattributes, quoted as the recorder writes it or bare, and its attributes.
@@ -389,6 +394,7 @@ def changed_files(
     return [
         FileChange(
             path=f"{scope}{path}",
+            scope=scope,
             before=before[path][0] if path in before else None,
             after=after[path][0] if path in after else None,
             storage=after[path][1] if path in after else None,
@@ -668,68 +674,96 @@ def ree_events(
     return events, changes, found_files, snapshots, problems
 
 
-def scope_files(
-    executable: str, repository: Path, source_id: str, label: str, partition: str, commits: list[Commit], scope: str
-) -> list[FileChange]:
-    """The files of a scope holding no document of its own, such as a review attempt, commit by commit."""
+def review_history(
+    executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit], scope: str
+) -> tuple[list[Event], list[FieldChange], list[FileChange], list[Snapshot]]:
+    """A review attempt's history, commit by commit, as one review of the REE: its record's lifecycle and parts,
+    every file it commits, and each commit read whole beside the REE it reviews.
+
+    A review is open until its signature is committed, and signed from then on. Its record is a document of its own,
+    every part of it from the top; the instance is the review, under the REE whose review it is.
+    """
+    review_id = scope.removeprefix("reviews/").rstrip("/")
+    instance = f"{ree_id}/{scope.rstrip('/')}"
+    events: list[Event] = []
+    changes: list[FieldChange] = []
     found: list[FileChange] = []
+    snapshots: list[Snapshot] = []
     files: Committed = {}
     attributes: dict[str, frozenset[str]] = {}
-    for index, commit in enumerate(commits):
-        if index and commit.tree == commit.parent_tree:
-            continue
-        metadata = commit.metadata or {}
-        operated = metadata.get("kind") == "operation.completed" and isinstance(metadata.get("record"), dict)
-        committed = committed_tree(executable, repository, commit.id, attributes)
-        found.extend(
-            changed_files(
-                files,
-                committed,
-                {},
-                scope=scope,
-                source=source_id,
-                position=(index + 1) * 1000 + 900,
-                partition=partition,
-                operation=commit.subject,
-                cause="operation" if operated else "created" if not index else "external",
-                locator=f"git:{label}@{commit.id[:12]}",
-            )
-        )
-        files = committed
-    return found
-
-
-def review_snapshots(
-    executable: str, repository: Path, source_id: str, label: str, partition: str, commits: list[Commit]
-) -> list[Snapshot]:
-    """Each commit of a review attempt's history read whole: its review.json, and every file it holds."""
-    snapshots: list[Snapshot] = []
-    attributes: dict[str, frozenset[str]] = {}
     digests = BlobDigests(executable, repository)
+    state: str | None = None
+    parts: dict[str, str] = {}
     for index, commit in enumerate(commits):
         if index and commit.tree == commit.parent_tree:
             continue
         metadata = commit.metadata or {}
         record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
         record = record if isinstance(record, dict) else None
-        document = committed_document(executable, repository, commit.id, "review.json")
+        cause: Literal["created", "operation", "external"] = (
+            "operation" if record is not None else "created" if not index else "external"
+        )
+        base = (index + 1) * 1000
+        locator = f"git:{label}@{commit.id[:12]}"
+        committed = committed_tree(executable, repository, commit.id, attributes)
+        common: dict[str, Any] = {
+            "source": source_id,
+            "position": base + 900,
+            "partition": instance,
+            "subject": "Review",
+            "operation": commit.subject,
+            "cause": cause,
+            "locator": locator,
+        }
+        found.extend(changed_files(files, committed, {}, scope=scope, **common))
+        files = committed
+        document = committed_document(executable, repository, commit.id, REVIEW_RECORD)
         if document is None:
-            continue  # Before the attempt wrote its record: nothing of a review to judge.
+            continue  # Before the attempt wrote its record: nothing of a review yet.
         snapshots.append(
             Snapshot(
                 source=source_id,
-                position=(index + 1) * 1000 + 300,
+                position=base + 300,
                 subject="Review",
-                partition=partition,
-                locator=f"git:{label}@{commit.id[:12]}",
-                cause="operation" if record is not None else "created" if not index else "external",
+                partition=ree_id,
+                locator=locator,
+                cause=cause,
                 operation=((record or {}).get("command") or {}).get("operation"),
                 attempt_id=(record or {}).get("attempt_id"),
                 document=document,
-                files=digests.of(committed_tree(executable, repository, commit.id, attributes)),
+                files=digests.of(committed),
             )
         )
-    return snapshots
+        now = document_parts(document)
+        changes.extend(
+            FieldChange(path=path, before=parts.get(path), after=now.get(path), **common)
+            for path in sorted(parts.keys() | now.keys())
+            if parts.get(path) != now.get(path)
+        )
+        parts = now
+        target = "signed" if REVIEW_SIGNATURE in committed else "open"
+        events.append(
+            Event(
+                source=source_id,
+                position=base + 900,
+                kind="transition",
+                owner="core",
+                subject="Review",
+                key=review_id,
+                partition=instance,
+                source_state=state,
+                target_state=target,
+                facts={
+                    "commit": commit.id,
+                    "operation": commit.subject,
+                    "attempt_id": (record or {}).get("attempt_id"),
+                    "cause": cause,
+                },
+                locator=locator,
+            )
+        )
+        state = target
+    return events, changes, found, snapshots
 
 
 def read_git_history(
@@ -792,8 +826,10 @@ def read_git_history(
     elif len(ree_ids) > 1:
         problems.append(f"attempts name several REEs: {sorted(ree_ids)}")
     elif scope and ree_ids:
-        file_changes = scope_files(executable, repository, source_id, label, next(iter(ree_ids)), commits, scope)
-        snapshots = review_snapshots(executable, repository, source_id, label, next(iter(ree_ids)), commits)
+        found_events, changes, file_changes, snapshots = review_history(
+            executable, repository, source_id, label, next(iter(ree_ids)), commits, scope
+        )
+        events.extend(found_events)
     source = Source(
         id=source_id,
         kind="git",

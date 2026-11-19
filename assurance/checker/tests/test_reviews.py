@@ -1,5 +1,6 @@
 """A review's commits judged beside the sealed REE it reviews: its expectations are the author's, its observations
-its own receipts', each verdict its ladder's, and its signature the review itself."""
+its own receipts', each verdict its ladder's, and its signature the review itself; and each part of it moved only by
+the step that settles it, its signature only by signing, and nothing once it is signed."""
 
 from __future__ import annotations
 
@@ -9,8 +10,10 @@ from typing import Any
 
 from test_documents import REE, bundle, git_source
 
+from repo2ree_assurance_checker.check import check
+from repo2ree_assurance_checker.check.aggregates import check_aggregate
 from repo2ree_assurance_checker.check.documents import check_documents
-from repo2ree_assurance_checker.evidence import CommittedFile, Evidence, Snapshot
+from repo2ree_assurance_checker.evidence import CommittedFile, Event, Evidence, FieldChange, FileChange, Snapshot
 from repo2ree_assurance_checker.files import load_spec
 
 SEAL = "sha256:" + "5" * 64
@@ -114,7 +117,7 @@ def findings(
 ) -> dict[str, Any]:
     snapshots = [
         Snapshot(
-            source="git:ree/reviews/r1",
+            source="git:ree",
             position=1300,
             subject="Review",
             partition=REE,
@@ -233,3 +236,115 @@ def test_a_review_s_signature_carries_the_review_as_it_stands() -> None:
     assert problems == [
         f"Review {REE} signatures/review.sigstore.json: signs another record than the review holds in this commit"
     ]
+
+
+# ---------------------------------------------------------------------------- the review aggregate
+
+INSTANCE = f"{REE}/reviews/r1"
+
+
+def moved(position: int, path: str, before: str | None, after: str | None, operation: str) -> FieldChange:
+    return FieldChange(
+        source="git:ree",
+        position=position,
+        partition=INSTANCE,
+        subject="Review",
+        path=path,
+        before=before,
+        after=after,
+        operation=operation,
+        cause="operation",
+        locator=f"git:ree/reviews/r1@c{position // 1000}",
+    )
+
+
+def became(position: int, source: str | None, target: str, operation: str) -> Event:
+    return Event(
+        source="git:ree",
+        position=position,
+        kind="transition",
+        owner="core",
+        subject="Review",
+        key="r1",
+        partition=INSTANCE,
+        source_state=source,
+        target_state=target,
+        facts={"commit": f"c{position}", "operation": operation, "attempt_id": f"a{position}", "cause": "operation"},
+        locator=f"git:ree/reviews/r1@c{position // 1000}",
+    )
+
+
+def signature(position: int, operation: str) -> FileChange:
+    return FileChange(
+        source="git:ree",
+        position=position,
+        partition=INSTANCE,
+        subject="Review",
+        scope="reviews/r1/",
+        path="reviews/r1/signatures/review.sigstore.json",
+        before=None,
+        after="b1",
+        operation=operation,
+        cause="operation",
+        locator=f"git:ree/reviews/r1@c{position // 1000}",
+        storage="git",
+    )
+
+
+def reviewed_history(*extra: FieldChange | Event | FileChange) -> Evidence:
+    """A review opened, its experiment compared, and signed; and whatever a test adds."""
+    events = [
+        became(2900, None, "open", "review_acquire_source"),
+        became(3900, "open", "open", "review_run_experiment"),
+        became(4900, "open", "signed", "sign_review"),
+    ]
+    changes = [
+        moved(2900, "subject", None, "s1", "review_acquire_source"),
+        moved(2900, "source_comparison", None, "c1", "review_acquire_source"),
+        moved(3900, "experiment_comparisons", None, "e1", "review_run_experiment"),
+    ]
+    files = [signature(4900, "sign_review")]
+    for item in extra:
+        if isinstance(item, Event):
+            events.append(item)
+        elif isinstance(item, FieldChange):
+            changes.append(item)
+        else:
+            files.append(item)
+    return Evidence(
+        sources=(git_source(),), events=tuple(events), changes=tuple(changes), files=tuple(files), snapshots=()
+    )
+
+
+def review_findings(evidence: Evidence) -> list[str]:
+    result = check_aggregate(load_spec().aggregates["Review"], evidence)
+    return [f"{finding.subject.split(' ', 2)[2]}: {finding.reason}" for finding in result.findings]
+
+
+def test_a_review_s_parts_move_by_their_own_steps_and_its_signature_by_signing() -> None:
+    assert review_findings(reviewed_history()) == []
+
+
+def test_a_verdict_another_step_settles_violates_the_aggregate() -> None:
+    wrong = moved(3900, "source_comparison", "c1", "c2", "review_run_experiment")
+
+    assert review_findings(reviewed_history(wrong)) == [
+        "source_comparison: set -> set by review_run_experiment, which no edge allows"
+    ]
+
+
+def test_a_signature_only_signing_adds_violates_the_aggregate_otherwise() -> None:
+    added = signature(3900, "review_run_experiment")
+
+    assert review_findings(reviewed_history(added)) == [
+        "signatures/review.sigstore.json: changed by review_run_experiment, but only sign_review signs"
+    ]
+
+
+def test_a_signed_review_that_changes_violates_the_invariant() -> None:
+    after = became(5900, "signed", "signed", "review_run_experiment")
+
+    rules = {rule.rule: rule for rule in check(load_spec(), reviewed_history(after)).rules}
+
+    assert rules["signed-reviews-change-no-more"].verdict == "violated"
+    assert rules["signed-reviews-change-no-more"].triggered == 1

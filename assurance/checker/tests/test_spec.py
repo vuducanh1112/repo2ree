@@ -75,7 +75,16 @@ def documents() -> Documents:
 
 def test_the_checked_in_specification_is_valid() -> None:
     spec = load_spec()
-    assert set(spec.entities) == {"Attempt", "AuthorApiAction", "Execution", "Ree", "Receipt", "WorkbenchSession"}
+    assert set(spec.entities) == {
+        "Attempt",
+        "AuthorApiAction",
+        "Execution",
+        "Ree",
+        "Receipt",
+        "Review",
+        "WorkbenchSession",
+    }
+    assert spec.entities["Review"].required == {"open": ("cause",), "signed": ("cause",)}
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert spec.hosted_by("workbench") == {"workbench"}
     assert spec.hosted_by("executor") == {"core"}
@@ -444,10 +453,7 @@ def test_the_specification_has_one_catalogue() -> None:
         ),
         (
             lambda docs: docs.aggregates[0].update(writes_nothing=["suggest_scripts"]),
-            (
-                "operations no aggregate says what they may change: "
-                "['lint_scripts', 'materialize_workspace', 'sign_review']"
-            ),
+            "operations no aggregate says what they may change: ['lint_scripts', 'materialize_workspace']",
         ),
     ],
 )

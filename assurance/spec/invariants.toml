@@ -108,6 +108,15 @@ summary = "A sealed REE's committed tree changes only by an operation that signs
 when = { entity = "Ree", from = "sealed", to = ["draft", "sealed"] }
 require = { where = { operation = "sign_ree", cause = "operation" } }
 
+# A review is final once signed: its signature is over the record as it then stood, so a later commit that changed
+# it would leave a signature over a review that no longer exists. Only a bundle that carries it restores it.
+[[invariant]]
+id = "signed-reviews-change-no-more"
+pattern = "guard"
+summary = "A signed review's committed tree changes only by a bundle load that restores it."
+when = { entity = "Review", from = "signed", to = ["open", "signed"] }
+require = { where = { operation = "load_ree_bundle", cause = "operation" } }
+
 # Evidence an attempt brings into being is that attempt's work: it exists only if the
 # attempt succeeded, and only if it is the work that produces that kind of evidence. A
 # bundle load restores evidence of every kind. The operation and outcome are the
