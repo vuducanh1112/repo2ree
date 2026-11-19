@@ -85,11 +85,13 @@ devPkgs.mkShell {
     python313Packages.lizard
 
     # asciinema records the pure-API workbench walkthrough (testbed/suites/walkthrough/
-    # api_walkthrough.py) as a terminal .cast; agg renders that .cast to an
-    # SVG/GIF artifact. The walkthrough itself is stdlib-only python — no client
-    # dependency to add here.
+    # api_walkthrough.py) as a terminal .cast; agg renders a .cast to a GIF, and
+    # ffmpeg turns that GIF into an MP4 (`just render-cli-sessions`, for the CLI
+    # showcases' recordings). The walkthrough itself is stdlib-only python — no
+    # client dependency to add here.
     asciinema
     asciinema-agg
+    ffmpeg-headless
 
     # nix formatting and linting. `nix fmt` remains the writing interface;
     # checks call nixfmt directly because treefmt has no non-writing mode.

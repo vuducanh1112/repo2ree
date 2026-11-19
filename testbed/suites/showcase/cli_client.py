@@ -14,13 +14,14 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 import warnings
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 from uuid import uuid4
 
 import pytest
@@ -43,6 +44,7 @@ from repo2ree_testbed.api_models import (
     RunStatus,
     ScriptKind,
 )
+from repo2ree_testbed.cli_cast import Printed, Stream, append_command, cast_file
 from repo2ree_testbed.cli_session import LOG_LINES, CliCommand, append, kept_result, kept_stdin, session_file
 from repo2ree_testbed.run_watch import INSTANT_RUN, RunWatch
 from repo2ree_testbed.showcases import Project
@@ -77,11 +79,12 @@ class Result(BaseModel):
 
 @dataclass(frozen=True)
 class Done:
-    """What one ``ree`` command left: its exit status and what it wrote."""
+    """What one ``ree`` command left: its exit status, what it wrote, and each chunk as it arrived."""
 
     status: int
     stdout: bytes
     stderr: str
+    printed: tuple[Printed, ...] = ()
 
 
 @dataclass
@@ -96,8 +99,45 @@ class Machine:
         command = machine_exec(
             ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
         )
-        done = subprocess.run(command, input=stdin or b"", capture_output=True, timeout=STEP_SECONDS, check=False)
-        return Done(done.returncode, done.stdout, done.stderr.decode(errors="replace"))
+        printed: list[Printed] = []
+        arrived = threading.Lock()
+
+        def read(stream: Stream, source: IO[bytes]) -> None:
+            while chunk := os.read(source.fileno(), 1 << 16):
+                with arrived:
+                    printed.append(Printed(time.time(), stream, chunk))
+
+        def feed(sink: IO[bytes]) -> None:
+            try:
+                sink.write(stdin or b"")
+            except BrokenPipeError:
+                pass
+            finally:
+                sink.close()
+
+        with subprocess.Popen(
+            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ) as process:
+            if process.stdin is None or process.stdout is None or process.stderr is None:
+                raise CliError("ree was started without its pipes")
+            threads = [
+                threading.Thread(target=feed, args=(process.stdin,), daemon=True),
+                threading.Thread(target=read, args=("stdout", process.stdout), daemon=True),
+                threading.Thread(target=read, args=("stderr", process.stderr), daemon=True),
+            ]
+            for thread in threads:
+                thread.start()
+            try:
+                process.wait(timeout=STEP_SECONDS)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                raise
+            finally:
+                for thread in threads:
+                    thread.join()
+        stdout = b"".join(chunk.data for chunk in printed if chunk.stream == "stdout")
+        stderr = b"".join(chunk.data for chunk in printed if chunk.stream == "stderr")
+        return Done(process.returncode, stdout, stderr.decode(errors="replace"), tuple(printed))
 
 
 @dataclass
@@ -111,6 +151,8 @@ class CliClient:
     kept_dir: Path
     # Where every command the test runs is written down, as it typed it and as ree answered (cli_session).
     session: Path | None = None
+    # The same commands as a terminal recording (cli_cast).
+    cast: Path | None = None
     _logs: dict[str, str] = field(default_factory=dict)
 
     def root(self, ree_id: str) -> Path:
@@ -172,6 +214,15 @@ class CliClient:
                 finished=time.time(),
             )
             append(self.session, command)
+        if self.cast is not None:
+            append_command(
+                self.cast,
+                ("ree", "-C", str(self.root(ree_id)), *words),
+                stdin_bytes=len(stdin or b""),
+                started=started,
+                finished=time.time(),
+                printed=done.printed,
+            )
         return done
 
     def _bytes(self, ree_id: str, *words: str) -> bytes:
@@ -444,7 +495,7 @@ def client() -> Client:
         os.environ[MACHINE_CONTAINER_VARIABLE],
         Path(os.environ[MACHINE_WORKDIR_VARIABLE]),
     )
-    return CliClient(machine, ARCHIVE_DIR, KEPT_REE_DIR, session_file())
+    return CliClient(machine, ARCHIVE_DIR, KEPT_REE_DIR, session_file(), cast_file())
 
 
 @pytest.fixture
