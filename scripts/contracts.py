@@ -32,6 +32,7 @@ from repo2ree_cli.export_schema import schema_document as cli_schema
 from repo2ree_protocol.export_schema import schema_document as protocol_schema
 from repo2ree_ree.export_schema import schema_document as ree_schema
 from repo2ree_ree.layout import layout_document
+from repo2ree_testbed.exercise import schema_document as exercise_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = PurePosixPath("contracts")
@@ -52,6 +53,7 @@ class Name(StrEnum):
     BIOME_NAMING = "biome-naming"
     BEHAVIOUR_SCHEMA = "behaviour-schema"
     ENVIRONMENT = "environment"
+    EXERCISE_SCHEMA = "exercise-schema"
 
 
 @dataclass(frozen=True)
@@ -160,6 +162,13 @@ REGISTRY: tuple[Contract, ...] = (
         "The environment variables each process reads.",
         "a deployment and the processes it starts",
         environment_contract,
+    ),
+    Contract(
+        Name.EXERCISE_SCHEMA,
+        PurePosixPath("contracts/exercise/exercise.schema.json"),
+        "One replayable input to the domain: the REEs it works in, the operations it runs in each, and its faults.",
+        "whatever generates, stores or replays exercises",
+        exercise_schema,
     ),
 )
 

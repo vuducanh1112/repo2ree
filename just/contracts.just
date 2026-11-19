@@ -1,6 +1,6 @@
-# Regenerate every committed contract: the API and its GUI TypeScript view, the command line, the REE document, the protocol, the behaviour events, and the environment.
+# Regenerate every committed contract: the API and its GUI TypeScript view, the command line, the REE document, the protocol, the behaviour events, the environment, and the exercise format.
 [group('Contracts')]
-generate-contracts: generate-api-types generate-cli-schema generate-ree-schema generate-protocol-schema generate-behaviour-schema export-config
+generate-contracts: generate-api-types generate-cli-schema generate-ree-schema generate-protocol-schema generate-behaviour-schema export-config generate-exercise-schema
 
 # Regenerate the committed OpenAPI contract.
 [group('Contracts')]
@@ -31,6 +31,11 @@ generate-protocol-schema:
 [group('Contracts')]
 generate-behaviour-schema:
     python -m scripts.contracts write behaviour-schema
+
+# Regenerate the committed exercise format: one replayable input to the domain (contracts/exercise).
+[group('Contracts')]
+generate-exercise-schema:
+    python -m scripts.contracts write exercise-schema
 
 # Require every contract to be what its code renders now, and contracts/ to hold only contracts and fixtures.
 [group('Checks')]

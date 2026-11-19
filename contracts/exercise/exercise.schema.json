@@ -1,0 +1,1236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:repo2ree:exercise:1",
+  "$defs": {
+    "AcquireSource": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "acquire_source",
+          "default": "acquire_source",
+          "title": "Operation",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Source"
+        }
+      },
+      "required": [
+        "ree",
+        "source"
+      ],
+      "title": "AcquireSource",
+      "type": "object"
+    },
+    "ActivateExperimentEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "activate_experiment_environment",
+          "default": "activate_experiment_environment",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "ActivateExperimentEnvironment",
+      "type": "object"
+    },
+    "BuildExperimentEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "build_experiment_environment",
+          "default": "build_experiment_environment",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "BuildExperimentEnvironment",
+      "type": "object"
+    },
+    "CatalogPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "description"
+      ],
+      "title": "CatalogPatch",
+      "type": "object"
+    },
+    "CheckWorkingEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "check_working_environment",
+          "default": "check_working_environment",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "CheckWorkingEnvironment",
+      "type": "object"
+    },
+    "Cpu": {
+      "properties": {
+        "vendor": {
+          "title": "Vendor",
+          "type": "string"
+        },
+        "cores_per_cpu": {
+          "title": "Cores Per Cpu",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "vendor",
+        "cores_per_cpu"
+      ],
+      "title": "Cpu",
+      "type": "object"
+    },
+    "CrossCheckSbom": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "cross_check_sbom",
+          "default": "cross_check_sbom",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "CrossCheckSbom",
+      "type": "object"
+    },
+    "DefinitionPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "catalog": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CatalogPatch"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "hbom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HardwarePatch"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiment_environment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExperimentEnvironmentPatch"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "experiments": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/ExperimentPatch"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiments"
+        }
+      },
+      "title": "DefinitionPatch",
+      "type": "object"
+    },
+    "EvaluateReproducibility": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "evaluate_reproducibility",
+          "default": "evaluate_reproducibility",
+          "title": "Operation",
+          "type": "string"
+        },
+        "strict": {
+          "default": false,
+          "title": "Strict",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "EvaluateReproducibility",
+      "type": "object"
+    },
+    "ExperimentEnvironmentPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_path": {
+          "title": "Artifact Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_path"
+      ],
+      "title": "ExperimentEnvironmentPatch",
+      "type": "object"
+    },
+    "ExperimentPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "output_paths": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Paths",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "output_paths"
+      ],
+      "title": "ExperimentPatch",
+      "type": "object"
+    },
+    "Fault": {
+      "additionalProperties": false,
+      "description": "A fault injected into one step's attempt once it reaches ``at``: the process that runs it killed there, or\nfrom there on its disk full or its REE's history locked by another.",
+      "properties": {
+        "step": {
+          "minimum": 0,
+          "title": "Step",
+          "type": "integer"
+        },
+        "kind": {
+          "enum": [
+            "kill",
+            "no_space",
+            "history_locked"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "at": {
+          "enum": [
+            "pending",
+            "executing",
+            "completed"
+          ],
+          "title": "At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step",
+        "kind",
+        "at"
+      ],
+      "title": "Fault",
+      "type": "object"
+    },
+    "Fetched": {
+      "additionalProperties": false,
+      "description": "A source fetched from its origin.",
+      "properties": {
+        "kind": {
+          "const": "fetched",
+          "default": "fetched",
+          "title": "Kind",
+          "type": "string"
+        },
+        "origin_url": {
+          "minLength": 1,
+          "title": "Origin Url",
+          "type": "string"
+        },
+        "source_type": {
+          "enum": [
+            "git",
+            "tarball",
+            "zip"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "revision": {
+          "default": "",
+          "title": "Revision",
+          "type": "string"
+        }
+      },
+      "required": [
+        "origin_url",
+        "source_type"
+      ],
+      "title": "Fetched",
+      "type": "object"
+    },
+    "FromRecipe": {
+      "additionalProperties": false,
+      "description": "A script as a project's recipe writes it.",
+      "properties": {
+        "kind": {
+          "const": "recipe",
+          "default": "recipe",
+          "title": "Kind",
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectName"
+        },
+        "file": {
+          "enum": [
+            "check_working_environment.sh",
+            "build_experiment_environment.sh",
+            "activate_experiment_environment.sh",
+            "launch.sh",
+            "experiment.sh",
+            "experiment.verify.sh"
+          ],
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "file"
+      ],
+      "title": "FromRecipe",
+      "type": "object"
+    },
+    "GenerateSbom": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "generate_sbom",
+          "default": "generate_sbom",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "GenerateSbom",
+      "type": "object"
+    },
+    "HardwarePatch": {
+      "additionalProperties": false,
+      "properties": {
+        "cpus": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Cpu"
+          },
+          "title": "Cpus",
+          "type": "object"
+        }
+      },
+      "required": [
+        "cpus"
+      ],
+      "title": "HardwarePatch",
+      "type": "object"
+    },
+    "InitializeRee": {
+      "additionalProperties": false,
+      "description": "Make the REE: until a step does, it does not exist.",
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "initialize_ree",
+          "default": "initialize_ree",
+          "title": "Operation",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "InitializeRee",
+      "type": "object"
+    },
+    "LintScripts": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "lint_scripts",
+          "default": "lint_scripts",
+          "title": "Operation",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ScriptTarget"
+          },
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ree",
+        "targets"
+      ],
+      "title": "LintScripts",
+      "type": "object"
+    },
+    "LoadReeBundle": {
+      "additionalProperties": false,
+      "description": "Load what another REE of the exercise exports, as it stands at this step.",
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "load_ree_bundle",
+          "default": "load_ree_bundle",
+          "title": "Operation",
+          "type": "string"
+        },
+        "exported_by": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Exported By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "exported_by"
+      ],
+      "title": "LoadReeBundle",
+      "type": "object"
+    },
+    "MaterializeWorkspace": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "materialize_workspace",
+          "default": "materialize_workspace",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "MaterializeWorkspace",
+      "type": "object"
+    },
+    "ObserveHardware": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "observe_hardware",
+          "default": "observe_hardware",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "ObserveHardware",
+      "type": "object"
+    },
+    "PatchReeDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "patch_ree_definition",
+          "default": "patch_ree_definition",
+          "title": "Operation",
+          "type": "string"
+        },
+        "patch": {
+          "$ref": "#/$defs/DefinitionPatch"
+        }
+      },
+      "required": [
+        "ree",
+        "patch"
+      ],
+      "title": "PatchReeDefinition",
+      "type": "object"
+    },
+    "ProjectName": {
+      "enum": [
+        "apptainer",
+        "conda",
+        "instant",
+        "instant_docker",
+        "java_maven",
+        "notebook",
+        "plotting",
+        "podman",
+        "python_docker",
+        "python_venv",
+        "slurm",
+        "stochastic",
+        "unpinned"
+      ],
+      "title": "ProjectName",
+      "type": "string"
+    },
+    "RemoveSource": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "remove_source",
+          "default": "remove_source",
+          "title": "Operation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "RemoveSource",
+      "type": "object"
+    },
+    "ReviewAcquireSource": {
+      "additionalProperties": false,
+      "description": "Open the review the exercise calls ``review``, or open it afresh.",
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "review_acquire_source",
+          "default": "review_acquire_source",
+          "title": "Operation",
+          "type": "string"
+        },
+        "review": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Review",
+          "type": "string"
+        },
+        "basis": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "independent",
+            "bundled"
+          ],
+          "title": "Basis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "review"
+      ],
+      "title": "ReviewAcquireSource",
+      "type": "object"
+    },
+    "ReviewActivateExperimentEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "review_activate_experiment_environment",
+          "default": "review_activate_experiment_environment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "review": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Review",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "review"
+      ],
+      "title": "ReviewActivateExperimentEnvironment",
+      "type": "object"
+    },
+    "ReviewBuildExperimentEnvironment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "review_build_experiment_environment",
+          "default": "review_build_experiment_environment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "review": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Review",
+          "type": "string"
+        },
+        "basis": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "independent",
+            "bundled"
+          ],
+          "title": "Basis",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "review"
+      ],
+      "title": "ReviewBuildExperimentEnvironment",
+      "type": "object"
+    },
+    "ReviewRunExperiment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "review_run_experiment",
+          "default": "review_run_experiment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "review": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Review",
+          "type": "string"
+        },
+        "experiment": {
+          "minLength": 1,
+          "title": "Experiment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "review",
+        "experiment"
+      ],
+      "title": "ReviewRunExperiment",
+      "type": "object"
+    },
+    "RunExperiment": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "run_experiment",
+          "default": "run_experiment",
+          "title": "Operation",
+          "type": "string"
+        },
+        "experiment": {
+          "minLength": 1,
+          "title": "Experiment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "experiment"
+      ],
+      "title": "RunExperiment",
+      "type": "object"
+    },
+    "ScriptContent": {
+      "discriminator": {
+        "mapping": {
+          "recipe": "#/$defs/FromRecipe",
+          "text": "#/$defs/Text"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FromRecipe"
+        },
+        {
+          "$ref": "#/$defs/Text"
+        }
+      ]
+    },
+    "ScriptTarget": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "build_experiment_environment",
+            "activate_experiment_environment",
+            "experiment_run",
+            "experiment_verify",
+            "launch",
+            "check_working_environment"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "experiment_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment Name"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "ScriptTarget",
+      "type": "object"
+    },
+    "SealRee": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "seal_ree",
+          "default": "seal_ree",
+          "title": "Operation",
+          "type": "string"
+        },
+        "source_included": {
+          "default": true,
+          "title": "Source Included",
+          "type": "boolean"
+        },
+        "experiment_environment_included": {
+          "default": true,
+          "title": "Experiment Environment Included",
+          "type": "boolean"
+        },
+        "results_included": {
+          "default": true,
+          "title": "Results Included",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "SealRee",
+      "type": "object"
+    },
+    "SignRee": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "sign_ree",
+          "default": "sign_ree",
+          "title": "Operation",
+          "type": "string"
+        },
+        "claim": {
+          "const": "author_approval",
+          "default": "author_approval",
+          "title": "Claim",
+          "type": "string"
+        },
+        "signature": {
+          "default": "valid",
+          "enum": [
+            "valid",
+            "foreign_key",
+            "other_seal",
+            "other_claim",
+            "tampered"
+          ],
+          "title": "Signature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree"
+      ],
+      "title": "SignRee",
+      "type": "object"
+    },
+    "SignReview": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "sign_review",
+          "default": "sign_review",
+          "title": "Operation",
+          "type": "string"
+        },
+        "review": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Review",
+          "type": "string"
+        },
+        "signature": {
+          "default": "valid",
+          "enum": [
+            "valid",
+            "foreign_key",
+            "other_seal",
+            "other_record",
+            "tampered"
+          ],
+          "title": "Signature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ree",
+        "review"
+      ],
+      "title": "SignReview",
+      "type": "object"
+    },
+    "Source": {
+      "discriminator": {
+        "mapping": {
+          "fetched": "#/$defs/Fetched",
+          "uploaded": "#/$defs/Uploaded"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Uploaded"
+        },
+        {
+          "$ref": "#/$defs/Fetched"
+        }
+      ]
+    },
+    "Step": {
+      "discriminator": {
+        "mapping": {
+          "acquire_source": "#/$defs/AcquireSource",
+          "activate_experiment_environment": "#/$defs/ActivateExperimentEnvironment",
+          "build_experiment_environment": "#/$defs/BuildExperimentEnvironment",
+          "check_working_environment": "#/$defs/CheckWorkingEnvironment",
+          "cross_check_sbom": "#/$defs/CrossCheckSbom",
+          "evaluate_reproducibility": "#/$defs/EvaluateReproducibility",
+          "generate_sbom": "#/$defs/GenerateSbom",
+          "initialize_ree": "#/$defs/InitializeRee",
+          "lint_scripts": "#/$defs/LintScripts",
+          "load_ree_bundle": "#/$defs/LoadReeBundle",
+          "materialize_workspace": "#/$defs/MaterializeWorkspace",
+          "observe_hardware": "#/$defs/ObserveHardware",
+          "patch_ree_definition": "#/$defs/PatchReeDefinition",
+          "remove_source": "#/$defs/RemoveSource",
+          "review_acquire_source": "#/$defs/ReviewAcquireSource",
+          "review_activate_experiment_environment": "#/$defs/ReviewActivateExperimentEnvironment",
+          "review_build_experiment_environment": "#/$defs/ReviewBuildExperimentEnvironment",
+          "review_run_experiment": "#/$defs/ReviewRunExperiment",
+          "run_experiment": "#/$defs/RunExperiment",
+          "seal_ree": "#/$defs/SealRee",
+          "sign_ree": "#/$defs/SignRee",
+          "sign_review": "#/$defs/SignReview",
+          "suggest_scripts": "#/$defs/SuggestScripts",
+          "write_script": "#/$defs/WriteScript"
+        },
+        "propertyName": "operation"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/InitializeRee"
+        },
+        {
+          "$ref": "#/$defs/AcquireSource"
+        },
+        {
+          "$ref": "#/$defs/RemoveSource"
+        },
+        {
+          "$ref": "#/$defs/LoadReeBundle"
+        },
+        {
+          "$ref": "#/$defs/PatchReeDefinition"
+        },
+        {
+          "$ref": "#/$defs/WriteScript"
+        },
+        {
+          "$ref": "#/$defs/SuggestScripts"
+        },
+        {
+          "$ref": "#/$defs/LintScripts"
+        },
+        {
+          "$ref": "#/$defs/EvaluateReproducibility"
+        },
+        {
+          "$ref": "#/$defs/ObserveHardware"
+        },
+        {
+          "$ref": "#/$defs/CheckWorkingEnvironment"
+        },
+        {
+          "$ref": "#/$defs/MaterializeWorkspace"
+        },
+        {
+          "$ref": "#/$defs/BuildExperimentEnvironment"
+        },
+        {
+          "$ref": "#/$defs/GenerateSbom"
+        },
+        {
+          "$ref": "#/$defs/CrossCheckSbom"
+        },
+        {
+          "$ref": "#/$defs/ActivateExperimentEnvironment"
+        },
+        {
+          "$ref": "#/$defs/RunExperiment"
+        },
+        {
+          "$ref": "#/$defs/SealRee"
+        },
+        {
+          "$ref": "#/$defs/SignRee"
+        },
+        {
+          "$ref": "#/$defs/ReviewAcquireSource"
+        },
+        {
+          "$ref": "#/$defs/ReviewBuildExperimentEnvironment"
+        },
+        {
+          "$ref": "#/$defs/ReviewActivateExperimentEnvironment"
+        },
+        {
+          "$ref": "#/$defs/ReviewRunExperiment"
+        },
+        {
+          "$ref": "#/$defs/SignReview"
+        }
+      ]
+    },
+    "SuggestScripts": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "suggest_scripts",
+          "default": "suggest_scripts",
+          "title": "Operation",
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/ScriptTarget"
+          },
+          "minItems": 1,
+          "title": "Targets",
+          "type": "array"
+        }
+      },
+      "required": [
+        "ree",
+        "targets"
+      ],
+      "title": "SuggestScripts",
+      "type": "object"
+    },
+    "Text": {
+      "additionalProperties": false,
+      "description": "A script given whole.",
+      "properties": {
+        "kind": {
+          "const": "text",
+          "default": "text",
+          "title": "Kind",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Text",
+      "type": "object"
+    },
+    "Uploaded": {
+      "additionalProperties": false,
+      "description": "A project's source, packed as an upload.",
+      "properties": {
+        "kind": {
+          "const": "uploaded",
+          "default": "uploaded",
+          "title": "Kind",
+          "type": "string"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectName"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "Uploaded",
+      "type": "object"
+    },
+    "WriteScript": {
+      "additionalProperties": false,
+      "properties": {
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "operation": {
+          "const": "write_script",
+          "default": "write_script",
+          "title": "Operation",
+          "type": "string"
+        },
+        "script": {
+          "enum": [
+            "build_experiment_environment",
+            "activate_experiment_environment",
+            "experiment_run",
+            "experiment_verify",
+            "launch",
+            "check_working_environment"
+          ],
+          "title": "Script",
+          "type": "string"
+        },
+        "experiment": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Experiment"
+        },
+        "content": {
+          "$ref": "#/$defs/ScriptContent"
+        }
+      },
+      "required": [
+        "ree",
+        "script",
+        "content"
+      ],
+      "title": "WriteScript",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The REEs it names, none of which exists until a step initializes it, the steps run in them in order, and\nthe faults.",
+  "properties": {
+    "format": {
+      "const": "repo2ree-exercise/1",
+      "default": "repo2ree-exercise/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "rees": {
+      "items": {
+        "pattern": "^[a-z][a-z0-9-]{0,31}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Rees",
+      "type": "array"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/Step"
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "faults": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Fault"
+      },
+      "title": "Faults",
+      "type": "array"
+    }
+  },
+  "required": [
+    "rees",
+    "steps"
+  ],
+  "title": "Exercise",
+  "type": "object"
+}
