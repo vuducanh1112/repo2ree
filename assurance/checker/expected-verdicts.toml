@@ -76,3 +76,10 @@ items = ["cancel_run: error", "cancel_run: abandoned"]
 reason = """A cancel is sent only while its command runs on a connected workbench, which takes \
 it at once; an error or a lost connection between sending it and the answer needs a race \
 the gated tiers do not stage."""
+
+[[unreached]]
+items = ["rule:signed-reviews-change-no-more"]
+reason = """It triggers on a commit of a review's history after the review is signed, and no command \
+makes one: core refuses every step of a signed review before an attempt opens, and a bundle that \
+carries a signed review loads it as signed from the start. Only a defect reaches it; the system \
+tier's reviewer test asserts the refusal."""
