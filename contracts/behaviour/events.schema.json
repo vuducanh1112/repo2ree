@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:fc03800bb37ebc607dcc8b04c49452730051605b707440c211c7a0b2993874a2",
+  "x-vocabulary": "sha256:c390346a38b31c3a789a2a02b0e725a002ec294de6cfa450a927364c32e52373",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -23,7 +23,8 @@
       "cross_check_sbom": "Compare the dependencies the source declares with the SBOM.",
       "activate_experiment_environment": "Run the activate experiment environment script alone: it enters the experiment environment and hands over.",
       "run_experiment": "Run one declared experiment and verify its outputs.",
-      "seal_ree": "Freeze the REE and its evidence under one digest: nothing changes after this."
+      "seal_ree": "Freeze the REE and its evidence under one digest: nothing the seal covers changes after this.",
+      "sign_ree": "Add one signed claim about a sealed REE: a Sigstore bundle over its digest, beside what the seal covers."
     },
     "review_operations": {
       "review_acquire_source": "Open a review: acquire the source the author pinned, from its origin or from the REE's own snapshot.",
@@ -321,6 +322,7 @@
                 "activate_experiment_environment",
                 "run_experiment",
                 "seal_ree",
+                "sign_ree",
                 "review_acquire_source",
                 "review_build_experiment_environment",
                 "review_activate_experiment_environment",
@@ -405,6 +407,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       "review_acquire_source",
                       "review_build_experiment_environment",
                       "review_activate_experiment_environment",
@@ -490,6 +493,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       "review_acquire_source",
                       "review_build_experiment_environment",
                       "review_activate_experiment_environment",
@@ -574,6 +578,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       "review_acquire_source",
                       "review_build_experiment_environment",
                       "review_activate_experiment_environment",
@@ -697,7 +702,8 @@
                 "cross_check_sbom",
                 "activate_experiment_environment",
                 "run_experiment",
-                "seal_ree"
+                "seal_ree",
+                "sign_ree"
               ]
             },
             "attempt_id": {
@@ -813,7 +819,8 @@
                       "cross_check_sbom",
                       "activate_experiment_environment",
                       "run_experiment",
-                      "seal_ree"
+                      "seal_ree",
+                      "sign_ree"
                     ]
                   },
                   "attempt_id": {
@@ -961,6 +968,7 @@
                 "activate_experiment_environment",
                 "run_experiment",
                 "seal_ree",
+                "sign_ree",
                 "review_acquire_source",
                 "review_build_experiment_environment",
                 "review_activate_experiment_environment",
@@ -1061,6 +1069,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       "review_acquire_source",
                       "review_build_experiment_environment",
                       "review_activate_experiment_environment",
@@ -1163,6 +1172,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       "review_acquire_source",
                       "review_build_experiment_environment",
                       "review_activate_experiment_environment",
@@ -1264,6 +1274,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       "review_acquire_source",
                       "review_build_experiment_environment",
                       "review_activate_experiment_environment",
@@ -1394,6 +1405,7 @@
                 "activate_experiment_environment",
                 "run_experiment",
                 "seal_ree",
+                "sign_ree",
                 null
               ]
             },
@@ -1475,6 +1487,7 @@
                       "activate_experiment_environment",
                       "run_experiment",
                       "seal_ree",
+                      "sign_ree",
                       null
                     ]
                   },
@@ -2315,6 +2328,7 @@
                           "activate_experiment_environment",
                           "run_experiment",
                           "seal_ree",
+                          "sign_ree",
                           "review_acquire_source",
                           "review_build_experiment_environment",
                           "review_activate_experiment_environment",

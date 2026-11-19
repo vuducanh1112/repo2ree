@@ -256,16 +256,9 @@ class ReeSubject(_DomainModel):
     capture: CapturePolicy = Field(default_factory=CapturePolicy)
 
 
-class Signature(_DomainModel):
-    algorithm: str = Field(min_length=1)
-    verification_material: str = Field(min_length=1)
-    value: str = Field(min_length=1)
-
-
 class ReeSeal(_DomainModel):
     sealed_at: UtcInstant
     ree_digest: Annotated[Digest, digest_of("subject")]
-    signature: Signature | None = None
 
 
 def canonical_subject_digest(subject: ReeSubject) -> Digest:
@@ -312,7 +305,6 @@ __all__ = [
     "ReeSeal",
     "ReeStatus",
     "ReeSubject",
-    "Signature",
     "SourceDefinition",
     "canonical_subject_digest",
     "ree_status",

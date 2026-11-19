@@ -153,6 +153,8 @@ class CommittedFile(EvidenceModel):
     digest: str
     size: int
     storage: Literal["git", "lfs"]
+    # What git holds of it, for the document rules that read a file; None for an LFS payload.
+    content: bytes | None = None
 
 
 class Snapshot(EvidenceModel):

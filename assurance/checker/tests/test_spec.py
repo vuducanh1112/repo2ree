@@ -401,7 +401,7 @@ def test_the_author_rules_name_the_action_groups_they_mean() -> None:
 
 def test_the_catalogue_names_every_operation_once_and_each_review_the_operation_it_reproduces() -> None:
     spec = load_spec()
-    assert len(spec.operations) == 18
+    assert len(spec.operations) == 19
     assert set(spec.review_operations) == {
         "review_acquire_source",
         "review_build_experiment_environment",

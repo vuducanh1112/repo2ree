@@ -1956,17 +1956,6 @@
           "x-digest-of": {
             "covers": "subject"
           }
-        },
-        "signature": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Signature"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
         }
       },
       "required": [
@@ -2186,33 +2175,6 @@
         "launch_script_digest"
       ],
       "title": "RunExperimentReceipt",
-      "type": "object"
-    },
-    "Signature": {
-      "additionalProperties": false,
-      "properties": {
-        "algorithm": {
-          "minLength": 1,
-          "title": "Algorithm",
-          "type": "string"
-        },
-        "verification_material": {
-          "minLength": 1,
-          "title": "Verification Material",
-          "type": "string"
-        },
-        "value": {
-          "minLength": 1,
-          "title": "Value",
-          "type": "string"
-        }
-      },
-      "required": [
-        "algorithm",
-        "verification_material",
-        "value"
-      ],
-      "title": "Signature",
       "type": "object"
     },
     "SourceDefinition": {

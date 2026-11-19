@@ -52,7 +52,7 @@ kind = "inventory"
 sealed = true
 summary = "A sealed REE's contents list exactly the files its commit holds, each by its digest and size."
 inventory = "contents.entries"
-except = ["ree.json"]
+except = ["ree.json", "signatures/"]
 
 [[rule]]
 id = "sealed-results-are-what-ran"
@@ -62,3 +62,13 @@ sealed = true
 absent = "unevidenced"
 summary = "A sealed REE that carries an experiment's results carries the outputs its receipt digested."
 pairs = [{ digest = "receipts.experiments[*].produced_output_digest", paths = "definition.experiments[*].output_paths", root = "results/{slug}/" }]
+
+[[rule]]
+id = "signatures-are-the-seal"
+pattern = "signature"
+sealed = true
+summary = "Every signature a sealed REE carries is a Sigstore bundle whose statement names the seal's digest, under the claim its file is named for, signed by the key its certificate holds."
+files = "signatures/"
+subject = "seal.ree_digest"
+# A signature's file is named for its claim; each claim is one in-toto predicate type.
+claims = { author_approval = "https://repo2ree.org/claims/author-approval/v1" }

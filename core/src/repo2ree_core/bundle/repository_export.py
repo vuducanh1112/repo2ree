@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 from repo2ree_core.bundle.export_format import ScopeExport
 from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.history import HISTORY_REF, GitHistory, HistoryCaptureError
-from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.layout import SIGNATURES_DIRNAME, ReeLayout
 from repo2ree_core.persistence.lfs import LfsPointer, copy_object
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
 from repo2ree_protocol.tools import find_tool
@@ -121,8 +121,13 @@ def verify_inventory(root: Path) -> None:
     if ree.seal is None:
         return
     actual: set[str] = set()
+    # Signatures are about the seal, beside what it covers.
     for directory, dirs, files in root.walk():
-        dirs[:] = [name for name in dirs if name not in {".git", "reviews"}]
+        dirs[:] = [
+            name
+            for name in dirs
+            if name not in {".git", "reviews"} and not (directory == root and name == SIGNATURES_DIRNAME)
+        ]
         actual.update((directory / name).relative_to(root).as_posix() for name in files)
     expected = {str(entry.path) for entry in ree.subject.contents.entries} | {"ree.json"}
     if actual != expected:

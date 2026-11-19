@@ -9,6 +9,7 @@ import zipfile
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
+from typing import Final
 
 from repo2ree_core.bundle.export_format import RepositoryExport, ScopeExport
 from repo2ree_core.bundle.repository_export import transfer_scope
@@ -16,6 +17,9 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import history_scopes
+
+# The operations whose commit is a sealed REE as it is exported: the seal, and each signature added beside it.
+SEALED_BY: Final = frozenset({"seal_ree", "sign_ree"})
 
 
 @contextmanager
@@ -36,11 +40,12 @@ def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
                 if scope == layout:
                     ree = ReeDirectory(layout).read_ree()
                     if ree.seal:
-                        # The seal commit is immutable even if review operations follow it.
+                        # The seal commit is immutable even if review operations follow it; signing only adds
+                        # signatures beside it, so the newest signature's commit is the seal's with them.
                         found = None
                         for commit, record in history.completed_operations():
                             if (
-                                record["command"]["operation"] != "seal_ree"
+                                record["command"]["operation"] not in SEALED_BY
                                 or record["operation_status"] != "succeeded"
                             ):
                                 continue

@@ -99,14 +99,14 @@ summary = "The committed REE changes only through dispatched operations, never b
 when = { entity = "Ree", from = "draft", to = ["draft", "sealed"] }
 require = { where = { cause = "operation" } }
 
-# A Ree transition is witnessed only where the committed tree changed, so any
-# transition out of sealed is a change to a sealed REE.
+# A Ree transition is witnessed only where the committed tree changed. Once sealed, the only change
+# is a signature added by an operation; what the signature may touch is the aggregate's to say.
 [[invariant]]
-id = "sealed-rees-are-frozen"
-pattern = "excludes"
-summary = "A sealed REE's committed tree never changes again."
-when = { entity = "Ree", to = ["draft", "sealed"] }
-require = { entity = "Ree", in_states = ["sealed"] }
+id = "sealed-rees-are-only-signed"
+pattern = "guard"
+summary = "A sealed REE's committed tree changes only by an operation that signs it."
+when = { entity = "Ree", from = "sealed", to = ["draft", "sealed"] }
+require = { where = { operation = "sign_ree", cause = "operation" } }
 
 # Evidence an attempt brings into being is that attempt's work: it exists only if the
 # attempt succeeded, and only if it is the work that produces that kind of evidence. A

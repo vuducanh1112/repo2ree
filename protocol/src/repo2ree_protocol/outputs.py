@@ -28,6 +28,7 @@ from repo2ree_ree.review import (
     ReviewRunExperimentReceipt,
     SourceComparison,
 )
+from repo2ree_ree.signature import SignatureClaim
 
 
 class NoOutputs(BaseModel):
@@ -178,6 +179,14 @@ class SealOutputs(BaseModel):
     entry_count: int
 
 
+class SignOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    claim: SignatureClaim
+    path: str
+    ree_digest: Digest
+
+
 class BuildExperimentEnvironmentFailureOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -221,6 +230,7 @@ OUTPUTS: dict[str, Any] = {
     "suggest_scripts": InferenceReport,
     "lint_scripts": LintScriptsOutputs,
     "seal_ree": SealOutputs,
+    "sign_ree": SignOutputs,
 }
 
 _ADAPTERS = {operation: TypeAdapter(shape) for operation, shape in OUTPUTS.items()}

@@ -16,9 +16,7 @@ from repo2ree_core.domain.ree.transitions import ReePreconditionError, record_se
 from repo2ree_core.persistence.capture_policy import capture_plan, write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import list_tree_relpaths
-from repo2ree_core.persistence.layout import (
-    ReeLayout,
-)
+from repo2ree_core.persistence.layout import SIGNATURES_DIRNAME, ReeLayout
 from repo2ree_core.persistence.lfs import store_payload
 from repo2ree_core.persistence.repository import save_ree
 from repo2ree_protocol.outputs import SealOutputs
@@ -111,7 +109,12 @@ def seal_ree(
     prepare_reproducer(layout, ree)
     write_capture_controls(layout, ree)
     plan = capture_plan(layout, ree)
-    selected = [entry for entry in plan.entries if entry.path != "ree.json"]
+    # The document holds the seal, and a signature is about the seal: neither is among what it covers.
+    selected = [
+        entry
+        for entry in plan.entries
+        if entry.path != "ree.json" and not entry.path.startswith(f"{SIGNATURES_DIRNAME}/")
+    ]
     total = sum((layout.root / entry.path).lstat().st_size for entry in selected)
     processed = 0
     inventory: list[BundleEntry] = []

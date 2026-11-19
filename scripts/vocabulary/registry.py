@@ -196,6 +196,11 @@ VOCABULARIES = (
         "The operations that run a script inside the experiment environment.",
     ),
     _source(
+        "core.sealed_by",
+        "core/src/repo2ree_core/bundle/download.py::SEALED_BY",
+        "The operations whose commit is a sealed REE as it is exported: the seal and each signature.",
+    ),
+    _source(
         "core.fixed_scripts",
         "core/src/repo2ree_core/operations/handlers/author/definition_authoring.py::FIXED_SCRIPTS",
         "The definition's declarations of the scripts every REE has.",
@@ -343,6 +348,7 @@ EDGES = (
     Edge("traceview.step_order", WITHIN, ("spec.receipts",)),
     Edge("cli.review_all", EQUALS, ("review_operations",)),
     Edge("core.runnable_kind", WITHIN, ("operations",)),
+    Edge("core.sealed_by", WITHIN, ("operations",)),
     Edge("core.fixed_scripts", WITHIN, ("ree.definition",)),
     Edge("authoring.fixed_targets", WITHIN, ("script.kinds",)),
     Edge("core.fixed_targets", WITHIN, ("script.kinds",)),

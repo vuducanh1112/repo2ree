@@ -312,7 +312,7 @@ class BlobDigests:
     def __init__(self, executable: str, repository: Path) -> None:
         self._executable = executable
         self._repository = repository
-        self._known: dict[str, tuple[str, int]] = {}
+        self._known: dict[str, tuple[str, int, bytes | None]] = {}
 
     def of(self, committed: Committed) -> dict[str, CommittedFile]:
         unknown = sorted({blob for blob, _ in committed.values()} - self._known.keys())
@@ -320,8 +320,8 @@ class BlobDigests:
             self._read(unknown)
         files: dict[str, CommittedFile] = {}
         for path, (blob, storage) in committed.items():
-            digest, size = self._known[blob]
-            files[path] = CommittedFile(digest=digest, size=size, storage=storage)
+            digest, size, content = self._known[blob]
+            files[path] = CommittedFile(digest=digest, size=size, storage=storage, content=content)
         return files
 
     def _read(self, blobs: list[str]) -> None:
@@ -341,9 +341,9 @@ class BlobDigests:
             offset = end + 1 + size + 1
             pointer = LFS_POINTER.match(content)
             if pointer is not None:
-                self._known[blob] = (f"sha256:{pointer['oid'].decode()}", int(pointer["size"]))
+                self._known[blob] = (f"sha256:{pointer['oid'].decode()}", int(pointer["size"]), None)
             else:
-                self._known[blob] = (f"sha256:{hashlib.sha256(content).hexdigest()}", size)
+                self._known[blob] = (f"sha256:{hashlib.sha256(content).hexdigest()}", size, content)
 
 
 def path_fields(value: JsonValue, path: str = "") -> Iterator[tuple[str, str]]:

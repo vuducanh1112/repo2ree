@@ -75,6 +75,8 @@ class AggregateResult(EvidenceModel):
     files: int = 0
     # Committed files judged against the document's tree.
     committed: int = 0
+    # Signature file changes judged against the operations that sign, and the document's state.
+    signatures: int = 0
     findings: tuple[Finding, ...] = ()
 
 

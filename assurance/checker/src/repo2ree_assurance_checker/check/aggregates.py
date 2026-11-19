@@ -62,6 +62,7 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
     found = moves(aggregate, evidence)
     files = [change for change in evidence.files if aggregate.overlay and change.path.startswith(aggregate.overlay)]
     committed = [change for change in evidence.files if aggregate.layout and change.after is not None]
+    signed = [file for file in evidence.files if aggregate.signatures and file.path.startswith(aggregate.signatures)]
     tally = Counter((m.machine.kind, m.machine.name, m.source, m.target, m.operation, m.allowed) for m in found)
     return AggregateResult(
         aggregate=aggregate.name,
@@ -81,9 +82,11 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
             if not move.allowed
         )
         + tuple(overlay_findings(aggregate, files, evidence.changes))
-        + tuple(tree_findings(aggregate, committed)),
+        + tuple(tree_findings(aggregate, committed))
+        + tuple(signature_findings(aggregate, evidence)),
         files=len(files),
         committed=len(committed),
+        signatures=len(signed),
     )
 
 
@@ -120,6 +123,34 @@ def overlay_findings(
                 continue
             if not any(change.path == part or change.path.startswith(f"{part}.") for change in moved):
                 yield _finding(subject, f"changed by {file.operation}, but {part}, which claims it, did not", file)
+
+
+def signature_findings(aggregate: AggregateSpec, evidence: Evidence) -> Iterator[Finding]:
+    """A signature is added only by an operation that signs, or the restore, to a sealed document, and never
+    changed or removed; a commit that signs changes nothing beside the signatures it adds."""
+    directory = aggregate.signatures
+    if directory is None:
+        return
+    states = {
+        (event.partition, event.position): event.target_state
+        for event in evidence.events
+        if event.subject == aggregate.name and event.kind == "transition"
+    }
+    for file in evidence.files:
+        subject = f"{aggregate.name} {file.partition} {file.path}"
+        moved_by = operation(aggregate, file.cause, file.operation)
+        signing = file.cause == "operation" and file.operation in aggregate.signed_by
+        restoring = file.cause == "operation" and file.operation == aggregate.restored_by
+        if not file.path.startswith(directory):
+            if signing:
+                yield _finding(subject, f"changed by {moved_by}, which only adds signatures", file)
+        elif not (signing or restoring):
+            yield _finding(subject, f"changed by {moved_by}, but only {', '.join(aggregate.signed_by)} signs", file)
+        elif signing and (file.before is not None or file.after is None):
+            done = "removed" if file.after is None else "changed"
+            yield _finding(subject, f"{done} by {moved_by}, but a signature, once added, stays as it is", file)
+        elif file.after is not None and states.get((file.partition, file.position)) != "sealed":
+            yield _finding(subject, f"added by {moved_by} to a document that is not sealed", file)
 
 
 def tree_findings(aggregate: AggregateSpec, files: Sequence[FileChange]) -> Iterator[Finding]:
@@ -164,8 +195,9 @@ def aggregate_rule(result: AggregateResult) -> RuleResult:
         kind="aggregate",
         summary=f"Every part of the {result.aggregate} document moves only along an edge that allows the "
         "operation that moved it, every file of its overlay is a field's, changing with it, and every file it "
-        "commits is an entry of its tree, stored as the tree says.",
-        triggered=sum(move.count for move in result.moves) + result.files + result.committed,
+        "commits is an entry of its tree, stored as the tree says; a signature is only ever added, to a sealed "
+        "document, by an operation that signs it.",
+        triggered=sum(move.count for move in result.moves) + result.files + result.committed + result.signatures,
         findings=result.findings,
     )
 

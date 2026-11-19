@@ -24,6 +24,7 @@
           "review_run_experiment": "#/$defs/ReviewRunExperimentCommand",
           "run_experiment": "#/$defs/RunExperimentCommand",
           "seal_ree": "#/$defs/SealReeCommand",
+          "sign_ree": "#/$defs/SignReeCommand",
           "suggest_scripts": "#/$defs/SuggestScriptsCommand",
           "write_script": "#/$defs/WriteScriptCommand"
         },
@@ -92,6 +93,9 @@
         },
         {
           "$ref": "#/$defs/SealReeCommand"
+        },
+        {
+          "$ref": "#/$defs/SignReeCommand"
         }
       ]
     },
@@ -241,6 +245,9 @@
     },
     "seal_ree": {
       "$ref": "#/$defs/SealOutputs"
+    },
+    "sign_ree": {
+      "$ref": "#/$defs/SignOutputs"
     }
   },
   "x-queries": {
@@ -6210,17 +6217,6 @@
           "x-digest-of": {
             "covers": "subject"
           }
-        },
-        "signature": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Signature"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
         }
       },
       "required": [
@@ -8353,31 +8349,77 @@
       "title": "ShowQuery",
       "type": "object"
     },
-    "Signature": {
+    "SignOutputs": {
       "additionalProperties": false,
       "properties": {
-        "algorithm": {
-          "minLength": 1,
-          "title": "Algorithm",
+        "claim": {
+          "const": "author_approval",
+          "title": "Claim",
           "type": "string"
         },
-        "verification_material": {
-          "minLength": 1,
-          "title": "Verification Material",
+        "path": {
+          "title": "Path",
           "type": "string"
         },
-        "value": {
-          "minLength": 1,
-          "title": "Value",
+        "ree_digest": {
+          "title": "Ree Digest",
           "type": "string"
         }
       },
       "required": [
-        "algorithm",
-        "verification_material",
-        "value"
+        "claim",
+        "path",
+        "ree_digest"
       ],
-      "title": "Signature",
+      "title": "SignOutputs",
+      "type": "object"
+    },
+    "SignReeArgs": {
+      "additionalProperties": false,
+      "description": "Add a Sigstore bundle, staged at /ree/upload-staging/<upload_token>.bin, as the sealed REE's signature\nunder ``claim``: its statement must name the seal's digest under the claim's predicate type.",
+      "properties": {
+        "claim": {
+          "const": "author_approval",
+          "default": "author_approval",
+          "description": "What the signature claims.",
+          "title": "Claim",
+          "type": "string"
+        },
+        "upload_token": {
+          "description": "The staged bundle's token.",
+          "title": "Upload Token",
+          "type": "string"
+        },
+        "archive_name": {
+          "description": "The staged bundle's file name.",
+          "title": "Archive Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "upload_token",
+        "archive_name"
+      ],
+      "title": "SignReeArgs",
+      "type": "object"
+    },
+    "SignReeCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "sign_ree",
+          "default": "sign_ree",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SignReeArgs"
+        }
+      },
+      "required": [
+        "args"
+      ],
+      "title": "SignReeCommand",
       "type": "object"
     },
     "SlurmObservation": {

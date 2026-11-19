@@ -13,6 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_ree.model import ReeDefinition
+from repo2ree_ree.signature import SignatureClaim
 
 
 class StrictRequestModel(BaseModel):
@@ -101,6 +102,15 @@ class WriteScriptPayload(StrictRequestModel):
     path: str
     content: str
     if_match: str | None = None
+
+
+class SignReePayload(StrictRequestModel):
+    """Add a staged Sigstore bundle over the sealed REE's digest as its signature under ``claim``."""
+
+    claim: SignatureClaim = "author_approval"
+    upload_token: str
+    archive_name: str
+    idempotency_key: str | None = None
 
 
 class SealReePayload(StrictRequestModel):

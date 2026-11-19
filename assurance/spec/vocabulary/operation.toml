@@ -24,7 +24,8 @@ generate_sbom = "List the software in the built experiment environment."
 cross_check_sbom = "Compare the dependencies the source declares with the SBOM."
 activate_experiment_environment = "Run the activate experiment environment script alone: it enters the experiment environment and hands over."
 run_experiment = "Run one declared experiment and verify its outputs."
-seal_ree = "Freeze the REE and its evidence under one digest: nothing changes after this."
+seal_ree = "Freeze the REE and its evidence under one digest: nothing the seal covers changes after this."
+sign_ree = "Add one signed claim about a sealed REE: a Sigstore bundle over its digest, beside what the seal covers."
 
 [review_operations]
 review_acquire_source = "Open a review: acquire the source the author pinned, from its origin or from the REE's own snapshot."

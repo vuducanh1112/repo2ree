@@ -28,6 +28,7 @@ from repo2ree_core.operations.handlers.author.patch_ree_definition import handle
 from repo2ree_core.operations.handlers.author.remove_source import handle_remove_source
 from repo2ree_core.operations.handlers.author.run_experiment import handle_run_experiment
 from repo2ree_core.operations.handlers.author.seal_ree import handle_seal_ree
+from repo2ree_core.operations.handlers.author.sign_ree import handle_sign_ree
 from repo2ree_core.operations.handlers.author.suggest_scripts import (
     handle_suggest_scripts,
 )
@@ -62,6 +63,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
     RunExperimentCommand,
     SealReeCommand,
+    SignReeCommand,
     SuggestScriptsCommand,
     WriteScriptCommand,
 )
@@ -184,6 +186,8 @@ def _dispatch(
         return handle_materialize_workspace(layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, LoadReeBundleCommand):
         return handle_load_ree_bundle(cmd.args, layout=layout, log=log, is_canceled=cancel)
+    if isinstance(cmd, SignReeCommand):
+        return handle_sign_ree(cmd.args, layout=layout, log=log)
     if isinstance(cmd, WriteScriptCommand):
         return handle_write_script(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, PatchReeDefinitionCommand):

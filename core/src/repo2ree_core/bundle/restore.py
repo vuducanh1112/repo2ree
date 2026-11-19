@@ -15,6 +15,7 @@ from repo2ree_core.persistence.layout import (
     BUNDLE_OVERLAY_PREFIX,
     BUNDLE_REE_MANIFEST_ENTRY_PATH,
     BUNDLE_RESULTS_PREFIX,
+    BUNDLE_SIGNATURES_PREFIX,
     BUNDLE_SNAPSHOT_ENTRY_PATH,
     ReeLayout,
 )
@@ -27,7 +28,7 @@ from repo2ree_ree.primitives import ReePath
 def _actual_inventory(bundle_root: Path) -> BundleContents:
     entries: list[BundleEntry] = []
     for path in list_tree_relpaths(bundle_root):
-        if path == BUNDLE_REE_MANIFEST_ENTRY_PATH:
+        if path == BUNDLE_REE_MANIFEST_ENTRY_PATH or path.startswith(BUNDLE_SIGNATURES_PREFIX):
             continue
         absolute = bundle_root / path
         entries.append(BundleEntry(path=ReePath(path), digest=digest_file(absolute), size=absolute.stat().st_size))
@@ -64,13 +65,21 @@ def restore_ree_bundle(
     if actual != ree.subject.contents:
         raise ValueError("bundle contents do not match the REE subject inventory")
 
-    for target in (layout.upstream, layout.overlay, layout.artifacts, layout.workspace, layout.results):
+    for target in (
+        layout.upstream,
+        layout.overlay,
+        layout.artifacts,
+        layout.workspace,
+        layout.results,
+        layout.signatures,
+    ):
         shutil.rmtree(target, ignore_errors=True)
         target.mkdir(parents=True, exist_ok=True)
     source_restored = _restore_file(bundle_root / BUNDLE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive)
     overlay_files = _restore_tree(bundle_root / BUNDLE_OVERLAY_PREFIX, layout.overlay)
     artifact_files = _restore_tree(bundle_root / BUNDLE_ARTIFACTS_PREFIX, layout.artifacts)
     _restore_tree(bundle_root / BUNDLE_RESULTS_PREFIX, layout.results)
+    _restore_tree(bundle_root / BUNDLE_SIGNATURES_PREFIX, layout.signatures)
     store.write_ree(ree)
     return BundleLoadOutputs(
         name=ree.subject.definition.name,

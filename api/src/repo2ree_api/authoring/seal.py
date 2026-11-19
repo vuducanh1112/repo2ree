@@ -21,6 +21,7 @@ from repo2ree_api.contracts import (
     LoadReeBundlePayload,
     RunSummary,
     SealReePayload,
+    SignReePayload,
     UploadInitPayload,
     UploadInitResponse,
     UploadStoredResponse,
@@ -34,7 +35,14 @@ from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.archives import archive_download_filename, spool_chunks
 from repo2ree_api.workbench.commands import ree_command_span, require_handle
 from repo2ree_api.workbench.uploads import mint_upload_token, stage_upload_bytes
-from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand, SealReeArgs, SealReeCommand
+from repo2ree_protocol.command import (
+    LoadReeBundleArgs,
+    LoadReeBundleCommand,
+    SealReeArgs,
+    SealReeCommand,
+    SignReeArgs,
+    SignReeCommand,
+)
 from repo2ree_protocol.document import WorkbenchReeDocument
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import ReeRoute, WorkbenchUnavailableError
@@ -135,6 +143,65 @@ def seal_ree_route(ree_id: str, payload: SealReePayload) -> RunSummary:
         request_payload=payload.model_dump(),
         canceled_message="REE sealing canceled",
         after_success=record_sealed_ree,
+    )
+    return RunSummary.model_validate(run_summary(run_state))
+
+
+@seal_router.post(
+    "/api/v1/rees/{ree_id}/signature:upload-init",
+    operation_id="initializeSignatureUpload",
+    response_model=UploadInitResponse,
+    responses=ERROR_RESPONSES,
+)
+def signature_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
+    """Open a staging slot for a Sigstore bundle over the sealed REE's digest (see ``sign-ree``)."""
+    return UploadInitResponse.model_validate(
+        mint_upload_token(ree_id, payload, upload_route="signature:upload", purpose="signature", action="sign_ree")
+    )
+
+
+@seal_router.put(
+    "/api/v1/rees/{ree_id}/signature:upload/{upload_token}",
+    operation_id="uploadSignatureBytes",
+    response_model=UploadStoredResponse,
+    responses=ERROR_RESPONSES,
+)
+async def store_signature_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
+    return UploadStoredResponse.model_validate(
+        await stage_upload_bytes(ree_id, upload_token, request, purpose="signature")
+    )
+
+
+@seal_router.post(
+    "/api/v1/rees/{ree_id}/sign-ree",
+    operation_id="signRee",
+    openapi_extra=runs("sign_ree"),
+    response_model=RunSummary,
+    responses=ERROR_RESPONSES,
+)
+def sign_ree_route(ree_id: str, payload: SignReePayload) -> RunSummary:
+    """Add the staged bundle as the sealed REE's signature, beside what the seal covers."""
+    run_state = start_staged_upload_run(
+        ree_id,
+        upload_token=payload.upload_token,
+        archive_name=payload.archive_name,
+        purpose="signature",
+        action="sign_ree",
+        command=SignReeCommand(
+            args=SignReeArgs(claim=payload.claim, upload_token=payload.upload_token, archive_name=payload.archive_name)
+        ),
+        request_payload={
+            "claim": payload.claim,
+            "upload_token": payload.upload_token,
+            "archive_name": payload.archive_name,
+        },
+        messages=StagedUploadLog(
+            starting=f"Signing the REE with {payload.archive_name}",
+            canceled="REE signing canceled",
+            copied="Signature copied; adding it to the REE",
+            succeeded="REE signed",
+        ),
+        idempotency_key=payload.idempotency_key,
     )
     return RunSummary.model_validate(run_summary(run_state))
 

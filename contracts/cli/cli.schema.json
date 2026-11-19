@@ -1099,6 +1099,42 @@
     },
     {
       "words": [
+        "sign-ree"
+      ],
+      "summary": "Add a Sigstore bundle (--bundle) over the sealed REE's digest as its signature",
+      "help": "Add a Sigstore bundle (--bundle) over the sealed REE's digest as its signature.\n\nSign the seal's digest with Sigstore elsewhere, as an in-toto statement whose predicate type is the claim's, and give the bundle here; the REE keeps it beside what the seal covers.",
+      "runs": true,
+      "operations": [
+        "sign_ree"
+      ],
+      "params": [
+        {
+          "name": "--bundle",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "The Sigstore bundle to add, staged in the REE.",
+          "type": "file"
+        },
+        {
+          "name": "--claim",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "What the signature claims.  [default: author_approval]",
+          "choices": [
+            "author_approval"
+          ]
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/SignOutputs"
+      }
+    },
+    {
+      "words": [
         "status"
       ],
       "summary": "Show where the REE stands: each step, its evidence, and what to run next.",
@@ -6192,17 +6228,6 @@
           "x-digest-of": {
             "covers": "subject"
           }
-        },
-        "signature": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Signature"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null
         }
       },
       "required": [
@@ -8149,31 +8174,29 @@
       "title": "ShellCommandCandidate",
       "type": "object"
     },
-    "Signature": {
+    "SignOutputs": {
       "additionalProperties": false,
       "properties": {
-        "algorithm": {
-          "minLength": 1,
-          "title": "Algorithm",
+        "claim": {
+          "const": "author_approval",
+          "title": "Claim",
           "type": "string"
         },
-        "verification_material": {
-          "minLength": 1,
-          "title": "Verification Material",
+        "path": {
+          "title": "Path",
           "type": "string"
         },
-        "value": {
-          "minLength": 1,
-          "title": "Value",
+        "ree_digest": {
+          "title": "Ree Digest",
           "type": "string"
         }
       },
       "required": [
-        "algorithm",
-        "verification_material",
-        "value"
+        "claim",
+        "path",
+        "ree_digest"
       ],
-      "title": "Signature",
+      "title": "SignOutputs",
       "type": "object"
     },
     "SlurmObservation": {

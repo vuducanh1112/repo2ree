@@ -15,7 +15,7 @@ summary = "The author REE's committed state: authored while draft, frozen once s
 
 [states]
 draft = "Authoring: definition, files, and receipts may change."
-sealed = "Sealed: the committed tree is final."
+sealed = "Sealed: what the seal covers is final; only signatures are added beside it."
 
 [facts]
 # The capture commit that produced this state.

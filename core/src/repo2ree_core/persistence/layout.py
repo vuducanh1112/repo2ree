@@ -50,6 +50,7 @@ RECEIPTS_DIRNAME = tree.RECEIPTS
 REVIEWS_DIRNAME = tree.REVIEWS
 REVIEW_RECORD_FILENAME = tree.REVIEW_RECORD
 COMPARISONS_DIRNAME = tree.COMPARISONS
+SIGNATURES_DIRNAME = tree.SIGNATURES
 
 # ================================================
 # Bundle Layout
@@ -72,6 +73,7 @@ BUNDLE_SNAPSHOT_ENTRY_PATH = f"{BUNDLE_ROOT_PREFIX}{SNAPSHOT_FILENAME}"
 BUNDLE_OVERLAY_PREFIX = f"{BUNDLE_ROOT_PREFIX}{OVERLAY_DIRNAME}/"
 BUNDLE_ARTIFACTS_PREFIX = f"{BUNDLE_ROOT_PREFIX}{ARTIFACTS_DIRNAME}/"
 BUNDLE_RESULTS_PREFIX = f"{BUNDLE_ROOT_PREFIX}{RESULTS_DIRNAME}/"
+BUNDLE_SIGNATURES_PREFIX = f"{BUNDLE_ROOT_PREFIX}{SIGNATURES_DIRNAME}/"
 # The reproducer's own entries: a bundle is meant to be run by a human who
 # unpacked it, so its entry point and instructions sit at the top level rather
 # than under ``ree/``. The scripts they call are the workbench's own, which is
@@ -117,7 +119,7 @@ class ReeLayout:
     @property
     def history_trees(self) -> tuple[Path, ...]:
         """Open-ended state subtrees, including arbitrary user filenames."""
-        return (self.overlay,)
+        return (self.overlay, self.signatures)
 
     @property
     def acquire_script(self) -> Path:
@@ -143,6 +145,11 @@ class ReeLayout:
     @property
     def overlay(self) -> Path:
         return self.root / OVERLAY_DIRNAME
+
+    @property
+    def signatures(self) -> Path:
+        """Signed claims about the sealed REE, beside what its seal covers."""
+        return self.root / SIGNATURES_DIRNAME
 
     @property
     def workspace(self) -> Path:

@@ -243,6 +243,10 @@ class AggregateSpec(SpecModel):
     receipt_entity: Name  # Whose transitions are the receipt standings.
     # The committed directory whose every file some field claims (``files``); None: no such directory.
     overlay: str | None = None
+    # The committed directory of signed claims about the sealed document, beside what its seal covers: each file
+    # added only by ``signed_by`` (or the restore) while sealed, and never changed or removed after.
+    signatures: str | None = None
+    signed_by: tuple[Operation, ...] = ()
     # The contract stating the document's file tree, from the repository root; the loader reads it into ``layout``.
     tree: str | None = None
     layout: TreeEntry | None = None
@@ -291,6 +295,10 @@ class AggregateSpec(SpecModel):
         taking = {op for machine in self.machines for edge in machine.edges for op in edge.by}
         if moving := set(self.writes_nothing) & taking:
             raise ValueError(f"{self.name}: operations that write nothing take edges: {sorted(moving)}")
+        if (self.signatures is None) != (not self.signed_by):
+            raise ValueError(f"{self.name}: names signatures exactly when it names the operations that sign")
+        if signing := set(self.signed_by) & set(self.writes_nothing):
+            raise ValueError(f"{self.name}: operations that sign write a signature: {sorted(signing)}")
         return self
 
     def claim(self, path: str) -> tuple[str, str] | None:

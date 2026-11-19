@@ -1,12 +1,7 @@
 {
   "seal": {
     "ree_digest": "sha256:15dbf44bd89095d1c2dca3e7ea92a76005786926fd9014a411f7cdfc2bc564f8",
-    "sealed_at": "2026-10-01T09:30:00.123456Z",
-    "signature": {
-      "algorithm": "ed25519",
-      "value": "c2lnbmF0dXJl",
-      "verification_material": "maximal-key"
-    }
+    "sealed_at": "2026-10-01T09:30:00.123456Z"
   },
   "subject": {
     "capture": {

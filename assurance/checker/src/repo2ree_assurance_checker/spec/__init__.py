@@ -295,7 +295,7 @@ def _spelled_out(
 
 def _named_operations(aggregate: AggregateSpec) -> set[str]:
     taken = {operation for machine in aggregate.machines for edge in machine.edges for operation in edge.by}
-    return taken | {aggregate.created_by, aggregate.restored_by, *aggregate.writes_nothing}
+    return taken | {aggregate.created_by, aggregate.restored_by, *aggregate.writes_nothing, *aggregate.signed_by}
 
 
 def operation_problems(spec: Spec) -> list[str]:

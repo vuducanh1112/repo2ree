@@ -23,10 +23,13 @@ Kind = Literal["file", "directory"]
 # Who writes it. ``acquired``: the source acquisition. ``authored``: the author, through the file APIs.
 # ``produced``: a run, as evidence. ``derived``: rebuilt from other entries at any time.
 # ``repo2ree``: repo2ree itself, the same for every REE. ``working``: the state of runs in progress.
-Origin = Literal["document", "acquired", "authored", "produced", "derived", "repo2ree", "working"]
+# ``signed``: a signer, about the sealed REE.
+Origin = Literal["document", "acquired", "authored", "produced", "derived", "repo2ree", "working", "signed"]
 # How a capture carries it: committed, committed as an LFS payload, or not at all.
 Capture = Literal["git", "lfs", "never"]
-Key = Literal["experiment", "experiment_slug", "experiment_environment", "operation", "step", "run", "review", "upload"]
+Key = Literal[
+    "experiment", "experiment_slug", "experiment_environment", "operation", "step", "run", "review", "upload", "claim"
+]
 
 REE_MANIFEST = "ree.json"
 GIT_DIR = ".git"
@@ -45,6 +48,7 @@ RESULTS = "results"
 WORKSPACE = "workspace"
 REPRODUCER_SCRIPT = "run.sh"
 REPRODUCER_README = "REPRODUCING.md"
+SIGNATURES = "signatures"
 RUNS = "runs"
 UPLOAD_STAGING = "upload-staging"
 REVIEWS = "reviews"
@@ -271,6 +275,19 @@ REE_TREE = _directory(
     ),
     _file(REPRODUCER_SCRIPT, "repo2ree", "git", "A bundle's reproducer: runs the REE without repo2ree."),
     _file(REPRODUCER_README, "repo2ree", "git", "How to run the reproducer."),
+    _directory(
+        SIGNATURES,
+        "signed",
+        "git",
+        "Signed claims about the sealed REE: beside what the seal covers, never in its contents.",
+        _file(
+            "{claim}.sigstore.json",
+            "signed",
+            "git",
+            "One claim: a Sigstore bundle whose DSSE in-toto statement names seal.ree_digest.",
+            key="claim",
+        ),
+    ),
     _directory(
         RUNS,
         "working",

@@ -8,7 +8,6 @@ from repo2ree_ree.model import (
     ReeDefinition,
     ReeReceipts,
     ReeSeal,
-    Signature,
     canonical_subject_digest,
 )
 from repo2ree_ree.primitives import Digest, UtcInstant
@@ -77,11 +76,10 @@ def record_seal(
     ree: Ree,
     *,
     sealed_at: UtcInstant,
-    signature: Signature | None = None,
 ) -> Ree:
     if ree.seal is not None:
         raise ReePreconditionError("REE is already sealed")
-    seal = ReeSeal(sealed_at=sealed_at, ree_digest=canonical_subject_digest(ree.subject), signature=signature)
+    seal = ReeSeal(sealed_at=sealed_at, ree_digest=canonical_subject_digest(ree.subject))
     return ree.model_copy(update={"seal": seal})
 
 

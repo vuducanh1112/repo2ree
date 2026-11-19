@@ -223,6 +223,23 @@
         "description": "How to run the reproducer."
       },
       {
+        "name": "signatures",
+        "kind": "directory",
+        "origin": "signed",
+        "capture": "git",
+        "description": "Signed claims about the sealed REE: beside what the seal covers, never in its contents.",
+        "children": [
+          {
+            "name": "{claim}.sigstore.json",
+            "kind": "file",
+            "origin": "signed",
+            "capture": "git",
+            "description": "One claim: a Sigstore bundle whose DSSE in-toto statement names seal.ree_digest.",
+            "key": "claim"
+          }
+        ]
+      },
+      {
         "name": "runs",
         "kind": "directory",
         "origin": "working",

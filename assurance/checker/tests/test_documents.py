@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import base64
 import copy
+import datetime
 import hashlib
 import json
 import os
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pytest
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID
 from pydantic import ValidationError
 from test_spec import documents
 
@@ -24,6 +30,7 @@ from repo2ree_assurance_checker.check.documents import (
     standings,
     witness,
 )
+from repo2ree_assurance_checker.check.signatures import IN_TOTO, pae
 from repo2ree_assurance_checker.evidence import CommittedFile, Evidence, Snapshot, Source
 from repo2ree_assurance_checker.files import ROOT, load_spec
 from repo2ree_assurance_checker.sources import load_evidence
@@ -421,6 +428,12 @@ def test_a_draft_is_held_to_no_seal() -> None:
             {"id": "x", "pattern": "digest", "summary": "", "kind": "file", "pairs": [{"digest": "a"}]},
             "by a field or by a path",
         ),
+        ({"id": "x", "pattern": "signature", "summary": "", "files": "signatures/"}, "names its files, the subject"),
+        (
+            {"id": "x", "pattern": "signature", "summary": "", "files": "s", "subject": "seal.x", "claims": {"a": "b"}},
+            "ending in /",
+        ),
+        ({"id": "x", "pattern": "standing", "summary": "", "files": "signatures/"}, "only a signature rule"),
     ],
 )
 def test_incoherent_document_rules_are_rejected(rule: dict[str, Any], message: str) -> None:
@@ -448,7 +461,11 @@ def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> Non
     assert GIT is not None
     with zipfile.ZipFile(ROOT / "examples" / "rees" / "ree-hello-world.zip") as archive:
         archive.extractall(tmp_path)
-    result = check(load_spec(), load_evidence(repositories=[tmp_path / "ree"], git_executable=GIT))
+    evidence = load_evidence(repositories=[tmp_path / "ree"], git_executable=GIT)
+    held = evidence.snapshots[-1].files
+    assert held["ree.json"].content == (tmp_path / "ree" / "ree.json").read_bytes()
+    assert held["artifacts/runtime.tar"].content is None
+    result = check(load_spec(), evidence)
     rules = {rule.rule: rule for rule in result.rules}
     # What core recorded of the standings is the product's: the example is held to that where it is authored.
     for name in (
@@ -462,3 +479,139 @@ def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> Non
         assert rules[f"document:{name}"].triggered, name
     assert rules["document:the-seal-is-the-subject"].triggered == 1
     assert rules["machine:Receipt"].verdict == "passed"
+
+
+# ---------------------------------------------------------------------------- signatures
+
+AUTHOR_APPROVAL = "https://repo2ree.org/claims/author-approval/v1"
+
+
+def certificate(key: ec.EllipticCurvePrivateKey) -> bytes:
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "sigstore-intermediate")])
+    now = datetime.datetime(2026, 11, 18, tzinfo=datetime.UTC)
+    built = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(minutes=10))
+        .sign(key, hashes.SHA256())
+    )
+    return built.public_bytes(serialization.Encoding.DER)
+
+
+def bundle(
+    digest: str,
+    predicate_type: str = AUTHOR_APPROVAL,
+    *,
+    signer: ec.EllipticCurvePrivateKey | None = None,
+    holder: ec.EllipticCurvePrivateKey | None = None,
+) -> bytes:
+    """A Sigstore bundle of a DSSE in-toto statement over ``digest``, signed by ``signer``, whose certificate holds
+    ``holder``'s key: the same key unless a test says otherwise."""
+    signer = signer or ec.generate_private_key(ec.SECP256R1())
+    algorithm, _, value = digest.partition(":")
+    statement = {
+        "_type": "https://in-toto.io/Statement/v1",
+        "subject": [{"name": "ree", "digest": {algorithm: value}}],
+        "predicateType": predicate_type,
+        "predicate": {"claim": "author_approval"},
+    }
+    payload = json.dumps(statement).encode()
+    signature = signer.sign(pae(IN_TOTO, payload), ec.ECDSA(hashes.SHA256()))
+    return json.dumps(
+        {
+            "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
+            "verificationMaterial": {
+                "certificate": {"rawBytes": base64.b64encode(certificate(holder or signer)).decode()},
+                "tlogEntries": [],
+            },
+            "dsseEnvelope": {
+                "payload": base64.b64encode(payload).decode(),
+                "payloadType": IN_TOTO,
+                "signatures": [{"sig": base64.b64encode(signature).decode(), "keyid": ""}],
+            },
+        }
+    ).encode()
+
+
+def carried(path: str, content: bytes, storage: Literal["git", "lfs"] = "git") -> dict[str, CommittedFile]:
+    return {
+        path: CommittedFile(
+            digest=f"sha256:{hashlib.sha256(content).hexdigest()}",
+            size=len(content),
+            storage=storage,
+            content=content if storage == "git" else None,
+        )
+    }
+
+
+def signed(*signatures: tuple[str, bytes]) -> list[str]:
+    document, files = authored()
+    document = sealed(document, files)
+    for path, content in signatures:
+        files = files | carried(path, content)
+    return findings(snapshot(document, files, operation="sign_ree"))["signatures-are-the-seal"]
+
+
+def seal_of() -> str:
+    document, files = authored()
+    return str(sealed(document, files)["seal"]["ree_digest"])
+
+
+def test_a_signature_names_the_seal_under_the_claim_its_file_is_named_for() -> None:
+    assert signed(("signatures/author_approval.sigstore.json", bundle(seal_of()))) == []
+
+
+def test_a_signature_over_another_digest_or_claim_is_not_the_seal_s() -> None:
+    other = "sha256:" + "0" * 64
+    assert signed(("signatures/author_approval.sigstore.json", bundle(other))) == [
+        f"signatures/author_approval.sigstore.json: signs {other}, not seal.ree_digest {seal_of()}"
+    ]
+    claim = "https://example.org/another-claim"
+    assert signed(("signatures/author_approval.sigstore.json", bundle(seal_of(), claim))) == [
+        f"signatures/author_approval.sigstore.json: claims {claim}, but its name says {AUTHOR_APPROVAL}"
+    ]
+    assert signed(("signatures/approval.sigstore.json", bundle(seal_of()))) == [
+        (
+            "signatures/approval.sigstore.json: is no claim's signature: a signature is one of "
+            "author_approval.sigstore.json"
+        )
+    ]
+
+
+def test_a_signature_is_its_certificate_key_s() -> None:
+    forged = bundle(seal_of(), holder=ec.generate_private_key(ec.SECP256R1()))
+    assert signed(("signatures/author_approval.sigstore.json", forged)) == [
+        "signatures/author_approval.sigstore.json: its envelope is not signed by the key its certificate holds"
+    ]
+    assert signed(("signatures/author_approval.sigstore.json", b"{}"))[0].startswith(
+        "signatures/author_approval.sigstore.json: is not a Sigstore bundle of a DSSE envelope"
+    )
+
+
+def test_a_signature_committed_as_an_lfs_payload_cannot_be_read() -> None:
+    document, files = authored()
+    document = sealed(document, files)
+    files = files | carried("signatures/author_approval.sigstore.json", bundle(seal_of()), storage="lfs")
+    assert findings(snapshot(document, files))["signatures-are-the-seal"] == [
+        "signatures/author_approval.sigstore.json: is an LFS payload, but a signature is committed to git"
+    ]
+
+
+def test_signatures_are_beside_what_the_seal_covers() -> None:
+    signature = ("signatures/author_approval.sigstore.json", bundle(seal_of()))
+    document, files = authored()
+    document = sealed(document, files)
+    files = files | carried(*signature)
+    assert findings(snapshot(document, files))["contents-are-the-bundle"] == []
+
+
+def test_a_draft_holds_no_signature_to_judge() -> None:
+    document, files = authored()
+    files = files | carried("signatures/author_approval.sigstore.json", b"{}")
+    evidence = Evidence(sources=(git_source(),), events=(), snapshots=(snapshot(document, files),))
+    judged = next(r for r in check_documents(load_spec(), evidence) if r.rule == "document:signatures-are-the-seal")
+    assert judged.triggered == 0

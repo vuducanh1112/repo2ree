@@ -219,6 +219,9 @@ def mutated(change: Any) -> dict[str, Any]:
         (lambda a: a["fields"]["definition.experiments[*]"].update(initial="unset"), "needs an initial state"),
         (lambda a: a.update(writes_nothing=["write_script"]), "write nothing take edges"),
         (lambda a: a.pop("overlay"), "names no overlay"),
+        (lambda a: a.pop("signed_by"), "names signatures exactly when"),
+        (lambda a: a.pop("signatures"), "names signatures exactly when"),
+        (lambda a: a.update(writes_nothing=["sign_ree"]), "operations that sign write a signature"),
         (
             lambda a: a["fields"]["definition.experiment_environment"].update(files=["ree-scripts/{slug}.sh"]),
             "name its item once",
@@ -732,3 +735,71 @@ def test_a_committed_file_records_how_it_is_stored_and_which_fields_name_it(tmp_
     assert recorded["snapshot.tar.gz"] == ("lfs", ())
     assert recorded["artifacts/runtime.tar"] == ("git", (ARTIFACT_PATH,))
     assert recorded["ree.json"] == ("git", ())
+
+
+SIGNATURE = "signatures/author_approval.sigstore.json"
+
+
+def signed(*files: FileChange, events: tuple[Event, ...] = ()) -> Evidence:
+    evidence = authored()
+    return evidence.model_copy(update={"events": (*evidence.events, *events), "files": files})
+
+
+def signature_findings(*files: FileChange, events: tuple[Event, ...] = ()) -> list[str]:
+    result = check_aggregate(ree(), signed(*files, events=events))
+    assert result.signatures == sum(1 for file in files if file.path.startswith("signatures/"))
+    return [f"{finding.subject}: {finding.reason}" for finding in result.findings]
+
+
+def test_a_signature_is_added_to_a_sealed_ree_by_signing_it() -> None:
+    signing = lifecycle(7900, "sealed", "sealed", "sign_ree", "operation")
+    assert signature_findings(file(7900, SIGNATURE, None, "s", "sign_ree", "operation"), events=(signing,)) == []
+
+
+def test_a_sealed_bundle_that_is_loaded_brings_its_signatures() -> None:
+    loading = lifecycle(7900, "draft", "sealed", "load_ree_bundle", "operation")
+    assert signature_findings(file(7900, SIGNATURE, None, "s", "load_ree_bundle", "operation"), events=(loading,)) == []
+
+
+def test_a_draft_is_never_signed() -> None:
+    editing = lifecycle(5900, "draft", "draft", "sign_ree", "operation")
+    assert signature_findings(file(5900, SIGNATURE, None, "s", "sign_ree", "operation"), events=(editing,)) == [
+        f"Ree {REE} {SIGNATURE}: added by sign_ree to a document that is not sealed"
+    ]
+
+
+def test_only_signing_adds_a_signature_and_none_is_changed_or_removed_after() -> None:
+    sealed = lifecycle(7900, "sealed", "sealed", "write_script", "operation")
+    assert signature_findings(file(7900, SIGNATURE, None, "s", "write_script", "operation"), events=(sealed,)) == [
+        f"Ree {REE} {SIGNATURE}: changed by write_script, but only sign_ree signs"
+    ]
+    assert signature_findings(file(7900, SIGNATURE, None, "s", "external", "external")) == [
+        f"Ree {REE} {SIGNATURE}: changed by {EXTERNAL}, but only sign_ree signs"
+    ]
+    assert signature_findings(file(8900, SIGNATURE, "s", "t", "sign_ree", "operation")) == [
+        f"Ree {REE} {SIGNATURE}: changed by sign_ree, but a signature, once added, stays as it is"
+    ]
+    assert signature_findings(file(8900, SIGNATURE, "s", None, "sign_ree", "operation")) == [
+        f"Ree {REE} {SIGNATURE}: removed by sign_ree, but a signature, once added, stays as it is"
+    ]
+
+
+def test_signing_changes_nothing_beside_the_signature() -> None:
+    signing = lifecycle(7900, "sealed", "sealed", "sign_ree", "operation")
+    assert signature_findings(
+        file(7900, SIGNATURE, None, "s", "sign_ree", "operation"),
+        file(7900, "REPRODUCING.md", "a", "b", "sign_ree", "operation"),
+        events=(signing,),
+    ) == [f"Ree {REE} REPRODUCING.md: changed by sign_ree, which only adds signatures"]
+
+
+def test_a_sealed_ree_changes_only_by_signing_it() -> None:
+    def broken(operation: str) -> list[str]:
+        moved = lifecycle(7900, "sealed", "sealed", operation, "operation")
+        result = check(load_spec(), signed(events=(moved,)))
+        rule = next(rule for rule in result.rules if rule.rule == "sealed-rees-are-only-signed")
+        assert rule.triggered == 1
+        return [finding.reason for finding in rule.findings]
+
+    assert broken("sign_ree") == []
+    assert len(broken("write_script")) == 1

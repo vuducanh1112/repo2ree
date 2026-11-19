@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, model_validator
 
 from repo2ree_protocol.argv import POSITIONAL, STDIN
 from repo2ree_ree.review import ReviewLaunch
+from repo2ree_ree.signature import SignatureClaim
 
 # Every operation the specification's catalogue names (assurance/spec/vocabulary/operation.toml): each command's
 # ``operation`` is one of them, and initialize_ree is the one a workbench runs without a command.
@@ -42,6 +43,7 @@ OperationName = Literal[
     "activate_experiment_environment",
     "run_experiment",
     "seal_ree",
+    "sign_ree",
     "review_acquire_source",
     "review_build_experiment_environment",
     "review_activate_experiment_environment",
@@ -497,6 +499,24 @@ class SealReeCommand(BaseModel):
     args: SealReeArgs = SealReeArgs()
 
 
+class SignReeArgs(BaseModel):
+    """Add a Sigstore bundle, staged at /ree/upload-staging/<upload_token>.bin, as the sealed REE's signature
+    under ``claim``: its statement must name the seal's digest under the claim's predicate type."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    claim: SignatureClaim = Field(default="author_approval", description="What the signature claims.")
+    upload_token: str = Field(description="The staged bundle's token.")
+    archive_name: str = Field(description="The staged bundle's file name.")
+
+
+class SignReeCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["sign_ree"] = "sign_ree"
+    args: SignReeArgs
+
+
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
     ReviewAcquireSourceCommand
@@ -519,7 +539,8 @@ Command = Annotated[
     | CheckWorkingEnvironmentCommand
     | SuggestScriptsCommand
     | LintScriptsCommand
-    | SealReeCommand,
+    | SealReeCommand
+    | SignReeCommand,
     Field(discriminator="operation"),
 ]
 

@@ -66,6 +66,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
     ScriptTargetSelectorArg,
     SealReeCommand,
+    SignReeCommand,
     SuggestScriptsCommand,
     TargetKind,
     WriteScriptArgs,
@@ -118,6 +119,7 @@ EXIT_CODES = {
 }
 # Where a staged archive comes from on the command line; the commands themselves name it by its upload token.
 ARCHIVE_OPTION = "--archive"
+BUNDLE_OPTION = "--bundle"
 
 
 # ================================================
@@ -412,6 +414,17 @@ def _load_bundle(
     _run_and_finish(invocation, words, LoadReeBundleCommand.model_validate({"args": args}), layout)
 
 
+def _sign(
+    invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
+) -> None:
+    layout = _layout_or_refuse(invocation, " ".join(words))
+    if params["bundle"] is None and params["upload_token"] is None:
+        raise click.UsageError(f"give {BUNDLE_OPTION} PATH: a Sigstore bundle over the sealed REE's digest")
+    filled = _staged(layout, params["bundle"]) if params["bundle"] is not None else {}
+    args = spelling.build(params, None, **filled)
+    _run_and_finish(invocation, words, SignReeCommand.model_validate({"args": args}), layout)
+
+
 def _staged(layout: ReeLayout, archive: Path) -> dict[str, str]:
     """The archive staged in the REE, as the command names it: its upload token and file name."""
     token = uuid4().hex
@@ -621,6 +634,7 @@ _HANDLERS: dict[type[BaseModel], Handler] = {
     PatchReeDefinitionCommand: _define,
     SuggestScriptsCommand: _infer,
     SealReeCommand: _seal,
+    SignReeCommand: _sign,
     ReviewAcquireSourceCommand: _review_step,
     ReviewBuildExperimentEnvironmentCommand: _review_step,
     ReviewActivateExperimentEnvironmentCommand: _review_step,
@@ -631,6 +645,7 @@ _REVIEW_ID = ("review_id",)
 _OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
     AcquireSourceCommand: ("mode",),
     LoadReeBundleCommand: ("upload_token", "archive_name"),
+    SignReeCommand: ("upload_token", "archive_name"),
     ReviewAcquireSourceCommand: _REVIEW_ID,
     ReviewBuildExperimentEnvironmentCommand: _REVIEW_ID,
     ReviewActivateExperimentEnvironmentCommand: _REVIEW_ID,
@@ -638,7 +653,11 @@ _OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
 }
 # Fields a workbench passes and a person does not.
 _STAGED = ("upload_token", "archive_name")
-_HIDDEN: dict[type[BaseModel], tuple[str, ...]] = {AcquireSourceCommand: _STAGED, LoadReeBundleCommand: _STAGED}
+_HIDDEN: dict[type[BaseModel], tuple[str, ...]] = {
+    AcquireSourceCommand: _STAGED,
+    LoadReeBundleCommand: _STAGED,
+    SignReeCommand: _STAGED,
+}
 _ARCHIVE = click.Option(
     [ARCHIVE_OPTION, "archive"],
     type=click.Path(dir_okay=False, exists=True, path_type=Path),
@@ -647,6 +666,13 @@ _ARCHIVE = click.Option(
 _EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
     AcquireSourceCommand: [_ARCHIVE],
     LoadReeBundleCommand: [_ARCHIVE],
+    SignReeCommand: [
+        click.Option(
+            [BUNDLE_OPTION, "bundle"],
+            type=click.Path(dir_okay=False, exists=True, path_type=Path),
+            help="The Sigstore bundle to add, staged in the REE.",
+        )
+    ],
     PatchReeDefinitionCommand: _DEFINE_OPTIONS,
     SuggestScriptsCommand: [
         click.Option(["--write"], is_flag=True, help="Write the proposed script, for one --target."),
@@ -660,6 +686,10 @@ _MORE: dict[type[BaseModel], str] = {
         "Give the options for the common fields, or pipe a JSON patch of the definition's top-level fields on stdin."
     ),
     SuggestScriptsCommand: "Shows each proposal against the script as it is written.",
+    SignReeCommand: (
+        "Sign the seal's digest with Sigstore elsewhere, as an in-toto statement whose predicate type is the "
+        "claim's, and give the bundle here; the REE keeps it beside what the seal covers."
+    ),
 }
 
 

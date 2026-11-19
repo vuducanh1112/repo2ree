@@ -18,6 +18,7 @@ from pydantic import JsonValue
 
 from repo2ree_assurance_checker.check.aggregates import experiment_slug
 from repo2ree_assurance_checker.check.results import Finding, RuleResult
+from repo2ree_assurance_checker.check.signatures import UnreadableBundleError, signed_statement
 from repo2ree_assurance_checker.evidence import CommittedFile, Event, Evidence, Snapshot
 from repo2ree_assurance_checker.spec import (
     ITEM,
@@ -31,6 +32,7 @@ from repo2ree_assurance_checker.spec import (
     ReceiptMachine,
     Spec,
 )
+from repo2ree_assurance_checker.spec.documents import SIGNATURE_SUFFIX
 
 _TOKEN = re.compile(r"[a-z_]+|\[\*\]|\[\$name\]")
 # Paths that start here are read from the document itself; every other one from its subject.
@@ -357,7 +359,7 @@ def _inventory(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
         for entry in (listed if isinstance(listed, list) else [])
         if isinstance(entry, dict) and isinstance(path := entry.get("path"), str)
     }
-    carried = {path: file for path, file in snapshot.files.items() if path not in rule.excepted}
+    carried = {path: file for path, file in snapshot.files.items() if not rule.excepts(path)}
     for path in sorted(entries.keys() | carried.keys()):
         entry, committed = entries.get(path), carried.get(path)
         if entry is None:
@@ -371,6 +373,35 @@ def _inventory(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
                 f"is listed as {entry.get('digest')} of {entry.get('size')} bytes, "
                 f"but holds {committed.digest} of {committed.size}",
             )
+        else:
+            yield Judged(path, True)
+
+
+def _signatures(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
+    document = snapshot.document or {}
+    directory = rule.files or ""
+    signed = value(document, rule.subject or "")
+    for path, committed in sorted(snapshot.files.items()):
+        if not path.startswith(directory):
+            continue
+        name = path.removeprefix(directory)
+        claim = name.removesuffix(SIGNATURE_SUFFIX) if name.endswith(SIGNATURE_SUFFIX) else None
+        if claim not in rule.claims:
+            named = ", ".join(f"{claim}{SIGNATURE_SUFFIX}" for claim in sorted(rule.claims))
+            yield Judged(path, False, f"is no claim's signature: a signature is one of {named}")
+            continue
+        if committed.content is None:
+            yield Judged(path, False, "is an LFS payload, but a signature is committed to git")
+            continue
+        try:
+            statement = signed_statement(committed.content)
+        except UnreadableBundleError as exc:
+            yield Judged(path, False, str(exc))
+            continue
+        if signed not in statement.digests:
+            yield Judged(path, False, f"signs {', '.join(sorted(statement.digests))}, not {rule.subject} {signed}")
+        elif statement.predicate_type != rule.claims[claim]:
+            yield Judged(path, False, f"claims {statement.predicate_type}, but its name says {rule.claims[claim]}")
         else:
             yield Judged(path, True)
 
@@ -398,6 +429,8 @@ def judged(rule: DocumentRule, aggregate: AggregateSpec, snapshot: Snapshot) -> 
         return
     if rule.pattern == "standing":
         yield from _standings_recorded(aggregate, snapshot)
+    elif rule.pattern == "signature":
+        yield from _signatures(rule, snapshot)
     elif rule.kind == "inventory":
         yield from _inventory(rule, snapshot)
     else:
