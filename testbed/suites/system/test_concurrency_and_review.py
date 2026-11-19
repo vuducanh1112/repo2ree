@@ -1,4 +1,4 @@
-"""Several REEs at once, and a reviewer reproducing an REE someone else sealed."""
+"""Several REEs at once, and a reviewer reproducing and signing a review of an REE someone else sealed and signed."""
 
 from __future__ import annotations
 
@@ -21,10 +21,12 @@ def test_two_rees_author_side_by_side(api: Api, new_ree: Callable[..., str]) -> 
     assert len(set(digests)) == len(digests)
 
 
-def test_reviewer_reproduces_a_sealed_ree(api: Api, new_ree: Callable[..., str]) -> None:
+def test_reviewer_reproduces_a_sealed_ree_and_signs_the_review(api: Api, new_ree: Callable[..., str]) -> None:
     author = new_ree("review-author")
     api.author(author)
     assert api.seal(author)["status"] == "succeeded"
+    signed = api.sign(author)
+    assert signed["status"] == "succeeded", api.logs(author, signed["run_id"])
     archive = api.keep_archive(author, "review-baseline")
     assert archive is not None
     data = archive.read_bytes()
@@ -54,3 +56,8 @@ def test_reviewer_reproduces_a_sealed_ree(api: Api, new_ree: Callable[..., str])
 
     review = api.get(f"/api/v1/rees/{reviewer}/reviews/{review_id}")
     assert review, review
+
+    signed_review = api.sign_review(reviewer, review_id)
+    assert signed_review["status"] == "succeeded", api.logs(reviewer, signed_review["run_id"])
+    again = api.stage(reviewer, f"reviews/{review_id}/run-experiment/{EXPERIMENT}", {})
+    assert again["status"] == "failed", "a signed review changes no more"
