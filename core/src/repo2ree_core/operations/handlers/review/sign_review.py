@@ -2,9 +2,10 @@
 review's record as its predicate.
 
 The bundle is made where the reviewer's identity is, never here: core sees no credential, only the bundle. It is
-kept for a review of a sealed REE that is not running, when its statement names the seal the review names, under
-the review predicate type, with the record exactly as the review holds it as its predicate. A review is signed once,
-and changes no more after: its steps refuse it (``refuse_signed_review``).
+kept for a review of a sealed REE that is not running, when the key its certificate holds made its signature and
+its statement names the seal the review names, under the review predicate type, with the record exactly as the
+review holds it as its predicate. A review is signed once, and changes no more after: its steps refuse it
+(``refuse_signed_review``).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.signature import (
     REVIEW_PREDICATE_TYPE,
     UnreadableSignatureError,
+    UnverifiedSignatureError,
     review_signature_path,
     signed_statement,
 )
@@ -48,7 +50,7 @@ def handle_sign_review(args: SignReviewArgs, *, layout: ReeLayout, log: LogSink)
     content = staged.read_bytes()
     try:
         statement = signed_statement(content)
-    except UnreadableSignatureError as exc:
+    except (UnreadableSignatureError, UnverifiedSignatureError) as exc:
         return ActionResult.failed("validation", f"{args.archive_name}: {exc}")
     if str(seal) not in statement.digests:
         named = ", ".join(sorted(statement.digests))

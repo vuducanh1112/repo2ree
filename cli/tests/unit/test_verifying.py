@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from click.testing import Result
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from test_signing import TOKEN, answered, bundle, draft, ree, requests, reviewed, seal_of, sealed
 
 from repo2ree_cli import signing
@@ -99,6 +100,24 @@ def test_a_signature_sigstore_does_not_hold_is_untrusted(sealed: Path, sigstore:
 
     [found] = verified(result).signatures
     assert (found.outcome, found.signer, found.reason) == ("untrusted", None, "the certificate chains to no root here")
+
+
+def test_a_signature_its_certificate_s_key_did_not_make_is_untrusted_before_sigstore_is_asked(
+    sealed: Path, sigstore: dict[str, Signer | str]
+) -> None:
+    request = signing.SigningRequest(
+        ree_name="demo", ree_digest=Digest(seal_of(sealed)), predicate_type=PREDICATE_TYPES["author_approval"]
+    )
+    path = sealed / signature_path("author_approval")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(bundle(request, holder=ed25519.Ed25519PrivateKey.generate()))
+
+    result = ree(sealed, "verify-signatures", *policy_of(AUTHOR))
+
+    assert answered(result).status == "failed"
+    [found] = verified(result).signatures
+    assert (found.outcome, found.signer) == ("untrusted", None)
+    assert found.reason == "its envelope is not signed by the key its certificate holds"
 
 
 def test_a_signature_of_another_seal_is_not_this_ree_s_whoever_signed_it(

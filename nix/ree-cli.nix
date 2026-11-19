@@ -32,9 +32,13 @@ let
   # host the workbench bundle installed `ree` on. It is imported only then
   # (repo2ree_cli.signing), so no other command loads it; it links nixpkgs'
   # OpenSSL, not the OpenSSL 4 the cryptography wheels bundle.
+  #
+  # cryptography checks that a signature the REE is given is its
+  # certificate key's (repo2ree_ree.signature), imported only then too.
   python = pkgs.python313.withPackages (
     ps: with ps; [
       click
+      cryptography
       pydantic
       pyyaml
       opentelemetry-api

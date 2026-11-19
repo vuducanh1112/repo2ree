@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import zipfile
 from pathlib import Path
+
+import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
+from signed_bundles import signed_bundle, statement_of
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.operations.dispatch import run_command
@@ -28,24 +31,8 @@ AUTHOR_APPROVAL = signature_path("author_approval")
 
 
 def bundle(digest: str, predicate_type: str = PREDICATE_TYPES["author_approval"]) -> bytes:
-    algorithm, _, value = digest.partition(":")
-    statement = {
-        "_type": "https://in-toto.io/Statement/v1",
-        "subject": [{"name": "ree", "digest": {algorithm: value}}],
-        "predicateType": predicate_type,
-        "predicate": {},
-    }
-    return json.dumps(
-        {
-            "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
-            "verificationMaterial": {"certificate": {"rawBytes": "MA=="}},
-            "dsseEnvelope": {
-                "payload": base64.b64encode(json.dumps(statement).encode()).decode(),
-                "payloadType": "application/vnd.in-toto+json",
-                "signatures": [{"sig": "MA==", "keyid": ""}],
-            },
-        }
-    ).encode()
+    content: bytes = signed_bundle(statement_of(digest, predicate_type))
+    return content
 
 
 def initialized(tmp_path: Path, name: str = "author") -> ReeLayout:
@@ -74,10 +61,11 @@ def sign(layout: ReeLayout, content: bytes, slot: str = "signature") -> ActionRe
 def test_a_sealed_ree_is_signed_beside_its_seal_and_the_signature_is_committed(tmp_path: Path) -> None:
     layout, digest = sealed(tmp_path)
     before = layout.manifest.read_bytes()
-    signed = sign(layout, bundle(digest))
+    content = bundle(digest)
+    signed = sign(layout, content)
     assert signed.status == "succeeded", signed
     assert signed.outputs == {"claim": "author_approval", "path": AUTHOR_APPROVAL, "ree_digest": digest}
-    assert (layout.root / AUTHOR_APPROVAL).read_bytes() == bundle(digest)
+    assert (layout.root / AUTHOR_APPROVAL).read_bytes() == content
     assert layout.manifest.read_bytes() == before
     assert not layout.upload_staging_file("signature").exists()
     assert signed.history is not None
@@ -86,7 +74,7 @@ def test_a_sealed_ree_is_signed_beside_its_seal_and_the_signature_is_committed(t
     with open_history(layout) as history:
         committed = history.git("show", f"{commit}:{AUTHOR_APPROVAL}").stdout
         changed = history.git("show", "--name-only", "--format=", commit).stdout
-    assert committed == bundle(digest)
+    assert committed == content
     assert changed.decode().split() == [AUTHOR_APPROVAL]
 
 
@@ -111,19 +99,53 @@ def test_a_signature_over_another_digest_or_claim_or_no_statement_is_refused(tmp
 
 def test_a_claim_is_signed_once(tmp_path: Path) -> None:
     layout, digest = sealed(tmp_path)
-    assert sign(layout, bundle(digest)).status == "succeeded"
+    first = bundle(digest)
+    assert sign(layout, first).status == "succeeded"
     again = sign(layout, bundle(digest), slot="again")
     assert again.status == "failed"
-    assert (layout.root / AUTHOR_APPROVAL).read_bytes() == bundle(digest)
+    assert (layout.root / AUTHOR_APPROVAL).read_bytes() == first
+
+
+def test_a_signature_its_certificate_s_key_did_not_make_is_refused_and_leaves_the_claim_open(tmp_path: Path) -> None:
+    layout, digest = sealed(tmp_path)
+    statement = statement_of(digest, PREDICATE_TYPES["author_approval"])
+    other = statement_of("sha256:" + "0" * 64, PREDICATE_TYPES["author_approval"])
+    for content in (
+        signed_bundle(statement, holder=ec.generate_private_key(ec.SECP256R1())),
+        signed_bundle(other, carried=statement),
+    ):
+        refused = sign(layout, content)
+        assert refused.failure is not None
+        assert refused.failure.category == "validation"
+        assert "not signed by the key its certificate holds" in refused.failure.message
+        assert not (layout.root / AUTHOR_APPROVAL).exists()
+    assert sign(layout, bundle(digest)).status == "succeeded", "a refused signature takes no claim"
+
+
+@pytest.mark.parametrize(
+    ("material", "message"),
+    [({}, "holds no certificate"), ({"certificate": {"rawBytes": "MA=="}}, "not DER X.509")],
+)
+def test_a_bundle_without_a_certificate_to_verify_by_is_refused(
+    tmp_path: Path, material: dict[str, object], message: str
+) -> None:
+    layout, digest = sealed(tmp_path)
+    content = json.loads(bundle(digest))
+    content["verificationMaterial"] = material
+    refused = sign(layout, json.dumps(content).encode())
+    assert refused.failure is not None
+    assert message in refused.failure.message
+    assert not (layout.root / AUTHOR_APPROVAL).exists()
 
 
 def test_a_signed_ree_exports_and_loads_with_its_signature(tmp_path: Path) -> None:
     layout, digest = sealed(tmp_path)
-    assert sign(layout, bundle(digest)).status == "succeeded"
+    content = bundle(digest)
+    assert sign(layout, content).status == "succeeded"
     with materialized_ree_download(layout) as archive:
         data = archive.read_bytes()
         with zipfile.ZipFile(archive) as zipped:
-            assert zipped.read(f"ree/{AUTHOR_APPROVAL}") == bundle(digest)
+            assert zipped.read(f"ree/{AUTHOR_APPROVAL}") == content
     destination = initialized(tmp_path, "destination")
     destination.upload_staging_file("bundle").write_bytes(data)
     loaded = run_command(
@@ -132,7 +154,7 @@ def test_a_signed_ree_exports_and_loads_with_its_signature(tmp_path: Path) -> No
         layout=destination,
     )
     assert loaded.status == "succeeded", loaded
-    assert (destination.root / AUTHOR_APPROVAL).read_bytes() == bundle(digest)
+    assert (destination.root / AUTHOR_APPROVAL).read_bytes() == content
     seal = ReeDirectory(destination).read_ree().seal
     assert seal is not None
     assert str(seal.ree_digest) == digest

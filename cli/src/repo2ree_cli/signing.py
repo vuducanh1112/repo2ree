@@ -17,7 +17,13 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from repo2ree_ree.digest import DIGEST_PREFIX
 from repo2ree_ree.instant import parse_utc_instant
 from repo2ree_ree.primitives import Digest, UtcInstant
-from repo2ree_ree.signature import PREDICATE_TYPES, REVIEW_PREDICATE_TYPE, UnreadableSignatureError, signed_statement
+from repo2ree_ree.signature import (
+    PREDICATE_TYPES,
+    REVIEW_PREDICATE_TYPE,
+    UnreadableSignatureError,
+    UnverifiedSignatureError,
+    signed_statement,
+)
 from repo2ree_ree.verification import (
     SignatureVerification,
     Signer,
@@ -203,6 +209,8 @@ def verify_signature(
         statement = signed_statement(content)
     except UnreadableSignatureError as exc:
         return SignatureVerification(path=path, claim=claim, outcome="unreadable", reason=str(exc))
+    except UnverifiedSignatureError as exc:
+        return SignatureVerification(path=path, claim=claim, outcome="untrusted", reason=str(exc))
     if claim is None:
         return SignatureVerification(path=path, outcome="not_this_ree", reason="is named for no claim")
     expected = REVIEW_PREDICATE_TYPE if claim == "review" else PREDICATE_TYPES[claim]

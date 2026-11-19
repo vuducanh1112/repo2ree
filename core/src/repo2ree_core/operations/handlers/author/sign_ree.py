@@ -1,8 +1,8 @@
 """Add a signature to a sealed REE: a Sigstore bundle, signed elsewhere, over the seal's digest.
 
 The bundle is made where the signer's identity is, never here: core sees no credential, only the bundle. It is
-kept when its statement names the seal's digest under the claim's predicate type, beside what the seal covers,
-and never written over: a claim is signed once.
+kept when the key its certificate holds made its signature and its statement names the seal's digest under the
+claim's predicate type, beside what the seal covers, and never written over: a claim is signed once.
 """
 
 from __future__ import annotations
@@ -14,7 +14,13 @@ from repo2ree_protocol.command import SignReeArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import SignOutputs
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.signature import PREDICATE_TYPES, UnreadableSignatureError, signature_path, signed_statement
+from repo2ree_ree.signature import (
+    PREDICATE_TYPES,
+    UnreadableSignatureError,
+    UnverifiedSignatureError,
+    signature_path,
+    signed_statement,
+)
 
 
 def handle_sign_ree(args: SignReeArgs, *, layout: ReeLayout, log: LogSink) -> ActionResult:
@@ -34,7 +40,7 @@ def handle_sign_ree(args: SignReeArgs, *, layout: ReeLayout, log: LogSink) -> Ac
     content = staged.read_bytes()
     try:
         statement = signed_statement(content)
-    except UnreadableSignatureError as exc:
+    except (UnreadableSignatureError, UnverifiedSignatureError) as exc:
         return ActionResult.failed("validation", f"{args.archive_name}: {exc}")
     if str(seal.ree_digest) not in statement.digests:
         named = ", ".join(sorted(statement.digests))

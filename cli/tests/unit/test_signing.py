@@ -4,6 +4,7 @@ signs a review of it with the review's record as the statement's predicate; the 
 from __future__ import annotations
 
 import base64
+import datetime
 import json
 import sys
 from pathlib import Path
@@ -11,6 +12,10 @@ from typing import Any
 
 import pytest
 from click.testing import CliRunner, Result
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+from cryptography.x509.oid import NameOID
 
 from repo2ree_cli import signing
 from repo2ree_cli.cli import REFUSED, cli
@@ -23,7 +28,14 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.instant import parse_utc_instant
 from repo2ree_ree.primitives import Digest
 from repo2ree_ree.review import ReviewSubject
-from repo2ree_ree.signature import PREDICATE_TYPES, REVIEW_PREDICATE_TYPE, review_signature_path, signature_path
+from repo2ree_ree.signature import (
+    IN_TOTO,
+    PREDICATE_TYPES,
+    REVIEW_PREDICATE_TYPE,
+    pae,
+    review_signature_path,
+    signature_path,
+)
 
 runner = CliRunner()
 SIGNATURE = signature_path("author_approval")
@@ -38,7 +50,28 @@ def answered(result: Result) -> ActionResult:
     return ActionResult.model_validate_json(result.stdout)
 
 
-def bundle(request: signing.SigningRequest) -> bytes:
+# Ed25519 signs deterministically, so the bundle a request makes is the same bytes every time.
+SIGNER = ed25519.Ed25519PrivateKey.from_private_bytes(bytes(32))
+
+
+def certificate(key: ed25519.Ed25519PrivateKey) -> bytes:
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "sigstore-intermediate")])
+    now = datetime.datetime(2026, 11, 19, tzinfo=datetime.UTC)
+    built = (
+        x509.CertificateBuilder()
+        .subject_name(name)
+        .issuer_name(name)
+        .public_key(key.public_key())
+        .serial_number(1)
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(minutes=10))
+        .sign(key, None)
+    )
+    return built.public_bytes(serialization.Encoding.DER)
+
+
+def bundle(request: signing.SigningRequest, *, holder: ed25519.Ed25519PrivateKey = SIGNER) -> bytes:
+    """What Sigstore makes of ``request``: signed by SIGNER, in a bundle whose certificate holds ``holder``'s key."""
     algorithm, _, value = str(request.ree_digest).partition(":")
     statement = {
         "_type": "https://in-toto.io/Statement/v1",
@@ -46,14 +79,15 @@ def bundle(request: signing.SigningRequest) -> bytes:
         "predicateType": request.predicate_type,
         "predicate": request.predicate,
     }
+    payload = json.dumps(statement).encode()
     return json.dumps(
         {
             "mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json",
-            "verificationMaterial": {"certificate": {"rawBytes": "MA=="}},
+            "verificationMaterial": {"certificate": {"rawBytes": base64.b64encode(certificate(holder)).decode()}},
             "dsseEnvelope": {
-                "payload": base64.b64encode(json.dumps(statement).encode()).decode(),
-                "payloadType": "application/vnd.in-toto+json",
-                "signatures": [{"sig": "MA==", "keyid": ""}],
+                "payload": base64.b64encode(payload).decode(),
+                "payloadType": IN_TOTO,
+                "signatures": [{"sig": base64.b64encode(SIGNER.sign(pae(IN_TOTO, payload))).decode(), "keyid": ""}],
             },
         }
     ).encode()
@@ -258,3 +292,28 @@ def test_a_signed_review_changes_no_more(sealed: Path, requests: list[signing.Si
         assert "changes no more" in refused.failure.message
     assert resigned.failure is not None
     assert "signed already" in resigned.failure.message
+
+
+def test_a_review_bundle_its_certificate_s_key_did_not_make_is_refused_and_leaves_the_review_open(
+    sealed: Path, tmp_path: Path
+) -> None:
+    record = reviewed(sealed, "r1", seal_of(sealed))
+    elsewhere = tmp_path / "review.sigstore.json"
+    request = signing.SigningRequest(
+        ree_name="demo",
+        ree_digest=Digest(seal_of(sealed)),
+        predicate_type=REVIEW_PREDICATE_TYPE,
+        predicate=json.loads(record.read_bytes()),
+    )
+    elsewhere.write_bytes(bundle(request, holder=ed25519.Ed25519PrivateKey.generate()))
+
+    result = ree(sealed, "sign-review", "--review-id", "r1", "--bundle", str(elsewhere))
+
+    failure = answered(result).failure
+    assert failure is not None
+    assert failure.category == "validation"
+    assert "not signed by the key its certificate holds" in failure.message
+    assert not (ReeLayout(root=sealed).review("r1").root / review_signature_path()).exists()
+    elsewhere.write_bytes(bundle(request))
+    signed = ree(sealed, "sign-review", "--review-id", "r1", "--bundle", str(elsewhere))
+    assert answered(signed).status == "succeeded", signed.output
