@@ -36,6 +36,7 @@ from repo2ree_protocol.command import (
     RunExperimentCommand,
     SealReeCommand,
     SignReeCommand,
+    SignReviewCommand,
     SuggestScriptsCommand,
     WriteScriptCommand,
 )
@@ -85,6 +86,7 @@ SUMMARIES: dict[type[BaseModel], str] = {
     ReviewBuildExperimentEnvironmentCommand: "Rebuild the experiment environment in the review, or certify the REE's",
     ReviewActivateExperimentEnvironmentCommand: "Test the activation in the review",
     ReviewRunExperimentCommand: "Reproduce one experiment in the review and compare it with the author's",
+    SignReviewCommand: "Sign a review with Sigstore, or add a bundle signed elsewhere (--bundle)",
 }
 
 

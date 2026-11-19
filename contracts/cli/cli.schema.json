@@ -1169,6 +1169,74 @@
     },
     {
       "words": [
+        "sign-review"
+      ],
+      "summary": "Sign a review with Sigstore, or add a bundle signed elsewhere (--bundle)",
+      "help": "Sign a review with Sigstore, or add a bundle signed elsewhere (--bundle).\n\nSigns the review with Sigstore, as sign-ree signs the seal: the signed statement names the reviewed seal and carries the review's record, so the one bundle is the review, signed, for anyone to check. Only a review of a sealed REE that is not running is signed, and a signed review changes no more.",
+      "runs": true,
+      "operations": [
+        "sign_review"
+      ],
+      "params": [
+        {
+          "name": "--bundle",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "A Sigstore bundle signed elsewhere, to add instead of signing here.",
+          "type": "file"
+        },
+        {
+          "name": "--identity-token",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "An OIDC token to sign under, in place of signing in; read from SIGSTORE_IDENTITY_TOKEN.",
+          "type": "text"
+        },
+        {
+          "name": "--out-of-band",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Sign in by pasting a code from the browser, where no browser can reach this machine.",
+          "flag": true,
+          "default": false
+        },
+        {
+          "name": "--staging",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Sign with Sigstore's staging instance, for trying it out.",
+          "flag": true,
+          "default": false
+        },
+        {
+          "name": "--trust-config",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "A Sigstore client trust configuration naming other services, such as a local stack.",
+          "type": "file"
+        },
+        {
+          "name": "--review-id",
+          "kind": "option",
+          "required": true,
+          "multiple": false,
+          "help": "The review to sign.",
+          "type": "text"
+        }
+      ],
+      "stdin": null,
+      "stdout": "result",
+      "outputs": {
+        "$ref": "#/$defs/SignReviewOutputs"
+      }
+    },
+    {
+      "words": [
         "status"
       ],
       "summary": "Show where the REE stands: each step, its evidence, and what to run next.",
@@ -8305,6 +8373,30 @@
         "ree_digest"
       ],
       "title": "SignOutputs",
+      "type": "object"
+    },
+    "SignReviewOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "ree_digest": {
+          "title": "Ree Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_id",
+        "path",
+        "ree_digest"
+      ],
+      "title": "SignReviewOutputs",
       "type": "object"
     },
     "SlurmObservation": {

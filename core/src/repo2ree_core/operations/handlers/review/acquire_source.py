@@ -26,7 +26,7 @@ from repo2ree_core.evidence.review.records import (
 )
 from repo2ree_core.evidence.review.store import write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
-from repo2ree_core.operations.steps.review import begin_review_step, require_ree_baseline
+from repo2ree_core.operations.steps.review import begin_review_step, refuse_signed_review, require_ree_baseline
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
@@ -55,6 +55,8 @@ def handle_review_acquire_source(
     ree = require_ree_baseline(layout, log=log)
     if isinstance(ree, ActionResult):
         return ree
+    if (refused := refuse_signed_review(review_layout, args.review_id, log)) is not None:
+        return refused
 
     # The one step that opens an attempt rather than joining one: there is no
     # record to require, so it starts from a freshly minted one.

@@ -113,6 +113,15 @@ class SignReePayload(StrictRequestModel):
     idempotency_key: str | None = None
 
 
+class SignReviewPayload(StrictRequestModel):
+    """Add a staged Sigstore bundle as the review's signature: its statement names the reviewed seal, with the
+    review's record as its predicate."""
+
+    upload_token: str
+    archive_name: str
+    idempotency_key: str | None = None
+
+
 class SealReePayload(StrictRequestModel):
     include_source: bool = Field(default=False, description="Put the source snapshot in the sealed archive.")
     include_experiment_environment: bool = Field(

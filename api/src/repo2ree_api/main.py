@@ -34,6 +34,7 @@ from repo2ree_api.control.runs import runs_router
 from repo2ree_api.deps import workbench_connections
 from repo2ree_api.ree_index_routes import ree_index_router
 from repo2ree_api.review.records import review_records_router
+from repo2ree_api.review.signing import review_signing_router
 from repo2ree_api.review.stages import review_stages_router
 from repo2ree_api.settings import service_settings
 from repo2ree_api.storage import author_actions
@@ -213,6 +214,7 @@ ROUTERS = (
     # Review — the same lifecycle, reproduced independently.
     review_records_router,
     review_stages_router,
+    review_signing_router,
     # The fleet the whole thing runs on.
     workbench_ws_router,
     workbenches_router,

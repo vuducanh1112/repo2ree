@@ -404,6 +404,22 @@
                     "key": "run"
                   }
                 ]
+              },
+              {
+                "name": "signatures",
+                "kind": "directory",
+                "origin": "signed",
+                "capture": "git",
+                "description": "The review, signed: once it is, the review changes no more.",
+                "children": [
+                  {
+                    "name": "review.sigstore.json",
+                    "kind": "file",
+                    "origin": "signed",
+                    "capture": "git",
+                    "description": "A Sigstore bundle whose DSSE in-toto statement names the reviewed seal, with the review's record as its predicate."
+                  }
+                ]
               }
             ]
           }

@@ -41,6 +41,7 @@ from repo2ree_core.operations.handlers.review.build_experiment_environment impor
     handle_review_build_experiment_environment,
 )
 from repo2ree_core.operations.handlers.review.run_experiment import handle_review_run_experiment
+from repo2ree_core.operations.handlers.review.sign_review import handle_sign_review
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import (
     AcquireSourceCommand,
@@ -64,6 +65,7 @@ from repo2ree_protocol.command import (
     RunExperimentCommand,
     SealReeCommand,
     SignReeCommand,
+    SignReviewCommand,
     SuggestScriptsCommand,
     WriteScriptCommand,
 )
@@ -188,6 +190,8 @@ def _dispatch(
         return handle_load_ree_bundle(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, SignReeCommand):
         return handle_sign_ree(cmd.args, layout=layout, log=log)
+    if isinstance(cmd, SignReviewCommand):
+        return handle_sign_review(cmd.args, layout=layout, log=log)
     if isinstance(cmd, WriteScriptCommand):
         return handle_write_script(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, PatchReeDefinitionCommand):

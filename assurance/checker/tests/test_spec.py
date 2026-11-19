@@ -401,7 +401,7 @@ def test_the_author_rules_name_the_action_groups_they_mean() -> None:
 
 def test_the_catalogue_names_every_operation_once_and_each_review_the_operation_it_reproduces() -> None:
     spec = load_spec()
-    assert len(spec.operations) == 19
+    assert len(spec.operations) == 20
     assert set(spec.review_operations) == {
         "review_acquire_source",
         "review_build_experiment_environment",
@@ -444,7 +444,10 @@ def test_the_specification_has_one_catalogue() -> None:
         ),
         (
             lambda docs: docs.aggregates[0].update(writes_nothing=["suggest_scripts"]),
-            "operations no aggregate says what they may change: ['lint_scripts', 'materialize_workspace']",
+            (
+                "operations no aggregate says what they may change: "
+                "['lint_scripts', 'materialize_workspace', 'sign_review']"
+            ),
         ),
     ],
 )

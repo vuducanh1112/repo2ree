@@ -26,6 +26,7 @@ activate_experiment_environment = "Run the activate experiment environment scrip
 run_experiment = "Run one declared experiment and verify its outputs."
 seal_ree = "Freeze the REE and its evidence under one digest: nothing the seal covers changes after this."
 sign_ree = "Add one signed claim about a sealed REE: a Sigstore bundle over its digest, beside what the seal covers."
+sign_review = "Sign a review of a sealed REE: a Sigstore bundle naming the seal, with the review's record as its predicate; the review changes no more."
 
 [review_operations]
 review_acquire_source = "Open a review: acquire the source the author pinned, from its origin or from the REE's own snapshot."

@@ -1,8 +1,10 @@
 """Signed claims about a sealed REE.
 
 Each claim is one Sigstore bundle at ``signatures/<claim>.sigstore.json``, beside what the seal covers: its DSSE
-envelope signs an in-toto statement whose subject is the seal's digest, under the claim's predicate type. Reading
-the statement says what a bundle claims; whether its signature holds, and whose it is, is a verifier's to say.
+envelope signs an in-toto statement whose subject is the seal's digest, under the claim's predicate type. A review
+of a sealed REE is signed the same way, at its own ``signatures/review.sigstore.json``: the statement names the
+reviewed seal, and its predicate is the review's record. Reading the statement says what a bundle claims; whether
+its signature holds, and whose it is, is a verifier's to say.
 """
 
 from __future__ import annotations
@@ -11,7 +13,7 @@ import base64
 import binascii
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from repo2ree_ree.layout import SIGNATURES
 
@@ -19,6 +21,8 @@ SignatureClaim = Literal["author_approval"]
 PREDICATE_TYPES: Final[dict[SignatureClaim, str]] = {
     "author_approval": "https://repo2ree.org/claims/author-approval/v1",
 }
+# A signed review: its statement's predicate is the review's record, so the one file is the review, signed.
+REVIEW_PREDICATE_TYPE: Final = "https://repo2ree.org/claims/review/v1"
 SIGNATURE_SUFFIX: Final = ".sigstore.json"
 IN_TOTO: Final = "application/vnd.in-toto+json"
 
@@ -26,6 +30,11 @@ IN_TOTO: Final = "application/vnd.in-toto+json"
 def signature_path(claim: SignatureClaim) -> str:
     """Where a claim's signature sits, from the REE root."""
     return f"{SIGNATURES}/{claim}{SIGNATURE_SUFFIX}"
+
+
+def review_signature_path() -> str:
+    """Where a review's signature sits, from the review's root."""
+    return f"{SIGNATURES}/review{SIGNATURE_SUFFIX}"
 
 
 class _Read(BaseModel):
@@ -55,15 +64,18 @@ class _Statement(_Read):
     type: Literal["https://in-toto.io/Statement/v1"] = Field(alias="_type")
     subject: tuple[_Subject, ...] = Field(min_length=1)
     predicate_type: str = Field(alias="predicateType", min_length=1)
+    predicate: JsonValue = None
 
 
 class SignedStatement(BaseModel):
-    """What a bundle claims: each subject's digest as ``<algorithm>:<hex>``, and the predicate type."""
+    """What a bundle claims: each subject's digest as ``<algorithm>:<hex>``, the predicate type, and the
+    predicate."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     digests: frozenset[str]
     predicate_type: str
+    predicate: JsonValue = None
 
 
 class UnreadableSignatureError(ValueError):
@@ -85,4 +97,5 @@ def signed_statement(content: bytes) -> SignedStatement:
     return SignedStatement(
         digests=frozenset(f"{name}:{value}" for subject in statement.subject for name, value in subject.digest.items()),
         predicate_type=statement.predicate_type,
+        predicate=statement.predicate,
     )

@@ -23,7 +23,7 @@ from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 from repo2ree_testbed.showcases import INSTANT, SOURCE, Project, RecipeScript
 from repo2ree_testbed.showcases import RESULT as RESULT
-from repo2ree_testbed.stack.sigstore import AUTHOR_APPROVAL, local_sigstore, sign
+from repo2ree_testbed.stack.sigstore import AUTHOR_APPROVAL, REVIEW, local_sigstore, sign
 
 ROOT = Path(__file__).resolve().parents[3]
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
@@ -61,6 +61,7 @@ class ApiError(AssertionError):
 
 # What a signature is called while it is staged.
 SIGNED = "author_approval.sigstore.json"
+SIGNED_REVIEW = "review.sigstore.json"
 
 
 @dataclass
@@ -239,6 +240,30 @@ class Api:
             ree_id,
             "sign-ree",
             {"claim": "author_approval", "upload_token": upload["upload_token"], "archive_name": SIGNED},
+            watch=watch,
+        )
+
+    def sign_review(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
+        """Sign the review with the run's Sigstore, as its reviewer's own client does: the statement names the
+        reviewed seal, with the record as the API serves it as its predicate."""
+        record = self.get(f"/api/v1/rees/{ree_id}/reviews/{review_id}")
+        digest = str(record["subject"]["ree_digest"])
+        bundle = sign(
+            local_sigstore(),
+            record["subject"]["name"],
+            digest.removeprefix("sha256:"),
+            REVIEW,
+            predicate=record,
+        )
+        upload = self.post(
+            f"/api/v1/rees/{ree_id}/reviews/{review_id}/signature:upload-init",
+            {"file_name": SIGNED_REVIEW, "size": len(bundle), "content_type": "application/json"},
+        )
+        self.request("PUT", upload["upload_url"], content=bundle)
+        return self.stage(
+            ree_id,
+            f"sign-review/{review_id}",
+            {"upload_token": upload["upload_token"], "archive_name": SIGNED_REVIEW},
             watch=watch,
         )
 

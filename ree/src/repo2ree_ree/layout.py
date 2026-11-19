@@ -217,6 +217,19 @@ _REVIEW = _directory(
         *_RUN_LOGS,
         _file("{run}.receipt.json", "produced", "git", "The receipt a run wrote.", key="run"),
     ),
+    _directory(
+        SIGNATURES,
+        "signed",
+        "git",
+        "The review, signed: once it is, the review changes no more.",
+        _file(
+            "review.sigstore.json",
+            "signed",
+            "git",
+            "A Sigstore bundle whose DSSE in-toto statement names the reviewed seal, with the review's record as "
+            "its predicate.",
+        ),
+    ),
     key="review",
     ree_root=True,
 )

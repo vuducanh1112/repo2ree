@@ -25,10 +25,6 @@ from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
 from repo2ree_protocol.command import (
     Command,
-    ReviewAcquireSourceCommand,
-    ReviewActivateExperimentEnvironmentCommand,
-    ReviewBuildExperimentEnvironmentCommand,
-    ReviewRunExperimentCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
@@ -55,17 +51,7 @@ def capture_command(
     # Preserve missing-REE preconditions without creating a new REE implicitly.
     if not layout.manifest.is_file():
         return execute()
-    scope = layout
-    if isinstance(
-        cmd,
-        (
-            ReviewAcquireSourceCommand,
-            ReviewBuildExperimentEnvironmentCommand,
-            ReviewActivateExperimentEnvironmentCommand,
-            ReviewRunExperimentCommand,
-        ),
-    ):
-        scope = layout.review(cmd.args.review_id)
+    scope = _scope(layout, cmd)
     record = OperationRecord(
         attempt_id=context.attempt_id,
         context=context,

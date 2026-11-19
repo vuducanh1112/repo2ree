@@ -43,6 +43,7 @@ from repo2ree_ree.review import (
     ReviewStatus,
     ReviewStepKey,
 )
+from repo2ree_ree.signature import review_signature_path
 from repo2ree_telemetry.spans import ReviewStepAttrs
 
 # Signature of the per-handler early exit: a terminal status and why.
@@ -121,9 +122,20 @@ def require_review_record(review_layout: ReviewLayout, review_id: str, log: LogS
     *before* :func:`begin_review_step`, for the reason given there.
     """
     record = read_review_record(review_layout)
-    if record is not None:
-        return record
-    message = f"No review attempt named {review_id}"
+    if record is None:
+        message = f"No review attempt named {review_id}"
+        log("system", "error", message)
+        return ActionResult.failed("precondition", message)
+    if (refused := refuse_signed_review(review_layout, review_id, log)) is not None:
+        return refused
+    return record
+
+
+def refuse_signed_review(review_layout: ReviewLayout, review_id: str, log: LogSink) -> ActionResult | None:
+    """The failure to return for a signed review: it changes no more, so no step runs in it, nor reopens it."""
+    if not (review_layout.root / review_signature_path()).is_file():
+        return None
+    message = f"Review {review_id} is signed, and a signed review changes no more: open a new review"
     log("system", "error", message)
     return ActionResult.failed("precondition", message)
 

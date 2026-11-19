@@ -62,7 +62,12 @@ export const RUN_HUD_TABS = [
   },
   { key: "evaluate", abbrev: "EVAL", label: "Evaluate", operations: ["evaluate_reproducibility"] },
   { key: "hbom", abbrev: "HBOM", label: "HBOM", operations: ["observe_hardware"] },
-  { key: "seal", abbrev: "SEAL", label: "Seal", operations: ["seal_ree", "sign_ree"] },
+  {
+    key: "seal",
+    abbrev: "SEAL",
+    label: "Seal",
+    operations: ["seal_ree", "sign_ree", "sign_review"],
+  },
   {
     key: "experiment",
     abbrev: "EXP",

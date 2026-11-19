@@ -187,6 +187,14 @@ class SignOutputs(BaseModel):
     ree_digest: Digest
 
 
+class SignReviewOutputs(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    review_id: str
+    path: str
+    ree_digest: Digest
+
+
 class BuildExperimentEnvironmentFailureOutputs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -231,6 +239,7 @@ OUTPUTS: dict[str, Any] = {
     "lint_scripts": LintScriptsOutputs,
     "seal_ree": SealOutputs,
     "sign_ree": SignOutputs,
+    "sign_review": SignReviewOutputs,
 }
 
 _ADAPTERS = {operation: TypeAdapter(shape) for operation, shape in OUTPUTS.items()}

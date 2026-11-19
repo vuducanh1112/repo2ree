@@ -46,6 +46,7 @@ export const REE_RUN_OPERATIONS = [
   "run_experiment",
   "seal_ree",
   "sign_ree",
+  "sign_review",
   "review_acquire_source",
   "review_build_experiment_environment",
   "review_activate_experiment_environment",

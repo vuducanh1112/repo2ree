@@ -74,6 +74,7 @@ class Client(Protocol):
     def author(self, ree_id: str, fixture: Project) -> None: ...
     def seal(self, ree_id: str, *, experiment_environment_included: bool = ..., watch: RunWatch = ...) -> Run: ...
     def sign(self, ree_id: str) -> Run: ...
+    def sign_review(self, ree_id: str, review_id: str) -> Run: ...
     def archive(self, ree_id: str, label: str) -> Path: ...
     def load(self, ree_id: str, bundle: bytes) -> None: ...
     def review_acquire_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = ...) -> Run: ...
@@ -216,6 +217,9 @@ class ApiClient:
     def sign(self, ree_id: str) -> Run:
         return Run.model_validate(self.api.sign(ree_id))
 
+    def sign_review(self, ree_id: str, review_id: str) -> Run:
+        return Run.model_validate(self.api.sign_review(ree_id, review_id))
+
     def archive(self, ree_id: str, label: str) -> Path:
         kept: Path | None = self.api.keep_archive(ree_id, label)
         assert kept is not None, "the archive was refused"
@@ -257,7 +261,8 @@ class ApiClient:
         return self._stage(ree_id, f"reviews/{review_id}/run-experiment/{experiment}", watch=watch)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
-        """Author, seal and sign ``fixture``, and reproduce it in a second REE, which loads it signed."""
+        """Author, seal and sign ``fixture``, reproduce it in a second REE, which loads it signed, and sign the
+        review."""
         author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)
@@ -280,6 +285,8 @@ class ApiClient:
         experiment = self.review_run_experiment(reviewer, review_id, fixture.experiment, watch=fixture.watch)
         logs = self.logs(reviewer, experiment)
         assert experiment.status == "succeeded", logs
+        signed_review = self.sign_review(reviewer, review_id)
+        assert signed_review.status == "succeeded", self.logs(reviewer, signed_review)
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)
 
 

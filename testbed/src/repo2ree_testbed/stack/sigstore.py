@@ -27,7 +27,7 @@ import urllib.request
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -52,6 +52,7 @@ IDENTITY: Final = "author@repo2ree.invalid"
 SIGSTORE_VARIABLE: Final = "REPO2REE_TEST_SIGSTORE"
 # The claim a showcase's author makes, by its published predicate type, as any Sigstore client names it.
 AUTHOR_APPROVAL: Final = "https://repo2ree.org/claims/author-approval/v1"
+REVIEW: Final = "https://repo2ree.org/claims/review/v1"
 _CLIENT_ID: Final = "sigstore"
 _CA_PASSWORD: Final = "fulcio"  # noqa: S105 - the run's throwaway CA, as Fulcio's own compose spells it
 _MYSQL_DSN: Final = "test:zaphod@tcp({host}:3306)/test?parseTime=true&interpolateParams=true"
@@ -484,9 +485,11 @@ class SigstoreStack:
             out.write(line + "\n")
 
 
-def sign(local: LocalSigstore, name: str, sha256: str, predicate_type: str) -> bytes:
-    """A Sigstore bundle of an in-toto statement over ``sha256``, signed under the identity, as an author's own
-    Sigstore client signs."""
+def sign(
+    local: LocalSigstore, name: str, sha256: str, predicate_type: str, *, predicate: dict[str, Any] | None = None
+) -> bytes:
+    """A Sigstore bundle of an in-toto statement over ``sha256``, signed under the identity, as an author's or a
+    reviewer's own Sigstore client signs."""
     from sigstore.dsse import DigestSet, StatementBuilder, Subject  # noqa: PLC0415 - only a signing test needs it
     from sigstore.models import ClientTrustConfig  # noqa: PLC0415
     from sigstore.oidc import IdentityToken  # noqa: PLC0415
@@ -497,7 +500,7 @@ def sign(local: LocalSigstore, name: str, sha256: str, predicate_type: str) -> b
         StatementBuilder()
         .subjects([Subject(name=name, digest=DigestSet({"sha256": sha256}))])
         .predicate_type(predicate_type)
-        .predicate({})
+        .predicate(predicate or {})
         .build()
     )
     # Cached, so the certificate's key is the one that signs (sigstore makes a new key per use without it).

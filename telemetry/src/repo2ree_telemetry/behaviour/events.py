@@ -56,6 +56,7 @@ AuthorApiActionName = Literal[
     # lifecycle
     "seal_ree",
     "sign_ree",
+    "sign_review",
     "load_ree_bundle",
     # reading
     "view_ree",

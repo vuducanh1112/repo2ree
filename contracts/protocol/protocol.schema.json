@@ -25,6 +25,7 @@
           "run_experiment": "#/$defs/RunExperimentCommand",
           "seal_ree": "#/$defs/SealReeCommand",
           "sign_ree": "#/$defs/SignReeCommand",
+          "sign_review": "#/$defs/SignReviewCommand",
           "suggest_scripts": "#/$defs/SuggestScriptsCommand",
           "write_script": "#/$defs/WriteScriptCommand"
         },
@@ -96,6 +97,9 @@
         },
         {
           "$ref": "#/$defs/SignReeCommand"
+        },
+        {
+          "$ref": "#/$defs/SignReviewCommand"
         }
       ]
     },
@@ -248,6 +252,9 @@
     },
     "sign_ree": {
       "$ref": "#/$defs/SignOutputs"
+    },
+    "sign_review": {
+      "$ref": "#/$defs/SignReviewOutputs"
     }
   },
   "x-queries": {
@@ -8494,6 +8501,77 @@
         "args"
       ],
       "title": "SignReeCommand",
+      "type": "object"
+    },
+    "SignReviewArgs": {
+      "additionalProperties": false,
+      "description": "Add a Sigstore bundle, staged at /ree/upload-staging/<upload_token>.bin, as the review's signature: its\nstatement must name the reviewed REE's seal, under the review predicate type, with the review's record as its\npredicate. Only a review of a sealed REE that is not running is signed, and a signed review changes no more.",
+      "properties": {
+        "review_id": {
+          "description": "The review to sign.",
+          "title": "Review Id",
+          "type": "string"
+        },
+        "upload_token": {
+          "description": "The staged bundle's token.",
+          "title": "Upload Token",
+          "type": "string"
+        },
+        "archive_name": {
+          "description": "The staged bundle's file name.",
+          "title": "Archive Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_id",
+        "upload_token",
+        "archive_name"
+      ],
+      "title": "SignReviewArgs",
+      "type": "object"
+    },
+    "SignReviewCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "const": "sign_review",
+          "default": "sign_review",
+          "title": "Operation",
+          "type": "string"
+        },
+        "args": {
+          "$ref": "#/$defs/SignReviewArgs"
+        }
+      },
+      "required": [
+        "args"
+      ],
+      "title": "SignReviewCommand",
+      "type": "object"
+    },
+    "SignReviewOutputs": {
+      "additionalProperties": false,
+      "properties": {
+        "review_id": {
+          "title": "Review Id",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "ree_digest": {
+          "title": "Ree Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_id",
+        "path",
+        "ree_digest"
+      ],
+      "title": "SignReviewOutputs",
       "type": "object"
     },
     "SlurmObservation": {

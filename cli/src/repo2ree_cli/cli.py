@@ -40,7 +40,7 @@ from repo2ree_cli.schema import ReeCommand, describe
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.domain.ree.steps import REE_STEPS
 from repo2ree_core.domain.ree.transitions import revision_of
-from repo2ree_core.evidence.review.store import load_reviews
+from repo2ree_core.evidence.review.store import load_reviews, read_review_record
 from repo2ree_core.execution.working_environment import machine_facts
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.handlers.author.file_concurrency import workspace_content_etag
@@ -68,6 +68,7 @@ from repo2ree_protocol.command import (
     SealReeCommand,
     SignReeArgs,
     SignReeCommand,
+    SignReviewCommand,
     SuggestScriptsCommand,
     TargetKind,
     WriteScriptArgs,
@@ -97,7 +98,9 @@ from repo2ree_protocol.queries import (
 from repo2ree_protocol.result import ActionResult, FailureCategory
 from repo2ree_protocol.verbs import REVIEW, SUMMARIES, VERBS
 from repo2ree_ree.layout import REE_MANIFEST
+from repo2ree_ree.primitives import Digest
 from repo2ree_ree.review import ReviewSet
+from repo2ree_ree.signature import PREDICATE_TYPES, REVIEW_PREDICATE_TYPE
 from repo2ree_telemetry.command_line import (
     invocation_span,
     name_invocation,
@@ -420,28 +423,68 @@ def _load_bundle(
 def _sign(
     invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
 ) -> None:
-    """Sign the seal with Sigstore here, or add a bundle signed elsewhere (``--bundle``)."""
+    """Sign the seal, or a review of it, with Sigstore here, or add a bundle signed elsewhere (``--bundle``)."""
     layout = _layout_or_refuse(invocation, " ".join(words))
     if params["bundle"] is not None:
         filled = _staged(layout, params["bundle"])
     elif params["upload_token"] is not None:
         filled = {}
     else:
-        filled = _staged_bytes(layout, _signed_here(invocation, " ".join(words), layout, params), SIGNED_HERE)
+        statement = (
+            _review_statement(invocation, " ".join(words), layout, params["review_id"])
+            if command is SignReviewCommand
+            else _seal_statement(invocation, " ".join(words), layout, params)
+        )
+        filled = _staged_bytes(layout, _signed_here(invocation, " ".join(words), statement, params), SIGNED_HERE)
     args = spelling.build(params, None, **filled)
-    _run_and_finish(invocation, words, SignReeCommand.model_validate({"args": args}), layout)
+    signed = (SignReviewCommand if command is SignReviewCommand else SignReeCommand).model_validate({"args": args})
+    _run_and_finish(invocation, words, signed, layout)
 
 
-def _signed_here(invocation: Invocation, words: str, layout: ReeLayout, params: Params) -> bytes:
-    """A Sigstore bundle over the seal's digest, signed under the identity the signer proves now."""
+class _Statement(BaseModel):
+    """What a signature made here says: about which seal, under which predicate type, with which predicate."""
+
+    ree_name: str
+    ree_digest: Digest
+    predicate_type: str
+    predicate: dict[str, Any] = {}
+
+
+def _seal_statement(invocation: Invocation, words: str, layout: ReeLayout, params: Params) -> _Statement:
     ree = ReeDirectory(layout).read_ree()
     if ree.seal is None:
         refuse(invocation, words, "precondition", "only a sealed REE is signed: run `ree seal-ree` first")
+    claim = params["claim"] or SignReeArgs.model_fields["claim"].default
+    return _Statement(
+        ree_name=ree.subject.definition.name, ree_digest=ree.seal.ree_digest, predicate_type=PREDICATE_TYPES[claim]
+    )
+
+
+def _review_statement(invocation: Invocation, words: str, layout: ReeLayout, review_id: str) -> _Statement:
+    review = layout.review(review_id)
+    record = read_review_record(review)
+    if record is None:
+        refuse(invocation, words, "precondition", f"no review {review_id}")
+    if record.subject.ree_digest is None:
+        refuse(
+            invocation, words, "precondition", f"review {review_id} is of a draft: only a review of a seal is signed"
+        )
+    return _Statement(
+        ree_name=record.subject.name,
+        ree_digest=record.subject.ree_digest,
+        predicate_type=REVIEW_PREDICATE_TYPE,
+        predicate=json.loads(review.metadata.read_bytes()),
+    )
+
+
+def _signed_here(invocation: Invocation, words: str, statement: _Statement, params: Params) -> bytes:
+    """A Sigstore bundle of ``statement``, signed under the identity the signer proves now."""
     click.echo(signing.PUBLIC_LOG_NOTICE, err=True)
     request = signing.SigningRequest(
-        ree_name=ree.subject.definition.name,
-        ree_digest=ree.seal.ree_digest,
-        claim=params["claim"] or SignReeArgs.model_fields["claim"].default,
+        ree_name=statement.ree_name,
+        ree_digest=statement.ree_digest,
+        predicate_type=statement.predicate_type,
+        predicate=statement.predicate,
         instance="staging" if params["staging"] else "production",
         trust_config=params["trust_config"],
         identity_token=params["identity_token"],
@@ -672,6 +715,7 @@ _HANDLERS: dict[type[BaseModel], Handler] = {
     SuggestScriptsCommand: _infer,
     SealReeCommand: _seal,
     SignReeCommand: _sign,
+    SignReviewCommand: _sign,
     ReviewAcquireSourceCommand: _review_step,
     ReviewBuildExperimentEnvironmentCommand: _review_step,
     ReviewActivateExperimentEnvironmentCommand: _review_step,
@@ -683,6 +727,7 @@ _OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
     AcquireSourceCommand: ("mode",),
     LoadReeBundleCommand: ("upload_token", "archive_name"),
     SignReeCommand: ("upload_token", "archive_name"),
+    SignReviewCommand: ("upload_token", "archive_name"),
     ReviewAcquireSourceCommand: _REVIEW_ID,
     ReviewBuildExperimentEnvironmentCommand: _REVIEW_ID,
     ReviewActivateExperimentEnvironmentCommand: _REVIEW_ID,
@@ -694,40 +739,44 @@ _HIDDEN: dict[type[BaseModel], tuple[str, ...]] = {
     AcquireSourceCommand: _STAGED,
     LoadReeBundleCommand: _STAGED,
     SignReeCommand: _STAGED,
+    SignReviewCommand: _STAGED,
 }
 _ARCHIVE = click.Option(
     [ARCHIVE_OPTION, "archive"],
     type=click.Path(dir_okay=False, exists=True, path_type=Path),
     help="The archive to take, staged in the REE.",
 )
+# How a signature is made here, for the seal and for a review of it alike.
+_SIGNING: list[click.Parameter] = [
+    click.Option(
+        [BUNDLE_OPTION, "bundle"],
+        type=click.Path(dir_okay=False, exists=True, path_type=Path),
+        help="A Sigstore bundle signed elsewhere, to add instead of signing here.",
+    ),
+    click.Option(
+        ["--identity-token", "identity_token"],
+        envvar="SIGSTORE_IDENTITY_TOKEN",
+        default=None,
+        help="An OIDC token to sign under, in place of signing in; read from SIGSTORE_IDENTITY_TOKEN.",
+    ),
+    click.Option(
+        ["--out-of-band", "out_of_band"],
+        is_flag=True,
+        help="Sign in by pasting a code from the browser, where no browser can reach this machine.",
+    ),
+    click.Option(["--staging"], is_flag=True, help="Sign with Sigstore's staging instance, for trying it out."),
+    click.Option(
+        ["--trust-config", "trust_config"],
+        type=click.Path(dir_okay=False, exists=True, path_type=Path),
+        default=None,
+        help="A Sigstore client trust configuration naming other services, such as a local stack.",
+    ),
+]
 _EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
     AcquireSourceCommand: [_ARCHIVE],
     LoadReeBundleCommand: [_ARCHIVE],
-    SignReeCommand: [
-        click.Option(
-            [BUNDLE_OPTION, "bundle"],
-            type=click.Path(dir_okay=False, exists=True, path_type=Path),
-            help="A Sigstore bundle signed elsewhere, to add instead of signing here.",
-        ),
-        click.Option(
-            ["--identity-token", "identity_token"],
-            envvar="SIGSTORE_IDENTITY_TOKEN",
-            default=None,
-            help="An OIDC token to sign under, in place of signing in; read from SIGSTORE_IDENTITY_TOKEN.",
-        ),
-        click.Option(
-            ["--out-of-band", "out_of_band"],
-            is_flag=True,
-            help="Sign in by pasting a code from the browser, where no browser can reach this machine.",
-        ),
-        click.Option(["--staging"], is_flag=True, help="Sign with Sigstore's staging instance, for trying it out."),
-        click.Option(
-            ["--trust-config", "trust_config"],
-            type=click.Path(dir_okay=False, exists=True, path_type=Path),
-            default=None,
-            help="A Sigstore client trust configuration naming other services, such as a local stack.",
-        ),
-    ],
+    SignReeCommand: _SIGNING,
+    SignReviewCommand: _SIGNING,
     PatchReeDefinitionCommand: _DEFINE_OPTIONS,
     SuggestScriptsCommand: [
         click.Option(["--write"], is_flag=True, help="Write the proposed script, for one --target."),
@@ -746,6 +795,11 @@ _MORE: dict[type[BaseModel], str] = {
         "--out-of-band), and your identity is logged publicly in Sigstore's transparency log. A CI job's own token "
         "is used where there is one. With --bundle, adds a bundle signed elsewhere instead. The REE keeps the "
         "signature beside what the seal covers."
+    ),
+    SignReviewCommand: (
+        "Signs the review with Sigstore, as sign-ree signs the seal: the signed statement names the reviewed seal "
+        "and carries the review's record, so the one bundle is the review, signed, for anyone to check. Only a "
+        "review of a sealed REE that is not running is signed, and a signed review changes no more."
     ),
 }
 

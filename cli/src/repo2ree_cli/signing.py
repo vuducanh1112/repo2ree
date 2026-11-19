@@ -1,4 +1,5 @@
-"""Sign a sealed REE with Sigstore: an in-toto statement over the seal's digest, as a DSSE envelope in a bundle.
+"""Sign a sealed REE, or a review of one, with Sigstore: an in-toto statement over the seal's digest, as a DSSE
+envelope in a bundle. A review's statement carries the review's record as its predicate.
 
 The signer proves who they are to an OIDC issuer: in a browser, by a code pasted from one, or by a token the
 environment already holds, as a CI job does. Fulcio certifies a key for that identity for a few minutes, and Rekor
@@ -10,11 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from repo2ree_ree.digest import DIGEST_PREFIX
 from repo2ree_ree.primitives import Digest
-from repo2ree_ree.signature import PREDICATE_TYPES, SignatureClaim
 
 SigstoreInstance = Literal["production", "staging"]
 
@@ -31,7 +31,8 @@ class SigningRequest(BaseModel):
 
     ree_name: str
     ree_digest: Digest
-    claim: SignatureClaim
+    predicate_type: str
+    predicate: dict[str, JsonValue] = Field(default_factory=dict)
     instance: SigstoreInstance = "production"
     # A Sigstore client trust configuration naming other services, such as a local stack; it wins over instance.
     trust_config: Path | None = None
@@ -90,8 +91,8 @@ def _signed(request: SigningRequest) -> bytes:
     signed = (
         StatementBuilder()
         .subjects([Subject(name=request.ree_name, digest=DigestSet({"sha256": sha256}))])
-        .predicate_type(PREDICATE_TYPES[request.claim])
-        .predicate({})
+        .predicate_type(request.predicate_type)
+        .predicate(request.predicate)
         .build()
     )
     # One key for the certificate and the signature: without its cache, sigstore makes a new key each time it

@@ -44,6 +44,7 @@ OperationName = Literal[
     "run_experiment",
     "seal_ree",
     "sign_ree",
+    "sign_review",
     "review_acquire_source",
     "review_build_experiment_environment",
     "review_activate_experiment_environment",
@@ -517,6 +518,25 @@ class SignReeCommand(BaseModel):
     args: SignReeArgs
 
 
+class SignReviewArgs(BaseModel):
+    """Add a Sigstore bundle, staged at /ree/upload-staging/<upload_token>.bin, as the review's signature: its
+    statement must name the reviewed REE's seal, under the review predicate type, with the review's record as its
+    predicate. Only a review of a sealed REE that is not running is signed, and a signed review changes no more."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    review_id: Annotated[str, Field(description="The review to sign.")]
+    upload_token: str = Field(description="The staged bundle's token.")
+    archive_name: str = Field(description="The staged bundle's file name.")
+
+
+class SignReviewCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["sign_review"] = "sign_review"
+    args: SignReviewArgs
+
+
 # Tagged union discriminated on 'operation'.
 Command = Annotated[
     ReviewAcquireSourceCommand
@@ -540,7 +560,8 @@ Command = Annotated[
     | SuggestScriptsCommand
     | LintScriptsCommand
     | SealReeCommand
-    | SignReeCommand,
+    | SignReeCommand
+    | SignReviewCommand,
     Field(discriminator="operation"),
 ]
 

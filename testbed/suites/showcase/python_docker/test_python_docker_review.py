@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import zipfile
+
 from system_client import ROOT
 from typed_client import Client, NewRee
 
@@ -45,3 +47,10 @@ def test_a_reviewer_reproduces_another_authors_source_experiment_environment_act
     assert [(item.experiment_name, item.verdict) for item in review.experiment_comparisons] == [
         (F.experiment, F.verdict)
     ]
+
+    signed = client.sign_review(reviewer, review_id)
+    assert signed.status == "succeeded", client.logs(reviewer, signed)
+    entries = zipfile.ZipFile(client.archive(reviewer, "reviewed")).namelist()
+    assert f"ree/reviews/{review_id}/signatures/review.sigstore.json" in entries, "the signed review travels with it"
+    again = client.review_run_experiment(reviewer, review_id, F.experiment, watch=F.watch)
+    assert again.status == "failed", "a signed review changes no more"

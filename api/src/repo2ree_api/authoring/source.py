@@ -4,7 +4,7 @@ Two ways in — by reference (``acquire-source``) or by upload (the
 init/PUT/complete sequence) — and both settle into the same
 ``AcquireSourceCommand`` in the workbench. The staging mechanics themselves live
 in :mod:`repo2ree_api.workbench.uploads` (receiving bytes) and
-:mod:`repo2ree_api.authoring.upload_runs` (handing them to the REE); this module
+:mod:`repo2ree_api.control.upload_runs` (handing them to the REE); this module
 is the HTTP binding.
 """
 
@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Request
 
-from repo2ree_api.authoring.upload_runs import StagedUploadLog, start_staged_upload_run
 from repo2ree_api.contracts import (
     ERROR_RESPONSES,
     AcquireSourcePayload,
@@ -25,6 +24,7 @@ from repo2ree_api.contracts import (
 )
 from repo2ree_api.contracts.runs import runs
 from repo2ree_api.control.run_orchestration import run_summary, start_single_command_run
+from repo2ree_api.control.upload_runs import StagedUploadLog, start_staged_upload_run
 from repo2ree_api.deps import command_dispatcher
 from repo2ree_api.storage.author_actions import author_api_action
 from repo2ree_api.workbench.commands import dispatch_or_fail, ree_command_span, require_handle

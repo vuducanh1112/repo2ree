@@ -392,6 +392,15 @@ class CliClient:
         token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
         return self._step(ree_id, "sign-ree", "--trust-config", str(trust), variables=token)
 
+    def sign_review(self, ree_id: str, review_id: str) -> Run:
+        """Sign the review with the run's Sigstore, as its reviewer does: the record is the statement's predicate."""
+        local = local_sigstore()
+        trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
+        token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
+        return self._step(
+            ree_id, "sign-review", "--review-id", review_id, "--trust-config", str(trust), variables=token
+        )
+
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -426,7 +435,8 @@ class CliClient:
         return self._step(ree_id, "review", "run-experiment", "--review-id", review_id, experiment)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
-        """Author, seal and sign ``fixture``, and reproduce it in a second REE, which loads it signed."""
+        """Author, seal and sign ``fixture``, reproduce it in a second REE, which loads it signed, and sign the
+        review."""
         author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)
@@ -449,6 +459,8 @@ class CliClient:
         experiment = self.review_run_experiment(reviewer, review_id, fixture.experiment, watch=fixture.watch)
         logs = self.logs(reviewer, experiment)
         assert experiment.status == "succeeded", logs
+        signed_review = self.sign_review(reviewer, review_id)
+        assert signed_review.status == "succeeded", self.logs(reviewer, signed_review)
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)
 
 
