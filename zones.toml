@@ -45,6 +45,11 @@ summary = "What the specification concedes is not proven, each with a reason."
 [spec.groups.excuses.paths]
 "assurance/checker/expected-verdicts.toml" = "Verdicts a gated test may leave open, and items no gated test reaches"
 
+[spec.groups.exercises]
+summary = "Exercises kept with what replaying each must show: that it conforms, or the problems it names."
+[spec.groups.exercises.paths]
+"exercises/" = "Exercise cases, each its exercise, origin, expectation, and the specification it reached"
+
 [gates]
 summary = "What enforces the specification and writes receipts."
 protected = true
@@ -194,6 +199,11 @@ summary = "Test plumbing shared across packages."
 [tooling.groups.tests.paths]
 "testbed/" = "repo2ree_testbed: per-test stacks, image suites, run pages, artifact pruning, coverage tiers, the pytest artifact plugin"
 "conftest.py" = "Pins Hypothesis's state to the repository"
+
+[tooling.groups.exercise-branch-cov]
+summary = "The code the exercise cases cover, stamped with the code it was measured on, and measured again when that changes."
+[tooling.groups.exercise-branch-cov.paths]
+"exercises/coverage/" = "The code each exercise case covered: its commit, and each file's blob and arcs"
 
 [tooling.groups.views]
 summary = "Draw what was recorded, verified, or declared; never verify."

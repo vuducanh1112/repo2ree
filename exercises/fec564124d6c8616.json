@@ -1,0 +1,205 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author",
+      "reviewer"
+    ],
+    "steps": [
+      {
+        "ree": "author",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "author",
+        "operation": "acquire_source",
+        "source": {
+          "kind": "uploaded",
+          "project": "instant"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "write_script",
+        "script": "check_working_environment",
+        "content": {
+          "kind": "recipe",
+          "project": "instant",
+          "file": "check_working_environment.sh"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "check_working_environment"
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "experiment_environment": {
+            "artifact_path": "source/runtime-venv.tar.gz"
+          }
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "write_script",
+        "script": "build_experiment_environment",
+        "content": {
+          "kind": "recipe",
+          "project": "instant",
+          "file": "build_experiment_environment.sh"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "write_script",
+        "script": "activate_experiment_environment",
+        "content": {
+          "kind": "recipe",
+          "project": "instant",
+          "file": "activate_experiment_environment.sh"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "build_experiment_environment"
+      },
+      {
+        "ree": "author",
+        "operation": "activate_experiment_environment"
+      },
+      {
+        "ree": "author",
+        "operation": "write_script",
+        "script": "experiment_run",
+        "experiment": "instant-hello",
+        "content": {
+          "kind": "recipe",
+          "project": "instant",
+          "file": "experiment.sh"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "write_script",
+        "script": "experiment_verify",
+        "experiment": "instant-hello",
+        "content": {
+          "kind": "recipe",
+          "project": "instant",
+          "file": "experiment.verify.sh"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "experiments": [
+            {
+              "name": "instant-hello",
+              "output_paths": [
+                "result.txt"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "run_experiment",
+        "experiment": "instant-hello"
+      },
+      {
+        "ree": "author",
+        "operation": "seal_ree",
+        "source_included": true,
+        "experiment_environment_included": true,
+        "results_included": true
+      },
+      {
+        "ree": "author",
+        "operation": "sign_ree",
+        "claim": "author_approval",
+        "signature": "valid"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "load_ree_bundle",
+        "exported_by": "author"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "review_acquire_source",
+        "review": "first",
+        "basis": "auto"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "review_build_experiment_environment",
+        "review": "first",
+        "basis": "auto"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "review_activate_experiment_environment",
+        "review": "first"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "review_run_experiment",
+        "review": "first",
+        "experiment": "instant-hello"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "sign_review",
+        "review": "first",
+        "signature": "valid"
+      }
+    ],
+    "faults": []
+  },
+  "origin": {
+    "kind": "hand_written"
+  },
+  "expects": {
+    "kind": "shows",
+    "problems": [
+      {
+        "kind": "violated",
+        "rule": "aggregate:Ree",
+        "subject": "Ree reviewer run_experiment[instant-hello]",
+        "detail": "(none) -> missing by load_ree_bundle, which no edge allows"
+      }
+    ]
+  },
+  "reached": {
+    "spec_digest": "sha256:4a6ea49ef042ee7e06b42666bc33b8ce27f1fcde4ebbafd63af20e3a703d90b0",
+    "items": [
+      "Attempt (none) -> pending",
+      "Attempt completed -> captured",
+      "Attempt executing -> completed",
+      "Attempt pending -> executing",
+      "aggregate:Ree",
+      "document:carried-evidence-is-its-digests",
+      "document:contents-are-the-bundle",
+      "document:scripts-are-their-digests",
+      "document:signatures-are-the-seal",
+      "document:standings-are-the-receipts-basis",
+      "document:the-seal-is-the-subject",
+      "evidence",
+      "machine:Attempt",
+      "machine:Receipt",
+      "machine:Ree",
+      "receipts-come-from-their-producers",
+      "ree-changes-through-operations",
+      "sealed-rees-are-only-signed",
+      "sealed-without-stale-evidence"
+    ]
+  }
+}
