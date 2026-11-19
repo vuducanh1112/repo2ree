@@ -35,7 +35,7 @@ export-spec:
 
 # Fold this tree's verifications of the assurance-gate receipt's tests into the catalogue of operations (JSON) for the overview.
 [group('Assurance')]
-export-operations: (assess-behaviour "")
+export-operations: _overview-behaviour
     #!/usr/bin/env bash
     set -euo pipefail
     listed=$(python -m repo2ree_repoview gate-verifications)
@@ -50,6 +50,14 @@ export-showcases:
     mkdir -p {{ quote(EXPORT_DIR) }}
     python -m repo2ree_testbed showcase-runs -o {{ quote(EXPORT_DIR + "/showcases.json") }}
     {{ STAMP_EXPORTS }} --by export-showcases {{ quote(EXPORT_DIR + "/showcases.json") }}
+
+# Assess and draw, once each, every run the overview reads: the assurance-gate receipt's and the newest of each
+# showcase tier. Each run has one assessment and one drawing, by this recipe alone, so the overview's other recipes
+# read them side by side. The CLI sessions' videos are rendered first, so each session page plays its own.
+[private]
+_overview-behaviour: export-showcases (render-cli-sessions "--jobs" "4")
+    python -m repo2ree_testbed assess --showcases
+    python -m repo2ree_testbed visualize --showcases
 
 # Assess and draw the showcase runs the overview reads, as the assurance gate's runs are.
 [group('Assurance')]
@@ -81,7 +89,6 @@ judge-e2e *runs:
 # specification into reports/behaviour/<run>/, with its verdict and the commit that assessed it. Takes
 # runs (by path or name), a dossier one of their tests left, one collected elsewhere (collect-dossier),
 # or `--invocation ID`; by default the runs the assurance-gate receipt names.
-# Recipes depend on it as `(assess-behaviour "")`, as visualize-behaviour passes no targets, so it runs once.
 # Assess the behaviour of e2e runs or dossiers with this tree (the assurance gate's runs by default).
 [group('Assurance')]
 assess-behaviour *targets:
@@ -100,4 +107,4 @@ generate-assurance-metrics:
     mkdir -p {{ quote(METRICS_DIR + "/assurance") }}
     lizard -l python -i -1 -o {{ quote(METRICS_DIR + "/assurance/complexity.html") }} $(python scripts/workspace.py assurance --src)
     lizard -l python -i -1 --csv $(python scripts/workspace.py assurance --src) > {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
-    python -m repo2ree_repoview stamp --manifest {{ quote(METRICS_DIR + "/manifest.json") }} --by generate-assurance-metrics {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}
+    python -m repo2ree_repoview stamp --folder {{ quote(METRICS_DIR) }} --by generate-assurance-metrics {{ quote(METRICS_DIR + "/assurance/complexity.html") }} {{ quote(METRICS_DIR + "/assurance/complexity.csv") }}

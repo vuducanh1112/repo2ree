@@ -10,6 +10,7 @@ DEFAULT_GUI_CORE_COLLAPSE := "^src/(core/[^/]+|shell/[^/]+)/"
 
 # Generate every backend and GUI architecture diagram.
 [group('Diagrams')]
+[parallel]
 generate-architecture-diagrams: generate-backend-graphs generate-backend-workspace-graphs generate-gui-graph generate-gui-core-graph
 
 # Generate backend package graphs (e.g. `just generate-backend-graph repo2ree_api`).
@@ -18,10 +19,12 @@ generate-backend-graph +packages="repo2ree_core":
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p {{ quote(ARCH_DIR) }}
+    drawn=()
     for package in {{ packages }}; do
         python -m repo2ree_repoview architecture "$package" -f svg -o {{ quote(ARCH_DIR) }}/"$package".svg
-        {{ STAMP_DIAGRAMS }} --by generate-backend-graph {{ quote(ARCH_DIR) }}/"$package".svg
+        drawn+=({{ quote(ARCH_DIR) }}/"$package".svg)
     done
+    {{ STAMP_DIAGRAMS }} --by generate-backend-graph "${drawn[@]}"
 
 # Generate a graph for every backend root package.
 [group('Diagrams')]

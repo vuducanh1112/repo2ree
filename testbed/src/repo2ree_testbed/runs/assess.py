@@ -26,6 +26,7 @@ from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.records import Behaviour, RunRecord, RunTest, read, write
 from repo2ree_testbed.runs.failed_command import FailedCommand, last_failed_command
 from repo2ree_testbed.runs.prune import receipt_runs
+from repo2ree_testbed.runs.showcase_runs import showcase_runs
 
 REPORTS = ROOT / "reports" / "behaviour"
 COLLECTED = "collected"
@@ -162,14 +163,21 @@ def choosing(parser: argparse.ArgumentParser, verb: str) -> None:
     """What a command works on: runs or dossiers, an invocation's runs, or the receipt's runs by default."""
     parser.add_argument("targets", nargs="*", help="runs, by path or name, or dossiers (default: the receipt's runs)")
     parser.add_argument("--invocation", help=f"{verb} every run that names this invocation (REPO2REE_TEST_RUN_ID)")
+    parser.add_argument(
+        "--showcases", action="store_true", help=f"{verb} the newest run of each showcase tier too, each run once"
+    )
     parser.add_argument("--reports", type=Path, default=REPORTS, help="where the reports are (default: %(default)s)")
 
 
 def chosen(args: argparse.Namespace) -> list[Path]:
-    """The runs and dossiers asked for."""
+    """The runs and dossiers asked for, each once: with ``--showcases``, the newest showcase runs beside them."""
     if args.invocation:
-        return [*runs_of(args.invocation), *(target(given) for given in args.targets)]
-    return [target(given) for given in args.targets] if args.targets else gate_runs()
+        found = [*runs_of(args.invocation), *(target(given) for given in args.targets)]
+    else:
+        found = [target(given) for given in args.targets] if args.targets else gate_runs()
+    if args.showcases:
+        found += [target(str(tier.run)) for tier in showcase_runs(run_dir() / "e2e").tiers if tier.run]
+    return list(dict.fromkeys(found))
 
 
 def main() -> int:

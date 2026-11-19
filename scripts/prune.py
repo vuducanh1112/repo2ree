@@ -4,7 +4,10 @@
 ``scripts/generated.toml`` names the trees a checkout generates, who writes each, and the
 command that keeps it bounded when it accumulates. This runs those commands, each once, then
 walks the roots for whatever no entry claims: the output of something that no longer writes it.
-Unclaimed paths are listed with their size and removed only with ``--remove-unclaimed``.
+A claimed report folder's stamp files (``stamps/<recipe>.json``) are each a recipe's own, so one
+whose recipe the justfile no longer has is no one's either: a renamed recipe's old stamps would
+record its files twice. Unclaimed paths are listed with their size and removed only with
+``--remove-unclaimed``.
 
     python scripts/prune.py [--dry-run] [--remove-unclaimed]
 """
@@ -12,6 +15,7 @@ Unclaimed paths are listed with their size and removed only with ``--remove-uncl
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -21,6 +25,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "scripts" / "generated.toml"
+# The folder of a report folder's stamp files, one per recipe (repo2ree_repoview.stamp).
+STAMPS = "stamps"
 
 
 @dataclass(frozen=True)
@@ -106,6 +112,30 @@ def unclaimed(registry: Registry, base: Path = ROOT, kept: set[Path] | None = No
     return found
 
 
+def recipes() -> frozenset[str] | None:
+    """The justfile's recipes, private ones too; None where there is no just to ask."""
+    just = shutil.which("just")
+    if just is None:
+        return None
+    dumped = subprocess.run(
+        [just, "--justfile", str(ROOT / "justfile"), "--dump", "--dump-format", "json"],
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout
+    return frozenset(json.loads(dumped)["recipes"])
+
+
+def stale_stamps(registry: Registry, known: frozenset[str], base: Path = ROOT) -> list[Path]:
+    """The stamp files in claimed folders whose recipe the justfile no longer has."""
+    return [
+        stamps
+        for claim in registry.claims
+        for stamps in sorted((base / claim / STAMPS).glob("*.json"))
+        if stamps.stem not in known
+    ]
+
+
 def size(path: Path) -> int:
     if path.is_symlink() or path.is_file():
         return path.lstat().st_size
@@ -138,7 +168,10 @@ def main() -> int:
     args = parser.parse_args()
     registry = load()
     failed = run_owners(registry, dry_run=args.dry_run)
-    stray = unclaimed(registry)
+    known = recipes()
+    stray = unclaimed(registry) + (stale_stamps(registry, known) if known is not None else [])
+    if known is None:
+        print(">> no just to ask for its recipes: stamp files are not checked", file=sys.stderr)
     removing = args.remove_unclaimed and not args.dry_run
     total = 0
     for path in stray:

@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -161,6 +162,11 @@ def test_what_to_assess_is_named_by_path_or_run_name_and_is_the_receipts_runs_by
     assert chosen("--invocation", "gate") == ["e2e-faults-1", "e2e-system-1"]
     with pytest.raises(ValueError, match="neither a run"):
         chosen(str(faults / "tests"))
+
+    showcase = a_run(tmp_path, "showcase-cli-1", run_test("tests/t"), invocation="showcase")
+    tiers = [SimpleNamespace(run=showcase), SimpleNamespace(run=system), SimpleNamespace(run=None)]
+    monkeypatch.setattr(assess, "showcase_runs", lambda _runs: SimpleNamespace(tiers=tiers))
+    assert chosen("--showcases") == ["e2e-system-1", "showcase-cli-1"], "a run the receipt and a tier name, once"
 
 
 def test_reports_of_runs_gone_from_disk_go_and_collected_ones_stay(

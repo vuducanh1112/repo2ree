@@ -14,6 +14,7 @@ COMMANDS = {
     "assess": "repo2ree_testbed.runs.assess",
     "visualize": "repo2ree_testbed.runs.visualize",
     "session": "repo2ree_testbed.runs.session",
+    "render-sessions": "repo2ree_testbed.runs.session_videos",
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
     "machine": "repo2ree_testbed.runs.machine",

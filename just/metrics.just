@@ -12,5 +12,5 @@ generate-metrics: generate-assurance-metrics
     lizard -l python -i -1 --csv "${python_sources[@]}" > {{ quote(COMPLEXITY_DIR + "/python.csv") }}
     lizard -l typescript -i -1 "${ts_excludes[@]}" -o {{ quote(COMPLEXITY_DIR + "/typescript.html") }} gui/src
     lizard -l typescript -i -1 --csv "${ts_excludes[@]}" gui/src > {{ quote(COMPLEXITY_DIR + "/typescript.csv") }}
-    python -m repo2ree_repoview stamp --manifest {{ quote(METRICS_DIR + "/manifest.json") }} --by generate-metrics {{ quote(COMPLEXITY_DIR) }}/{python,typescript}.{html,csv}
+    python -m repo2ree_repoview stamp --folder {{ quote(METRICS_DIR) }} --by generate-metrics {{ quote(COMPLEXITY_DIR) }}/{python,typescript}.{html,csv}
     printf '>> complexity reports: %s\n' {{ quote(COMPLEXITY_DIR) }}

@@ -1,12 +1,14 @@
 """Record the commit a generated report file was made from.
 
-Each file is entered in the manifest.json of its report folder (reports/diagrams/,
-reports/metrics/): the revision and tree, whether the working tree differed from
-them (with a hash of the difference), when, and by which recipe. An SVG also
-shows the commit in a footer strip added below the drawing, so whoever looks at it
-sees where it came from, and carries the full facts in a <metadata> element for tools.
+Each recipe records the files it generated in a report folder (reports/diagrams/, reports/exports/,
+reports/metrics/) in a stamp file of its own, ``stamps/<recipe>.json``: for each file, the revision and tree,
+whether the working tree differed from them (with a hash of the difference), when, and by which recipe. A recipe
+writes its stamp file whole and reads no other's, so recipes stamp side by side and none loses another's entries;
+a file's stamp is read from whichever stamp file of its folder names it, and two that name it are an error. An SVG
+also shows the commit in a footer strip added below the drawing, so whoever looks at it sees where it came from,
+and carries the full facts in a <metadata> element for tools.
 
-    python -m repo2ree_repoview stamp --manifest reports/diagrams/manifest.json --by generate-gui-graph FILE...
+    python -m repo2ree_repoview stamp --folder reports/diagrams --by generate-gui-graph FILE...
 """
 
 from __future__ import annotations
@@ -38,12 +40,18 @@ class Stamp(Provenance):
 
 
 class Recorded(Stamp):
-    """A manifest entry: the stamp, and the digest of the file as stamped."""
+    """A stamp file's entry: the stamp, and the digest of the file as stamped."""
 
     sha256: str
 
 
-_MANIFEST = TypeAdapter[dict[str, Recorded]](dict[str, Recorded])
+# A recipe's stamp file: each file it generated, by its path from the report folder.
+_STAMPS = TypeAdapter[dict[str, Recorded]](dict[str, Recorded])
+STAMPS = "stamps"
+
+
+class StampConflictError(ValueError):
+    """Two recipes record the same file."""
 
 
 def label(stamp: Stamp) -> str:
@@ -112,42 +120,81 @@ def read_svg_stamp(path: Path) -> Stamp | None:
         return None
 
 
+def _stamp_files(path: Path) -> tuple[Path, list[Path]]:
+    """The report folder a file is in, the nearest holding stamp files, and those files; none where none is."""
+    for folder in path.resolve().parents:
+        found = sorted((folder / STAMPS).glob("*.json"))
+        if found:
+            return folder, found
+    return path.parent, []
+
+
 def read_recorded_stamp(path: Path) -> Stamp | None:
-    """The stamp its folder's manifest.json records for a file as it is now, or None when it records none."""
-    manifest = path.parent / "manifest.json"
+    """The stamp its report folder records for a file as it is now, or None when none records it, or the file
+    changed since."""
+    folder, found = _stamp_files(path)
+    key = path.resolve().relative_to(folder).as_posix()
+    entries: list[Recorded] = []
+    for stamps in found:
+        try:
+            entry = _STAMPS.validate_json(stamps.read_bytes()).get(key)
+        except (OSError, ValidationError):
+            continue
+        if entry is not None:
+            entries.append(entry)
+    if len(entries) > 1:
+        raise StampConflictError(f"{key} is recorded by {', '.join(sorted(entry.by for entry in entries))}")
+    if not entries or entries[0].sha256 != hashlib.sha256(path.read_bytes()).hexdigest():
+        return None
+    return Stamp.model_validate(entries[0].model_dump(exclude={"sha256"}))
+
+
+def _kept(folder: Path, target: Path) -> dict[str, Recorded]:
+    """A recipe's earlier entries whose files are still there as it stamped them."""
     try:
-        entry = _MANIFEST.validate_json(manifest.read_bytes()).get(path.name)
+        earlier = _STAMPS.validate_json(target.read_bytes())
     except (OSError, ValidationError):
-        return None
-    if entry is None or entry.sha256 != hashlib.sha256(path.read_bytes()).hexdigest():
-        return None
-    return Stamp.model_validate(entry.model_dump(exclude={"sha256"}))
+        return {}
+    return {
+        name: entry
+        for name, entry in earlier.items()
+        if (folder / name).is_file() and hashlib.sha256((folder / name).read_bytes()).hexdigest() == entry.sha256
+    }
 
 
-def record(manifest: Path, files: list[Path], stamp: Stamp) -> None:
-    entries = _MANIFEST.validate_json(manifest.read_bytes()) if manifest.is_file() else {}
-    for path in files:
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        entries[str(path.resolve().relative_to(manifest.parent.resolve()))] = Recorded(
-            **stamp.model_dump(), sha256=digest
+def record(folder: Path, files: list[Path], stamp: Stamp, *, keep: bool = False) -> None:
+    """Write the recipe's stamp file whole: the files it generated in this run, and no others; with ``keep``, also
+    its earlier entries for files still there as it stamped them, which a recipe that skips what is current keeps."""
+    target = folder / STAMPS / f"{stamp.by}.json"
+    entries = _kept(folder, target) if keep else {}
+    entries |= {
+        path.resolve().relative_to(folder.resolve()).as_posix(): Recorded(
+            **stamp.model_dump(), sha256=hashlib.sha256(path.read_bytes()).hexdigest()
         )
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("wb", dir=manifest.parent, delete=False) as pending:
-        pending.write(_MANIFEST.dump_json(dict(sorted(entries.items())), indent=2) + b"\n")
-    Path(pending.name).replace(manifest)
+        for path in files
+    }
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile("wb", dir=target.parent, delete=False) as pending:
+        pending.write(_STAMPS.dump_json(dict(sorted(entries.items())), indent=2) + b"\n")
+    Path(pending.name).replace(target)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--manifest", type=Path, required=True, help="the report folder's manifest.json")
+    parser.add_argument("--folder", type=Path, required=True, help="the report folder the files are in")
     parser.add_argument("--by", required=True, help="the recipe that generated the files")
-    parser.add_argument("files", nargs="+", type=Path)
+    parser.add_argument(
+        "--keep", action="store_true", help="keep the recipe's earlier entries for files still as it stamped them"
+    )
+    parser.add_argument("files", nargs="*", type=Path)
     args = parser.parse_args()
     stamp = Stamp(**Provenance.now().model_dump(), by=args.by)
     for path in args.files:
         if path.suffix == ".svg":
             stamp_svg(path, stamp)
-    record(args.manifest, args.files, stamp)
+    if not args.files and not args.keep:
+        parser.error("name the files the recipe generated")
+    record(args.folder, args.files, stamp, keep=args.keep)
     return 0
 
 

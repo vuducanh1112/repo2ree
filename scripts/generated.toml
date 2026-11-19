@@ -55,6 +55,11 @@ summary = "The Sigstore `just sigstore-smoke` starts: its configuration, keys, l
 retention = "Rewritten by each smoke run"
 claims = ["test-artifacts/sigstore-smoke"]
 
+[owners.cli-sessions]
+summary = "The CLI showcases' terminal sessions as videos, one per test, each with its key and the commit that rendered it"
+retention = "A video per test of the runs rendered; a run's go when its run does, and a test's when its run no longer has it"
+claims = ["reports/sessions"]
+
 [owners.core-container-runner]
 summary = "Scratch the container runner's integration tests share with the engine, under the checkout a dev container mounts"
 retention = "Each test removes its own folder; only the empty parent stays"

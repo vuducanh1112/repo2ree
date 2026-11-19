@@ -281,6 +281,7 @@ function header() {
     ["Test", `<span class="v">${esc(r.test ?? "–")}</span>`],
     ["Test outcome", r.outcome ? `<span class="pill ${esc(r.outcome)}">${esc(r.outcome)}</span>` : `<span class="v">–</span>`],
     ["Build", `<span class="v">${esc(rev.slice(0, 10))}${rev.endsWith("-dirty") ? "-dirty" : ""}</span>`],
+    ["Drawn by", t.drawn ? `<span class="v">${esc(t.drawn.revision.slice(0, 10))}${t.drawn.dirty ? " + uncommitted changes" : ""} · ${esc(t.drawn.at)}</span>` : `<span class="v">–</span>`],
     ["Duration", `<span class="v">${fmt(t.duration)}</span>`],
   ];
   if (t.reviews) facts.push(["Reviews", `<span class="v">${t.reviews} attempts not drawn</span>`]);

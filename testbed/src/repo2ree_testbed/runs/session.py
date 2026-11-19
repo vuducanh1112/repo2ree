@@ -13,8 +13,9 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import subprocess
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -246,6 +247,10 @@ STYLE = """
 body{font:14px/1.5 system-ui,sans-serif;margin:0;color:#0f172a;background:#f8fafc}
 main{max-width:1100px;margin:0 auto;padding:24px}
 h1{font-size:20px;margin:0 0 4px}
+table.about{border-collapse:collapse;margin:8px 0}
+table.about th{text-align:left;padding:2px 12px 2px 0;color:#64748b;font-weight:500}
+table.about td{padding:2px 0}
+video.session{display:block;max-width:100%;margin:12px 0;border-radius:8px;background:#0f172a}
 .muted{color:#64748b}
 .step{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin:12px 0}
 .step.read{background:#f8fafc;padding:6px 16px}
@@ -365,7 +370,21 @@ def _step(number: int, step: Step) -> str:
     return "".join(parts)
 
 
-def render(name: str, found: list[Step], unmatched: list[Change]) -> str:
+def _about(rows: Sequence[tuple[str, str]]) -> str:
+    """Where the page's evidence came from, and what drew it: what a reader needs to tell a stale page."""
+    if not rows:
+        return ""
+    cells = "".join(f"<tr><th>{_esc(label)}</th><td>{_esc(value)}</td></tr>" for label, value in rows)
+    return f"<table class='about'>{cells}</table>"
+
+
+def render(
+    name: str,
+    found: list[Step],
+    unmatched: list[Change],
+    about: Sequence[tuple[str, str]] = (),
+    video: str | None = None,
+) -> str:
     changed = sum(1 for step in found if any(not change.unchanged for change in step.changes))
     lede = (
         f"{len(found)} <code>ree</code> commands, {changed} of which changed an REE. Each command as the test ran it, "
@@ -373,7 +392,10 @@ def render(name: str, found: list[Step], unmatched: list[Change]) -> str:
         "(+), removed (&minus;) and changed (~), the document's changed values, and the document and file tree "
         "after it."
     )
-    body = [f"<h1>CLI session</h1><p class='muted'>{_esc(name)}</p><p>{lede}</p>"]
+    body = [f"<h1>CLI session</h1><p class='muted'>{_esc(name)}</p>{_about(about)}"]
+    if video is not None:
+        body.append(f"<video class='session' controls preload='metadata' src='{_esc(video)}'></video>")
+    body.append(f"<p>{lede}</p>")
     body += [_step(number, step) for number, step in enumerate(found, start=1)]
     if unmatched:
         body.append("<h2>Commits no command of the session made</h2>")
@@ -384,14 +406,27 @@ def render(name: str, found: list[Step], unmatched: list[Change]) -> str:
     )
 
 
-def draw(evidence: Path, output: Path, name: str) -> bool:
-    """Draw the session a test left in ``evidence`` into ``output``; False when it left none."""
+def draw(
+    evidence: Path,
+    output: Path,
+    name: str,
+    *,
+    about: Sequence[tuple[str, str]] = (),
+    video: Path | None = None,
+) -> bool:
+    """Draw the session a test left in ``evidence`` into ``output``, with where it came from (``about``) and its
+    video, where there is one; False when it left none.
+
+    The video is linked by its path from the page, as ``reports/`` lays both out: the overview bundles them in the
+    same places, so the one page plays it in either.
+    """
     session = read_session(evidence / "artifacts" / SESSION)
     if not session:
         return False
     found, unmatched = steps(session, evidence / "dossier")
     output.mkdir(parents=True, exist_ok=True)
-    (output / "index.html").write_text(render(name, found, unmatched), encoding="utf-8")
+    shown = os.path.relpath(video, output) if video is not None and video.is_file() else None
+    (output / "index.html").write_text(render(name, found, unmatched, about, shown), encoding="utf-8")
     return True
 
 

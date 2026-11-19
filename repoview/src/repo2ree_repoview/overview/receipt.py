@@ -205,6 +205,9 @@ COPIED = (
 )
 REFERENCED = ("dossier/rees", "dossier/telemetry", "artifacts")
 REPORTED = ("verification", "traces", "session")
+# A CLI test's terminal session as a video, where `just render-cli-sessions` rendered one: bundled where the
+# session page links it, which reports/ lays out the same, sessions/<run>/<test>.mp4 beside evidence/<run>/.
+SESSIONS = ROOT / "reports" / "sessions"
 
 
 @dataclass(frozen=True)
@@ -307,6 +310,8 @@ def bundle_runs(bundle: Bundle, chosen: Iterable[tuple[Path, RunRecord]]) -> Evi
             report = origin.model_copy(update={"kind": "report", "revision": assessed_revision})
             for part in REPORTED:
                 bundle.copy_tree(reported(run, test) / part, f"{target}/{part}", report)
+            video = f"{run.name}/{Path(test.directory).name}.mp4"
+            bundle.copy(SESSIONS / video, f"sessions/{video}", origin.model_copy(update={"kind": "video"}))
             tests[(run.name, test.name)] = target
             if found := verification_of(run, test):
                 verifications[found] = target

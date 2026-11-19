@@ -13,13 +13,26 @@ import argparse
 import html
 import os
 import sys
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 
+from repo2ree_testbed import provenance
 from repo2ree_testbed.records import RunRecord, RunTest, read
 from repo2ree_testbed.runs import session
-from repo2ree_testbed.runs.assess import COLLECTED, REPORTS, choosing, chosen, failed_command, is_run, run_of, tool
+from repo2ree_testbed.runs.assess import (
+    COLLECTED,
+    REPORTS,
+    choosing,
+    chosen,
+    failed_command,
+    is_run,
+    run_of,
+    tool,
+)
 from repo2ree_testbed.runs.failed_command import FailedCommand
+from repo2ree_testbed.runs.session_videos import rendered_by, video_of
 
 STYLE = """
 :root { color-scheme: light dark; --fg: #1d2330; --muted: #5b6475; --line: #d9dee7; --bg: #fbfcfe;
@@ -53,9 +66,38 @@ def links(page: Path, directory: Path, pattern: str) -> list[Path]:
     return [Path(os.path.relpath(path, page)) for path in sorted(directory.glob(pattern))]
 
 
-def write_test_index(directory: Path, evidence: Path, test: RunTest, failed: FailedCommand | None = None) -> None:
-    """A test's page, in its report ``directory``, linking what its run left in ``evidence``."""
+def provenance_rows(run: str, record: RunRecord, test: RunTest) -> list[tuple[str, str]]:
+    """Where a test's pages came from: the commit its run was recorded at, the one whose checker assessed it, and
+    the one drawing them now. A page drawn by an older commit than the evidence's, or long after, says so here."""
+    drawn, dirty = provenance.head()
+    recorded = datetime.fromtimestamp(test.started, tz=UTC).strftime("%Y-%m-%d %H:%M UTC") if test.started else ""
+    assessed = provenance.commit(record.assessed_revision) if record.assessed_revision else "a dirty tree, or several"
+    return [
+        ("Recorded", f"run {run} of {provenance.commit(record.build_revision, not record.tree)}, {recorded}"),
+        ("Assessed by", assessed),
+        ("Drawn by", f"{provenance.commit(drawn, dirty)}, {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}"),
+    ]
+
+
+def video_rows(video: Path, run: str) -> list[tuple[str, str]]:
+    """The commit that rendered a CLI session's video, as its stamp records it, or how to render one."""
+    stamped = rendered_by(video)
+    if stamped is None:
+        return [("Video", f"not rendered: just render-cli-sessions {run}")]
+    return [("Video rendered by", f"{provenance.commit(stamped.revision, stamped.dirty)}, {stamped.generated}")]
+
+
+def write_test_index(
+    directory: Path,
+    evidence: Path,
+    test: RunTest,
+    failed: FailedCommand | None = None,
+    about: Sequence[tuple[str, str]] = (),
+) -> None:
+    """A test's page, in its report ``directory``, linking what its run left in ``evidence``, and saying where it
+    came from (``about``)."""
     rows = [
+        *((label, html.escape(value)) for label, value in about),
         ("Test outcome", f"<span class='{test.outcome}'>{test.outcome}</span> (exit {test.exit_code})"),
         ("Reason", html.escape(test.reason) or "<span class='muted'>none</span>"),
         *(
@@ -147,11 +189,13 @@ def draw(verification: Path, traces: Path, logs: Path, dossier: Path | None = No
     return tool(logs / "traceview.log", *trace, *(("--dossier", str(dossier)) if dossier else ())) == 0
 
 
-def visualize_test(evidence: Path, test: RunTest, report: Path) -> str:
+def visualize_test(evidence: Path, test: RunTest, report: Path, run: str, record: RunRecord) -> str:
     """Draw the test whose evidence is in ``evidence`` from its report, and write its page there."""
     drawn = bool(test.rees) and draw(report / "verification", report / "traces", report / "logs", evidence / "dossier")
-    session.draw(evidence, report / "session", test.name)
-    write_test_index(report, evidence, test, failed_command(evidence, test))
+    about = provenance_rows(run, record, test)
+    video = video_of(run, Path(test.directory))
+    session.draw(evidence, report / "session", test.name, about=about + video_rows(video, run), video=video)
+    write_test_index(report, evidence, test, failed_command(evidence, test), about)
     return "drawn" if drawn else "no REE" if not test.rees else "not drawn"
 
 
@@ -162,7 +206,10 @@ def visualize_run(run: Path, reports: Path = REPORTS) -> None:
         raise ValueError(f"{run.name}: not assessed yet; run: just assess-behaviour {run}")
     with ThreadPoolExecutor(max_workers=os.cpu_count()) as pool:
         shown = list(
-            pool.map(lambda test: visualize_test(run / test.directory, test, report / test.directory), record.tests)
+            pool.map(
+                lambda test: visualize_test(run / test.directory, test, report / test.directory, run.name, record),
+                record.tests,
+            )
         )
     for test, drawn in zip(record.tests, shown, strict=True):
         print(f"   {drawn:<9} {test.name}")
@@ -186,7 +233,7 @@ def visualize_dossier(dossier: Path, reports: Path = REPORTS) -> None:
         raise ValueError(f"{dossier}: not assessed yet; run: just assess-behaviour {dossier}")
     name = str(dossier.parent.relative_to(run))
     [test] = [test for test in record.tests if test.directory == name]
-    print(f"   {visualize_test(dossier.parent, test, report / name):<9} {test.name}")
+    print(f"   {visualize_test(dossier.parent, test, report / name, run.name, record):<9} {test.name}")
     write_run_index(report, record)
     print(f">> visualized: {report / name / 'index.html'}")
 

@@ -33,12 +33,13 @@ JUST_RECIPE_GRAPH := DIAGRAM_DIR + "/just-recipes.svg"
 REE_ANATOMY := DIAGRAM_DIR + "/ree/anatomy.svg"
 CONTRACT_GRAPHS := DIAGRAM_DIR + "/contracts"
 # Records the commit each generated diagram or metric came from (repo2ree_repoview stamp).
-STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --manifest " + DIAGRAM_DIR + "/manifest.json"
+STAMP_DIAGRAMS := "python -m repo2ree_repoview stamp --folder " + DIAGRAM_DIR
 ARCH_DIR := DIAGRAM_DIR + "/architecture"
 METRICS_DIR := REPORTS_DIR + "/metrics"
 # The owners' exports the overview reads (zones, behaviour spec, operations), stamped like the diagrams.
 EXPORT_DIR := REPORTS_DIR + "/exports"
-STAMP_EXPORTS := "python -m repo2ree_repoview stamp --manifest " + EXPORT_DIR + "/manifest.json"
+STAMP_EXPORTS := "python -m repo2ree_repoview stamp --folder " + EXPORT_DIR
+SESSION_DIR := REPORTS_DIR + "/sessions"
 
 import 'just/checks.just'
 import 'just/config.just'
@@ -63,6 +64,7 @@ _require-clean-tree:
 
 # Generate every architecture, domain, specification, REE anatomy, and recipe graph diagram.
 [group('Diagrams')]
+[parallel]
 generate-diagrams: generate-architecture-diagrams generate-spec-diagrams generate-just-recipe-graph generate-ree-anatomy generate-contract-graphs
     @printf '>> diagrams written under %s\n' {{ quote(DIAGRAM_DIR + "/") }}
 
@@ -73,7 +75,8 @@ prune *args:
 
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour and its coverage by the gate and the showcases, architecture, recipes, configuration, API.
 [group('Repository')]
-repo-overview: generate-diagrams export-zones export-contracts export-vocabulary export-spec visualize-behaviour visualize-showcases export-operations export-just-recipes
+[parallel]
+repo-overview: generate-diagrams export-zones export-contracts export-vocabulary export-spec _overview-behaviour export-operations export-just-recipes
     python -m repo2ree_repoview overview
 
 # Write the zones and each tracked file's place as JSON (repo2ree-zones/1) for the overview.

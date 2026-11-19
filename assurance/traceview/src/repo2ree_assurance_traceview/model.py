@@ -253,6 +253,15 @@ class Sibling(ViewModel):
     summary: str
 
 
+class Drawn(ViewModel):
+    """The commit that drew a page, whether the checkout differed from it, and when: beside the build the dossier
+    was recorded at, what tells a stale page."""
+
+    revision: str
+    dirty: bool
+    at: str
+
+
 class BehaviourTrace(ViewModel):
     """One REE's operations in one dossier."""
 
@@ -272,3 +281,4 @@ class BehaviourTrace(ViewModel):
     siblings: tuple[Sibling, ...] = ()  # Every REE of the dossier, this one among them, in page order.
     reviews: int = 0  # Review attempts on this REE, not drawn until reviews are specified.
     unreadable_spans: int = 0  # Span records passed over because they could not be read.
+    drawn: Drawn | None = None

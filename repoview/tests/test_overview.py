@@ -111,7 +111,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
 
 def test_an_export_keeps_the_commit_its_recipe_stamped_it_with(tmp_path: Path, exports: Path) -> None:
     stamp = Stamp(**Provenance.now().model_dump(), by="export-spec")
-    record(exports / "manifest.json", [exports / "spec.json"], stamp)
+    record(exports, [exports / "spec.json"], stamp)
     manifest = json.loads((build(tmp_path / "overview", exports) / "manifest.json").read_text())
     revisions = {
         entry["kind"]: entry.get("revision") for entry in manifest["copied"] if entry["path"].startswith("inputs/")

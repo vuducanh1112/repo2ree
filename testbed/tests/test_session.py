@@ -91,3 +91,21 @@ def test_the_page_shows_each_command_and_a_read_as_one_line(test_dir: Path, tmp_
 
 def test_a_test_that_left_no_session_draws_none(tmp_path: Path) -> None:
     assert not session.draw(tmp_path, tmp_path / "report", "a test")
+
+
+def test_the_page_says_where_its_evidence_came_from_and_plays_its_video(test_dir: Path, tmp_path: Path) -> None:
+    about = [("Recorded", "run showcase-cli-1 of abcdef1234"), ("Drawn by", "fedcba9876 + uncommitted changes")]
+    video = tmp_path / "sessions/showcase-cli-1/the-test.mp4"
+    report = tmp_path / "behaviour/showcase-cli-1/tests/the-test/session"
+
+    assert session.draw(test_dir, report, "a test", about=about, video=video)
+    unrendered = (report / "index.html").read_text()
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"mp4")
+    assert session.draw(test_dir, report, "a test", about=about, video=video)
+    page = (report / "index.html").read_text()
+
+    assert "<th>Recorded</th><td>run showcase-cli-1 of abcdef1234</td>" in page
+    assert "<th>Drawn by</th><td>fedcba9876 + uncommitted changes</td>" in page
+    assert "<video" not in unrendered, "no player for a video not rendered"
+    assert "src='../../../../../sessions/showcase-cli-1/the-test.mp4'" in page

@@ -47,3 +47,15 @@ def platform() -> str:
 def machine() -> str:
     """The machine a run ran on: the name ``just on`` gave its job, or ``local``."""
     return os.environ.get("REPO2REE_MACHINE") or "local"
+
+
+def head() -> tuple[str, bool]:
+    """HEAD's commit, and whether the checkout differs from it: what draws a page now."""
+    return _git("rev-parse", "HEAD"), bool(_git("status", "--porcelain"))
+
+
+def commit(revision: str, dirty: bool = False) -> str:
+    """A commit as a page names it: short, and marked where the tree differed from it."""
+    if not revision:
+        return "an unknown commit"
+    return revision[:10] + (" + uncommitted changes" if dirty else "")

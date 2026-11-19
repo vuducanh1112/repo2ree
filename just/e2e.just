@@ -174,31 +174,13 @@ demo-api cast=DEFAULT_API_DEMO_CAST transcript="": build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/walkthrough/api_walkthrough.py") }} --tier demo-api --compute-locations 1 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} --record "$cast"
     python3 {{ quote(ROOT + "/testbed/suites/walkthrough/render_cast_transcript.py") }} "$cast" "$transcript"
 
-# Render the CLI showcases' terminal recordings (each test's artifacts/cli-session.cast) to an MP4 beside each: of the newest command-line showcase run, or of the run directory or .cast given (e.g. `just render-cli-sessions test-artifacts/e2e/showcase-cli-20261119-100537`).
+# Render the CLI showcases' terminal recordings (each test's artifacts/cli-session.cast) to videos in reports/sessions/<run>/<test>.mp4, stamped with the commit that rendered each: of the CLI showcase runs the overview reads, or of the runs given, `--jobs N` at once (e.g. `just render-cli-sessions showcase-cli-20261119-135721 --jobs 4`). A video renders again only when its recording or how it is rendered changed.
 [group('Demos')]
-render-cli-sessions target="":
+render-cli-sessions *args:
     #!/usr/bin/env bash
     set -euo pipefail
-    target={{ quote(target) }}
-    if [ -z "$target" ]; then
-        target=$(find {{ quote(REPO2REE_TEST_RUN_DIR + "/e2e") }} -maxdepth 1 -type d -name 'showcase-cli-*' 2>/dev/null | sort | tail -1)
-        [ -n "$target" ] || { echo "no command-line showcase run under {{ REPO2REE_TEST_RUN_DIR }}/e2e" >&2; exit 1; }
-    fi
-    scratch=$(mktemp -d)
-    trap 'rm -rf "$scratch"' EXIT
-    # x264's SVE code dies with an illegal instruction on an aarch64 machine that reports SVE it cannot run
-    # (Docker's linuxkit VM): there it keeps to NEON.
-    x264=()
-    [ "$(uname -m)" != aarch64 ] || x264=(-x264-params asm=NEON)
-    rendered=0
-    while IFS= read -r -d '' cast; do
-        mp4=${cast%.cast}.mp4
-        agg --quiet --font-size 12 --idle-time-limit 2 "$cast" "$scratch/session.gif"
-        ffmpeg -nostdin -loglevel error -y -i "$scratch/session.gif" -c:v libx264 "${x264[@]}" -crf 28 -tune stillimage -preset slow -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" "$mp4"
-        echo ">> $mp4 ($(du -h "$mp4" | cut -f1))"
-        rendered=$((rendered + 1))
-    done < <(if [ -f "$target" ]; then printf '%s\0' "$target"; else find "$target" -name cli-session.cast -print0 | sort -z; fi)
-    [ "$rendered" -gt 0 ] || { echo "no cli-session.cast under $target" >&2; exit 1; }
+    mapfile -t rendered < <(python -m repo2ree_testbed render-sessions {{ args }})
+    python -m repo2ree_repoview stamp --folder {{ quote(SESSION_DIR) }} --by render-cli-sessions --keep "${rendered[@]}"
 
 # Start the local image-backed stack.
 [group('Stack management')]

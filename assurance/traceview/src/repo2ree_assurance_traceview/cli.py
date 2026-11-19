@@ -6,9 +6,11 @@ Both read ``verification.json`` (from ``repo2ree_assurance_checker check -o``) a
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from repo2ree_assurance_checker.verification import ARTIFACT, Verification, VerifiedModel, read_verification
@@ -16,7 +18,7 @@ from repo2ree_assurance_dossier import Dossier, read_dossier
 from repo2ree_assurance_traceview import terms
 from repo2ree_assurance_traceview.catalogue import Undrawn, build_catalogue
 from repo2ree_assurance_traceview.files import commit_sizes, describe, read_spans, ree_names, repositories, template
-from repo2ree_assurance_traceview.model import BehaviourTrace, Sibling
+from repo2ree_assurance_traceview.model import BehaviourTrace, Drawn, Sibling
 from repo2ree_assurance_traceview.operations import build_dossier, build_trace, rees
 from repo2ree_assurance_traceview.provenance import build_provenance, render_text
 from repo2ree_assurance_traceview.render import render_html
@@ -95,12 +97,24 @@ class _Verified:
         summary = f"{_count(len(drawn), 'REE')} · {_count(sessions, 'session')}"
         everything = Sibling(ree="", name="All", page=DOSSIER_PAGE, sealed=False, summary=summary)
         siblings = (everything, *(_sibling(trace) for trace in drawn))
+        now = drawing(git)
         chosen = [
-            trace.model_copy(update={"siblings": siblings})
+            trace.model_copy(update={"siblings": siblings, "drawn": now})
             for trace in drawn
             if ree is None or trace.ree.startswith(ree)
         ]
-        return chosen, whole.model_copy(update={"siblings": siblings})
+        return chosen, whole.model_copy(update={"siblings": siblings, "drawn": now})
+
+
+def drawing(git: str) -> Drawn | None:
+    """The commit drawing pages now, from the checkout this runs in; None outside one."""
+    try:
+        revision = subprocess.run([git, "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout
+        status = subprocess.run([git, "status", "--porcelain"], capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    return Drawn(revision=revision.strip(), dirty=bool(status.strip()), at=at)
 
 
 # The page of the whole dossier, beside the one of each REE.

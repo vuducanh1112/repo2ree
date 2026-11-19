@@ -74,3 +74,30 @@ def test_each_owner_prunes_once_and_a_dry_run_is_passed_on(monkeypatch: pytest.M
     failed = prune.run_owners(prune.Registry(("test-artifacts",), frozenset(), owners), dry_run=True)
     assert [command[1:] for command in ran] == [["-m", "a", "prune", "--dry-run"], ["fails", "--dry-run"]]
     assert failed == ["c"]
+
+
+def test_a_stamp_file_whose_recipe_is_gone_is_no_one_s(tmp_path: Path) -> None:
+    stamps = tmp_path / "reports/diagrams/stamps"
+    stamps.mkdir(parents=True)
+    for recipe in ("generate-gui-graph", "generate-old-graph"):
+        (stamps / f"{recipe}.json").write_text("{}")
+    (tmp_path / "reports/exports").mkdir(parents=True)
+
+    found = prune.stale_stamps(
+        prune.Registry(
+            roots=("reports",),
+            ignore=frozenset(),
+            owners=(prune.Owner("repoview", ("reports/diagrams", "reports/exports")),),
+        ),
+        frozenset({"generate-gui-graph"}),
+        tmp_path,
+    )
+
+    assert found == [stamps / "generate-old-graph.json"]
+
+
+def test_every_stamp_file_here_is_a_recipe_s() -> None:
+    known = prune.recipes()
+    if known is None:
+        pytest.skip("no just to ask for its recipes")
+    assert prune.stale_stamps(prune.load(), known) == []
