@@ -212,8 +212,14 @@ class Api:
     def audit(self, ree_id: str) -> dict[str, Any]:
         return dict(self.get(f"/api/v1/rees/{ree_id}/state")["audit"])
 
-    def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
-        payload = {"include_source": True, "include_experiment_environment": True, "include_results": True}
+    def seal(
+        self, ree_id: str, *, experiment_environment_included: bool = True, watch: RunWatch = INSTANT_RUN
+    ) -> dict[str, Any]:
+        payload = {
+            "include_source": True,
+            "include_experiment_environment": experiment_environment_included,
+            "include_results": True,
+        }
         return self.stage(ree_id, "seal-ree", payload, watch=watch)
 
     def sign(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:

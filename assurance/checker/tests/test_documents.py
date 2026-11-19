@@ -464,7 +464,7 @@ def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> Non
     evidence = load_evidence(repositories=[tmp_path / "ree"], git_executable=GIT)
     held = evidence.snapshots[-1].files
     assert held["ree.json"].content == (tmp_path / "ree" / "ree.json").read_bytes()
-    assert held["artifacts/runtime.tar"].content is None
+    assert "artifacts/runtime.tar" not in held
     result = check(load_spec(), evidence)
     rules = {rule.rule: rule for rule in result.rules}
     # What core recorded of the standings is the product's: the example is held to that where it is authored.
@@ -477,7 +477,7 @@ def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> Non
     ):
         assert rules[f"document:{name}"].verdict == "passed", name
         assert rules[f"document:{name}"].triggered, name
-    assert rules["document:the-seal-is-the-subject"].triggered == 1
+    assert rules["document:the-seal-is-the-subject"].triggered == 2, "the seal_ree commit and the sign_ree commit"
     assert rules["machine:Receipt"].verdict == "passed"
 
 

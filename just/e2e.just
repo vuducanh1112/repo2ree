@@ -102,7 +102,7 @@ author-example-bundle machine="local":
     python scripts/example_bundle.py adopt
 
 [private]
-_author-example-bundle: (_tier-showcase-cli "1" "test_python_docker_authoring")
+_author-example-bundle: (_tier-showcase-cli "1" "test_the_example_ree_is_sealed_without_its_experiment_environment")
     python scripts/example_bundle.py stage
 
 # Build and load the image of each machine an API showcase runs on.

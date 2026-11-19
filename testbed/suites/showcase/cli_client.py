@@ -329,8 +329,9 @@ class CliClient:
             done = run()
             assert done.status == "succeeded", f"{label} ended {done.status}\n{self.logs(ree_id, done)}"
 
-    def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
-        return self._step(ree_id, "seal-ree")
+    def seal(self, ree_id: str, *, experiment_environment_included: bool = True, watch: RunWatch = INSTANT_RUN) -> Run:
+        left_out = () if experiment_environment_included else ("--no-experiment-environment-included",)
+        return self._step(ree_id, "seal-ree", *left_out)
 
     def sign(self, ree_id: str) -> Run:
         """Sign the sealed REE with the run's Sigstore, as its author does: signed in by a token in the environment,

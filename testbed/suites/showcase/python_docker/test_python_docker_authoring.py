@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import zipfile
+from pathlib import PurePosixPath
 
 from offline_reproduction import reproduce_offline
 from system_client import RESULT
@@ -18,8 +19,9 @@ CPU_MODEL = "Intel Core i9-14900K"
 CPU = Cpu(vendor="Intel", cores_per_cpu=24)
 
 
-def test_provision_through_seal_offline_reproduction_and_release(client: Client, new_ree: NewRee) -> None:
-    ree_id = new_ree()
+def authored(client: Client, new_ree: NewRee) -> str:
+    """An REE authored through every stage up to its seal, each stage's evidence current."""
+    ree_id: str = new_ree()
 
     client.upload_source(ree_id, F)
     source = client.ree(ree_id).subject.receipts.acquire_source
@@ -73,7 +75,11 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
         audit.activate_experiment_environment,
     ):
         assert step.evidence == "current", step
+    return ree_id
 
+
+def test_provision_through_seal_offline_reproduction_and_release(client: Client, new_ree: NewRee) -> None:
+    ree_id = authored(client, new_ree)
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"
     assert client.sign(ree_id).status == "succeeded"
     archive = client.archive(ree_id, "sealed")
@@ -90,3 +96,17 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
 
     client.release(ree_id)
     assert not client.exists(ree_id)
+
+
+def test_the_example_ree_is_sealed_without_its_experiment_environment(client: Client, new_ree: NewRee) -> None:
+    """The REE examples/rees/ree-hello-world.zip is: its image is hundreds of MB, too large to version."""
+    ree_id = authored(client, new_ree)
+    sealed = client.seal(ree_id, experiment_environment_included=False, watch=F.watch)
+    assert sealed.status == "succeeded"
+    assert client.sign(ree_id).status == "succeeded"
+    entries = zipfile.ZipFile(client.archive(ree_id, "sealed")).namelist()
+    assert f"ree/results/{F.experiment}/{RESULT}" in entries
+    assert f"ree/{SBOM}" in entries
+    assert f"ree/artifacts/{PurePosixPath(F.experiment_environment_path).name}" not in entries
+
+    client.release(ree_id)

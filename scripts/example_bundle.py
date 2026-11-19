@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The example REE (examples/rees/ree-hello-world.zip), authored again as the Python Docker showcase authors it.
 
-- ``stage`` takes the sealed bundle the newest command-line showcase run of the Python Docker authoring test
+- ``stage`` takes the sealed bundle the newest command-line showcase run of the Python Docker example test
   wrote, and puts it in test-artifacts/example-bundle/, which a run on a machine brings back (its archives
   stay on the machine).
 - ``adopt`` checks the staged bundle against the specification, as a sealed REE read from its own history,
@@ -26,12 +26,12 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "test-artifacts" / "e2e"
 STAGED = ROOT / "test-artifacts" / "example-bundle" / "ree-hello-world.zip"
 EXAMPLE = ROOT / "examples" / "rees" / "ree-hello-world.zip"
-TEST = "test-python-docker-authoring--"
+TEST = "test-python-docker-authoring--test-the-example-ree-"
 NAME = "ree-hello-world"
 
 
 def authored(runs: Path = RUNS) -> Path:
-    """The sealed bundle of the newest command-line run of the Python Docker authoring test."""
+    """The sealed bundle of the newest command-line run of the Python Docker example test."""
     found = sorted(
         runs.glob(f"showcase-cli-*/tests/{TEST}*/artifacts/archives/sealed-*.zip"),
         key=lambda path: path.stat().st_mtime,
