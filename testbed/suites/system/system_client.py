@@ -228,8 +228,13 @@ class Api:
         bundle to the REE."""
         ree = self.ree(ree_id)
         digest = str(ree["seal"]["ree_digest"])
+        local = local_sigstore()
         bundle = sign(
-            local_sigstore(), ree["subject"]["definition"]["name"], digest.removeprefix("sha256:"), AUTHOR_APPROVAL
+            local,
+            ree["subject"]["definition"]["name"],
+            digest.removeprefix("sha256:"),
+            AUTHOR_APPROVAL,
+            signer=local.author,
         )
         upload = self.post(
             f"/api/v1/rees/{ree_id}/signature:upload-init",
@@ -244,15 +249,17 @@ class Api:
         )
 
     def sign_review(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
-        """Sign the review with the run's Sigstore, as its reviewer's own client does: the statement names the
-        reviewed seal, with the record as the API serves it as its predicate."""
+        """Sign the review with the run's Sigstore as its reviewer, as the reviewer's own client does: the statement
+        names the reviewed seal, with the record as the API serves it as its predicate."""
         record = self.get(f"/api/v1/rees/{ree_id}/reviews/{review_id}")
         digest = str(record["subject"]["ree_digest"])
+        local = local_sigstore()
         bundle = sign(
-            local_sigstore(),
+            local,
             record["subject"]["name"],
             digest.removeprefix("sha256:"),
             REVIEW,
+            signer=local.reviewer,
             predicate=record,
         )
         upload = self.post(

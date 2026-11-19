@@ -47,7 +47,9 @@ IMAGES: Final = {
     "tesseract": "ghcr.io/transparency-dev/tesseract/posix:v0.2.0",
     "fulcio": "ghcr.io/sigstore/fulcio:v1.10.1",
 }
-IDENTITY: Final = "author@repo2ree.invalid"
+# The run's two signers: the author of an REE, and a reviewer of it.
+AUTHOR: Final = "author@repo2ree.invalid"
+REVIEWER: Final = "reviewer@repo2ree.invalid"
 # Where a test finds the run's Sigstore: the path of its descriptor (LocalSigstore).
 SIGSTORE_VARIABLE: Final = "REPO2REE_TEST_SIGSTORE"
 # The claim a showcase's author makes, by its published predicate type, as any Sigstore client names it.
@@ -61,29 +63,33 @@ _READY_SECONDS: Final = 300
 
 
 class LocalSigstore(BaseModel):
-    """What a test needs of the run's Sigstore: its trust configuration, and how to mint a token for the identity."""
+    """What a test needs of the run's Sigstore: its trust configuration, its two signers, and how to mint a token
+    for either."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     trust_config: Path
     issuer: str
-    identity: str
+    author: str
+    reviewer: str
     signing_key: Path
 
     @classmethod
     def read(cls, descriptor: Path) -> LocalSigstore:
         return cls.model_validate_json(descriptor.read_text(encoding="utf-8"))
 
-    def token(self, lifetime: int = 600) -> str:
-        """An OIDC token for the identity, as the issuer Fulcio trusts would mint it."""
+    def token(self, signer: str, lifetime: int = 600) -> str:
+        """An OIDC token for ``signer``, one of the run's two, as the issuer Fulcio trusts would mint it."""
+        if signer not in {self.author, self.reviewer}:
+            raise ValueError(f"{signer} is neither of the run's signers")
         key = serialization.load_pem_private_key(self.signing_key.read_bytes(), password=None)
         assert isinstance(key, ec.EllipticCurvePrivateKey)  # noqa: S101 - the run wrote it so
         now = int(time.time())
         claims = {
             "iss": self.issuer,
-            "sub": self.identity,
+            "sub": signer,
             "aud": _CLIENT_ID,
-            "email": self.identity,
+            "email": signer,
             "email_verified": True,
             "iat": now,
             "nbf": now,
@@ -218,7 +224,11 @@ class SigstoreStack:
         trust.write_text(json.dumps(self._trust_config(issuer, root, ct_key.public_key(), rekor_key), indent=2))
         descriptor = self.directory / "sigstore.json"
         local = LocalSigstore(
-            trust_config=trust, issuer=issuer, identity=IDENTITY, signing_key=self.directory / "issuer.key"
+            trust_config=trust,
+            issuer=issuer,
+            author=AUTHOR,
+            reviewer=REVIEWER,
+            signing_key=self.directory / "issuer.key",
         )
         descriptor.write_text(local.model_dump_json(indent=2))
         self._say(f"ready: {descriptor}")
@@ -486,10 +496,16 @@ class SigstoreStack:
 
 
 def sign(
-    local: LocalSigstore, name: str, sha256: str, predicate_type: str, *, predicate: dict[str, Any] | None = None
+    local: LocalSigstore,
+    name: str,
+    sha256: str,
+    predicate_type: str,
+    *,
+    signer: str,
+    predicate: dict[str, Any] | None = None,
 ) -> bytes:
-    """A Sigstore bundle of an in-toto statement over ``sha256``, signed under the identity, as an author's or a
-    reviewer's own Sigstore client signs."""
+    """A Sigstore bundle of an in-toto statement over ``sha256``, signed as ``signer`` (the run's author or its
+    reviewer), as that signer's own Sigstore client signs."""
     from sigstore.dsse import DigestSet, StatementBuilder, Subject  # noqa: PLC0415 - only a signing test needs it
     from sigstore.models import ClientTrustConfig  # noqa: PLC0415
     from sigstore.oidc import IdentityToken  # noqa: PLC0415
@@ -504,8 +520,8 @@ def sign(
         .build()
     )
     # Cached, so the certificate's key is the one that signs (sigstore makes a new key per use without it).
-    with SigningContext.from_trust_config(trust).signer(IdentityToken(local.token())) as signer:
-        return signer.sign_dsse(statement).to_json().encode()
+    with SigningContext.from_trust_config(trust).signer(IdentityToken(local.token(signer))) as signing:
+        return signing.sign_dsse(statement).to_json().encode()
 
 
 def smoke(directory: Path) -> None:
@@ -516,14 +532,14 @@ def smoke(directory: Path) -> None:
     stack = SigstoreStack(directory, directory / "sigstore.log")
     try:
         local = LocalSigstore.read(stack.start())
-        bundle = sign(local, "smoke", "0" * 64, AUTHOR_APPROVAL)
+        bundle = sign(local, "smoke", "0" * 64, AUTHOR_APPROVAL, signer=local.author)
         (directory / "smoke.sigstore.json").write_bytes(bundle)
         trust = ClientTrustConfig.from_json(local.trust_config.read_text(encoding="utf-8"))
         verifier = Verifier(trusted_root=trust.trusted_root)
         payload_type, _ = verifier.verify_dsse(
-            Bundle.from_json(bundle), policy.Identity(identity=local.identity, issuer=local.issuer)
+            Bundle.from_json(bundle), policy.Identity(identity=local.author, issuer=local.issuer)
         )
-        print(f">> sigstore: signed and verified ({payload_type}) as {local.identity}")
+        print(f">> sigstore: signed and verified ({payload_type}) as {local.author}")
     finally:
         stack.stop()
 

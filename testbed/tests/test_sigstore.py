@@ -12,7 +12,8 @@ from sigstore.models import ClientTrustConfig
 from sigstore.oidc import IdentityToken
 
 from repo2ree_testbed.stack.sigstore import (
-    IDENTITY,
+    AUTHOR,
+    REVIEWER,
     SIGSTORE_VARIABLE,
     LocalSigstore,
     SigstoreStack,
@@ -29,7 +30,8 @@ def written(tmp_path: Path) -> LocalSigstore:
     return LocalSigstore(
         trust_config=tmp_path / "trust_config.json",
         issuer="http://issuer.invalid:8080",
-        identity=IDENTITY,
+        author=AUTHOR,
+        reviewer=REVIEWER,
         signing_key=tmp_path / "issuer.key",
     )
 
@@ -48,13 +50,16 @@ def test_the_trust_configuration_is_one_sigstore_reads(tmp_path: Path) -> None:
     assert len(list(trust.trusted_root.get_fulcio_certs())) == 1
 
 
-def test_a_token_names_the_identity_and_the_issuer_fulcio_trusts(tmp_path: Path) -> None:
+def test_a_token_names_its_signer_and_the_issuer_fulcio_trusts(tmp_path: Path) -> None:
     local = written(tmp_path)
 
-    token = IdentityToken(local.token())
-
-    assert token.identity == IDENTITY
-    assert token.issuer == local.issuer
+    for signer in (local.author, local.reviewer):
+        token = IdentityToken(local.token(signer))
+        assert token.identity == signer
+        assert token.issuer == local.issuer
+    assert local.author != local.reviewer
+    with pytest.raises(ValueError, match="neither of the run's signers"):
+        local.token("someone@example.org")
 
 
 def test_a_test_finds_the_run_s_sigstore_by_its_descriptor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

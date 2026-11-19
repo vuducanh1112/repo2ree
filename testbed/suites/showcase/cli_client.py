@@ -385,43 +385,43 @@ class CliClient:
         return self._step(ree_id, "seal-ree", *left_out)
 
     def sign(self, ree_id: str) -> Run:
-        """Sign the sealed REE with the run's Sigstore, as its author does: signed in by a token in the environment,
-        never among the words typed."""
+        """Sign the sealed REE with the run's Sigstore as its author: signed in by a token in the environment, never
+        among the words typed. Its author's signature verifies, and no reviewer's would."""
         local = local_sigstore()
-        trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
-        token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
-        signed = self._step(ree_id, "sign-ree", "--trust-config", str(trust), variables=token)
+        signed = self._signed_as(ree_id, local.author, "sign-ree")
         if signed.status == "succeeded":
-            self._verified(ree_id)
+            self._verified(ree_id, signer=local.author, other=local.reviewer)
         return signed
 
     def sign_review(self, ree_id: str, review_id: str) -> Run:
-        """Sign the review with the run's Sigstore, as its reviewer does: the record is the statement's predicate."""
+        """Sign the review with the run's Sigstore as its reviewer: the record is the statement's predicate. Its
+        reviewer's signature verifies, and no author's would."""
         local = local_sigstore()
-        trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
-        token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
-        signed = self._step(
-            ree_id, "sign-review", "--review-id", review_id, "--trust-config", str(trust), variables=token
-        )
+        signed = self._signed_as(ree_id, local.reviewer, "sign-review", "--review-id", review_id)
         if signed.status == "succeeded":
-            self._verified(ree_id, "--review-id", review_id)
-            other = self._verification(ree_id, "--review-id", review_id, identity="someone-else@example.org")
-            assert [item["outcome"] for item in other["signatures"]] == ["other_signer"], other
+            self._verified(ree_id, "--review-id", review_id, signer=local.reviewer, other=local.author)
         return signed
 
-    def _verification(self, ree_id: str, *words: str, identity: str | None = None) -> dict[str, Any]:
-        """``ree verify-signatures`` against the run's Sigstore, under a policy naming its signer, or ``identity``."""
+    def _signed_as(self, ree_id: str, signer: str, *words: str) -> Run:
+        trust = self._staged(local_sigstore().trust_config.read_bytes(), "trust_config.json")
+        token = {"SIGSTORE_IDENTITY_TOKEN": local_sigstore().token(signer)}
+        return self._step(ree_id, *words, "--trust-config", str(trust), variables=token)
+
+    def _verification(self, ree_id: str, *words: str, signer: str) -> list[str]:
+        """What ``ree verify-signatures`` finds of each signature against the run's Sigstore, naming ``signer``."""
         local = local_sigstore()
         trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
-        policy = ("--identity", identity or local.identity, "--issuer", local.issuer, "--trust-config", str(trust))
+        policy = ("--identity", signer, "--issuer", local.issuer, "--trust-config", str(trust))
         _, result = self._result(ree_id, "verify-signatures", *words, *policy)
-        return result.outputs
+        return [str(item["outcome"]) for item in result.outputs["signatures"]]
 
-    def _verified(self, ree_id: str, *words: str) -> None:
-        """Every signature verifies, as its verifier finds it under a policy naming the run's signer."""
-        found = self._verification(ree_id, *words)
-        assert found["signatures"], found
-        assert all(item["outcome"] == "verified" for item in found["signatures"]), found
+    def _verified(self, ree_id: str, *words: str, signer: str, other: str) -> None:
+        """Each signature verifies under a policy naming its signer, and is the other signer's under one naming the
+        other."""
+        verified = self._verification(ree_id, *words, signer=signer)
+        assert verified, f"nothing signed in {ree_id} {' '.join(words)}"
+        assert set(verified) == {"verified"}, verified
+        assert set(self._verification(ree_id, *words, signer=other)) == {"other_signer"}
 
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"
