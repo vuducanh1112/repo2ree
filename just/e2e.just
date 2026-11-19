@@ -213,3 +213,8 @@ test-stack-existing suite:
 [group('Stack management')]
 prune-test-artifacts *args:
     python -m repo2ree_testbed prune {{ args }}
+
+# Start a Sigstore of the run's own on the machines' Docker network (Fulcio, a CT log, Rekor, an OIDC issuer), sign a statement under its test identity, verify it, and stop it (e.g. `just on-wip vm sigstore-smoke`).
+[group('E2E tests')]
+sigstore-smoke:
+    python -m repo2ree_testbed.stack.sigstore smoke {{ quote(ROOT + "/test-artifacts/sigstore-smoke") }}

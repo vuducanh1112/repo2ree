@@ -23,6 +23,7 @@ from repo2ree_testbed.faults import FAULTS_URL, Fault, inject
 from repo2ree_testbed.run_watch import INSTANT_RUN, NETWORK_RUN, RunWatch, settle_run
 from repo2ree_testbed.showcases import INSTANT, SOURCE, Project, RecipeScript
 from repo2ree_testbed.showcases import RESULT as RESULT
+from repo2ree_testbed.stack.sigstore import AUTHOR_APPROVAL, local_sigstore, sign
 
 ROOT = Path(__file__).resolve().parents[3]
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = "ree-scripts/build_experiment_environment.sh"
@@ -56,6 +57,10 @@ RECONNECT_BOUND = 78
 
 class ApiError(AssertionError):
     pass
+
+
+# What a signature is called while it is staged.
+SIGNED = "author_approval.sigstore.json"
 
 
 @dataclass
@@ -210,6 +215,26 @@ class Api:
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
         payload = {"include_source": True, "include_experiment_environment": True, "include_results": True}
         return self.stage(ree_id, "seal-ree", payload, watch=watch)
+
+    def sign(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
+        """Sign the sealed REE's digest with the run's Sigstore, as its author's own client does, and give the
+        bundle to the REE."""
+        ree = self.ree(ree_id)
+        digest = str(ree["seal"]["ree_digest"])
+        bundle = sign(
+            local_sigstore(), ree["subject"]["definition"]["name"], digest.removeprefix("sha256:"), AUTHOR_APPROVAL
+        )
+        upload = self.post(
+            f"/api/v1/rees/{ree_id}/signature:upload-init",
+            {"file_name": SIGNED, "size": len(bundle), "content_type": "application/json"},
+        )
+        self.request("PUT", upload["upload_url"], content=bundle)
+        return self.stage(
+            ree_id,
+            "sign-ree",
+            {"claim": "author_approval", "upload_token": upload["upload_token"], "archive_name": SIGNED},
+            watch=watch,
+        )
 
     def load(self, ree_id: str, bundle: bytes) -> None:
         """Seat a sealed REE's archive in ``ree_id``, as a reviewer does."""

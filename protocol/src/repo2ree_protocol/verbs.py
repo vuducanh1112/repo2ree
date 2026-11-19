@@ -80,7 +80,7 @@ SUMMARIES: dict[type[BaseModel], str] = {
     EvaluateReproducibilityCommand: "Score how fully the source pins its dependencies",
     ObserveHardwareCommand: "Record the hardware this machine offers (HBOM)",
     SealReeCommand: "Seal the REE: freeze it and its evidence under one digest",
-    SignReeCommand: "Add a Sigstore bundle (--bundle) over the sealed REE's digest as its signature",
+    SignReeCommand: "Sign the sealed REE with Sigstore, or add a bundle signed elsewhere (--bundle)",
     ReviewAcquireSourceCommand: "Open a review: acquire the source into an attempt of its own",
     ReviewBuildExperimentEnvironmentCommand: "Rebuild the experiment environment in the review, or certify the REE's",
     ReviewActivateExperimentEnvironmentCommand: "Test the activation in the review",

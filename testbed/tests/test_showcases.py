@@ -105,6 +105,7 @@ def test_the_tiers_run_places_its_tests_itself() -> None:
         *("--per-test", "--exit-on", "tests"),
         *("--jobs", "4"),
         *("--select", "a b"),
+        "--sigstore",
     ]
     assert "--environment" not in e2e_arguments(jobs=4)
     assert "--select" not in e2e_arguments(jobs=4)

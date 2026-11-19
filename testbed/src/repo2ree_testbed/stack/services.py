@@ -22,6 +22,8 @@ class Deployment:
     environment: Environment | None = None
     # An API and a workbench service on each location; without them, the client runs ree on the machine itself.
     control_plane: bool = True
+    # The descriptor of the run's own Sigstore, for tests that sign; None when the run started none.
+    sigstore: Path | None = None
 
 
 @dataclass(frozen=True)

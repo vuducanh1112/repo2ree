@@ -16,5 +16,6 @@ def test_a_conda_environment_is_built_activated_run_and_sealed(client: Client, n
     client.author(ree_id, F)
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"
+    assert client.sign(ree_id).status == "succeeded"
     result = zipfile.ZipFile(client.archive(ree_id, "sealed")).read(f"ree/results/{F.experiment}/{RESULT}")
     assert "environment: /tmp/ree-conda-runtime/env" in result.decode().splitlines()

@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from repo2ree_authoring.lint import CONTRACT_ONLY, lint_script
 from repo2ree_authoring.targets import resolve_target
 from repo2ree_authoring.templates import script_template_catalog
-from repo2ree_cli import render
+from repo2ree_cli import render, signing
 from repo2ree_cli.models import (
     CancelRequested,
     Initialized,
@@ -66,6 +66,7 @@ from repo2ree_protocol.command import (
     ReviewRunExperimentCommand,
     ScriptTargetSelectorArg,
     SealReeCommand,
+    SignReeArgs,
     SignReeCommand,
     SuggestScriptsCommand,
     TargetKind,
@@ -120,6 +121,8 @@ EXIT_CODES = {
 # Where a staged archive comes from on the command line; the commands themselves name it by its upload token.
 ARCHIVE_OPTION = "--archive"
 BUNDLE_OPTION = "--bundle"
+# What a bundle signed by `ree sign-ree` itself is called while it is staged.
+SIGNED_HERE = "signed.sigstore.json"
 
 
 # ================================================
@@ -417,12 +420,46 @@ def _load_bundle(
 def _sign(
     invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
 ) -> None:
+    """Sign the seal with Sigstore here, or add a bundle signed elsewhere (``--bundle``)."""
     layout = _layout_or_refuse(invocation, " ".join(words))
-    if params["bundle"] is None and params["upload_token"] is None:
-        raise click.UsageError(f"give {BUNDLE_OPTION} PATH: a Sigstore bundle over the sealed REE's digest")
-    filled = _staged(layout, params["bundle"]) if params["bundle"] is not None else {}
+    if params["bundle"] is not None:
+        filled = _staged(layout, params["bundle"])
+    elif params["upload_token"] is not None:
+        filled = {}
+    else:
+        filled = _staged_bytes(layout, _signed_here(invocation, " ".join(words), layout, params), SIGNED_HERE)
     args = spelling.build(params, None, **filled)
     _run_and_finish(invocation, words, SignReeCommand.model_validate({"args": args}), layout)
+
+
+def _signed_here(invocation: Invocation, words: str, layout: ReeLayout, params: Params) -> bytes:
+    """A Sigstore bundle over the seal's digest, signed under the identity the signer proves now."""
+    ree = ReeDirectory(layout).read_ree()
+    if ree.seal is None:
+        refuse(invocation, words, "precondition", "only a sealed REE is signed: run `ree seal-ree` first")
+    click.echo(signing.PUBLIC_LOG_NOTICE, err=True)
+    request = signing.SigningRequest(
+        ree_name=ree.subject.definition.name,
+        ree_digest=ree.seal.ree_digest,
+        claim=params["claim"] or SignReeArgs.model_fields["claim"].default,
+        instance="staging" if params["staging"] else "production",
+        trust_config=params["trust_config"],
+        identity_token=params["identity_token"],
+        out_of_band=params["out_of_band"],
+    )
+    try:
+        return signing.sign_seal(request)
+    except signing.SigningError as exc:
+        refuse(invocation, words, exc.category, str(exc))
+
+
+def _staged_bytes(layout: ReeLayout, content: bytes, name: str) -> dict[str, str]:
+    """Content staged in the REE as a file called ``name``, as the command names it."""
+    token = uuid4().hex
+    staged = layout.upload_staging_file(token)
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    staged.write_bytes(content)
+    return {"upload_token": token, "archive_name": name}
 
 
 def _staged(layout: ReeLayout, archive: Path) -> dict[str, str]:
@@ -670,8 +707,26 @@ _EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
         click.Option(
             [BUNDLE_OPTION, "bundle"],
             type=click.Path(dir_okay=False, exists=True, path_type=Path),
-            help="The Sigstore bundle to add, staged in the REE.",
-        )
+            help="A Sigstore bundle signed elsewhere, to add instead of signing here.",
+        ),
+        click.Option(
+            ["--identity-token", "identity_token"],
+            envvar="SIGSTORE_IDENTITY_TOKEN",
+            default=None,
+            help="An OIDC token to sign under, in place of signing in; read from SIGSTORE_IDENTITY_TOKEN.",
+        ),
+        click.Option(
+            ["--out-of-band", "out_of_band"],
+            is_flag=True,
+            help="Sign in by pasting a code from the browser, where no browser can reach this machine.",
+        ),
+        click.Option(["--staging"], is_flag=True, help="Sign with Sigstore's staging instance, for trying it out."),
+        click.Option(
+            ["--trust-config", "trust_config"],
+            type=click.Path(dir_okay=False, exists=True, path_type=Path),
+            default=None,
+            help="A Sigstore client trust configuration naming other services, such as a local stack.",
+        ),
     ],
     PatchReeDefinitionCommand: _DEFINE_OPTIONS,
     SuggestScriptsCommand: [
@@ -687,8 +742,10 @@ _MORE: dict[type[BaseModel], str] = {
     ),
     SuggestScriptsCommand: "Shows each proposal against the script as it is written.",
     SignReeCommand: (
-        "Sign the seal's digest with Sigstore elsewhere, as an in-toto statement whose predicate type is the "
-        "claim's, and give the bundle here; the REE keeps it beside what the seal covers."
+        "Signs the seal's digest with Sigstore: you sign in with your OIDC identity (a browser opens, or use "
+        "--out-of-band), and your identity is logged publicly in Sigstore's transparency log. A CI job's own token "
+        "is used where there is one. With --bundle, adds a bundle signed elsewhere instead. The REE keeps the "
+        "signature beside what the seal covers."
     ),
 }
 

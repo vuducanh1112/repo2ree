@@ -6,6 +6,7 @@ dependencies = [
     "repo2ree-core",
     "repo2ree-telemetry",
     "click~=8.2.1",
+    "sigstore~=4.2.0",
 ]
 
 [tool.uv.sources]

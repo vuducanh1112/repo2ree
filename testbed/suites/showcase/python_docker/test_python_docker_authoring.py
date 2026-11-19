@@ -75,6 +75,7 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
         assert step.evidence == "current", step
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"
+    assert client.sign(ree_id).status == "succeeded"
     archive = client.archive(ree_id, "sealed")
     entries = zipfile.ZipFile(archive).namelist()
     assert f"ree/results/{F.experiment}/{RESULT}" in entries

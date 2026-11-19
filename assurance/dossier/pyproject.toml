@@ -3,7 +3,7 @@ name = "repo2ree-assurance-dossier"
 version = "0.1.0"
 description = "The dossier format: behaviour evidence collected from a deployment, and where each piece came from."
 requires-python = "~=3.13.0"
-dependencies = ["pydantic~=2.11.7"]
+dependencies = ["pydantic~=2.12.0"]
 
 [build-system]
 requires = ["hatchling"]

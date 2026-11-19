@@ -7,7 +7,7 @@ import io
 import signal
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import IO, Literal, get_args
 
@@ -18,6 +18,7 @@ from repo2ree_testbed.showcases import gui_machines
 from repo2ree_testbed.stack.clients import Client, Playwright, Script
 from repo2ree_testbed.stack.environments import ENVIRONMENTS
 from repo2ree_testbed.stack.services import Deployment
+from repo2ree_testbed.stack.sigstore import SigstoreStack
 
 type ExitOn = Literal["tests", "run"]
 
@@ -29,6 +30,8 @@ class Invocation:
     schedule: Schedule
     # tests: fail when a test did; run: fail only when the run broke, leaving its tests to whoever judges them.
     exit_on: ExitOn = "tests"
+    # A Sigstore of the run's own, started once for its tests to sign with.
+    sigstore: bool = False
 
 
 class Tee(io.TextIOBase):
@@ -87,6 +90,11 @@ def parse(argv: list[str] | None = None) -> Invocation:
         action="store_true",
         help="start no API and no workbench service: the client runs ree on each test's machine itself",
     )
+    parser.add_argument(
+        "--sigstore",
+        action="store_true",
+        help="start a Sigstore of the run's own on the machines' network, for its tests to sign with",
+    )
     parser.add_argument("--state-root", type=Path, default=ROOT / "test-artifacts/state")
     parser.add_argument("--cli-bundle", type=Path, default=ROOT / "dist/bundles/cli")
     parser.add_argument("--tools-bundle", type=Path, default=ROOT / "dist/bundles/tools")
@@ -126,7 +134,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         control_plane=not args.no_control_plane,
     )
     schedule = PerTest(args.jobs, select) if args.per_test else WholeSuite()
-    return Invocation(deployment, client, schedule, args.exit_on)
+    return Invocation(deployment, client, schedule, args.exit_on, sigstore=args.sigstore)
 
 
 def exit_status(status: int, exit_on: ExitOn, completed: bool) -> int:
@@ -150,7 +158,10 @@ def main(argv: list[str] | None = None) -> int:
     run.root.mkdir(parents=True, exist_ok=True)
     log = (run.root / "tier.log").open("a", encoding="utf-8", buffering=1)
     sys.stdout, sys.stderr = Tee(sys.stdout, log), Tee(sys.stderr, log)
+    sigstore = SigstoreStack(run.root / "sigstore", run.root / "sigstore.log") if invocation.sigstore else None
     try:
+        if sigstore is not None:
+            run.deployment = replace(run.deployment, sigstore=sigstore.start())
         return exit_status(run.run(), invocation.exit_on, run.completed)
     except KeyboardInterrupt:
         return 130
@@ -159,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         run.stop()
+        if sigstore is not None:
+            sigstore.stop()
         sys.stdout, sys.stderr = sys.__stdout__, sys.__stderr__
         log.close()
 

@@ -6,7 +6,7 @@ requires-python = "~=3.13.0"
 # cryptography stays on 46.x (OpenSSL 3.5). From 48 on, its wheels bundle OpenSSL 4.0, whose CPU feature probe
 # dies of an illegal instruction where the kernel reports sve2 without sve, as on a virtualized Apple Silicon CPU
 # (Docker on a Mac). OPENSSL_armcap=0 skips the probe and 50.0.2 then works; raise the pin once upstream copes.
-dependencies = ["cryptography~=46.0.3", "pydantic~=2.11.7", "repo2ree-assurance-dossier"]
+dependencies = ["cryptography~=46.0.3", "pydantic~=2.12.0", "repo2ree-assurance-dossier"]
 
 [tool.uv.sources]
 repo2ree-assurance-dossier = { workspace = true }

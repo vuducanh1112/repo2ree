@@ -27,6 +27,11 @@ let
   # forward. The executor never talks to a collector itself, so the OTLP
   # HTTP exporter and `requests` are deliberately absent — those stay
   # behind the host-side functions in repo2ree_telemetry.bootstrap and .relay.
+  #
+  # sigstore signs a sealed REE where its author runs `ree sign-ree`, often a
+  # host the workbench bundle installed `ree` on. It is imported only then
+  # (repo2ree_cli.signing), so no other command loads it; it links nixpkgs'
+  # OpenSSL, not the OpenSSL 4 the cryptography wheels bundle.
   python = pkgs.python313.withPackages (
     ps: with ps; [
       click
@@ -35,6 +40,7 @@ let
       opentelemetry-api
       opentelemetry-sdk
       opentelemetry-exporter-otlp-proto-common
+      sigstore
     ]
   );
 

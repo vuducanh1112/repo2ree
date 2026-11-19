@@ -26,6 +26,7 @@ def test_a_containerfile_built_with_podman_is_run_sealed_and_downloaded(client: 
     assert "--- Podman Hello World ---" in logs
 
     assert client.seal(ree_id, watch=F.watch).status == "succeeded"
+    assert client.sign(ree_id).status == "succeeded"
     entries = zipfile.ZipFile(client.archive(ree_id, "sealed")).namelist()
     assert f"ree/results/{F.experiment}/{RESULT}" in entries
     # The image Podman saved is sealed with it, so a reviewer can run it without rebuilding.

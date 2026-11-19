@@ -46,6 +46,7 @@ from repo2ree_testbed.stack.origins import Origins
 from repo2ree_testbed.stack.process import fetch_as, kill_tree, listed, reachable, terminate, wait_until
 from repo2ree_testbed.stack.relay import Relay
 from repo2ree_testbed.stack.services import Deployment, backend_environment, locations, store_id, workbench_host
+from repo2ree_testbed.stack.sigstore import SIGSTORE_VARIABLE
 from repo2ree_testbed.stack.workbench_cleanup import cleanup, save_bench_logs
 
 
@@ -140,6 +141,7 @@ class E2EStack:
             "E2E_ARCHIVE_DIR": str(layout.archives),
             "E2E_KEPT_REE_DIR": str(layout.kept_rees),
             "E2E_TEST_DIR": str(layout.directory),
+            **({SIGSTORE_VARIABLE: str(deployment.sigstore)} if deployment.sigstore else {}),
         }
         self.coverage_dir = run_dir() / "python/coverage/data" / deployment.tier
         self.coverage_file = self.coverage_dir / ".coverage"

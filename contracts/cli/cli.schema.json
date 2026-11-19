@@ -1101,8 +1101,8 @@
       "words": [
         "sign-ree"
       ],
-      "summary": "Add a Sigstore bundle (--bundle) over the sealed REE's digest as its signature",
-      "help": "Add a Sigstore bundle (--bundle) over the sealed REE's digest as its signature.\n\nSign the seal's digest with Sigstore elsewhere, as an in-toto statement whose predicate type is the claim's, and give the bundle here; the REE keeps it beside what the seal covers.",
+      "summary": "Sign the sealed REE with Sigstore, or add a bundle signed elsewhere (--bundle)",
+      "help": "Sign the sealed REE with Sigstore, or add a bundle signed elsewhere (--bundle).\n\nSigns the seal's digest with Sigstore: you sign in with your OIDC identity (a browser opens, or use --out-of-band), and your identity is logged publicly in Sigstore's transparency log. A CI job's own token is used where there is one. With --bundle, adds a bundle signed elsewhere instead. The REE keeps the signature beside what the seal covers.",
       "runs": true,
       "operations": [
         "sign_ree"
@@ -1113,7 +1113,41 @@
           "kind": "option",
           "required": false,
           "multiple": false,
-          "help": "The Sigstore bundle to add, staged in the REE.",
+          "help": "A Sigstore bundle signed elsewhere, to add instead of signing here.",
+          "type": "file"
+        },
+        {
+          "name": "--identity-token",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "An OIDC token to sign under, in place of signing in; read from SIGSTORE_IDENTITY_TOKEN.",
+          "type": "text"
+        },
+        {
+          "name": "--out-of-band",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Sign in by pasting a code from the browser, where no browser can reach this machine.",
+          "flag": true,
+          "default": false
+        },
+        {
+          "name": "--staging",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Sign with Sigstore's staging instance, for trying it out.",
+          "flag": true,
+          "default": false
+        },
+        {
+          "name": "--trust-config",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "A Sigstore client trust configuration naming other services, such as a local stack.",
           "type": "file"
         },
         {

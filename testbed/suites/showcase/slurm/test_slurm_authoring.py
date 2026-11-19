@@ -26,6 +26,7 @@ def test_an_experiment_run_as_a_job_is_sealed_and_downloaded(client: Client, new
     assert launched.slurm_job_id is not None
 
     assert client.seal(ree_id).status == "succeeded"
+    assert client.sign(ree_id).status == "succeeded"
     entries = zipfile.ZipFile(client.archive(ree_id, "sealed")).namelist()
     assert f"ree/results/{F.experiment}/{RESULT}" in entries
     assert "ree/overlay/ree-scripts/launch.sh" in entries

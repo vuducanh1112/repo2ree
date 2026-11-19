@@ -29,6 +29,8 @@ def e2e_arguments(*, jobs: int, select: Sequence[str] = (), surface: Surface = "
         *("--jobs", str(jobs)),
         *(("--select", " ".join(select)) if select else ()),
         *(("--no-control-plane",) if surface == "cli" else ()),
+        # Each authored REE is signed after its seal, under the run's own Sigstore.
+        "--sigstore",
     ]
 
 

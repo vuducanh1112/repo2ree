@@ -54,6 +54,7 @@ from repo2ree_testbed.stack.environments import (
     EnvironmentName,
     machine_exec,
 )
+from repo2ree_testbed.stack.sigstore import local_sigstore
 
 BUILD_SCRIPT = "ree-scripts/build_experiment_environment.sh"
 LAUNCH_SCRIPT = "ree-scripts/launch.sh"
@@ -91,8 +92,10 @@ class Machine:
     container: str
     workdir: Path
 
-    def ree(self, root: Path, *words: str, stdin: bytes | None = None) -> Done:
-        command = machine_exec(ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words])
+    def ree(self, root: Path, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None) -> Done:
+        command = machine_exec(
+            ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
+        )
         done = subprocess.run(command, input=stdin or b"", capture_output=True, timeout=STEP_SECONDS, check=False)
         return Done(done.returncode, done.stdout, done.stderr.decode(errors="replace"))
 
@@ -115,18 +118,22 @@ class CliClient:
 
     # ---- running ree ----------------------------------------------------------
 
-    def _result(self, ree_id: str, *words: str, stdin: bytes | None = None) -> tuple[str, Result]:
+    def _result(
+        self, ree_id: str, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None
+    ) -> tuple[str, Result]:
         """Run one command of the REE's and keep what it logged; its run and its one result line."""
         run_id = f"cli-{uuid4().hex[:12]}"
-        done = self._ree(ree_id, ("--json", "--run-id", run_id, *words), stdin, run_id)
+        done = self._ree(ree_id, ("--json", "--run-id", run_id, *words), stdin, run_id, variables)
         self._logs[run_id] = _lines(done.stderr)
         try:
             return run_id, Result.model_validate_json(done.stdout.decode().strip().splitlines()[-1])
         except (IndexError, ValueError) as exc:
             raise CliError(f"ree {' '.join(words)} wrote no result (exit {done.status}):\n{done.stderr}") from exc
 
-    def _step(self, ree_id: str, *words: str, stdin: bytes | None = None) -> Run:
-        run_id, result = self._result(ree_id, *words, stdin=stdin)
+    def _step(
+        self, ree_id: str, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None
+    ) -> Run:
+        run_id, result = self._result(ree_id, *words, stdin=stdin, variables=variables)
         return Run(run_id=run_id, status=result.status)
 
     def _outputs(self, ree_id: str, *words: str, stdin: bytes | None = None) -> dict[str, Any]:
@@ -135,10 +142,17 @@ class CliClient:
             raise CliError(f"ree {' '.join(words)} ended {result.status}\n{self._logs[run_id]}")
         return result.outputs
 
-    def _ree(self, ree_id: str, words: tuple[str, ...], stdin: bytes | None = None, run_id: str | None = None) -> Done:
+    def _ree(
+        self,
+        ree_id: str,
+        words: tuple[str, ...],
+        stdin: bytes | None = None,
+        run_id: str | None = None,
+        variables: dict[str, str] | None = None,
+    ) -> Done:
         """Run one ``ree`` command against the REE, and add it to the test's session as it was typed and answered."""
         started = time.time()
-        done = self.machine.ree(self.root(ree_id), *words, stdin=stdin)
+        done = self.machine.ree(self.root(ree_id), *words, stdin=stdin, variables=variables)
         if self.session is not None:
             printed = done.stdout.decode(errors="replace").strip().splitlines()
             result, result_bytes = kept_result(printed[-1]) if "--json" in words and printed else (None, 0)
@@ -318,6 +332,14 @@ class CliClient:
     def seal(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "seal-ree")
 
+    def sign(self, ree_id: str) -> Run:
+        """Sign the sealed REE with the run's Sigstore, as its author does: signed in by a token in the environment,
+        never among the words typed."""
+        local = local_sigstore()
+        trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
+        token = {"SIGSTORE_IDENTITY_TOKEN": local.token()}
+        return self._step(ree_id, "sign-ree", "--trust-config", str(trust), variables=token)
+
     def archive(self, ree_id: str, label: str) -> Path:
         target = self.archive_dir / f"{label}-{ree_id}.zip"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -352,11 +374,13 @@ class CliClient:
         return self._step(ree_id, "review", "run-experiment", "--review-id", review_id, experiment)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
-        """Author and seal ``fixture``, and reproduce it in a second REE."""
+        """Author, seal and sign ``fixture``, and reproduce it in a second REE, which loads it signed."""
         author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)
         assert sealed.status == "succeeded", self.logs(author, sealed)
+        signed = self.sign(author)
+        assert signed.status == "succeeded", self.logs(author, signed)
         archive = self.archive(author, "review-baseline")
 
         reviewer = new_ree("reviewer")

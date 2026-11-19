@@ -35,6 +35,7 @@ def test_a_rebuild_after_an_upstream_release_is_different_and_the_sealed_experim
     authored = new_ree("review-author")
     author(client, authored, F)
     assert client.seal(authored, watch=F.watch).status == "succeeded"
+    assert client.sign(authored).status == "succeeded"
     archive = client.archive(authored, "review-baseline")
 
     publish(F, "2.0")
