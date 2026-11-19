@@ -5,6 +5,11 @@ computes every digest itself: nothing an owner concluded is an input, only somet
 ``standing`` holds what core recorded of each receipt to the standing the receipt's basis gives; ``digest``
 holds a recorded digest to the checker's own digest of what it names; ``signature`` holds each signed claim the
 commit carries to the digest it must name, the claim its file is named for, and the key its certificate holds.
+
+A review is a document of its own beside the REE it reviews (``reviews``: the field naming the reviewed seal), and
+its rules have three patterns more: ``reference`` holds one of its values to the reviewed REE's, ``agrees`` holds
+two of its own values to each other, and ``verdict`` holds each verdict it records to the one the checker's own
+ladder gives from the values beside it.
 """
 
 from __future__ import annotations
@@ -55,16 +60,45 @@ class CanonicalPair(SpecModel):
     domain: str = Field(min_length=1)
 
 
+class ReferencePair(SpecModel):
+    """A review's value, and the reviewed REE's value it must be: ``[*]`` items are the review's, ``[$name]`` the
+    same item in the REE."""
+
+    field: DocumentPath
+    ree: DocumentPath
+
+
+class AgreesPair(SpecModel):
+    """Two values of one review that must be the same: ``[*]`` items are the first's, ``[$name]`` the same item."""
+
+    field: DocumentPath
+    same: DocumentPath
+
+
+# The ladders a review's verdicts are reached by, each checked by the checker's own: ``swhid`` the source's,
+# ``sbom-closure`` the experiment environment's, ``activation`` the activation's, ``verify-script`` each
+# experiment's, and ``after-activation`` that an experiment is compared only beside an activation that passed.
+type VerdictPolicy = Literal["swhid", "sbom-closure", "activation", "verify-script", "after-activation"]
+
+
 class DocumentRule(SpecModel):
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]*$")]
-    pattern: Literal["standing", "digest", "signature"]
+    pattern: Literal["standing", "digest", "signature", "reference", "agrees", "verdict"]
     summary: str
     kind: DigestKind | None = None
     # Only sealed documents (true), only drafts (false), or every one (absent).
     sealed: bool | None = None
     # What a file the commit does not hold means: a violation, or nothing the commit can evidence.
     absent: Literal["violated", "unevidenced"] = "violated"
-    pairs: tuple[FilePair, ...] | tuple[PathsPair, ...] | tuple[CanonicalPair, ...] = ()
+    pairs: (
+        tuple[FilePair, ...]
+        | tuple[PathsPair, ...]
+        | tuple[CanonicalPair, ...]
+        | tuple[ReferencePair, ...]
+        | tuple[AgreesPair, ...]
+    ) = ()
+    # A verdict rule's ladders.
+    policies: tuple[VerdictPolicy, ...] = ()
     # The document's list of the files it carries, each with its path, digest, and size.
     inventory: DocumentPath | None = None
     # Paths the inventory does not list; one ending in ``/`` is every file below it.
@@ -82,6 +116,17 @@ class DocumentRule(SpecModel):
 
     @model_validator(mode="after")
     def coherent_rule(self) -> Self:
+        if self.pattern in {"reference", "agrees"}:
+            taken: type[ReferencePair | AgreesPair] = ReferencePair if self.pattern == "reference" else AgreesPair
+            if self.kind or not self.pairs or not all(isinstance(pair, taken) for pair in self.pairs):
+                raise ValueError(f"{self.id}: a {self.pattern} rule takes {taken.__name__}s, and no kind")
+            return self
+        if self.pattern == "verdict":
+            if not self.policies or self.kind or self.pairs:
+                raise ValueError(f"{self.id}: a verdict rule names its ladders, and no pairs")
+            return self
+        if self.policies:
+            raise ValueError(f"{self.id}: only a verdict rule names ladders")
         signing = (self.files, self.subject, self.claims)
         if self.pattern == "signature":
             if not all(signing) or self.kind or self.pairs or self.inventory:
@@ -108,13 +153,26 @@ class DocumentRule(SpecModel):
 
 
 class DocumentRules(SpecModel):
-    """The document rules of one aggregate."""
+    """The document rules of one aggregate, or of a review of it: a document of its own, named ``document``, whose
+    ``reviews`` field names the reviewed seal."""
 
     aggregate: Name
+    document: Name | None = None
+    reviews: DocumentPath | None = None
     rules: tuple[DocumentRule, ...] = Field(default=(), alias="rule")
+
+    @property
+    def name(self) -> str:
+        """Whose commits the rules judge: the aggregate's document, or the review's."""
+        return self.document or self.aggregate
 
     @model_validator(mode="after")
     def unique_rules(self) -> Self:
         if len({rule.id for rule in self.rules}) != len(self.rules):
-            raise ValueError(f"{self.aggregate}: document rule ids must be unique")
+            raise ValueError(f"{self.name}: document rule ids must be unique")
+        if (self.document is None) != (self.reviews is None):
+            raise ValueError(f"{self.name}: a review names its document and the field naming the reviewed seal")
+        reviewing = {"reference", "agrees", "verdict"}
+        if self.reviews is None and (found := [rule.id for rule in self.rules if rule.pattern in reviewing]):
+            raise ValueError(f"{found[0]}: only a review's rules reference, agree, or settle verdicts")
         return self

@@ -9,87 +9,36 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from collections import defaultdict
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
 
 from pydantic import JsonValue
 
 from repo2ree_assurance_checker.check.aggregates import experiment_slug
+from repo2ree_assurance_checker.check.reading import TOKEN, Judged, held, items, value, values, within
 from repo2ree_assurance_checker.check.results import Finding, RuleResult
+from repo2ree_assurance_checker.check.reviews import agreements, references, reviewed, verdicts
 from repo2ree_assurance_checker.check.signatures import UnreadableBundleError, signed_statement
 from repo2ree_assurance_checker.evidence import CommittedFile, Event, Evidence, Snapshot
 from repo2ree_assurance_checker.spec import (
     ITEM,
     KEYED,
     AggregateSpec,
+    AgreesPair,
     BasisPair,
     CanonicalPair,
     DocumentRule,
     FilePair,
     PathsPair,
     ReceiptMachine,
+    ReferencePair,
     Spec,
 )
 from repo2ree_assurance_checker.spec.documents import SIGNATURE_SUFFIX
 
-_TOKEN = re.compile(r"[a-z_]+|\[\*\]|\[\$name\]")
-# Paths that start here are read from the document itself; every other one from its subject.
-_DOCUMENT_ROOTS = frozenset({"seal", "subject"})
 # How a commit's cause reads as a receipt's: the first commit is the receipts' baseline.
 _RECEIPT_CAUSE = {"created": "baseline", "operation": "operation", "external": "external"}
 _EXACT = 2**53
-
-
-# ================================================
-# Reading the document
-# ================================================
-
-
-def _items(value: JsonValue) -> list[tuple[str, JsonValue]]:
-    """A list's items by their names, or an object's members by their keys."""
-    if isinstance(value, list):
-        return [(name, item) for item in value if isinstance(item, dict) and isinstance(name := item.get("name"), str)]
-    if isinstance(value, dict):
-        return list(value.items())
-    return []
-
-
-def values(document: Mapping[str, JsonValue], path: str, item: str | None = None) -> list[tuple[str | None, JsonValue]]:
-    """What a path names in a document, each with the item it names; ``[$name]`` is ``item``."""
-    tokens = _TOKEN.findall(path)
-    base: JsonValue = dict(document) if tokens and tokens[0] in _DOCUMENT_ROOTS else document.get("subject")
-    found: list[tuple[str | None, JsonValue]] = [(item, base)]
-    for token in tokens:
-        reached: list[tuple[str | None, JsonValue]] = []
-        for named, value in found:
-            if token == KEYED:
-                reached.extend(_items(value))
-            elif token == ITEM:
-                reached.append((named, dict(_items(value)).get(named) if named is not None else None))
-            else:
-                reached.append((named, value.get(token) if isinstance(value, dict) else None))
-        found = reached
-    return found
-
-
-def value(document: Mapping[str, JsonValue], path: str, item: str | None = None) -> JsonValue:
-    found = values(document, path, item)
-    return found[0][1] if len(found) == 1 else None
-
-
-def held(value: JsonValue) -> bool:
-    """Whether a part is set: present, and not empty, an object only when something in it is."""
-    if isinstance(value, dict):
-        return any(held(inner) for inner in value.values())
-    return value not in (None, "", [])
-
-
-def _within(value: JsonValue, path: str) -> JsonValue:
-    for token in _TOKEN.findall(path):
-        value = value.get(token) if isinstance(value, dict) else None
-    return value
 
 
 # ================================================
@@ -156,7 +105,7 @@ def canonical_digest(domain: str, name: str, value: JsonValue) -> str:
 
 
 def _agrees(pair: BasisPair, receipt: JsonValue, document: Mapping[str, JsonValue], item: str | None) -> bool:
-    return _within(receipt, pair.recorded) == value(document, pair.now, item)
+    return within(receipt, pair.recorded) == value(document, pair.now, item)
 
 
 def _standing(
@@ -183,7 +132,7 @@ def standings(aggregate: AggregateSpec, snapshot: Snapshot) -> dict[str, str]:
         if receipt.keyed:
             about = next(path for path in receipt.about if path.endswith(KEYED))
             declared = {item for item, part in values(document, about) if item is not None and held(part)}
-            recorded = dict(_items(value(document, at)))
+            recorded = dict(items(value(document, at)))
             for item in sorted(declared | {item for item, part in recorded.items() if part is not None}):
                 found[f"{name}:{item}"] = _standing(receipt, recorded.get(item), item in declared, document, item)
             continue
@@ -260,15 +209,6 @@ def witness(spec: Spec, evidence: Evidence) -> Evidence:
 # ================================================
 
 
-@dataclass(frozen=True)
-class Judged:
-    """One thing a rule held one commit to: ``None`` where the commit cannot evidence it."""
-
-    subject: str
-    held: bool | None
-    reason: str = ""
-
-
 def _items_of(document: Mapping[str, JsonValue], path: str) -> list[str | None]:
     if KEYED not in path:
         return [None]
@@ -339,7 +279,7 @@ def _canonical_pairs(pair: CanonicalPair, snapshot: Snapshot) -> Iterator[Judged
     recorded = value(document, pair.digest)
     if recorded is None:
         return
-    name = _TOKEN.findall(pair.part)[-1]
+    name = TOKEN.findall(pair.part)[-1]
     try:
         computed = canonical_digest(pair.domain, name, value(document, pair.part))
     except ValueError as exc:
@@ -377,10 +317,11 @@ def _inventory(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
             yield Judged(path, True)
 
 
-def _signatures(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
+def _signatures(rule: DocumentRule, snapshot: Snapshot, *, review: bool = False) -> Iterator[Judged]:
+    """Each signature the commit carries; a review's statement carries the review's record as its predicate."""
     document = snapshot.document or {}
     directory = rule.files or ""
-    signed = value(document, rule.subject or "")
+    signed = value(document, rule.subject or "", whole=review)
     for path, committed in sorted(snapshot.files.items()):
         if not path.startswith(directory):
             continue
@@ -402,6 +343,8 @@ def _signatures(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
             yield Judged(path, False, f"signs {', '.join(sorted(statement.digests))}, not {rule.subject} {signed}")
         elif statement.predicate_type != rule.claims[claim]:
             yield Judged(path, False, f"claims {statement.predicate_type}, but its name says {rule.claims[claim]}")
+        elif review and statement.predicate != document:
+            yield Judged(path, False, "signs another record than the review holds in this commit")
         else:
             yield Judged(path, True)
 
@@ -422,6 +365,20 @@ def _standings_recorded(aggregate: AggregateSpec, snapshot: Snapshot) -> Iterato
             yield Judged(step, True)
 
 
+def _review(rule: DocumentRule, snapshot: Snapshot, reviewed: Mapping[str, JsonValue] | None) -> Iterator[Judged]:
+    document = snapshot.document or {}
+    if rule.pattern == "signature":
+        yield from _signatures(rule, snapshot, review=True)
+    elif rule.pattern == "verdict":
+        yield from verdicts(rule, document)
+    else:
+        for pair in rule.pairs:
+            if isinstance(pair, ReferencePair):
+                yield from references(pair, document, reviewed)
+            elif isinstance(pair, AgreesPair):
+                yield from agreements(pair, document)
+
+
 def judged(rule: DocumentRule, aggregate: AggregateSpec, snapshot: Snapshot) -> Iterator[Judged]:
     if snapshot.document is None:
         return
@@ -439,21 +396,30 @@ def judged(rule: DocumentRule, aggregate: AggregateSpec, snapshot: Snapshot) -> 
                 yield from _file_pairs(rule, pair, snapshot)
             elif isinstance(pair, PathsPair):
                 yield from _paths_pairs(rule, pair, snapshot)
-            else:
+            elif isinstance(pair, CanonicalPair):
                 yield from _canonical_pairs(pair, snapshot)
 
 
 def check_documents(spec: Spec, evidence: Evidence) -> list[RuleResult]:
-    """Every document rule over every commit of its aggregate's document."""
+    """Every document rule over every commit of its document: an aggregate's, or a review's beside the REE it
+    reviews."""
     results: list[RuleResult] = []
     for name, rules in spec.documents.items():
-        aggregate = spec.aggregates[name]
+        aggregate = spec.aggregates[rules.aggregate]
         snapshots = [snapshot for snapshot in evidence.snapshots if snapshot.subject == name]
+        beside = _ordered(
+            evidence, [snapshot for snapshot in evidence.snapshots if snapshot.subject == rules.aggregate]
+        )
         for rule in rules.rules:
             triggered = 0
             findings: list[Finding] = []
             for snapshot in _ordered(evidence, snapshots):
-                for judgement in judged(rule, aggregate, snapshot):
+                judgements = (
+                    _review(rule, snapshot, reviewed(rules, snapshot, beside))
+                    if rules.reviews is not None
+                    else judged(rule, aggregate, snapshot)
+                )
+                for judgement in judgements:
                     if judgement.held is None:
                         continue
                     triggered += 1

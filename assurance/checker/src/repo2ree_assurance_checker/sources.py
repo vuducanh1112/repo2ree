@@ -253,10 +253,11 @@ def history_commits(executable: str, repository: Path) -> tuple[list[Commit], li
     return commits, problems
 
 
-def committed_document(executable: str, repository: Path, commit: str) -> dict[str, Any] | None:
-    """The ree.json committed in ``commit``; None when it cannot be read."""
+def committed_document(executable: str, repository: Path, commit: str, name: str = "ree.json") -> dict[str, Any] | None:
+    """The document (an REE's ree.json, or a review's review.json) committed in ``commit``; None when it cannot be
+    read."""
     try:
-        document = json.loads(git(executable, repository, "show", f"{commit}:ree.json"))
+        document = json.loads(git(executable, repository, "show", f"{commit}:{name}"))
     except (subprocess.CalledProcessError, ValueError):
         return None
     return document if isinstance(document, dict) else None
@@ -698,6 +699,39 @@ def scope_files(
     return found
 
 
+def review_snapshots(
+    executable: str, repository: Path, source_id: str, label: str, partition: str, commits: list[Commit]
+) -> list[Snapshot]:
+    """Each commit of a review attempt's history read whole: its review.json, and every file it holds."""
+    snapshots: list[Snapshot] = []
+    attributes: dict[str, frozenset[str]] = {}
+    digests = BlobDigests(executable, repository)
+    for index, commit in enumerate(commits):
+        if index and commit.tree == commit.parent_tree:
+            continue
+        metadata = commit.metadata or {}
+        record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
+        record = record if isinstance(record, dict) else None
+        document = committed_document(executable, repository, commit.id, "review.json")
+        if document is None:
+            continue  # Before the attempt wrote its record: nothing of a review to judge.
+        snapshots.append(
+            Snapshot(
+                source=source_id,
+                position=(index + 1) * 1000 + 300,
+                subject="Review",
+                partition=partition,
+                locator=f"git:{label}@{commit.id[:12]}",
+                cause="operation" if record is not None else "created" if not index else "external",
+                operation=((record or {}).get("command") or {}).get("operation"),
+                attempt_id=(record or {}).get("attempt_id"),
+                document=document,
+                files=digests.of(committed_tree(executable, repository, commit.id, attributes)),
+            )
+        )
+    return snapshots
+
+
 def read_git_history(
     repository: Path,
     label: str,
@@ -759,6 +793,7 @@ def read_git_history(
         problems.append(f"attempts name several REEs: {sorted(ree_ids)}")
     elif scope and ree_ids:
         file_changes = scope_files(executable, repository, source_id, label, next(iter(ree_ids)), commits, scope)
+        snapshots = review_snapshots(executable, repository, source_id, label, next(iter(ree_ids)), commits)
     source = Source(
         id=source_id,
         kind="git",

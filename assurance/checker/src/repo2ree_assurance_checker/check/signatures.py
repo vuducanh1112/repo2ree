@@ -16,7 +16,7 @@ from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 IN_TOTO = "application/vnd.in-toto+json"
 _CURVE_HASH: dict[str, hashes.HashAlgorithm] = {"secp256r1": hashes.SHA256(), "secp384r1": hashes.SHA384()}
@@ -64,14 +64,17 @@ class _Statement(_Read):
     type: Literal["https://in-toto.io/Statement/v1"] = Field(alias="_type")
     subject: tuple[_Subject, ...] = Field(min_length=1)
     predicate_type: str = Field(alias="predicateType", min_length=1)
+    predicate: JsonValue = None
 
 
 @dataclass(frozen=True)
 class SignedStatement:
-    """What a bundle signs: each subject's digest as ``<algorithm>:<hex>``, and the claim's predicate type."""
+    """What a bundle signs: each subject's digest as ``<algorithm>:<hex>``, the claim's predicate type, and its
+    predicate."""
 
     digests: frozenset[str]
     predicate_type: str
+    predicate: JsonValue = None
 
 
 class UnreadableBundleError(ValueError):
@@ -134,4 +137,5 @@ def signed_statement(content: bytes) -> SignedStatement:
             f"{algorithm}:{value}" for subject in statement.subject for algorithm, value in subject.digest.items()
         ),
         predicate_type=statement.predicate_type,
+        predicate=statement.predicate,
     )

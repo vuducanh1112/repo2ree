@@ -48,12 +48,15 @@ from repo2ree_assurance_checker.spec.aggregates import (
 )
 from repo2ree_assurance_checker.spec.base import CREATED, OWN_KEY, Condition, FactType, Name, SpecModel
 from repo2ree_assurance_checker.spec.documents import (
+    AgreesPair,
     CanonicalPair,
     DigestKind,
     DocumentRule,
     DocumentRules,
     FilePair,
     PathsPair,
+    ReferencePair,
+    VerdictPolicy,
 )
 from repo2ree_assurance_checker.spec.facts import absent, declared_facts, fact_problems, matches
 from repo2ree_assurance_checker.spec.invariants import (
@@ -186,9 +189,9 @@ class Spec(SpecModel):
         for aggregate in self.aggregates.values():
             self._check_aggregate(aggregate)
         for name, rules in self.documents.items():
-            judged = self.aggregates.get(name)
+            judged = self.aggregates.get(rules.aggregate)
             if judged is None:
-                raise ValueError(f"document rules for {name}, which is no aggregate")
+                raise ValueError(f"document rules for {name}, of {rules.aggregate}, which is no aggregate")
             standing = [rule.id for rule in rules.rules if rule.pattern == "standing"]
             unread = [receipt for receipt, machine in judged.receipts.items() if machine.basis is None]
             if standing and unread:
@@ -374,8 +377,8 @@ def parse_spec(
     if len({aggregate.name for aggregate in aggregate_specs}) != len(aggregate_specs):
         raise ValueError("aggregate names must be unique")
     document_specs = [DocumentRules.model_validate(document) for document in documents]
-    if len({rules.aggregate for rules in document_specs}) != len(document_specs):
-        raise ValueError("one file of document rules per aggregate")
+    if len({rules.name for rules in document_specs}) != len(document_specs):
+        raise ValueError("one file of document rules per aggregate, and one per review of it")
     return Spec(
         components={component.name: component for component in component_specs},
         entities={entity.name: entity for entity in entity_specs},
@@ -384,7 +387,7 @@ def parse_spec(
             Invariant.model_validate(spell_out_groups(item, groups)) for item in invariants.get("invariant", [])
         ),
         aggregates={aggregate.name: aggregate for aggregate in aggregate_specs},
-        documents={rules.aggregate: rules for rules in document_specs},
+        documents={rules.name: rules for rules in document_specs},
         operations=catalogues[0].operations if catalogues else {},
         review_operations=catalogues[0].review_operations if catalogues else {},
     )
@@ -400,6 +403,7 @@ __all__ = [
     "TREE_FORMAT",
     "WILDCARD",
     "AggregateSpec",
+    "AgreesPair",
     "BasisPair",
     "BoundarySpec",
     "BoundaryVocabulary",
@@ -440,12 +444,14 @@ __all__ = [
     "PathsPair",
     "Placed",
     "ReceiptMachine",
+    "ReferencePair",
     "Requirement",
     "Spec",
     "SpecModel",
     "SubMachine",
     "Transition",
     "TreeEntry",
+    "VerdictPolicy",
     "absent",
     "allowed_values",
     "check_condition",

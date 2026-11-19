@@ -1,0 +1,77 @@
+# What one commit of a review's record (reviews/<review>/review.json) says of itself and of the sealed REE it
+# reviews. Each rule reads one commit of the review's own history, beside the REE that holds the seal the review
+# names. A review records the values each verdict rests on; the checker reaches each verdict again by its own ladder,
+# and never takes core's.
+
+aggregate = "Ree"
+document = "Review"
+# The field naming the reviewed seal: none for a review of a draft, which no reference rule can judge.
+reviews = "subject.ree_digest"
+
+[[rule]]
+id = "review-names-a-seal-beside-it"
+pattern = "reference"
+summary = "A review of a sealed REE names its seal, and the REE beside it holds that seal."
+pairs = [{ field = "subject.ree_digest", ree = "seal.ree_digest" }]
+
+[[rule]]
+id = "review-expectations-are-the-authors"
+pattern = "reference"
+summary = "Every expected value a review's comparison records is the reviewed REE's own receipt's."
+pairs = [
+    { field = "source_comparison.expected_swhid", ree = "receipts.acquire_source.observed_swhid" },
+    { field = "experiment_environment_comparison.expected_artifact_digest", ree = "receipts.build_experiment_environment.produced_artifact_digest" },
+    { field = "experiment_environment_comparison.expected_sbom_digest", ree = "receipts.generate_sbom.sbom_digest" },
+    { field = "experiment_comparisons[*].expected_verify_script_digest", ree = "receipts.experiments[$name].verify_script_digest" },
+    { field = "experiment_comparisons[*].expected_activate_experiment_environment_script_digest", ree = "receipts.experiments[$name].activate_experiment_environment_script_digest" },
+    { field = "experiment_comparisons[*].expected_verify_exit_code", ree = "receipts.experiments[$name].verify_exit_code" },
+    { field = "experiment_comparisons[*].expected_output_digest", ree = "receipts.experiments[$name].produced_output_digest" },
+    { field = "experiment_comparisons[*].expected_launch_script_digest", ree = "receipts.experiments[$name].launch_script_digest" },
+]
+
+[[rule]]
+id = "review-observations-are-its-receipts"
+pattern = "agrees"
+summary = "Every observed value a review's comparison records is the one its own receipt for that step recorded."
+pairs = [
+    { field = "source_comparison.expected_swhid", same = "receipts.acquire_source.expected_swhid" },
+    { field = "source_comparison.observed_swhid", same = "receipts.acquire_source.observed_swhid" },
+    { field = "experiment_environment_comparison.observed_artifact_digest", same = "receipts.build_experiment_environment.produced_artifact_digest" },
+    { field = "activation_outcome.exit_code", same = "receipts.activate_experiment_environment.exit_code" },
+    { field = "activation_outcome.experiment_environment_digest", same = "receipts.activate_experiment_environment.experiment_environment_digest" },
+    { field = "experiment_comparisons[*].run_exit_code", same = "receipts.experiments[$name].run_exit_code" },
+    { field = "experiment_comparisons[*].observed_verify_exit_code", same = "receipts.experiments[$name].verify_exit_code" },
+    { field = "experiment_comparisons[*].verify_script_digest", same = "receipts.experiments[$name].verify_script_digest" },
+    { field = "experiment_comparisons[*].activate_experiment_environment_script_digest", same = "receipts.experiments[$name].activate_experiment_environment_script_digest" },
+    { field = "experiment_comparisons[*].observed_output_digest", same = "receipts.experiments[$name].produced_output_digest" },
+]
+
+# The ladders, strongest first:
+#
+#   swhid             identical: both recorded and equal | different: both recorded, unequal | inconclusive: else
+#   sbom-closure      identical: the environment digests equal | inconclusive: a side has no packages |
+#                     equivalent: nothing missing, extra, or at another version | different: else;
+#                     and no list holds more than its count: the count is the whole, the list a sample
+#   activation        passed: it exited 0 | failed: else
+#   verify-script     inconclusive: the author's verify did not pass, or the criterion or the activate script is
+#                     not the author's | different: the reviewer's verify did not pass |
+#                     identical: the output digests equal | reproduced: else
+[[rule]]
+id = "review-verdicts-follow-their-ladders"
+pattern = "verdict"
+summary = "Each verdict a review records is the one its ladder gives from the values its comparison records."
+policies = ["swhid", "sbom-closure", "activation", "verify-script"]
+
+[[rule]]
+id = "review-experiments-follow-a-passed-activation"
+pattern = "verdict"
+summary = "A review compares an experiment only beside an activation that passed."
+policies = ["after-activation"]
+
+[[rule]]
+id = "review-signatures-are-the-review"
+pattern = "signature"
+summary = "A review's signature is a Sigstore bundle whose statement names the reviewed seal and carries the review's record, as the commit holds it, as its predicate."
+files = "signatures/"
+subject = "subject.ree_digest"
+claims = { review = "https://repo2ree.org/claims/review/v1" }

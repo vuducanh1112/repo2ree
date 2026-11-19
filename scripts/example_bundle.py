@@ -65,18 +65,20 @@ def check(bundle: Path) -> list[str]:
     A bundle authored through ``ree`` alone names no REE in its attempts, so its history is read under the
     example's name. Every rule on the REE document must have judged it: a check that read nothing passes nothing.
     A signature is added after the seal, by its signer, so an unsigned example gives a signature rule nothing to
-    judge and is held to every other rule.
+    judge and is held to every other rule; an example no one reviewed gives a review's rules nothing to judge.
     """
     spec = load_spec()
     with tempfile.TemporaryDirectory(prefix="repo2ree-example-") as directory:
         with zipfile.ZipFile(bundle) as archive:
             archive.extractall(directory)
         root = Path(directory) / "ree"
+        reviewed = any((root / "reviews").glob("*/review.json"))
         unsigned = {
             f"document:{rule.id}"
             for rules in spec.documents.values()
             for rule in rules.rules
-            if rule.pattern == "signature" and not any((root / (rule.files or "")).glob("*"))
+            if (rule.pattern == "signature" and not any((root / (rule.files or "")).glob("*")))
+            or (rules.reviews is not None and not reviewed)
         }
         result = judge(spec, read_git_history(root, NAME, ree=NAME))
     problems = [

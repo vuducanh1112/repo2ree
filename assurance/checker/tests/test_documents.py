@@ -508,6 +508,7 @@ def bundle(
     *,
     signer: ec.EllipticCurvePrivateKey | None = None,
     holder: ec.EllipticCurvePrivateKey | None = None,
+    predicate: dict[str, Any] | None = None,
 ) -> bytes:
     """A Sigstore bundle of a DSSE in-toto statement over ``digest``, signed by ``signer``, whose certificate holds
     ``holder``'s key: the same key unless a test says otherwise."""
@@ -517,7 +518,7 @@ def bundle(
         "_type": "https://in-toto.io/Statement/v1",
         "subject": [{"name": "ree", "digest": {algorithm: value}}],
         "predicateType": predicate_type,
-        "predicate": {"claim": "author_approval"},
+        "predicate": {"claim": "author_approval"} if predicate is None else predicate,
     }
     payload = json.dumps(statement).encode()
     signature = signer.sign(pae(IN_TOTO, payload), ec.ECDSA(hashes.SHA256()))
