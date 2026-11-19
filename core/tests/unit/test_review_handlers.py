@@ -60,11 +60,13 @@ from repo2ree_ree.review import (
     ReviewBuildExperimentEnvironmentReceipt,
     ReviewLaunch,
     ReviewReceipts,
+    ReviewSubject,
     SourceComparison,
 )
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _REVIEW_ID = "review-one"
+_SUBJECT = ReviewSubject(name="ree-under-review")
 _EXPERIMENT_ENVIRONMENT_PATH = "runtime.tar"
 _EXPERIMENT_ENVIRONMENT = b"experiment environment bytes\n"
 _ACTIVATE = b'#!/bin/sh\nexec "$@"\n'
@@ -161,9 +163,13 @@ def _workbench(
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(contents)
 
-    record = new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z", launch=reviewer_launch)
-    record = with_step(record, "acquire_source", status="completed", at="2026-08-03T00:00:01Z")
-    record = with_step(record, "build_experiment_environment", status="completed", at="2026-08-03T00:00:02Z")
+    record = new_review_record(
+        _REVIEW_ID, subject=_SUBJECT, at=parse_utc_instant("2026-08-03T00:00:00Z"), launch=reviewer_launch
+    )
+    record = with_step(record, "acquire_source", status="completed", at=parse_utc_instant("2026-08-03T00:00:01Z"))
+    record = with_step(
+        record, "build_experiment_environment", status="completed", at=parse_utc_instant("2026-08-03T00:00:02Z")
+    )
     record = record.model_copy(
         update={
             "source_comparison": SourceComparison(basis="independent", verdict="identical"),
@@ -260,6 +266,17 @@ def test_source_review_reads_definition_and_author_receipt(
     assert result.outputs["comparison"]["verdict"] == "identical"
     assert result.outputs["receipt"]["requested_ref"] == revision
     assert (layout.review(_REVIEW_ID).upstream / "source.txt").read_text() == "source\n"
+    record = read_review_record(layout.review(_REVIEW_ID))
+    assert record is not None
+    definition = store.read_ree().subject.definition
+    assert record.subject == ReviewSubject(
+        name=definition.name,
+        version=definition.catalog.version,
+        ree_digest=None,
+        experiments=tuple(experiment.name for experiment in definition.experiments),
+    ), "a draft is named by what it declares, and by no seal"
+    assert record.machine.system
+    assert record.machine.architecture
 
 
 def test_bundled_experiment_environment_review_records_only_the_input_it_used(
@@ -285,10 +302,10 @@ def test_bundled_experiment_environment_review_records_only_the_input_it_used(
     review = layout.review(_REVIEW_ID)
     review.upstream.mkdir(parents=True)
     record = with_step(
-        new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z"),
+        new_review_record(_REVIEW_ID, subject=_SUBJECT, at=parse_utc_instant("2026-08-03T00:00:00Z")),
         "acquire_source",
         status="completed",
-        at="2026-08-03T00:00:01Z",
+        at=parse_utc_instant("2026-08-03T00:00:01Z"),
     ).model_copy(update={"source_comparison": SourceComparison(basis="bundled", verdict="identical")})
     write_review_record(review, record)
 
@@ -335,10 +352,10 @@ def test_a_review_runs_the_authors_check_before_anything_else_runs_there(
     review = layout.review(_REVIEW_ID)
     review.upstream.mkdir(parents=True)
     record = with_step(
-        new_review_record(_REVIEW_ID, at="2026-08-03T00:00:00Z"),
+        new_review_record(_REVIEW_ID, subject=_SUBJECT, at=parse_utc_instant("2026-08-03T00:00:00Z")),
         "acquire_source",
         status="completed",
-        at="2026-08-03T00:00:01Z",
+        at=parse_utc_instant("2026-08-03T00:00:01Z"),
     ).model_copy(update={"source_comparison": SourceComparison(basis="bundled", verdict="identical")})
     write_review_record(review, record)
     lines: list[str] = []

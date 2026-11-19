@@ -15106,6 +15106,28 @@
         "title": "ReviewLaunch",
         "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does."
       },
+      "ReviewMachine": {
+        "properties": {
+          "system": {
+            "type": "string",
+            "minLength": 1,
+            "title": "System"
+          },
+          "architecture": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Architecture"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "system",
+          "architecture"
+        ],
+        "title": "ReviewMachine",
+        "description": "The machine the review ran on, as its platform names it; where a launch took a script is its receipt's."
+      },
       "ReviewReceipts": {
         "properties": {
           "acquire_source": {
@@ -15155,6 +15177,12 @@
           "review_id": {
             "type": "string",
             "title": "Review Id"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/ReviewSubject"
+          },
+          "machine": {
+            "$ref": "#/components/schemas/ReviewMachine"
           },
           "created_at": {
             "type": "string",
@@ -15240,6 +15268,8 @@
         "type": "object",
         "required": [
           "review_id",
+          "subject",
+          "machine",
           "created_at",
           "updated_at",
           "status"
@@ -15495,6 +15525,45 @@
           "updated_at"
         ],
         "title": "ReviewStepState"
+      },
+      "ReviewSubject": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": ""
+          },
+          "ree_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ree Digest"
+          },
+          "experiments": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Experiments",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ReviewSubject",
+        "description": "The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the\nexperiments it declares, so a record read on its own says which of them it did not compare."
       },
       "RunExperimentPayload": {
         "properties": {

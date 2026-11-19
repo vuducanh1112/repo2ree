@@ -18,7 +18,12 @@ from __future__ import annotations
 import shutil
 
 from repo2ree_core.evidence.review.comparison import compare_source_swhids
-from repo2ree_core.evidence.review.records import new_review_record, resolve_basis, review_receipt_envelope
+from repo2ree_core.evidence.review.records import (
+    new_review_record,
+    resolve_basis,
+    review_receipt_envelope,
+    review_subject,
+)
 from repo2ree_core.evidence.review.store import write_review_source_evidence
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.operations.steps.review import begin_review_step, require_ree_baseline
@@ -31,7 +36,6 @@ from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewAcquireSourceOutputs
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.instant import format_utc_instant
 from repo2ree_ree.model import Ree, SourceDefinition
 from repo2ree_ree.primitives import Swhid
 from repo2ree_ree.review import EvidenceBasis, ReviewAcquireSourceReceipt
@@ -56,7 +60,7 @@ def handle_review_acquire_source(
     # record to require, so it starts from a freshly minted one.
     step = begin_review_step(
         review_layout,
-        new_review_record(args.review_id, at=format_utc_instant(timer.started_at), launch=args.launch),
+        new_review_record(args.review_id, subject=review_subject(ree), at=timer.started_at, launch=args.launch),
         "acquire_source",
         review_id=args.review_id,
         timer=timer,

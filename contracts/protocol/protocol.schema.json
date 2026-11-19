@@ -7125,6 +7125,28 @@
       "title": "ReviewLaunch",
       "type": "object"
     },
+    "ReviewMachine": {
+      "additionalProperties": false,
+      "description": "The machine the review ran on, as its platform names it; where a launch took a script is its receipt's.",
+      "properties": {
+        "system": {
+          "minLength": 1,
+          "title": "System",
+          "type": "string"
+        },
+        "architecture": {
+          "minLength": 1,
+          "title": "Architecture",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system",
+        "architecture"
+      ],
+      "title": "ReviewMachine",
+      "type": "object"
+    },
     "ReviewReceipts": {
       "additionalProperties": false,
       "properties": {
@@ -7179,11 +7201,19 @@
           "title": "Review Id",
           "type": "string"
         },
+        "subject": {
+          "$ref": "#/$defs/ReviewSubject"
+        },
+        "machine": {
+          "$ref": "#/$defs/ReviewMachine"
+        },
         "created_at": {
+          "format": "date-time",
           "title": "Created At",
           "type": "string"
         },
         "updated_at": {
+          "format": "date-time",
           "title": "Updated At",
           "type": "string"
         },
@@ -7265,6 +7295,8 @@
       },
       "required": [
         "review_id",
+        "subject",
+        "machine",
         "created_at",
         "updated_at",
         "status"
@@ -7574,10 +7606,12 @@
           "type": "string"
         },
         "started_at": {
+          "format": "date-time",
           "title": "Started At",
           "type": "string"
         },
         "updated_at": {
+          "format": "date-time",
           "title": "Updated At",
           "type": "string"
         },
@@ -7601,6 +7635,46 @@
         "updated_at"
       ],
       "title": "ReviewStepState",
+      "type": "object"
+    },
+    "ReviewSubject": {
+      "additionalProperties": false,
+      "description": "The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the\nexperiments it declares, so a record read on its own says which of them it did not compare.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "default": "",
+          "title": "Version",
+          "type": "string"
+        },
+        "ree_digest": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ree Digest"
+        },
+        "experiments": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Experiments",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ReviewSubject",
       "type": "object"
     },
     "ReviewsQuery": {

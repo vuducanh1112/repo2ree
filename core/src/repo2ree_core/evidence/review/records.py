@@ -18,22 +18,26 @@ Schemas plus the pure record algebra over them. How a verdict is *reached* is
 
 from __future__ import annotations
 
+import platform
 from collections.abc import Collection
 from typing import TypedDict, get_args
 
 from repo2ree_core.time_utils import OperationTiming
 from repo2ree_protocol.command import ReviewBasis
+from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import RunId, UtcInstant
 from repo2ree_ree.review import (
     EvidenceBasis,
     ExperimentComparison,
     ReviewExecutionStatus,
     ReviewLaunch,
+    ReviewMachine,
     ReviewRecord,
     ReviewRunExperimentReceipt,
     ReviewStatus,
     ReviewStepKey,
     ReviewStepState,
+    ReviewSubject,
 )
 
 # Attempt status resolution, most urgent first: a running step outranks a
@@ -70,10 +74,34 @@ def review_receipt_envelope(
 # ================================================
 
 
-def new_review_record(review_id: str, *, at: str, launch: ReviewLaunch | None = None) -> ReviewRecord:
-    """A fresh attempt with no steps taken yet, launching its scripts as the reviewer chose."""
+def new_review_record(
+    review_id: str,
+    *,
+    subject: ReviewSubject,
+    at: UtcInstant,
+    launch: ReviewLaunch | None = None,
+) -> ReviewRecord:
+    """A fresh attempt of the REE ``subject`` names, with no steps taken yet, launching its scripts as the reviewer
+    chose, on this machine."""
     return ReviewRecord(
-        review_id=review_id, created_at=at, updated_at=at, status="running", launch=launch or ReviewLaunch()
+        review_id=review_id,
+        subject=subject,
+        machine=ReviewMachine(system=platform.system(), architecture=platform.machine()),
+        created_at=at,
+        updated_at=at,
+        status="running",
+        launch=launch or ReviewLaunch(),
+    )
+
+
+def review_subject(ree: Ree) -> ReviewSubject:
+    """The REE as a review opened on it finds it."""
+    definition = ree.subject.definition
+    return ReviewSubject(
+        name=definition.name,
+        version=definition.catalog.version,
+        ree_digest=ree.seal.ree_digest if ree.seal else None,
+        experiments=tuple(experiment.name for experiment in definition.experiments),
     )
 
 
@@ -82,7 +110,7 @@ def with_step(
     step: ReviewStepKey,
     *,
     status: ReviewStatus,
-    at: str,
+    at: UtcInstant,
     failure: str | None = None,
 ) -> ReviewRecord:
     """The record with one step's state written and the attempt re-derived.

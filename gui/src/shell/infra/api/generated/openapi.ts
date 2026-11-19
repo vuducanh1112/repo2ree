@@ -3799,6 +3799,16 @@ export interface components {
              */
             options: string[];
         };
+        /**
+         * ReviewMachine
+         * @description The machine the review ran on, as its platform names it; where a launch took a script is its receipt's.
+         */
+        ReviewMachine: {
+            /** System */
+            system: string;
+            /** Architecture */
+            architecture: string;
+        };
         /** ReviewReceipts */
         ReviewReceipts: {
             acquire_source?: components["schemas"]["ReviewAcquireSourceReceipt"] | null;
@@ -3811,6 +3821,8 @@ export interface components {
         ReviewRecord: {
             /** Review Id */
             review_id: string;
+            subject: components["schemas"]["ReviewSubject"];
+            machine: components["schemas"]["ReviewMachine"];
             /** Created At */
             created_at: string;
             /** Updated At */
@@ -3910,6 +3922,27 @@ export interface components {
             updated_at: string;
             /** Failure */
             failure?: string | null;
+        };
+        /**
+         * ReviewSubject
+         * @description The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the
+         *     experiments it declares, so a record read on its own says which of them it did not compare.
+         */
+        ReviewSubject: {
+            /** Name */
+            name: string;
+            /**
+             * Version
+             * @default
+             */
+            version: string;
+            /** Ree Digest */
+            ree_digest?: string | null;
+            /**
+             * Experiments
+             * @default []
+             */
+            experiments: string[];
         };
         /**
          * RunExperimentPayload

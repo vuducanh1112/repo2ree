@@ -30,6 +30,8 @@ def test_list_reviews_returns_persisted_attempts(
                 "reviews": [
                     {
                         "review_id": "review-one",
+                        "subject": {"name": "ree-hello-world"},
+                        "machine": {"system": "Linux", "architecture": "x86_64"},
                         "created_at": "2026-07-24T10:00:00Z",
                         "updated_at": "2026-07-24T10:00:01Z",
                         "status": "completed",
@@ -248,6 +250,8 @@ def test_get_review_returns_one_attempt_and_404s_for_the_rest(
                 "reviews": [
                     {
                         "review_id": "review-one",
+                        "subject": {"name": "ree-hello-world"},
+                        "machine": {"system": "Linux", "architecture": "x86_64"},
                         "created_at": "2026-07-24T10:00:00Z",
                         "updated_at": "2026-07-24T10:00:01Z",
                         "status": "completed",

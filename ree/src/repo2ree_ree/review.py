@@ -176,8 +176,8 @@ class ExperimentComparison(_ReviewModel):
 class ReviewStepState(_ReviewModel):
     step: ReviewStepKey
     status: ReviewStatus
-    started_at: str
-    updated_at: str
+    started_at: UtcInstant
+    updated_at: UtcInstant
     failure: str | None = None
 
 
@@ -188,10 +188,29 @@ class ReviewReceipts(_ReviewModel):
     experiments: list[ReviewRunExperimentReceipt] = Field(default_factory=list)
 
 
+class ReviewSubject(_ReviewModel):
+    """The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the
+    experiments it declares, so a record read on its own says which of them it did not compare."""
+
+    name: str
+    version: str = ""
+    ree_digest: Digest | None = None
+    experiments: tuple[str, ...] = ()
+
+
+class ReviewMachine(_ReviewModel):
+    """The machine the review ran on, as its platform names it; where a launch took a script is its receipt's."""
+
+    system: str = Field(min_length=1)
+    architecture: str = Field(min_length=1)
+
+
 class ReviewRecord(_ReviewModel):
     review_id: str
-    created_at: str
-    updated_at: str
+    subject: ReviewSubject
+    machine: ReviewMachine
+    created_at: UtcInstant
+    updated_at: UtcInstant
     status: ReviewStatus
     launch: ReviewLaunch = Field(default_factory=ReviewLaunch)
     steps: list[ReviewStepState] = Field(default_factory=list)
