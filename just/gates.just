@@ -25,7 +25,7 @@ _tier-gui-instant jobs exit_on *select: (_load-environment "docker")
 
 [private]
 _tier-system jobs exit_on *select: (_load-environment "docker")
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/system/run_system_suite.py") }} --tier e2e-system --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/system/run_system_suite.py") }} --tier e2e-system --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --sigstore --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
 _tier-faults jobs exit_on *select:
