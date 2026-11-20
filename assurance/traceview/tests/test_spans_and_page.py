@@ -91,17 +91,30 @@ def test_a_template_without_a_place_for_the_trace_is_refused() -> None:
         render_html(BehaviourTrace.model_construct(), "<html></html>")
 
 
-# Tiers whose every test authors an REE; a fault test may fail before any exists.
+# Tiers whose every test authors an REE once it passes; a fault test may end before any exists.
 GATED_TIERS = ("e2e-system-*", "e2e-gui-instant-*")
 
 
+def passed(dossier: Path) -> bool:
+    """Whether the test that left ``dossier`` passed, as its run records it: one that failed may have stopped before
+    its REE took a step, leaving a history that names no REE."""
+    test = dossier.parent
+    try:
+        run = json.loads((test.parent.parent / "run.json").read_text())
+    except (OSError, ValueError):
+        return False
+    return any(
+        entry.get("directory") == f"tests/{test.name}" and entry.get("outcome") == "passed" for entry in run["tests"]
+    )
+
+
 def dossiers() -> list[Path]:
-    """Dossiers of the gated tiers holding journals and an REE's history: a test that failed early may leave none."""
+    """Dossiers of the gated tiers' passed tests holding journals and an REE's history."""
     found: list[Path] = []
     for path in sorted(path for tier in GATED_TIERS for path in E2E_RUNS.glob(f"{tier}/tests/*/dossier")):
         try:
             dossier = read_dossier(path)
-            if dossier.recorded("journal") and dossier.recorded("git"):
+            if dossier.recorded("journal") and dossier.recorded("git") and passed(path):
                 found.append(path)
         except (OSError, ValueError):
             continue  # Not a dossier in the current format.
