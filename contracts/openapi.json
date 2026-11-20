@@ -13883,7 +13883,7 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Definition Patch",
-            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"experiment_environment\": {\"artifact_path\": \"runtime.tar\"}}` or, once its run script is written, `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
+            "description": "Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{\"experiment_environment\": {\"artifact_path\": \"runtime.tar\"}}` or `{\"experiments\": [{\"name\": \"hello\", \"output_paths\": [\"results/run.log\"]}]}`."
           },
           "expected_version": {
             "anyOf": [
@@ -15023,16 +15023,21 @@
           "digest": {
             "type": "string",
             "title": "Digest"
+          },
+          "hash_locked": {
+            "type": "boolean",
+            "title": "Hash Locked"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "requirements_path",
-          "digest"
+          "digest",
+          "hash_locked"
         ],
         "title": "RequirementsProjectBinding",
-        "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries only the located file and its digest \u2014 the base image travels via\ndeployment policy, not repository evidence, so it is resolved by the\nbase-image check/renderer rather than baked into this binding."
+        "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries the located file, its digest, and whether every requirement in it is\npinned by hash \u2014 the base image travels via deployment policy, not repository\nevidence, so it is resolved by the base-image check/renderer rather than baked\ninto this binding."
       },
       "ReservedScriptTemplates": {
         "properties": {

@@ -31,7 +31,7 @@ from repo2ree_protocol.argv import (
 from repo2ree_protocol.command import ScriptTargetSelectorArg, TargetKind
 
 KINDS: tuple[str, ...] = get_args(TargetKind)
-_EXPERIMENT_KINDS = ("experiment_run", "experiment_verify")
+EXPERIMENT_KINDS = ("experiment_run", "experiment_verify")
 # Nested options join their model's field and their own with this, where Click wants an identifier.
 _NESTED = "__"
 
@@ -55,7 +55,7 @@ class TargetType(click.ParamType):
             self.fail(_first_error(exc), param, ctx)
 
     def shell_complete(self, ctx: click.Context, param: click.Parameter, incomplete: str) -> list[CompletionItem]:
-        words = [f"{kind}:" if kind in _EXPERIMENT_KINDS else kind for kind in KINDS]
+        words = [f"{kind}:" if kind in EXPERIMENT_KINDS else kind for kind in KINDS]
         return [CompletionItem(word) for word in words if word.startswith(incomplete)]
 
 

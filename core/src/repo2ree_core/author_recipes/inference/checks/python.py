@@ -42,5 +42,7 @@ class RequirementsAtProjectRootCheck:
         if not at_root:
             return CheckResult(branch="none", observed=observed)
         only = at_root[0]
-        binding = RequirementsProjectBinding(requirements_path=only.path, digest=only.digest)
+        binding = RequirementsProjectBinding(
+            requirements_path=only.path, digest=only.digest, hash_locked=only.hash_locked
+        )
         return CheckResult(branch="exactly_one", observed=observed, bindings=(binding,))

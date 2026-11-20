@@ -74,6 +74,18 @@ def test_status_tells_a_person_what_to_run_next(root: Path) -> None:
     )
 
 
+def test_a_sealed_ree_names_no_next_step_and_says_what_its_seal_leaves_open(acquired: Path) -> None:
+    assert ree(acquired, "seal-ree").exit_code == 0
+
+    result = ree(acquired, "status")
+
+    assert status(acquired).steps.next is None
+    assert "next:" not in result.stdout
+    assert result.stdout.rstrip().endswith(
+        "sealed: it takes no further step; the open steps above are what its seal does not attest"
+    )
+
+
 def test_status_gives_an_agent_the_revision_and_the_digest_of_each_script(root: Path) -> None:
     report = status(root)
 
@@ -182,6 +194,14 @@ def test_infer_shows_each_proposal_against_the_script_as_written(acquired: Path)
     assert f"{BUILD_SCRIPT}: needs input" in result.stdout
     assert "rule root-pip-requirements-v1" in result.stdout
     assert "--- written" in result.stdout
+
+
+def test_infer_without_a_target_proposes_every_script(acquired: Path) -> None:
+    result = ree(acquired, "--json", "suggest-scripts")
+
+    assert result.exit_code == 0, result.output
+    kinds = {item["target"]["kind"] for item in outputs(result)["results"]}
+    assert {"build_experiment_environment", "check_working_environment", "launch"} <= kinds
 
 
 def test_infer_writes_the_proposed_script(acquired: Path) -> None:

@@ -23,6 +23,7 @@ paths, and structural ambiguity, all of which the report's levels flatten away.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path, PurePosixPath
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -148,8 +149,9 @@ class RequirementsFact(BaseModel):
 
     ``at_project_root`` marks a requirements file sitting directly inside the
     logical project root — the only location the ``root-pip-requirements-v1``
-    strategy fires for. requirements.txt is not a lockfile, which downstream
-    rendering reflects as a non-blocking ``dependencies_not_locked`` warning.
+    strategy fires for. ``hash_locked`` holds when every requirement it names is
+    pinned by hash, which pip installs as a lock; otherwise downstream rendering
+    warns ``dependencies_not_locked``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -158,6 +160,7 @@ class RequirementsFact(BaseModel):
     project_relative_path: str
     digest: str
     at_project_root: bool
+    hash_locked: bool
 
 
 class RepositoryFacts(BaseModel):
@@ -228,9 +231,10 @@ def scan_repository(repo_path: Path) -> RepositoryFacts:
                 continue
             rel_path = prefix / name
             try:
-                digest = digest_bytes((Path(dirpath) / name).read_bytes())
+                content = (Path(dirpath) / name).read_bytes()
             except OSError:
                 continue
+            digest = digest_bytes(content)
             project_relative = _relative_to_project_root(rel_path, logical_root_posix)
             project_relative_str = str(project_relative) if project_relative is not None else str(rel_path)
             at_project_root = project_relative is not None and len(project_relative.parts) == 1
@@ -250,6 +254,7 @@ def scan_repository(repo_path: Path) -> RepositoryFacts:
                         project_relative_path=project_relative_str,
                         digest=digest,
                         at_project_root=at_project_root,
+                        hash_locked=_hash_locked(content),
                     )
                 )
 
@@ -258,6 +263,16 @@ def scan_repository(repo_path: Path) -> RepositoryFacts:
         dockerfiles=dockerfiles,
         requirements_files=requirements_files,
     )
+
+
+def _hash_locked(content: bytes) -> bool:
+    """Whether every requirement in a requirements file is pinned by hash, as pip installs a lock; one that names
+    none is. Lines are read as the reproducibility analysis reads them: continuations joined, comments and pip
+    options left out."""
+    joined = re.sub(r"\\\s*\n", " ", content.decode("utf-8", errors="replace"))
+    lines = (raw.split("#", 1)[0].strip() for raw in joined.splitlines())
+    requirements = [line for line in lines if line and not line.startswith("-")]
+    return all("--hash" in line for line in requirements)
 
 
 def _relative_to_project_root(rel_path: PurePosixPath, logical_root: PurePosixPath) -> PurePosixPath | None:

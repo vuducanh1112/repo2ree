@@ -91,7 +91,7 @@ REE_STEPS: tuple[ReeStep, ...] = (
         key="experiments",
         order=10,
         label="Experiments",
-        requires=["build_experiment_environment"],
+        requires=["activate_experiment_environment"],
         commands=_commands(RunExperimentCommand, PatchReeDefinitionCommand, SuggestScriptsCommand, WriteScriptCommand),
     ),
     ReeStep(key="seal_ree", order=11, label="Seal", commands=_commands(SealReeCommand)),
@@ -107,10 +107,20 @@ def _metadata_given(ree: Ree, _audit: ReeAudit) -> bool:
     return all(value.strip() for value in (definition.name, definition.catalog.version, definition.catalog.description))
 
 
-def _hardware_described(ree: Ree, _audit: ReeAudit) -> bool:
+def _hardware_described(ree: Ree, audit: ReeAudit) -> bool:
+    """Observed on a machine, or required by the definition: either describes the hardware."""
+    if audit.observe_hardware.evidence == "current":
+        return True
     hardware = ree.subject.definition.hbom
     return hardware is not None and any(
         (hardware.cpus, hardware.gpus, hardware.memory, hardware.storage, hardware.network)
+    )
+
+
+def _experiments_ran(ree: Ree, audit: ReeAudit) -> bool:
+    """Some experiment is declared, and each one's run is current."""
+    return bool(ree.subject.definition.experiments) and all(
+        experiment.run.evidence == "current" for experiment in audit.experiments
     )
 
 
@@ -124,13 +134,14 @@ _COMPLETE: dict[ReeStepKey, Callable[[Ree, ReeAudit], bool]] = {
     "generate_sbom": _current(lambda audit: audit.generate_sbom),
     "cross_check_sbom": _current(lambda audit: audit.cross_check_sbom),
     "activate_experiment_environment": _current(lambda audit: audit.activate_experiment_environment),
-    "experiments": lambda ree, _audit: bool(ree.subject.definition.experiments),
+    "experiments": _experiments_ran,
     "seal_ree": lambda ree, _audit: ree.seal is not None,
 }
 
 
 def ree_steps(ree: Ree, audit: ReeAudit) -> ReeSteps:
-    """Each step's status for ``ree``, whose audit is ``audit``, and the lowest-order ready step as the next."""
+    """Each step's status for ``ree``, whose audit is ``audit``, and the lowest-order ready step as the next: none
+    once sealed, since a sealed REE takes no step."""
     complete = {step.key for step in REE_STEPS if _COMPLETE[step.key](ree, audit)}
 
     def status(step: ReeStep) -> ReeStepStatus:
@@ -139,5 +150,5 @@ def ree_steps(ree: Ree, audit: ReeAudit) -> ReeSteps:
         return "ready" if all(required in complete for required in step.requires) else "blocked"
 
     states = [ReeStepState(**step.model_dump(), status=status(step)) for step in REE_STEPS]
-    ready = [state for state in states if state.status == "ready"]
+    ready = [state for state in states if state.status == "ready" and ree.seal is None]
     return ReeSteps(steps=states, next=min(ready, key=lambda state: state.order).key if ready else None)

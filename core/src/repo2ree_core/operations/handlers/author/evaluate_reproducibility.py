@@ -96,7 +96,7 @@ def handle_evaluate_reproducibility(
         environment_level=int(report.environment_level),
         machine_level=int(report.machine_level),
         detected_dependencies=report.detected_dependencies,
-        report=report.model_dump(),
+        report=report.model_dump(mode="json"),
     )
     log("system", "info", "Evaluate run succeeded")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

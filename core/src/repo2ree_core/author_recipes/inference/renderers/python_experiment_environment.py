@@ -96,8 +96,9 @@ class PipVenvBuildRenderer:
             make_warning("execution_not_validated"),
             make_warning("pip_environment_strategy"),
             make_warning("python_version_unknown"),
-            make_warning("dependencies_not_locked", affected_paths=[requirements.requirements_path]),
         ]
+        if not requirements.hash_locked:
+            warnings.append(make_warning("dependencies_not_locked", affected_paths=[requirements.requirements_path]))
         return RenderedScript(body=body, dependencies=dependencies, evidence=evidence, warnings=warnings)
 
 

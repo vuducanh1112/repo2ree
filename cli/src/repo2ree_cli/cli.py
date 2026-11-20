@@ -35,7 +35,7 @@ from repo2ree_cli.models import (
     StepRun,
     Waited,
 )
-from repo2ree_cli.options import TARGET, Spelling, read_stdin
+from repo2ree_cli.options import EXPERIMENT_KINDS, KINDS, TARGET, Spelling, read_stdin
 from repo2ree_cli.schema import ReeCommand, describe
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.domain.ree.steps import REE_STEPS
@@ -550,7 +550,9 @@ _DEFINE_OPTIONS: list[click.Parameter] = [
     click.Option(["--keyword", "keywords"], multiple=True, help="A keyword of the catalog entry; repeated."),
     click.Option(["--artifact-path"], help="Where the build leaves the experiment environment, in the workspace."),
     click.Option(["--launch/--no-launch", "launch"], default=None, help="Run every script through launch.sh, or not."),
-    click.Option(["--experiment"], help="Declare, or redeclare, the experiment NAME, once its run script is written."),
+    click.Option(
+        ["--experiment"], help="Declare, or redeclare, the experiment NAME; a new one starts from default scripts."
+    ),
     click.Option(["--output", "outputs"], multiple=True, help="A path the --experiment produces; repeated."),
     click.Option(["--remove-experiment"], multiple=True, help="Remove the experiment NAME from the definition."),
 ]
@@ -613,6 +615,8 @@ def _infer(
         raise click.UsageError("--write writes one script: give one --target")
     if params["rule"] and not params["write"]:
         raise click.UsageError("--rule picks the proposal --write writes")
+    if not params["targets"]:
+        params = {**params, "targets": _every_target(layout)}
     args = spelling.build(params, None)
     infer = SuggestScriptsCommand.model_validate({"args": args})
     inferred = invocation.run(infer, layout, identity=invocation.identity(1) if params["write"] else None)
@@ -649,6 +653,16 @@ def _infer(
         written.model_copy(update={"outputs": outputs.model_dump(mode="json")}),
         render_with=lambda _outputs: f"wrote {outputs.path} as rule {outputs.rule} proposes it",
         ran=True,
+    )
+
+
+def _every_target(layout: ReeLayout) -> tuple[ScriptTargetSelectorArg, ...]:
+    """Every script of the REE: each kind, and each declared experiment's run and verify scripts."""
+    experiments = [item.name for item in ReeDirectory(layout).read_ree().subject.definition.experiments]
+    return tuple(
+        ScriptTargetSelectorArg.model_validate({"kind": kind, "experiment_name": name})
+        for kind in KINDS
+        for name in (experiments if kind in EXPERIMENT_KINDS else [None])
     )
 
 
@@ -790,7 +804,9 @@ _MORE: dict[type[BaseModel], str] = {
     PatchReeDefinitionCommand: (
         "Give the options for the common fields, or pipe a JSON patch of the definition's top-level fields on stdin."
     ),
-    SuggestScriptsCommand: "Shows each proposal against the script as it is written.",
+    SuggestScriptsCommand: (
+        "Shows each proposal against the script as it is written. Without --target, proposes every script."
+    ),
     SignReeCommand: (
         "Signs the seal's digest with Sigstore: you sign in with your OIDC identity (a browser opens, or use "
         "--out-of-band), and your identity is logged publicly in Sigstore's transparency log. A CI job's own token "

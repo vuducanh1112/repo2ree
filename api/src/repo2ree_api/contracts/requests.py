@@ -56,7 +56,7 @@ class PatchReeDefinitionPayload(StrictRequestModel):
         default_factory=dict,
         description="Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, "
         "and sizes are derived from the files, so a patch names only what the author decides, such as "
-        '`{"experiment_environment": {"artifact_path": "runtime.tar"}}` or, once its run script is written, '
+        '`{"experiment_environment": {"artifact_path": "runtime.tar"}}` or '
         '`{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.',
     )
     expected_version: str | None = None

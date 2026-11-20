@@ -3220,7 +3220,7 @@ export interface components {
         PatchReeDefinitionPayload: {
             /**
              * Definition Patch
-             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"experiment_environment": {"artifact_path": "runtime.tar"}}` or, once its run script is written, `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
+             * @description Top-level fields of `ReeDefinition`, each replaced whole; others are kept. Script paths, digests, and sizes are derived from the files, so a patch names only what the author decides, such as `{"experiment_environment": {"artifact_path": "runtime.tar"}}` or `{"experiments": [{"name": "hello", "output_paths": ["results/run.log"]}]}`.
              */
             definition_patch?: {
                 [key: string]: unknown;
@@ -3606,9 +3606,10 @@ export interface components {
          * RequirementsProjectBinding
          * @description A pip ``requirements.txt`` shape at the logical project root.
          *
-         *     Carries only the located file and its digest — the base image travels via
-         *     deployment policy, not repository evidence, so it is resolved by the
-         *     base-image check/renderer rather than baked into this binding.
+         *     Carries the located file, its digest, and whether every requirement in it is
+         *     pinned by hash — the base image travels via deployment policy, not repository
+         *     evidence, so it is resolved by the base-image check/renderer rather than baked
+         *     into this binding.
          */
         RequirementsProjectBinding: {
             /**
@@ -3620,6 +3621,8 @@ export interface components {
             requirements_path: string;
             /** Digest */
             digest: string;
+            /** Hash Locked */
+            hash_locked: boolean;
         };
         /**
          * ReservedScriptTemplates

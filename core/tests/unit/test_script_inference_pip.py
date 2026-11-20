@@ -77,6 +77,19 @@ def test_pip_candidate_warnings_are_non_blocking(tmp_path: Path) -> None:
     assert not any(w.blocking for w in candidate.warnings)
 
 
+def test_requirements_pinned_by_hash_are_a_lock(tmp_path: Path) -> None:
+    pinned = "# compiled\nsix==1.17.0 \\\n    --hash=sha256:aa \\\n    --hash=sha256:bb\nflask==3.0 --hash=sha256:cc\n"
+    _tree(tmp_path, {"requirements.txt": pinned})
+    codes = {w.code for w in _pip_candidate(_build(tmp_path)).warnings}
+    assert "dependencies_not_locked" not in codes
+
+
+def test_one_requirement_without_a_hash_is_no_lock(tmp_path: Path) -> None:
+    _tree(tmp_path, {"requirements.txt": "six==1.17.0 --hash=sha256:aa\nflask==3.0\n"})
+    codes = {w.code for w in _pip_candidate(_build(tmp_path)).warnings}
+    assert "dependencies_not_locked" in codes
+
+
 def test_wrapper_archive_uses_wrapper_paths(tmp_path: Path) -> None:
     _tree(tmp_path, {"proj-main/requirements.txt": "flask\n", "proj-main/main.py": "x"})
     candidate = _pip_candidate(_build(tmp_path))

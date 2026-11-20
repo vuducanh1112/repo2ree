@@ -6,7 +6,7 @@ from ree_definitions import PLACEHOLDER, bare_ree, ree_definition
 
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.steps import REE_STEPS, ree_steps
-from repo2ree_protocol.audit import ReeAudit, StepAudit
+from repo2ree_protocol.audit import EvidenceStatus, ExperimentAudit, ReeAudit, StepAudit
 from repo2ree_protocol.catalog import ReeStepStatus
 from repo2ree_protocol.verbs import VERBS
 from repo2ree_ree.digest import digest_bytes
@@ -114,8 +114,12 @@ def test_hardware_is_described_once_it_names_a_component() -> None:
     assert _statuses(_with(described))["observe_hardware"] == "complete"
 
 
-def test_experiments_are_complete_once_one_is_declared() -> None:
-    experiment = ExperimentDefinition(
+def test_hardware_is_described_once_it_is_observed() -> None:
+    assert _statuses(bare_ree(), _audit_with(observe_hardware=True))["observe_hardware"] == "complete"
+
+
+def _experiment() -> ExperimentDefinition:
+    return ExperimentDefinition(
         name="demo",
         run_script_path=OverlayPath(experiment_run_script_path("demo")),
         run_script_digest=digest_bytes(b"run"),
@@ -125,7 +129,20 @@ def test_experiments_are_complete_once_one_is_declared() -> None:
         verify_script_size=1,
     )
 
-    assert _statuses(_with(ree_definition(experiments=(experiment,))))["experiments"] == "complete"
+
+def _experiment_audit(evidence: EvidenceStatus) -> ReeAudit:
+    run = StepAudit(evidence=evidence, payload="not_applicable")
+    built = _audit_with(acquire_source=True, build_experiment_environment=True, activate_experiment_environment=True)
+    return built.model_copy(update={"experiments": (ExperimentAudit(name="demo", run=run),)})
+
+
+def test_experiments_are_complete_once_each_declared_one_ran() -> None:
+    ree = _with(ree_definition(experiments=(_experiment(),)))
+
+    assert _statuses(ree, _experiment_audit("current"))["experiments"] == "complete"
+    assert _statuses(ree, _experiment_audit("missing"))["experiments"] == "ready"
+    assert _statuses(ree, _experiment_audit("stale"))["experiments"] == "ready"
+    assert _statuses(bare_ree(), _experiment_audit("current"))["experiments"] == "ready"
 
 
 def test_a_sealed_ree_has_completed_its_seal() -> None:
@@ -136,3 +153,4 @@ def test_a_sealed_ree_has_completed_its_seal() -> None:
     )
 
     assert _statuses(sealed)["seal_ree"] == "complete"
+    assert ree_steps(sealed, audit(sealed)).next is None

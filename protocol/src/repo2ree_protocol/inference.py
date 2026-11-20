@@ -224,9 +224,10 @@ class DockerfileBinding(BaseModel):
 class RequirementsProjectBinding(BaseModel):
     """A pip ``requirements.txt`` shape at the logical project root.
 
-    Carries only the located file and its digest — the base image travels via
-    deployment policy, not repository evidence, so it is resolved by the
-    base-image check/renderer rather than baked into this binding.
+    Carries the located file, its digest, and whether every requirement in it is
+    pinned by hash — the base image travels via deployment policy, not repository
+    evidence, so it is resolved by the base-image check/renderer rather than baked
+    into this binding.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -234,6 +235,7 @@ class RequirementsProjectBinding(BaseModel):
     kind: Literal["requirements_project"] = "requirements_project"
     requirements_path: str
     digest: str
+    hash_locked: bool
 
 
 class ExperimentEnvironmentPlanBinding(BaseModel):

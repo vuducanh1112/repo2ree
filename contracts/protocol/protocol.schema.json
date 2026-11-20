@@ -6402,7 +6402,7 @@
     },
     "RequirementsProjectBinding": {
       "additionalProperties": false,
-      "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries only the located file and its digest — the base image travels via\ndeployment policy, not repository evidence, so it is resolved by the\nbase-image check/renderer rather than baked into this binding.",
+      "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries the located file, its digest, and whether every requirement in it is\npinned by hash — the base image travels via deployment policy, not repository\nevidence, so it is resolved by the base-image check/renderer rather than baked\ninto this binding.",
       "properties": {
         "kind": {
           "const": "requirements_project",
@@ -6417,11 +6417,16 @@
         "digest": {
           "title": "Digest",
           "type": "string"
+        },
+        "hash_locked": {
+          "title": "Hash Locked",
+          "type": "boolean"
         }
       },
       "required": [
         "requirements_path",
-        "digest"
+        "digest",
+        "hash_locked"
       ],
       "title": "RequirementsProjectBinding",
       "type": "object"

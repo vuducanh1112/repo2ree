@@ -36,7 +36,7 @@ HINTS: dict[ReeStepKey, str] = {
         "ree suggest-scripts --target activate_experiment_environment --write, then ree activate-experiment-environment"
     ),
     "experiments": (
-        "ree edit experiment_run:NAME, ree patch-ree-definition --experiment NAME --output PATH, "
+        "ree patch-ree-definition --experiment NAME --output PATH, ree edit experiment_run:NAME, "
         "then ree run-experiment NAME"
     ),
     "seal_ree": "ree seal-ree",
@@ -49,6 +49,14 @@ def next_hint(steps: ReeSteps) -> str | None:
     if following is None:
         return None
     return f"next: {following.label}: {HINTS[following.key]}"
+
+
+def _closing(report: ReeStatusReport) -> str:
+    if report.status != "sealed":
+        return "every step is complete"
+    if all(step.status == "complete" for step in report.steps.steps):
+        return "sealed, with every step complete"
+    return "sealed: it takes no further step; the open steps above are what its seal does not attest"
 
 
 def status(report: ReeStatusReport) -> str:
@@ -69,7 +77,7 @@ def status(report: ReeStatusReport) -> str:
             line += f"  (needs {', '.join(labels[key] for key in step.requires if key not in done)})"
         lines.append(line)
     lines += [f"     experiment {item.name}: {_evidence_word(item.run)}" for item in report.audit.experiments]
-    lines += ["", next_hint(report.steps) or "every step is complete"]
+    lines += ["", next_hint(report.steps) or _closing(report)]
     return "\n".join(lines)
 
 

@@ -127,7 +127,7 @@
       "order": 10,
       "label": "Experiments",
       "requires": [
-        "build_experiment_environment"
+        "activate_experiment_environment"
       ],
       "commands": [
         "run-experiment",
@@ -671,7 +671,7 @@
           "kind": "option",
           "required": false,
           "multiple": false,
-          "help": "Declare, or redeclare, the experiment NAME, once its run script is written.",
+          "help": "Declare, or redeclare, the experiment NAME; a new one starts from default scripts.",
           "type": "text"
         },
         {
@@ -1255,7 +1255,7 @@
         "suggest-scripts"
       ],
       "summary": "Propose scripts for the REE from its source and this machine",
-      "help": "Propose scripts for the REE from its source and this machine.\n\nShows each proposal against the script as it is written.",
+      "help": "Propose scripts for the REE from its source and this machine.\n\nShows each proposal against the script as it is written. Without --target, proposes every script.",
       "runs": true,
       "operations": [
         "suggest_scripts",
@@ -6605,7 +6605,7 @@
     },
     "RequirementsProjectBinding": {
       "additionalProperties": false,
-      "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries only the located file and its digest — the base image travels via\ndeployment policy, not repository evidence, so it is resolved by the\nbase-image check/renderer rather than baked into this binding.",
+      "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries the located file, its digest, and whether every requirement in it is\npinned by hash — the base image travels via deployment policy, not repository\nevidence, so it is resolved by the base-image check/renderer rather than baked\ninto this binding.",
       "properties": {
         "kind": {
           "const": "requirements_project",
@@ -6620,11 +6620,16 @@
         "digest": {
           "title": "Digest",
           "type": "string"
+        },
+        "hash_locked": {
+          "title": "Hash Locked",
+          "type": "boolean"
         }
       },
       "required": [
         "requirements_path",
-        "digest"
+        "digest",
+        "hash_locked"
       ],
       "title": "RequirementsProjectBinding",
       "type": "object"
