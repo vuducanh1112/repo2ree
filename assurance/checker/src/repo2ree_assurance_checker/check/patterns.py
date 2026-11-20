@@ -20,6 +20,7 @@ from repo2ree_assurance_checker.evidence import Event
 from repo2ree_assurance_checker.spec import (
     CREATED,
     OWN_KEY,
+    EachRequirement,
     EntityRequirement,
     EntityTrigger,
     ExclusionRequirement,
@@ -240,11 +241,47 @@ def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -
     return finding("violated", occurrence.subject, reason, occurrence.event, reached.event)
 
 
+def check_each(model: Model, require: EachRequirement, occurrence: Occurrence) -> list[Finding]:
+    """Each value of the trigger's ``require.of`` is the ``require.fact`` of an instance of ``require.entity``, in
+    its partition, that reached one of ``require.reached`` before the trigger."""
+    values = occurrence.facts.get(require.of)
+    if not isinstance(values, list):
+        return [finding("inconclusive", occurrence.subject, f"has no {require.of}", occurrence.event)]
+    target = model.spec.entities[require.entity]
+    states = " or ".join(require.reached)
+    findings: list[Finding] = []
+    for value in values:
+        reached = [
+            item
+            for instance in model.instances.get(require.entity, {}).values()
+            if instance.partition == occurrence.partition
+            for item in instance.reached
+            if item.state in require.reached and item.facts.get(require.fact) == value
+        ]
+        name = f"{require.entity} reaching {states} with {require.fact} {value}"
+        if reached:
+            found = _ordered_requirement(model, [item.event for item in reached], occurrence, name)
+        else:
+            certain, why = model.coverage(target.owner, target.evidence, occurrence.partition, occurrence.event)
+            reason = f"names {value}, which no {require.entity} reached {states} with as its {require.fact}"
+            found = finding(
+                "violated" if certain else "inconclusive",
+                occurrence.subject,
+                reason if certain else why,
+                occurrence.event,
+            )
+        if found is not None:
+            findings.append(found)
+    return findings
+
+
 def judge(model: Model, invariant: Invariant, occurrence: Occurrence) -> list[Finding]:
     """What one occurrence of an invariant found; empty when it held."""
     require = invariant.require
     if isinstance(require, ExclusionRequirement):
         return check_excludes(model, require, occurrence)
+    if isinstance(require, EachRequirement):
+        return check_each(model, require, occurrence)
     if isinstance(require, NextRequirement):
         found = check_next(model, require, occurrence)
     elif isinstance(require, EntityRequirement | MessageRequirement):

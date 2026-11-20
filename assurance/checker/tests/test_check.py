@@ -226,6 +226,17 @@ class Recorder:
             facts={},
         )
 
+    def bundle(self, key: str, *heads: str, source: str = "environment-000001") -> None:
+        """The environment taking the REE's bundle, which names ``heads``; none, a bundle refused."""
+        request = {"kind": "send", "message": "export_bundle", "facts": {}}
+        answer = (
+            {"kind": "receive", "message": "exported", "facts": {"heads": list(heads)}}
+            if heads
+            else {"kind": "receive", "message": "refused", "facts": {"exit": 1}}
+        )
+        for record in (request, answer):
+            self._add(source, owner="environment", subject="export_bundle", key=key, **record)
+
     def command(self, key: str, source: str = "environment-000001") -> str:
         """The environment running one of ree's commands; returns its reference, which the attempts it runs cite."""
         facts = {"run_id": "run-1"}
@@ -1214,3 +1225,58 @@ def test_a_drift_undone_only_after_an_attempt_missed_it_is_still_violated() -> N
     recorder.undo("d1")
 
     assert verdicts(recorder, environment(), git(REE))[DRIFT] == "violated"
+
+
+BUNDLE = "bundles-carry-what-attempts-captured"
+
+
+def test_a_bundle_ending_in_a_captured_commit_holds() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+    recorder.bundle("b1", "c-a1")
+
+    assert verdicts(recorder, environment(), git(REE))[BUNDLE] == "passed"
+
+
+def test_a_bundle_ending_in_a_commit_no_attempt_captured_is_violated() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+    recorder.drift("d1", ".git/refs/heads/ree-history", part="history")
+    recorder.bundle("b1", "c-by-hand")
+
+    assert findings(recorder, BUNDLE, environment(), git(REE)) == [
+        "violated: names c-by-hand, which no Attempt reached captured with as its commit"
+    ]
+
+
+def test_a_bundle_is_held_to_each_history_it_carries() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+    recorder.bundle("b1", "c-a1", "c-review-by-hand")
+
+    assert verdicts(recorder, environment(), git(REE))[BUNDLE] == "violated"
+
+
+def test_a_bundle_ending_in_a_commit_captured_only_after_it_is_violated() -> None:
+    recorder = Recorder()
+    recorder.bundle("b1", "c-a1")
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+
+    assert findings(recorder, BUNDLE, environment(), git(REE)) == [
+        "violated: Attempt reaching captured with commit c-a1 happened only after it"
+    ]
+
+
+def test_a_bundle_without_git_evidence_for_the_ree_is_inconclusive() -> None:
+    recorder = Recorder()
+    recorder.bundle("b1", "c-by-hand")
+
+    assert verdicts(recorder, environment())[BUNDLE] == "inconclusive"
+
+
+def test_a_refused_bundle_carries_nothing() -> None:
+    recorder = Recorder()
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+    recorder.bundle("b1")
+
+    assert verdicts(recorder, environment(), git(REE))[BUNDLE] == "not_triggered"

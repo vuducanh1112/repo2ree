@@ -60,6 +60,7 @@ from repo2ree_assurance_checker.spec.documents import (
 )
 from repo2ree_assurance_checker.spec.facts import absent, declared_facts, fact_problems, matches
 from repo2ree_assurance_checker.spec.invariants import (
+    EachRequirement,
     EntityRequirement,
     EntityTrigger,
     ExclusionRequirement,
@@ -257,6 +258,16 @@ class Spec(SpecModel):
                 check_condition(invariant.id, fact, condition, following.allowed, trigger_allowed, trigger_facts)
             if following.partition != self.trigger_partition(when):
                 raise ValueError(f"{invariant.id}: trigger and requirement are partitioned differently")
+        if isinstance(require, EachRequirement):
+            named = self.entities.get(require.entity)
+            if named is None or not set(require.reached) <= set(named.states):
+                raise ValueError(f"{invariant.id}: unknown requirement {require.entity}.{'/'.join(require.reached)}")
+            if require.fact not in named.facts:
+                raise ValueError(f"{invariant.id}: {require.entity} has no fact {require.fact!r}")
+            if trigger_facts.get(require.of) != "[str]":
+                raise ValueError(f"{invariant.id}: 'of' names {require.of!r}, which is not a list fact of the trigger")
+            if named.partition != self.trigger_partition(when):
+                raise ValueError(f"{invariant.id}: trigger and requirement are partitioned differently")
         if isinstance(require, ExclusionRequirement):
             target = self.entities.get(require.entity)
             if target is None or not set(require.in_states) <= set(target.states):
@@ -435,6 +446,7 @@ __all__ = [
     "DocumentPath",
     "DocumentRule",
     "DocumentRules",
+    "EachRequirement",
     "Edge",
     "EntityRequirement",
     "EntitySpec",

@@ -34,6 +34,16 @@ reason = """Needs the environment to stop waiting for a command it ran: the exer
 for each command to end, as a person at a terminal does, up to a timeout no exercise comes near."""
 
 [[unreached]]
+items = ["export_bundle: abandoned"]
+reason = """Needs the environment to stop waiting for a bundle it asked for: the exercise replay waits \
+for ree bundle to end, as a person at a terminal does."""
+
+[[unreached]]
+items = ["export_bundle: refused"]
+reason = """Needs ree bundle to refuse, which it does not yet: a bundle is given from an REE whose \
+history was committed to outside ree (exercise case of a bundle of a hand-made commit)."""
+
+[[unreached]]
 items = ["Attempt executing -> capture_failed"]
 reason = """Needs the attempt's record to fail to be written a moment after the same record was \
 written, before the handler starts; no fault can be aimed at that. Core's unit tests take it."""

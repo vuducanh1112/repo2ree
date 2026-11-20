@@ -77,12 +77,29 @@ class NextRequirement(SpecModel):
         return (value,) if isinstance(value, str) else value
 
 
-type Requirement = EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement | NextRequirement
+class EachRequirement(SpecModel):
+    """Every value the trigger's list fact ``of`` holds is the ``fact`` of an instance of the entity in the trigger's
+    partition that reached one of these states before the trigger."""
+
+    entity: Name
+    reached: tuple[Name, ...] = Field(min_length=1)
+    fact: Name
+    of: Name
+
+    @field_validator("reached", mode="before")
+    @classmethod
+    def _reached(cls, value: object) -> object:
+        return (value,) if isinstance(value, str) else value
+
+
+type Requirement = (
+    EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement | NextRequirement | EachRequirement
+)
 
 
 class Invariant(SpecModel):
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]*$")]
-    pattern: Literal["requires", "response", "guard", "excludes", "next"]
+    pattern: Literal["requires", "response", "guard", "excludes", "next", "each"]
     summary: str
     when: EntityTrigger | MessageTrigger
     require: Requirement | None = None
@@ -95,6 +112,7 @@ class Invariant(SpecModel):
             "guard": (GuardRequirement,),
             "excludes": (ExclusionRequirement,),
             "next": (NextRequirement,),
+            "each": (EachRequirement,),
             "response": (type(None),),
         }
         if not isinstance(self.require, expected[self.pattern]):

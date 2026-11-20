@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:f17a20ba9c33031923a40e37d864639d173183daf9d5e786339683cd95a92988",
+  "x-vocabulary": "sha256:6900bc729a02c2b221cca2417b1a804e6c148c5848c2b9d1d8b1367bfc96515f",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -88,6 +88,9 @@
     },
     {
       "$ref": "#/$defs/cancel_run"
+    },
+    {
+      "$ref": "#/$defs/export_bundle"
     },
     {
       "$ref": "#/$defs/follow_run"
@@ -252,6 +255,7 @@
               "Review",
               "WorkbenchSession",
               "cancel_run",
+              "export_bundle",
               "follow_run",
               "run_command",
               "start_run"
@@ -2303,6 +2307,188 @@
             },
             "owner": {
               "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": "null"
+            },
+            "facts": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key"
+          ]
+        }
+      ]
+    },
+    "export_bundle": {
+      "description": "One bundle of an REE the environment asked for, and whether it was given.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "send"
+            },
+            "subject": {
+              "const": "export_bundle"
+            },
+            "owner": {
+              "const": "environment"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "export_bundle"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "export_bundle"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "receive"
+            },
+            "subject": {
+              "const": "export_bundle"
+            },
+            "owner": {
+              "const": "environment"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "exported",
+                "refused"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "exported"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "heads": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "refused"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "exit": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "abandon"
+            },
+            "subject": {
+              "const": "export_bundle"
+            },
+            "owner": {
+              "const": "environment"
             },
             "key": {
               "type": "string"

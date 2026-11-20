@@ -1,0 +1,28 @@
+# The words for taking an REE's bundle from outside the product: a person running `ree bundle`, or the testbed
+# standing in for one to load it into another REE.
+#
+# Recorded on the sender's side: the environment journals each bundle it asks for, and what it was given: the bundle,
+# with the commit each history in it names as its head, or a refusal. A bundle runs no attempt, so core keeps no
+# record of it. Its rules are boundaries/export_bundle.toml.
+
+name = "export_bundle"
+kind = "boundary"
+sender = "environment"
+receiver = "core"
+key = "bundle_id"
+partition = "ree_id"
+summary = "One bundle of an REE the environment asked for, and whether it was given."
+request = "export_bundle"
+responses = ["exported", "refused"]
+
+[messages]
+export_bundle = "The bundle, about to be asked for."
+exported = "The bundle was given."
+refused = "The bundle was refused."
+
+[facts.exported]
+# The commit each history in the bundle names as its head: the REE's, and each review's.
+heads = "[str]"
+
+[facts.refused]
+exit = "int"

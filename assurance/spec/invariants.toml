@@ -102,6 +102,16 @@ summary = "The first attempt in an REE after one of its files drifted names that
 when = { entity = "Drift", to = "arisen" }
 require = { entity = "Attempt", reached = "pending", where = { drift_found = { has = "path" } } }
 
+# A bundle is how an REE leaves the machine it was made on, and the REE that loads it takes in its history as its
+# own. What it carries is what ree recorded: the head of each history in it is a commit an attempt captured, never
+# one made beside ree, as by git, which the loading REE could no longer tell apart.
+[[invariant]]
+id = "bundles-carry-what-attempts-captured"
+pattern = "each"
+summary = "Every history a bundle carries ends in a commit an attempt of that REE captured."
+when = { boundary = "export_bundle", message = "exported" }
+require = { entity = "Attempt", reached = "captured", fact = "commit", of = "heads" }
+
 [[invariant]]
 id = "ree-changes-through-operations"
 pattern = "guard"

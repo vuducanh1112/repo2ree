@@ -1,0 +1,4 @@
+# The export_bundle exchange's rules. Its messages and facts are declared in vocabulary/export_bundle.toml. A bundle
+# cites no record: what it carries is held to the attempts that captured it by bundles-carry-what-attempts-captured.
+
+name = "export_bundle"
