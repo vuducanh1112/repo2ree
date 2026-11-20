@@ -81,7 +81,13 @@ class PerFact(_Condition):
     cases: dict[str, tuple[Scalar, ...]] = Field(alias="in")
 
 
-type Condition = PerFact | OneOf | NotEqual | Scalar
+class Holds(_Condition):
+    """``{"has": fact}``: the fact, a list, holds the trigger's ``fact``."""
+
+    fact: str = Field(alias="has")
+
+
+type Condition = PerFact | OneOf | NotEqual | Holds | Scalar
 type Conditions = dict[str, Condition]
 
 
@@ -210,8 +216,18 @@ class ExclusionRequirement(Document):
     in_states: tuple[str, ...]
 
 
+class NextRequirement(Document):
+    """A condition on the first instance of an entity after the trigger."""
+
+    kind: Literal["next"]
+    entity: str
+    reached: tuple[str, ...]
+    where: Conditions
+
+
 type Requirement = Annotated[
-    EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement, Field(discriminator="kind")
+    EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement | NextRequirement,
+    Field(discriminator="kind"),
 ]
 
 

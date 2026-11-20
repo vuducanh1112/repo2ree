@@ -14,9 +14,11 @@ from repo2ree_repoview.overview.exports import (
     EntityTrigger,
     ExclusionRequirement,
     GuardRequirement,
+    Holds,
     Invariant,
     MessageRequirement,
     MessageTrigger,
+    NextRequirement,
     NotEqual,
     OneOf,
     PerFact,
@@ -49,6 +51,8 @@ def condition(name: str, value: Condition, groups: Groups) -> str:
     match value:
         case NotEqual(value=excluded):
             return f"{name} ≠ {literal(excluded)}"
+        case Holds(fact=fact):
+            return f"{name} holds the trigger's {fact}"
         case PerFact(fact=fact, cases=cases):
             # The alternatives depend on the trigger's fact: one list for each of its values.
             listed = "; ".join(f"{key}: {', '.join(map(literal, items))}" for key, items in cases.items())
@@ -92,6 +96,9 @@ def requirement_text(spec: Spec, invariant: Invariant) -> str:
         case GuardRequirement() as guard:
             trigger = invariant.when.entity if isinstance(invariant.when, EntityTrigger) else ""
             return where(guard.where, entity_groups(spec, trigger)).removeprefix(" where ")
+        case NextRequirement() as following:
+            conditions = where(following.where, entity_groups(spec, following.entity)).removeprefix(" where ")
+            return f"the first {following.entity} after it, as it reaches {' | '.join(following.reached)}: {conditions}"
         case ExclusionRequirement() as exclusion:
             partition = spec.entities[exclusion.entity].partition
             return f"no {exclusion.entity} in {' | '.join(exclusion.in_states)} with the same {partition}"
@@ -129,6 +136,8 @@ def rule_values(spec: Spec) -> tuple[dict[tuple[str, str, Scalar], list[str]], d
                     values = set(listed_values)
                 case NotEqual(value=excluded):
                     values = set[Scalar](listed[fact]) - {excluded}
+                case Holds():
+                    values = set()
                 case _:
                     values = {value}
             for item in values:

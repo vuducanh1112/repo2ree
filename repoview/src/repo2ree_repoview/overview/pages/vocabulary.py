@@ -8,7 +8,15 @@ from dataclasses import dataclass
 from repo2ree_repoview.overview.exports import Contracts, Spec
 from repo2ree_repoview.overview.html import Page, esc, section, table
 
-TYPES = {"str": "str", "str?": "str | None", "bool": "bool", "bool?": "bool | None", "int": "int", "int?": "int | None"}
+TYPES = {
+    "str": "str",
+    "str?": "str | None",
+    "bool": "bool",
+    "bool?": "bool | None",
+    "int": "int",
+    "int?": "int | None",
+    "[str]": "list[str]",
+}
 
 
 @dataclass
