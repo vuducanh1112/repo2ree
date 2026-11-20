@@ -19,8 +19,8 @@ from repo2ree_assurance_checker.files import load_spec
 SPEC = load_spec()
 SCHEMA = json.loads(render_schema(SPEC))
 VALIDATOR = Draft202012Validator(SCHEMA)
-SAMPLE = {"str": "x", "str?": "x", "bool": True, "bool?": False, "int": 1, "int?": 1}
-WRONG = {"str": 1, "str?": 1, "bool": "yes", "bool?": 0, "int": True, "int?": "1"}
+SAMPLE = {"str": "x", "str?": "x", "bool": True, "bool?": False, "int": 1, "int?": 1, "[str]": ["x"]}
+WRONG = {"str": 1, "str?": 1, "bool": "yes", "bool?": 0, "int": True, "int?": "1", "[str]": "x"}
 
 
 def envelope(seq: int = 2, **fields: Any) -> dict[str, Any]:

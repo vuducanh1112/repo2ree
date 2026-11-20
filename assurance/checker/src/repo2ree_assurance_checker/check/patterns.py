@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import JsonValue
 
 from repo2ree_assurance_checker.check.order import Model
-from repo2ree_assurance_checker.check.replay import Instance
+from repo2ree_assurance_checker.check.replay import Instance, Reached
 from repo2ree_assurance_checker.check.results import (
     Finding,
     Judgement,
@@ -26,6 +26,7 @@ from repo2ree_assurance_checker.spec import (
     GuardRequirement,
     Invariant,
     MessageRequirement,
+    NextRequirement,
     absent,
     matches,
 )
@@ -192,12 +193,55 @@ def check_excludes(model: Model, require: ExclusionRequirement, occurrence: Occu
     return findings
 
 
+def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -> Finding | None:
+    """The first instance of ``require.entity`` the evidence orders after the trigger, in its partition, as it
+    reaches one of ``require.reached``, satisfies ``require.where``; none following holds."""
+    following: list[tuple[Instance, Reached]] = []
+    unordered: list[Event] = []
+    for instance in model.instances.get(require.entity, {}).values():
+        if instance.partition != occurrence.partition:
+            continue
+        reached = next((item for item in instance.reached if item.state in require.reached), None)
+        if reached is None:
+            continue
+        order = model.precedes(occurrence.event, reached.event)
+        if order is None:
+            unordered.append(reached.event)
+        elif order:
+            following.append((instance, reached))
+    if not following:
+        if unordered:
+            reason = f"the evidence cannot order {require.entity} against it"
+            return finding("inconclusive", occurrence.subject, reason, occurrence.event, *unordered)
+        return None
+    first = [
+        (instance, reached)
+        for instance, reached in following
+        if all(other is reached or model.precedes(reached.event, other.event) for _, other in following)
+    ]
+    if len(first) != 1 or any(model.precedes(first[0][1].event, event) is not True for event in unordered):
+        reason = f"the evidence cannot tell which {require.entity} came first after it"
+        return finding("inconclusive", occurrence.subject, reason, occurrence.event)
+    instance, reached = first[0]
+    name = f"{require.entity} {instance.key}, the first after it,"
+    if matches(require.where, reached.facts, occurrence.facts):
+        return None
+    if missing := absent(require.where, reached.facts, occurrence.facts):
+        reason = f"{name} reached {reached.state} without {', '.join(missing)}"
+        return finding("inconclusive", occurrence.subject, reason, occurrence.event, reached.event)
+    facts = {fact: reached.facts.get(fact) for fact in require.where}
+    reason = f"{name} reached {reached.state} with {facts}"
+    return finding("violated", occurrence.subject, reason, occurrence.event, reached.event)
+
+
 def judge(model: Model, invariant: Invariant, occurrence: Occurrence) -> list[Finding]:
     """What one occurrence of an invariant found; empty when it held."""
     require = invariant.require
     if isinstance(require, ExclusionRequirement):
         return check_excludes(model, require, occurrence)
-    if isinstance(require, EntityRequirement | MessageRequirement):
+    if isinstance(require, NextRequirement):
+        found = check_next(model, require, occurrence)
+    elif isinstance(require, EntityRequirement | MessageRequirement):
         found = check_requires(model, require, occurrence)
     elif isinstance(require, GuardRequirement):
         found = check_guard(require, occurrence)

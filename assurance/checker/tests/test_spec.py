@@ -78,6 +78,7 @@ def test_the_checked_in_specification_is_valid() -> None:
     assert set(spec.entities) == {
         "Attempt",
         "AuthorApiAction",
+        "Drift",
         "Execution",
         "Ree",
         "Receipt",
@@ -88,7 +89,8 @@ def test_the_checked_in_specification_is_valid() -> None:
     assert spec.hosted_by("api") == {"api", "supervisor"}
     assert spec.hosted_by("workbench") == {"workbench"}
     assert spec.hosted_by("executor") == {"core"}
-    assert set(spec.boundaries) == {"cancel_run", "follow_run", "start_run"}
+    assert spec.hosted_by("environment") == {"environment"}
+    assert set(spec.boundaries) == {"cancel_run", "follow_run", "run_command", "start_run"}
     assert spec.digest.startswith("sha256:")
     assert spec.vocabulary_digest.startswith("sha256:")
     assert spec.entities["Attempt"].required == {

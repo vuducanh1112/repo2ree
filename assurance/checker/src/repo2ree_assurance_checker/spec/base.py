@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-type FactType = Literal["str", "str?", "bool", "bool?", "int", "int?"]
+type FactType = Literal["str", "str?", "bool", "bool?", "int", "int?", "[str]"]
 type Name = Annotated[str, Field(pattern=r"^[A-Za-z][A-Za-z0-9_]*$")]
 type Condition = dict[str, JsonValue]
 

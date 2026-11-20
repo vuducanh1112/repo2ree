@@ -1,0 +1,8 @@
+# The Drift machine: a file drifts once, and stays drifted as far as the environment knows. Its states and facts are
+# declared in vocabulary/drift.toml.
+
+name = "Drift"
+initial = "arisen"
+terminal = ["arisen"]
+settles_before_close = false
+transitions = []

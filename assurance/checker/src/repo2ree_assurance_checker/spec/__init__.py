@@ -68,6 +68,7 @@ from repo2ree_assurance_checker.spec.invariants import (
     Invariant,
     MessageRequirement,
     MessageTrigger,
+    NextRequirement,
     Requirement,
     check_condition,
     spell_out_groups,
@@ -246,6 +247,16 @@ class Spec(SpecModel):
         for fact, condition in conditions.items():
             check_condition(invariant.id, fact, condition, trigger_allowed, trigger_allowed, trigger_facts)
         require = invariant.require
+        if isinstance(require, NextRequirement):
+            following = self.entities.get(require.entity)
+            if following is None or not set(require.reached) <= set(following.states):
+                raise ValueError(f"{invariant.id}: unknown requirement {require.entity}.{'/'.join(require.reached)}")
+            if unknown := set(require.where) - set(following.facts):
+                raise ValueError(f"{invariant.id}: requirement 'where' names undeclared facts {sorted(unknown)}")
+            for fact, condition in require.where.items():
+                check_condition(invariant.id, fact, condition, following.allowed, trigger_allowed, trigger_facts)
+            if following.partition != self.trigger_partition(when):
+                raise ValueError(f"{invariant.id}: trigger and requirement are partitioned differently")
         if isinstance(require, ExclusionRequirement):
             target = self.entities.get(require.entity)
             if target is None or not set(require.in_states) <= set(target.states):
@@ -445,6 +456,7 @@ __all__ = [
     "MessageRequirement",
     "MessageTrigger",
     "Name",
+    "NextRequirement",
     "PathsPair",
     "Placed",
     "ReceiptMachine",

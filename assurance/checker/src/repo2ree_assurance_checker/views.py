@@ -16,6 +16,7 @@ from repo2ree_assurance_checker.spec import (
     ExclusionRequirement,
     MessageRequirement,
     MessageTrigger,
+    NextRequirement,
     Spec,
 )
 
@@ -55,7 +56,9 @@ def system_map(spec: Spec) -> str:
         lines.append(f"  component_{boundary.sender} === boundary_{boundary.name} ==> component_{boundary.receiver}")
 
     def node(trigger_or_requirement: object) -> str | None:
-        if isinstance(trigger_or_requirement, EntityTrigger | EntityRequirement | ExclusionRequirement):
+        if isinstance(
+            trigger_or_requirement, EntityTrigger | EntityRequirement | ExclusionRequirement | NextRequirement
+        ):
             return trigger_or_requirement.entity
         if isinstance(trigger_or_requirement, MessageTrigger | MessageRequirement):
             return f"boundary_{trigger_or_requirement.boundary}"

@@ -22,6 +22,7 @@ FACT_SCHEMA: dict[str, dict[str, Any]] = {
     "bool?": {"type": ["boolean", "null"]},
     "int": {"type": "integer"},
     "int?": {"type": ["integer", "null"]},
+    "[str]": {"type": "array", "items": {"type": "string"}},
 }
 NON_NULL = {"str": "string", "bool": "boolean", "int": "integer"}
 
@@ -29,7 +30,9 @@ NON_NULL = {"str": "string", "bool": "boolean", "int": "integer"}
 def _fact(kind: FactType, required: bool, allowed: tuple[str, ...]) -> dict[str, Any]:
     if allowed:
         return {"enum": [*allowed] if required or not kind.endswith("?") else [*allowed, None]}
-    return {"type": NON_NULL[kind.rstrip("?")]} if required else FACT_SCHEMA[kind]
+    if kind == "[str]" or not required:
+        return FACT_SCHEMA[kind]
+    return {"type": NON_NULL[kind.rstrip("?")]}
 
 
 def _facts(

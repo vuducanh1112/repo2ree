@@ -518,6 +518,9 @@ def attempt_events(
             "scope": record.get("scope"),
             # The journal record of the dispatch that sent it: the attempt's citation of the request.
             "dispatched_by": context.get("dispatch_record"),
+            # What had drifted when it began, and the script edit it records of it.
+            "drift_found": [item.get("path") for item in record.get("drift_found") or [] if isinstance(item, dict)],
+            "drift_recorded": record.get("drift_recorded"),
         },
         "completed": {"outcome": record.get("operation_status")},
         "captured": {"commit": commit.id, "changed": commit.tree != commit.parent_tree} if commit else {},

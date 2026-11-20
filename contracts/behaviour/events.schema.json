@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:a1d1d657e65844509a65502237616baf2d70c47f8aab5bca50ba51a3cd746fb5",
+  "x-vocabulary": "sha256:a652f126032da27403c1519144dbea07e2e3a090cfc44bf08ec7651ede9baa0c",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -69,6 +69,9 @@
       "$ref": "#/$defs/AuthorApiAction"
     },
     {
+      "$ref": "#/$defs/Drift"
+    },
+    {
       "$ref": "#/$defs/Execution"
     },
     {
@@ -88,6 +91,9 @@
     },
     {
       "$ref": "#/$defs/follow_run"
+    },
+    {
+      "$ref": "#/$defs/run_command"
     },
     {
       "$ref": "#/$defs/start_run"
@@ -146,6 +152,24 @@
                 "const": [
                   "api",
                   "supervisor"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "process": {
+                "const": "environment"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "hosts": {
+                "const": [
+                  "environment"
                 ]
               }
             }
@@ -221,6 +245,7 @@
             "enum": [
               "Attempt",
               "AuthorApiAction",
+              "Drift",
               "Execution",
               "Receipt",
               "Ree",
@@ -228,6 +253,7 @@
               "WorkbenchSession",
               "cancel_run",
               "follow_run",
+              "run_command",
               "start_run"
             ]
           }
@@ -299,6 +325,18 @@
               "type": "string"
             },
             "dispatched_by": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "drift_found": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "drift_recorded": {
               "type": [
                 "string",
                 "null"
@@ -385,6 +423,18 @@
                     "type": "string"
                   },
                   "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "drift_found": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "drift_recorded": {
                     "type": [
                       "string",
                       "null"
@@ -477,6 +527,18 @@
                       "null"
                     ]
                   },
+                  "drift_found": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "drift_recorded": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
                   "error": {
                     "type": "string"
                   },
@@ -558,6 +620,18 @@
                     "type": "string"
                   },
                   "dispatched_by": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "drift_found": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "drift_recorded": {
                     "type": [
                       "string",
                       "null"
@@ -889,6 +963,101 @@
         }
       ],
       "description": "One thing an author asked of an REE, from the request to the answer they were given. Evidence: journal."
+    },
+    "Drift": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "transition"
+        },
+        "subject": {
+          "const": "Drift"
+        },
+        "owner": {
+          "const": "environment"
+        },
+        "key": {
+          "type": "string"
+        },
+        "partition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "from": {
+          "enum": [
+            null,
+            "arisen"
+          ]
+        },
+        "to": {
+          "enum": [
+            "arisen"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "properties": {
+            "part": {
+              "enum": [
+                "overlay",
+                "workspace",
+                "records"
+              ]
+            },
+            "path": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "owner",
+        "key",
+        "to"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "to": {
+                "enum": [
+                  "arisen"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "facts": {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "enum": [
+                      "overlay",
+                      "workspace",
+                      "records"
+                    ]
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "part"
+                ]
+              }
+            },
+            "required": [
+              "facts"
+            ]
+          }
+        }
+      ],
+      "description": "One file of an REE changed, added or removed outside ree. Evidence: journal."
     },
     "Execution": {
       "type": "object",
@@ -2359,6 +2528,179 @@
             },
             "owner": {
               "const": "supervisor"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "type": "null"
+            },
+            "facts": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key"
+          ]
+        }
+      ]
+    },
+    "run_command": {
+      "description": "One ree command the environment ran, and the exit status it saw.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "send"
+            },
+            "subject": {
+              "const": "run_command"
+            },
+            "owner": {
+              "const": "environment"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "run_command"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "run_command"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "run_id": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "receive"
+            },
+            "subject": {
+              "const": "run_command"
+            },
+            "owner": {
+              "const": "environment"
+            },
+            "key": {
+              "type": "string"
+            },
+            "partition": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "message": {
+              "enum": [
+                "exited"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "subject",
+            "owner",
+            "key",
+            "message"
+          ],
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "message": {
+                    "const": "exited"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "facts": {
+                    "type": "object",
+                    "properties": {
+                      "commit": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "exit": {
+                        "type": "integer"
+                      },
+                      "record": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "abandon"
+            },
+            "subject": {
+              "const": "run_command"
+            },
+            "owner": {
+              "const": "environment"
             },
             "key": {
               "type": "string"

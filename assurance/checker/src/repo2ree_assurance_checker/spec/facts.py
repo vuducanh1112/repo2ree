@@ -18,13 +18,19 @@ def matches(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, Js
     """Absent facts never satisfy a condition, including a negated one; a fact recorded as null is absent.
 
     A ``{per, in}`` condition reads its key from ``trigger``'s facts: the trigger's, when the
-    facts are another record's; the facts themselves otherwise.
+    facts are another record's; the facts themselves otherwise. ``{has = fact}`` holds when the
+    list the fact is holds the trigger's ``fact``.
     """
     for name, condition in where.items():
         if facts.get(name) is None:
             return False
         value = facts[name]
         if isinstance(condition, dict):
+            if "has" in condition:
+                needle = (facts if trigger is None else trigger).get(str(condition["has"]))
+                if not isinstance(value, list) or needle is None or needle not in value:
+                    return False
+                continue
             if "per" in condition:
                 key = (facts if trigger is None else trigger).get(str(condition["per"]))
                 table = condition["in"]
@@ -46,8 +52,8 @@ def absent(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, Jso
     """The facts ``where`` needs that the records do not carry, so it cannot be decided either way."""
     missing = [name for name in where if facts.get(name) is None]
     for condition in where.values():
-        if isinstance(condition, dict) and "per" in condition:
-            key = str(condition["per"])
+        if isinstance(condition, dict) and ("per" in condition or "has" in condition):
+            key = str(condition.get("per", condition.get("has")))
             if (facts if trigger is None else trigger).get(key) is None:
                 missing.append(key)
     return missing
@@ -75,6 +81,10 @@ def fact_problems(
         if value is None:
             if not kind.endswith("?"):
                 problems.append(("violated", f"fact {name!r} is null"))
+            continue
+        if kind == "[str]":
+            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+                problems.append(("violated", f"fact {name!r} is not {kind}"))
             continue
         expected = {"str": str, "bool": bool, "int": int}[kind.rstrip("?")]
         if not isinstance(value, expected) or (expected is int and isinstance(value, bool)):

@@ -16,6 +16,7 @@ from repo2ree_assurance_checker.evidence import Cut, Event, Evidence
 from repo2ree_assurance_checker.spec import (
     BoundarySpec,
     Citation,
+    CitingEntity,
     CitingMessage,
     Spec,
 )
@@ -41,12 +42,15 @@ class Model:
         self._earlier: dict[tuple[str, int], list[Event]] = defaultdict(list)
         # Citations that name a record other than the one the evidence holds, per boundary.
         self.miscited: dict[str, list[Finding]] = defaultdict(list)
+        self._by_source: dict[str, list[tuple[int, list[Event]]]] | None = None
         for boundary in spec.boundaries.values():
             for citation in boundary.cites:
                 self._link(boundary, citation)
 
     def _link(self, boundary: BoundarySpec, citation: Citation) -> None:
         record = citation.record
+        if isinstance(citation.by, CitingEntity):
+            self._link_across_keys(boundary, citation)
         for key, exchange in self.exchanges.get(boundary.name, {}).items():
             instance = self.instances.get(record.entity, {}).get(key)
             if instance is None:
@@ -62,6 +66,25 @@ class Model:
                 by_ref = {message.ref: message for message in messages}
                 for item in reached:
                     self._cite(boundary.name, item.event, item.facts.get(record.fact), by_ref)
+
+    def _link_across_keys(self, boundary: BoundarySpec, citation: Citation) -> None:
+        """An entity record that names a message of another exchange than its own key's: one started by that
+        request though it has a key of its own, such as an attempt run before the requested one."""
+        record = citation.record
+        messages = {
+            message.ref: (key, message)
+            for key, exchange in self.exchanges.get(boundary.name, {}).items()
+            for message in exchange.carrying(citation.message)
+        }
+        for key, instance in self.instances.get(record.entity, {}).items():
+            for item in instance.reached:
+                if item.state != record.reached:
+                    continue
+                named = item.facts.get(record.fact)
+                found = messages.get(named) if isinstance(named, str) else None
+                if found is not None and found[0] != key:
+                    self._later[(found[1].source, found[1].position)].append(item.event)
+                    self._earlier[(item.event.source, item.event.position)].append(found[1])
 
     def _cite(self, boundary: str, citing: Event, named: JsonValue, candidates: dict[str, Event]) -> None:
         if not isinstance(named, str) or not named:
@@ -141,14 +164,21 @@ class Model:
         return None
 
     def _cited(self, a: Event, b: Event) -> bool:
-        """Whether a citation shows ``a`` was recorded before ``b``."""
-        for later in self._later.get((a.source, a.position), ()):
-            if later is b or self._direct(later, b):
-                return True
-        for earlier in self._earlier.get((b.source, b.position), ()):
-            if earlier is a or self._direct(a, earlier):
+        """Whether a citation shows ``a`` was recorded before ``b``: a record at or after ``a`` in its source is
+        named by one at or before ``b`` in its own."""
+        for position, citing in self._cited_in(a.source):
+            if position >= a.position and any(later is b or self._direct(later, b) for later in citing):
                 return True
         return False
+
+    def _cited_in(self, source: str) -> list[tuple[int, list[Event]]]:
+        """The records of ``source`` that others name, by position, with those that name them."""
+        if self._by_source is None:
+            grouped: dict[str, list[tuple[int, list[Event]]]] = defaultdict(list)
+            for (cited_source, position), citing in self._later.items():
+                grouped[cited_source].append((position, citing))
+            self._by_source = dict(grouped)
+        return self._by_source.get(source, [])
 
     def precedes(self, a: Event, b: Event) -> bool | None:
         """True if ``a`` happened before ``b``, False if after, None if the evidence cannot say."""

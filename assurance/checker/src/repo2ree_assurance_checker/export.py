@@ -25,6 +25,7 @@ from repo2ree_assurance_checker.spec import (
     GuardRequirement,
     MessageRequirement,
     MessageTrigger,
+    NextRequirement,
     Spec,
 )
 
@@ -37,6 +38,7 @@ KINDS: dict[type[BaseModel], str] = {
     MessageRequirement: "message",
     GuardRequirement: "guard",
     ExclusionRequirement: "exclusion",
+    NextRequirement: "next",
     CitingEntity: "entity",
     CitedEntity: "entity",
     CitingMessage: "message",

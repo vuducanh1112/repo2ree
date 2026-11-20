@@ -24,9 +24,14 @@ the connection drops between routing and the answer, a window no fault can be ai
 
 [[unreached]]
 items = ["Attempt pending -> capture_failed"]
-reason = """Needs the before-snapshot to fail, which it does only when the REE changed outside \
-any attempt while its history cannot be written: a failed capture rolls back, so the faults \
-tier's locked history never leaves such a change. Core's unit tests take it."""
+reason = """Needs the before-snapshot to fail, which writes to the history only when the files \
+it selects changed meaning: an REE whose files drifted is refused on the tree its history holds, \
+not snapshotted, so the faults tier's locked history never reaches it. Core's unit tests take it."""
+
+[[unreached]]
+items = ["run_command: abandoned"]
+reason = """Needs the environment to stop waiting for a command it ran: the exercise replay waits \
+for each command to end, as a person at a terminal does, up to a timeout no exercise comes near."""
 
 [[unreached]]
 items = ["Attempt executing -> capture_failed"]

@@ -1,0 +1,20 @@
+# The run_command exchange's rules: which records of it and of the receiver's entities name each other. Its messages
+# and facts are declared in vocabulary/run_command.toml.
+
+name = "run_command"
+
+# Every attempt a command runs names the command, the attempts it runs before the one it was asked for included, so
+# their order against what the environment did between commands is evidenced rather than assumed.
+[[cites]]
+by = { entity = "Attempt", reached = "pending", fact = "dispatched_by" }
+cited = { message = "run_command" }
+
+# The command's answer names the commit that captured its attempt, or the record of a capture that failed: it can only
+# have been seen after that existed, and so after every attempt the command ran.
+[[cites]]
+by = { message = "exited", fact = "commit" }
+cited = { entity = "Attempt", reached = "captured", fact = "commit" }
+
+[[cites]]
+by = { message = "exited", fact = "record" }
+cited = { entity = "Attempt", reached = "capture_failed", fact = "record" }

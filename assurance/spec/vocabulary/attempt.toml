@@ -32,6 +32,10 @@ error = "str"
 # A record that failed to be captured stays beside the history, not in a commit: its identity is
 # the digest of its bytes ("sha256:<hex>"), which the dispatch result names as it names a commit.
 record = { type = "str", required_in = ["capture_failed"] }
+# Every file of the REE that had drifted when the attempt began, by its path from the REE; and the one script edit,
+# in the overlay, that the attempt records of it. An attempt that found drift and records none of it is refused.
+drift_found = "[str]"
+drift_recorded = "str?"
 
 [facts.outcome]
 type = "str"

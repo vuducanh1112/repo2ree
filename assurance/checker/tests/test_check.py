@@ -79,6 +79,20 @@ def bench(source_id: str = "workbench-000001", *, closed: bool = True, complete:
     )
 
 
+def environment(source_id: str = "environment-000001") -> Source:
+    """The journal of whatever ran ree's commands and changed the REE's files between them."""
+    return Source(
+        id=source_id,
+        kind="journal",
+        process="environment",
+        rank=int(source_id.rsplit("-", 1)[1]),
+        hosts=frozenset({"environment"}),
+        complete=True,
+        closed=True,
+        vocabulary=SPEC.vocabulary_digest,
+    )
+
+
 def git(*partitions: str, complete: bool = True, cut: dict[str, tuple[int, int]] | None = None) -> Source:
     return Source(
         id="git:ree",
@@ -158,9 +172,13 @@ class Recorder:
         dispatched_by: str | None = None,
         operation: str = "build_experiment_environment",
         failed_record: str | None = None,
+        drift_found: tuple[str, ...] = (),
+        drift_recorded: str | None = None,
+        commit: str | None = None,
     ) -> None:
         """An attempt's phases; with ``failed_record``, its capture failed and that is its record's digest."""
         pending: dict[str, Any] = {"operation": operation, "run_id": "run-1", "scope": "author"}
+        pending |= {"drift_found": list(drift_found)} | ({"drift_recorded": drift_recorded} if drift_recorded else {})
         if dispatched_by is not None:
             pending["dispatched_by"] = dispatched_by
         steps: list[tuple[str | None, str, dict[str, Any]]] = [(None, "pending", pending), ("pending", "executing", {})]
@@ -169,7 +187,7 @@ class Recorder:
         if completed and failed_record is not None:
             steps.append(("completed", "capture_failed", {"error": "locked", "record": failed_record}))
         elif completed and captured:
-            steps.append(("completed", "captured", {"commit": "c" * 40, "changed": changed}))
+            steps.append(("completed", "captured", {"commit": commit or "c" * 40, "changed": changed}))
         for current, target, facts in steps:
             self._add(
                 "git:ree",
@@ -181,6 +199,32 @@ class Recorder:
                 target_state=target,
                 facts=facts,
             )
+
+    def drift(self, key: str, path: str, part: str = "workspace", source: str = "environment-000001") -> None:
+        """A file of the REE drifting, as the environment that changed it journals it."""
+        self._add(
+            source,
+            kind="transition",
+            owner="environment",
+            subject="Drift",
+            key=key,
+            source_state=None,
+            target_state="arisen",
+            facts={"path": path, "part": part},
+        )
+
+    def command(self, key: str, source: str = "environment-000001") -> str:
+        """The environment running one of ree's commands; returns its reference, which the attempts it runs cite."""
+        facts = {"run_id": "run-1"}
+        self._add(
+            source, kind="send", owner="environment", subject="run_command", key=key, message="run_command", facts=facts
+        )
+        request = f"{source}#{self.positions[source]}"
+        exited = {"exit": 0, "commit": f"c-{key}"}
+        self._add(
+            source, kind="receive", owner="environment", subject="run_command", key=key, message="exited", facts=exited
+        )
+        return request
 
     def start(self, key: str, *outcomes: tuple[str, str | None], source: str = "api-000001") -> str:
         """Record a start_run exchange; returns the request's reference, which the attempt cites."""
@@ -1087,3 +1131,55 @@ def test_a_start_names_the_session_it_was_sent_on() -> None:
         for event in recorder.events
     ]
     assert findings(recorder, "boundary:start_run") == ["inconclusive: missing required facts ['session']"]
+
+
+# ---- Drift ---------------------------------------------------------------------------------------------------
+
+DRIFT = "drift-is-found-by-the-next-attempt"
+
+
+def test_the_attempt_after_a_drift_names_the_file_and_holds() -> None:
+    recorder = Recorder()
+    recorder.drift("d1", "workspace/run.sh")
+    command = recorder.command("a1")
+    recorder.attempt("a1", "failed", dispatched_by=command, drift_found=("workspace/run.sh",), commit="c-a1")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "passed"
+
+
+def test_an_attempt_after_a_drift_that_does_not_name_it_is_violated() -> None:
+    recorder = Recorder()
+    recorder.attempt("a0", dispatched_by=recorder.command("a0"), commit="c-a0")
+    recorder.drift("d1", "workspace/run.sh")
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+
+    assert findings(recorder, DRIFT, environment(), git(REE)) == [
+        "violated: Attempt a1, the first after it, reached pending with {'drift_found': []}"
+    ]
+
+
+def test_a_drift_no_attempt_follows_holds() -> None:
+    recorder = Recorder()
+    recorder.attempt("a0", dispatched_by=recorder.command("a0"), commit="c-a0")
+    recorder.drift("d1", "workspace/run.sh")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "passed"
+
+
+def test_an_attempt_that_records_an_edit_before_the_command_runs_is_the_next_one() -> None:
+    recorder = Recorder()
+    recorder.drift("d1", "overlay/ree-scripts/launch.sh", part="overlay")
+    command = recorder.command("a1")
+    edit = ("overlay/ree-scripts/launch.sh",)
+    recorder.attempt("e1", dispatched_by=command, operation="write_script", drift_found=edit, drift_recorded=edit[0])
+    recorder.attempt("a1", dispatched_by=command)
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "passed"
+
+
+def test_an_attempt_the_evidence_cannot_order_against_a_drift_is_inconclusive() -> None:
+    recorder = Recorder()
+    recorder.drift("d1", "workspace/run.sh")
+    recorder.attempt("a1")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "inconclusive"

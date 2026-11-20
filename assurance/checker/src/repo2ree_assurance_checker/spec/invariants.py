@@ -63,12 +63,26 @@ class ExclusionRequirement(SpecModel):
     in_states: tuple[Name, ...] = Field(min_length=1)
 
 
-type Requirement = EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement
+class NextRequirement(SpecModel):
+    """The first instance of the entity in the trigger's partition that the evidence orders after the trigger, as
+    it reaches one of these states, satisfies the condition."""
+
+    entity: Name
+    reached: tuple[Name, ...] = Field(min_length=1)
+    where: Condition = Field(min_length=1)
+
+    @field_validator("reached", mode="before")
+    @classmethod
+    def _reached(cls, value: object) -> object:
+        return (value,) if isinstance(value, str) else value
+
+
+type Requirement = EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement | NextRequirement
 
 
 class Invariant(SpecModel):
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]*$")]
-    pattern: Literal["requires", "response", "guard", "excludes"]
+    pattern: Literal["requires", "response", "guard", "excludes", "next"]
     summary: str
     when: EntityTrigger | MessageTrigger
     require: Requirement | None = None
@@ -80,13 +94,14 @@ class Invariant(SpecModel):
             "requires": (EntityRequirement, MessageRequirement),
             "guard": (GuardRequirement,),
             "excludes": (ExclusionRequirement,),
+            "next": (NextRequirement,),
             "response": (type(None),),
         }
         if not isinstance(self.require, expected[self.pattern]):
             raise ValueError(f"{self.id}: '{self.pattern}' does not take this 'require'")
         if (self.pattern == "response") != bool(self.eventually):
             raise ValueError(f"{self.id}: only 'response' takes 'eventually'")
-        if self.pattern in {"response", "guard", "excludes"} and not isinstance(self.when, EntityTrigger):
+        if self.pattern in {"response", "guard", "excludes", "next"} and not isinstance(self.when, EntityTrigger):
             raise ValueError(f"{self.id}: '{self.pattern}' takes an entity trigger")
         return self
 
@@ -111,6 +126,10 @@ def check_condition(
             raise ValueError(f"{owner}: {fact}{context} names values its declaration does not list: {unknown}")
 
     if isinstance(condition, dict):
+        if set(condition) == {"has"}:
+            if not isinstance(condition["has"], str) or condition["has"] not in trigger_facts:
+                raise ValueError(f"{owner}: 'has' names {condition['has']!r}, which is not a trigger fact")
+            return
         if set(condition) == {"per", "in"}:
             by, table = condition["per"], condition["in"]
             if not isinstance(by, str) or by not in trigger_facts:
@@ -131,7 +150,7 @@ def check_condition(
         if len(condition) != 1 or next(iter(condition)) not in {"not", "in"}:
             raise ValueError(
                 f"{owner}: a condition is a value, {{not = value}}, {{in = [values]}}, {{group = ...}}, "
-                "or {per = fact, in = {value = [values]}}"
+                "{has = fact}, or {per = fact, in = {value = [values]}}"
             )
         if "in" in condition:
             if not isinstance(condition["in"], list):

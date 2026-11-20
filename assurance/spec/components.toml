@@ -20,3 +20,8 @@ summary = "The service serving a store of REEs: receives commands, starts an exe
 name = "core"
 process = "executor"
 summary = "Domain logic run by `ree`, one process per command the workbench starts: owns the REE and its history."
+
+[[component]]
+name = "environment"
+process = "environment"
+summary = "Whatever acts on an REE from outside ree: a person at its files, a disk, another program, or the testbed standing in for them. It runs ree's commands and changes the files between them."

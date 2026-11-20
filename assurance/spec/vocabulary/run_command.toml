@@ -1,0 +1,30 @@
+# The words for running one of ree's commands from outside the product: a person at a terminal, or the testbed
+# standing in for one.
+#
+# Recorded on the sender's side: the environment journals each command before it runs it, and the exit status it
+# saw. The receiver's evidence is the Attempt core records, which names the command. Its rules are
+# boundaries/run_command.toml.
+
+name = "run_command"
+kind = "boundary"
+sender = "environment"
+receiver = "core"
+key = "attempt_id"
+partition = "ree_id"
+summary = "One ree command the environment ran, and the exit status it saw."
+request = "run_command"
+responses = ["exited"]
+
+[messages]
+run_command = "The command, about to run."
+exited = "The command ended with an exit status."
+
+[facts.run_command]
+run_id = "str"
+
+[facts.exited]
+exit = "int"
+# The commit that captured the attempt the command asked for, or, when capturing it failed, the digest of the record
+# that says so, as the command answered; neither for a command refused before any attempt began.
+commit = "str?"
+record = "str?"
