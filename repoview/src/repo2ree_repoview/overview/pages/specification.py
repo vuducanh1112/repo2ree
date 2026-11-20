@@ -9,6 +9,7 @@ from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.exports import (
     Condition,
     Conditions,
+    EachRequirement,
     EntityRequirement,
     EntitySide,
     EntityTrigger,
@@ -99,6 +100,9 @@ def requirement_text(spec: Spec, invariant: Invariant) -> str:
         case NextRequirement() as following:
             conditions = where(following.where, entity_groups(spec, following.entity)).removeprefix(" where ")
             return f"the first {following.entity} after it, as it reaches {' | '.join(following.reached)}: {conditions}"
+        case EachRequirement() as each:
+            states = " | ".join(each.reached)
+            return f"each of its {each.of} is the {each.fact} of a {each.entity} that reached {states} before it"
         case ExclusionRequirement() as exclusion:
             partition = spec.entities[exclusion.entity].partition
             return f"no {exclusion.entity} in {' | '.join(exclusion.in_states)} with the same {partition}"

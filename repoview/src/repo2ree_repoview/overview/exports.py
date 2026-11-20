@@ -225,8 +225,23 @@ class NextRequirement(Document):
     where: Conditions
 
 
+class EachRequirement(Document):
+    """Each value of a list fact of the trigger is a fact of an entity that reached a state before it."""
+
+    kind: Literal["each"]
+    entity: str
+    reached: tuple[str, ...]
+    fact: str
+    of: str
+
+
 type Requirement = Annotated[
-    EntityRequirement | MessageRequirement | GuardRequirement | ExclusionRequirement | NextRequirement,
+    EntityRequirement
+    | MessageRequirement
+    | GuardRequirement
+    | ExclusionRequirement
+    | NextRequirement
+    | EachRequirement,
     Field(discriminator="kind"),
 ]
 
