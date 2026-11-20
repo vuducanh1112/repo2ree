@@ -959,11 +959,10 @@ def load_evidence(
         if not (root / ".git").is_dir():
             problems.append(f"{root} is not an REE repository")
             continue
-        # An author REE no control plane named is named by the history it was collected under.
+        # An REE no control plane named is named by the history it was collected under, its reviews with it, as a
+        # dossier names them.
         histories.extend(
-            read_git_history(
-                repository, label, git_executable, author=not scope, scope=scope, ree=None if scope else label
-            )
+            read_git_history(repository, label, git_executable, author=not scope, scope=scope, ree=root.name)
             for repository, label, scope in git_repositories(root)
         )
     for directory in stores:

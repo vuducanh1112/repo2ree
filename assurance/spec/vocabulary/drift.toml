@@ -1,5 +1,6 @@
-# The words for an REE's file changing outside ree, between its attempts: an editor saving it, a disk failing,
-# another program writing it. Nothing in the product makes one; whatever acts on the REE from outside does, and
+# The words for an REE changing outside ree, between its attempts: an editor saving one of its files, a disk failing,
+# another program writing it, or git committing to its history, resetting it or rewriting it; in the REE itself or in
+# a review of it. Nothing in the product makes one; whatever acts on the REE from outside does, and
 # records it in its own journal. The product's part is to notice it, which its attempts record (Attempt's
 # drift_found). Its machine is entities/drift.toml.
 
@@ -9,13 +10,14 @@ owner = "environment"
 key = "drift_id"
 partition = "ree_id"
 evidence = "journal"
-summary = "One file of an REE changed, added or removed outside ree."
+summary = "One file of an REE or its reviews changed, added or removed, or one ref of a history moved, outside ree."
 
 [states]
-arisen = "The file is not as the REE's last attempt left it."
+arisen = "The file or ref is not as the REE's last attempt left it."
+undone = "The environment put it back as the REE's last attempt left it."
 
 [facts]
-# The file, by its path from the REE.
+# The file, by its path from the REE: reviews/<id>/... for a review's; .git/<ref> for a ref of a history.
 path = "str"
 
 [facts.part]
@@ -26,3 +28,4 @@ required_in = ["arisen"]
 overlay = "A script as the REE writes it."
 workspace = "The workspace the REE's scripts run in."
 records = "Any other file the REE's history holds."
+history = "A ref of the history: committed to, reset or rewritten."

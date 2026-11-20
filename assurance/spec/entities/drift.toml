@@ -1,8 +1,12 @@
-# The Drift machine: a file drifts once, and stays drifted as far as the environment knows. Its states and facts are
-# declared in vocabulary/drift.toml.
+# The Drift machine: a change outside ree arises, and lasts until the environment puts it back as ree left it, if it
+# ever does. Its states and facts are declared in vocabulary/drift.toml.
 
 name = "Drift"
 initial = "arisen"
-terminal = ["arisen"]
+terminal = ["undone"]
 settles_before_close = false
-transitions = []
+
+[[transitions]]
+from = "arisen"
+to = ["undone"]
+why = "The environment puts back what it changed, such as a history ref where ree left it, as ree's refusal says to."

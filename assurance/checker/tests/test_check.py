@@ -213,6 +213,19 @@ class Recorder:
             facts={"path": path, "part": part},
         )
 
+    def undo(self, key: str, source: str = "environment-000001") -> None:
+        """The environment putting back what drifted, as ree left it."""
+        self._add(
+            source,
+            kind="transition",
+            owner="environment",
+            subject="Drift",
+            key=key,
+            source_state="arisen",
+            target_state="undone",
+            facts={},
+        )
+
     def command(self, key: str, source: str = "environment-000001") -> str:
         """The environment running one of ree's commands; returns its reference, which the attempts it runs cite."""
         facts = {"run_id": "run-1"}
@@ -1183,3 +1196,21 @@ def test_an_attempt_the_evidence_cannot_order_against_a_drift_is_inconclusive() 
     recorder.attempt("a1")
 
     assert verdicts(recorder, environment(), git(REE))[DRIFT] == "inconclusive"
+
+
+def test_a_drift_undone_before_the_next_attempt_owes_it_nothing() -> None:
+    recorder = Recorder()
+    recorder.drift("d1", ".git/refs/heads/ree-history", part="history")
+    recorder.undo("d1")
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "passed"
+
+
+def test_a_drift_undone_only_after_an_attempt_missed_it_is_still_violated() -> None:
+    recorder = Recorder()
+    recorder.drift("d1", ".git/refs/heads/ree-history", part="history")
+    recorder.attempt("a1", dispatched_by=recorder.command("a1"), commit="c-a1")
+    recorder.undo("d1")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "violated"

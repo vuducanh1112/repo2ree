@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:a652f126032da27403c1519144dbea07e2e3a090cfc44bf08ec7651ede9baa0c",
+  "x-vocabulary": "sha256:f17a20ba9c33031923a40e37d864639d173183daf9d5e786339683cd95a92988",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -988,12 +988,14 @@
         "from": {
           "enum": [
             null,
-            "arisen"
+            "arisen",
+            "undone"
           ]
         },
         "to": {
           "enum": [
-            "arisen"
+            "arisen",
+            "undone"
           ]
         },
         "facts": {
@@ -1003,7 +1005,8 @@
               "enum": [
                 "overlay",
                 "workspace",
-                "records"
+                "records",
+                "history"
               ]
             },
             "path": {
@@ -1039,7 +1042,8 @@
                     "enum": [
                       "overlay",
                       "workspace",
-                      "records"
+                      "records",
+                      "history"
                     ]
                   },
                   "path": {
@@ -1057,7 +1061,7 @@
           }
         }
       ],
-      "description": "One file of an REE changed, added or removed outside ree. Evidence: journal."
+      "description": "One file of an REE or its reviews changed, added or removed, or one ref of a history moved, outside ree. Evidence: journal."
     },
     "Execution": {
       "type": "object",

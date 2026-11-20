@@ -65,7 +65,7 @@ class ExclusionRequirement(SpecModel):
 
 class NextRequirement(SpecModel):
     """The first instance of the entity in the trigger's partition that the evidence orders after the trigger, as
-    it reaches one of these states, satisfies the condition."""
+    it reaches one of these states, satisfies the condition, unless the trigger's instance moved on before it."""
 
     entity: Name
     reached: tuple[Name, ...] = Field(min_length=1)

@@ -92,9 +92,9 @@ require = { entity = "Attempt", key_from = "attempt_id", reached = ["captured", 
 
 # ---- REE domain ---------------------------------------------------------------
 
-# Anything can change an REE's files between its attempts: an editor, a disk, another program. The product must
-# notice before it acts on them: the attempt that comes next names every file that drifted, and records it as the
-# script edit it is, or is refused.
+# Anything can change an REE's files between its attempts: an editor, a disk, another program, git. The product must
+# notice before it acts on them: the attempt that comes next, while the drift lasts, names every file or ref that
+# drifted, and records it as the script edit it is, or is refused.
 [[invariant]]
 id = "drift-is-found-by-the-next-attempt"
 pattern = "next"
