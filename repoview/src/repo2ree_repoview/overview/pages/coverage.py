@@ -17,6 +17,7 @@ from repo2ree_repoview.overview.html import Page, esc, in_frame, rule_anchor, se
 from repo2ree_repoview.overview.pages.aggregate import without_machine
 from repo2ree_repoview.overview.pages.gates import evidence_links
 from repo2ree_repoview.overview.pages.operations import anchor, title
+from repo2ree_repoview.overview.pages.showcase_ree import review_anchor
 from repo2ree_repoview.overview.pages.showcase_ree import slug as showcase_ree_slug
 from repo2ree_repoview.overview.receipt import (
     Decision,
@@ -266,8 +267,10 @@ def showcase_section(
             ]
         )
     machine = f" · API on <code>{esc(showcase.environment)}</code>" if showcase.environment else ""
+    page = esc(showcase_ree_slug(showcase.name))
     kind = (
-        f' · <a href="{esc(showcase_ree_slug(showcase.name))}.html">final REE</a>'
+        f' · <a href="{page}.html">final REE</a>'
+        f' · <a href="{page}.html#{esc(review_anchor(showcase.name))}">final review</a>'
         if showcase.kind == "showcase"
         else ' <span class="muted">feature</span>'
     )

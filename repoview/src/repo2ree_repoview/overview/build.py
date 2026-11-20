@@ -32,6 +32,7 @@ from repo2ree_repoview.overview.exports import (
     Contracts,
     Operations,
     ShowcaseRuns,
+    ShowcaseTest,
     Spec,
     VocabularyGraph,
     Zones,
@@ -48,7 +49,7 @@ from repo2ree_repoview.overview.pages.interfaces import INTERFACES, page_api, pa
 from repo2ree_repoview.overview.pages.operations import page_operations
 from repo2ree_repoview.overview.pages.receipts import page_receipts
 from repo2ree_repoview.overview.pages.recipes import page_recipes
-from repo2ree_repoview.overview.pages.showcase_ree import authoring_test, page_showcase_ree
+from repo2ree_repoview.overview.pages.showcase_ree import authoring_test, page_showcase_ree, review_test
 from repo2ree_repoview.overview.pages.specification import page_specification
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.vocabulary_graph import page_vocabulary_graph
@@ -72,6 +73,7 @@ from repo2ree_repoview.overview.receipt import (
     unreached,
 )
 from repo2ree_repoview.overview.showcase_ree import SealedRee, preserved_ree
+from repo2ree_repoview.overview.showcase_review import FinalReview, preserved_review
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
 from repo2ree_repoview.repository import ROOT, Head
 from repo2ree_repoview.stamp import read_recorded_stamp
@@ -137,19 +139,30 @@ def kept(bundle: Bundle, exports: Path, kind: str) -> str:
     return source.read_text(encoding="utf-8")
 
 
+def _preserved(test: ShowcaseTest | None, records: dict[str, RunRecord]) -> tuple[Path, tuple[str, ...]] | None:
+    """Where a test's dossier is kept, and the REEs it preserved; None when this clone has no run of it."""
+    record = records.get(test.run) if test and test.run else None
+    found = next((t for t in record.tests if test and t.name == test.test), None) if record else None
+    if test is None or test.run is None or found is None:
+        return None
+    return ROOT / test.run / found.directory, found.rees
+
+
 def showcase_ree_pages(showcases: ShowcaseRuns, records: dict[str, RunRecord]) -> list[Page]:
-    """A page for each showcase's final REE, read from the copy its authoring test preserved."""
+    """A page for each showcase's final REE and its review, read from the copies its authoring and review tests
+    preserved."""
     pages = []
     for showcase in showcases.showcases:
         if showcase.kind != "showcase":
             continue
-        test = authoring_test(showcase)
+        authoring, reviewing = authoring_test(showcase), review_test(showcase)
         ree: SealedRee | None = None
-        record = records.get(test.run) if test and test.run else None
-        found = next((t for t in record.tests if test and t.name == test.test), None) if record else None
-        if test and test.run and found:
-            ree = preserved_ree(ROOT / test.run / found.directory, found.rees)
-        pages.append(page_showcase_ree(showcase, test, ree))
+        review: FinalReview | None = None
+        if (sealed := _preserved(authoring, records)) is not None:
+            ree = preserved_ree(*sealed)
+        if (reviewed := _preserved(reviewing, records)) is not None:
+            review = preserved_review(*reviewed)
+        pages.append(page_showcase_ree(showcase, authoring, ree, reviewing, review))
     return pages
 
 

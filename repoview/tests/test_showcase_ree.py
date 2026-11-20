@@ -208,7 +208,7 @@ def test_the_page_shows_the_final_scripts_and_what_inference_was_asked(tmp_path:
     ree = preserved_ree(sealed_test(tmp_path), ("abc",))
     test = ShowcaseTest(surface="api", workflow="authoring", file="f.py", tier="showcase-api", run="r", test="f.py::t")
     showcase = Showcase(name="hello", kind="showcase", environment="bare", tests=(test,))
-    page = page_showcase_ree(showcase, test, ree)
+    page = page_showcase_ree(showcase, test, ree, None, None)
     assert page.slug == "showcase-ree-hello"
     assert "root-pip-requirements-v1" in page.body
     assert "inference not asked" in page.body
@@ -224,4 +224,4 @@ def test_the_page_shows_the_final_scripts_and_what_inference_was_asked(tmp_path:
     assert '<summary>ree.json<span class="meta">2 B · Git</span></summary><pre class="code">{}</pre>' in page.body
     assert '<li>snapshot.tar.gz<span class="meta">4.1 kB · <span class="lfs">LFS</span></span></li>' in page.body
     assert "1 operation(s) followed the seal" in page.body
-    assert "no run of its API authoring test" in page_showcase_ree(showcase, None, None).body
+    assert "no run of its API authoring test" in page_showcase_ree(showcase, None, None, None, None).body

@@ -1,4 +1,5 @@
-"""One showcase's final REE: what its authoring test sealed, and how inference stands in it."""
+"""One showcase's final REE and its review: what its authoring test sealed, how inference stands in it, and what
+its review test's reviewer found."""
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from repo2ree_repoview.overview.drawing import decision_svg
 from repo2ree_repoview.overview.exports import Showcase, ShowcaseTest
 from repo2ree_repoview.overview.html import Page, esc, section, table
 from repo2ree_repoview.overview.showcase_ree import OVERLAY, Entry, Script, SealedRee, TargetResult, Written
+from repo2ree_repoview.overview.showcase_review import Basis, FinalReview, PackageDelta, ReviewStatus, Verdict
 
 WRITTEN: dict[Written, tuple[str, str]] = {
     "inferred": ("ok", "as inferred"),
@@ -18,17 +20,44 @@ WRITTEN: dict[Written, tuple[str, str]] = {
     "not_asked": ("no", "inference not asked"),
 }
 STATUS_TONE = {"complete": "ok", "needs_input": "ex", "not_inferred": "no"}
+VERDICT_TONE: dict[Verdict, str] = {
+    "identical": "ok",
+    "equivalent": "ok",
+    "reproduced": "ok",
+    "passed": "ok",
+    "inconclusive": "ex",
+    "different": "no",
+    "failed": "no",
+}
+REVIEW_TONE: dict[ReviewStatus, str] = {"completed": "ok", "running": "ex", "canceled": "ex", "failed": "no"}
+BASIS: dict[Basis, str] = {
+    "bundled": "against what the REE carries",
+    "independent": "rebuilt from the recorded origin and recipe",
+}
 
 
 def slug(name: str) -> str:
     return f"showcase-ree-{name}"
 
 
+def review_anchor(name: str) -> str:
+    return f"showcase-review-{name}"
+
+
+def _api_test(showcase: Showcase, workflow: str) -> ShowcaseTest | None:
+    return next(
+        (t for t in showcase.tests if t.surface == "api" and t.workflow == workflow and t.test is not None), None
+    )
+
+
 def authoring_test(showcase: Showcase) -> ShowcaseTest | None:
     """The API authoring test whose REE the page shows."""
-    return next(
-        (t for t in showcase.tests if t.surface == "api" and t.workflow == "authoring" and t.test is not None), None
-    )
+    return _api_test(showcase, "authoring")
+
+
+def review_test(showcase: Showcase) -> ShowcaseTest | None:
+    """The API review test whose review the page shows."""
+    return _api_test(showcase, "review")
 
 
 def badge(written: Written) -> str:
@@ -230,7 +259,169 @@ def ree_body(ree: SealedRee, test: ShowcaseTest) -> str:
     )
 
 
-def page_showcase_ree(showcase: Showcase, test: ShowcaseTest | None, ree: SealedRee | None) -> Page:
+def verdict(value: Verdict) -> str:
+    return f'<span class="{VERDICT_TONE[value]}">{esc(value)}</span>'
+
+
+def basis(value: Basis) -> str:
+    return f'{esc(value)}<br><span class="muted">{esc(BASIS[value])}</span>'
+
+
+def digests(expected: str | None, observed: str | None) -> str:
+    if expected == observed:
+        return f'<code>{esc(observed or "—")}</code> <span class="muted">expected and observed</span>'
+    return (
+        f'<span class="muted">expected</span> <code>{esc(expected or "—")}</code><br>'
+        f'<span class="muted">observed</span> <code>{esc(observed or "—")}</code>'
+    )
+
+
+def verdict_rows(review: FinalReview) -> list[list[str]]:
+    report = review.report
+    rows = []
+    if (source := report.source_comparison) is not None:
+        rows.append(
+            [
+                "source",
+                verdict(source.verdict),
+                basis(source.basis),
+                digests(source.expected_swhid, source.observed_swhid),
+            ]
+        )
+    if (environment := report.experiment_environment_comparison) is not None:
+        packages = (
+            f"{environment.matched} matched, {environment.missing_count} missing, {environment.extra_count} extra, "
+            f"{environment.version_mismatch_count} versions differ"
+            f'<br><span class="muted">{environment.expected_package_total} packages expected, '
+            f"{environment.observed_package_total} observed, {environment.advisory_count} advisory</span><br>"
+        )
+        rows.append(
+            [
+                "experiment environment",
+                verdict(environment.verdict),
+                basis(environment.basis),
+                packages + digests(environment.expected_artifact_digest, environment.observed_artifact_digest),
+            ]
+        )
+    if (activation := report.activation_outcome) is not None:
+        exit_code = "—" if activation.exit_code is None else str(activation.exit_code)
+        rows.append(["activation", verdict(activation.verdict), basis(activation.basis), f"exit code {esc(exit_code)}"])
+    for experiment in report.experiment_comparisons:
+        check = (
+            f"<code>{esc(experiment.verify_script_path)}</code> exited "
+            f"{esc(experiment.observed_verify_exit_code)}, the author's "
+            f"{esc(experiment.expected_verify_exit_code)}<br>"
+        )
+        rows.append(
+            [
+                f"experiment <code>{esc(experiment.experiment_name)}</code>",
+                verdict(experiment.verdict),
+                basis(experiment.basis),
+                check + digests(experiment.expected_output_digest, experiment.observed_output_digest),
+            ]
+        )
+    return rows
+
+
+def package_rows(deltas: tuple[PackageDelta, ...]) -> list[list[str]]:
+    return [
+        [
+            esc(delta.ecosystem),
+            f"<code>{esc(delta.name)}</code>",
+            esc(delta.expected_version or "—"),
+            esc(delta.observed_version or "—"),
+        ]
+        for delta in deltas
+    ]
+
+
+def package_details(review: FinalReview) -> str:
+    environment = review.report.experiment_environment_comparison
+    if environment is None:
+        return ""
+    parts = [
+        (label, deltas)
+        for label, deltas in (
+            ("missing", environment.missing),
+            ("extra", environment.extra),
+            ("versions differ", environment.version_mismatches),
+        )
+        if deltas
+    ]
+    return "".join(
+        f"<details><summary>Packages {esc(label)}: {len(deltas)}</summary>"
+        + table(["Ecosystem", "Package", "Expected", "Observed"], package_rows(deltas))
+        + "</details>"
+        for label, deltas in parts
+    )
+
+
+def review_body(review: FinalReview, test: ShowcaseTest) -> str:
+    report = review.report
+    status = f'<span class="{REVIEW_TONE[report.status]}">{esc(report.status)}</span>'
+    signed = '<span class="ok">signed</span>' if review.signed else '<span class="muted">not signed</span>'
+    cards = [
+        ("Test", f"<code>{esc(test.test or '')}</code>"),
+        ("Run", f"<code>{esc(test.run or '')}</code>"),
+        ("Review", f"<code>{esc(report.review_id)}</code><br>{status} · {signed}"),
+        (
+            "Reviewed",
+            f"<code>{esc(report.subject.name)}</code><br><code>{esc(report.subject.ree_digest or '—')}</code>",
+        ),
+        ("Machine", f"{esc(report.machine.system)} {esc(report.machine.architecture)}"),
+        ("Opened", f"{esc(report.created_at)}<br>updated {esc(report.updated_at)}"),
+    ]
+    steps = "".join(
+        f"<li><code>{esc(step.step)}</code> "
+        f'<span class="{REVIEW_TONE[step.status]}">{esc(step.status)}</span>'
+        + (f" {esc(step.failure)}" if step.failure else "")
+        + "</li>"
+        for step in report.steps
+    )
+    failure = f'<p class="no">{esc(report.failure)}</p>' if report.failure else ""
+    rows = verdict_rows(review)
+    return (
+        '<div class="cards">'
+        + "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
+        + "</div>"
+        + failure
+        + "<h3>Verdicts</h3>"
+        + (
+            table(["Part", "Verdict", "Basis", "Evidence"], rows)
+            if rows
+            else '<p class="muted">The review reached no verdict.</p>'
+        )
+        + package_details(review)
+        + "<h3>Steps</h3>"
+        + (f"<ol>{steps}</ol>" if steps else '<p class="muted">The review took no step.</p>')
+        + f'<p class="muted">Read from <code>{esc(source_name(review.source))}</code> at '
+        f"<code>{esc(review.commit)}</code>.</p>"
+    )
+
+
+def review_section(showcase: Showcase, test: ShowcaseTest | None, review: FinalReview | None) -> str:
+    title = "Final review"
+    lede = (
+        f"The review the {esc(showcase.name)} showcase's review test left, as its own history holds it at its last "
+        "commit: a reviewer's verdict on each part of a sealed REE. A bundled basis checks against what the REE "
+        "carries; an independent one rebuilds from the recorded origin and recipe."
+    )
+    if test is None:
+        body = '<p class="muted">This clone has no run of its API review test.</p>'
+    elif review is None:
+        body = '<p class="no">Its review test preserved no review.</p>'
+    else:
+        body = review_body(review, test)
+    return section(review_anchor(showcase.name), title, lede, body)
+
+
+def page_showcase_ree(
+    showcase: Showcase,
+    test: ShowcaseTest | None,
+    ree: SealedRee | None,
+    reviewing: ShowcaseTest | None,
+    review: FinalReview | None,
+) -> Page:
     title = f"{showcase.name} REE"
     lede = (
         f'The REE the <a href="showcase-gate.html#showcase-{esc(showcase.name)}">{esc(showcase.name)}</a> showcase\'s '
@@ -245,5 +436,10 @@ def page_showcase_ree(showcase: Showcase, test: ShowcaseTest | None, ree: Sealed
         body = '<p class="no">Its authoring test preserved no sealed REE.</p>'
     else:
         body = ree_body(ree, test)
-    teaser = f"What {showcase.name}'s authoring test sealed"
-    return Page(slug(showcase.name), title, teaser, section(slug(showcase.name), title, lede, body))
+    teaser = f"What {showcase.name}'s authoring test sealed, and what its reviewer found"
+    return Page(
+        slug(showcase.name),
+        title,
+        teaser,
+        section(slug(showcase.name), title, lede, body) + review_section(showcase, reviewing, review),
+    )
