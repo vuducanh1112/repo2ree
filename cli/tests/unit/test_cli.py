@@ -411,6 +411,36 @@ def test_an_archive_is_staged_and_acquired_as_an_upload(initialized: Path, tmp_p
     assert ReeDirectory(layout).read_ree().subject.definition.source is not None
 
 
+def test_a_person_reads_what_a_step_found_and_the_result_file_keeps_it_whole(initialized: Path, tmp_path: Path) -> None:
+    source = tmp_path / "project"
+    source.mkdir()
+    (source / "requirements.txt").write_text("numpy==1.26.4\n")
+    archive = tmp_path / "project.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        tar.add(source, arcname=".")
+    assert ree(initialized, "acquire-source", "--archive", str(archive)).exit_code == 0
+    written = tmp_path / "result.json"
+
+    result = ree(initialized, "--result-file", str(written), "evaluate-reproducibility")
+
+    assert result.exit_code == 0, result.output
+    assert "{" not in result.stdout
+    assert "dependencies  Pinned: 1 in 1 manifest; 1 pinned" in result.stdout
+    assert "  medium  No lockfile: Use a lockfile" in result.stdout
+    assert "detail" not in result.stdout
+    kept = ActionResult.model_validate_json(written.read_text())
+    assert kept.status == "succeeded"
+    assert kept.outputs["report"]["threats"]
+
+
+def test_a_person_reads_the_hardware_one_device_a_line(initialized: Path) -> None:
+    result = ree(initialized, "observe-hardware")
+
+    assert result.exit_code == 0, result.output
+    assert result.stdout.startswith("cpu      ")
+    assert "extra_info" not in result.stdout
+
+
 def test_a_script_edited_in_place_is_picked_up_before_the_next_command(initialized: Path) -> None:
     layout = ReeLayout(root=initialized)
     layout.overlay_file(BUILD_SCRIPT).write_text("echo edited in my editor\n")

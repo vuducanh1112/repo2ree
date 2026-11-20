@@ -114,8 +114,10 @@ def machine_exec(
     container: str,
     command_on_machine: Sequence[str],
     variables: Mapping[str, str] | None = None,
+    workdir: Path | None = None,
 ) -> list[str]:
-    """The command that runs ``command_on_machine`` on a running machine, as the user who logs in to it.
+    """The command that runs ``command_on_machine`` on a running machine, as the user who logs in to it, in
+    ``workdir`` where one is named.
 
     With the machine's own environment: its PATH, the workbench's tools and ``ree``, and ``variables`` beside it. A
     machine whose services start as root has its user's home and runtime directory, as its entrypoint gives the
@@ -127,4 +129,6 @@ def machine_exec(
         command += ["--env", "HOME=/home/researcher", "--env", f"XDG_RUNTIME_DIR=/run/user/{uid}"]
     for name, value in (variables or {}).items():
         command += ["--env", f"{name}={value}"]
+    if workdir is not None:
+        command += ["--workdir", str(workdir)]
     return [*command, container, *command_on_machine]

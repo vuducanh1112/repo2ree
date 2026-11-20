@@ -1,8 +1,9 @@
 """A CLI test's session as a terminal recording: each ``ree`` command at a prompt, then what it printed, when.
 
 The CLI showcase client appends every command to ``<test>/artifacts/cli-session.cast`` (asciicast v2) beside the
-session; ``asciinema play`` plays it back with idle time cut to ``IDLE_SECONDS``. The bytes are those the command
-printed, stdout and stderr as they arrived; ``ree`` prints the same with or without a terminal.
+session; ``asciinema play`` plays it back with idle time cut to ``IDLE_SECONDS``. Each prompt names the directory the
+command ran in. The bytes are those the command printed, stdout and stderr as they arrived; ``ree`` prints the same
+with or without a terminal.
 """
 
 from __future__ import annotations
@@ -52,12 +53,13 @@ def cast_file() -> Path | None:
     return Path(directory) / "artifacts" / CAST if directory else None
 
 
-def prompt(command: Sequence[str], stdin_bytes: int) -> str:
-    """The command as typed, with what it read on stdin noted beside it."""
+def prompt(command: Sequence[str], stdin_bytes: int, where: str | None = None) -> str:
+    """The command as typed in ``where``, with what it read on stdin noted beside it."""
     typed = shlex.join(command)
     if stdin_bytes:
         typed += f"  # {stdin_bytes} bytes on stdin"
-    return f"\x1b[1m$ {typed}\x1b[0m\r\n"
+    directory = f"\x1b[36m{where}\x1b[0m " if where else ""
+    return f"{directory}\x1b[1m$ {typed}\x1b[0m\r\n"
 
 
 def _terminal(text: str) -> str:
@@ -91,6 +93,7 @@ def append_command(
     path: Path,
     command: Sequence[str],
     *,
+    where: str | None = None,
     stdin_bytes: int,
     started: float,
     finished: float,
@@ -111,7 +114,7 @@ def append_command(
         arrived.append((chunks[-1].at, f"\x1b[2m[{size} bytes on {stream}, not text]\x1b[0m\n"))
     arrived.sort(key=lambda event: event[0])
     remainder = [(finished, decoder.decode(b"", final=True)) for decoder in decoders.values()]
-    events = [(started, prompt(command, stdin_bytes))]
+    events = [(started, prompt(command, stdin_bytes, where))]
     events += [(at, _terminal(text)) for at, text in (*arrived, *remainder) if text]
     if len(events) > 1 and not events[-1][1].endswith("\n"):
         events.append((finished, "\r\n"))

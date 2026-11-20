@@ -14,7 +14,25 @@ from repo2ree_protocol.catalog import ReeStepKey, ReeSteps, ReservedScriptTempla
 from repo2ree_protocol.document import ReeStatusReport, WorkbenchReeDocument
 from repo2ree_protocol.history import OperationHistory
 from repo2ree_protocol.inference import InferenceReport, TargetInferenceResult
+from repo2ree_protocol.outputs import (
+    AcquireSourceOutputs,
+    BuildExperimentEnvironmentOutputs,
+    CrossCheckSbomOutputs,
+    EvaluateOutputs,
+    GenerateSbomOutputs,
+    LoadReeBundleOutputs,
+    ObserveHardwareOutputs,
+    PatchReeDefinitionOutputs,
+    RunnableOperationOutputs,
+    SealOutputs,
+    SignOutputs,
+    SignReviewOutputs,
+)
+from repo2ree_ree.hbom import HBOM
+from repo2ree_ree.receipt import ReceiptEnvelope
+from repo2ree_ree.reproducibility import ReproducibilityReport, SbomCrossCheckSummary, Severity
 from repo2ree_ree.review import ReviewRecord, ReviewSet
+from repo2ree_ree.verification import SignatureVerifications
 
 _MARKS = {"complete": "✓", "ready": "·", "blocked": "✗"}
 _EVIDENCE = {"current": "current", "stale": "STALE", "missing": "missing", "not_applicable": "n/a"}
@@ -212,6 +230,152 @@ def _inferred(result: TargetInferenceResult, current: str | None) -> str:
             )
             lines += [f"  {line}" for line in diff]
     return "\n".join(lines)
+
+
+def acquired(outputs: AcquireSourceOutputs) -> str:
+    origin = outputs.origin_url or outputs.archive_name or "an uploaded archive"
+    return f"source: {outputs.source_type} from {origin}\n  {outputs.swhid or outputs.snapshot_digest}"
+
+
+def patched(outputs: PatchReeDefinitionOutputs) -> str:
+    return f"revision {outputs.revision}"
+
+
+def evaluation(outputs: EvaluateOutputs) -> str:
+    report = ReproducibilityReport.model_validate(outputs.report)
+    summary = report.dependency_summary
+    lines = [
+        (
+            f"dependencies  {report.dependency_level.label}: {summary.total} in "
+            f"{_plural(summary.manifests, 'manifest')}"
+            f"; {summary.pinned} pinned, {summary.ranged} ranged, {summary.unpinned} unpinned, {summary.locked} locked"
+        ),
+        f"environment   {report.environment_level.label}",
+        f"machine       {report.machine_level.label}",
+    ]
+    if report.sbom_cross_check is not None:
+        lines.append(f"sbom          {_cross_checked(report.sbom_cross_check)}")
+    threats = sorted(report.threats, key=lambda threat: list(Severity).index(threat.severity))
+    lines += ["", _plural(len(threats), "threat") if threats else "no threats"]
+    lines += [f"  {threat.severity:<6}  {threat.title}: {threat.remediation}" for threat in threats]
+    return "\n".join(lines)
+
+
+def hardware(outputs: ObserveHardwareOutputs) -> str:
+    observed = HBOM.model_validate(outputs.observation)
+    lines = [
+        *(
+            f"cpu      {_count(cpu.quantity)}{name} ({cpu.architecture}, {_plural(cpu.cores_per_cpu, 'core')}, "
+            f"{_plural(cpu.threads_per_core, 'thread')} per core)"
+            for name, cpu in observed.cpus.items()
+        ),
+        *(f"gpu      {_count(gpu.quantity)}{name} ({_size(gpu.memory_bytes)})" for name, gpu in observed.gpus.items()),
+        *(
+            f"memory   {_count(memory.quantity)}{name} ({_size(memory.capacity_bytes)} {memory.memory_type})"
+            for name, memory in observed.memory.items()
+        ),
+        *(
+            f"storage  {_count(disk.quantity)}{name} ({_size(disk.capacity_bytes)} {disk.storage_type})"
+            for name, disk in observed.storage.items()
+        ),
+        *(
+            f"network  {_count(link.quantity)}{name} ({link.bandwidth_mbps} Mbps {link.network_type})"
+            for name, link in observed.network.items()
+        ),
+    ]
+    return "\n".join(lines) or "no hardware observed"
+
+
+def ran(outputs: RunnableOperationOutputs) -> str:
+    parts = []
+    if outputs.exit_code is not None:
+        parts.append(f"exit {outputs.exit_code}")
+    if outputs.verify_exit_code is not None:
+        parts.append(f"verify exit {outputs.verify_exit_code}")
+    if outputs.verdict is not None:
+        parts.append(outputs.verdict)
+    return f"{outputs.subject_name}: {', '.join(parts) or 'ran'}{_took(outputs.receipt)}"
+
+
+def built(outputs: BuildExperimentEnvironmentOutputs) -> str:
+    receipt = outputs.receipt
+    return (
+        f"built {receipt.artifact_path}{_took(receipt)}\n  {receipt.produced_artifact_digest}\n"
+        f"  workspace {receipt.workspace_drift.status}"
+    )
+
+
+def sbom(outputs: GenerateSbomOutputs) -> str:
+    return (
+        f"wrote {outputs.sbom_relative_path} ({outputs.format}) of {outputs.experiment_environment_relative_path}"
+        f"{_took(outputs.receipt)}"
+    )
+
+
+def cross_checked(outputs: CrossCheckSbomOutputs) -> str:
+    receipt = outputs.receipt
+    return (
+        f"{receipt.observed_matched} of {receipt.declared_direct_total} declared dependencies found in the sbom, "
+        f"{receipt.version_mismatches} at another version\n"
+        f"{receipt.undeclared_same_ecosystem} undeclared of {receipt.observed_total} packages observed"
+    )
+
+
+def _cross_checked(summary: SbomCrossCheckSummary) -> str:
+    return (
+        f"{summary.observed_matched} of {summary.declared_direct_total} declared found, "
+        f"{summary.version_mismatches} at another version, {summary.undeclared_same_ecosystem} undeclared"
+    )
+
+
+def sealed(outputs: SealOutputs) -> str:
+    return f"sealed {outputs.ree_digest}\n  {outputs.entry_count} entries, {_size(outputs.input_bytes)}"
+
+
+def signed(outputs: SignOutputs | SignReviewOutputs) -> str:
+    what = f"review {outputs.review_id}" if isinstance(outputs, SignReviewOutputs) else outputs.claim
+    return f"signed {what} of {outputs.ree_digest}\n  {outputs.path}"
+
+
+def loaded(outputs: LoadReeBundleOutputs) -> str:
+    bundle = outputs.loaded
+    state = f"sealed {bundle.ree_digest}" if bundle.sealed else "a draft"
+    source = "source restored" if bundle.source_restored else "no source"
+    return (
+        f"loaded {bundle.name} from {outputs.archive_name}: {state}\n"
+        f"  {source}, {bundle.overlay_files} script files, {bundle.artifact_files} artifacts"
+    )
+
+
+def verifications(report: SignatureVerifications) -> str:
+    subject = f"review {report.review_id} of {report.ree_digest}" if report.review_id else report.ree_digest
+    lines = [f"signatures of {subject}"]
+    for item in report.signatures:
+        signer = f"  {item.signer.identity} ({item.signer.issuer})" if item.signer else ""
+        logged = f", logged {item.logged_at}" if item.logged_at else ""
+        lines.append(f"  {item.outcome:<14} {item.path}{signer}{logged}")
+        if item.reason:
+            lines.append(f"  {'':<14} {item.reason}")
+    return "\n".join(lines)
+
+
+def _plural(count: int, word: str) -> str:
+    return f"{count} {word}{'' if count == 1 else 's'}"
+
+
+def _count(quantity: int) -> str:
+    return f"{quantity}x " if quantity != 1 else ""
+
+
+def _size(size: int) -> str:
+    for unit, scale in (("GiB", 1 << 30), ("MiB", 1 << 20), ("KiB", 1 << 10)):
+        if size >= scale:
+            return f"{size / scale:.1f} {unit}"
+    return f"{size} bytes"
+
+
+def _took(receipt: ReceiptEnvelope | None) -> str:
+    return f" in {receipt.duration_ms / 1000:.1f}s" if receipt is not None else ""
 
 
 def outputs(value: Any, indent: int = 0) -> str:

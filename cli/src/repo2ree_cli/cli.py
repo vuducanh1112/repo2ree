@@ -81,7 +81,26 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.history import OperationHistory
 from repo2ree_protocol.inference import InferenceReport
 from repo2ree_protocol.machine import MachineFacts
-from repo2ree_protocol.outputs import OUTPUTS
+from repo2ree_protocol.outputs import (
+    OUTPUTS,
+    AcquireSourceOutputs,
+    BuildExperimentEnvironmentOutputs,
+    CrossCheckSbomOutputs,
+    EvaluateOutputs,
+    GenerateSbomOutputs,
+    LoadReeBundleOutputs,
+    ObserveHardwareOutputs,
+    PatchReeDefinitionOutputs,
+    ReviewAcquireSourceOutputs,
+    ReviewActivateExperimentEnvironmentOutputs,
+    ReviewBuildExperimentEnvironmentOutputs,
+    ReviewRunExperimentOutputs,
+    RunnableOperationOutputs,
+    SealOutputs,
+    SignOutputs,
+    SignReviewOutputs,
+    outputs_of,
+)
 from repo2ree_protocol.queries import (
     REPLIES,
     BundleQuery,
@@ -146,6 +165,7 @@ class Invocation:
     machine: bool
     run_id: str | None
     context: ExecutionContext | None
+    result_file: Path | None = None
 
     def layout(self) -> ReeLayout:
         """The REE at ``-C`` or, without it, the nearest one at or above the current directory."""
@@ -221,6 +241,8 @@ def finish(
     ``ran`` says a command ran, whose outcome a person is told on stderr beside its outputs.
     """
     record_invocation_result(result)
+    if invocation.result_file is not None:
+        invocation.result_file.write_text(result.model_dump_json() + "\n", encoding="utf-8")
     if invocation.machine:
         click.echo(result.model_dump_json())
     else:
@@ -323,8 +345,22 @@ _EPILOG = "\b\nExit status:\n" + "\n".join(f"  {code:>3}  {meaning}" for code, m
 )
 @click.option("--run-id", default=None, hidden=True, help="The run's id, which names its log in runs/.")
 @click.option("--context", default=None, hidden=True, help="The run's invocation identity, as JSON.")
+@click.option(
+    "--result-file",
+    type=click.Path(dir_okay=False, writable=True, path_type=Path),
+    default=None,
+    hidden=True,
+    help="Also write the result, as --json prints it, to this file.",
+)
 @click.pass_context
-def cli(ctx: click.Context, ree: Path | None, machine: bool, run_id: str | None, context: str | None) -> None:
+def cli(
+    ctx: click.Context,
+    ree: Path | None,
+    machine: bool,
+    run_id: str | None,
+    context: str | None,
+    result_file: Path | None,
+) -> None:
     """repo2ree: author, run, seal and review reproducible execution environments (REEs).
 
     Start with `ree initialize-ree`, then `ree status` says where the REE stands and what to run next.
@@ -334,6 +370,7 @@ def cli(ctx: click.Context, ree: Path | None, machine: bool, run_id: str | None,
         machine=machine,
         run_id=run_id,
         context=ExecutionContext.model_validate_json(context) if context else None,
+        result_file=result_file,
     )
 
 
@@ -385,14 +422,63 @@ def _run_verb(
 
 
 def _run_and_finish(invocation: Invocation, words: tuple[str, ...], cmd: Command, layout: ReeLayout) -> NoReturn:
-    finish(invocation, " ".join(words), invocation.run(cmd, layout), render_with=_RENDERS.get(type(cmd)), ran=True)
+    result = invocation.run(cmd, layout)
+    finish(
+        invocation,
+        " ".join(words),
+        result,
+        render_with=lambda _outputs: _shown(outputs_of(str(cmd.operation), result), layout),
+        ran=True,
+    )
 
 
-# What a person is shown of a command's outputs where all of them would be too much.
-_RENDERS: dict[type[BaseModel], Callable[[dict[str, Any]], str]] = {
-    AcquireSourceCommand: lambda outputs: f"source: {outputs.get('source_type')}, {outputs.get('swhid')}",
-    PatchReeDefinitionCommand: lambda outputs: f"revision {outputs.get('revision')}",
-}
+type _ReviewStepOutputs = (
+    ReviewAcquireSourceOutputs
+    | ReviewBuildExperimentEnvironmentOutputs
+    | ReviewActivateExperimentEnvironmentOutputs
+    | ReviewRunExperimentOutputs
+)
+
+
+def _shown(outputs: BaseModel, layout: ReeLayout) -> str:
+    """What a person is shown of a command's outputs: what it found, not every receipt and digest it recorded."""
+    match outputs:
+        case (
+            ReviewAcquireSourceOutputs()
+            | ReviewBuildExperimentEnvironmentOutputs()
+            | ReviewActivateExperimentEnvironmentOutputs()
+            | ReviewRunExperimentOutputs()
+        ):
+            return _review_shown(outputs, layout)
+        case AcquireSourceOutputs():
+            return render.acquired(outputs)
+        case PatchReeDefinitionOutputs():
+            return render.patched(outputs)
+        case EvaluateOutputs():
+            return render.evaluation(outputs)
+        case ObserveHardwareOutputs():
+            return render.hardware(outputs)
+        case RunnableOperationOutputs():
+            return render.ran(outputs)
+        case BuildExperimentEnvironmentOutputs():
+            return render.built(outputs)
+        case GenerateSbomOutputs():
+            return render.sbom(outputs)
+        case CrossCheckSbomOutputs():
+            return render.cross_checked(outputs)
+        case SealOutputs():
+            return render.sealed(outputs)
+        case SignOutputs() | SignReviewOutputs():
+            return render.signed(outputs)
+        case LoadReeBundleOutputs():
+            return render.loaded(outputs)
+    return render.outputs(outputs.model_dump(mode="json"))
+
+
+def _review_shown(outputs: _ReviewStepOutputs, layout: ReeLayout) -> str:
+    """The review as the step left it: each comparison so far."""
+    record = next((item for item in load_reviews(layout).reviews if item.review_id == outputs.review_id), None)
+    return render.review(record) if record is not None else outputs.review_id
 
 
 def _acquire_source(
@@ -1191,7 +1277,7 @@ def verify_signatures_cmd(
             else "; ".join(f"{item.path} is {item.outcome}: {item.reason}" for item in unverified)
         )
         finish(invocation, words, ActionResult.failed("validation", message, origin="executor", outputs=outputs))
-    answer(invocation, words, report)
+    answer(invocation, words, report, render_with=lambda _outputs: render.verifications(report))
 
 
 def _claim_named(name: str) -> VerifiedClaim | None:

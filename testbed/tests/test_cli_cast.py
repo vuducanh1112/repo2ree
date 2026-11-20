@@ -33,6 +33,15 @@ def test_a_command_is_its_prompt_then_its_output_when_it_arrived(tmp_path: Path)
     ]
 
 
+def test_a_prompt_names_the_directory_the_command_ran_in(tmp_path: Path) -> None:
+    cast = tmp_path / "cli-session.cast"
+    append_command(
+        cast, ("ree", "status"), where="demo-1a2b", stdin_bytes=0, started=1000.0, finished=1000.5, printed=()
+    )
+    _, events = recorded(cast)
+    assert events[0][2] == "\x1b[36mdemo-1a2b\x1b[0m \x1b[1m$ ree status\x1b[0m\r\n"
+
+
 def test_later_commands_keep_the_recordings_start(tmp_path: Path) -> None:
     cast = tmp_path / "cli-session.cast"
     append_command(cast, ("ree", "status"), stdin_bytes=0, started=1000.0, finished=1001.0, printed=())

@@ -62,9 +62,8 @@ class Machine:
         )
 
     def ree(self, root: Path, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None) -> Done:
-        command = machine_exec(
-            ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
-        )
+        """Run ``ree`` in the REE's directory ``root``, as a person in it types it."""
+        command = machine_exec(ENVIRONMENTS[self.environment], self.container, ["ree", *words], variables, root)
         printed: list[Printed] = []
         arrived = threading.Lock()
 

@@ -1,9 +1,10 @@
 """The showcases' steps through ``ree``, run on the test's machine as the user who logs in to it.
 
 The stack under a CLI showcase starts its store's machine as for any showcase; this client works beside the
-workbench there, never through it: each step is a ``ree`` command on that machine, against an REE in a directory
-the machine and this process share. What a step printed is its log, and its result is the one line ``--json``
-writes. ``ree`` runs an REE's scripts on the machine it runs on.
+workbench there, never through it: each step is a ``ree`` command on that machine, typed in the REE's directory,
+which the machine and this process share. A step prints what a person reads, which the recording keeps; its result,
+as ``--json`` would print it, goes to a file beside, where this client reads it. ``ree`` runs an REE's scripts on the
+machine it runs on.
 """
 
 from __future__ import annotations
@@ -58,7 +59,7 @@ class CliError(AssertionError):
 
 
 class Result(BaseModel):
-    """The one line ``ree --json`` prints: how the command ended and what it found."""
+    """What ``ree --result-file`` writes: how the command ended and what it found."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -84,18 +85,25 @@ class CliClient:
     def root(self, ree_id: str) -> Path:
         return self.machine.workdir / ree_id
 
+    def _here(self, ree_id: str, path: Path) -> str:
+        """``path`` as typed in the REE's directory."""
+        return os.path.relpath(path, self.root(ree_id))
+
     # ---- running ree ----------------------------------------------------------
 
     def _result(
         self, ree_id: str, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None
     ) -> tuple[str, Result]:
-        """Run one command of the REE's and keep what it logged; its run and its one result line."""
+        """Run one command of the REE's and keep what it logged; its run and the result it wrote."""
         run_id = f"cli-{uuid4().hex[:12]}"
-        done = self._ree(ree_id, ("--json", "--run-id", run_id, *words), stdin, run_id, variables)
+        written = self.machine.workdir / "results" / f"{run_id}.json"
+        written.parent.mkdir(parents=True, exist_ok=True)
+        plumbing = ("--run-id", run_id, "--result-file", self._here(ree_id, written))
+        done = self._ree(ree_id, words, stdin, run_id, variables, plumbing=plumbing, result=written)
         self._logs[run_id] = _lines(done.stderr)
         try:
-            return run_id, Result.model_validate_json(done.stdout.decode().strip().splitlines()[-1])
-        except (IndexError, ValueError) as exc:
+            return run_id, Result.model_validate_json(written.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
             raise CliError(f"ree {' '.join(words)} wrote no result (exit {done.status}):\n{done.stderr}") from exc
 
     def _step(
@@ -117,25 +125,32 @@ class CliClient:
         stdin: bytes | None = None,
         run_id: str | None = None,
         variables: dict[str, str] | None = None,
+        *,
+        plumbing: tuple[str, ...] = (),
+        result: Path | None = None,
     ) -> Done:
-        """Run one ``ree`` command against the REE, and add it to the test's session as it was typed and answered."""
+        """Run one ``ree`` command in the REE's directory, and add it to the test's session and recording as a person
+        types it: ``plumbing``, the options that name its run and its result file, is left out of both."""
         started = time.time()
-        done = self.machine.ree(self.root(ree_id), *words, stdin=stdin, variables=variables)
+        done = self.machine.ree(self.root(ree_id), *plumbing, *words, stdin=stdin, variables=variables)
         if self.session is not None:
-            printed = done.stdout.decode(errors="replace").strip().splitlines()
-            result, result_bytes = kept_result(printed[-1]) if "--json" in words and printed else (None, 0)
+            kept, result_bytes = (
+                kept_result(result.read_text(encoding="utf-8").strip())
+                if result is not None and result.is_file()
+                else (None, 0)
+            )
             text, stdin_bytes = kept_stdin(stdin)
             command = CliCommand(
                 ree=ree_id,
-                words=tuple(word for word in words if word != "--json" and word != "--run-id" and word != run_id),
+                words=words,
                 run_id=run_id,
                 stdin=text,
                 stdin_bytes=stdin_bytes,
                 exit=done.status,
-                result=result,
+                result=kept,
                 result_bytes=result_bytes,
-                stdout_bytes=0 if result is not None else len(done.stdout),
-                log=tuple(_log(done.stderr)[-LOG_LINES:]),
+                stdout_bytes=len(done.stdout),
+                log=tuple(done.stderr.splitlines()[-LOG_LINES:]),
                 started=started,
                 finished=time.time(),
             )
@@ -143,7 +158,8 @@ class CliClient:
         if self.cast is not None:
             append_command(
                 self.cast,
-                ("ree", "-C", str(self.root(ree_id)), *words),
+                ("ree", *words),
+                where=ree_id,
                 stdin_bytes=len(stdin or b""),
                 started=started,
                 finished=time.time(),
@@ -163,16 +179,18 @@ class CliClient:
     def _write_proposed(self, ree_id: str, target: str, rule: str) -> None:
         self._outputs(ree_id, "suggest-scripts", "--target", target, "--write", "--rule", rule)
 
-    def _staged(self, data: bytes, name: str) -> Path:
-        staged = self.machine.workdir / "uploads" / uuid4().hex / name
+    def _staged(self, ree_id: str, data: bytes, name: str) -> str:
+        """Put ``data`` where the machine reads it, and name it as typed in the REE's directory."""
+        staged = self.machine.workdir / "uploads" / uuid4().hex[:8] / name
         staged.parent.mkdir(parents=True)
         staged.write_bytes(data)
-        return staged
+        return self._here(ree_id, staged)
 
     def create(self, name: str) -> str:
         """Create an REE, and its kept folder: one with no history in it is an REE whose history went unkept."""
         ree_id = f"{name[:40]}-{uuid4().hex[:8]}"
         (self.kept_dir / ree_id).mkdir(parents=True, exist_ok=True)
+        self.root(ree_id).mkdir(parents=True)
         self._outputs(ree_id, "initialize-ree", "--name", name)
         return ree_id
 
@@ -198,8 +216,8 @@ class CliClient:
         subprocess.run(["rm", "-rf", str(self.root(ree_id))], check=False)
 
     def upload_source(self, ree_id: str, fixture: Project) -> None:
-        archive = self._staged(fixture.archive(), fixture.upload_name)
-        self._outputs(ree_id, "acquire-source", "--archive", str(archive))
+        archive = self._staged(ree_id, fixture.archive(), fixture.upload_name)
+        self._outputs(ree_id, "acquire-source", "--archive", archive)
 
     def fetch_source(self, ree_id: str, origin_url: str, source_type: AcquirableSourceType) -> Run:
         return self._step(ree_id, "acquire-source", "--origin-url", origin_url, "--source-type", source_type)
@@ -311,15 +329,15 @@ class CliClient:
         return signed
 
     def _signed_as(self, ree_id: str, signer: str, *words: str) -> Run:
-        trust = self._staged(local_sigstore().trust_config.read_bytes(), "trust_config.json")
+        trust = self._staged(ree_id, local_sigstore().trust_config.read_bytes(), "trust_config.json")
         token = {"SIGSTORE_IDENTITY_TOKEN": local_sigstore().token(signer)}
-        return self._step(ree_id, *words, "--trust-config", str(trust), variables=token)
+        return self._step(ree_id, *words, "--trust-config", trust, variables=token)
 
     def _verification(self, ree_id: str, *words: str, signer: str) -> list[str]:
         """What ``ree verify-signatures`` finds of each signature against the run's Sigstore, naming ``signer``."""
         local = local_sigstore()
-        trust = self._staged(local.trust_config.read_bytes(), "trust_config.json")
-        policy = ("--identity", signer, "--issuer", local.issuer, "--trust-config", str(trust))
+        trust = self._staged(ree_id, local.trust_config.read_bytes(), "trust_config.json")
+        policy = ("--identity", signer, "--issuer", local.issuer, "--trust-config", trust)
         _, result = self._result(ree_id, "verify-signatures", *words, *policy)
         return [str(item["outcome"]) for item in result.outputs["signatures"]]
 
@@ -338,7 +356,7 @@ class CliClient:
         return target
 
     def load(self, ree_id: str, bundle: bytes) -> None:
-        self._outputs(ree_id, "load-ree-bundle", "--archive", str(self._staged(bundle, "ree.zip")))
+        self._outputs(ree_id, "load-ree-bundle", "--archive", self._staged(ree_id, bundle, "ree.zip"))
 
     def review_acquire_source(self, ree_id: str, basis: ReviewBasis, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "review", "acquire-source", "--basis", basis)
@@ -394,23 +412,9 @@ class CliClient:
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)
 
 
-def _log(stderr: str) -> list[str]:
-    """The NDJSON log events a command wrote, as ``[level] message`` lines."""
-    lines = []
-    for line in stderr.splitlines():
-        try:
-            event = json.loads(line)
-        except ValueError:
-            lines.append(line)
-            continue
-        if isinstance(event, dict) and event.get("type") == "log":
-            lines.append(f"[{event.get('level')}] {event.get('message')}")
-    return lines
-
-
 def _lines(stderr: str) -> str:
     """The log a command wrote, its last 30 lines as the API keeps them."""
-    return "\n".join(_log(stderr)[-30:])
+    return "\n".join(stderr.splitlines()[-30:])
 
 
 ARCHIVE_DIR = Path(os.environ.get("E2E_ARCHIVE_DIR", "test-artifacts/python/showcase-cli/archives"))
