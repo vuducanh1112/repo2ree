@@ -1,0 +1,74 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author"
+    ],
+    "steps": [
+      {
+        "ree": "author",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "author",
+        "operation": "acquire_source",
+        "source": {
+          "kind": "uploaded",
+          "project": "instant"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "materialize_workspace"
+      },
+      {
+        "ree": "author",
+        "operation": "check_working_environment"
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "edited"
+        }
+      }
+    ],
+    "faults": [],
+    "drifts": [
+      {
+        "before": 3,
+        "ree": "author",
+        "path": "overlay/ree-scripts/launch.sh",
+        "content": "#!/bin/sh\n# edited by hand\nexec \"$@\"\n"
+      }
+    ]
+  },
+  "origin": {
+    "kind": "hand_written"
+  },
+  "expects": {
+    "kind": "conforms"
+  },
+  "reached": {
+    "spec_digest": "sha256:3619cb7f9dd2b0944f5689635a21085758db0fd664c9907f455cdd95eec3547e",
+    "items": [
+      "Attempt (none) -> pending",
+      "Attempt completed -> captured",
+      "Attempt executing -> completed",
+      "Attempt pending -> executing",
+      "Drift (none) -> arisen",
+      "aggregate:Ree",
+      "boundary:run_command",
+      "document:scripts-are-their-digests",
+      "document:standings-are-the-receipts-basis",
+      "drift-is-found-by-the-next-attempt",
+      "evidence",
+      "machine:Attempt",
+      "machine:Drift",
+      "machine:Receipt",
+      "machine:Ree",
+      "receipts-come-from-their-producers",
+      "ree-changes-through-operations"
+    ]
+  }
+}
