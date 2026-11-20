@@ -27,7 +27,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.exercise import Exercise
-from repo2ree_testbed.exercise_cli import CliReplay, Ran, Replayed, covered_ree, local_ree
+from repo2ree_testbed.exercise_cli import CliReplay, Ran, Replayed, RunRee, covered_ree, local_ree
 
 CLI_SCHEMA: Final = ROOT / "contracts/cli/cli.schema.json"
 
@@ -235,11 +235,11 @@ def arcs_executed(data: Path) -> Arcs:
     }
 
 
-def judge(exercise: Exercise, workdir: Path, *, measured: bool = False) -> Trace:
-    """Replay ``exercise`` in ``workdir`` and judge it: what each command answered, then what the histories show;
-    ``measured``, also the arcs ree executed."""
+def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: RunRee = local_ree) -> Trace:
+    """Replay ``exercise`` in ``workdir`` through ``run`` and judge it: what each command answered, then what the
+    histories show; ``measured``, through ``ree`` on this machine under coverage.py, also the arcs it executed."""
     data = workdir / "coverage"
-    replay = CliReplay(covered_ree(data) if measured else local_ree, workdir)
+    replay = CliReplay(covered_ree(data) if measured else run, workdir)
     replayed = replay.replay(exercise)
     checked = behaviour(replay.histories(exercise), workdir / "check")
     problems = (*answer_problems(replayed), *checked.problems)

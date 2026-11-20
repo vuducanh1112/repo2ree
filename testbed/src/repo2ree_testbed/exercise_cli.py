@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, JsonValue
 
 from repo2ree_testbed.api_models import ScriptTarget
 from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.cli_machine import Machine
 from repo2ree_testbed.exercise import (
     AcquireSource,
     ActivateExperimentEnvironment,
@@ -81,6 +82,17 @@ def local_ree(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
         ["ree", "-C", str(root), *words], input=stdin or b"", capture_output=True, timeout=STEP_SECONDS, check=False
     )
     return Answer(done.returncode, done.stdout, done.stderr.decode(errors="replace"))
+
+
+def machine_ree(machine: Machine) -> RunRee:
+    """``ree`` on the test's machine, which runs the REE's scripts there: its REEs must be in the directory the
+    machine shares with this process."""
+
+    def run(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
+        done = machine.ree(root, *words, stdin=stdin)
+        return Answer(done.status, done.stdout, done.stderr)
+
+    return run
 
 
 def covered_ree(data: Path) -> RunRee:

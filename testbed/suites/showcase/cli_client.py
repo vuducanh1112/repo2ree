@@ -8,20 +8,15 @@ writes. ``ree`` runs an REE's scripts on the machine it runs on.
 
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import re
-import shutil
 import subprocess
-import threading
 import time
-import warnings
 from collections.abc import Callable, Iterator
-from contextlib import ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Any
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -44,24 +39,18 @@ from repo2ree_testbed.api_models import (
     RunStatus,
     ScriptKind,
 )
-from repo2ree_testbed.cli_cast import Printed, Stream, append_command, cast_file
+from repo2ree_testbed.cli_cast import append_command, cast_file
+from repo2ree_testbed.cli_machine import Done, Machine, keep_histories
 from repo2ree_testbed.cli_session import LOG_LINES, CliCommand, append, kept_result, kept_stdin, session_file
 from repo2ree_testbed.run_watch import INSTANT_RUN, RunWatch
 from repo2ree_testbed.showcases import Project
 from repo2ree_testbed.stack.environments import (
-    ENVIRONMENTS,
-    MACHINE_CONTAINER_VARIABLE,
     MACHINE_VARIABLE,
-    MACHINE_WORKDIR_VARIABLE,
-    EnvironmentName,
-    machine_exec,
 )
 from repo2ree_testbed.stack.sigstore import local_sigstore
 
 BUILD_SCRIPT = "ree-scripts/build_experiment_environment.sh"
 LAUNCH_SCRIPT = "ree-scripts/launch.sh"
-# Long enough for a build that pulls and compiles: the command line waits for its step, as a person does.
-STEP_SECONDS = 3600
 
 
 class CliError(AssertionError):
@@ -75,69 +64,6 @@ class Result(BaseModel):
 
     status: RunStatus
     outputs: dict[str, Any] = Field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class Done:
-    """What one ``ree`` command left: its exit status, what it wrote, and each chunk as it arrived."""
-
-    status: int
-    stdout: bytes
-    stderr: str
-    printed: tuple[Printed, ...] = ()
-
-
-@dataclass
-class Machine:
-    """The test's machine, and the directory it shares with this process."""
-
-    environment: EnvironmentName
-    container: str
-    workdir: Path
-
-    def ree(self, root: Path, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None) -> Done:
-        command = machine_exec(
-            ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
-        )
-        printed: list[Printed] = []
-        arrived = threading.Lock()
-
-        def read(stream: Stream, source: IO[bytes]) -> None:
-            while chunk := os.read(source.fileno(), 1 << 16):
-                with arrived:
-                    printed.append(Printed(time.time(), stream, chunk))
-
-        def feed(sink: IO[bytes]) -> None:
-            try:
-                sink.write(stdin or b"")
-            except BrokenPipeError:
-                pass
-            finally:
-                sink.close()
-
-        with subprocess.Popen(
-            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        ) as process:
-            if process.stdin is None or process.stdout is None or process.stderr is None:
-                raise CliError("ree was started without its pipes")
-            threads = [
-                threading.Thread(target=feed, args=(process.stdin,), daemon=True),
-                threading.Thread(target=read, args=("stdout", process.stdout), daemon=True),
-                threading.Thread(target=read, args=("stderr", process.stderr), daemon=True),
-            ]
-            for thread in threads:
-                thread.start()
-            try:
-                process.wait(timeout=STEP_SECONDS)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                raise
-            finally:
-                for thread in threads:
-                    thread.join()
-        stdout = b"".join(chunk.data for chunk in printed if chunk.stream == "stdout")
-        stderr = b"".join(chunk.data for chunk in printed if chunk.stream == "stderr")
-        return Done(process.returncode, stdout, stderr.decode(errors="replace"), tuple(printed))
 
 
 @dataclass
@@ -251,25 +177,7 @@ class CliClient:
         return ree_id
 
     def _keep(self, ree_id: str) -> None:
-        """Copy the REE's histories, its own and each review's, into its kept folder, each under its history lock.
-
-        LFS payloads stay out: the history commits their pointers, which is all the check reads. A copy that fails
-        leaves the folder empty, so the REE is listed as unkept rather than as a history cut short.
-        """
-        root, kept = self.root(ree_id), self.kept_dir / ree_id
-        scopes = [root, *sorted(path for path in (root / "reviews").glob("*") if (path / ".git").is_dir())]
-        try:
-            with ExitStack() as locks:
-                for scope in scopes:
-                    if (lock := scope / ".git/repo2ree.lock").is_file():
-                        fcntl.flock(locks.enter_context(lock.open("rb")), fcntl.LOCK_EX)
-                for scope in scopes:
-                    target = kept / scope.relative_to(root) / ".git"
-                    shutil.copytree(scope / ".git", target, symlinks=True, ignore=_without_lfs, dirs_exist_ok=True)
-        except OSError as exc:
-            shutil.rmtree(kept, ignore_errors=True)
-            kept.mkdir(parents=True, exist_ok=True)
-            warnings.warn(f"the history of {ree_id} was not kept: {exc}", stacklevel=2)
+        keep_histories(self.root(ree_id), self.kept_dir / ree_id)
 
     # ---- the Client the showcases use -------------------------------------------
 
@@ -486,11 +394,6 @@ class CliClient:
         return Reproduction(reviewer, self.review(reviewer, review_id), logs)
 
 
-def _without_lfs(directory: str, names: list[str]) -> list[str]:
-    """What a copy of a history leaves out: the LFS payload store beside the history."""
-    return ["lfs"] if Path(directory).name == ".git" and "lfs" in names else []
-
-
 def _log(stderr: str) -> list[str]:
     """The NDJSON log events a command wrote, as ``[level] message`` lines."""
     lines = []
@@ -524,11 +427,9 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 @pytest.fixture(scope="session")
 def client() -> Client:
-    machine = Machine(
-        EnvironmentName(os.environ[MACHINE_VARIABLE]),
-        os.environ[MACHINE_CONTAINER_VARIABLE],
-        Path(os.environ[MACHINE_WORKDIR_VARIABLE]),
-    )
+    machine = Machine.of_this_test()
+    if machine is None:
+        raise RuntimeError("the CLI showcases run ree on a machine the stack starts for each test")
     return CliClient(machine, ARCHIVE_DIR, KEPT_REE_DIR, session_file(), cast_file())
 
 

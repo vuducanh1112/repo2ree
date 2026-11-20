@@ -1,0 +1,133 @@
+"""``ree`` on a test's machine, and the histories it leaves, kept for the behaviour check.
+
+A suite that runs ``ree`` itself (no control plane) runs it in the test's machine container, against an REE in a
+directory the machine and the test share; the REE's histories, its own and each review's, are what the check reads.
+"""
+
+from __future__ import annotations
+
+import fcntl
+import os
+import shutil
+import subprocess
+import threading
+import time
+import warnings
+from contextlib import ExitStack
+from dataclasses import dataclass
+from pathlib import Path
+from typing import IO, Final
+
+from repo2ree_testbed.cli_cast import Printed, Stream
+from repo2ree_testbed.stack.environments import (
+    ENVIRONMENTS,
+    MACHINE_CONTAINER_VARIABLE,
+    MACHINE_VARIABLE,
+    MACHINE_WORKDIR_VARIABLE,
+    EnvironmentName,
+    machine_exec,
+)
+
+# Long enough for a build that pulls and compiles: the command line waits for its step, as a person does.
+STEP_SECONDS: Final = 3600
+
+
+@dataclass(frozen=True)
+class Done:
+    """What one ``ree`` command left: its exit status, what it wrote, and each chunk as it arrived."""
+
+    status: int
+    stdout: bytes
+    stderr: str
+    printed: tuple[Printed, ...] = ()
+
+
+@dataclass
+class Machine:
+    """The test's machine, and the directory it shares with this process."""
+
+    environment: EnvironmentName
+    container: str
+    workdir: Path
+
+    @classmethod
+    def of_this_test(cls) -> Machine | None:
+        """The machine the stack started for this test, when it started one."""
+        if not os.environ.get(MACHINE_VARIABLE):
+            return None
+        return cls(
+            EnvironmentName(os.environ[MACHINE_VARIABLE]),
+            os.environ[MACHINE_CONTAINER_VARIABLE],
+            Path(os.environ[MACHINE_WORKDIR_VARIABLE]),
+        )
+
+    def ree(self, root: Path, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None) -> Done:
+        command = machine_exec(
+            ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
+        )
+        printed: list[Printed] = []
+        arrived = threading.Lock()
+
+        def read(stream: Stream, source: IO[bytes]) -> None:
+            while chunk := os.read(source.fileno(), 1 << 16):
+                with arrived:
+                    printed.append(Printed(time.time(), stream, chunk))
+
+        def feed(sink: IO[bytes]) -> None:
+            try:
+                sink.write(stdin or b"")
+            except BrokenPipeError:
+                pass
+            finally:
+                sink.close()
+
+        with subprocess.Popen(
+            command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ) as process:
+            if process.stdin is None or process.stdout is None or process.stderr is None:
+                raise RuntimeError("ree was started without its pipes")
+            threads = [
+                threading.Thread(target=feed, args=(process.stdin,), daemon=True),
+                threading.Thread(target=read, args=("stdout", process.stdout), daemon=True),
+                threading.Thread(target=read, args=("stderr", process.stderr), daemon=True),
+            ]
+            for thread in threads:
+                thread.start()
+            try:
+                process.wait(timeout=STEP_SECONDS)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                raise
+            finally:
+                for thread in threads:
+                    thread.join()
+        stdout = b"".join(chunk.data for chunk in printed if chunk.stream == "stdout")
+        stderr = b"".join(chunk.data for chunk in printed if chunk.stream == "stderr")
+        return Done(process.returncode, stdout, stderr.decode(errors="replace"), tuple(printed))
+
+
+def keep_histories(root: Path, kept: Path) -> None:
+    """Copy the REE's histories at ``root``, its own and each review's, into ``kept``, each under its history lock.
+
+    LFS payloads stay out: the history commits their pointers, which is all the check reads. A copy that fails
+    leaves the folder empty, so the REE is listed as unkept rather than as a history cut short.
+    """
+    kept.mkdir(parents=True, exist_ok=True)
+    scopes = [root, *sorted(path for path in (root / "reviews").glob("*") if (path / ".git").is_dir())]
+    try:
+        with ExitStack() as locks:
+            for scope in scopes:
+                if (lock := scope / ".git/repo2ree.lock").is_file():
+                    fcntl.flock(locks.enter_context(lock.open("rb")), fcntl.LOCK_EX)
+            for scope in scopes:
+                target = kept / scope.relative_to(root) / ".git"
+                shutil.copytree(scope / ".git", target, symlinks=True, ignore=_without_lfs, dirs_exist_ok=True)
+    except OSError as exc:
+        shutil.rmtree(kept, ignore_errors=True)
+        kept.mkdir(parents=True, exist_ok=True)
+        warnings.warn(f"the history of {root.name} was not kept: {exc}", stacklevel=2)
+
+
+def _without_lfs(directory: str, names: list[str]) -> list[str]:
+    """What a copy of a history leaves out: the LFS payload store beside the history."""
+    return ["lfs"] if Path(directory).name == ".git" and "lfs" in names else []

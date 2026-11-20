@@ -1,19 +1,15 @@
-"""Exercises replayed through ``ree`` on this machine: the cases in ``exercises/``, and as many more as Hypothesis
-draws.
+"""The searches for exercise cases: exercises drawn by Hypothesis, replayed through ``ree`` on this machine, and judged.
 
 Whatever an exercise's steps, each command answers as ``ree schema`` says it does, and the histories it leaves
-conform to the specification. A case must show what it expects: to conform, or exactly the problems it names (see
-``repo2ree_testbed.exercise_case``). What a case reaches now, against what it recorded, is reported as a warning.
-
-The searches (``-m property``) shrink an exercise that shows a problem no case names, and keep it as a case expecting
-those problems, in ``exercises/`` unless ``EXERCISE_CASES`` names another directory. A problem a case names already
-passes, so a known one does not stop a search. Two searches draw the same exercises and differ in what steers them
-(``hypothesis.target``): one toward the rules and transitions of the specification, which any implementation of it
-reaches alike; one toward the arcs this implementation executes beyond those the cases cover, measured by coverage.py
-under the repo's configuration. The branch search measures the cases whose coverage is stale first, so it steers past
-what they cover as the code stands; once it ends, it keeps up to ``EXERCISE_KEEP`` exercises that conformed as new
-cases, each adding the most arcs beyond the cases and those kept before it, and each confirmed by a second measured
-replay.
+conform to the specification. A search shrinks an exercise that shows a problem no case names, and keeps it as a case
+expecting those problems, in ``exercises/`` unless ``EXERCISE_CASES`` names another directory. A problem a case names
+already passes, so a known one does not stop a search. Two searches draw the same exercises and differ in what steers
+them (``hypothesis.target``): one toward the rules and transitions of the specification, which any implementation of
+it reaches alike; one toward the arcs this implementation executes beyond those the cases cover, measured by
+coverage.py under the repo's configuration. The branch search measures the cases whose coverage is stale first, so it
+steers past what they cover as the code stands; once it ends, it keeps up to ``EXERCISE_KEEP`` exercises that
+conformed as new cases, each adding the most arcs beyond the cases and those kept before it, and each confirmed by a
+second measured replay.
 
 Every exercise judged leaves its trace under the run's ``exercises/<run>/<search>/<digest>/``: ``trace.json`` (the
 exercise, what each command answered, its problems, the rules and transitions it reached, and the arcs it executed
@@ -39,7 +35,6 @@ from repo2ree_testbed.artifacts import execution_id, run_dir
 from repo2ree_testbed.exercise import Exercise
 from repo2ree_testbed.exercise_case import (
     CASES,
-    ExerciseCase,
     NewArcs,
     SearchName,
     ShowedProblems,
@@ -48,12 +43,10 @@ from repo2ree_testbed.exercise_case import (
     cases,
     coverage_of,
     covered,
-    drifted,
     known,
     measure,
     searched,
     unmeasured,
-    unmet,
     write,
 )
 from repo2ree_testbed.exercise_strategy import exercises
@@ -71,7 +64,7 @@ class NonconformingError(AssertionError):
         super().__init__(f"kept in {workdir}:\n" + "\n".join(map(str, trace.problems)))
 
 
-def judged(exercise: Exercise, search: Literal["replay", "confirm"] | SearchName = "replay") -> tuple[Trace, Path]:
+def judged(exercise: Exercise, search: Literal["confirm"] | SearchName) -> tuple[Trace, Path]:
     """Replay and judge ``exercise`` in a directory of its own under this run's and this search's, and keep its trace
     there; the branch search measures what ree executed."""
     workdir = run_dir() / "exercises" / execution_id() / search / digest(exercise)
@@ -79,16 +72,6 @@ def judged(exercise: Exercise, search: Literal["replay", "confirm"] | SearchName
     trace = judge(exercise, workdir, measured=search in {"branch-cov", "confirm"})
     keep(workdir, trace)
     return trace, workdir
-
-
-@pytest.mark.parametrize("case", cases(DIRECTORY), ids=lambda case: case.digest)
-def test_a_case_shows_what_it_expects(case: ExerciseCase) -> None:
-    trace, workdir = judged(case.exercise)
-    for told in (drifted(case, trace), unmeasured(case)):
-        if told:
-            warnings.warn(told, stacklevel=1)
-    unmatched = unmet(case, trace)
-    assert not unmatched, f"kept in {workdir}:\n" + "\n".join(unmatched)
 
 
 KNOWN = known(DIRECTORY)

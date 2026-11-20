@@ -60,41 +60,47 @@ check-environment name: (_load-environment name)
 
 # Run the golden path on one machine a workbench is installed on (bare, docker, podman, slurm), not gated.
 [group('E2E tests')]
+[metadata("runs", "testbed/suites/environments")]
 test-e2e-environment name: (_load-environment name)
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/environments/run_environment_suite.py") }} --tier e2e-environment-{{ name }} --environment {{ quote(name) }} --per-test --exit-on tests
 
 # Run what else holds of REEs whose author's scripts submit to Slurm or enter Apptainer, each test on a Slurm machine of its own, `jobs` side by side; not gated.
 [group('E2E tests')]
+[metadata("runs", "testbed/suites/slurm")]
 test-e2e-slurm jobs=E2E_JOBS *select: (_load-environment "slurm")
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/slurm/run_slurm_suite.py") }} --tier e2e-slurm --environment slurm --per-test --exit-on tests --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # Run seeded random author sessions with faults between steps, not gated: each seed on a fresh stack, replayable.
 [group('E2E tests')]
+[metadata("runs", "testbed/suites/chaos")]
 test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
     CHAOS_SEEDS={{ quote(seeds) }} CHAOS_STEPS={{ quote(steps) }} python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/chaos/run_chaos_suite.py") }} --tier e2e-chaos --per-test --jobs {{ quote(jobs) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
-# Replay the exercise cases in exercises/ through `ree` on this machine, not gated: each must show what it expects, that it conforms to `ree schema` and the specification, or exactly the problems it names. A failing one is kept under the run's exercises/.
+# Run the CLI tier, a tier of the assurance gate: each exercise case in exercises/ on a machine of its own with no service on it, replayed through `ree` there; each must show what it expects, and its REEs' histories are the behaviour evidence the run is assessed on (e.g. `just test-e2e-cli 4 fec5`).
 [group('E2E tests')]
-exercise-cli:
-    python -m pytest {{ quote(ROOT + "/testbed/suites/exercise") }} -m "not property" -p no:cacheprovider
+test-e2e-cli jobs=E2E_JOBS *select: (_tier-cli jobs "tests" select) (assess-behaviour "--invocation" REPO2REE_TEST_RUN_ID)
 
 # Measure the code the exercise cases cover, each replayed through `ree` on this machine under coverage.py: the cases whose coverage is stale (a covered file changed) or not measured yet, or with `all` every case. Writes exercises/coverage/<digest>.json (e.g. `just re-measure-exercise-branch-cov all`).
 [group('E2E tests')]
+[metadata("runs", "exercises")]
 re-measure-exercise-branch-cov which="stale":
     python -m repo2ree_testbed exercise-coverage {{ if which == "all" { "--all" } else { "" } }}
 
 # Search for exercises that break `ree schema` or the specification, steered toward the rules and transitions of the specification, not gated: Hypothesis draws `examples` exercises of up to `steps` steps, replays each through `ree` on this machine, and shrinks the first with a problem no case names into a new case in exercises/, expecting those problems. Each exercise's trace and what it reached are kept under the run's exercises/<run>/spec-cov/, each line of its coverage.ndjson naming the rules and transitions no exercise before it reached (e.g. `just pbt-cli-spec-cov 100`).
 [group('E2E tests')]
+[metadata("runs", "testbed/suites/exercise/test_searches.py", "exercises")]
 pbt-cli-spec-cov examples="25" steps="30":
-    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_exercises.py::test_any_exercise_conforms_steered_by_spec_coverage") }} -p no:cacheprovider
+    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_searches.py::test_any_exercise_conforms_steered_by_spec_coverage") }} -p no:cacheprovider
 
 # The same search steered toward the arcs this implementation executes beyond those the exercise cases cover, each `ree` command measured by coverage.py, not gated: it measures stale cases first, and once it ends keeps up to `keep` conforming exercises that add the most new arcs as new cases with their coverage. Each exercise's trace and coverage data are kept under the run's exercises/<run>/branch-cov/ (e.g. `just pbt-cli-branch-cov 100 30 5`).
 [group('E2E tests')]
+[metadata("runs", "testbed/suites/exercise/test_searches.py", "exercises")]
 pbt-cli-branch-cov examples="25" steps="30" keep="3":
-    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} EXERCISE_KEEP={{ quote(keep) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_exercises.py::test_any_exercise_conforms_steered_by_branch_coverage") }} -p no:cacheprovider
+    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} EXERCISE_KEEP={{ quote(keep) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_searches.py::test_any_exercise_conforms_steered_by_branch_coverage") }} -p no:cacheprovider
 
 # Fuzz every API operation against its contract on one stack, not gated.
 [group('E2E tests')]
+[metadata("runs", "testbed/suites/fuzz")]
 test-e2e-fuzz: build-e2e-bundles
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/fuzz/run_fuzz_suite.py") }} --tier e2e-fuzz --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }}
 
@@ -104,6 +110,7 @@ test-showcase-api jobs=E2E_JOBS *select: (_tier-showcase-api jobs select) (asses
     python -m scripts.gates.tiers certify --tier showcase-api --if-eligible
 
 [private]
+[metadata("runs", "testbed/suites/showcase")]
 _tier-showcase-api jobs *select: _load-showcase-environments
     python -m repo2ree_testbed api-showcase run --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
 
@@ -112,6 +119,7 @@ _tier-showcase-api jobs *select: _load-showcase-environments
 test-showcase-cli jobs=E2E_JOBS *select: (_tier-showcase-cli jobs select) (assess-behaviour "--invocation" REPO2REE_TEST_RUN_ID)
 
 [private]
+[metadata("runs", "testbed/suites/showcase")]
 _tier-showcase-cli jobs *select: _load-showcase-environments
     python -m repo2ree_testbed cli-showcase run --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + select } else { "" } }}
 
@@ -140,6 +148,7 @@ test-showcase jobs=E2E_JOBS *select: (_tier-showcase jobs select) (assess-behavi
     python -m scripts.gates.tiers certify --tier showcase --if-eligible
 
 [private]
+[metadata("runs", "gui/tests/showcase")]
 _tier-showcase jobs *select: build-e2e-bundles (_load-environment "bare") (_load-environment "docker")
     python -m repo2ree_testbed e2e --project showcase --per-test --exit-on tests --jobs {{ quote(jobs) }} --compute-locations 2 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
@@ -180,10 +189,12 @@ machine-tidy machine:
 
 # Record the narrated browser demo: the Python Docker showcase scenario, captioned and paced, with video.
 [group('Demos')]
+[metadata("runs", "gui/tests/showcase")]
 demo-gui: build-e2e-bundles (_load-environment "docker") (_source-stack-playwright "demo-gui" "1")
 
 # Record the measured pure-API walkthrough and render its transcript.
 [group('Demos')]
+[metadata("runs", "testbed/suites/walkthrough")]
 demo-api cast=DEFAULT_API_DEMO_CAST transcript="": build-e2e-bundles
     #!/usr/bin/env bash
     set -euo pipefail
