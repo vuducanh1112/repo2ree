@@ -32,7 +32,6 @@ class _ProgressLogger:
         self._log = log
         self._last_phase: str | None = None
         self._last_percent = -5
-        self._last_bytes = 0
         self._last_at = 0.0
         self._reported_complete = False
 
@@ -42,9 +41,8 @@ class _ProgressLogger:
         phase_changed = update.phase != self._last_phase
         due = (
             phase_changed
-            or percent >= self._last_percent + 5
-            or update.bytes_processed >= self._last_bytes + 64 * 1024 * 1024
-            or now >= self._last_at + 5
+            or percent >= self._last_percent + 25
+            or now >= self._last_at + 15
             or (
                 not self._reported_complete
                 and update.bytes_processed == update.bytes_total
@@ -67,7 +65,6 @@ class _ProgressLogger:
         self._log("system", "info", message)
         self._last_phase = update.phase
         self._last_percent = percent
-        self._last_bytes = update.bytes_processed
         self._last_at = now
         self._reported_complete = (
             update.bytes_processed == update.bytes_total and update.entries_processed == update.entries_total

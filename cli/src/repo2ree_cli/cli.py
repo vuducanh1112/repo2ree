@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sys
 from collections.abc import Callable
@@ -181,7 +182,10 @@ class Invocation:
         return ReeLayout(root=found)
 
     def sink(self) -> LogSink:
-        return _ndjson_sink if self.machine else _plain_sink
+        if self.machine:
+            return _ndjson_sink
+        root = self.ree or nearest_ree(Path.cwd())
+        return lambda stream, level, message: _plain_sink(stream, level, message, root)
 
     def identity(self, step: int | None = None) -> tuple[ExecutionContext, str]:
         """The context and run id of a run; ``step`` numbers it among the commands one invocation runs."""
@@ -217,11 +221,21 @@ def _ndjson_sink(stream: str, level: str, message: str) -> None:
     click.echo(json.dumps({"type": "log", "stream": stream, "level": level, "message": message}), err=True)
 
 
-def _plain_sink(stream: str, level: str, message: str) -> None:
+def _plain_sink(stream: str, level: str, message: str, root: Path | None = None) -> None:
+    """A log line as a person reads it: what ree itself says names the REE's files from the REE."""
     if stream == "system":
+        if root is not None:
+            message = _from_ree(message, root)
         click.echo(click.style(message, dim=level == "info", fg="red" if level == "error" else None), err=True)
     else:
         click.echo(message, err=True)
+
+
+def _from_ree(message: str, root: Path) -> str:
+    """``message`` with the REE's own paths written from the REE: ``workspace``, not ``/…/ree/workspace``."""
+    at = re.escape(str(root))
+    message = re.sub(rf"(?<![\w./-]){at}/", "", message)
+    return re.sub(rf"(?<![\w./-]){at}(?![\w./-])", ".", message)
 
 
 def _invocation() -> Invocation:

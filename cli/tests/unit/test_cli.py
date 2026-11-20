@@ -21,7 +21,7 @@ from click.testing import CliRunner, Result
 
 import repo2ree_cli.cli as cli_module
 import repo2ree_core.operations.session as session_module
-from repo2ree_cli.cli import CANCELED, REFUSED, cli
+from repo2ree_cli.cli import CANCELED, REFUSED, _from_ree, cli
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
@@ -594,3 +594,11 @@ def test_a_workbench_seals_without_being_asked(initialized: Path, monkeypatch: p
 
     assert result.exit_code == 0, result.output
     assert ActionResult.model_validate_json(result.stdout).status == "succeeded"
+
+
+def test_a_person_reads_the_rees_paths_from_the_ree() -> None:
+    root = Path("/w/demo")
+    assert _from_ree("$ sh /w/demo/acquire_source.sh", root) == "$ sh acquire_source.sh"
+    assert _from_ree("materializing /w/demo/workspace", root) == "materializing workspace"
+    assert _from_ree("initialised /w/demo", root) == "initialised ."
+    assert _from_ree("beside /w/demo-2/x and /v/w/demo/x", root) == "beside /w/demo-2/x and /v/w/demo/x"
