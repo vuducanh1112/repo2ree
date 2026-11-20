@@ -4,6 +4,10 @@ What a step takes is made before its command runs: a project's source packed as 
 (``ree bundle``) as it stands at that step, a signature over the seal or the review record as ``ree`` shows it at
 that step. When what a step takes cannot be made, because the REE it exports does not answer, the step runs no
 command. Replay judges nothing: what each command answered is kept as it answered.
+
+Replay is the REEs' environment, and journals what it does as one (``environment_journal``): each drift before the
+step it comes before, written to the REE's files directly, and each step's command, which the attempts it runs cite.
+
 """
 
 from __future__ import annotations
@@ -16,18 +20,21 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, NamedTuple
+from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
 from repo2ree_testbed.api_models import ScriptTarget
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.cli_machine import Machine
+from repo2ree_testbed.environment_journal import EnvironmentJournal
 from repo2ree_testbed.exercise import (
     AcquireSource,
     ActivateExperimentEnvironment,
     BuildExperimentEnvironment,
     CheckWorkingEnvironment,
     CrossCheckSbom,
+    Drift,
     EvaluateReproducibility,
     Exercise,
     Fetched,
@@ -85,11 +92,11 @@ def local_ree(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
 
 
 def machine_ree(machine: Machine) -> RunRee:
-    """``ree`` on the test's machine, which runs the REE's scripts there: its REEs must be in the directory the
-    machine shares with this process."""
+    """``ree -C`` on the test's machine, which runs the REE's scripts there: its REEs must be in the directory the
+    machine shares with this process. An exercise's REE has no directory until a step initializes it."""
 
     def run(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
-        done = machine.ree(root, *words, stdin=stdin)
+        done = machine.ree(root, *words, stdin=stdin, inside=False)
         return Answer(done.status, done.stdout, done.stderr)
 
     return run
@@ -252,11 +259,47 @@ class CliReplay:
     def root(self, label: Label) -> Path:
         return self.workdir / "rees" / label
 
-    def _ran(self, label: Label, words: Sequence[str], stdin: bytes | None = None) -> Ran:
-        answer = self.run(self.root(label), ("--json", *words), stdin)
+    @property
+    def journals(self) -> Path:
+        """Where replay journals what it did as the REEs' environment."""
+        return self.workdir / "journal"
+
+    def _ran(self, label: Label, words: Sequence[str], stdin: bytes | None = None, plumbing: Sequence[str] = ()) -> Ran:
+        answer = self.run(self.root(label), ("--json", *plumbing, *words), stdin)
         log = tuple(answer.stderr.splitlines()[-LOG_LINES:])
         said = tuple(word.replace(f"{self.workdir}/", "") for word in words)
         return Ran(words=said, exit=answer.exit, result=_result(answer.stdout), log=log)
+
+    def _command(self, journal: EnvironmentJournal, label: Label, command: Command) -> Ran:
+        """Run a step's command as the environment does: journaled before it runs, named by the attempts it runs,
+        and its exit status journaled with the commit, or failed capture's record, its attempt left."""
+        attempt_id = uuid4().hex
+        run_id = f"exercise-{attempt_id[:12]}"
+        cited = journal.command(attempt_id, label, run_id)
+        context = {"operation_id": uuid4().hex, "attempt_id": attempt_id, "dispatch_record": cited}
+        plumbing = ("--run-id", run_id, "--context", json.dumps(context))
+        ran = self._ran(label, command.words, command.stdin, plumbing)
+        history = ran.result.get("history") if isinstance(ran.result, dict) else None
+        commit = history.get("after_snapshot_id") if isinstance(history, dict) else None
+        record = history.get("record_digest") if isinstance(history, dict) else None
+        journal.exited(
+            attempt_id,
+            label,
+            ran.exit,
+            commit if isinstance(commit, str) else None,
+            record if isinstance(record, str) else None,
+        )
+        return ran
+
+    def _drift(self, journal: EnvironmentJournal, number: int, drift: Drift) -> None:
+        """Change the file outside ree, as an editor, a disk or another program would, and journal it."""
+        target = self.root(drift.ree) / drift.path
+        if drift.content is None:
+            target.unlink(missing_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(drift.content, encoding="utf-8")
+        journal.drifted(f"drift-{number}", drift.ree, drift.path)
 
     def _staged(self, index: int, name: str, content: bytes) -> Path:
         staged = self.workdir / "staged" / str(index) / name
@@ -306,16 +349,24 @@ class CliReplay:
         if exercise.faults:
             raise UnreplayableError("the CLI replay lands no faults yet")
         self.root(exercise.rees[0]).parent.mkdir(parents=True, exist_ok=True)
+        journal = EnvironmentJournal(self.journals)
+        drifts = list(enumerate(exercise.drifts))
         replayed: list[Replayed] = []
         for index, step in enumerate(exercise.steps):
+            for number, drift in drifts:
+                if drift.before == index:
+                    self._drift(journal, number, drift)
             prepared = self._prepare(index, step)
             ran = None
             if prepared.made:
-                command = command_of(step, prepared.staged)
-                ran = self._ran(step.ree, command.words, command.stdin)
+                ran = self._command(journal, step.ree, command_of(step, prepared.staged))
             replayed.append(
                 Replayed(step=index, ree=step.ree, operation=step.operation, prepared=prepared.ran, ran=ran)
             )
+        for number, drift in drifts:
+            if drift.before == len(exercise.steps):
+                self._drift(journal, number, drift)
+        journal.close()
         return tuple(replayed)
 
     def histories(self, exercise: Exercise) -> tuple[Path, ...]:

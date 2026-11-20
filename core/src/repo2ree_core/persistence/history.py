@@ -42,6 +42,29 @@ def _walk_failed(error: OSError) -> None:
     raise HistoryCaptureError(f"Cannot enumerate REE files: {error}") from error
 
 
+def selected_files(layout: ReeLayout) -> list[Path]:
+    """The REE files its history holds: what each capture commits."""
+    ree = ReeDirectory(layout).read_ree() if layout.manifest.is_file() else None
+    return [
+        layout.root / entry.path
+        for entry in capture_plan(layout, ree).entries
+        if not _internal_temporary(layout, layout.root / entry.path)
+    ]
+
+
+def _internal_temporary(layout: ReeLayout, path: Path) -> bool:
+    """Recognize our staging names only for REE-owned persistence targets."""
+    match = re.fullmatch(r"\.(.+)\.[0-9a-f]{32}\.tmp", path.name)
+    if match is None:
+        return False
+    target = path.with_name(match[1])
+    if target in (*layout.history_files, layout.sbom, layout.reproducibility_report):
+        return True
+    return isinstance(layout, ReviewLayout) and (
+        target.is_relative_to(layout.receipts) or target.is_relative_to(layout.comparisons)
+    )
+
+
 @dataclass(frozen=True)
 class GitHistory:
     layout: ReeLayout
@@ -114,24 +137,7 @@ class GitHistory:
         return result.stdout.decode().strip()
 
     def _selected_files(self) -> list[Path]:
-        ree = ReeDirectory(self.layout).read_ree() if self.layout.manifest.is_file() else None
-        return [
-            self.layout.root / entry.path
-            for entry in capture_plan(self.layout, ree).entries
-            if not self._internal_temporary(self.layout.root / entry.path)
-        ]
-
-    def _internal_temporary(self, path: Path) -> bool:
-        """Recognize our staging names only for REE-owned persistence targets."""
-        match = re.fullmatch(r"\.(.+)\.[0-9a-f]{32}\.tmp", path.name)
-        if match is None:
-            return False
-        target = path.with_name(match[1])
-        if target in (*self.layout.history_files, self.layout.sbom, self.layout.reproducibility_report):
-            return True
-        return isinstance(self.layout, ReviewLayout) and (
-            target.is_relative_to(self.layout.receipts) or target.is_relative_to(self.layout.comparisons)
-        )
+        return selected_files(self.layout)
 
     def _tree(self) -> str:
         with tempfile.TemporaryDirectory(dir=self.layout.git_dir, prefix="capture-") as temporary:
@@ -234,13 +240,14 @@ class GitHistory:
             self.git("read-tree", commit)
         return commit
 
-    def commit_operation(self, *, operation: str, record: dict[str, Any]) -> tuple[str, bool]:
-        """Publish a completed attempt even when its state tree is unchanged."""
+    def commit_operation(self, *, operation: str, record: dict[str, Any], unchanged: bool = False) -> tuple[str, bool]:
+        """Publish a completed attempt even when its state tree is unchanged; ``unchanged``, with the tree it began
+        on, whatever the files are now."""
         before = record["before_snapshot_id"]
         if self.head_snapshot() != before:
             raise HistoryCaptureError("History head changed before operation publication")
-        tree = self._tree()
         previous_tree = self.git("rev-parse", f"{before}^{{tree}}").stdout.decode().strip()
+        tree = previous_tree if unchanged else self._tree()
         changed = tree != previous_tree
         commit = self._commit(
             tree,

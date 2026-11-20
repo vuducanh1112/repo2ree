@@ -447,7 +447,7 @@ def test_a_script_edited_in_place_is_picked_up_before_the_next_command(initializ
 
     result = ree(initialized, "materialize-workspace")
 
-    assert "picking up the edit to " + BUILD_SCRIPT in result.stderr
+    assert "recording your edit to overlay/" + BUILD_SCRIPT in result.stderr
     assert layout.workspace_file(BUILD_SCRIPT).read_text() == "echo edited in my editor\n"
     operations = [record.command["operation"] for record in read_operation_history(layout).operations]
     assert "write_script" in operations
@@ -602,3 +602,22 @@ def test_a_person_reads_the_rees_paths_from_the_ree() -> None:
     assert _from_ree("materializing /w/demo/workspace", root) == "materializing workspace"
     assert _from_ree("initialised /w/demo", root) == "initialised ."
     assert _from_ree("beside /w/demo-2/x and /v/w/demo/x", root) == "beside /w/demo-2/x and /v/w/demo/x"
+
+
+def test_a_file_changed_outside_ree_is_shown_and_refused_until_it_is_undone(initialized: Path) -> None:
+    layout = ReeLayout(root=initialized)
+    assert ree(initialized, "materialize-workspace").exit_code == 0
+    copy = layout.workspace_file(BUILD_SCRIPT)
+    original = copy.read_text()
+    copy.write_text("echo edited in the workspace\n")
+
+    status = ree(initialized, "status")
+    refused = ree(initialized, "patch-ree-definition", "--name", "renamed")
+
+    assert f"  workspace/{BUILD_SCRIPT}" in status.stdout
+    assert refused.exit_code == REFUSED
+    assert f"workspace/{BUILD_SCRIPT}" in refused.stderr
+    assert "next:" not in refused.stderr
+    assert copy.read_text() == "echo edited in the workspace\n"
+    copy.write_text(original)
+    assert ree(initialized, "patch-ree-definition", "--name", "renamed").exit_code == 0

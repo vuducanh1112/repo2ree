@@ -449,3 +449,31 @@ def test_a_deployment_with_no_control_plane_is_collected_from_its_kept_rees_and_
     dossier = read_dossier(directory)
     assert dossier.control_plane is None
     assert [(source.kind, source.name) for source in dossier.sources] == [("git", "ree-a"), ("spans", "cli")]
+
+
+def test_the_journal_a_client_kept_as_the_rees_environment_is_collected_beside_its_rees(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    kept = tmp_path / "kept"
+    (kept / "author" / ".git").mkdir(parents=True)
+    journals = tmp_path / "journals"
+    journals.mkdir()
+    (journals / "environment-000001.ndjson").write_text('{"v":1,"seq":1,"kind":"journal.opened"}\n')
+
+    given = [str(directory), "--kept-rees", str(kept), "--environment-journal-dir", str(journals)]
+    assert main(given) == 0
+
+    dossier = read_dossier(directory)
+    assert [(source.kind, source.path) for source in dossier.sources] == [
+        ("git", "rees/author/ree"),
+        ("journal", "environment-journals"),
+    ]
+    assert (directory / "environment-journals/environment-000001.ndjson").is_file()
+
+
+def test_a_client_that_kept_no_environment_journal_drifted_nothing(tmp_path: Path) -> None:
+    directory = tmp_path / "dossier"
+    (tmp_path / "kept" / "author" / ".git").mkdir(parents=True)
+
+    given = [str(directory), "--kept-rees", str(tmp_path / "kept"), "--environment-journal-dir", str(tmp_path / "no")]
+    assert main(given) == 0
+    assert [source.kind for source in read_dossier(directory).sources] == ["git"]

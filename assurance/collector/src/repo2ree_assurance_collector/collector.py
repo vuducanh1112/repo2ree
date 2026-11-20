@@ -44,6 +44,7 @@ from repo2ree_assurance_dossier import (
 
 JOURNAL = "journal"
 STORE_JOURNALS = "store-journals"
+ENVIRONMENT_JOURNALS = "environment-journals"
 STORES = "stores"
 REES = "rees"
 TELEMETRY = "telemetry"
@@ -376,6 +377,26 @@ def stopped_stores(directory: Path, stores: dict[str, Path]) -> list[DossierSour
 
         collected.append(_collect(directory, source, copy))
     return collected
+
+
+def environment_journals(directory: Path, journals: Path) -> list[DossierSource]:
+    """The journals of the REEs' environment, as the client that stood in for it kept them: the commands it ran and
+    the files that drifted between them. A client that kept none drifted none, so a missing folder lists nothing."""
+    if not journals.is_dir():
+        return []
+    origin = f"{journals} (kept by the client that ran ree)"
+    source = DossierSource(kind="journal", path=ENVIRONMENT_JOURNALS, origin=origin, name="environment")
+
+    def copy() -> DossierSource:
+        found = sorted(path for path in journals.glob("*.ndjson") if JOURNAL_FILE.match(path.name))
+        if not found:
+            raise FileNotFoundError(f"no journals in {journals}")
+        with _staged(directory, ENVIRONMENT_JOURNALS) as target:
+            for path in found:
+                shutil.copyfile(path, target / path.name)
+        return source
+
+    return [_collect(directory, source, copy)]
 
 
 def stopped_owners(directory: Path, *, journals: Path, runs: Path | None) -> list[DossierSource]:

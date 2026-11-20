@@ -157,7 +157,11 @@ def test_a_load_whose_export_is_refused_runs_no_command(tmp_path: Path) -> None:
     assert load.ran is None
     assert load.prepared == (Ran(words=("bundle",), exit=2, log=("no REE",)),)
     assert remove.ran is not None
-    assert fake.calls == [(AUTHOR, ("bundle",)), (AUTHOR, ("--json", "remove-source"))]
+    [exported, (removed_in, removed)] = fake.calls
+    assert exported == (AUTHOR, ("bundle",))
+    assert removed_in == AUTHOR
+    assert (removed[0], removed[1], removed[3], removed[-1]) == ("--json", "--run-id", "--context", "remove-source")
+    assert json.loads(removed[4])["dispatch_record"] == "environment-000001#2"
 
 
 def test_a_signature_is_made_over_the_seal_ree_shows(tmp_path: Path) -> None:

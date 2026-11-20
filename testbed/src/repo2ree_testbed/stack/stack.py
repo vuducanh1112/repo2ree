@@ -85,6 +85,11 @@ class Layout:
         return self.directory / "artifacts/kept-rees"
 
     @property
+    def kept_journals(self) -> Path:
+        """Where a client that runs ``ree`` itself keeps the journals it wrote as the REEs' environment."""
+        return self.directory / "artifacts/kept-journals"
+
+    @property
     def telemetry(self) -> Path | None:
         return None if self.collector else self.dossier / "telemetry"
 
@@ -140,6 +145,7 @@ class E2EStack:
             "VITE_BUILD_REVISION": os.environ.get("VITE_BUILD_REVISION", revision),
             "E2E_ARCHIVE_DIR": str(layout.archives),
             "E2E_KEPT_REE_DIR": str(layout.kept_rees),
+            "E2E_KEPT_JOURNAL_DIR": str(layout.kept_journals),
             "E2E_TEST_DIR": str(layout.directory),
             **({SIGSTORE_VARIABLE: str(deployment.sigstore)} if deployment.sigstore else {}),
         }
@@ -569,6 +575,7 @@ class E2EStack:
     def collect_kept(self) -> bool:
         """With no control plane: the REEs the client kept, and the spans ree wrote on the machine."""
         command = [*self.collect(), "--kept-rees", str(self.layout.kept_rees)]
+        command += ["--environment-journal-dir", str(self.layout.kept_journals)]
         telemetry = self.layout.telemetry
         for path in sorted(telemetry.glob("*.ndjson")) if telemetry is not None else []:
             command += ["--spans", str(path)]

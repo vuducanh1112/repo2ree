@@ -6,7 +6,8 @@ a few inputs, wherever the REE stands. A stage is taken whether or not its step 
 specification's to judge from the trace, never the generator's to know.
 
 Inputs come from small fixed pools (the instant project, its recipe, one experiment), so a failing exercise shrinks
-to steps that differ in what matters.
+to steps that differ in what matters. So do drifts: a few files of an REE, changed or removed outside ree between
+two steps.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from repo2ree_testbed.exercise import (
     BuildExperimentEnvironment,
     CheckWorkingEnvironment,
     CrossCheckSbom,
+    Drift,
     EvaluateReproducibility,
     Exercise,
     FromRecipe,
@@ -220,6 +222,36 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
     return st.one_of(operations)
 
 
+# Files an REE's environment changes outside ree: a script as the REE writes it, which a command records, and others
+# it refuses for: the workspace's copy, a file added there, another record of the REE.
+DRIFTED_PATHS: Final = (
+    "overlay/ree-scripts/launch.sh",
+    "workspace/ree-scripts/launch.sh",
+    "workspace/stray.txt",
+    "REPRODUCING.md",
+)
+DRIFTED_CONTENT: Final = ("#!/bin/sh\necho drifted\n", None)
+
+
+def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
+    """Drifts in REEs the steps initialize, each after the step that does."""
+    initialized = {
+        step.ree: index for index, step in reversed(list(enumerate(steps))) if isinstance(step, InitializeRee)
+    }
+    if not initialized:
+        return st.just(())
+    drift = st.sampled_from(sorted(initialized)).flatmap(
+        lambda ree: st.builds(
+            Drift,
+            before=st.integers(min_value=initialized[ree] + 1, max_value=len(steps)),
+            ree=st.just(ree),
+            path=st.sampled_from(DRIFTED_PATHS),
+            content=st.sampled_from(DRIFTED_CONTENT),
+        )
+    )
+    return st.lists(drift, max_size=2).map(tuple)
+
+
 @st.composite
 def exercises(draw: st.DrawFn, max_steps: int = 30) -> Exercise:
     """An exercise of one REE that authors and reviews itself, or of an author and a reviewer of its seal."""
@@ -235,4 +267,4 @@ def exercises(draw: st.DrawFn, max_steps: int = 30) -> Exercise:
             stage[ree] += 1
         else:
             steps.append(draw(_deviation(ree, tuple(other for other in rees if other != ree))))
-    return Exercise(rees=rees, steps=tuple(steps))
+    return Exercise(rees=rees, steps=tuple(steps), drifts=draw(_drifts(tuple(steps))))

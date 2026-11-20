@@ -5,6 +5,7 @@ import subprocess
 import zipfile
 
 import pytest
+from recorded_ree import as_recorded
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.bundle.repository_restore import restore_repository
@@ -33,6 +34,7 @@ def _sealed(tmp_path, monkeypatch):
     (layout.results / "experiment").mkdir(parents=True)
     payload = b"binary\0result" * 4096
     (layout.results / "experiment/data.bin").write_bytes(payload)
+    as_recorded(layout)
     result = run_command(
         SealReeCommand(
             args=SealReeArgs(
@@ -175,6 +177,7 @@ def test_seal_toggles_are_the_only_optional_payload_selection(
     (layout.workspace / "runtime.tar").write_bytes(b"experiment_environment")
     layout.results.mkdir(exist_ok=True)
     (layout.results / "data").write_bytes(b"result")
+    as_recorded(layout)
     result = run_command(
         SealReeCommand(
             args=SealReeArgs(
@@ -204,6 +207,7 @@ def test_a_loaded_sealed_ree_holds_exactly_the_files_its_seal_lists(tmp_path, mo
     # A fresh REE's own helpers and marker differ from the author's; loading must leave the author's.
     destination.acquire_script.write_bytes(b"#!/bin/sh\n# the blank REE's own\n")
     destination.materialize_marker.write_text("{}")
+    as_recorded(destination)
     destination.upload_staging_file("offline").write_bytes(data)
     loaded = run_command(
         LoadReeBundleCommand(args=LoadReeBundleArgs(upload_token="offline", archive_name="ree.zip")),  # noqa: S106

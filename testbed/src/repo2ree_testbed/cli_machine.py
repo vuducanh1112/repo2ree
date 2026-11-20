@@ -61,9 +61,22 @@ class Machine:
             Path(os.environ[MACHINE_WORKDIR_VARIABLE]),
         )
 
-    def ree(self, root: Path, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None) -> Done:
-        """Run ``ree`` in the REE's directory ``root``, as a person in it types it."""
-        command = machine_exec(ENVIRONMENTS[self.environment], self.container, ["ree", *words], variables, root)
+    def ree(
+        self,
+        root: Path,
+        *words: str,
+        stdin: bytes | None = None,
+        variables: dict[str, str] | None = None,
+        inside: bool = True,
+    ) -> Done:
+        """Run ``ree`` in the REE's directory ``root``, as a person in it types it; not ``inside``, as ``ree -C root``
+        from anywhere, which runs where no directory is made yet."""
+        if inside:
+            command = machine_exec(ENVIRONMENTS[self.environment], self.container, ["ree", *words], variables, root)
+        else:
+            command = machine_exec(
+                ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
+            )
         printed: list[Printed] = []
         arrived = threading.Lock()
 

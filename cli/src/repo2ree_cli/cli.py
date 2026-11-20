@@ -266,7 +266,8 @@ def finish(
                 click.echo(text)
         if result.failure is not None:
             click.echo(click.style(f"{words} failed: {result.failure.message}", fg="red"), err=True)
-            if result.failure.category == "precondition" and (hint := _hint(invocation)):
+            drifted = (result.failure.details or {}).get("code") == "drift"
+            if result.failure.category == "precondition" and not drifted and (hint := _hint(invocation)):
                 click.echo(hint, err=True)
         elif ran or result.status == "canceled":
             click.echo(click.style(f"{words} {result.status}", dim=True), err=True)

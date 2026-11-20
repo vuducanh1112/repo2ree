@@ -95,6 +95,11 @@ def status(report: ReeStatusReport) -> str:
             line += f"  (needs {', '.join(labels[key] for key in step.requires if key not in done)})"
         lines.append(line)
     lines += [f"     experiment {item.name}: {_evidence_word(item.run)}" for item in report.audit.experiments]
+    if report.drift:
+        lines += ["", "changed outside ree, so the next command is refused:"]
+        lines += [f"  {item.path}" for item in report.drift]
+        lines.append("edit scripts in overlay/; `ree materialize-workspace` lays the workspace out again")
+        return "\n".join(lines)
     lines += ["", next_hint(report.steps) or _closing(report)]
     return "\n".join(lines)
 

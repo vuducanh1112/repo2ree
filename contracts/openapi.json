@@ -11014,6 +11014,31 @@
         ],
         "title": "DockerfileBinding"
       },
+      "DriftedFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "part": {
+            "type": "string",
+            "enum": [
+              "overlay",
+              "workspace",
+              "records"
+            ],
+            "title": "Part"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "part"
+        ],
+        "title": "DriftedFile",
+        "description": "A file of the REE that is not as the last attempt left it: changed, added or removed outside ree."
+      },
       "EngineObservation": {
         "properties": {
           "engine": {
@@ -13795,6 +13820,24 @@
               }
             ],
             "title": "Step Evidence Before"
+          },
+          "drift_found": {
+            "items": {
+              "$ref": "#/components/schemas/DriftedFile"
+            },
+            "type": "array",
+            "title": "Drift Found"
+          },
+          "drift_recorded": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drift Recorded"
           },
           "step_evidence_after": {
             "anyOf": [

@@ -2094,6 +2094,19 @@ export interface components {
             digest: string;
         };
         /**
+         * DriftedFile
+         * @description A file of the REE that is not as the last attempt left it: changed, added or removed outside ree.
+         */
+        DriftedFile: {
+            /** Path */
+            path: string;
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "overlay" | "workspace" | "records";
+        };
+        /**
          * EngineObservation
          * @description One engine as the probe found it where the REE's scripts run.
          */
@@ -3195,6 +3208,10 @@ export interface components {
             step_evidence_before?: {
                 [key: string]: string;
             } | null;
+            /** Drift Found */
+            drift_found?: components["schemas"]["DriftedFile"][];
+            /** Drift Recorded */
+            drift_recorded?: string | null;
             /** Step Evidence After */
             step_evidence_after?: {
                 [key: string]: string;

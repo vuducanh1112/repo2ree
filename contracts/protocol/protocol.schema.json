@@ -2511,6 +2511,31 @@
       "title": "DoneFrame",
       "type": "object"
     },
+    "DriftedFile": {
+      "additionalProperties": false,
+      "description": "A file of the REE that is not as the last attempt left it: changed, added or removed outside ree.",
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "part": {
+          "enum": [
+            "overlay",
+            "workspace",
+            "records"
+          ],
+          "title": "Part",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "part"
+      ],
+      "title": "DriftedFile",
+      "type": "object"
+    },
     "EngineObservation": {
       "additionalProperties": false,
       "description": "One engine as the probe found it where the REE's scripts run.",
@@ -5652,6 +5677,25 @@
           ],
           "default": null,
           "title": "Step Evidence Before"
+        },
+        "drift_found": {
+          "items": {
+            "$ref": "#/$defs/DriftedFile"
+          },
+          "title": "Drift Found",
+          "type": "array"
+        },
+        "drift_recorded": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drift Recorded"
         },
         "step_evidence_after": {
           "anyOf": [

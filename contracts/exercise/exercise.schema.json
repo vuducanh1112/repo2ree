@@ -215,6 +215,45 @@
       "title": "DefinitionPatch",
       "type": "object"
     },
+    "Drift": {
+      "additionalProperties": false,
+      "description": "A file of an REE changed outside ree before step ``before``: written with ``content``, or removed without.\n``before`` may be the number of steps, for a drift after the last. Only an REE a step has initialized drifts:\nbefore that, its files are what initializing it starts from, which is no change of what it records.",
+      "properties": {
+        "before": {
+          "minimum": 0,
+          "title": "Before",
+          "type": "integer"
+        },
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "content": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content"
+        }
+      },
+      "required": [
+        "before",
+        "ree",
+        "path"
+      ],
+      "title": "Drift",
+      "type": "object"
+    },
     "EvaluateReproducibility": {
       "additionalProperties": false,
       "properties": {
@@ -1194,7 +1233,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The REEs it names, none of which exists until a step initializes it, the steps run in them in order, and\nthe faults.",
+  "description": "The REEs it names, none of which exists until a step initializes it, the steps run in them in order, the\nfaults, and the drifts.",
   "properties": {
     "format": {
       "const": "repo2ree-exercise/1",
@@ -1224,6 +1263,14 @@
         "$ref": "#/$defs/Fault"
       },
       "title": "Faults",
+      "type": "array"
+    },
+    "drifts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Drift"
+      },
+      "title": "Drifts",
       "type": "array"
     }
   },

@@ -20,6 +20,7 @@ from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.operations.handlers.author.file_concurrency import workspace_content_etag
 from repo2ree_core.operations.read_models.files import list_ree_files, list_workspace_files
 from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.integrity import find_drift
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.persistence.run_lock import running_run
@@ -62,11 +63,13 @@ def get_ree_status(layout: ReeLayout) -> ReeStatusReport:
         raise FileNotFoundError(f"REE not found at {layout.root}")
     ree = load_ree(layout, directory)
     ree_audit = audit(ree)
+    running = running_run(layout)
     return ReeStatusReport(
         name=ree.subject.definition.name,
         status=ree_status(ree),
         revision=str(revision_of(ree)),
-        running=running_run(layout),
+        running=running,
+        drift=None if running else find_drift(layout),
         steps=ree_steps(ree, ree_audit),
         audit=ree_audit,
         scripts=[

@@ -10,6 +10,19 @@ from repo2ree_protocol.result import ActionResult, Failure, OperationStatus
 SELECTION_VERSION = 2
 
 
+# Where in an REE a file is: a script as written (overlay), the workspace scripts run in, or the REE's other records.
+ReePart = Literal["overlay", "workspace", "records"]
+
+
+class DriftedFile(BaseModel):
+    """A file of the REE that is not as the last attempt left it: changed, added or removed outside ree."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    path: str
+    part: ReePart
+
+
 class OperationRecord(BaseModel):
     """One invocation, including no-ops and attempts left pending by process death."""
 
@@ -36,6 +49,10 @@ class OperationRecord(BaseModel):
     # the history shows which attempt made which receipt current or stale.
     # None for review scopes, legacy records, and REEs that could not be audited.
     step_evidence_before: dict[str, str] | None = None
+    # What had drifted when the attempt began: every file not as the last attempt left it. An attempt that found
+    # drift records the one script edit it names in ``drift_recorded``, or is refused.
+    drift_found: list[DriftedFile] = Field(default_factory=list)
+    drift_recorded: str | None = None
     step_evidence_after: dict[str, str] | None = None
     # Each phase the attempt entered, appended and written before the next begins:
     # pending, executing, completed, then captured or capture_failed. The record of

@@ -4,6 +4,8 @@
       [--archives-in FOLDER]...  REE archives clients downloaded and kept there
       [--ree ID]...              REEs to download now, as their owner would
       [--kept-rees FOLDER]       REEs a client ran ree in itself, one folder each with the histories it kept
+      [--environment-journal-dir DIR]
+                                 the journals the client kept as the REEs' environment
       [--skip-owners]            leave the owners' journals and state to a later export
       [--journal-dir DIR [--runs-dir DIR]]
                                  the owners' journals and state, exported after they stopped
@@ -32,6 +34,7 @@ from repo2ree_assurance_collector.client import SAFE_NAME, ControlPlane
 from repo2ree_assurance_collector.collector import (
     collect_control_plane,
     download_archive,
+    environment_journals,
     finish,
     kept_archives,
     kept_rees,
@@ -54,6 +57,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ree", action="append", default=[], help="Download this REE's archive (repeatable)")
     parser.add_argument(
         "--kept-rees", type=Path, help="REEs a client ran ree in itself: one folder each, with the histories it kept"
+    )
+    parser.add_argument(
+        "--environment-journal-dir", type=Path, help="The journals a client kept as the REEs' environment"
     )
     parser.add_argument("--skip-owners", action="store_true", help="Do not fetch journals and state now")
     parser.add_argument("--journal-dir", type=Path, help="The owners' journal directory, after they stopped")
@@ -99,6 +105,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             collected += collect_control_plane(args.directory, control_plane)
     collected += kept_rees(args.directory, args.kept_rees) if args.kept_rees else []
+    if args.environment_journal_dir is not None:
+        collected += environment_journals(args.directory, args.environment_journal_dir)
     if args.journal_dir is not None:
         collected += stopped_owners(args.directory, journals=args.journal_dir, runs=args.runs_dir)
         collected += stopped_stores(args.directory, stores)

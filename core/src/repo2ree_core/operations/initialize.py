@@ -10,6 +10,7 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import open_history
+from repo2ree_core.persistence.integrity import read_stamps, stamp_ree
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
@@ -84,4 +85,6 @@ def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
             prepare_reproducer(layout, store.read_ree())
             write_capture_controls(layout, store.read_ree())
         snapshot = history.capture_initial(existing=existing)
+        if read_stamps(layout) is None:
+            stamp_ree(layout)
     return InitializationResult("already_initialised" if existing else "initialised", snapshot)

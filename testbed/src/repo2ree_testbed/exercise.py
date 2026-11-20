@@ -1,7 +1,8 @@
 """An exercise: one replayable input to the domain, as ``contracts/exercise/exercise.schema.json`` publishes it.
 
-An exercise names the REEs it works in, the operations it runs in each, in order, and the faults it injects at
-some of them. It says what goes in, never how: a source, a script or a signature is named as a fixture or as
+An exercise names the REEs it works in, the operations it runs in each, in order, the faults it injects at
+some of them, and the files that drift between them: changed outside ree, as an editor, a disk or another program
+changes one. It says what goes in, never how: a source, a script or a signature is named as a fixture or as
 another REE's export, and replay turns it into whatever the surface it runs on takes. Every operation is spelled
 by its name in the specification's catalogue, and nothing in an exercise names this implementation.
 
@@ -12,9 +13,10 @@ specification's to judge from the trace, not the exercise's to know.
 from __future__ import annotations
 
 import json
+from pathlib import PurePosixPath
 from typing import Annotated, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, NonNegativeInt, model_validator
 
 from repo2ree_testbed.api_models import DefinitionPatch, ReviewBasis, ScriptKind, ScriptTarget
 from repo2ree_testbed.showcases import ProjectName, RecipeScript
@@ -256,14 +258,37 @@ class Fault(_Model):
     at: FaultPoint
 
 
+def _inside_the_ree(path: str) -> str:
+    parts = PurePosixPath(path).parts
+    if not parts or path.startswith("/") or ".." in parts or parts[0] == ".git":
+        raise ValueError(f"{path} is no file of an REE: a path from it, inside it, never its .git")
+    return path
+
+
+# A file by its path from its REE: relative, inside the REE, and never the REE's own version storage.
+ReePath = Annotated[str, AfterValidator(_inside_the_ree)]
+
+
+class Drift(_Model):
+    """A file of an REE changed outside ree before step ``before``: written with ``content``, or removed without.
+    ``before`` may be the number of steps, for a drift after the last. Only an REE a step has initialized drifts:
+    before that, its files are what initializing it starts from, which is no change of what it records."""
+
+    before: NonNegativeInt
+    ree: Label
+    path: ReePath
+    content: str | None = None
+
+
 class Exercise(_Model):
-    """The REEs it names, none of which exists until a step initializes it, the steps run in them in order, and
-    the faults."""
+    """The REEs it names, none of which exists until a step initializes it, the steps run in them in order, the
+    faults, and the drifts."""
 
     format: Literal["repo2ree-exercise/1"] = FORMAT
     rees: tuple[Label, ...] = Field(min_length=1)
     steps: tuple[Step, ...]
     faults: tuple[Fault, ...] = ()
+    drifts: tuple[Drift, ...] = ()
 
     @model_validator(mode="after")
     def _every_name_is_the_exercise_s(self) -> Self:
@@ -277,9 +302,24 @@ class Exercise(_Model):
         faulted = [fault.step for fault in self.faults]
         problems += [f"fault at step {index}, which is no step" for index in faulted if index >= len(self.steps)]
         problems += [f"step {index} has two faults" for index in sorted(set(faulted)) if faulted.count(index) > 1]
+        for drift in self.drifts:
+            initialized = self.initialized(drift.ree)
+            if drift.ree not in known:
+                problems.append(f"a drift in {drift.ree}, which the exercise does not name")
+            elif drift.before > len(self.steps):
+                problems.append(f"a drift before step {drift.before}, which is no step")
+            elif initialized is None or drift.before <= initialized:
+                problems.append(f"a drift in {drift.ree} before step {drift.before}, before any step initialized it")
         if problems:
             raise ValueError("; ".join(problems))
         return self
+
+    def initialized(self, ree: Label) -> int | None:
+        """The step that first initializes ``ree``; None when no step does."""
+        return next(
+            (index for index, step in enumerate(self.steps) if isinstance(step, InitializeRee) and step.ree == ree),
+            None,
+        )
 
 
 def schema_document() -> str:

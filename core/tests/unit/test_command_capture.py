@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import get_args
 
 import pytest
+from recorded_ree import as_recorded
 
 from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.operations import dispatch
@@ -161,14 +162,6 @@ def test_noop_and_conflict_each_create_operation_commits(ree):
     assert git(ree, "rev-list", "--count", "HEAD") == "4"
 
 
-def test_preexisting_changes_have_separate_observation(ree):
-    ree.overlay_file("external.txt").write_text("unrecorded")
-    result = patch(ree)
-    before = result.history.before_snapshot_id
-    assert git(ree, "show", "-s", "--format=%s", before) == "observe_existing_ree"
-    assert git(ree, "diff", "--name-only", before, result.history.after_snapshot_id) == "ree.json"
-
-
 def test_cancel_before_handler_is_journaled(ree):
     assert patch(ree, cancel=lambda: True).status == "canceled"
     assert git(ree, "rev-list", "--count", "HEAD") == "2"
@@ -214,6 +207,7 @@ def pending_record(layout, attempt_id):
 
 def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
+    as_recorded(ree)
     patch(ree, "observed")  # A clean tree, so the before-snapshot reuses the head and takes no lock.
     head = git(ree, "rev-parse", "HEAD")
 
@@ -238,7 +232,7 @@ def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, 
     assert result.history.record_digest == digest_bytes(written)
 
 
-def test_a_capture_that_fails_before_the_handler_runs_nothing(ree, monkeypatch):
+def test_a_refusal_whose_capture_fails_runs_nothing_and_leaves_the_drift(ree, monkeypatch):
     ree.overlay_file("external.txt").write_text("written outside any attempt")
     lock_history(ree)
     ran = []
@@ -246,9 +240,15 @@ def test_a_capture_that_fails_before_the_handler_runs_nothing(ree, monkeypatch):
 
     result = patch(ree)
 
-    assert (result.status, result.history.operation_status, ran) == ("failed", "not_started", [])
+    assert (result.status, ran) == ("failed", [])
     assert "nothing ran" in result.failure.message
-    assert pending_record(ree, result.history.attempt_id)["phases"] == ["pending", "capture_failed"]
+    assert pending_record(ree, result.history.attempt_id)["phases"] == [
+        "pending",
+        "executing",
+        "completed",
+        "capture_failed",
+    ]
+    assert ree.overlay_file("external.txt").read_text() == "written outside any attempt"
 
 
 def test_a_record_that_cannot_be_written_before_the_handler_ends_the_attempt(ree, monkeypatch):
@@ -302,6 +302,7 @@ def test_partial_change_captured_with_original_outcome(ree, monkeypatch, outcome
 def test_a_canceled_attempt_is_rolled_back_before_it_is_captured(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
     ree.overlay_file("removed.txt").write_text("before")
+    as_recorded(ree)
 
     def handler(*args, **kwargs):
         ree.overlay_file("kept.txt").write_text("partial")
@@ -499,6 +500,7 @@ def test_restoring_a_snapshot_brings_back_lfs_payloads_and_removes_new_recorded_
 
 def _die_mid_handler(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
+    as_recorded(ree)
 
     def handler(*args, **kwargs):
         ree.overlay_file("kept.txt").write_text("partial")
@@ -547,6 +549,7 @@ def test_settling_a_settled_attempt_answers_as_it_settled(ree, monkeypatch):
 
 def test_an_attempt_lost_before_its_capture_fails_its_capture_and_rolls_back(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
+    as_recorded(ree)
 
     def handler(*args, **kwargs):
         ree.overlay_file("kept.txt").write_text("changed")

@@ -6,6 +6,7 @@ import fcntl
 import json
 
 import pytest
+from recorded_ree import as_recorded
 
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
@@ -57,6 +58,7 @@ def test_a_requested_cancel_stops_the_run_and_its_marker_goes_with_it(ree):
 
 def test_an_attempt_a_dead_process_left_is_settled_before_the_next_command_runs(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
+    as_recorded(ree)
 
     def dies(*args, **kwargs):
         ree.overlay_file("kept.txt").write_text("partial")

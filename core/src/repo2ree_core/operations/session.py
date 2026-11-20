@@ -19,6 +19,7 @@ from typing import Any, TextIO
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.integrity import find_drift, recordable_edits
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.persistence.run_lock import holding_ree
@@ -26,7 +27,7 @@ from repo2ree_protocol.command import Command, WriteScriptArgs, WriteScriptComma
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.reserved_paths import is_overlay_path
+from repo2ree_ree.layout import OVERLAY
 from repo2ree_telemetry.bootstrap import get_tracer
 from repo2ree_telemetry.spans import (
     CommandSpanAttrs,
@@ -110,7 +111,7 @@ def _run_held(
 ) -> ActionResult:
     """The command, run while this process alone runs one in the REE."""
     settle_leftover_attempts(layout, log=log)
-    pick_up_authored_edits(layout, log=log)
+    pick_up_authored_edits(layout, log=log, invocation=context)
     # The session, as one span: the run held in the REE, around core's command span.
     with tracer.start_as_current_span(f"session.{cmd.operation}") as span:
         CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
@@ -154,42 +155,42 @@ def settle_leftover_attempts(layout: ReeLayout, *, log: LogSink) -> list[ActionR
     return settled
 
 
-def pick_up_authored_edits(layout: ReeLayout, *, log: LogSink) -> list[ActionResult]:
+def pick_up_authored_edits(
+    layout: ReeLayout, *, log: LogSink, invocation: ExecutionContext | None = None
+) -> list[ActionResult]:
     """Record every script the author edited in ``overlay/`` directly, before anything else runs.
 
-    The overlay is where an REE's scripts live, and a person edits them there with their own editor; until an
-    edit is written through ``write_script`` the workspace keeps the old script and the definition its old digest.
-    Each edited script is written as it is, an attempt of its own, so its history is that of an edit made through
-    any other caller. A script deleted from the overlay directly is not picked up: ``ree rm`` deletes one.
+    The overlay is where an REE's scripts live, and a person edits them there with their own editor. Each edited
+    script is written as it is, an attempt of its own that records it, so its history is that of an edit made
+    through any other caller; the attempts name the REE and the dispatch of the ``invocation`` they run before.
+    Only when every file that drifted is such an edit: any other drift is the command's to be refused for, so none
+    is recorded.
     """
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return []
-    edited = [
-        path
-        for path in store.overlay.iter_files()
-        if is_overlay_path(str(path))
-        and (not store.workspace.is_file(path) or store.workspace.read_bytes(path) != store.overlay.read_bytes(path))
-    ]
-    if edited and store.read_ree().seal is not None:
-        log("system", "warn", f"a sealed REE takes no edits; not picked up: {', '.join(map(str, edited))}")
+    edits = recordable_edits(layout, find_drift(layout) or [])
+    if edits and store.read_ree().seal is not None:
         return []
-    results = []
-    for path in edited:
+    results: list[ActionResult] = []
+    for script in edits:
         try:
-            content = store.overlay.read_bytes(path).decode()
+            content = layout.overlay_file(script).read_bytes().decode()
         except UnicodeDecodeError:
-            log("system", "warn", f"{path} is not text, so it is not picked up")
-            continue
-        log("system", "info", f"picking up the edit to {path}")
-        context = ExecutionContext.new()
+            log("system", "warn", f"{OVERLAY}/{script} is not text, so it is not recorded")
+            return results
+        log("system", "info", f"recording your edit to {OVERLAY}/{script}")
+        context = ExecutionContext.new(ree_id=invocation.ree_id if invocation else None)
+        if invocation is not None:
+            context = context.model_copy(update={"dispatch_record": invocation.dispatch_record})
         results.append(
             run_command(
-                WriteScriptCommand(args=WriteScriptArgs(path=str(path), content=content)),
+                WriteScriptCommand(args=WriteScriptArgs(path=script, content=content)),
                 layout=layout,
                 log=log,
                 run_id=f"edit-{context.attempt_id}",
                 context=context,
+                records_edit=script,
             )
         )
     return results

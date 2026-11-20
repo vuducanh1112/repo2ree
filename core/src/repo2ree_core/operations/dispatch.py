@@ -94,6 +94,7 @@ def run_command(
     run_id: str | None = None,
     is_canceled: CancelCheck | None = None,
     context: ExecutionContext | None = None,
+    records_edit: str | None = None,
 ) -> ActionResult:
     """Dispatch a typed Command to its handler, against the REE at ``layout``, and return an ActionResult.
 
@@ -126,6 +127,7 @@ def run_command(
             run_id=resolved_run_id,
             log=log,
             execute=lambda: _run_unless_canceled(cmd, layout=layout, log=log, run_id=resolved_run_id, cancel=cancel),
+            records_edit=records_edit,
         )
         result = result.model_copy(update={"context": context})
         try:

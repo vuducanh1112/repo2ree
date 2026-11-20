@@ -188,11 +188,12 @@ def answer_problems(replayed: Sequence[Replayed]) -> list[Problem]:
     ]
 
 
-def behaviour(histories: Sequence[Path], output: Path) -> Judged:
-    """Run the checker on the REE directories ``histories``, its reports into ``output``: the rules it found
-    violated, and what the histories reached."""
+def behaviour(histories: Sequence[Path], output: Path, journals: Path | None = None) -> Judged:
+    """Run the checker on the REE directories ``histories``, beside the environment's ``journals``, its reports into
+    ``output``: the rules it found violated, and what the histories reached."""
     gits = [word for history in histories for word in ("--git", str(history))]
-    command = [sys.executable, "-m", "repo2ree_assurance_checker", "check", *gits, "-o", str(output)]
+    journaled = ["--journal", str(journals)] if journals is not None and journals.is_dir() else []
+    command = [sys.executable, "-m", "repo2ree_assurance_checker", "check", *gits, *journaled, "-o", str(output)]
     done = subprocess.run(command, capture_output=True, text=True, check=False)
     report = output / "assurance.json"
     if not report.is_file():
@@ -241,7 +242,7 @@ def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: Run
     data = workdir / "coverage"
     replay = CliReplay(covered_ree(data) if measured else run, workdir)
     replayed = replay.replay(exercise)
-    checked = behaviour(replay.histories(exercise), workdir / "check")
+    checked = behaviour(replay.histories(exercise), workdir / "check", replay.journals)
     problems = (*answer_problems(replayed), *checked.problems)
     arcs = arcs_executed(data) if measured else None
     return Trace(
