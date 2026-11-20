@@ -129,6 +129,7 @@ summary = "End-to-end tests the assurance gate runs, each on a stack of its own.
 "gui/tests/e2e-instant/" = "The instant GUI tier"
 "testbed/suites/faults/" = "The faults tier: faults injected by real means, at the step a test chooses"
 "testbed/suites/environments/" = "The environments tier: one golden path on each machine a workbench is installed on"
+"testbed/suites/exercise/" = "The CLI tier: each exercise case replayed through ree on a machine of its own; and the searches for new cases"
 
 [product.groups.ungated]
 summary = "End-to-end tests no gate runs yet, each on a stack of its own."

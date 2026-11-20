@@ -97,7 +97,12 @@ def test_a_run_nothing_assessed_has_no_verdicts_and_is_not_certified(tmp_path: P
 def test_certification_needs_every_run_assessed_by_heads_tree(tmp_path: Path) -> None:
     runs = [
         write_run(tmp_path / tier, tier, {f"{tier}-t": ("passed", checker_report(a="passed"))}, assessed_tree=tree)
-        for tier, tree in [("e2e-system", "tree"), ("e2e-gui-instant", "older"), ("e2e-faults", "")]
+        for tier, tree in [
+            ("e2e-system", "tree"),
+            ("e2e-gui-instant", "older"),
+            ("e2e-faults", ""),
+            ("e2e-cli", "tree"),
+        ]
     ]
     problems = gate.certification_problems(runs, gate.judge_runs(runs, {}), {})
     assert [problem.split(";")[0] for problem in problems] == [
@@ -108,7 +113,7 @@ def test_certification_needs_every_run_assessed_by_heads_tree(tmp_path: Path) ->
 
 def test_an_xfail_is_accepted_only_when_excused(tmp_path: Path) -> None:
     run = write_run(tmp_path / "run", "e2e-system", {"t": ("xfailed", checker_report(a="passed"))})
-    assert judged(run)["t"].problems == ["xfailed, and expected-verdicts.toml does not excuse it"]
+    assert judged(run)["t"].problems == ["xfailed, and nothing excuses it"]
     assert judged(run, expectation("t"))["t"].accepted
 
 
@@ -128,22 +133,28 @@ def test_certification_needs_every_tier_from_a_clean_head_and_no_unused_expectat
     system = write_run(tmp_path / "system", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
     gui = write_run(tmp_path / "gui", "e2e-gui-instant", {"g": ("passed", checker_report(a="passed"))})
     faults = write_run(tmp_path / "faults", "e2e-faults", {"f": ("passed", checker_report(a="passed"))})
+    cli = write_run(tmp_path / "cli", "e2e-cli", {"c": ("passed", checker_report(a="passed"))})
     stale = write_run(tmp_path / "stale", "e2e-gui-instant", {"g": ("passed", None)}, revision=HEAD + "-dirty")
-    judgements = gate.judge_runs([system, gui, faults], {})
+    judgements = gate.judge_runs([system, gui, faults, cli], {})
 
-    assert gate.certification_problems([system, gui, faults], judgements, {}) == []
-    assert gate.certification_problems([system, faults], judgements, {}) == [
+    assert gate.certification_problems([system, gui, faults, cli], judgements, {}) == []
+    assert gate.certification_problems([system, faults, cli], judgements, {}) == [
         "no e2e-gui-instant run among the runs certified"
     ]
-    assert gate.certification_problems([system, gui], judgements, {}) == ["no e2e-faults run among the runs certified"]
-    assert gate.certification_problems([system, stale, faults], judgements, {}) == [
+    assert gate.certification_problems([system, gui, cli], judgements, {}) == [
+        "no e2e-faults run among the runs certified"
+    ]
+    assert gate.certification_problems([system, gui, faults], judgements, {}) == [
+        "no e2e-cli run among the runs certified"
+    ]
+    assert gate.certification_problems([system, stale, faults, cli], judgements, {}) == [
         f"stale ran on {HEAD}-dirty, not HEAD {HEAD}"
     ]
     partial = write_run(tmp_path / "partial", "e2e-faults", {"f": ("passed", None)}, selected=("test_x",))
-    assert gate.certification_problems([system, gui, partial], judgements, {}) == [
+    assert gate.certification_problems([system, gui, partial, cli], judgements, {}) == [
         "partial ran only the tests matching test_x, not its whole tier"
     ]
-    assert gate.certification_problems([system, gui, faults], judgements, expectation("gone")) == [
+    assert gate.certification_problems([system, gui, faults, cli], judgements, expectation("gone")) == [
         "expected-verdicts.toml excuses gone, which no run ran"
     ]
 
@@ -230,3 +241,44 @@ def test_an_invocation_finds_the_runs_that_name_it(tmp_path: Path) -> None:
 
     assert gate.runs_of("this", tmp_path) == [faults, system]
     assert gate.runs_of("never", tmp_path) == []
+
+
+def write_case(directory: Path, digest: str, expects: dict[str, Any]) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / f"{digest}.json").write_text(json.dumps({"exercise": {}, "expects": expects}))
+
+
+def test_an_exercise_case_excuses_exactly_the_violations_it_expects_in_its_own_test(tmp_path: Path) -> None:
+    cases = tmp_path / "exercises"
+    violated = {"kind": "violated", "rule": "aggregate:Ree", "subject": "Ree reviewer"}
+    answered = {"kind": "answer", "step": 3, "rule": "no_result", "subject": "ree seal-ree"}
+    write_case(cases, "shows", {"kind": "shows", "problems": [violated, answered]})
+    write_case(cases, "answers", {"kind": "shows", "problems": [answered]})
+    write_case(cases, "conforms", {"kind": "conforms"})
+    test = gate.CASE_TEST.format(digest="shows")
+    excuses = gate.load_case_expectations(cases)
+    assert list(excuses) == [test]
+    assert excuses[test].violated == {"aggregate:Ree"}
+    assert excuses[test].source == "exercises/shows.json"
+
+    exact = write_run(
+        tmp_path / "exact", "e2e-cli", {test: ("passed", checker_report(**{"aggregate:Ree": "violated"}))}
+    )
+    fixed = write_run(tmp_path / "fixed", "e2e-cli", {test: ("passed", checker_report(**{"aggregate:Ree": "passed"}))})
+    assert judged(exact, excuses)[test].accepted
+    assert judged(fixed, excuses)[test].problems == [
+        "behaviour passed: no rule open; exercises/shows.json excuses violated aggregate:Ree"
+    ]
+
+
+def test_a_test_excused_by_both_the_verdicts_and_a_case_is_refused(tmp_path: Path) -> None:
+    cases = tmp_path / "exercises"
+    write_case(cases, "d", {"kind": "shows", "problems": [{"kind": "violated", "rule": "r", "subject": "s"}]})
+    verdicts = tmp_path / "expected.toml"
+    verdicts.write_text(f'[[expected]]\ntest = "{gate.CASE_TEST.format(digest="d")}"\nviolated = ["r"]\nreason = "x"\n')
+    with pytest.raises(ValueError, match="excused by both"):
+        gate.all_expectations(verdicts, cases)
+
+
+def test_the_committed_cases_load_as_excuses() -> None:
+    assert all(item.source.startswith("exercises/") for item in gate.load_case_expectations().values())

@@ -7,7 +7,9 @@ beside its run (reports/behaviour/<run>/) without failing it. This composes the 
 - ``judge RUN...`` reads every test's assessment (its verdict in the report's run.json, its rules
   in the report's verification/assurance.json) and accepts a test only if it passed and its behaviour passed, or the
   test ``assurance/checker/expected-verdicts.toml`` excuses (an xfail must be) left
-  exactly the rules it names non-passing. Exit 1 if any test is not accepted.
+  exactly the rules it names non-passing. An exercise case in ``exercises/`` that expects its
+  exercise to show violations excuses its own test of the e2e-cli tier the same way: exactly the
+  rules it names. Exit 1 if any test is not accepted.
 - ``certify RUN... [--invocation ID]`` judges the runs, and those that name the
   invocation, then also requires every tier in ``TIERS`` to be among
   the runs, each built from HEAD with a clean tree that is still HEAD and assessed by it, and every
@@ -35,13 +37,16 @@ from scripts.gates.receipts import AssuranceGateReceipt, Coverage, TestVerdict
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
+# The exercise cases, each one test of the e2e-cli tier, named by its digest.
+CASES = ROOT / "exercises"
+CASE_TEST = "testbed/suites/exercise/test_cases.py::test_a_case_shows_what_it_expects[{digest}]"
 RECEIPT = receipts.path(ROOT, "assurance-gate")
 # Where per-test runs are written; certify --invocation looks for its runs here.
 RUNS = Path(os.environ.get("REPO2REE_TEST_RUN_DIR") or ROOT / "test-artifacts") / "e2e"
 # Where each run's assessment is reported, by the run's name (repo2ree_testbed assess).
 REPORTS = ROOT / "reports" / "behaviour"
 # The per-test tiers whose evidence a receipt stands on.
-TIERS = ("e2e-system", "e2e-gui-instant", "e2e-faults")
+TIERS = ("e2e-system", "e2e-gui-instant", "e2e-faults", "e2e-cli")
 ACCEPTED_OUTCOMES = {"passed", "xfailed"}
 NON_PASSING = ("violated", "inconclusive")
 
@@ -52,6 +57,8 @@ class Expectation:
     violated: frozenset[str]
     inconclusive: frozenset[str]
     reason: str
+    # The file that excuses it.
+    source: str = "expected-verdicts.toml"
 
 
 @dataclass
@@ -88,6 +95,30 @@ def load_expectations(path: Path = EXPECTATIONS) -> dict[str, Expectation]:
             entry["reason"],
         )
     return expectations
+
+
+def load_case_expectations(directory: Path = CASES) -> dict[str, Expectation]:
+    """Each exercise case that expects its exercise to show violated rules, as the excuse of its own test."""
+    expectations: dict[str, Expectation] = {}
+    for path in sorted(directory.glob("*.json")):
+        expects = json.loads(path.read_text())["expects"]
+        if expects["kind"] != "shows":
+            continue
+        violated = frozenset(problem["rule"] for problem in expects["problems"] if problem["kind"] == "violated")
+        if not violated:
+            continue
+        test = CASE_TEST.format(digest=path.stem)
+        reason = f"the exercise case expects its exercise to show {', '.join(sorted(violated))} violated"
+        expectations[test] = Expectation(test, violated, frozenset(), reason, f"exercises/{path.name}")
+    return expectations
+
+
+def all_expectations(path: Path = EXPECTATIONS, cases: Path = CASES) -> dict[str, Expectation]:
+    """What expected-verdicts.toml and the exercise cases excuse together; a test excused by both is refused."""
+    declared, kept = load_expectations(path), load_case_expectations(cases)
+    if twice := sorted(declared.keys() & kept.keys()):
+        raise ValueError(f"excused by both {path.name} and an exercise case: {', '.join(twice)}")
+    return declared | kept
 
 
 def load_unreached(path: Path = EXPECTATIONS) -> dict[str, str]:
@@ -167,14 +198,14 @@ def judge_test(run: str, directory: Path, test: dict[str, Any], expectations: di
     if expected is None:
         # Tests are not oracle: marking a failing test xfail must not be enough to pass the gate.
         if judgement.outcome == "xfailed":
-            judgement.problems.append("xfailed, and expected-verdicts.toml does not excuse it")
+            judgement.problems.append("xfailed, and nothing excuses it")
         if judgement.behaviour != "passed":
             judgement.problems.append(f"behaviour {judgement.behaviour}: {describe(judgement.rules)}")
         return judgement
     wanted = {"violated": expected.violated, "inconclusive": expected.inconclusive}
     if judgement.rules != wanted:
         judgement.problems.append(
-            f"behaviour {judgement.behaviour}: {describe(judgement.rules)}; expected-verdicts.toml excuses "
+            f"behaviour {judgement.behaviour}: {describe(judgement.rules)}; {expected.source} excuses "
             f"{describe(wanted)}"
         )
     else:
@@ -259,8 +290,8 @@ def certification_problems(
         tiers[run["tier"]] = root
     problems += [f"no {tier} run among the runs certified" for tier in TIERS if tier not in tiers]
     seen = {item.test for item in judgements}
-    unused = [name for name in expectations if name not in seen]
-    problems += [f"expected-verdicts.toml excuses {name}, which no run ran" for name in unused]
+    unused = [expectation for name, expectation in expectations.items() if name not in seen]
+    problems += [f"{expectation.source} excuses {expectation.test}, which no run ran" for expectation in unused]
     return problems
 
 
@@ -319,7 +350,7 @@ def main() -> int:
         runs += [root for root in runs_of(args.invocation) if root not in runs]
     if not runs:
         parser.error(f"{args.command} needs at least one run directory, or an invocation that left some")
-    expectations = load_expectations()
+    expectations = all_expectations()
     unreached = load_unreached()
     judgements = judge_runs(runs, expectations)
     gaps = coverage_problems(judgements, unreached)

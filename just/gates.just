@@ -20,22 +20,32 @@ _require-current-commit-gate:
 # tests itself). With `select` (parts of test ids) it
 # runs only those tests, which the gate never asks for and never certifies.
 [private]
+[metadata("runs", "gui/tests/e2e-instant")]
 _tier-gui-instant jobs exit_on *select: (_load-environment "docker")
     python -m repo2ree_testbed e2e --project e2e-gui-instant --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
+[metadata("runs", "testbed/suites/system")]
 _tier-system jobs exit_on *select: (_load-environment "docker")
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/system/run_system_suite.py") }} --tier e2e-system --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --compute-locations 1 --sigstore --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 [private]
+[metadata("runs", "testbed/suites/faults")]
 _tier-faults jobs exit_on *select:
     python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/faults/run_fault_suite.py") }} --tier e2e-faults --per-test --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} --cli-bundle {{ quote(E2E_CLI_BUNDLE) }} --tools-bundle {{ quote(E2E_TOOLS_BUNDLE) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+
+# Each exercise case on a machine of its own with no service on it, where its test runs `ree` itself; the REEs'
+# histories it keeps are the behaviour evidence.
+[private]
+[metadata("runs", "testbed/suites/exercise/run_exercise_suite.py", "exercises")]
+_tier-cli jobs exit_on *select: (_load-environment "bare")
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/exercise/run_exercise_suite.py") }} --tier e2e-cli --per-test --no-control-plane --exit-on {{ quote(exit_on) }} --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # Every tier at once, each in a run directory of its own that names this invocation. A tier fails
 # only when its run broke; which tests failed is certify's to judge.
 [private]
 [parallel]
-_gated-tiers jobs: (_tier-system jobs "run") (_tier-gui-instant jobs "run") (_tier-faults jobs "run")
+_gated-tiers jobs: (_tier-system jobs "run") (_tier-gui-instant jobs "run") (_tier-faults jobs "run") (_tier-cli jobs "run")
 
 # A test is accepted when it passed and its behaviour passed, or it is excused by
 # assurance/checker/expected-verdicts.toml (as every xfail must be) and left exactly those rules open.
