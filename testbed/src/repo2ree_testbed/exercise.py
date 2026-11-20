@@ -13,10 +13,9 @@ specification's to judge from the trace, not the exercise's to know.
 from __future__ import annotations
 
 import json
-from pathlib import PurePosixPath
 from typing import Annotated, Final, Literal, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, NonNegativeInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, model_validator
 
 from repo2ree_testbed.api_models import DefinitionPatch, ReviewBasis, ScriptKind, ScriptTarget
 from repo2ree_testbed.showcases import ProjectName, RecipeScript
@@ -258,26 +257,58 @@ class Fault(_Model):
     at: FaultPoint
 
 
-def _inside_the_ree(path: str) -> str:
-    parts = PurePosixPath(path).parts
-    if not parts or path.startswith("/") or ".." in parts or parts[0] == ".git":
-        raise ValueError(f"{path} is no file of an REE: a path from it, inside it, never its .git")
-    return path
+# Where in an REE, or in a review of it, the environment changes something: a script as the REE writes it, the
+# workspace its scripts run in, the other files its history holds, or the history itself.
+FilePart = Literal["overlay", "workspace", "records"]
+# How a file changes: written over, added to, removed, its mode changed, or a file added beside the others.
+FileChange = Literal["write", "append", "remove", "mode", "add"]
+# How a history changes: a commit made on it, its last commit reset away, or its last commit amended.
+HistoryChange = Literal["commit", "reset", "amend"]
 
 
-# A file by its path from its REE: relative, inside the REE, and never the REE's own version storage.
-ReePath = Annotated[str, AfterValidator(_inside_the_ree)]
-
-
-class Drift(_Model):
-    """A file of an REE changed outside ree before step ``before``: written with ``content``, or removed without.
-    ``before`` may be the number of steps, for a drift after the last. Only an REE a step has initialized drifts:
-    before that, its files are what initializing it starts from, which is no change of what it records."""
+class _Drift(_Model):
+    """Something of an REE, or of its review ``review``, changed outside ree before step ``before``; ``before`` may
+    be the number of steps, for a drift after the last. Only an REE a step has initialized drifts: before that, its
+    files are what initializing it starts from, which is no change of what it records."""
 
     before: NonNegativeInt
     ree: Label
-    path: ReePath
-    content: str | None = None
+    review: Label | None = None
+
+
+class FileDrift(_Drift):
+    """A file changed: the ``pick``-th, in order, of the files ``part`` holds when it drifts, or, for ``add``, one
+    added. Replay names the file it changed; a part that holds no file to change changes nothing."""
+
+    kind: Literal["file"] = "file"
+    part: FilePart
+    change: FileChange
+    pick: NonNegativeInt = 0
+
+    @model_validator(mode="after")
+    def _added_where_a_file_is_the_ree_s(self) -> Self:
+        if self.part == "records" and self.change == "add":
+            raise ValueError("a file added beside the records is none of the REE's: add one to overlay or workspace")
+        return self
+
+
+class HistoryDrift(_Drift):
+    """The history changed by git, outside ree, and put back where ree left it before step ``until``, as ree's
+    refusal says to; ``until`` may be the number of steps, for after the last. A history left rewritten is no record
+    of the product's to judge."""
+
+    kind: Literal["history"] = "history"
+    change: HistoryChange
+    until: NonNegativeInt
+
+    @model_validator(mode="after")
+    def _undone_after_it_arose(self) -> Self:
+        if self.until <= self.before:
+            raise ValueError(f"a history drift before step {self.before} is put back before step {self.until}")
+        return self
+
+
+type Drift = Annotated[FileDrift | HistoryDrift, Field(discriminator="kind")]
 
 
 class Exercise(_Model):
@@ -310,6 +341,8 @@ class Exercise(_Model):
                 problems.append(f"a drift before step {drift.before}, which is no step")
             elif initialized is None or drift.before <= initialized:
                 problems.append(f"a drift in {drift.ree} before step {drift.before}, before any step initialized it")
+            elif isinstance(drift, HistoryDrift) and drift.until > len(self.steps):
+                problems.append(f"a drift put back before step {drift.until}, which is no step")
         if problems:
             raise ValueError("; ".join(problems))
         return self

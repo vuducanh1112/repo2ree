@@ -88,7 +88,9 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
                 copy_object(pointer, history.layout.git_dir, destination.layout.git_dir)
             pending = history.layout.git_dir / "repo2ree" / "operations"
             if pending.is_dir():
-                target = destination.layout.git_dir / "repo2ree" / "operations"
+                # Kept apart, as the history they belong to is under refs/repo2ree/imports/<head>: they are the
+                # exporting REE's attempts, not this one's.
+                target = destination.layout.git_dir / "repo2ree" / "imports" / entry.head / "operations"
                 target.mkdir(parents=True, exist_ok=True)
                 for path in pending.glob("*.json"):
                     if not (target / path.name).exists():

@@ -216,43 +216,21 @@
       "type": "object"
     },
     "Drift": {
-      "additionalProperties": false,
-      "description": "A file of an REE changed outside ree before step ``before``: written with ``content``, or removed without.\n``before`` may be the number of steps, for a drift after the last. Only an REE a step has initialized drifts:\nbefore that, its files are what initializing it starts from, which is no change of what it records.",
-      "properties": {
-        "before": {
-          "minimum": 0,
-          "title": "Before",
-          "type": "integer"
+      "discriminator": {
+        "mapping": {
+          "file": "#/$defs/FileDrift",
+          "history": "#/$defs/HistoryDrift"
         },
-        "ree": {
-          "pattern": "^[a-z][a-z0-9-]{0,31}$",
-          "title": "Ree",
-          "type": "string"
-        },
-        "path": {
-          "title": "Path",
-          "type": "string"
-        },
-        "content": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Content"
-        }
+        "propertyName": "kind"
       },
-      "required": [
-        "before",
-        "ree",
-        "path"
-      ],
-      "title": "Drift",
-      "type": "object"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FileDrift"
+        },
+        {
+          "$ref": "#/$defs/HistoryDrift"
+        }
+      ]
     },
     "EvaluateReproducibility": {
       "additionalProperties": false,
@@ -389,6 +367,75 @@
       "title": "Fetched",
       "type": "object"
     },
+    "FileDrift": {
+      "additionalProperties": false,
+      "description": "A file changed: the ``pick``-th, in order, of the files ``part`` holds when it drifts, or, for ``add``, one\nadded. Replay names the file it changed; a part that holds no file to change changes nothing.",
+      "properties": {
+        "before": {
+          "minimum": 0,
+          "title": "Before",
+          "type": "integer"
+        },
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review"
+        },
+        "kind": {
+          "const": "file",
+          "default": "file",
+          "title": "Kind",
+          "type": "string"
+        },
+        "part": {
+          "enum": [
+            "overlay",
+            "workspace",
+            "records"
+          ],
+          "title": "Part",
+          "type": "string"
+        },
+        "change": {
+          "enum": [
+            "write",
+            "append",
+            "remove",
+            "mode",
+            "add"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "pick": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Pick",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "before",
+        "ree",
+        "part",
+        "change"
+      ],
+      "title": "FileDrift",
+      "type": "object"
+    },
     "FromRecipe": {
       "additionalProperties": false,
       "description": "A script as a project's recipe writes it.",
@@ -458,6 +505,63 @@
         "cpus"
       ],
       "title": "HardwarePatch",
+      "type": "object"
+    },
+    "HistoryDrift": {
+      "additionalProperties": false,
+      "description": "The history changed by git, outside ree, and put back where ree left it before step ``until``, as ree's\nrefusal says to; ``until`` may be the number of steps, for after the last. A history left rewritten is no record\nof the product's to judge.",
+      "properties": {
+        "before": {
+          "minimum": 0,
+          "title": "Before",
+          "type": "integer"
+        },
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review"
+        },
+        "kind": {
+          "const": "history",
+          "default": "history",
+          "title": "Kind",
+          "type": "string"
+        },
+        "change": {
+          "enum": [
+            "commit",
+            "reset",
+            "amend"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "until": {
+          "minimum": 0,
+          "title": "Until",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "before",
+        "ree",
+        "change",
+        "until"
+      ],
+      "title": "HistoryDrift",
       "type": "object"
     },
     "InitializeRee": {

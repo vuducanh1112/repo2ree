@@ -20,6 +20,8 @@ from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.command import (
     LoadReeBundleArgs,
     LoadReeBundleCommand,
+    PatchReeDefinitionArgs,
+    PatchReeDefinitionCommand,
     SealReeArgs,
     SealReeCommand,
 )
@@ -224,3 +226,41 @@ def test_a_loaded_sealed_ree_holds_exactly_the_files_its_seal_lists(tmp_path, mo
             assert digest_file(path) == listed[relative], relative
         else:
             assert not path.exists(), relative
+
+
+def test_a_record_kept_beside_the_history_travels_as_the_exporting_ree_s(tmp_path):
+    author = ReeLayout(root=tmp_path / "author")
+    initialize_ree(author, name="drifted")
+    patched = run_command(
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "patched"})),
+        log=lambda *args: None,
+        layout=author,
+    )
+    assert patched.status == "succeeded"
+    with open_history(author) as history:
+        left = history.git("rev-parse", "refs/heads/ree-history").stdout.decode().strip()
+        earlier = history.git("rev-parse", f"{left}^").stdout.decode().strip()
+        history.git("update-ref", "refs/heads/ree-history", earlier)
+    refused = run_command(SealReeCommand(args=SealReeArgs()), log=lambda *args: None, layout=author)
+    assert refused.history is not None
+    assert refused.history.capture_status == "failed"
+    with open_history(author) as history:
+        history.git("update-ref", "refs/heads/ree-history", left)
+    sealed = run_command(SealReeCommand(args=SealReeArgs()), log=lambda *args: None, layout=author)
+    assert sealed.status == "succeeded", sealed
+    with materialized_ree_download(author) as archive:
+        data = archive.read_bytes()
+    destination = ReeLayout(root=tmp_path / "destination")
+    initialize_ree(destination, name="blank")
+    destination.upload_staging_file("offline").write_bytes(data)
+    loaded = run_command(
+        LoadReeBundleCommand(args=LoadReeBundleArgs(upload_token="offline", archive_name="ree.zip")),  # noqa: S106
+        log=lambda *args: None,
+        layout=destination,
+    )
+
+    assert loaded.status == "succeeded", loaded
+    attempt = refused.history.attempt_id
+    assert not (destination.git_dir / "repo2ree" / "operations" / f"{attempt}.json").exists()
+    assert list((destination.git_dir / "repo2ree" / "imports").glob(f"*/operations/{attempt}.json"))
+    assert attempt in {record.attempt_id for record in read_operation_history(destination).operations}

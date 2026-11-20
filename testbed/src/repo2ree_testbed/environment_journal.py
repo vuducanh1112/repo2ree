@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Final, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 PROCESS: Final = "environment"
 OWNER: Final = "environment"
@@ -48,6 +48,17 @@ class _Drifted(_Record):
     facts: dict[str, str]
 
 
+class _Undone(_Record):
+    kind: Literal["transition"] = "transition"
+    owner: str = OWNER
+    subject: Literal["Drift"] = "Drift"
+    key: str
+    partition: str
+    from_: Literal["arisen"] = Field(default="arisen", alias="from")
+    to: Literal["undone"] = "undone"
+    facts: dict[str, str] = Field(default_factory=dict)
+
+
 class _Message(_Record):
     kind: Literal["send", "receive"]
     owner: str = OWNER
@@ -78,13 +89,17 @@ class EnvironmentJournal:
     def _append(self, record: _Record) -> str:
         """Write one record; its reference, ``<journal>#<seq>``."""
         self._sequence += 1
-        fields = {"v": 1, "seq": self._sequence, **record.model_dump(mode="json"), "at": datetime.now(UTC).isoformat()}
+        dumped = record.model_dump(mode="json", by_alias=True)
+        fields = {"v": 1, "seq": self._sequence, **dumped, "at": datetime.now(UTC).isoformat()}
         with self.path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(fields, separators=(",", ":"), sort_keys=True) + "\n")
         return f"{self.id}#{self._sequence}"
 
     def drifted(self, key: str, ree: str, path: str) -> None:
         self._append(_Drifted(key=key, partition=ree, facts={"path": path, "part": part_of(path)}))
+
+    def undone(self, key: str, ree: str) -> None:
+        self._append(_Undone(key=key, partition=ree))
 
     def command(self, attempt_id: str, ree: str, run_id: str) -> str:
         """A command about to run as the attempt ``attempt_id``; its reference, for the attempts it runs to cite."""

@@ -21,7 +21,15 @@ from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
-from repo2ree_core.persistence.integrity import find_drift, lay_out_scripts, recordable_edits, stamp_ree
+from repo2ree_core.persistence.integrity import (
+    HISTORY,
+    find_drift,
+    history_hints,
+    lay_out_scripts,
+    recordable_edits,
+    stamp_history,
+    stamp_rees,
+)
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
 from repo2ree_protocol.command import (
@@ -32,7 +40,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.history import CompletedOperation, DriftedFile, OperationRecord
 from repo2ree_protocol.result import ActionResult, HistoryReference
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.layout import OVERLAY
+from repo2ree_ree.layout import OVERLAY, WORKSPACE
 
 
 def capture_command(
@@ -127,7 +135,7 @@ def capture_command(
                 raise _CaptureFailedError(str(exc), rolled_back=rolled_back) from exc
             record.capture_status = "captured"
             record.phases.append("captured")
-            _stamp(layout, log)
+            _stamp(layout, scope, log)
             if edited is not None and records_edit is not None and result.status != "succeeded":
                 # Not recorded, so still drift, for the next command to find.
                 layout.overlay_file(records_edit).write_bytes(edited)
@@ -138,7 +146,7 @@ def capture_command(
     except (_CaptureFailedError, HistoryCaptureError, OSError, ValueError) as exc:
         if isinstance(exc, _CaptureFailedError) and exc.rolled_back:
             # What the attempt changed is undone where the history holds it; the rest is what it left.
-            _stamp(layout, log)
+            _stamp(layout, scope, log)
         record_digest: str | None = None
         if not isinstance(exc, _CaptureFailedError):
             outcome = "nothing ran"  # The before-snapshot was never taken.
@@ -175,16 +183,18 @@ def _refusal(layout: ReeLayout, drift: list[DriftedFile], records_edit: str | No
     overlay, or one laying the workspace out again, which discards what drifted there."""
     if not drift:
         return None
-    if operation == "materialize_workspace" and all(item.part == "workspace" for item in drift):
+    if operation == "materialize_workspace" and all(item.path.startswith(f"{WORKSPACE}/") for item in drift):
         return None
     edits = recordable_edits(layout, drift)
     if records_edit is not None and records_edit in edits:
         return None
     named = ", ".join(item.path for item in drift[:10]) + (f" and {len(drift) - 10} more" if len(drift) > 10 else "")
-    return (
-        f"the REE's files changed outside ree: {named}. Edit a script in overlay/, not workspace/, or write it with "
-        "`ree edit`; `ree materialize-workspace` lays the workspace out again from what the REE records"
-    )
+    ways = [
+        "edit a script in overlay/, not workspace/, or write it with `ree edit`",
+        "`ree materialize-workspace` lays the workspace out again from what the REE records",
+        *(f"`{hint}` puts the history back where ree left it" for hint in history_hints(layout, drift)),
+    ]
+    return f"the REE changed outside ree: {named}. " + "; ".join(ways)
 
 
 def _refuse(
@@ -212,18 +222,34 @@ def _refuse(
     record.result = result
     record.phases.append("completed")
     write_json_atomic(record_path, record.model_dump(mode="json"))
+    if _history_drifted(layout, scope, record.drift_found):
+        # Its history is not where ree left it, so nothing is committed to it: the refusal stays beside it, as an
+        # attempt whose capture failed, and the history stays drifted until it is put back.
+        record.capture_status = "failed"
+        record.capture_error = "the REE's history is not where ree left it, so the refusal is kept beside it"
+        record.phases.append("capture_failed")
+        write_json_atomic(record_path, record.model_dump(mode="json"))
+        return result.model_copy(update={"history": _references(record, _digest_of(record_path))})
     _publish(layout, scope, history, record, operation, log, unchanged=True)
     record.capture_status = "captured"
     record.phases.append("captured")
+    stamp_history(scope)
     with suppress(OSError):
         record_path.unlink(missing_ok=True)
     return result.model_copy(update={"history": _references(record)})
 
 
-def _stamp(layout: ReeLayout, log: LogSink) -> None:
-    """Stamp the REE's files as the attempt left them, for the next attempt to check against."""
+def _history_drifted(layout: ReeLayout, scope: ReeLayout, drift: list[DriftedFile]) -> bool:
+    """Whether a ref of the history at ``scope`` is among what drifted."""
+    within = scope.root.relative_to(layout.root).as_posix()
+    refs = f"{HISTORY}/" if within == "." else f"{within}/{HISTORY}/"
+    return any(item.part == "history" and item.path.startswith(refs) for item in drift)
+
+
+def _stamp(layout: ReeLayout, scope: ReeLayout, log: LogSink) -> None:
+    """Stamp the REE as the attempt left it, for the next attempt to check against."""
     try:
-        stamp_ree(layout)
+        stamp_rees(layout, scope)
     except (HistoryCaptureError, OSError, ValueError) as exc:
         log("system", "error", f"cannot stamp the REE's files, so the next command finds them drifted: {exc}")
 
@@ -317,7 +343,7 @@ def settle_interrupted(
             return _capture_failed(record, record_path, f"{exc}; the REE files {outcome}", log)
         record.capture_status = "captured"
         record.phases.append("captured")
-        _stamp(layout, log)
+        _stamp(layout, scope, log)
         with suppress(OSError):
             record_path.unlink(missing_ok=True)
     log("system", "error", message)

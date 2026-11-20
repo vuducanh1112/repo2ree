@@ -2095,7 +2095,8 @@ export interface components {
         };
         /**
          * DriftedFile
-         * @description A file of the REE that is not as the last attempt left it: changed, added or removed outside ree.
+         * @description A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed
+         *     outside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref.
          */
         DriftedFile: {
             /** Path */
@@ -2104,7 +2105,7 @@ export interface components {
              * Part
              * @enum {string}
              */
-            part: "overlay" | "workspace" | "records";
+            part: "overlay" | "workspace" | "records" | "history";
         };
         /**
          * EngineObservation

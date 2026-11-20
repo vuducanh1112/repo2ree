@@ -6,8 +6,7 @@ a few inputs, wherever the REE stands. A stage is taken whether or not its step 
 specification's to judge from the trace, never the generator's to know.
 
 Inputs come from small fixed pools (the instant project, its recipe, one experiment), so a failing exercise shrinks
-to steps that differ in what matters. So do drifts: a few files of an REE, changed or removed outside ree between
-two steps.
+to steps that differ in what matters. Drifts name a part of an REE and a change, and replay picks the file.
 """
 
 from __future__ import annotations
@@ -34,8 +33,13 @@ from repo2ree_testbed.exercise import (
     Drift,
     EvaluateReproducibility,
     Exercise,
+    FileChange,
+    FileDrift,
+    FilePart,
     FromRecipe,
     GenerateSbom,
+    HistoryChange,
+    HistoryDrift,
     InitializeRee,
     Label,
     LintScripts,
@@ -222,34 +226,48 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
     return st.one_of(operations)
 
 
-# Files an REE's environment changes outside ree: a script as the REE writes it, which a command records, and others
-# it refuses for: the workspace's copy, a file added there, another record of the REE.
-DRIFTED_PATHS: Final = (
-    "overlay/ree-scripts/launch.sh",
-    "workspace/ree-scripts/launch.sh",
-    "workspace/stray.txt",
-    "REPRODUCING.md",
-)
-DRIFTED_CONTENT: Final = ("#!/bin/sh\necho drifted\n", None)
-
-
 def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
-    """Drifts in REEs the steps initialize, each after the step that does."""
+    """Drifts in REEs the steps initialize, each after the step that does: of any part, by any change, in the REE or
+    in a review the steps name."""
     initialized = {
         step.ree: index for index, step in reversed(list(enumerate(steps))) if isinstance(step, InitializeRee)
     }
     if not initialized:
         return st.just(())
-    drift = st.sampled_from(sorted(initialized)).flatmap(
-        lambda ree: st.builds(
-            Drift,
-            before=st.integers(min_value=initialized[ree] + 1, max_value=len(steps)),
-            ree=st.just(ree),
-            path=st.sampled_from(DRIFTED_PATHS),
-            content=st.sampled_from(DRIFTED_CONTENT),
+    reviewed = sorted({review for step in steps if (review := getattr(step, "review", None)) is not None})
+
+    def one(ree: Label) -> st.SearchStrategy[Drift]:
+        first = initialized[ree] + 1
+        reviews: st.SearchStrategy[Label | None] = st.none() | st.sampled_from(reviewed) if reviewed else st.none()
+        files: st.SearchStrategy[Drift] = st.sampled_from(get_args(FilePart)).flatmap(
+            lambda part: st.builds(
+                FileDrift,
+                before=st.integers(min_value=first, max_value=len(steps)),
+                ree=st.just(ree),
+                review=reviews,
+                part=st.just(part),
+                # Nothing added beside the records is the REE's.
+                change=st.sampled_from(
+                    [change for change in get_args(FileChange) if (part, change) != ("records", "add")]
+                ),
+                pick=st.integers(min_value=0, max_value=50),
+            )
         )
-    )
-    return st.lists(drift, max_size=2).map(tuple)
+        if first >= len(steps):
+            return files
+        history: st.SearchStrategy[Drift] = st.integers(min_value=first, max_value=len(steps) - 1).flatmap(
+            lambda before: st.builds(
+                HistoryDrift,
+                before=st.just(before),
+                ree=st.just(ree),
+                review=reviews,
+                change=st.sampled_from(get_args(HistoryChange)),
+                until=st.integers(min_value=before + 1, max_value=len(steps)),
+            )
+        )
+        return st.one_of(files, history)
+
+    return st.lists(st.sampled_from(sorted(initialized)).flatmap(one), max_size=2).map(tuple)
 
 
 @st.composite

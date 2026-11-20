@@ -49,7 +49,10 @@ def read_operation_history(layout: ReeLayout) -> OperationHistory:
                 if record.attempt_id not in published:
                     scoped[record.attempt_id] = record
                     published.add(record.attempt_id)
-        for path in sorted(directory.glob("*.json")):
+        # This REE's own unpublished records, then those a bundle brought from the REE it was exported from, which
+        # keep apart as its imported history does.
+        imported = sorted((scope.git_dir / "repo2ree" / "imports").glob("*/operations/*.json"))
+        for path in [*sorted(directory.glob("*.json")), *imported]:
             if path.stem in scoped:
                 continue
             try:

@@ -9,7 +9,7 @@ from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.session import pick_up_authored_edits
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
-from repo2ree_core.persistence.integrity import find_drift
+from repo2ree_core.persistence.integrity import find_drift, stamp_rees
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.command import (
@@ -192,3 +192,44 @@ def test_laying_the_workspace_out_again_is_refused_for_drift_elsewhere(ree):
     ree.overlay_file("notes.txt").write_text("not a script")
 
     assert dispatch.run_command(MaterializeWorkspaceCommand(), log=lambda *a: None, layout=ree).status == "failed"
+
+
+def test_a_history_reset_outside_ree_is_refused_and_kept_beside_it_until_put_back(ree):
+    first = git(ree, "rev-parse", "refs/heads/ree-history")
+    assert patch(ree, "second").status == "succeeded"
+    left = git(ree, "rev-parse", "refs/heads/ree-history")
+    git(ree, "update-ref", "refs/heads/ree-history", first)
+
+    refused = patch(ree, "third")
+    again = patch(ree, "third")
+
+    assert refused.status == again.status == "failed"
+    assert refused.failure is not None
+    assert f"git update-ref refs/heads/ree-history {left}" in refused.failure.message
+    assert refused.history is not None
+    assert (refused.history.capture_status, refused.history.after_snapshot_id) == ("failed", None)
+    assert refused.history.record_digest is not None
+    assert git(ree, "rev-parse", "refs/heads/ree-history") == first
+    git(ree, "update-ref", "refs/heads/ree-history", left)
+    assert patch(ree, "third").status == "succeeded"
+
+
+def test_a_commit_made_outside_ree_is_drift_even_when_the_files_are_as_they_were(ree):
+    head = git(ree, "rev-parse", "refs/heads/ree-history")
+    identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
+    by_hand = git(ree, *identity, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", "by hand")
+    git(ree, "update-ref", "refs/heads/ree-history", by_hand)
+
+    assert find_drift(ree) == [DriftedFile(path=".git/refs/heads/ree-history", part="history")]
+    assert patch(ree).status == "failed"
+
+
+def test_a_file_changed_in_a_review_is_drift_of_the_ree(ree):
+    review = ree.review("review-1")
+    review.root.mkdir(parents=True)
+    initialize_ree(review, name="review")
+    stamp_rees(ree, review)
+    review.overlay_file(RESERVED_LAUNCH_SCRIPT).write_text("echo changed in the review\n")
+
+    assert find_drift(ree) == [DriftedFile(path=f"reviews/review-1/overlay/{RESERVED_LAUNCH_SCRIPT}", part="overlay")]
+    assert patch(ree).status == "failed"

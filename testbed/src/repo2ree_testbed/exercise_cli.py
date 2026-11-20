@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -24,6 +25,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, JsonValue
 
+from repo2ree_ree.reserved_paths import WORKSPACE_CONTROL_PREFIXES
 from repo2ree_testbed.api_models import ScriptTarget
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.cli_machine import Machine
@@ -38,7 +40,11 @@ from repo2ree_testbed.exercise import (
     EvaluateReproducibility,
     Exercise,
     Fetched,
+    FileDrift,
+    FilePart,
     GenerateSbom,
+    HistoryChange,
+    HistoryDrift,
     InitializeRee,
     Label,
     LintScripts,
@@ -291,15 +297,33 @@ class CliReplay:
         )
         return ran
 
-    def _drift(self, journal: EnvironmentJournal, number: int, drift: Drift) -> None:
-        """Change the file outside ree, as an editor, a disk or another program would, and journal it."""
-        target = self.root(drift.ree) / drift.path
-        if drift.content is None:
-            target.unlink(missing_ok=True)
+    def _scope(self, drift: Drift) -> Path:
+        return self.root(drift.ree) / "reviews" / drift.review if drift.review else self.root(drift.ree)
+
+    def _undo(
+        self, journal: EnvironmentJournal, drifts: list[tuple[int, Drift]], moved: dict[int, str], index: int
+    ) -> None:
+        """Put back each history drift due before step ``index`` where ree left it, as ree's refusal says to."""
+        for number, drift in drifts:
+            if isinstance(drift, HistoryDrift) and drift.until == index and number in moved:
+                _git(self._scope(drift), "update-ref", HISTORY_REF, moved.pop(number))
+                journal.undone(f"drift-{number}", drift.ree)
+
+    def _drift(self, journal: EnvironmentJournal, number: int, drift: Drift, moved: dict[int, str]) -> None:
+        """Change the REE outside ree, as an editor, a disk, another program or git would, and journal what changed:
+        nothing, when there was nothing to change. A history's ref is kept in ``moved``, to put back."""
+        scope = self._scope(drift)
+        prefix = f"reviews/{drift.review}/" if drift.review else ""
+        if isinstance(drift, HistoryDrift):
+            left = _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip()
+            changed = _rewrite(scope, drift.change, number)
+            if changed is not None:
+                moved[number] = left
         else:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(drift.content, encoding="utf-8")
-        journal.drifted(f"drift-{number}", drift.ree, drift.path)
+            touched = _change(scope, drift, number)
+            changed = touched.relative_to(scope).as_posix() if touched is not None else None
+        if changed is not None:
+            journal.drifted(f"drift-{number}", drift.ree, f"{prefix}{changed}")
 
     def _staged(self, index: int, name: str, content: bytes) -> Path:
         staged = self.workdir / "staged" / str(index) / name
@@ -351,11 +375,13 @@ class CliReplay:
         self.root(exercise.rees[0]).parent.mkdir(parents=True, exist_ok=True)
         journal = EnvironmentJournal(self.journals)
         drifts = list(enumerate(exercise.drifts))
+        moved: dict[int, str] = {}
         replayed: list[Replayed] = []
         for index, step in enumerate(exercise.steps):
+            self._undo(journal, drifts, moved, index)
             for number, drift in drifts:
                 if drift.before == index:
-                    self._drift(journal, number, drift)
+                    self._drift(journal, number, drift, moved)
             prepared = self._prepare(index, step)
             ran = None
             if prepared.made:
@@ -365,10 +391,91 @@ class CliReplay:
             )
         for number, drift in drifts:
             if drift.before == len(exercise.steps):
-                self._drift(journal, number, drift)
+                self._drift(journal, number, drift, moved)
+        self._undo(journal, drifts, moved, len(exercise.steps))
         journal.close()
         return tuple(replayed)
 
     def histories(self, exercise: Exercise) -> tuple[Path, ...]:
         """The REE directories that hold a history once the exercise ran: what the behaviour check reads."""
         return tuple(root for label in exercise.rees if ((root := self.root(label)) / ".git").is_dir())
+
+
+# What a drift writes, and who git says made a commit by hand.
+DRIFTED: Final = "changed outside ree"
+GIT_IDENTITY: Final = ("-c", "user.name=environment", "-c", "user.email=environment@repo2ree.invalid")
+HISTORY_REF: Final = "refs/heads/ree-history"
+
+
+def _git(scope: Path, *words: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "--git-dir", str(scope / ".git"), *GIT_IDENTITY, *words], capture_output=True, text=True, check=False
+    )
+
+
+def _files(scope: Path, part: FilePart) -> list[Path]:
+    """The files ``part`` holds now, in order: the history's own for the records, never the workspace's control
+    files, which ree keeps for itself."""
+    if part == "records":
+        listed = _git(scope, "ls-tree", "-r", "--name-only", HISTORY_REF)
+        names = [name for name in listed.stdout.splitlines() if not name.startswith(f"{part_dir('overlay')}/")]
+        return [scope / name for name in sorted(names) if (scope / name).is_file()]
+    base = scope / part_dir(part)
+    if not base.is_dir():
+        return []
+    return sorted(
+        path
+        for path in base.rglob("*")
+        if path.is_file() and not path.is_symlink() and not path.name.startswith(WORKSPACE_CONTROL_PREFIXES)
+    )
+
+
+def part_dir(part: FilePart) -> str:
+    return {"overlay": "overlay", "workspace": "workspace", "records": "."}[part]
+
+
+def _change(scope: Path, drift: FileDrift, number: int) -> Path | None:
+    """Change a file of ``scope`` as ``drift`` says; the file changed, or None when the part holds none to change."""
+    if drift.change == "add":
+        base = scope / part_dir(drift.part)
+        if not base.is_dir():
+            return None
+        added = base / f"drift-{number}.txt"
+        added.write_text(f"{DRIFTED} {number}\n", encoding="utf-8")
+        return added
+    files = _files(scope, drift.part)
+    if not files:
+        return None
+    target = files[drift.pick % len(files)]
+    match drift.change:
+        case "write":
+            target.write_text(f"{DRIFTED} {number}\n", encoding="utf-8")
+        case "append":
+            with target.open("a", encoding="utf-8") as stream:
+                stream.write(f"\n{DRIFTED} {number}\n")
+        case "remove":
+            target.unlink()
+        case "mode":
+            target.chmod(target.stat().st_mode ^ stat.S_IXUSR)
+    return target
+
+
+def _rewrite(scope: Path, change: HistoryChange, number: int) -> str | None:
+    """Change the history of ``scope`` with git as ``change`` says; the ref moved, or None when there was none to
+    move."""
+    head = _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip()
+    if not head:
+        return None
+    match change:
+        case "commit":
+            made = _git(scope, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", f"{DRIFTED} {number}")
+            target = made.stdout.strip()
+        case "reset":
+            target = _git(scope, "rev-parse", "--verify", "--quiet", f"{head}^").stdout.strip()
+        case "amend":
+            parents = _git(scope, "rev-parse", f"{head}^@").stdout.split()
+            words = [word for parent in parents for word in ("-p", parent)]
+            target = _git(scope, "commit-tree", f"{head}^{{tree}}", *words, "-m", f"{DRIFTED} {number}").stdout.strip()
+    if not target or _git(scope, "update-ref", HISTORY_REF, target, head).returncode:
+        return None
+    return f".git/{HISTORY_REF}"

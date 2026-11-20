@@ -3285,7 +3285,7 @@
     },
     "DriftedFile": {
       "additionalProperties": false,
-      "description": "A file of the REE that is not as the last attempt left it: changed, added or removed outside ree.",
+      "description": "A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed\noutside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref.",
       "properties": {
         "path": {
           "title": "Path",
@@ -3295,7 +3295,8 @@
           "enum": [
             "overlay",
             "workspace",
-            "records"
+            "records",
+            "history"
           ],
           "title": "Part",
           "type": "string"
