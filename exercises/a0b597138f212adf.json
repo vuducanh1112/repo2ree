@@ -1,0 +1,91 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author"
+    ],
+    "steps": [
+      {
+        "ree": "author",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "author",
+        "operation": "acquire_source",
+        "source": {
+          "kind": "uploaded",
+          "project": "instant"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "materialize_workspace"
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "refused"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "materialize_workspace"
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "laid-out"
+        }
+      }
+    ],
+    "faults": [],
+    "drifts": [
+      {
+        "before": 3,
+        "ree": "author",
+        "kind": "file",
+        "part": "workspace",
+        "change": "append",
+        "pick": 0
+      },
+      {
+        "before": 3,
+        "ree": "author",
+        "kind": "file",
+        "part": "workspace",
+        "change": "add",
+        "pick": 0
+      }
+    ]
+  },
+  "origin": {
+    "kind": "hand_written"
+  },
+  "expects": {
+    "kind": "conforms"
+  },
+  "reached": {
+    "spec_digest": "sha256:0526859f152b43effa875a57ed323915e527a1659a805c5eab295e6494a543c5",
+    "items": [
+      "Attempt (none) -> pending",
+      "Attempt completed -> captured",
+      "Attempt executing -> completed",
+      "Attempt pending -> executing",
+      "Drift (none) -> arisen",
+      "aggregate:Ree",
+      "boundary:run_command",
+      "document:scripts-are-their-digests",
+      "document:standings-are-the-receipts-basis",
+      "drift-is-found-by-the-next-attempt",
+      "evidence",
+      "machine:Attempt",
+      "machine:Drift",
+      "machine:Receipt",
+      "machine:Ree",
+      "receipts-come-from-their-producers",
+      "ree-changes-through-operations"
+    ]
+  }
+}
