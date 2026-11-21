@@ -186,6 +186,18 @@ class Commit:
     parent_tree: str | None
     subject: str
     metadata: dict[str, Any] | None
+    parent: str | None = None
+
+
+def own_record(commit: Commit) -> dict[str, Any] | None:
+    """The attempt's record ``commit`` carries, when it is the commit that attempt captured: its message says so, and
+    names the commit's own parent and tree. A record copied onto another commit, as git copies a message in a
+    cherry-pick or an amend, is that commit's to claim, not its own."""
+    metadata = commit.metadata or {}
+    record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
+    if not isinstance(record, dict) or metadata.get("tree") != commit.tree or metadata.get("parent") != commit.parent:
+        return None
+    return record
 
 
 def history_head(executable: str, repository: Path) -> tuple[str | None, list[str]]:
@@ -249,7 +261,7 @@ def history_commits(executable: str, repository: Path) -> tuple[list[Commit], li
         except ValueError:
             problems.append(f"{commit[:12]}: commit without readable capture metadata")
             metadata = None
-        commits.append(Commit(commit, tree, trees.get(parent) if parent else None, subject.strip(), metadata))
+        commits.append(Commit(commit, tree, trees.get(parent) if parent else None, subject.strip(), metadata, parent))
     return commits, problems
 
 
@@ -571,9 +583,7 @@ def ree_events(
     for index, commit in enumerate(commits):
         base = (index + 1) * 1000
         locator = f"git:{label}@{commit.id[:12]}"
-        metadata = commit.metadata or {}
-        record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
-        record = record if isinstance(record, dict) else None
+        record = own_record(commit)
         changed = commit.tree != commit.parent_tree
         cause: Literal["created", "operation", "external"] = (
             "operation" if record is not None else "created" if state is None else "external"
@@ -700,9 +710,7 @@ def review_history(
     for index, commit in enumerate(commits):
         if index and commit.tree == commit.parent_tree:
             continue
-        metadata = commit.metadata or {}
-        record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
-        record = record if isinstance(record, dict) else None
+        record = own_record(commit)
         cause: Literal["created", "operation", "external"] = (
             "operation" if record is not None else "created" if not index else "external"
         )
@@ -804,6 +812,9 @@ def read_git_history(
         record = metadata.get("record")
         if metadata.get("schema_version") != 2 or not isinstance(record, dict) or "attempt_id" not in record:
             problems.append(f"{commit.id[:12]}: unreadable operation record")
+            continue
+        if own_record(commit) is None:
+            problems.append(f"{commit.id[:12]}: an attempt's record names another parent or tree than its commit's")
             continue
         published.append((index, commit, record))
     pending, found = pending_records(repository, {record["attempt_id"] for _, _, record in published})

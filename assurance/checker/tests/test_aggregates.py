@@ -282,17 +282,38 @@ def test_a_change_deep_in_the_document_changes_every_part_above_it() -> None:
     }
 
 
+def ree_commit(root: Path, operation: str, metadata: dict[str, Any], environment: dict[str, str]) -> str:
+    """Commit what is staged in ``root`` as ree does: its message names the commit's parent and tree."""
+    assert GIT is not None
+
+    def run(*words: str) -> str:
+        return subprocess.run(
+            [GIT, "-C", str(root), *words], check=True, env=environment, capture_output=True, text=True
+        ).stdout.strip()
+
+    tree = run("write-tree")
+    parent = (
+        subprocess.run(
+            [GIT, "-C", str(root), "rev-parse", "--verify", "--quiet", "HEAD"],
+            env=environment,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        or None
+    )
+    message = f"{operation}\n\n{json.dumps({**metadata, 'parent': parent, 'tree': tree})}"
+    commit = run("commit-tree", tree, *(("-p", parent) if parent else ()), "-m", message)
+    run("update-ref", "HEAD", commit)
+    return commit
+
+
 def commit_document(root: Path, operation: str, document: dict[str, Any], record: dict[str, Any] | None) -> None:
     assert GIT is not None
     environment = {**os.environ, **GIT_ENVIRONMENT}
     (root / "ree.json").write_text(json.dumps(document))
     metadata = {"kind": "operation.completed", "schema_version": 2, "record": record} if record else {"kind": "x"}
     subprocess.run([GIT, "-C", str(root), "add", "ree.json"], check=True, env=environment)
-    subprocess.run(
-        [GIT, "-C", str(root), "commit", "-q", "-m", f"{operation}\n\n{json.dumps(metadata)}"],
-        check=True,
-        env=environment,
-    )
+    ree_commit(root, operation, metadata, environment)
 
 
 @pytest.mark.skipif(GIT is None, reason="needs git")

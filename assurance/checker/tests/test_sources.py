@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from repo2ree_assurance_checker.check import check
 from repo2ree_assurance_checker.check.order import Model
@@ -218,19 +219,41 @@ def test_unreadable_capture_commits_make_git_evidence_incomplete(tmp_path: Path)
         "operation_status": "succeeded",
         "changed": False,
     }
-    for message in (
-        "x\n\n" + json.dumps({"kind": "operation.completed", "schema_version": 2, "record": record}),
-        "y\n\nnot json",
-    ):
-        subprocess.run(
-            [GIT, "-C", str(root), "commit", "-q", "--allow-empty", "-m", message], check=True, env=environment
-        )
+    ree_commit(root, "x", {"kind": "operation.completed", "schema_version": 2, "record": record}, environment)
+    subprocess.run(
+        [GIT, "-C", str(root), "commit", "-q", "--allow-empty", "-m", "y\n\nnot json"], check=True, env=environment
+    )
     evidence = load_evidence(repositories=[root], git_executable=GIT)
     (source,) = evidence.sources
     assert source.partitions == frozenset({"ree-1"})
     assert [event.target_state for event in evidence.events] == ["pending", "executing", "completed", "captured"]
     assert not source.complete
     assert "commit without readable capture metadata" in source.problems[0]
+
+
+def ree_commit(root: Path, operation: str, metadata: dict[str, Any], environment: dict[str, str]) -> str:
+    """Commit what is staged in ``root`` as ree does: its message names the commit's parent and tree."""
+    assert GIT is not None
+
+    def run(*words: str) -> str:
+        return subprocess.run(
+            [GIT, "-C", str(root), *words], check=True, env=environment, capture_output=True, text=True
+        ).stdout.strip()
+
+    tree = run("write-tree")
+    parent = (
+        subprocess.run(
+            [GIT, "-C", str(root), "rev-parse", "--verify", "--quiet", "HEAD"],
+            env=environment,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        or None
+    )
+    message = f"{operation}\n\n{json.dumps({**metadata, 'parent': parent, 'tree': tree})}"
+    commit = run("commit-tree", tree, *(("-p", parent) if parent else ()), "-m", message)
+    run("update-ref", "HEAD", commit)
+    return commit
 
 
 GIT_ENVIRONMENT = {
@@ -254,12 +277,8 @@ def captured_repository(root: Path, *attempts: str, ree_id: str | None = "ree-1"
             "command": {"operation": "x"},
             "operation_status": "succeeded",
         }
-        message = "x\n\n" + json.dumps({"kind": "operation.completed", "schema_version": 2, "record": record})
-        subprocess.run(
-            [GIT, "-C", str(root), "commit", "-q", "--allow-empty", "-m", message], check=True, env=environment
-        )
-        head = subprocess.run([GIT, "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True)
-        commits.append(head.stdout.strip())
+        metadata = {"kind": "operation.completed", "schema_version": 2, "record": record}
+        commits.append(ree_commit(root, "x", metadata, environment))
     return commits
 
 
@@ -402,3 +421,27 @@ def test_an_ree_no_control_plane_named_is_named_by_the_history_it_was_collected_
     assert unnamed.sources[0].partitions == frozenset({"demo-1"})
     assert {event.partition for event in named.events} == {"ree-1"}
     assert {event.partition for event in nameless.events} == {None}
+
+
+def test_a_record_copied_onto_another_commit_is_no_attempt_of_it(tmp_path: Path) -> None:
+    # git copies a message in a cherry-pick or an amend: the copy names the parent and tree of the commit it came from.
+    assert GIT is not None
+    root = tmp_path / "ree"
+    first, second = captured_repository(root, "first", "second")
+    message = subprocess.run([GIT, "-C", str(root), "log", "-1", "--format=%B", second], capture_output=True, text=True)
+    environment = {**os.environ, **GIT_ENVIRONMENT}
+    copied = subprocess.run(
+        [GIT, "-C", str(root), "commit-tree", f"{second}^{{tree}}", "-p", second, "-m", message.stdout],
+        check=True,
+        env=environment,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run([GIT, "-C", str(root), "update-ref", "refs/heads/ree-history", copied], check=True)
+
+    evidence = load_evidence(repositories=[root], git_executable=GIT)
+
+    assert {event.key for event in evidence.events if event.subject == "Attempt"} == {"first", "second"}
+    (source,) = evidence.sources
+    assert any("names another parent or tree than its commit's" in problem for problem in source.problems)
+    assert first != copied

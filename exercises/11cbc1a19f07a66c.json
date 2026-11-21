@@ -49,21 +49,7 @@
     "kind": "hand_written"
   },
   "expects": {
-    "kind": "shows",
-    "problems": [
-      {
-        "kind": "violated",
-        "rule": "drift-is-found-by-the-next-attempt",
-        "subject": "Drift drift-1",
-        "detail": "Attempt bab31c039b1642469b0b67292faaff6b, the first after it, reached pending with {'drift_found': []}"
-      },
-      {
-        "kind": "violated",
-        "rule": "ree-changes-through-operations",
-        "subject": "Ree author",
-        "detail": "draft -> draft with {'cause': 'external'}"
-      }
-    ]
+    "kind": "conforms"
   },
   "reached": {
     "spec_digest": "sha256:12e57e4aaad99980537a635ac7860a3fad227c9e24b87da39a7fe9c3e0cb48d4",
