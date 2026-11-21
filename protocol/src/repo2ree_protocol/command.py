@@ -175,9 +175,15 @@ class ReviewRunExperimentCommand(BaseModel):
 
 
 class MaterializeWorkspaceArgs(BaseModel):
-    """No args — merges /ree/upstream + /ree/overlay into /ree/workspace."""
+    """Lay out again the workspace's files that drifted from the source and the overlay, leaving the experiment
+    environment, outputs and anything else there; ``clean``, the whole workspace from nothing."""
 
     model_config = ConfigDict(extra="forbid")
+
+    clean: bool = Field(
+        default=False,
+        description="Lay out the whole workspace from nothing, the experiment environment and outputs with it.",
+    )
 
 
 class MaterializeWorkspaceCommand(BaseModel):

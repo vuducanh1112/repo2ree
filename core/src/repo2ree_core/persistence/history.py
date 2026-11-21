@@ -34,6 +34,7 @@ from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.lfs import LfsPointer, store_payload
 from repo2ree_protocol.history import SELECTION_VERSION
 from repo2ree_protocol.tools import find_tool
+from repo2ree_ree.layout import OVERLAY
 
 INITIAL_REF = "refs/repo2ree/initial"
 HISTORY_REF = "refs/heads/ree-history"
@@ -365,14 +366,13 @@ class GitHistory:
             self.git("read-tree", commit)
         return commit
 
-    def commit_operation(self, *, operation: str, record: dict[str, Any], unchanged: bool = False) -> tuple[str, bool]:
-        """Publish a completed attempt even when its state tree is unchanged; ``unchanged``, with the tree it began
-        on, whatever the files are now."""
+    def commit_operation(self, *, operation: str, record: dict[str, Any]) -> tuple[str, bool]:
+        """Publish a completed attempt, even one whose state tree is unchanged."""
         before = record["before_snapshot_id"]
         if self.head_snapshot() != before:
             raise HistoryCaptureError("History head changed before operation publication")
         previous_tree = self.git("rev-parse", f"{before}^{{tree}}").stdout.decode().strip()
-        tree = previous_tree if unchanged else self._tree()
+        tree = self._tree()
         changed = tree != previous_tree
         commit = self._commit(
             tree,
@@ -400,6 +400,48 @@ class GitHistory:
             record = _operation_record(commit, entries[index + 1])
             if record is not None:
                 yield commit, record
+
+    def overlay_held(self) -> dict[str, tuple[str, str]]:
+        """Each file of the overlay as the history's head holds it, by its path from the overlay, with its mode and
+        blob."""
+        head = self.head_snapshot()
+        if head is None:
+            return {}
+        listed = self.git("ls-tree", "-r", "-z", head, "--", f"{OVERLAY}/").stdout.decode()
+        held: dict[str, tuple[str, str]] = {}
+        for entry in listed.split("\0"):
+            if entry:
+                meta, _, path = entry.partition("\t")
+                mode, _kind, blob = meta.split()
+                held[path.removeprefix(f"{OVERLAY}/")] = (mode, blob)
+        return held
+
+    def hash_blobs(self, paths: list[Path]) -> list[str]:
+        """Git's blob id of each file of ``paths``, written nowhere: links by their target, files by their bytes."""
+        hashed: dict[Path, str] = {}
+        plain = [path for path in paths if not path.is_symlink()]
+        if plain:
+            listed = "\n".join(str(path) for path in plain) + "\n"
+            blobs = self.git("hash-object", "--no-filters", "--stdin-paths", data=listed.encode()).stdout.decode()
+            hashed.update(zip(plain, blobs.split(), strict=True))
+        for path in paths:
+            if path.is_symlink():
+                link = os.fsencode(path.readlink())
+                hashed[path] = self.git("hash-object", "--stdin", data=link).stdout.decode().strip()
+        return [hashed[path] for path in paths]
+
+    def workspace_left(self) -> dict[str, str | None]:
+        """What the newest attempt that ran in the history's REE left changed in its workspace, by its record; nothing
+        when no attempt recorded it."""
+        head = self.head_snapshot()
+        if head is None:
+            return {}
+        entries = self.git("log", "--format=%H%x00%B%x00", head).stdout.decode().split("\0")
+        for index in range(0, len(entries) - 1, 2):
+            record = _operation_record(entries[index].strip(), entries[index + 1])
+            if record is not None and isinstance(record.get("workspace_changed"), dict):
+                return dict(record["workspace_changed"])
+        return {}
 
     def records_operation(self, commit: str) -> bool:
         """Whether ``commit`` is one an attempt captured: ree's, carrying its operation's record."""

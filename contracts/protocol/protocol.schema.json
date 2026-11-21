@@ -5202,8 +5202,15 @@
     },
     "MaterializeWorkspaceArgs": {
       "additionalProperties": false,
-      "description": "No args — merges /ree/upstream + /ree/overlay into /ree/workspace.",
-      "properties": {},
+      "description": "Lay out again the workspace's files that drifted from the source and the overlay, leaving the experiment\nenvironment, outputs and anything else there; ``clean``, the whole workspace from nothing.",
+      "properties": {
+        "clean": {
+          "default": false,
+          "description": "Lay out the whole workspace from nothing, the experiment environment and outputs with it.",
+          "title": "Clean",
+          "type": "boolean"
+        }
+      },
       "title": "MaterializeWorkspaceArgs",
       "type": "object"
     },
@@ -5218,7 +5225,9 @@
         },
         "args": {
           "$ref": "#/$defs/MaterializeWorkspaceArgs",
-          "default": {}
+          "default": {
+            "clean": false
+          }
         }
       },
       "title": "MaterializeWorkspaceCommand",
@@ -5697,6 +5706,28 @@
           ],
           "default": null,
           "title": "Drift Recorded"
+        },
+        "workspace_changed": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workspace Changed"
         },
         "step_evidence_after": {
           "anyOf": [

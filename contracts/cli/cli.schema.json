@@ -567,13 +567,24 @@
       "words": [
         "materialize-workspace"
       ],
-      "summary": "Assemble a clean workspace from the source and the REE overlay",
-      "help": "Assemble a clean workspace from the source and the REE overlay",
+      "summary": "Lay out the workspace from the source and the REE overlay",
+      "help": "Lay out the workspace from the source and the REE overlay",
       "runs": true,
       "operations": [
         "materialize_workspace"
       ],
-      "params": [],
+      "params": [
+        {
+          "name": "--clean",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Lay out the whole workspace from nothing, the experiment environment and outputs with it.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-clean"
+        }
+      ],
       "stdin": null,
       "stdout": "result",
       "outputs": {
@@ -5937,6 +5948,28 @@
           ],
           "default": null,
           "title": "Drift Recorded"
+        },
+        "workspace_changed": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Workspace Changed"
         },
         "step_evidence_after": {
           "anyOf": [

@@ -13840,6 +13840,27 @@
             ],
             "title": "Drift Recorded"
           },
+          "workspace_changed": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Changed"
+          },
           "step_evidence_after": {
             "anyOf": [
               {

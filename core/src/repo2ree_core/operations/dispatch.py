@@ -187,7 +187,7 @@ def _dispatch(
     if isinstance(cmd, ReviewRunExperimentCommand):
         return handle_review_run_experiment(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):
-        return handle_materialize_workspace(layout=layout, log=log, is_canceled=cancel)
+        return handle_materialize_workspace(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, LoadReeBundleCommand):
         return handle_load_ree_bundle(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, SignReeCommand):

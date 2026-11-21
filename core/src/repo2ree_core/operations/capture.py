@@ -21,17 +21,15 @@ from repo2ree_core.persistence.capture_policy import write_capture_controls
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
-from repo2ree_core.persistence.integrity import (
-    HISTORY,
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
+from repo2ree_core.workspace.drift import derived_changes
+from repo2ree_core.workspace.integrity import (
     drift_refusal,
     find_drift,
     lay_out_scripts,
     recordable_edits,
-    stamp_history,
-    stamp_rees,
 )
-from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
 from repo2ree_protocol.command import (
     Command,
 )
@@ -124,6 +122,7 @@ def capture_command(
                 write_json_atomic(record_path, record.model_dump(mode="json"))
                 if result.status == "canceled" or (edited is not None and result.status != "succeeded"):
                     _restore(history, before)
+                record.workspace_changed = derived_changes(scope)
                 _publish(layout, scope, history, record, cmd.operation, log)
             except (HistoryCaptureError, OSError, ValueError) as exc:
                 # Still under the REE lock: put back what the attempt changed, since it is not recorded.
@@ -131,7 +130,6 @@ def capture_command(
                 raise _CaptureFailedError(str(exc), rolled_back=rolled_back) from exc
             record.capture_status = "captured"
             record.phases.append("captured")
-            _stamp(layout, scope, log)
             if edited is not None and records_edit is not None and result.status != "succeeded":
                 # Not recorded, so still drift, for the next command to find.
                 layout.overlay_file(records_edit).write_bytes(edited)
@@ -140,9 +138,6 @@ def capture_command(
             with suppress(OSError):
                 record_path.unlink(missing_ok=True)
     except (_CaptureFailedError, HistoryCaptureError, OSError, ValueError) as exc:
-        if isinstance(exc, _CaptureFailedError) and exc.rolled_back:
-            # What the attempt changed is undone where the history holds it; the rest is what it left.
-            _stamp(layout, scope, log)
         record_digest: str | None = None
         if not isinstance(exc, _CaptureFailedError):
             outcome = "nothing ran"  # The before-snapshot was never taken.
@@ -198,7 +193,7 @@ def _refuse(
     context: ExecutionContext,
     log: LogSink,
 ) -> ActionResult:
-    """Capture an attempt refused for drift: nothing runs, and its commit keeps the tree its history held."""
+    """Record an attempt refused for drift: nothing runs, and nothing is committed."""
     log("system", "error", message)
     head = history.head_snapshot()
     if head is None:
@@ -211,37 +206,14 @@ def _refuse(
     record.operation_failure = result.failure
     record.result = result
     record.phases.append("completed")
+    # Nothing is committed for it: its history may itself be what drifted, and a commit on a history moved beside ree
+    # would make the move ree's. The refusal stays beside the history, as an attempt whose capture failed, until
+    # what drifted is put right.
+    record.capture_status = "failed"
+    record.capture_error = "the REE changed outside ree, so the refusal is kept beside its history"
+    record.phases.append("capture_failed")
     write_json_atomic(record_path, record.model_dump(mode="json"))
-    if _history_drifted(layout, scope, record.drift_found):
-        # Its history is not where ree left it, so nothing is committed to it: the refusal stays beside it, as an
-        # attempt whose capture failed, and the history stays drifted until it is put back.
-        record.capture_status = "failed"
-        record.capture_error = "the REE's history is not where ree left it, so the refusal is kept beside it"
-        record.phases.append("capture_failed")
-        write_json_atomic(record_path, record.model_dump(mode="json"))
-        return result.model_copy(update={"history": _references(record, _digest_of(record_path))})
-    _publish(layout, scope, history, record, operation, log, unchanged=True)
-    record.capture_status = "captured"
-    record.phases.append("captured")
-    stamp_history(scope)
-    with suppress(OSError):
-        record_path.unlink(missing_ok=True)
-    return result.model_copy(update={"history": _references(record)})
-
-
-def _history_drifted(layout: ReeLayout, scope: ReeLayout, drift: list[DriftedFile]) -> bool:
-    """Whether a ref of the history at ``scope`` is among what drifted."""
-    within = scope.root.relative_to(layout.root).as_posix()
-    refs = f"{HISTORY}/" if within == "." else f"{within}/{HISTORY}/"
-    return any(item.part == "history" and item.path.startswith(refs) for item in drift)
-
-
-def _stamp(layout: ReeLayout, scope: ReeLayout, log: LogSink) -> None:
-    """Stamp the REE as the attempt left it, for the next attempt to check against."""
-    try:
-        stamp_rees(layout, scope)
-    except (HistoryCaptureError, OSError, ValueError) as exc:
-        log("system", "error", f"cannot stamp the REE's files, so the next command finds them drifted: {exc}")
+    return result.model_copy(update={"history": _references(record, _digest_of(record_path))})
 
 
 def _publish(
@@ -251,20 +223,16 @@ def _publish(
     record: OperationRecord,
     operation: str,
     log: LogSink,
-    *,
-    unchanged: bool = False,
 ) -> None:
-    """Commit the attempt's outcome with the REE as it is now, or, ``unchanged``, with the tree it began on; the
-    record learns its commit."""
-    if scope.manifest.is_file() and not unchanged:
+    """Commit the attempt's outcome with the REE as it is now; the record learns its commit."""
+    if scope.manifest.is_file():
         current = ReeDirectory(scope).read_ree()
         if current.seal is None:
             prepare_reproducer(scope, current)
             write_capture_controls(scope, current)
-    if scope == layout and not unchanged:
+    if scope == layout:
         record.step_evidence_after = step_evidence(layout, log)
     record.after_snapshot_id, record.changed = history.commit_operation(
-        unchanged=unchanged,
         operation=operation,
         record=CompletedOperation.model_validate(
             {**record.model_dump(), "capture_status": "captured", "phases": [*record.phases, "captured"]}
@@ -326,6 +294,7 @@ def settle_interrupted(
         try:
             write_json_atomic(record_path, record.model_dump(mode="json"))
             _restore(history, record.before_snapshot_id)
+            record.workspace_changed = derived_changes(scope)
             _publish(layout, scope, history, record, str(record.command.get("operation", "")), log)
         except (HistoryCaptureError, OSError, ValueError) as exc:
             rolled_back = _roll_back(history, record.before_snapshot_id, log)
@@ -333,7 +302,6 @@ def settle_interrupted(
             return _capture_failed(record, record_path, f"{exc}; the REE files {outcome}", log)
         record.capture_status = "captured"
         record.phases.append("captured")
-        _stamp(layout, scope, log)
         with suppress(OSError):
             record_path.unlink(missing_ok=True)
     log("system", "error", message)

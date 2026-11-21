@@ -233,7 +233,7 @@ def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, 
     assert result.history.record_digest == digest_bytes(written)
 
 
-def test_a_refusal_whose_capture_fails_runs_nothing_and_leaves_the_drift(ree, monkeypatch):
+def test_a_refusal_commits_nothing_so_a_locked_history_does_not_stop_it(ree, monkeypatch):
     ree.overlay_file("external.txt").write_text("written outside any attempt")
     lock_history(ree)
     ran = []
@@ -242,7 +242,7 @@ def test_a_refusal_whose_capture_fails_runs_nothing_and_leaves_the_drift(ree, mo
     result = patch(ree)
 
     assert (result.status, ran) == ("failed", [])
-    assert "nothing ran" in result.failure.message
+    assert result.failure.details == {"code": "drift"}
     assert pending_record(ree, result.history.attempt_id)["phases"] == [
         "pending",
         "executing",

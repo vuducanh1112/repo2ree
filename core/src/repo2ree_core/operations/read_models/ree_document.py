@@ -20,10 +20,10 @@ from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.operations.handlers.author.file_concurrency import workspace_content_etag
 from repo2ree_core.operations.read_models.files import list_ree_files, list_workspace_files
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.integrity import find_drift
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import load_ree
 from repo2ree_core.persistence.run_lock import running_run
+from repo2ree_core.workspace.integrity import find_drift
 from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg, TargetKind
 from repo2ree_protocol.document import ReeStatusReport, ScriptState, WorkbenchReeDocument

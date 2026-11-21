@@ -27,7 +27,7 @@ ACQUIRE_SOURCE = ReproductionCommand(
 )
 MATERIALIZE_WORKSPACE = ReproductionCommand(
     "materialize_workspace",
-    "Assemble a clean workspace from the source and the REE overlay",
+    "Lay out the workspace from the source and the REE overlay",
 )
 CHECK_WORKING_ENVIRONMENT = ReproductionCommand(
     "check_working_environment",

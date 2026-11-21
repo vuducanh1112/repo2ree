@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from recorded_ree import as_recorded
 from ree_definitions import LAUNCH, ree_definition
 
 from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
@@ -238,9 +239,8 @@ def test_download_refuses_seal_without_published_operation(tmp_path):
         results_included=False,
         sealed_at=_NOW,
     )
-    with open_history(store.layout) as history:
-        # Recorded by ree, as no attempt: a seal nothing published.
-        history.capture(operation="seal_ree")
+    # Recorded by ree, as no attempt: a seal nothing published.
+    as_recorded(store.layout)
     with (
         pytest.raises(HistoryCaptureError, match="no published successful seal"),
         materialized_ree_download(store.layout),

@@ -3213,6 +3213,10 @@ export interface components {
             drift_found?: components["schemas"]["DriftedFile"][];
             /** Drift Recorded */
             drift_recorded?: string | null;
+            /** Workspace Changed */
+            workspace_changed?: {
+                [key: string]: string | null;
+            } | null;
             /** Step Evidence After */
             step_evidence_after?: {
                 [key: string]: string;

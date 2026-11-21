@@ -20,9 +20,9 @@ from repo2ree_core.bundle.export_format import RepositoryExport, ScopeExport
 from repo2ree_core.bundle.repository_export import transfer_scope
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
-from repo2ree_core.persistence.integrity import drift_refusal, find_drift
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import history_scopes
+from repo2ree_core.workspace.integrity import drift_refusal, find_drift
 
 
 class BundleRefusedError(ValueError):

@@ -69,7 +69,7 @@ SUMMARIES: dict[type[BaseModel], str] = {
     LintScriptsCommand: "Check the REE's scripts",
     WriteScriptCommand: "Write one of the REE's scripts from stdin",
     PatchReeDefinitionCommand: "Declare the REE's name, catalog entry, experiment environment and experiments",
-    MaterializeWorkspaceCommand: "Assemble a clean workspace from the source and the REE overlay",
+    MaterializeWorkspaceCommand: "Lay out the workspace from the source and the REE overlay",
     CheckWorkingEnvironmentCommand: "Run the REE's check script in its working environment",
     BuildExperimentEnvironmentCommand: "Build the experiment environment from the REE build script",
     ActivateExperimentEnvironmentCommand: (

@@ -19,10 +19,10 @@ from typing import Any, TextIO
 from repo2ree_core.operations.capture import settle_interrupted
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.integrity import find_drift, recordable_edits
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.persistence.run_lock import holding_ree
+from repo2ree_core.workspace.integrity import find_drift, recordable_edits
 from repo2ree_protocol.command import Command, WriteScriptArgs, WriteScriptCommand
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.frames import LogSink
