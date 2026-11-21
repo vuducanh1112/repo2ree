@@ -1,5 +1,5 @@
-"""What the environment did to an REE, as its journal records it: each command it ran, and each file that drifted
-between them.
+"""What the environment did to an REE, as its journal records it: each command it ran, each bundle it took, and each
+file that drifted between them.
 
 The exercise replay writes it, standing in for a person at the REE's files: it runs ree's commands and changes the
 files outside ree. The checker reads it beside the REEs' histories, in the journal format ``contracts/behaviour``
@@ -69,6 +69,16 @@ class _Message(_Record):
     facts: dict[str, str | int]
 
 
+class _BundleMessage(_Record):
+    kind: Literal["send", "receive"]
+    owner: str = OWNER
+    subject: Literal["export_bundle"] = "export_bundle"
+    message: Literal["export_bundle", "exported", "refused"]
+    key: str
+    partition: str
+    facts: dict[str, int | list[str]]
+
+
 def part_of(path: str) -> Part:
     """Where in an REE a file is, by its path from the REE."""
     top = PurePosixPath(path).parts[0]
@@ -111,6 +121,19 @@ class EnvironmentJournal:
         facts |= {"commit": commit} if commit else {}
         facts |= {"record": record} if record else {}
         self._append(_Message(kind="receive", message="exited", key=attempt_id, partition=ree, facts=facts))
+
+    def bundle(self, bundle_id: str, ree: str) -> None:
+        """A bundle of ``ree`` about to be asked for."""
+        self._append(_BundleMessage(kind="send", message="export_bundle", key=bundle_id, partition=ree, facts={}))
+
+    def exported(self, bundle_id: str, ree: str, heads: list[str] | None) -> None:
+        """The bundle given, with the commit each history in it names as its head, when the bundle names them."""
+        facts: dict[str, int | list[str]] = {"heads": heads} if heads is not None else {}
+        self._append(_BundleMessage(kind="receive", message="exported", key=bundle_id, partition=ree, facts=facts))
+
+    def refused(self, bundle_id: str, ree: str, exit: int) -> None:  # noqa: A002
+        facts: dict[str, int | list[str]] = {"exit": exit}
+        self._append(_BundleMessage(kind="receive", message="refused", key=bundle_id, partition=ree, facts=facts))
 
     def close(self) -> None:
         self._append(_Closed())

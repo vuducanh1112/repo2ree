@@ -16,6 +16,7 @@ from repo2ree_testbed.exercise import (
     HistoryChange,
     HistoryDrift,
     InitializeRee,
+    LoadReeBundle,
     MaterializeWorkspace,
     PatchReeDefinition,
 )
@@ -104,3 +105,21 @@ def test_every_kept_case_is_named_by_its_exercise_s_digest() -> None:
         assert path.stem == case.digest, (
             f"{path.name} holds the exercise named {case.digest}: rename it and its coverage"
         )
+
+
+BUNDLE = "bundles-carry-what-attempts-captured"
+
+
+def test_a_bundle_is_journaled_with_the_heads_it_carries(tmp_path: Path) -> None:
+    exercise = Exercise(
+        rees=("author", "other"),
+        steps=(
+            InitializeRee(ree="author"),
+            InitializeRee(ree="other"),
+            LoadReeBundle(ree="other", exported_by="author"),
+        ),
+    )
+    trace = judge(exercise, tmp_path)
+
+    assert BUNDLE in trace.reached
+    assert [problem for problem in trace.problems if problem.rule == BUNDLE] == []

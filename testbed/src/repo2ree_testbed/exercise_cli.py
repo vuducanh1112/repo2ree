@@ -6,17 +6,20 @@ that step. When what a step takes cannot be made, because the REE it exports doe
 command. Replay judges nothing: what each command answered is kept as it answered.
 
 Replay is the REEs' environment, and journals what it does as one (``environment_journal``): each drift before the
-step it comes before, written to the REE's files directly, and each step's command, which the attempts it runs cite.
+step it comes before, written to the REE's files directly, each step's command, which the attempts it runs cite, and
+each bundle it takes, with the head each history in it names, or the refusal.
 
 """
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import stat
 import subprocess
 import sys
+import zipfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -240,6 +243,18 @@ def command_of(step: Step, staged: Path | None = None) -> Command:
     raise AssertionError(f"no command for {step.operation}")
 
 
+def bundle_heads(archive: bytes) -> list[str] | None:
+    """The commit each history in a bundle names as its head, as its ``export.json`` lists them; None for a bundle
+    that does not."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+            export = json.loads(bundle.read("export.json"))
+        heads = [scope["head"] for scope in export["scopes"]]
+    except (zipfile.BadZipFile, KeyError, TypeError, ValueError):
+        return None
+    return heads if all(isinstance(head, str) for head in heads) else None
+
+
 def _result(stdout: bytes) -> JsonValue:
     lines = stdout.decode(errors="replace").strip().splitlines()
     try:
@@ -346,17 +361,21 @@ class CliReplay:
         except ValueError:
             return ran, {}
 
-    def _prepare(self, index: int, step: Step) -> Prepared:
+    def _prepare(self, journal: EnvironmentJournal, index: int, step: Step) -> Prepared:
         """What replay runs to make the file ``step`` takes, and that file, unless it could not be made."""
         match step:
             case AcquireSource(source=Uploaded(project=project)):
                 fixture = PROJECTS[project]
                 return Prepared(staged=self._staged(index, fixture.upload_name, fixture.archive()))
             case LoadReeBundle(exported_by=exporter):
+                bundle_id = f"bundle-{index}"
+                journal.bundle(bundle_id, exporter)
                 answer = self.run(self.root(exporter), ("bundle",), None)
                 exported = Ran(words=("bundle",), exit=answer.exit, log=tuple(answer.stderr.splitlines()[-LOG_LINES:]))
                 if answer.exit != 0:
+                    journal.refused(bundle_id, exporter, answer.exit)
                     return Prepared((exported,), made=False)
+                journal.exported(bundle_id, exporter, bundle_heads(answer.stdout))
                 return Prepared((exported,), self._staged(index, "ree.zip", answer.stdout))
             case SignRee(signature=signature):
                 shown, seal = self._seal(step.ree)
@@ -382,7 +401,7 @@ class CliReplay:
             for number, drift in drifts:
                 if drift.before == index:
                     self._drift(journal, number, drift, moved)
-            prepared = self._prepare(index, step)
+            prepared = self._prepare(journal, index, step)
             ran = None
             if prepared.made:
                 ran = self._command(journal, step.ree, command_of(step, prepared.staged))
