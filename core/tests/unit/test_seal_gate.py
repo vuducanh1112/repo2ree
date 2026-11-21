@@ -238,6 +238,9 @@ def test_download_refuses_seal_without_published_operation(tmp_path):
         results_included=False,
         sealed_at=_NOW,
     )
+    with open_history(store.layout) as history:
+        # Recorded by ree, as no attempt: a seal nothing published.
+        history.capture(operation="seal_ree")
     with (
         pytest.raises(HistoryCaptureError, match="no published successful seal"),
         materialized_ree_download(store.layout),

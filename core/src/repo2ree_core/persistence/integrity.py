@@ -1,14 +1,15 @@
 """Whether an REE's files and history are as its last attempt left them.
 
-Every attempt ends by stamping the REE: each file its history holds, the workspace its scripts run in, and the commit
-each ref of its history names; each review of it is stamped the same, in its own history. Before the next attempt
-the REE is checked against those stamps, so a file changed, added or removed in between, or a history committed to,
-reset or rewritten, by an editor, a disk, git or anything else that is not ree, is drift: it is found, never
-absorbed. The stamps are a cache beside the history, not evidence; what an attempt found is in its record. They
-guard against mistakes, not against someone rewriting them too.
+The files its history holds are compared with the history's head by git itself: what differs changed beside ree.
+Where ree last left the history's ref is in its reflog, under ree's mark (``GitHistory.left_by_ree``), and in the
+stamps every attempt ends by writing beside the history: the commit each ref names, and the workspace its scripts run
+in, which no history holds. A ref is moved when either says so; when neither knows where ree left it, the head must
+still be a commit ree made. Each review is checked the same, in its own history. What drifted is found, never
+absorbed. The stamps and the reflog guard against mistakes, not against someone rewriting them too; what an attempt
+found is in its record.
 
-A stamp is a file's size, modification time and mode, with the digest of its content: a file whose size or time
-differs is read, and has drifted only if its content or mode differs too.
+A workspace stamp is a file's size, modification time and mode, with the digest of its content: a file whose size or
+time differs is read, and has drifted only if its content or mode differs too.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_core.digests import digest_file
 from repo2ree_core.persistence.files import write_json_atomic
-from repo2ree_core.persistence.history import HistoryCaptureError, selected_files
+from repo2ree_core.persistence.history import HISTORY_REF, GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.history import DriftedFile, ReePart
 from repo2ree_protocol.tools import find_tool
@@ -44,8 +45,8 @@ class Stamp(BaseModel):
 
 
 class Stamps(BaseModel):
-    """Each file of the REE, by its path from the REE, and each ref of its history with the commit it names, as the
-    last attempt left them."""
+    """Each file of the workspace, by its path from the REE, and each ref of its history with the commit it names,
+    as the last attempt left them."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -57,17 +58,24 @@ def stamps_path(layout: ReeLayout) -> Path:
     return layout.git_dir / "repo2ree" / "stamps.json"
 
 
+def _history(layout: ReeLayout) -> GitHistory:
+    """The history at ``layout``, read without its lock: nothing here writes to it."""
+    executable = find_tool("git")
+    if executable is None:
+        raise HistoryCaptureError("git is not available to read the REE's history")
+    return GitHistory(layout, executable)
+
+
 def _part(relative: str) -> ReePart:
-    parts = PurePosixPath(relative).parts
-    top = parts[0]
+    top = PurePosixPath(relative).parts[0]
     if top == HISTORY:
         return "history"
     return "overlay" if top == OVERLAY else "workspace" if top == WORKSPACE else "records"
 
 
-def _ree_files(layout: ReeLayout) -> dict[str, os.stat_result]:
-    """Every file the stamps cover, by its path from the REE, with what ``lstat`` says of it."""
-    found = {path.relative_to(layout.root).as_posix(): path.lstat() for path in selected_files(layout)}
+def _workspace_files(layout: ReeLayout) -> dict[str, os.stat_result]:
+    """Every file of the workspace, by its path from the REE, with what ``lstat`` says of it."""
+    found: dict[str, os.stat_result] = {}
     if layout.workspace.is_dir():
         for directory, _dirs, files in layout.workspace.walk():
             for name in files:
@@ -113,7 +121,8 @@ def _unchanged(path: Path, stamp: Stamp, info: os.stat_result) -> bool:
 
 
 def read_stamps(layout: ReeLayout) -> Stamps | None:
-    """The stamps the last attempt left in this REE or review; None for one no attempt stamped yet."""
+    """The stamps the last attempt left in this REE or review; None for one no attempt stamped yet, or that lost
+    them."""
     path = stamps_path(layout)
     if not path.is_file():
         return None
@@ -125,7 +134,7 @@ def stamp_ree(layout: ReeLayout) -> None:
     previous = read_stamps(layout)
     known = previous.files if previous else {}
     stamps: dict[str, Stamp] = {}
-    for relative, info in _ree_files(layout).items():
+    for relative, info in _workspace_files(layout).items():
         stamp = known.get(relative)
         if stamp is None or not _same(stamp, info):
             stamp = Stamp(
@@ -163,32 +172,69 @@ def stamp_rees(layout: ReeLayout, scope: ReeLayout) -> None:
             stamp_ree(review)
 
 
-def _drift_in(scope: ReeLayout, stamps: Stamps, ree: Path) -> list[DriftedFile]:
+def _moved_refs(scope: ReeLayout, history: GitHistory, stamps: Stamps | None) -> list[str]:
+    """Each ref not where ree left it: by the stamps, or for the history's ref by ree's reflog too; when neither knows
+    where ree left the history's ref, it is moved when its head is no commit ree made."""
+    refs = _refs(scope)
+    moved = set()
+    if stamps is not None:
+        moved |= {ref for ref in set(stamps.refs) | set(refs) if stamps.refs.get(ref) != refs.get(ref)}
+    head = refs.get(HISTORY_REF)
+    left = history.left_by_ree() if head is not None else None
+    if left is not None and left != head:
+        moved.add(HISTORY_REF)
+    unknown = left is None and (stamps is None or HISTORY_REF not in stamps.refs)
+    if unknown and head is not None and history.unrecorded(head) is not None:
+        moved.add(HISTORY_REF)
+    return sorted(moved)
+
+
+def _drift_in(scope: ReeLayout, ree: Path) -> list[DriftedFile]:
+    if not (scope.git_dir / "HEAD").is_file():
+        return []
+    history = _history(scope)
+    if history.head_snapshot() is None:
+        return []
     within = scope.root.relative_to(ree).as_posix()
     prefix = "" if within == "." else f"{within}/"
-    current = _ree_files(scope)
-    drifted = []
-    for relative in sorted(set(stamps.files) | set(current)):
-        stamp, info = stamps.files.get(relative), current.get(relative)
-        if stamp is not None and info is not None and _unchanged(scope.root / relative, stamp, info):
-            continue
-        drifted.append(DriftedFile(path=f"{prefix}{relative}", part=_part(relative)))
-    refs = _refs(scope)
-    moved = [ref for ref in sorted(set(stamps.refs) | set(refs)) if stamps.refs.get(ref) != refs.get(ref)]
+    drifted = [DriftedFile(path=f"{prefix}{relative}", part=_part(relative)) for relative, _ in history.drifted_paths()]
+    stamps = read_stamps(scope)
+    if stamps is not None:
+        current = _workspace_files(scope)
+        for relative in sorted(set(stamps.files) | set(current)):
+            stamp, info = stamps.files.get(relative), current.get(relative)
+            if stamp is not None and info is not None and _unchanged(scope.root / relative, stamp, info):
+                continue
+            drifted.append(DriftedFile(path=f"{prefix}{relative}", part="workspace"))
+    moved = _moved_refs(scope, history, stamps)
     return [*drifted, *(DriftedFile(path=f"{prefix}{HISTORY}/{ref}", part="history") for ref in moved)]
 
 
-def find_drift(layout: ReeLayout) -> list[DriftedFile] | None:
-    """Everything of the REE and its reviews not as the last attempt left it, by its path from the REE; None for an
-    REE no attempt stamped yet. A review no attempt stamped yet has none. Nothing is written."""
-    stamps = read_stamps(layout)
-    if stamps is None:
-        return None
-    drifted = _drift_in(layout, stamps, layout.root)
+def find_drift(layout: ReeLayout) -> list[DriftedFile]:
+    """Everything of the REE and its reviews not as the last attempt left it, by its path from the REE. Nothing is
+    written to the REE."""
+    drifted = _drift_in(layout, layout.root)
     for review in reviews_of(layout):
-        if (kept := read_stamps(review)) is not None:
-            drifted += _drift_in(review, kept, layout.root)
+        drifted += _drift_in(review, layout.root)
     return drifted
+
+
+def _left(scope: ReeLayout, ref: str) -> str | None:
+    """The commit ree left ``ref`` at: by its reflog, by the stamps, or, for the history's ref, the newest commit of
+    the history ree made."""
+    history = _history(scope)
+    if ref == HISTORY_REF and (left := history.left_by_ree()) is not None:
+        return left
+    stamps = read_stamps(scope)
+    if stamps is not None and ref in stamps.refs:
+        return stamps.refs[ref]
+    head = history.head_snapshot() if ref == HISTORY_REF else None
+    if head is None:
+        return None
+    return next(
+        (commit for commit in history.git("rev-list", head).stdout.decode().split() if not history.unrecorded(commit)),
+        None,
+    )
 
 
 def history_hints(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
@@ -199,8 +245,7 @@ def history_hints(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
             continue
         within, _, ref = item.path.partition(f"{HISTORY}/")
         review = PurePosixPath(within).name if within else None
-        stamps = read_stamps(layout.review(review) if review else layout)
-        left = stamps.refs.get(ref) if stamps else None
+        left = _left(layout.review(review) if review else layout, ref)
         where = f" -C {within.rstrip('/')}" if within else ""
         hints.append(f"git{where} update-ref {ref} {left}" if left else f"git{where} update-ref -d {ref}")
     return hints
@@ -223,7 +268,7 @@ def recordable_edits(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
     Only when every drifted file is such a script: one of the REE's scripts, edited, never added or removed, whose
     workspace copy is as it was. Any other drift is recorded by nothing, so then none of them is.
     """
-    stamps = read_stamps(layout)
+    history = _history(layout)
     drifted = {item.path for item in drift}
     edits = []
     for item in drift:
@@ -234,8 +279,7 @@ def recordable_edits(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
             and is_overlay_path(script)
             and PurePosixPath(WORKSPACE, script).as_posix() not in drifted
             and (layout.root / relative).is_file()
-            and stamps is not None
-            and item.path in stamps.files
+            and history.holds(item.path)
         )
         if not recordable:
             return []

@@ -1,12 +1,9 @@
 """State selection excludes bookkeeping and preserves declared evidence."""
 
-import json
-
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.history import INITIAL_REF, open_history
+from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.history import SELECTION_VERSION
 
 
 def test_layout_selection_and_declared_root_artifact(tmp_path):
@@ -44,25 +41,6 @@ def test_review_receipts_are_state_but_logs_are_not(tmp_path):
         commit = history.capture(operation="review")
         paths = history.git("ls-tree", "-r", "--name-only", commit).stdout.decode().splitlines()
     assert paths == ["review.json", "runs/run.receipt.json"]
-
-
-def test_legacy_history_migrates_once_and_preserves_initial_ref(tmp_path):
-    layout = ReeLayout(root=tmp_path / "ree")
-    initial = initialize_ree(layout, name="test").snapshot_id
-    with open_history(layout) as history:
-        # An old whole-tree commit has no selection-version metadata.
-        (layout.root / "legacy-log").write_text("log")
-        history.git("add", "--", "legacy-log")
-        tree = history.git("write-tree").stdout.decode().strip()
-        legacy = history.git("commit-tree", tree, "-p", initial, data=b"old capture\n").stdout.decode().strip()
-        history.git("update-ref", "refs/heads/ree-history", legacy)
-        migrated = history.capture(operation="observe_existing_ree", reuse_unchanged=True)
-        assert history.git("show", "-s", "--format=%s", migrated).stdout.strip() == b"migrate_history_selection"
-        assert b"legacy-log" not in history.git("ls-tree", "-r", "--name-only", migrated).stdout
-        assert history.capture(operation="observe_existing_ree", reuse_unchanged=True) == migrated
-        metadata = json.loads(history.git("show", "-s", "--format=%b", migrated).stdout)
-        assert metadata["selection_version"] == SELECTION_VERSION
-        assert history.git("rev-parse", INITIAL_REF).stdout.decode().strip() == initial
 
 
 def test_only_owned_temporary_files_are_excluded(tmp_path):

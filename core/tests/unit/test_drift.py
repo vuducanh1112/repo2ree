@@ -2,14 +2,16 @@
 
 import json
 import subprocess
+import zipfile
 
 import pytest
 
 from repo2ree_core.bundle.download import BundleRefusedError, materialized_ree_download
+from repo2ree_core.bundle.repository_restore import restore_repository
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.session import pick_up_authored_edits
-from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
+from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
 from repo2ree_core.persistence.integrity import find_drift, stamp_rees, stamps_path
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
@@ -265,14 +267,125 @@ def test_a_bundle_of_a_file_changed_outside_ree_is_refused(ree):
         pass
 
 
-def test_a_bundle_of_a_history_no_attempt_ended_is_refused_without_stamps(ree):
-    committed_by_hand(ree)
+def test_a_bundle_of_a_history_committed_to_with_git_is_refused_without_stamps(ree):
+    assert patch(ree).status == "succeeded"
+    left = committed_by_hand(ree)
     stamps_path(ree).unlink()
 
-    with pytest.raises(BundleRefusedError, match="a commit no ree command made"), materialized_ree_download(ree):
+    hint = f"update-ref refs/heads/ree-history {left}"
+    with pytest.raises(BundleRefusedError, match=hint), materialized_ree_download(ree):
+        pass
+
+
+def test_a_bundle_of_a_history_no_attempt_ended_is_refused_without_stamps_or_reflog(ree):
+    assert patch(ree).status == "succeeded"
+    left = committed_by_hand(ree)
+    stamps_path(ree).unlink()
+    git(ree, "reflog", "expire", "--expire=now", "--all")
+
+    hint = f"update-ref refs/heads/ree-history {left}"
+    with pytest.raises(BundleRefusedError, match=hint), materialized_ree_download(ree):
         pass
 
 
 def test_an_ree_no_command_worked_on_has_nothing_to_bundle(ree):
     with pytest.raises(BundleRefusedError, match="nothing to bundle yet"), materialized_ree_download(ree):
         pass
+
+
+def test_ree_s_commits_name_their_parent_and_tree_and_its_moves_are_marked(ree):
+    assert patch(ree).status == "succeeded"
+    head = git(ree, "rev-parse", "refs/heads/ree-history")
+    metadata = json.loads(git(ree, "log", "-1", "--format=%b", head))
+
+    assert metadata["parent"] == git(ree, "rev-parse", f"{head}^")
+    assert metadata["tree"] == git(ree, "rev-parse", f"{head}^{{tree}}")
+    assert git(ree, "reflog", "show", "--format=%gs", "refs/heads/ree-history").splitlines()[0].startswith("repo2ree ")
+    assert git(ree, "config", "gc.reflogExpire") == "never"
+
+
+def test_a_record_edited_while_the_stamps_are_lost_is_found_by_git(ree):
+    stamps_path(ree).unlink()
+    tamper = json.loads(ree.manifest.read_text())
+    tamper["subject"]["definition"]["name"] = "by hand"
+    ree.manifest.write_text(json.dumps(tamper))
+
+    result = patch(ree)
+
+    assert result.status == "failed"
+    assert result.failure.details == {"code": "drift"}
+    assert "observe_existing_ree" not in git(ree, "log", "--format=%s")
+
+
+def test_a_history_reset_while_the_stamps_are_lost_is_found_by_the_reflog(ree):
+    first = git(ree, "rev-parse", "refs/heads/ree-history")
+    assert patch(ree, "second").status == "succeeded"
+    left = git(ree, "rev-parse", "refs/heads/ree-history")
+    stamps_path(ree).unlink()
+    git(ree, "update-ref", "refs/heads/ree-history", first)
+
+    # The ref went back; the files stay as the later attempt left them, so they differ from it too.
+    assert DriftedFile(path=".git/refs/heads/ree-history", part="history") in find_drift(ree)
+    refused = patch(ree, "third")
+    assert refused.failure is not None
+    assert f"git update-ref refs/heads/ree-history {left}" in refused.failure.message
+
+
+def test_a_history_reset_while_the_reflog_is_lost_is_found_by_the_stamps(ree):
+    first = git(ree, "rev-parse", "refs/heads/ree-history")
+    assert patch(ree, "second").status == "succeeded"
+    git(ree, "reflog", "expire", "--expire=now", "--all")
+    git(ree, "update-ref", "refs/heads/ree-history", first)
+
+    # The ref went back; the files stay as the later attempt left them, so they differ from it too.
+    assert DriftedFile(path=".git/refs/heads/ree-history", part="history") in find_drift(ree)
+
+
+def test_a_commit_amended_with_git_names_another_tree_than_its_own(ree):
+    assert patch(ree).status == "succeeded"
+    ree.manifest.write_text(ree.manifest.read_text() + " ")
+    head = git(ree, "rev-parse", "refs/heads/ree-history")
+    message = git(ree, "log", "-1", "--format=%B", head)
+    git(ree, "--work-tree", str(ree.root), "add", "ree.json")
+    tree = git(ree, "--work-tree", str(ree.root), "write-tree")
+    identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
+    amended = git(ree, *identity, "commit-tree", tree, "-p", f"{head}^", "-m", message)
+    git(ree, "update-ref", "refs/heads/ree-history", amended)
+    stamps_path(ree).unlink()
+    git(ree, "reflog", "expire", "--expire=now", "--all")
+
+    with open_history(ree) as history:
+        assert history.unrecorded(amended) == "it names another tree than its own, as a commit amended by git does"
+    assert DriftedFile(path=".git/refs/heads/ree-history", part="history") in find_drift(ree)
+
+
+def test_a_commit_copied_onto_another_parent_names_another_parent_than_its_own(ree):
+    assert patch(ree, "second").status == "succeeded"
+    head = git(ree, "rev-parse", "refs/heads/ree-history")
+    message = git(ree, "log", "-1", "--format=%B", head)
+    identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
+    # Copied onto the commit it followed, as a cherry-pick onto the history's head copies it.
+    copied = git(ree, *identity, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", message)
+
+    with open_history(ree) as history:
+        assert history.unrecorded(head) is None
+        assert history.unrecorded(copied) == "it names another parent than its own, as a commit copied by git does"
+
+
+def test_a_bundle_whose_history_holds_a_commit_ree_did_not_make_is_not_loaded(ree, tmp_path):
+    assert patch(ree).status == "succeeded"
+    with materialized_ree_download(ree) as archive, zipfile.ZipFile(archive) as zipped:
+        zipped.extractall(tmp_path / "export")
+    exported = ReeLayout(root=tmp_path / "export" / "ree")
+    head = git(exported, "rev-parse", "refs/heads/ree-history")
+    identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
+    by_hand = git(exported, *identity, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", "my fix")
+    git(exported, "update-ref", "refs/heads/ree-history", by_hand)
+    metadata = json.loads((tmp_path / "export" / "export.json").read_text())
+    metadata["scopes"][0]["head"] = by_hand
+    (tmp_path / "export" / "export.json").write_text(json.dumps(metadata))
+    destination = ReeLayout(root=tmp_path / "destination")
+    initialize_ree(destination, name="blank")
+
+    with pytest.raises(ValueError, match=f"holds {by_hand}, which ree did not make"):
+        restore_repository(destination, tmp_path / "export")

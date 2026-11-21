@@ -90,23 +90,19 @@ def capture_command(
             # This is outside the snapshot tree and is updated atomically.
             write_json_atomic(record_path, record.model_dump(mode="json"))
             history.capture_initial(existing=True)
-            drift = find_drift(layout)
-            record.drift_found = drift or []
+            record.drift_found = find_drift(layout)
             if records_edit is not None:
                 record.drift_recorded = f"{OVERLAY}/{records_edit}"
             refusal = _refusal(layout, record.drift_found, records_edit, str(cmd.operation))
             if refusal is not None:
                 return _refuse(layout, scope, history, record, record_path, cmd.operation, refusal, context, log)
-            head = history.head_snapshot()
-            # An edit being recorded is on disk already: its attempt begins on the tree before it, so the edit is
-            # the attempt's change, kept aside to go back as it was if the attempt does not record it.
+            # Nothing drifted but what the attempt may run on, so it begins on the history's head. An edit being
+            # recorded is on disk already: it is the attempt's change, kept aside to go back as it was if the attempt
+            # does not record it.
+            before = history.head_snapshot()
+            if before is None:
+                raise HistoryCaptureError("the REE has no history to begin the attempt on")
             edited = layout.overlay_file(records_edit).read_bytes() if records_edit is not None else None
-            if edited is not None and head is not None:
-                before = head
-            else:
-                before = history.capture(operation="observe_existing_ree", reuse_unchanged=True)
-                if drift is not None and before != head:
-                    raise HistoryCaptureError("the REE's files differ from its history, yet no drift was found")
             record.before_snapshot_id = before
             if scope == layout:
                 record.step_evidence_before = step_evidence(layout, log)

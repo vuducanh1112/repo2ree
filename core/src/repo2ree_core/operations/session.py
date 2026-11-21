@@ -169,7 +169,7 @@ def pick_up_authored_edits(
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return []
-    edits = recordable_edits(layout, find_drift(layout) or [])
+    edits = recordable_edits(layout, find_drift(layout))
     if edits and store.read_ree().seal is not None:
         return []
     results: list[ActionResult] = []

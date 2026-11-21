@@ -8,7 +8,7 @@ from pathlib import Path
 
 from repo2ree_core.bundle.export_format import RepositoryExport
 from repo2ree_core.bundle.repository_export import materialize, new_history, safe_relative, verify_inventory
-from repo2ree_core.persistence.history import GitHistory
+from repo2ree_core.persistence.history import HISTORY_REF, REFLOG_MARK, GitHistory
 from repo2ree_core.persistence.layout import OVERLAY_DIRNAME, ReeLayout
 from repo2ree_core.persistence.lfs import copy_object
 from repo2ree_core.persistence.operation_history import read_operation_history
@@ -58,6 +58,10 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
             if packed.is_file():
                 shutil.copyfile(packed, history.layout.git_dir / "packed-refs")
             history.git("fsck", "--full", "--no-reflogs")
+            if (foreign := history.first_unrecorded(entry.head)) is not None:
+                commit, reason = foreign
+                where = "the REE" if entry.scope == "." else entry.scope
+                raise ValueError(f"The history of {where} holds {commit}, which ree did not make: {reason}")
             actual = materialize(history, entry.head, source)
             if actual != entry.lfs_objects:
                 raise ValueError("Declared LFS objects differ from selected tree")
@@ -96,7 +100,7 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
                     if not (target / path.name).exists():
                         shutil.copyfile(path, target / path.name)
             if entry.scope != ".":
-                destination.git("update-ref", "refs/heads/ree-history", entry.head)
+                destination.git("update-ref", "-m", f"{REFLOG_MARK} load_ree_bundle", HISTORY_REF, entry.head)
             heads[entry.scope] = entry.head
         # Remove the old mutable files, retaining active Git storage and upload staging.
         for path in layout.root.iterdir():

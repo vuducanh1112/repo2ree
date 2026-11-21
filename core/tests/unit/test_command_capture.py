@@ -169,13 +169,14 @@ def test_cancel_before_handler_is_journaled(ree):
 
 @pytest.mark.parametrize("after_mutation", [False, True])
 def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mutation):
-    method = "commit_operation" if after_mutation else "capture"
+    # Before the handler, the history is read to find what drifted; after it, the attempt is committed.
+    method = "commit_operation" if after_mutation else "drifted_paths"
     real_capture = getattr(GitHistory, method)
 
-    def failing_capture(self, **kwargs):
+    def failing_capture(self, *args, **kwargs):
         if not after_mutation or kwargs["operation"] == "patch_ree_definition":
             raise HistoryCaptureError("disk full")
-        return real_capture(self, **kwargs)
+        return real_capture(self, *args, **kwargs)
 
     monkeypatch.setattr(GitHistory, method, failing_capture)
     result = patch(ree)
