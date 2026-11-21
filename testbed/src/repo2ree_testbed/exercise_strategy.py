@@ -60,7 +60,6 @@ from repo2ree_testbed.exercise import (
     SealSignature,
     SignRee,
     SignReview,
-    StampsDrift,
     Step,
     SuggestScripts,
     Text,
@@ -231,7 +230,7 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
 
 def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
     """Drifts in REEs the steps initialize, each after the step that does: of any part, by any change, kept or put back
-    by hand, a history changed by git, or ree's stamps or git's reflog lost, in the REE or in a review the steps
+    by hand, a history changed by git, or git's reflog lost, in the REE or in a review the steps
     name."""
     initialized = {
         step.ree: index for index, step in reversed(list(enumerate(steps))) if isinstance(step, InitializeRee)
@@ -253,17 +252,15 @@ def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
                     ree=st.just(ree),
                     review=reviews,
                     part=st.just(part),
-                    # Nothing added beside the records is the REE's.
+                    # Only a file added to the overlay is the REE's.
                     change=st.sampled_from(
-                        [change for change in get_args(FileChange) if (part, change) != ("records", "add")]
+                        [change for change in get_args(FileChange) if part == "overlay" or change != "add"]
                     ),
                     pick=st.integers(min_value=0, max_value=50),
                 )
             )
 
-        lost = st.sampled_from([StampsDrift, ReflogDrift]).flatmap(
-            lambda kind: st.builds(kind, before=before, ree=st.just(ree), review=reviews)
-        )
+        lost = st.builds(ReflogDrift, before=before, ree=st.just(ree), review=reviews)
         files = st.one_of(changed(FileDrift), changed(RevertedDrift), lost)
         if first >= len(steps):
             return files

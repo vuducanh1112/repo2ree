@@ -25,10 +25,9 @@ from repo2ree_testbed.exercise import (
     PatchReeDefinition,
     ReflogDrift,
     RevertedDrift,
-    StampsDrift,
 )
 from repo2ree_testbed.exercise_case import CASES, ExerciseCase
-from repo2ree_testbed.exercise_cli import HISTORY_REF, STAMPS, CliReplay, _git, _rewrite, local_ree
+from repo2ree_testbed.exercise_cli import HISTORY_REF, CliReplay, _git, _rewrite, local_ree
 from repo2ree_testbed.exercise_verdict import Trace, judge
 
 RULE = "drift-is-found-by-the-next-attempt"
@@ -97,11 +96,13 @@ def test_a_history_changed_by_git_is_refused_until_it_is_put_back(tmp_path: Path
 
 def test_an_ree_no_step_initialized_yet_does_not_drift() -> None:
     steps = (InitializeRee(ree="author"),)
-    early = FileDrift(before=0, ree="author", part="workspace", change="add")
+    early = FileDrift(before=0, ree="author", part="overlay", change="add")
     with pytest.raises(ValueError, match="before any step initialized it"):
         Exercise(rees=("author",), steps=steps, drifts=(early,))
     with pytest.raises(ValueError, match="none of the REE's"):
         FileDrift(before=1, ree="author", part="records", change="add")
+    with pytest.raises(ValueError, match="none of the REE's"):
+        FileDrift(before=1, ree="author", part="workspace", change="add")
     assert Exercise(rees=("author",), steps=steps, drifts=(early.model_copy(update={"before": 1}),))
 
 
@@ -182,18 +183,6 @@ def test_a_commit_made_with_git_holds_the_files_as_they_are(tmp_path: Path) -> N
     assert _rewrite(scope, "commit", 1) == ".git/refs/heads/ree-history"
     assert _git(scope, "show", f"{HISTORY_REF}:ree.json").stdout == "{} edited\n"
     assert _git(scope, "rev-list", "--count", HISTORY_REF).stdout.strip() == "2"
-
-
-def test_stamps_lost_change_no_file_of_the_ree(tmp_path: Path) -> None:
-    replay = CliReplay(local_ree, tmp_path)
-    exercise = Exercise(
-        rees=("author",), steps=(InitializeRee(ree="author"),), drifts=(StampsDrift(before=1, ree="author"),)
-    )
-    replay.replay(exercise)
-
-    assert not (replay.root("author") / STAMPS).exists()
-    journaled = (replay.journals / "environment-000001.ndjson").read_text()
-    assert '"Drift"' not in journaled
 
 
 def test_a_reflog_lost_changes_no_file_of_the_ree(tmp_path: Path) -> None:

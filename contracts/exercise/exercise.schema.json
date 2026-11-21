@@ -221,8 +221,7 @@
           "file": "#/$defs/FileDrift",
           "history": "#/$defs/HistoryDrift",
           "reflog": "#/$defs/ReflogDrift",
-          "reverted": "#/$defs/RevertedDrift",
-          "stamps": "#/$defs/StampsDrift"
+          "reverted": "#/$defs/RevertedDrift"
         },
         "propertyName": "kind"
       },
@@ -235,9 +234,6 @@
         },
         {
           "$ref": "#/$defs/RevertedDrift"
-        },
-        {
-          "$ref": "#/$defs/StampsDrift"
         },
         {
           "$ref": "#/$defs/ReflogDrift"
@@ -1229,47 +1225,6 @@
           "$ref": "#/$defs/Fetched"
         }
       ]
-    },
-    "StampsDrift": {
-      "additionalProperties": false,
-      "description": "What ree keeps of how its last attempt left the REE, lost: its stamps removed, as a cleanup, a copy or a disk\nmight lose them. No file of the REE changes, so nothing of it drifts; a drift besides it must still be found.",
-      "properties": {
-        "before": {
-          "minimum": 0,
-          "title": "Before",
-          "type": "integer"
-        },
-        "ree": {
-          "pattern": "^[a-z][a-z0-9-]{0,31}$",
-          "title": "Ree",
-          "type": "string"
-        },
-        "review": {
-          "anyOf": [
-            {
-              "pattern": "^[a-z][a-z0-9-]{0,31}$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Review"
-        },
-        "kind": {
-          "const": "stamps",
-          "default": "stamps",
-          "title": "Kind",
-          "type": "string"
-        }
-      },
-      "required": [
-        "before",
-        "ree"
-      ],
-      "title": "StampsDrift",
-      "type": "object"
     },
     "Step": {
       "discriminator": {

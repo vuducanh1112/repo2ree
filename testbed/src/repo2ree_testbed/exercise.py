@@ -260,7 +260,8 @@ class Fault(_Model):
 # Where in an REE, or in a review of it, the environment changes something: a script as the REE writes it, the
 # workspace its scripts run in, the other files its history holds, or the history itself.
 FilePart = Literal["overlay", "workspace", "records"]
-# How a file changes: written over, added to, removed, its mode changed, or a file added beside the others.
+# How a file changes: written over, added to, removed, its mode changed, or, in the overlay, a file added beside the
+# others: one added to the workspace or beside the records is none of the REE's, so it changes nothing of it.
 FileChange = Literal["write", "append", "remove", "mode", "add"]
 # How a history changes, as a person changes it with git: `git add -A` and `git commit`, `git reset --soft` to its last
 # commit's parent, or `git add -A` and `git commit --amend --no-edit`, which keeps the message, ree's record with it.
@@ -288,8 +289,8 @@ class FileDrift(_Drift):
 
     @model_validator(mode="after")
     def _added_where_a_file_is_the_ree_s(self) -> Self:
-        if self.part == "records" and self.change == "add":
-            raise ValueError("a file added beside the records is none of the REE's: add one to overlay or workspace")
+        if self.part != "overlay" and self.change == "add":
+            raise ValueError(f"a file added beside the {self.part} is none of the REE's: add one to the overlay")
         return self
 
 
@@ -321,16 +322,9 @@ class RevertedDrift(_Drift):
 
     @model_validator(mode="after")
     def _added_where_a_file_is_the_ree_s(self) -> Self:
-        if self.part == "records" and self.change == "add":
-            raise ValueError("a file added beside the records is none of the REE's: add one to overlay or workspace")
+        if self.part != "overlay" and self.change == "add":
+            raise ValueError(f"a file added beside the {self.part} is none of the REE's: add one to the overlay")
         return self
-
-
-class StampsDrift(_Drift):
-    """What ree keeps of how its last attempt left the REE, lost: its stamps removed, as a cleanup, a copy or a disk
-    might lose them. No file of the REE changes, so nothing of it drifts; a drift besides it must still be found."""
-
-    kind: Literal["stamps"] = "stamps"
 
 
 class ReflogDrift(_Drift):
@@ -341,9 +335,7 @@ class ReflogDrift(_Drift):
     kind: Literal["reflog"] = "reflog"
 
 
-type Drift = Annotated[
-    FileDrift | HistoryDrift | RevertedDrift | StampsDrift | ReflogDrift, Field(discriminator="kind")
-]
+type Drift = Annotated[FileDrift | HistoryDrift | RevertedDrift | ReflogDrift, Field(discriminator="kind")]
 
 
 class Exercise(_Model):

@@ -67,7 +67,6 @@ from repo2ree_testbed.exercise import (
     SealRee,
     SignRee,
     SignReview,
-    StampsDrift,
     Step,
     SuggestScripts,
     Text,
@@ -333,10 +332,6 @@ class CliReplay:
         nothing, when there was nothing to change. A history's ref is kept in ``moved``, to put back."""
         scope = self._scope(drift)
         prefix = f"reviews/{drift.review}/" if drift.review else ""
-        if isinstance(drift, StampsDrift):
-            # ree's own record of what it left, not a file of the REE: nothing of the REE drifts to journal.
-            (scope / STAMPS).unlink(missing_ok=True)
-            return
         if isinstance(drift, ReflogDrift):
             # git's record of where the refs were, not a file of the REE: nothing of the REE drifts to journal.
             _git(scope, "reflog", "expire", "--expire=now", "--expire-unreachable=now", "--all")
@@ -442,8 +437,6 @@ class CliReplay:
 DRIFTED: Final = "changed outside ree"
 GIT_IDENTITY: Final = ("-c", "user.name=environment", "-c", "user.email=environment@repo2ree.invalid")
 HISTORY_REF: Final = "refs/heads/ree-history"
-# Where ree keeps how its last attempt left an REE, by the REE's own directory.
-STAMPS: Final = ".git/repo2ree/stamps.json"
 
 
 def _git(scope: Path, *words: str, index: Path | None = None) -> subprocess.CompletedProcess[str]:
@@ -467,11 +460,16 @@ def _files(scope: Path, part: FilePart) -> list[Path]:
     base = scope / part_dir(part)
     if not base.is_dir():
         return []
-    return sorted(
+    files = sorted(
         path
         for path in base.rglob("*")
         if path.is_file() and not path.is_symlink() and not path.name.startswith(WORKSPACE_CONTROL_PREFIXES)
     )
+    if part != "workspace":
+        return files
+    # The workspace's own files are those laid out from the REE's inputs: anything else there is none of the REE's.
+    inputs = (scope / part_dir("overlay"), scope / "upstream")
+    return [path for path in files if any((root / path.relative_to(base)).is_file() for root in inputs)]
 
 
 def part_dir(part: FilePart) -> str:
