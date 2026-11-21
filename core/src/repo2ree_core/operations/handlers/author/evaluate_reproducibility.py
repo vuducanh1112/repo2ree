@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
 from repo2ree_core.digests import digest_file, digest_tree
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
@@ -18,8 +19,10 @@ from repo2ree_protocol.command import EvaluateReproducibilityArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import EvaluateOutputs
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import ArtifactPath
 from repo2ree_ree.receipt import EvaluateReproducibilityReceipt
+from repo2ree_ree.reproducibility import ReproducibilityReport
 
 _ANALYZER_VERSION = "1"
 _REPORT_PATH = ArtifactPath(f"{ARTIFACTS_DIRNAME}/{REPRODUCIBILITY_REPORT_FILENAME}")
@@ -47,6 +50,9 @@ def handle_evaluate_reproducibility(
     if source is None:
         return ActionResult.failed("precondition", "source has not been acquired")
 
+    if not args.again and (current := _current_report(layout, ree, strict=args.strict)) is not None:
+        log("system", "info", "the evaluation is current: nothing to do (--again evaluates anyway)")
+        return ActionResult(status="succeeded", exit_code=0, outputs=_outputs(current).model_dump())
     before_revision = revision_of(ree)
     timer = OperationTimer.start()
     try:
@@ -95,7 +101,14 @@ def handle_evaluate_reproducibility(
         log("system", "error", f"failed to persist evaluation outputs: {exc}")
         return failed_from_exception(exc, f"failed to persist evaluation outputs: {exc}")
 
-    outputs = EvaluateOutputs(
+    outputs = _outputs(report)
+    discard(layout, run_id)
+    log("system", "info", "Evaluate run succeeded")
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())
+
+
+def _outputs(report: ReproducibilityReport) -> EvaluateOutputs:
+    return EvaluateOutputs(
         dependency_count=report.dependency_summary.total,
         manifest_count=report.dependency_summary.manifests,
         dependency_level=int(report.dependency_level),
@@ -104,6 +117,15 @@ def handle_evaluate_reproducibility(
         detected_dependencies=report.detected_dependencies,
         report=report.model_dump(mode="json"),
     )
-    discard(layout, run_id)
-    log("system", "info", "Evaluate run succeeded")
-    return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())
+
+
+def _current_report(layout: ReeLayout, ree: Ree, *, strict: bool) -> ReproducibilityReport | None:
+    """The report the evaluation published, when its evidence is current, it was as strict as asked, and the report
+    is still the one its receipt names."""
+    receipt = ree.subject.receipts.evaluate_reproducibility
+    report = layout.reproducibility_report
+    if receipt is None or receipt.strict != strict or audit(ree).evaluate_reproducibility.evidence != "current":
+        return None
+    if not report.is_file() or digest_file(report) != receipt.report_digest:
+        return None
+    return ReproducibilityReport.model_validate_json(report.read_text(encoding="utf-8"))

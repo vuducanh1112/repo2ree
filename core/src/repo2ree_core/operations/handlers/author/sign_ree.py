@@ -35,9 +35,18 @@ def handle_sign_ree(args: SignReeArgs, *, layout: ReeLayout, log: LogSink) -> Ac
         return ActionResult.failed("precondition", "only a sealed REE is signed: run `ree seal-ree` first")
     path = signature_path(args.claim)
     target = layout.root / path
-    if target.exists():
-        return ActionResult.failed("precondition", f"the REE is signed for {args.claim} already, at {path}")
     content = staged.read_bytes()
+    if target.exists():
+        if target.read_bytes() != content:
+            return ActionResult.failed("precondition", f"the REE is signed for {args.claim} already, at {path}")
+        # The very signature it holds, given again: nothing to do.
+        staged.unlink(missing_ok=True)
+        log("system", "info", f"the REE is signed for {args.claim} with this signature already: nothing to do")
+        return ActionResult(
+            status="succeeded",
+            exit_code=0,
+            outputs=SignOutputs(claim=args.claim, path=path, ree_digest=seal.ree_digest).model_dump(mode="json"),
+        )
     try:
         statement = signed_statement(content)
     except (UnreadableSignatureError, UnverifiedSignatureError) as exc:

@@ -12,6 +12,7 @@ from repo2ree_core.operations.handlers.author import generate_sbom
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
+from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeSubject
@@ -255,3 +256,26 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure.retryable is True
     assert store.read_ree().subject.receipts.generate_sbom is None
     assert layout.sbom.read_bytes() == _SBOM
+
+
+def test_a_current_sbom_is_not_scanned_again_unless_asked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout, _store = _workbench(tmp_path, monkeypatch)
+    scans: list[Path] = []
+
+    def scan(experiment_environment: Path, output: Path, **kwargs: object) -> ScanOutcome:
+        scans.append(experiment_environment)
+        return _successful_scan(experiment_environment, output, **kwargs)
+
+    monkeypatch.setattr(generate_sbom, "scan_experiment_environment_archive", scan)
+
+    assert _run(layout).status == "succeeded"
+    assert _run(layout).status == "succeeded"
+    assert len(scans) == 1
+    again = generate_sbom.handle_generate_sbom(
+        GenerateSbomArgs(again=True), run_id="sbom-again", log=lambda *a: None, is_canceled=lambda: False, layout=layout
+    )
+    assert again.status == "succeeded"
+    assert len(scans) == 2

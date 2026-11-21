@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from repo2ree_core.digests import digest_file
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import (
     ReePreconditionError,
@@ -65,6 +67,11 @@ def handle_acquire_source(
     try:
         acquisition = _acquisition_from(args)
         ree = load_ree(layout, store)
+        if (current := _current_receipt(layout, ree, acquisition)) is not None:
+            log("system", "info", "this source is acquired already and current: nothing to do")
+            return ActionResult(
+                status="succeeded", exit_code=0, outputs=_outputs(acquisition, current).model_dump(exclude_none=True)
+            )
         _check_preconditions(ree, acquisition, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot acquire a source: {exc}")
@@ -151,6 +158,19 @@ def _acquisition_from(args: AcquireSourceArgs) -> _Acquisition:
         upload_token=args.upload_token,
         archive_name=args.archive_name,
     )
+
+
+def _current_receipt(layout: ReeLayout, ree: Ree, acquisition: _Acquisition) -> AcquireSourceReceipt | None:
+    """The source's receipt, when the same download was asked for again and its evidence is current, with the
+    snapshot it took still kept: nothing to do. An upload comes under a token of its own, so it is never the same
+    request; a different source is refused, never put in place of this one."""
+    receipt = ree.subject.receipts.acquire_source
+    if receipt is None or ree.seal is not None or acquisition.mode != "download":
+        return None
+    if ree.subject.definition.source != acquisition.definition or audit(ree).acquire_source.evidence != "current":
+        return None
+    archive = layout.snapshot_archive
+    return receipt if archive.is_file() and digest_file(archive) == receipt.snapshot_digest else None
 
 
 def _check_preconditions(ree: Ree, acquisition: _Acquisition, layout: ReeLayout) -> None:

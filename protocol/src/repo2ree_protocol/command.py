@@ -314,9 +314,14 @@ class BuildExperimentEnvironmentCommand(BaseModel):
 
 
 class GenerateSbomArgs(BaseModel):
-    """No args — the scan targets the experiment environment the build recipe declares."""
+    """Scans the experiment environment the build recipe declares, unless its SBOM is current already."""
 
     model_config = ConfigDict(extra="forbid")
+
+    again: bool = Field(
+        default=False,
+        description="Run it although its evidence is current, as to check a scanner's answer again.",
+    )
 
 
 class GenerateSbomCommand(BaseModel):
@@ -341,6 +346,11 @@ class EvaluateReproducibilityArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     strict: bool = Field(default=False, description="Count an unpinned dependency as a failure.")
+
+    again: bool = Field(
+        default=False,
+        description="Run it although its evidence is current, as after the analyzer itself changed.",
+    )
 
 
 class EvaluateReproducibilityCommand(BaseModel):

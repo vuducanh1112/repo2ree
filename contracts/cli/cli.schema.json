@@ -455,6 +455,16 @@
           "flag": true,
           "default": false,
           "negation": "--no-strict"
+        },
+        {
+          "name": "--again",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Run it although its evidence is current, as after the analyzer itself changed.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-again"
         }
       ],
       "stdin": null,
@@ -473,7 +483,18 @@
       "operations": [
         "generate_sbom"
       ],
-      "params": [],
+      "params": [
+        {
+          "name": "--again",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Run it although its evidence is current, as to check a scanner's answer again.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-again"
+        }
+      ],
       "stdin": null,
       "stdout": "result",
       "outputs": {

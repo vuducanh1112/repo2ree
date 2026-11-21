@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import time
+from pathlib import PurePosixPath
 
 from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
-from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, RESULTS_DIRNAME, ReeLayout
 from repo2ree_core.time_utils import utc_now_instant
 from repo2ree_protocol.command import SealReeArgs
 from repo2ree_protocol.frames import LogSink
+from repo2ree_protocol.outputs import SealOutputs
 from repo2ree_protocol.result import ActionResult
+from repo2ree_ree.model import Ree
 
 
 def _format_bytes(value: int) -> str:
@@ -79,6 +83,20 @@ def handle_seal_ree(
     is_canceled: CancelCheck,
 ) -> ActionResult:
 
+    store = ReeDirectory(layout)
+    ree = store.read_ree() if store.manifest_exists() else None
+    if ree is not None and ree.seal is not None:
+        if not _sealed_as_asked(layout, ree, args):
+            return ActionResult.failed("precondition", "the REE is sealed already, with other inclusions than these")
+        log("system", "info", f"the REE is sealed already as asked: {ree.seal.ree_digest}")
+        entries = ree.subject.contents.entries
+        outputs = SealOutputs(
+            sealed_at=ree.seal.sealed_at,
+            ree_digest=ree.seal.ree_digest,
+            input_bytes=sum(entry.size for entry in entries),
+            entry_count=len(entries),
+        )
+        return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))
     try:
         outputs = seal_ree(
             layout,
@@ -107,3 +125,19 @@ def handle_seal_ree(
         f"REE sealed: {outputs.ree_digest} ({_format_bytes(outputs.input_bytes)}, {outputs.entry_count} entries)",
     )
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))
+
+
+def _sealed_as_asked(layout: ReeLayout, ree: Ree, args: SealReeArgs) -> bool:
+    """Whether the seal includes what ``args`` asks it to and nothing else: the source snapshot, the experiment
+    environment, the results, as sealing selects them."""
+    sealed = {str(path) for path in ree.subject.capture.lfs_paths}
+    snapshot = layout.snapshot_archive.relative_to(layout.root).as_posix()
+    declared = ree.subject.definition.experiment_environment.artifact_path
+    environment = f"{ARTIFACTS_DIRNAME}/{PurePosixPath(str(declared)).name}" if declared else None
+    return (
+        (snapshot in sealed) == args.source_included
+        and (environment in sealed if environment else False)
+        == (args.experiment_environment_included and bool(environment))
+        and any(path.startswith(f"{RESULTS_DIRNAME}/") for path in sealed)
+        == (args.results_included and any(layout.results.rglob("*")))
+    )

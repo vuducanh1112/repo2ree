@@ -158,3 +158,25 @@ def test_a_signed_ree_exports_and_loads_with_its_signature(tmp_path: Path) -> No
     seal = ReeDirectory(destination).read_ree().seal
     assert seal is not None
     assert str(seal.ree_digest) == digest
+
+
+def test_the_same_signature_given_again_is_nothing_to_do(tmp_path: Path) -> None:
+    layout, digest = sealed(tmp_path)
+    signature = bundle(digest)
+    assert sign(layout, signature).status == "succeeded"
+
+    assert sign(layout, signature, slot="again").status == "succeeded"
+    assert not layout.upload_staging_file("again").exists()
+
+
+def test_a_seal_asked_for_again_as_it_was_made_answers_with_that_seal(tmp_path: Path) -> None:
+    layout, digest = sealed(tmp_path)
+    args = SealReeArgs(source_included=False, experiment_environment_included=False, results_included=False)
+
+    again = run_command(SealReeCommand(args=args), log=lambda *a: None, layout=layout)
+
+    assert again.status == "succeeded"
+    assert again.outputs["ree_digest"] == digest
+    seal = ReeDirectory(layout).read_ree().seal
+    assert seal is not None
+    assert str(seal.ree_digest) == digest

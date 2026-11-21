@@ -2727,6 +2727,12 @@
           "description": "Count an unpinned dependency as a failure.",
           "title": "Strict",
           "type": "boolean"
+        },
+        "again": {
+          "default": false,
+          "description": "Run it although its evidence is current, as after the analyzer itself changed.",
+          "title": "Again",
+          "type": "boolean"
         }
       },
       "title": "EvaluateReproducibilityArgs",
@@ -2744,7 +2750,8 @@
         "args": {
           "$ref": "#/$defs/EvaluateReproducibilityArgs",
           "default": {
-            "strict": false
+            "strict": false,
+            "again": false
           }
         }
       },
@@ -4074,8 +4081,15 @@
     },
     "GenerateSbomArgs": {
       "additionalProperties": false,
-      "description": "No args — the scan targets the experiment environment the build recipe declares.",
-      "properties": {},
+      "description": "Scans the experiment environment the build recipe declares, unless its SBOM is current already.",
+      "properties": {
+        "again": {
+          "default": false,
+          "description": "Run it although its evidence is current, as to check a scanner's answer again.",
+          "title": "Again",
+          "type": "boolean"
+        }
+      },
       "title": "GenerateSbomArgs",
       "type": "object"
     },
@@ -4090,7 +4104,9 @@
         },
         "args": {
           "$ref": "#/$defs/GenerateSbomArgs",
-          "default": {}
+          "default": {
+            "again": false
+          }
         }
       },
       "title": "GenerateSbomCommand",

@@ -19,6 +19,7 @@ from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_core.workspace.attempt import environment_file
+from repo2ree_protocol.command import GenerateSbomArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import GenerateSbomOutputs
 from repo2ree_protocol.result import ActionResult
@@ -27,7 +28,16 @@ from repo2ree_ree.primitives import ArtifactPath, ExperimentEnvironmentPath
 from repo2ree_ree.receipt import GenerateSbomReceipt
 
 
+def _current_receipt(layout: ReeLayout, ree: Ree) -> GenerateSbomReceipt | None:
+    """The SBOM's receipt, when its evidence is current and the document it published is still the one it names."""
+    receipt = ree.subject.receipts.generate_sbom
+    if receipt is None or audit(ree).generate_sbom.evidence != "current" or not layout.sbom.is_file():
+        return None
+    return receipt if digest_file(layout.sbom) == receipt.sbom_digest else None
+
+
 def handle_generate_sbom(
+    args: GenerateSbomArgs = GenerateSbomArgs(),  # noqa: B008 — frozen by use: no handler changes its args
     *,
     layout: ReeLayout,
     run_id: str,
@@ -40,6 +50,21 @@ def handle_generate_sbom(
 
     try:
         ree = load_ree(layout, store)
+        current = None if args.again else _current_receipt(layout, ree)
+        if current is not None:
+            log("system", "info", "the SBOM is current: nothing to do (--again scans anyway)")
+            return ActionResult(
+                status="succeeded",
+                exit_code=0,
+                outputs=GenerateSbomOutputs(
+                    sbom_relative_path=SBOM_ARTIFACT_PATH,
+                    experiment_environment_relative_path=str(
+                        ree.subject.definition.experiment_environment.artifact_path or ""
+                    ),
+                    format=SBOM_FORMAT,
+                    receipt=current,
+                ).model_dump(mode="json", exclude_none=True),
+            )
         experiment_environment_path = _check_preconditions(ree, layout)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot generate SBOM: {exc}")

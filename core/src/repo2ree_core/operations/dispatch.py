@@ -211,7 +211,7 @@ def _dispatch(
     if isinstance(cmd, ObserveHardwareCommand):
         return handle_observe_hardware(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, GenerateSbomCommand):
-        return handle_generate_sbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_generate_sbom(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, CrossCheckSbomCommand):
         return handle_cross_check_sbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivateExperimentEnvironmentCommand):
