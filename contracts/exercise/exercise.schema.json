@@ -219,7 +219,9 @@
       "discriminator": {
         "mapping": {
           "file": "#/$defs/FileDrift",
-          "history": "#/$defs/HistoryDrift"
+          "history": "#/$defs/HistoryDrift",
+          "reverted": "#/$defs/RevertedDrift",
+          "stamps": "#/$defs/StampsDrift"
         },
         "propertyName": "kind"
       },
@@ -229,6 +231,12 @@
         },
         {
           "$ref": "#/$defs/HistoryDrift"
+        },
+        {
+          "$ref": "#/$defs/RevertedDrift"
+        },
+        {
+          "$ref": "#/$defs/StampsDrift"
         }
       ]
     },
@@ -764,6 +772,75 @@
       "title": "RemoveSource",
       "type": "object"
     },
+    "RevertedDrift": {
+      "additionalProperties": false,
+      "description": "A file changed as a ``FileDrift`` changes it, and put back as it was before step ``before`` runs, as an edit\nundone by hand: its content and mode as they were, a file removed made again, a file added removed. Nothing of the\nREE is then other than its last attempt left it, though its files were touched.",
+      "properties": {
+        "before": {
+          "minimum": 0,
+          "title": "Before",
+          "type": "integer"
+        },
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review"
+        },
+        "kind": {
+          "const": "reverted",
+          "default": "reverted",
+          "title": "Kind",
+          "type": "string"
+        },
+        "part": {
+          "enum": [
+            "overlay",
+            "workspace",
+            "records"
+          ],
+          "title": "Part",
+          "type": "string"
+        },
+        "change": {
+          "enum": [
+            "write",
+            "append",
+            "remove",
+            "mode",
+            "add"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "pick": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Pick",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "before",
+        "ree",
+        "part",
+        "change"
+      ],
+      "title": "RevertedDrift",
+      "type": "object"
+    },
     "ReviewAcquireSource": {
       "additionalProperties": false,
       "description": "Open the review the exercise calls ``review``, or open it afresh.",
@@ -1107,6 +1184,47 @@
           "$ref": "#/$defs/Fetched"
         }
       ]
+    },
+    "StampsDrift": {
+      "additionalProperties": false,
+      "description": "What ree keeps of how its last attempt left the REE, lost: its stamps removed, as a cleanup, a copy or a disk\nmight lose them. No file of the REE changes, so nothing of it drifts; a drift besides it must still be found.",
+      "properties": {
+        "before": {
+          "minimum": 0,
+          "title": "Before",
+          "type": "integer"
+        },
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review"
+        },
+        "kind": {
+          "const": "stamps",
+          "default": "stamps",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "before",
+        "ree"
+      ],
+      "title": "StampsDrift",
+      "type": "object"
     },
     "Step": {
       "discriminator": {

@@ -19,6 +19,7 @@ import os
 import stat
 import subprocess
 import sys
+import tempfile
 import zipfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -43,6 +44,7 @@ from repo2ree_testbed.exercise import (
     EvaluateReproducibility,
     Exercise,
     Fetched,
+    FileChange,
     FileDrift,
     FilePart,
     GenerateSbom,
@@ -56,6 +58,7 @@ from repo2ree_testbed.exercise import (
     ObserveHardware,
     PatchReeDefinition,
     RemoveSource,
+    RevertedDrift,
     ReviewAcquireSource,
     ReviewActivateExperimentEnvironment,
     ReviewBuildExperimentEnvironment,
@@ -64,6 +67,7 @@ from repo2ree_testbed.exercise import (
     SealRee,
     SignRee,
     SignReview,
+    StampsDrift,
     Step,
     SuggestScripts,
     Text,
@@ -329,16 +333,26 @@ class CliReplay:
         nothing, when there was nothing to change. A history's ref is kept in ``moved``, to put back."""
         scope = self._scope(drift)
         prefix = f"reviews/{drift.review}/" if drift.review else ""
+        if isinstance(drift, StampsDrift):
+            # ree's own record of what it left, not a file of the REE: nothing of the REE drifts to journal.
+            (scope / STAMPS).unlink(missing_ok=True)
+            return
         if isinstance(drift, HistoryDrift):
             left = _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip()
             changed = _rewrite(scope, drift.change, number)
             if changed is not None:
                 moved[number] = left
-        else:
-            touched = _change(scope, drift, number)
-            changed = touched.relative_to(scope).as_posix() if touched is not None else None
-        if changed is not None:
-            journal.drifted(f"drift-{number}", drift.ree, f"{prefix}{changed}")
+                journal.drifted(f"drift-{number}", drift.ree, f"{prefix}{changed}")
+            return
+        target = _drifted_file(scope, drift, number)
+        if target is None:
+            return
+        kept = (target.read_bytes(), target.stat().st_mode) if target.is_file() else None
+        _change(target, drift.change, number)
+        journal.drifted(f"drift-{number}", drift.ree, f"{prefix}{target.relative_to(scope).as_posix()}")
+        if isinstance(drift, RevertedDrift):
+            _put_back(target, kept)
+            journal.undone(f"drift-{number}", drift.ree)
 
     def _staged(self, index: int, name: str, content: bytes) -> Path:
         staged = self.workdir / "staged" / str(index) / name
@@ -424,12 +438,29 @@ class CliReplay:
 DRIFTED: Final = "changed outside ree"
 GIT_IDENTITY: Final = ("-c", "user.name=environment", "-c", "user.email=environment@repo2ree.invalid")
 HISTORY_REF: Final = "refs/heads/ree-history"
+# Where ree keeps how its last attempt left an REE, by the REE's own directory.
+STAMPS: Final = ".git/repo2ree/stamps.json"
 
 
-def _git(scope: Path, *words: str) -> subprocess.CompletedProcess[str]:
+def _git(scope: Path, *words: str, index: Path | None = None) -> subprocess.CompletedProcess[str]:
+    environment = {**os.environ, "GIT_INDEX_FILE": str(index)} if index is not None else None
     return subprocess.run(
-        ["git", "--git-dir", str(scope / ".git"), *GIT_IDENTITY, *words], capture_output=True, text=True, check=False
+        ["git", "--git-dir", str(scope / ".git"), "--work-tree", str(scope), *GIT_IDENTITY, *words],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=environment,
     )
+
+
+def _tree_as_it_is(scope: Path, head: str) -> str:
+    """The tree of the files of ``scope`` as they are, as `git add -A` stages them over ``head``, in an index of its
+    own so ree's is left alone; empty when git cannot make it."""
+    with tempfile.TemporaryDirectory() as staging:
+        index = Path(staging) / "index"
+        if _git(scope, "read-tree", head, index=index).returncode or _git(scope, "add", "-A", index=index).returncode:
+            return ""
+        return _git(scope, "write-tree", index=index).stdout.strip()
 
 
 def _files(scope: Path, part: FilePart) -> list[Path]:
@@ -453,21 +484,19 @@ def part_dir(part: FilePart) -> str:
     return {"overlay": "overlay", "workspace": "workspace", "records": "."}[part]
 
 
-def _change(scope: Path, drift: FileDrift, number: int) -> Path | None:
-    """Change a file of ``scope`` as ``drift`` says; the file changed, or None when the part holds none to change."""
+def _drifted_file(scope: Path, drift: FileDrift | RevertedDrift, number: int) -> Path | None:
+    """The file ``drift`` changes in ``scope``: the one it adds, or the ``pick``-th the part holds; None when the part
+    holds none to change."""
     if drift.change == "add":
         base = scope / part_dir(drift.part)
-        if not base.is_dir():
-            return None
-        added = base / f"drift-{number}.txt"
-        added.write_text(f"{DRIFTED} {number}\n", encoding="utf-8")
-        return added
+        return base / f"drift-{number}.txt" if base.is_dir() else None
     files = _files(scope, drift.part)
-    if not files:
-        return None
-    target = files[drift.pick % len(files)]
-    match drift.change:
-        case "write":
+    return files[drift.pick % len(files)] if files else None
+
+
+def _change(target: Path, change: FileChange, number: int) -> None:
+    match change:
+        case "add" | "write":
             target.write_text(f"{DRIFTED} {number}\n", encoding="utf-8")
         case "append":
             with target.open("a", encoding="utf-8") as stream:
@@ -476,7 +505,16 @@ def _change(scope: Path, drift: FileDrift, number: int) -> Path | None:
             target.unlink()
         case "mode":
             target.chmod(target.stat().st_mode ^ stat.S_IXUSR)
-    return target
+
+
+def _put_back(target: Path, kept: tuple[bytes, int] | None) -> None:
+    """Make ``target`` again what it was: ``kept``, its content and mode, or no file at all."""
+    if kept is None:
+        target.unlink(missing_ok=True)
+        return
+    content, mode = kept
+    target.write_bytes(content)
+    target.chmod(stat.S_IMODE(mode))
 
 
 def _rewrite(scope: Path, change: HistoryChange, number: int) -> str | None:
@@ -487,8 +525,9 @@ def _rewrite(scope: Path, change: HistoryChange, number: int) -> str | None:
         return None
     match change:
         case "commit":
-            made = _git(scope, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", f"{DRIFTED} {number}")
-            target = made.stdout.strip()
+            tree = _tree_as_it_is(scope, head)
+            made = _git(scope, "commit-tree", tree, "-p", head, "-m", f"{DRIFTED} {number}") if tree else None
+            target = made.stdout.strip() if made is not None else ""
         case "reset":
             target = _git(scope, "rev-parse", "--verify", "--quiet", f"{head}^").stdout.strip()
         case "amend":

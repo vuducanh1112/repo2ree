@@ -4,6 +4,7 @@ checker holds the next attempt to having found it."""
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -13,15 +14,20 @@ from repo2ree_testbed.api_models import DefinitionPatch
 from repo2ree_testbed.exercise import (
     Drift,
     Exercise,
+    FileChange,
     FileDrift,
+    FilePart,
     HistoryChange,
     HistoryDrift,
     InitializeRee,
     LoadReeBundle,
     MaterializeWorkspace,
     PatchReeDefinition,
+    RevertedDrift,
+    StampsDrift,
 )
 from repo2ree_testbed.exercise_case import CASES, ExerciseCase
+from repo2ree_testbed.exercise_cli import HISTORY_REF, STAMPS, CliReplay, _git, _rewrite, local_ree
 from repo2ree_testbed.exercise_verdict import Trace, judge
 
 RULE = "drift-is-found-by-the-next-attempt"
@@ -151,3 +157,39 @@ def test_a_bundle_of_a_history_committed_to_with_git_is_refused(tmp_path: Path) 
     assert [ran.exit for ran in loaded.prepared] != [0]
     assert answered(trace, 4)["status"] == "succeeded"
     assert trace.problems == ()
+
+
+@pytest.mark.parametrize(("part", "change"), [("overlay", "write"), ("workspace", "remove"), ("records", "mode")])
+def test_a_file_put_back_by_hand_before_the_next_command_is_no_drift(
+    tmp_path: Path, part: FilePart, change: FileChange
+) -> None:
+    trace = judge(drifted(RevertedDrift(before=2, ree="author", part=part, change=change)), tmp_path)
+
+    assert answered(trace, 2)["status"] == "succeeded"
+    assert trace.problems == ()
+
+
+def test_a_commit_made_with_git_holds_the_files_as_they_are(tmp_path: Path) -> None:
+    scope = tmp_path / "ree"
+    scope.mkdir()
+    subprocess.run(["git", "init", "--quiet", "--initial-branch=ree-history", str(scope)], check=True)
+    (scope / "ree.json").write_text("{}\n")
+    assert _git(scope, "add", "ree.json").returncode == 0
+    assert _git(scope, "commit", "--quiet", "-m", "initialize_ree").returncode == 0
+    (scope / "ree.json").write_text("{} edited\n")
+
+    assert _rewrite(scope, "commit", 1) == ".git/refs/heads/ree-history"
+    assert _git(scope, "show", f"{HISTORY_REF}:ree.json").stdout == "{} edited\n"
+    assert _git(scope, "rev-list", "--count", HISTORY_REF).stdout.strip() == "2"
+
+
+def test_stamps_lost_change_no_file_of_the_ree(tmp_path: Path) -> None:
+    replay = CliReplay(local_ree, tmp_path)
+    exercise = Exercise(
+        rees=("author",), steps=(InitializeRee(ree="author"),), drifts=(StampsDrift(before=1, ree="author"),)
+    )
+    replay.replay(exercise)
+
+    assert not (replay.root("author") / STAMPS).exists()
+    journaled = (replay.journals / "environment-000001.ndjson").read_text()
+    assert '"Drift"' not in journaled

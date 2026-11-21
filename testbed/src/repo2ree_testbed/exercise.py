@@ -262,7 +262,8 @@ class Fault(_Model):
 FilePart = Literal["overlay", "workspace", "records"]
 # How a file changes: written over, added to, removed, its mode changed, or a file added beside the others.
 FileChange = Literal["write", "append", "remove", "mode", "add"]
-# How a history changes: a commit made on it, its last commit reset away, or its last commit amended.
+# How a history changes: a commit made on it of the files as they are, as `git add -A` and `git commit` make one, its
+# last commit reset away, or its last commit amended.
 HistoryChange = Literal["commit", "reset", "amend"]
 
 
@@ -308,7 +309,31 @@ class HistoryDrift(_Drift):
         return self
 
 
-type Drift = Annotated[FileDrift | HistoryDrift, Field(discriminator="kind")]
+class RevertedDrift(_Drift):
+    """A file changed as a ``FileDrift`` changes it, and put back as it was before step ``before`` runs, as an edit
+    undone by hand: its content and mode as they were, a file removed made again, a file added removed. Nothing of the
+    REE is then other than its last attempt left it, though its files were touched."""
+
+    kind: Literal["reverted"] = "reverted"
+    part: FilePart
+    change: FileChange
+    pick: NonNegativeInt = 0
+
+    @model_validator(mode="after")
+    def _added_where_a_file_is_the_ree_s(self) -> Self:
+        if self.part == "records" and self.change == "add":
+            raise ValueError("a file added beside the records is none of the REE's: add one to overlay or workspace")
+        return self
+
+
+class StampsDrift(_Drift):
+    """What ree keeps of how its last attempt left the REE, lost: its stamps removed, as a cleanup, a copy or a disk
+    might lose them. No file of the REE changes, so nothing of it drifts; a drift besides it must still be found."""
+
+    kind: Literal["stamps"] = "stamps"
+
+
+type Drift = Annotated[FileDrift | HistoryDrift | RevertedDrift | StampsDrift, Field(discriminator="kind")]
 
 
 class Exercise(_Model):

@@ -48,6 +48,7 @@ from repo2ree_testbed.exercise import (
     ObserveHardware,
     PatchReeDefinition,
     RemoveSource,
+    RevertedDrift,
     ReviewAcquireSource,
     ReviewActivateExperimentEnvironment,
     ReviewBuildExperimentEnvironment,
@@ -58,6 +59,7 @@ from repo2ree_testbed.exercise import (
     SealSignature,
     SignRee,
     SignReview,
+    StampsDrift,
     Step,
     SuggestScripts,
     Text,
@@ -227,8 +229,8 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
 
 
 def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
-    """Drifts in REEs the steps initialize, each after the step that does: of any part, by any change, in the REE or
-    in a review the steps name."""
+    """Drifts in REEs the steps initialize, each after the step that does: of any part, by any change, kept or put back
+    by hand, a history changed by git, or ree's stamps lost, in the REE or in a review the steps name."""
     initialized = {
         step.ree: index for index, step in reversed(list(enumerate(steps))) if isinstance(step, InitializeRee)
     }
@@ -239,20 +241,26 @@ def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
     def one(ree: Label) -> st.SearchStrategy[Drift]:
         first = initialized[ree] + 1
         reviews: st.SearchStrategy[Label | None] = st.none() | st.sampled_from(reviewed) if reviewed else st.none()
-        files: st.SearchStrategy[Drift] = st.sampled_from(get_args(FilePart)).flatmap(
-            lambda part: st.builds(
-                FileDrift,
-                before=st.integers(min_value=first, max_value=len(steps)),
-                ree=st.just(ree),
-                review=reviews,
-                part=st.just(part),
-                # Nothing added beside the records is the REE's.
-                change=st.sampled_from(
-                    [change for change in get_args(FileChange) if (part, change) != ("records", "add")]
-                ),
-                pick=st.integers(min_value=0, max_value=50),
+        before = st.integers(min_value=first, max_value=len(steps))
+
+        def changed(kind: type[FileDrift | RevertedDrift]) -> st.SearchStrategy[Drift]:
+            return st.sampled_from(get_args(FilePart)).flatmap(
+                lambda part: st.builds(
+                    kind,
+                    before=before,
+                    ree=st.just(ree),
+                    review=reviews,
+                    part=st.just(part),
+                    # Nothing added beside the records is the REE's.
+                    change=st.sampled_from(
+                        [change for change in get_args(FileChange) if (part, change) != ("records", "add")]
+                    ),
+                    pick=st.integers(min_value=0, max_value=50),
+                )
             )
-        )
+
+        stamps = st.builds(StampsDrift, before=before, ree=st.just(ree), review=reviews)
+        files = st.one_of(changed(FileDrift), changed(RevertedDrift), stamps)
         if first >= len(steps):
             return files
         history: st.SearchStrategy[Drift] = st.integers(min_value=first, max_value=len(steps) - 1).flatmap(
