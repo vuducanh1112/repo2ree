@@ -1,0 +1,79 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author",
+      "other"
+    ],
+    "steps": [
+      {
+        "ree": "author",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "other",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "other",
+        "operation": "load_ree_bundle",
+        "exported_by": "author"
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "put-back"
+        }
+      }
+    ],
+    "faults": [],
+    "drifts": [
+      {
+        "before": 2,
+        "ree": "author",
+        "kind": "history",
+        "change": "commit",
+        "until": 3
+      }
+    ]
+  },
+  "origin": {
+    "kind": "hand_written"
+  },
+  "expects": {
+    "kind": "shows",
+    "problems": [
+      {
+        "kind": "violated",
+        "rule": "bundles-carry-what-attempts-captured",
+        "subject": "export_bundle.exported bundle-2",
+        "detail": "names 9d4aa8ca18a75783717ac891c0f71de227bac9df, which no Attempt reached captured with as its commit"
+      }
+    ]
+  },
+  "reached": {
+    "spec_digest": "sha256:12e57e4aaad99980537a635ac7860a3fad227c9e24b87da39a7fe9c3e0cb48d4",
+    "items": [
+      "Attempt (none) -> pending",
+      "Attempt completed -> captured",
+      "Attempt executing -> completed",
+      "Attempt pending -> executing",
+      "Drift (none) -> arisen",
+      "Drift arisen -> undone",
+      "aggregate:Ree",
+      "boundary:export_bundle",
+      "boundary:run_command",
+      "bundles-carry-what-attempts-captured",
+      "document:scripts-are-their-digests",
+      "document:standings-are-the-receipts-basis",
+      "drift-is-found-by-the-next-attempt",
+      "evidence",
+      "machine:Attempt",
+      "machine:Drift",
+      "machine:Receipt",
+      "machine:Ree",
+      "ree-changes-through-operations"
+    ]
+  }
+}
