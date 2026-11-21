@@ -1,0 +1,100 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author"
+    ],
+    "steps": [
+      {
+        "ree": "author",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "author",
+        "operation": "acquire_source",
+        "source": {
+          "kind": "uploaded",
+          "project": "instant"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "materialize_workspace"
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "second"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "refused"
+        }
+      },
+      {
+        "ree": "author",
+        "operation": "patch_ree_definition",
+        "patch": {
+          "name": "after"
+        }
+      }
+    ],
+    "faults": [],
+    "drifts": [
+      {
+        "before": 4,
+        "ree": "author",
+        "kind": "reflog"
+      },
+      {
+        "before": 4,
+        "ree": "author",
+        "kind": "history",
+        "change": "reset",
+        "until": 5
+      }
+    ]
+  },
+  "origin": {
+    "kind": "hand_written"
+  },
+  "expects": {
+    "kind": "shows",
+    "problems": [
+      {
+        "kind": "violated",
+        "rule": "drift-is-found-by-the-next-attempt",
+        "subject": "Drift drift-1",
+        "detail": "Attempt 843d649022474e00969a419149619ea3, the first after it, reached pending with {'drift_found': ['ree.json']}"
+      }
+    ]
+  },
+  "reached": {
+    "spec_digest": "sha256:77cbdcd8767bbb86e0cd04e938029479aafd3148fce6ca9b19412d192363596a",
+    "items": [
+      "Attempt (none) -> pending",
+      "Attempt completed -> capture_failed",
+      "Attempt completed -> captured",
+      "Attempt executing -> completed",
+      "Attempt pending -> executing",
+      "Drift (none) -> arisen",
+      "Drift arisen -> undone",
+      "aggregate:Ree",
+      "boundary:run_command",
+      "document:scripts-are-their-digests",
+      "document:standings-are-the-receipts-basis",
+      "drift-is-found-by-the-next-attempt",
+      "evidence",
+      "machine:Attempt",
+      "machine:Drift",
+      "machine:Receipt",
+      "machine:Ree",
+      "receipts-come-from-their-producers",
+      "ree-changes-through-operations"
+    ]
+  }
+}

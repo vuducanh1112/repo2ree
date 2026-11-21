@@ -18,6 +18,7 @@ from repo2ree_assurance_checker.files import load_spec
 from repo2ree_assurance_checker.sources import (
     Commit,
     attempt_events,
+    beside_position,
     history_head,
     load_evidence,
     pending_records,
@@ -276,6 +277,7 @@ def captured_repository(root: Path, *attempts: str, ree_id: str | None = "ree-1"
             "context": {"ree_id": ree_id},
             "command": {"operation": "x"},
             "operation_status": "succeeded",
+            "sequence": 2 * len(commits) + 1,
         }
         metadata = {"kind": "operation.completed", "schema_version": 2, "record": record}
         commits.append(ree_commit(root, "x", metadata, environment))
@@ -445,3 +447,28 @@ def test_a_record_copied_onto_another_commit_is_no_attempt_of_it(tmp_path: Path)
     (source,) = evidence.sources
     assert any("names another parent or tree than its commit's" in problem for problem in source.problems)
     assert first != copied
+
+
+def test_a_record_kept_beside_the_history_is_ordered_by_its_sequence_not_after_every_commit(tmp_path: Path) -> None:
+    # A refusal kept beside the history began before the attempts after it: their numbers say so, not the file's place.
+    assert GIT is not None
+    root = tmp_path / "ree"
+    captured_repository(root, "first", "third")
+    beside = root / ".git" / "repo2ree" / "operations"
+    beside.mkdir(parents=True)
+    record = {
+        "attempt_id": "second",
+        "context": {"ree_id": "ree-1"},
+        "command": {"operation": "x"},
+        "operation_status": "failed",
+        "capture_status": "failed",
+        "sequence": 2,
+        "phases": ["pending", "executing", "completed", "capture_failed"],
+    }
+    (beside / "second.json").write_text(json.dumps(record))
+
+    published = [(0, None, {"sequence": 1}), (1, None, {"sequence": 3})]
+    assert beside_position(record, published, 2, 0) == 1500  # type: ignore[arg-type]
+    evidence = load_evidence(repositories=[root], git_executable=GIT)
+    pending = {event.key: event.position for event in evidence.events if event.target_state == "pending"}
+    assert pending["first"] < pending["second"] < pending["third"]

@@ -466,6 +466,23 @@ def pending_records(repository: Path, published: set[str]) -> tuple[list[tuple[d
     return records, problems
 
 
+def beside_position(
+    record: dict[str, Any], published: list[tuple[int, Commit, dict[str, Any]]], commits: int, offset: int
+) -> int:
+    """Where a record kept beside the history goes among the commits' events: after the last published attempt the
+    REE numbered before it, as its attempts are numbered in the order they began, else after every commit. A
+    refusal kept beside a history is no newer than the attempts that came after it, which it would otherwise seem."""
+    sequence = record.get("sequence")
+    if not isinstance(sequence, int):
+        return (commits + 1 + offset) * 1000
+    earlier = [
+        index
+        for index, _, other in published
+        if isinstance(other.get("sequence"), int) and other["sequence"] < sequence
+    ]
+    return ((max(earlier) + 1) if earlier else 0) * 1000 + 500 + 5 * offset
+
+
 def inferred_phases(record: dict[str, Any], commit: Commit | None) -> list[str]:
     """The phases a record without its own phase list implies, from its final fields alone."""
     status = record.get("operation_status")
@@ -824,7 +841,7 @@ def read_git_history(
         problems.extend(problem for problem in [recorded_phases(record, commit)[1]] if problem)
     for offset, (record, digest) in enumerate(pending):
         locator = f"git:{label}/operations/{record['attempt_id']}.json"
-        position = (len(commits) + 1 + offset) * 1000
+        position = beside_position(record, published, len(commits), offset)
         events.extend(attempt_events(source_id, position, record, None, locator, digest=digest))
         problems.extend(problem for problem in [recorded_phases(record, None)[1]] if problem)
     ree_ids = {event.partition for event in events if event.partition is not None}
