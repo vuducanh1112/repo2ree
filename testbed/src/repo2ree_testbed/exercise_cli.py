@@ -19,7 +19,6 @@ import os
 import stat
 import subprocess
 import sys
-import tempfile
 import zipfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -57,6 +56,7 @@ from repo2ree_testbed.exercise import (
     MaterializeWorkspace,
     ObserveHardware,
     PatchReeDefinition,
+    ReflogDrift,
     RemoveSource,
     RevertedDrift,
     ReviewAcquireSource,
@@ -337,6 +337,10 @@ class CliReplay:
             # ree's own record of what it left, not a file of the REE: nothing of the REE drifts to journal.
             (scope / STAMPS).unlink(missing_ok=True)
             return
+        if isinstance(drift, ReflogDrift):
+            # git's record of where the refs were, not a file of the REE: nothing of the REE drifts to journal.
+            _git(scope, "reflog", "expire", "--expire=now", "--expire-unreachable=now", "--all")
+            return
         if isinstance(drift, HistoryDrift):
             left = _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip()
             changed = _rewrite(scope, drift.change, number)
@@ -453,16 +457,6 @@ def _git(scope: Path, *words: str, index: Path | None = None) -> subprocess.Comp
     )
 
 
-def _tree_as_it_is(scope: Path, head: str) -> str:
-    """The tree of the files of ``scope`` as they are, as `git add -A` stages them over ``head``, in an index of its
-    own so ree's is left alone; empty when git cannot make it."""
-    with tempfile.TemporaryDirectory() as staging:
-        index = Path(staging) / "index"
-        if _git(scope, "read-tree", head, index=index).returncode or _git(scope, "add", "-A", index=index).returncode:
-            return ""
-        return _git(scope, "write-tree", index=index).stdout.strip()
-
-
 def _files(scope: Path, part: FilePart) -> list[Path]:
     """The files ``part`` holds now, in order: the history's own for the records, never the workspace's control
     files, which ree keeps for itself."""
@@ -518,22 +512,20 @@ def _put_back(target: Path, kept: tuple[bytes, int] | None) -> None:
 
 
 def _rewrite(scope: Path, change: HistoryChange, number: int) -> str | None:
-    """Change the history of ``scope`` with git as ``change`` says; the ref moved, or None when there was none to
-    move."""
+    """Change the history of ``scope`` with git as a person would, as ``change`` says; the ref moved, or None when
+    there was none to move."""
     head = _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip()
     if not head:
         return None
     match change:
         case "commit":
-            tree = _tree_as_it_is(scope, head)
-            made = _git(scope, "commit-tree", tree, "-p", head, "-m", f"{DRIFTED} {number}") if tree else None
-            target = made.stdout.strip() if made is not None else ""
+            words = [("add", "-A"), ("commit", "--quiet", "--allow-empty", "-m", f"{DRIFTED} {number}")]
         case "reset":
-            target = _git(scope, "rev-parse", "--verify", "--quiet", f"{head}^").stdout.strip()
+            words = [("reset", "--quiet", "--soft", "HEAD^")]
         case "amend":
-            parents = _git(scope, "rev-parse", f"{head}^@").stdout.split()
-            words = [word for parent in parents for word in ("-p", parent)]
-            target = _git(scope, "commit-tree", f"{head}^{{tree}}", *words, "-m", f"{DRIFTED} {number}").stdout.strip()
-    if not target or _git(scope, "update-ref", HISTORY_REF, target, head).returncode:
+            words = [("add", "-A"), ("commit", "--quiet", "--allow-empty", "--amend", "--no-edit")]
+    if any(_git(scope, *command).returncode for command in words):
+        return None
+    if _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip() == head:
         return None
     return f".git/{HISTORY_REF}"

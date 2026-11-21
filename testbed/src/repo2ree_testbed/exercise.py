@@ -262,8 +262,8 @@ class Fault(_Model):
 FilePart = Literal["overlay", "workspace", "records"]
 # How a file changes: written over, added to, removed, its mode changed, or a file added beside the others.
 FileChange = Literal["write", "append", "remove", "mode", "add"]
-# How a history changes: a commit made on it of the files as they are, as `git add -A` and `git commit` make one, its
-# last commit reset away, or its last commit amended.
+# How a history changes, as a person changes it with git: `git add -A` and `git commit`, `git reset --soft` to its last
+# commit's parent, or `git add -A` and `git commit --amend --no-edit`, which keeps the message, ree's record with it.
 HistoryChange = Literal["commit", "reset", "amend"]
 
 
@@ -333,7 +333,17 @@ class StampsDrift(_Drift):
     kind: Literal["stamps"] = "stamps"
 
 
-type Drift = Annotated[FileDrift | HistoryDrift | RevertedDrift | StampsDrift, Field(discriminator="kind")]
+class ReflogDrift(_Drift):
+    """What git keeps of where the history's refs were, lost: its reflog expired, as `git reflog expire --all` does,
+    ree's own entries with it. No file of the REE changes, so nothing of it drifts; a drift besides it must still be
+    found."""
+
+    kind: Literal["reflog"] = "reflog"
+
+
+type Drift = Annotated[
+    FileDrift | HistoryDrift | RevertedDrift | StampsDrift | ReflogDrift, Field(discriminator="kind")
+]
 
 
 class Exercise(_Model):

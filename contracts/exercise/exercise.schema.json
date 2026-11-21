@@ -220,6 +220,7 @@
         "mapping": {
           "file": "#/$defs/FileDrift",
           "history": "#/$defs/HistoryDrift",
+          "reflog": "#/$defs/ReflogDrift",
           "reverted": "#/$defs/RevertedDrift",
           "stamps": "#/$defs/StampsDrift"
         },
@@ -237,6 +238,9 @@
         },
         {
           "$ref": "#/$defs/StampsDrift"
+        },
+        {
+          "$ref": "#/$defs/ReflogDrift"
         }
       ]
     },
@@ -750,6 +754,47 @@
       ],
       "title": "ProjectName",
       "type": "string"
+    },
+    "ReflogDrift": {
+      "additionalProperties": false,
+      "description": "What git keeps of where the history's refs were, lost: its reflog expired, as `git reflog expire --all` does,\nree's own entries with it. No file of the REE changes, so nothing of it drifts; a drift besides it must still be\nfound.",
+      "properties": {
+        "before": {
+          "minimum": 0,
+          "title": "Before",
+          "type": "integer"
+        },
+        "ree": {
+          "pattern": "^[a-z][a-z0-9-]{0,31}$",
+          "title": "Ree",
+          "type": "string"
+        },
+        "review": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9-]{0,31}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review"
+        },
+        "kind": {
+          "const": "reflog",
+          "default": "reflog",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "before",
+        "ree"
+      ],
+      "title": "ReflogDrift",
+      "type": "object"
     },
     "RemoveSource": {
       "additionalProperties": false,

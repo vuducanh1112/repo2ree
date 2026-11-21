@@ -47,6 +47,7 @@ from repo2ree_testbed.exercise import (
     MaterializeWorkspace,
     ObserveHardware,
     PatchReeDefinition,
+    ReflogDrift,
     RemoveSource,
     RevertedDrift,
     ReviewAcquireSource,
@@ -230,7 +231,8 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
 
 def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
     """Drifts in REEs the steps initialize, each after the step that does: of any part, by any change, kept or put back
-    by hand, a history changed by git, or ree's stamps lost, in the REE or in a review the steps name."""
+    by hand, a history changed by git, or ree's stamps or git's reflog lost, in the REE or in a review the steps
+    name."""
     initialized = {
         step.ree: index for index, step in reversed(list(enumerate(steps))) if isinstance(step, InitializeRee)
     }
@@ -259,8 +261,10 @@ def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
                 )
             )
 
-        stamps = st.builds(StampsDrift, before=before, ree=st.just(ree), review=reviews)
-        files = st.one_of(changed(FileDrift), changed(RevertedDrift), stamps)
+        lost = st.sampled_from([StampsDrift, ReflogDrift]).flatmap(
+            lambda kind: st.builds(kind, before=before, ree=st.just(ree), review=reviews)
+        )
+        files = st.one_of(changed(FileDrift), changed(RevertedDrift), lost)
         if first >= len(steps):
             return files
         history: st.SearchStrategy[Drift] = st.integers(min_value=first, max_value=len(steps) - 1).flatmap(

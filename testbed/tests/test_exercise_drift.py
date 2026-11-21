@@ -23,6 +23,7 @@ from repo2ree_testbed.exercise import (
     LoadReeBundle,
     MaterializeWorkspace,
     PatchReeDefinition,
+    ReflogDrift,
     RevertedDrift,
     StampsDrift,
 )
@@ -191,5 +192,17 @@ def test_stamps_lost_change_no_file_of_the_ree(tmp_path: Path) -> None:
     replay.replay(exercise)
 
     assert not (replay.root("author") / STAMPS).exists()
+    journaled = (replay.journals / "environment-000001.ndjson").read_text()
+    assert '"Drift"' not in journaled
+
+
+def test_a_reflog_lost_changes_no_file_of_the_ree(tmp_path: Path) -> None:
+    replay = CliReplay(local_ree, tmp_path)
+    exercise = Exercise(
+        rees=("author",), steps=(InitializeRee(ree="author"),), drifts=(ReflogDrift(before=1, ree="author"),)
+    )
+    replay.replay(exercise)
+
+    assert _git(replay.root("author"), "reflog", "show", HISTORY_REF, "--").stdout == ""
     journaled = (replay.journals / "environment-000001.ndjson").read_text()
     assert '"Drift"' not in journaled
