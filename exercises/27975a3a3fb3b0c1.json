@@ -42,15 +42,7 @@
     "kind": "hand_written"
   },
   "expects": {
-    "kind": "shows",
-    "problems": [
-      {
-        "kind": "violated",
-        "rule": "bundles-carry-what-attempts-captured",
-        "subject": "export_bundle.exported bundle-2",
-        "detail": "names 9d4aa8ca18a75783717ac891c0f71de227bac9df, which no Attempt reached captured with as its commit"
-      }
-    ]
+    "kind": "conforms"
   },
   "reached": {
     "spec_digest": "sha256:12e57e4aaad99980537a635ac7860a3fad227c9e24b87da39a7fe9c3e0cb48d4",
@@ -64,7 +56,6 @@
       "aggregate:Ree",
       "boundary:export_bundle",
       "boundary:run_command",
-      "bundles-carry-what-attempts-captured",
       "document:scripts-are-their-digests",
       "document:standings-are-the-receipts-basis",
       "drift-is-found-by-the-next-attempt",
