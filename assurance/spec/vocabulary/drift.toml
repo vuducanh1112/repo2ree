@@ -26,6 +26,6 @@ required_in = ["arisen"]
 
 [facts.part.values]
 overlay = "A script as the REE writes it."
-workspace = "The workspace the REE's scripts run in."
+workspace = "A file of the workspace laid out from the source and the overlay. What else the workspace holds is the experiment environment and outputs, which receipts vouch for, or recorded nowhere, so none of it drifts."
 records = "Any other file the REE's history holds."
 history = "A ref of the history: committed to, reset or rewritten."
