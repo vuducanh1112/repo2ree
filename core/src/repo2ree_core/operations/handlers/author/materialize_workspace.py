@@ -19,6 +19,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
+from repo2ree_core.workspace.attempt import show_environment
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
@@ -72,6 +73,9 @@ def materialize_workspace(
         )
 
     record_materialization(layout, snapshot_digest=snapshot_digest, log=log)
+    if layout.manifest.is_file():
+        declared = ReeDirectory(layout).read_ree().subject.definition.experiment_environment.artifact_path
+        show_environment(layout, str(declared) if declared else None)
     log("system", "info", "materialize_workspace succeeded")
     return ActionResult(status="succeeded", exit_code=0)
 

@@ -12,6 +12,7 @@ A step's workspace stays until the next attempt lays out its own, for a failed o
 
 from __future__ import annotations
 
+import os
 import shutil
 import tarfile
 from pathlib import Path
@@ -96,6 +97,24 @@ def keep_environment(layout: ReeLayout, workspace: Path, declared: str) -> Path 
     kept.parent.mkdir(parents=True, exist_ok=True)
     produced.replace(kept)
     return kept
+
+
+def show_environment(layout: ReeLayout, declared: str | None) -> None:
+    """Put the kept experiment environment in the REE's ``workspace/`` view at its declared path, as a step after the
+    build sees it, linked rather than copied: an edit through the view changes the kept file, which every step finds
+    by its digest before it uses it."""
+    if not declared:
+        return
+    kept = environment_file(layout, declared)
+    view = layout.workspace / declared
+    if not kept.is_file() or view.resolve() == kept.resolve():
+        return
+    view.parent.mkdir(parents=True, exist_ok=True)
+    view.unlink(missing_ok=True)
+    try:
+        os.link(kept, view)
+    except OSError:
+        shutil.copy2(kept, view)
 
 
 def discard(layout: ReeLayout, run_id: str) -> None:

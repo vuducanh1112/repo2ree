@@ -17,7 +17,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
-from repo2ree_core.workspace.attempt import discard, keep_environment, lay_out
+from repo2ree_core.workspace.attempt import discard, keep_environment, lay_out, show_environment
 from repo2ree_protocol.command import BuildExperimentEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import BuildExperimentEnvironmentFailureOutputs, BuildExperimentEnvironmentOutputs
@@ -129,6 +129,7 @@ def handle_build_experiment_environment(
         return failed_from_exception(exc, f"failed to commit build receipt: {exc}")
 
     discard(layout, run_id)
+    show_environment(layout, str(experiment_environment_path))
     log(
         "system",
         "info",
