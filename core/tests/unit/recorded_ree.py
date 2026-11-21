@@ -4,16 +4,14 @@ from __future__ import annotations
 
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.workspace.drift import derived_changes, lay_out_again
 from repo2ree_protocol.execution import ExecutionContext
 from repo2ree_protocol.history import CompletedOperation
 from repo2ree_protocol.result import ActionResult
 
 
 def as_recorded(layout: ReeLayout) -> ReeLayout:
-    """Commit the REE's files as they are, as ree's snapshot, with its workspace laid out from them as ree lays it
-    out: a test's setup, which is no drift of the REE it sets up."""
-    lay_out_again(layout, list(derived_changes(layout)))
+    """Commit the REE's files as they are, as ree's snapshot: a test's setup, which is no drift of the REE it sets
+    up."""
     with open_history(layout) as history:
         history.capture(operation="test_setup", reuse_unchanged=True)
     return layout

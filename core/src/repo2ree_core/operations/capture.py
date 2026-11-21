@@ -23,7 +23,6 @@ from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.operation_history import next_operation_sequence, read_operation_history
-from repo2ree_core.workspace.drift import derived_changes
 from repo2ree_core.workspace.integrity import (
     drift_refusal,
     find_drift,
@@ -38,7 +37,7 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.history import CompletedOperation, DriftedFile, OperationRecord
 from repo2ree_protocol.result import ActionResult, HistoryReference
 from repo2ree_ree.digest import digest_bytes
-from repo2ree_ree.layout import OVERLAY, WORKSPACE
+from repo2ree_ree.layout import OVERLAY
 
 
 def capture_command(
@@ -122,7 +121,6 @@ def capture_command(
                 write_json_atomic(record_path, record.model_dump(mode="json"))
                 if result.status == "canceled" or (edited is not None and result.status != "succeeded"):
                     _restore(history, before)
-                record.workspace_changed = derived_changes(scope)
                 _publish(layout, scope, history, record, cmd.operation, log)
             except (HistoryCaptureError, OSError, ValueError) as exc:
                 # Still under the REE lock: put back what the attempt changed, since it is not recorded.
@@ -171,10 +169,8 @@ def capture_command(
 
 def _refusal(layout: ReeLayout, drift: list[DriftedFile], records_edit: str | None, operation: str) -> str | None:
     """Why an attempt that found ``drift`` may not run, or None when it may: one recording a script edited in the
-    overlay, or one laying the workspace out again, which discards what drifted there."""
+    overlay."""
     if not drift:
-        return None
-    if operation == "materialize_workspace" and all(item.path.startswith(f"{WORKSPACE}/") for item in drift):
         return None
     edits = recordable_edits(layout, drift)
     if records_edit is not None and records_edit in edits:
@@ -294,7 +290,6 @@ def settle_interrupted(
         try:
             write_json_atomic(record_path, record.model_dump(mode="json"))
             _restore(history, record.before_snapshot_id)
-            record.workspace_changed = derived_changes(scope)
             _publish(layout, scope, history, record, str(record.command.get("operation", "")), log)
         except (HistoryCaptureError, OSError, ValueError) as exc:
             rolled_back = _roll_back(history, record.before_snapshot_id, log)

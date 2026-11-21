@@ -184,6 +184,13 @@ class ReeLayout:
     def artifacts(self) -> Path:
         return self.root / ARTIFACTS_DIRNAME
 
+    def kept_environment(self, declared: str) -> Path:
+        """Where the built experiment environment declared at ``declared`` is kept: beside the REE, out of every
+        workspace. A loaded REE declares it under ``artifacts/`` already, where its bundle put it."""
+        if PurePosixPath(declared).parts[:1] == (ARTIFACTS_DIRNAME,):
+            return self.root / declared
+        return self.artifacts / "experiment-environment" / declared
+
     @property
     def sbom(self) -> Path:
         """This REE's software bill of materials, scanned off its experiment environment.

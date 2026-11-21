@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from recorded_ree import as_recorded
-from ree_definitions import LAUNCH, ree_definition
+from ree_definitions import LAUNCH, SNAPSHOT_DIGEST, ree_definition
 
 from repo2ree_core.bundle.seal import BundleProgress, BundleSealCanceledError, seal_ree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, replace_definition
@@ -30,7 +30,7 @@ _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SCRIPT = b"#!/bin/sh\nexit 0\n"
 _SCRIPT_DIGEST = digest_bytes(_SCRIPT)
 _OTHER_DIGEST = digest_bytes(b"edited")
-_SNAPSHOT_DIGEST = digest_bytes(b"snapshot")
+_SNAPSHOT_DIGEST = SNAPSHOT_DIGEST
 _EXPERIMENT_ENVIRONMENT_DIGEST = digest_bytes(b"experiment_environment")
 _SOURCE = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
 
@@ -158,7 +158,8 @@ def test_sealing_streams_experiment_environment_without_reading_the_whole_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     store = _store(tmp_path, _ree())
-    experiment_environment = store.layout.workspace / "runtime.tar"
+    experiment_environment = store.layout.kept_environment("runtime.tar")
+    experiment_environment.parent.mkdir(parents=True, exist_ok=True)
     experiment_environment.write_bytes(b"experiment environment payload")
     original_read_bytes = Path.read_bytes
 
@@ -186,7 +187,8 @@ def test_sealing_streams_experiment_environment_without_reading_the_whole_file(
 
 def test_canceling_a_streamed_seal_does_not_publish_partial_state(tmp_path: Path) -> None:
     store = _store(tmp_path, _ree())
-    experiment_environment = store.layout.workspace / "runtime.tar"
+    experiment_environment = store.layout.kept_environment("runtime.tar")
+    experiment_environment.parent.mkdir(parents=True, exist_ok=True)
     experiment_environment.write_bytes(b"x" * (2 * 1024 * 1024))
     progress: list[BundleProgress] = []
 

@@ -222,7 +222,18 @@
       "operations": [
         "activate_experiment_environment"
       ],
-      "params": [],
+      "params": [
+        {
+          "name": "--again",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-again"
+        }
+      ],
       "stdin": null,
       "stdout": "result",
       "outputs": {
@@ -239,7 +250,18 @@
       "operations": [
         "build_experiment_environment"
       ],
-      "params": [],
+      "params": [
+        {
+          "name": "--again",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-again"
+        }
+      ],
       "stdin": null,
       "stdout": "result",
       "outputs": {
@@ -320,7 +342,18 @@
       "operations": [
         "check_working_environment"
       ],
-      "params": [],
+      "params": [
+        {
+          "name": "--again",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-again"
+        }
+      ],
       "stdin": null,
       "stdout": "result",
       "outputs": {
@@ -573,18 +606,7 @@
       "operations": [
         "materialize_workspace"
       ],
-      "params": [
-        {
-          "name": "--clean",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "Lay out the whole workspace from nothing, the experiment environment and outputs with it.",
-          "flag": true,
-          "default": false,
-          "negation": "--no-clean"
-        }
-      ],
+      "params": [],
       "stdin": null,
       "stdout": "result",
       "outputs": {
@@ -999,6 +1021,16 @@
         "run_experiment"
       ],
       "params": [
+        {
+          "name": "--again",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "flag": true,
+          "default": false,
+          "negation": "--no-again"
+        },
         {
           "name": "experiment_name",
           "kind": "argument",
@@ -5948,28 +5980,6 @@
           ],
           "default": null,
           "title": "Drift Recorded"
-        },
-        "workspace_changed": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Workspace Changed"
         },
         "step_evidence_after": {
           "anyOf": [

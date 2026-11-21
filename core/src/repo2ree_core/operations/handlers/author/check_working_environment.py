@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from repo2ree_core.digests import digest_file
+from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.launch import declared_launch
@@ -14,6 +17,8 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
+from repo2ree_core.workspace.attempt import discard, lay_out
+from repo2ree_protocol.command import CheckWorkingEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
@@ -23,10 +28,10 @@ from repo2ree_ree.receipt import CheckWorkingEnvironmentReceipt
 _LABEL = "check_working_environment"
 
 
-def declared_check(ree: Ree, layout: ReeLayout) -> CheckWorkingEnvironmentDefinition:
-    """The check the REE declares, once its script in the workspace is the one it declares."""
+def declared_check(ree: Ree, workspace: Path) -> CheckWorkingEnvironmentDefinition:
+    """The check the REE declares, once its script in the attempt's workspace is the one it declares."""
     declared = ree.subject.definition.check_working_environment
-    path = layout.workspace / str(declared.check_working_environment_script_path)
+    path = workspace / str(declared.check_working_environment_script_path)
     if not path.is_file():
         raise ReePreconditionError(f"the check script is missing: {declared.check_working_environment_script_path}")
     if digest_file(path) != declared.check_working_environment_script_digest:
@@ -34,7 +39,17 @@ def declared_check(ree: Ree, layout: ReeLayout) -> CheckWorkingEnvironmentDefini
     return declared
 
 
+def _current_receipt(ree: Ree) -> CheckWorkingEnvironmentReceipt | None:
+    """The check's receipt, when its evidence is current and it was observed on the host ree runs on now: the check
+    is of this working environment, so a new host is checked again."""
+    receipt = ree.subject.receipts.check_working_environment
+    if receipt is None or audit(ree).check_working_environment.evidence != "current":
+        return None
+    return receipt if receipt.working_environment == observe_working_environment() else None
+
+
 def handle_check_working_environment(
+    args: CheckWorkingEnvironmentArgs = CheckWorkingEnvironmentArgs(),  # noqa: B008 — frozen by use: no handler changes its args
     *,
     layout: ReeLayout,
     run_id: str,
@@ -48,8 +63,15 @@ def handle_check_working_environment(
         ree = load_ree(layout, store)
         if ree.seal is not None:
             raise ReePreconditionError("a sealed REE cannot run author operations")
-        declared = declared_check(ree, layout)
-        launch = declared_launch(ree.subject.definition.launch, layout.workspace)
+        if not args.again and (current := _current_receipt(ree)) is not None:
+            log("system", "info", "the working environment passed its check on this host: nothing to do")
+            outputs = RunnableOperationOutputs(subject_name="working environment", exit_code=0, receipt=current)
+            return ActionResult(
+                status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json", exclude_none=True)
+            )
+        workspace = lay_out(layout, ree, run_id, environment=False)
+        declared = declared_check(ree, workspace)
+        launch = declared_launch(ree.subject.definition.launch, workspace)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot {_LABEL}: {exc}")
         return ActionResult.failed("precondition", f"cannot {_LABEL}: {exc}")
@@ -59,7 +81,7 @@ def handle_check_working_environment(
     before_revision = revision_of(ree)
     script = str(declared.check_working_environment_script_path)
     timer = OperationTimer.start()
-    outcome = run_workspace_script(layout.workspace, script, log=log, is_canceled=is_canceled, launch=launch)
+    outcome = run_workspace_script(workspace, script, log=log, is_canceled=is_canceled, launch=launch)
     outputs = RunnableOperationOutputs(subject_name="working environment", exit_code=outcome.exit_code)
     if outcome.status == "canceled":
         log("system", "warn", f"{_LABEL} canceled")
@@ -92,5 +114,6 @@ def handle_check_working_environment(
         log("system", "error", f"failed to commit {_LABEL} receipt: {exc}")
         return failed_from_exception(exc, f"failed to commit {_LABEL} receipt: {exc}")
     outputs.receipt = receipt
+    discard(layout, run_id)
     log("system", "info", "the working environment passes its check")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json", exclude_none=True))

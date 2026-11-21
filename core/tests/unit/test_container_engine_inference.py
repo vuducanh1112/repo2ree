@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -124,13 +125,22 @@ def test_an_image_archive_is_run_by_the_engine_the_machine_can_use(
     assert _rules(activate) == rules
 
 
-def test_the_podman_activation_loads_the_archive_unless_podman_holds_the_image(tmp_path: Path) -> None:
+def test_the_podman_activation_loads_the_archive_unless_its_tag_names_the_image_the_archive_holds(
+    tmp_path: Path,
+) -> None:
     archive = docker_archive(["localhost/podman-hello:latest"])
     (activate,) = _infer(_project(tmp_path), ACTIVATE, on=machine("podman"), files={ARTIFACT: archive})
     body = _body(activate)
     assert "IMAGE_TAG=localhost/podman-hello:latest\n" in body
-    assert 'podman image exists "$IMAGE_TAG" || podman load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"' in body
+    assert "podman image inspect --format '{{.Id}}' \"$IMAGE_TAG\"" in body
+    assert '  podman load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"\n' in body
     assert 'exec podman run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"' in body
+    assert subprocess.run(["sh", "-n"], input=body, text=True, check=False).returncode == 0
+    # The image the archive holds is read from it as the script reads it: its config's name, which is its id.
+    (tmp_path / "archive.tar").write_bytes(archive)
+    wanted = body[body.index("WANTED=") : body.index("\nLOADED=")]
+    probe = f'EXPERIMENT_ENVIRONMENT_ARTIFACT={tmp_path / "archive.tar"}\n{wanted}\nprintf %s "$WANTED"\n'
+    assert subprocess.run(["sh", "-c", probe], capture_output=True, text=True, check=True).stdout == "config"
 
 
 def test_an_unbuilt_generated_podman_build_is_activated_with_podman_even_where_docker_is_usable(

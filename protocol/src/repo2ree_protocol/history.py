@@ -55,10 +55,6 @@ class OperationRecord(BaseModel):
     # drift records the one script edit it names in ``drift_recorded``, or is refused.
     drift_found: list[DriftedFile] = Field(default_factory=list)
     drift_recorded: str | None = None
-    # Each file of the workspace laid out from the REE's inputs that the attempt left otherwise, by its path from the
-    # workspace, with its digest, or None for one it removed: as a build's `./configure` rewrites a source file. The
-    # next attempt holds the workspace to it. None for an attempt that ran nothing, as one refused.
-    workspace_changed: dict[str, str | None] | None = None
     step_evidence_after: dict[str, str] | None = None
     # Each phase the attempt entered, appended and written before the next begins:
     # pending, executing, completed, then captured or capture_failed. The record of

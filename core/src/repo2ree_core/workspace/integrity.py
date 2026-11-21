@@ -1,13 +1,12 @@
-"""Whether an REE's files and history are as its last attempt left them.
+"""Whether an REE's history is as its last attempt left it.
 
 Nothing is kept for it beside what the REE records already. The files its history holds are compared with where ree
 left the history, by git. Where ree left the history's ref is in its reflog, under ree's mark
-(``GitHistory.left_by_ree``); when the reflog was lost, the head must still be a commit ree made. The workspace's
-files laid out from the REE's inputs are compared with those inputs, or with what the last attempt's record says it
-changed of them; what else the workspace holds, the experiment environment and outputs its steps make, is vouched for
-by their receipts, and anything besides is recorded nowhere, so nothing can drift in it. Each review is checked the
-same, in its own history. What drifted is found, never absorbed; this guards against mistakes, not against someone
-rewriting the records too.
+(``GitHistory.left_by_ree``); when the reflog was lost, the head must still be a commit ree made. The REE's
+``workspace/`` and ``upstream/`` are views for people: every step runs in a workspace laid out fresh from what the REE
+records (``workspace.attempt``), so nothing changed in them can drift. Each review is checked the same, in its own
+history. What drifted is found, never absorbed; this guards against mistakes, not against someone rewriting the
+records too.
 """
 
 from __future__ import annotations
@@ -16,7 +15,6 @@ from pathlib import Path, PurePosixPath
 
 from repo2ree_core.persistence.history import HISTORY_REF, GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_core.workspace.drift import derived_drift
 from repo2ree_protocol.history import DriftedFile, ReePart
 from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.layout import OVERLAY, WORKSPACE
@@ -70,20 +68,10 @@ def _drift_in(scope: ReeLayout, ree: Path) -> list[DriftedFile]:
     # Files are compared with where ree left the history: a moved head may hold an edit committed beside ree.
     base = _left(scope) if moved else None
     paths = [relative for relative, _ in history.drifted_paths(base)]
-    workspace = [f"{WORKSPACE}/{relative}" for relative in workspace_drift(scope)]
-    drifted = [DriftedFile(path=f"{prefix}{relative}", part=_part(relative)) for relative in [*paths, *workspace]]
+    drifted = [DriftedFile(path=f"{prefix}{relative}", part=_part(relative)) for relative in paths]
     if moved:
         drifted.append(DriftedFile(path=f"{prefix}{HISTORY}/{HISTORY_REF}", part="history"))
     return drifted
-
-
-def workspace_drift(layout: ReeLayout) -> list[str]:
-    """Each derived file of the workspace at ``layout``, by its path from the workspace, not as the last attempt left
-    it."""
-    history = _history(layout)
-    if history.head_snapshot() is None:
-        return []
-    return derived_drift(layout, history.workspace_left(), history.overlay_held(), history.hash_blobs)
 
 
 def find_drift(layout: ReeLayout) -> list[DriftedFile]:
@@ -127,8 +115,8 @@ def drift_refusal(layout: ReeLayout, drift: list[DriftedFile]) -> str:
     """What ree says of an REE that changed outside it: what drifted, and how each part of it is put right."""
     named = ", ".join(item.path for item in drift[:10]) + (f" and {len(drift) - 10} more" if len(drift) > 10 else "")
     ways = [
-        "edit a script in overlay/, not workspace/, or write it with `ree edit`",
-        "`ree materialize-workspace` lays the workspace out again from what the REE records",
+        "write a script with `ree write-script`, or edit it in overlay/ alone so the next command records it",
+        "`git restore <file>` puts a record back, and the ree command that changes it makes the change",
         *(f"`{hint}` puts the history back where ree left it" for hint in history_hints(layout, drift)),
     ]
     return f"the REE changed outside ree: {named}. " + "; ".join(ways)
@@ -137,11 +125,10 @@ def drift_refusal(layout: ReeLayout, drift: list[DriftedFile]) -> str:
 def recordable_edits(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
     """The scripts edited in ``overlay/`` that attempts can record as written, by their path from the overlay.
 
-    Only when every drifted file is such a script: one of the REE's scripts, edited, never added or removed, whose
-    workspace copy is as it was. Any other drift is recorded by nothing, so then none of them is.
+    Only when every drifted file is such a script: one of the REE's scripts, edited, never added or removed. Any
+    other drift is recorded by nothing, so then none of them is.
     """
     history = _history(layout)
-    drifted = {item.path for item in drift}
     edits = []
     for item in drift:
         relative = PurePosixPath(item.path)
@@ -149,7 +136,6 @@ def recordable_edits(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
         recordable = (
             item.part == "overlay"
             and is_overlay_path(script)
-            and PurePosixPath(WORKSPACE, script).as_posix() not in drifted
             and (layout.root / relative).is_file()
             and history.holds(item.path)
         )

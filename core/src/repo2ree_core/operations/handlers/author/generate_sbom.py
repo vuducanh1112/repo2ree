@@ -18,6 +18,7 @@ from repo2ree_core.persistence.files import publish_atomic, staging_path
 from repo2ree_core.persistence.layout import SBOM_ARTIFACT_PATH, ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
+from repo2ree_core.workspace.attempt import environment_file
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import GenerateSbomOutputs
 from repo2ree_protocol.result import ActionResult
@@ -50,7 +51,7 @@ def handle_generate_sbom(
         return failed_from_exception(exc, f"failed to load SBOM inputs: {exc}")
 
     before_revision = revision_of(ree)
-    experiment_environment_abs = layout.workspace / str(experiment_environment_path)
+    experiment_environment_abs = environment_file(layout, str(experiment_environment_path))
     experiment_environment_digest = digest_file(experiment_environment_abs)
     timer = OperationTimer.start()
     output_path = layout.sbom
@@ -157,7 +158,7 @@ def _check_preconditions(
     if experiment_environment_audit.evidence != "current":
         detail = "; ".join(experiment_environment_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
-    experiment_environment_abs = layout.workspace / str(experiment_environment.artifact_path)
+    experiment_environment_abs = environment_file(layout, str(experiment_environment.artifact_path))
     if not experiment_environment_abs.is_file():
         raise ReePreconditionError(
             f"experiment environment artifact is missing: {experiment_environment.artifact_path}"

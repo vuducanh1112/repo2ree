@@ -24,6 +24,7 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
+from repo2ree_core.workspace.attempt import discard, lay_out
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
@@ -46,6 +47,7 @@ def handle_runnable_operation(
     *,
     layout: ReeLayout,
     experiment_name: str = "",
+    again: bool = False,
     run_id: str,
     log: LogSink,
     is_canceled: CancelCheck,
@@ -57,9 +59,14 @@ def handle_runnable_operation(
     try:
         ree = load_ree(layout, store)
         definition = _select_definition(ree, kind, experiment_name)
-        activation = _check_activation(ree, layout)
-        launch = declared_launch(ree.subject.definition.launch, layout.workspace)
-        experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition, layout)
+        if not again and (current := _current_receipt(ree, definition)) is not None:
+            return _already_current(definition, current, log)
+        experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition)
+        workspace = lay_out(layout, ree, run_id, environment=True)
+        activation = _check_activation(ree, workspace)
+        if isinstance(definition, ExperimentDefinition):
+            _check_experiment_scripts(definition, workspace)
+        launch = declared_launch(ree.subject.definition.launch, workspace)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot {kind}: {exc}")
         return ActionResult.failed("precondition", f"cannot {kind}: {exc}")
@@ -71,7 +78,7 @@ def handle_runnable_operation(
     label = definition.name if isinstance(definition, ExperimentDefinition) else "activation"
     timer = OperationTimer.start()
     outcome = run_runnable(
-        workspace=layout.workspace.resolve(),
+        workspace=workspace,
         runnable=runnable,
         label=label,
         run_id=run_id,
@@ -100,7 +107,7 @@ def handle_runnable_operation(
     produced_output_digest: Digest | None = None
     if isinstance(definition, ExperimentDefinition) and definition.output_paths:
         try:
-            produced_output_digest = _capture_experiment_outputs(layout, definition, log)
+            produced_output_digest = _capture_experiment_outputs(layout, workspace, definition, log)
         except Exception as exc:
             return failed_from_exception(exc, f"failed to capture experiment outputs: {exc}")
 
@@ -133,6 +140,7 @@ def handle_runnable_operation(
         return failed_from_exception(exc, f"failed to commit {kind} receipt: {exc}")
 
     outputs.receipt = receipt
+    discard(layout, run_id)
     log(
         "system",
         "info",
@@ -143,6 +151,41 @@ def handle_runnable_operation(
         exit_code=0,
         outputs=outputs.model_dump(mode="json", exclude_none=True),
     )
+
+
+def _current_receipt(
+    ree: Ree, definition: RunnableDefinition
+) -> ActivateExperimentEnvironmentReceipt | RunExperimentReceipt | None:
+    """The step's receipt, when its evidence is current: running it again would change nothing ree records."""
+    audited = audit(ree)
+    if isinstance(definition, ExperimentDefinition):
+        step = next((item.run for item in audited.experiments if item.name == definition.name), None)
+        receipt: ActivateExperimentEnvironmentReceipt | RunExperimentReceipt | None = (
+            ree.subject.receipts.experiments.get(definition.name)
+        )
+    else:
+        step, receipt = audited.activate_experiment_environment, ree.subject.receipts.activate_experiment_environment
+    return receipt if receipt is not None and step is not None and step.evidence == "current" else None
+
+
+def _already_current(
+    definition: RunnableDefinition,
+    receipt: ActivateExperimentEnvironmentReceipt | RunExperimentReceipt,
+    log: LogSink,
+) -> ActionResult:
+    """Answer a step whose evidence is current with the receipt that is, running nothing."""
+    experiment = isinstance(definition, ExperimentDefinition)
+    label = definition.name if isinstance(definition, ExperimentDefinition) else "activation"
+    log("system", "info", f"{label} is current: nothing to do (--again runs it anyway)")
+    outputs = RunnableOperationOutputs(
+        subject_name=label,
+        exit_code=0,
+        verify_exit_code=0 if experiment else None,
+        verdict="pass" if experiment else None,
+        experiment_environment_path=str(getattr(receipt, "experiment_environment_path", None) or ""),
+        receipt=receipt,
+    )
+    return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json", exclude_none=True))
 
 
 def _select_definition(ree: Ree, kind: RunnableKind, experiment_name: str) -> RunnableDefinition:
@@ -157,16 +200,15 @@ def _select_definition(ree: Ree, kind: RunnableKind, experiment_name: str) -> Ru
 
 
 def _check_preconditions(
-    ree: Ree,
-    definition: RunnableDefinition,
-    layout: ReeLayout,
+    ree: Ree, definition: RunnableDefinition
 ) -> tuple[ExperimentEnvironmentPath | None, Digest | None]:
+    """What the step needs recorded before it runs: the source, the activation's evidence for an experiment, and a
+    current build of a declared experiment environment, whose digest it runs against. The artifact itself is checked
+    against that digest as it is laid out in the attempt's workspace."""
     if ree.subject.receipts.acquire_source is None:
         raise ReePreconditionError("source has not been acquired")
     if isinstance(definition, ExperimentDefinition):
-        _check_experiment_scripts(definition, layout)
         _check_activation_evidence(ree)
-
     experiment_environment = ree.subject.definition.experiment_environment
     if experiment_environment.artifact_path is None:
         return None, None
@@ -177,26 +219,18 @@ def _check_preconditions(
     if experiment_environment_audit.evidence != "current":
         detail = "; ".join(experiment_environment_audit.reasons) or "build evidence is not current"
         raise ReePreconditionError(detail)
-    experiment_environment_file = layout.workspace / str(experiment_environment.artifact_path)
-    if not experiment_environment_file.is_file():
-        raise ReePreconditionError(
-            f"experiment environment artifact is missing: {experiment_environment.artifact_path}"
-        )
-    experiment_environment_digest = digest_file(experiment_environment_file)
-    if experiment_environment_digest != build.produced_artifact_digest:
-        raise ReePreconditionError("experiment environment artifact does not match the selected build receipt")
-    return experiment_environment.artifact_path, experiment_environment_digest
+    return experiment_environment.artifact_path, build.produced_artifact_digest
 
 
-def _check_experiment_scripts(definition: ExperimentDefinition, layout: ReeLayout) -> None:
+def _check_experiment_scripts(definition: ExperimentDefinition, workspace: Path) -> None:
     _check_script(
-        layout.workspace / str(definition.run_script_path),
+        workspace / str(definition.run_script_path),
         definition.run_script_digest,
         definition.run_script_size,
         label="run script",
     )
     _check_script(
-        layout.workspace / str(definition.verify_script_path),
+        workspace / str(definition.verify_script_path),
         definition.verify_script_digest,
         definition.verify_script_size,
         label="verification script",
@@ -217,10 +251,10 @@ def _check_script(path: Path, expected_digest: Digest, expected_size: int, *, la
         raise ReePreconditionError(f"the {label} does not match its definition")
 
 
-def _check_activation(ree: Ree, layout: ReeLayout) -> ActivateExperimentEnvironmentDefinition:
+def _check_activation(ree: Ree, workspace: Path) -> ActivateExperimentEnvironmentDefinition:
     activation = ree.subject.definition.activate_experiment_environment
     _check_script(
-        layout.workspace / str(activation.activate_experiment_environment_script_path),
+        workspace / str(activation.activate_experiment_environment_script_path),
         activation.activate_experiment_environment_script_digest,
         activation.activate_experiment_environment_script_size,
         label="activate experiment environment script",
@@ -309,6 +343,7 @@ def _successful_receipt(
 
 def _capture_experiment_outputs(
     layout: ReeLayout,
+    workspace: Path,
     definition: ExperimentDefinition,
     log: LogSink,
 ) -> Digest:
@@ -317,7 +352,7 @@ def _capture_experiment_outputs(
     if result_store.exists():
         shutil.rmtree(result_store)
     for relative in output_paths:
-        source = layout.workspace / relative
+        source = workspace / relative
         if source.is_dir():
             shutil.copytree(source, result_store / relative, dirs_exist_ok=True)
         elif source.is_file():
@@ -326,7 +361,7 @@ def _capture_experiment_outputs(
             shutil.copy2(source, destination)
         else:
             log("system", "warn", f"declared output not found, skipping capture: {relative}")
-    digest = digest_output_paths(layout.workspace, output_paths)
+    digest = digest_output_paths(workspace, output_paths)
     if digest is None:
         raise AssertionError("declared experiment outputs produced no digest")
     return digest

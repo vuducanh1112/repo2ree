@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from ree_definitions import LAUNCH, ree_definition, with_fixed_scripts
+from ree_definitions import LAUNCH, SNAPSHOT_DIGEST, ree_definition, with_fixed_scripts
 
 from repo2ree_core.analysis.sbom.scan import ScanOutcome
 from repo2ree_core.domain.ree.envelope import ReceiptEnvelopeFields
@@ -25,7 +25,7 @@ from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmen
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
-_SNAPSHOT = digest_bytes(b"snapshot")
+_SNAPSHOT = SNAPSHOT_DIGEST
 _SCRIPT = b"#!/bin/sh\nprintf experiment environment > runtime.tar\n"
 _EXPERIMENT_ENVIRONMENT = b"experiment environment archive"
 _SBOM = b'{"bomFormat":"CycloneDX"}'
@@ -91,7 +91,9 @@ def _workbench(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
+    kept = layout.kept_environment("runtime.tar")
+    kept.parent.mkdir(parents=True, exist_ok=True)
+    kept.write_bytes(_EXPERIMENT_ENVIRONMENT)
     store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
@@ -211,7 +213,7 @@ def test_preconditions_reject_invalid_experiment_environment_evidence_before_sca
     category: str,
 ) -> None:
     layout, store = _workbench(tmp_path, monkeypatch, ree)
-    (layout.workspace / "runtime.tar").write_bytes(experiment_environment_bytes)
+    layout.kept_environment("runtime.tar").write_bytes(experiment_environment_bytes)
     scanned = False
 
     def scan(*args: object, **kwargs: object) -> ScanOutcome:

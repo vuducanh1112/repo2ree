@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gzip
+import io
+import tarfile
 from typing import Any
 
 from repo2ree_authoring.templates import reserved_script_template
@@ -25,6 +28,25 @@ from repo2ree_ree.reserved_paths import (
 )
 
 PLACEHOLDER = Digest("sha256:" + "0" * 64)
+
+
+def _empty_snapshot() -> bytes:
+    """A source snapshot archive holding nothing, the same bytes every time."""
+    packed = io.BytesIO()
+    with gzip.GzipFile(fileobj=packed, mode="wb", mtime=0) as zipped, tarfile.open(fileobj=zipped, mode="w"):
+        pass
+    return packed.getvalue()
+
+
+# The source snapshot a test's REE acquired: a step lays its workspace out from it, checked against its digest.
+SNAPSHOT_ARCHIVE = _empty_snapshot()
+SNAPSHOT_DIGEST = digest_bytes(SNAPSHOT_ARCHIVE)
+
+
+def write_snapshot(layout: ReeLayout) -> None:
+    """Keep the snapshot archive a test's source receipt names, as acquiring the source keeps it."""
+    layout.snapshot_archive.parent.mkdir(parents=True, exist_ok=True)
+    layout.snapshot_archive.write_bytes(SNAPSHOT_ARCHIVE)
 
 
 def _default(path: str) -> tuple[Digest, int]:

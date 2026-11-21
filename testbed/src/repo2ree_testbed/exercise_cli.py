@@ -460,20 +460,15 @@ def _files(scope: Path, part: FilePart) -> list[Path]:
     base = scope / part_dir(part)
     if not base.is_dir():
         return []
-    files = sorted(
+    return sorted(
         path
         for path in base.rglob("*")
         if path.is_file() and not path.is_symlink() and not path.name.startswith(WORKSPACE_CONTROL_PREFIXES)
     )
-    if part != "workspace":
-        return files
-    # The workspace's own files are those laid out from the REE's inputs: anything else there is none of the REE's.
-    inputs = (scope / part_dir("overlay"), scope / "upstream")
-    return [path for path in files if any((root / path.relative_to(base)).is_file() for root in inputs)]
 
 
 def part_dir(part: FilePart) -> str:
-    return {"overlay": "overlay", "workspace": "workspace", "records": "."}[part]
+    return {"overlay": "overlay", "records": "."}[part]
 
 
 def _drifted_file(scope: Path, drift: FileDrift | RevertedDrift, number: int) -> Path | None:

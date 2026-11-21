@@ -187,7 +187,7 @@ def _dispatch(
     if isinstance(cmd, ReviewRunExperimentCommand):
         return handle_review_run_experiment(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, MaterializeWorkspaceCommand):
-        return handle_materialize_workspace(cmd.args, layout=layout, log=log, is_canceled=cancel)
+        return handle_materialize_workspace(layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, LoadReeBundleCommand):
         return handle_load_ree_bundle(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, SignReeCommand):
@@ -203,7 +203,7 @@ def _dispatch(
     if isinstance(cmd, RemoveSourceCommand):
         return handle_remove_source(layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, BuildExperimentEnvironmentCommand):
-        return handle_build_experiment_environment(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_build_experiment_environment(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, EvaluateReproducibilityCommand):
         return handle_evaluate_reproducibility(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, RunExperimentCommand):
@@ -215,9 +215,11 @@ def _dispatch(
     if isinstance(cmd, CrossCheckSbomCommand):
         return handle_cross_check_sbom(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, ActivateExperimentEnvironmentCommand):
-        return handle_activate_experiment_environment(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_activate_experiment_environment(
+            cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel
+        )
     if isinstance(cmd, CheckWorkingEnvironmentCommand):
-        return handle_check_working_environment(layout=layout, run_id=run_id, log=log, is_canceled=cancel)
+        return handle_check_working_environment(cmd.args, layout=layout, run_id=run_id, log=log, is_canceled=cancel)
     if isinstance(cmd, SuggestScriptsCommand):
         return handle_suggest_scripts(cmd.args, layout=layout, log=log, is_canceled=cancel)
     if isinstance(cmd, LintScriptsCommand):

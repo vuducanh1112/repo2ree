@@ -17,12 +17,9 @@ from repo2ree_core.execution.process import (
 )
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_atomic
-from repo2ree_core.persistence.layout import MATERIALIZE_SCRIPT_FILENAME, WORKSPACE_DIRNAME, ReeLayout
+from repo2ree_core.persistence.layout import MATERIALIZE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
-from repo2ree_core.workspace.drift import lay_out_again
-from repo2ree_core.workspace.integrity import workspace_drift
 from repo2ree_core.workspace.materialization import record_materialization
-from repo2ree_protocol.command import MaterializeWorkspaceArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
@@ -80,22 +77,13 @@ def materialize_workspace(
 
 
 def handle_materialize_workspace(
-    args: MaterializeWorkspaceArgs,
     *,
     layout: ReeLayout,
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    """Lay out again what drifted of the workspace, or, ``clean`` or with no workspace yet, all of it."""
+    """Lay out ``workspace/`` again from the source and the overlay: a view for people, which no step reads."""
     store = ReeDirectory(layout)
     source_receipt = store.read_ree().subject.receipts.acquire_source if store.manifest_exists() else None
     committed_digest = source_receipt.snapshot_digest if source_receipt else None
-    if args.clean or not layout.workspace.is_dir():
-        return materialize_workspace(layout, snapshot_digest=committed_digest, log=log, is_canceled=is_canceled)
-    drifted = workspace_drift(layout)
-    lay_out_again(layout, drifted)
-    for path in drifted:
-        log("system", "info", f"laid out {WORKSPACE_DIRNAME}/{path} again")
-    record_materialization(layout, snapshot_digest=committed_digest, log=log)
-    log("system", "info", f"materialize_workspace succeeded: {len(drifted)} files laid out again")
-    return ActionResult(status="succeeded", exit_code=0)
+    return materialize_workspace(layout, snapshot_digest=committed_digest, log=log, is_canceled=is_canceled)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from ree_definitions import ree_definition
+from ree_definitions import SNAPSHOT_DIGEST, ree_definition, write_snapshot
 
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.transitions import commit_receipt, replace_definition
@@ -51,7 +51,7 @@ def _ree(launch: LaunchDefinition) -> Ree:
         recorded_at=_NOW,
         origin_url="https://example.test/repo.git",
         source_type="git",
-        snapshot_digest=digest_bytes(b"snapshot"),
+        snapshot_digest=SNAPSHOT_DIGEST,
     )
     return commit_receipt(Ree(subject=ReeSubject(definition=definition)), source)
 
@@ -60,9 +60,9 @@ def _workbench(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launch: LaunchDe
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    for tree in (store.overlay, store.workspace):
-        tree.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
-        tree.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH)
+    store.overlay.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _BUILD)
+    store.overlay.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH)
+    write_snapshot(layout)
     store.write_ree(_ree(launch))
     return store
 
@@ -79,7 +79,7 @@ def test_a_build_runs_through_the_declared_launch_and_its_receipt_says_where(
 ) -> None:
     store = _workbench(tmp_path, monkeypatch, _launch())
     assert _build(store.layout) == "succeeded"
-    assert store.workspace.read_bytes("runtime.tar") == b"4711"
+    assert store.layout.kept_environment("runtime.tar").read_bytes() == b"4711"
     receipt = store.read_ree().subject.receipts.build_experiment_environment
     assert receipt is not None
     assert receipt.launch_script_digest == digest_bytes(_LAUNCH)
@@ -91,7 +91,7 @@ def test_a_launch_script_edited_since_it_was_declared_stops_the_build(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     store = _workbench(tmp_path, monkeypatch, _launch())
-    store.workspace.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH + b"# edited\n")
+    store.overlay.write_bytes(RESERVED_LAUNCH_SCRIPT, _LAUNCH + b"# edited\n")
     assert _build(store.layout) == "failed"
     assert store.read_ree().subject.receipts.build_experiment_environment is None
 

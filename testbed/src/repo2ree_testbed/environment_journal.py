@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 PROCESS: Final = "environment"
 OWNER: Final = "environment"
 
-type Part = Literal["overlay", "workspace", "records", "history"]
+type Part = Literal["overlay", "records", "history"]
 
 
 class _Record(BaseModel):
@@ -86,7 +86,7 @@ def part_of(path: str) -> Part:
     top = parts[2] if parts[0] == "reviews" and len(parts) > 2 else parts[0]
     if top == ".git":
         return "history"
-    return "overlay" if top == "overlay" else "workspace" if top == "workspace" else "records"
+    return "overlay" if top == "overlay" else "records"
 
 
 class EnvironmentJournal:

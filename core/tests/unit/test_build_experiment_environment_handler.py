@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from ree_definitions import ree_definition, with_fixed_scripts
+from ree_definitions import SNAPSHOT_DIGEST, ree_definition, with_fixed_scripts, write_snapshot
 
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
 from repo2ree_core.execution.process import StepOutcome
@@ -11,6 +11,7 @@ from repo2ree_core.operations.handlers.author import build_experiment_environmen
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
+from repo2ree_protocol.command import BuildExperimentEnvironmentArgs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree, ReeSubject, SourceDefinition
 from repo2ree_ree.primitives import ExperimentEnvironmentPath, RunId, parse_utc_instant
@@ -18,7 +19,7 @@ from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
-_SNAPSHOT_DIGEST = digest_bytes(b"snapshot")
+_SNAPSHOT_DIGEST = SNAPSHOT_DIGEST
 _SCRIPT = b"#!/bin/sh\nprintf experiment environment > runtime.tar\n"
 _ORIGIN_URL = "https://example.test/repo.git"
 
@@ -62,14 +63,15 @@ def _workbench(
     store = ReeDirectory(layout)
     store.ensure_dirs()
     store.overlay.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _SCRIPT)
-    store.workspace.write_bytes(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, _SCRIPT)
+    write_snapshot(layout)
     store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
 
 def _successful_build(layout: ReeLayout):
-    def run(*args: object, **kwargs: object) -> StepOutcome:
-        (layout.workspace / "runtime.tar").write_bytes(b"experiment_environment")
+    def run(workspace: Path, *args: object, **kwargs: object) -> StepOutcome:
+        assert workspace != layout.workspace
+        (workspace / "runtime.tar").write_bytes(b"experiment_environment")
         return StepOutcome(status="succeeded", exit_code=0)
 
     return run
@@ -94,7 +96,9 @@ def test_successful_build_commits_one_inline_receipt(
     assert receipt.build_experiment_environment_script_digest == digest_bytes(_SCRIPT)
     assert receipt.artifact_path == "runtime.tar"
     assert receipt.produced_artifact_digest == digest_bytes(b"experiment_environment")
-    assert receipt.workspace_drift.status == "unknown"
+    # It ran in a workspace laid out fresh from what the REE records, and the environment it made is kept beside it.
+    assert receipt.workspace_drift.status == "clean"
+    assert layout.kept_environment("runtime.tar").read_bytes() == b"experiment_environment"
     # What the build ran in: the host ree runs on.
     assert receipt.working_environment is not None
     assert receipt.working_environment.host.arch
@@ -192,7 +196,7 @@ def test_changed_build_experiment_environment_script_is_rejected_before_executio
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _layout, store = _workbench(tmp_path, monkeypatch)
-    store.workspace.write_text(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "#!/bin/sh\nexit 0\n")
+    store.overlay.write_text(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, "#!/bin/sh\nexit 0\n")
     executed = False
 
     def run(*args: object, **kwargs: object) -> StepOutcome:
@@ -266,3 +270,40 @@ def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
     assert result.failure is not None
     assert "source origin changed" in result.failure.message
     assert store.read_ree().subject.receipts.build_experiment_environment is None
+
+
+def test_a_build_whose_evidence_is_current_runs_nothing_unless_asked_again(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout, store = _workbench(tmp_path, monkeypatch)
+    calls: list[Path] = []
+    built = _successful_build(layout)
+
+    def counted(workspace: Path, *args: object, **kwargs: object) -> StepOutcome:
+        calls.append(workspace)
+        outcome: StepOutcome = built(workspace, *args, **kwargs)
+        return outcome
+
+    monkeypatch.setattr(build_experiment_environment, "run_workspace_script", counted)
+
+    def build(run_id: str, *, again: bool = False) -> str:
+        return build_experiment_environment.handle_build_experiment_environment(
+            BuildExperimentEnvironmentArgs(again=again),
+            run_id=run_id,
+            log=lambda *args: None,
+            is_canceled=lambda: False,
+            layout=layout,
+        ).status
+
+    assert build("build-1") == "succeeded"
+    assert build("build-2") == "succeeded"
+    assert len(calls) == 1
+    receipt = store.read_ree().subject.receipts.build_experiment_environment
+    assert receipt is not None
+    assert receipt.run_id == "build-1"
+    # The environment it made is gone, so the build is no longer current.
+    layout.kept_environment("runtime.tar").unlink()
+    assert build("build-3") == "succeeded"
+    assert build("build-4", again=True) == "succeeded"
+    assert len(calls) == 3

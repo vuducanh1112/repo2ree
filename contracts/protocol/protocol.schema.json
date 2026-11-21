@@ -708,8 +708,15 @@
     },
     "ActivateExperimentEnvironmentArgs": {
       "additionalProperties": false,
-      "description": "No args — activation runs the REE's stored Activation through its\nexperiment environment entry; there is no per-run script path.",
-      "properties": {},
+      "description": "Activation runs the REE's stored Activation through its experiment environment entry, unless its evidence is\ncurrent already; there is no per-run script path.",
+      "properties": {
+        "again": {
+          "default": false,
+          "description": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "title": "Again",
+          "type": "boolean"
+        }
+      },
       "title": "ActivateExperimentEnvironmentArgs",
       "type": "object"
     },
@@ -724,7 +731,9 @@
         },
         "args": {
           "$ref": "#/$defs/ActivateExperimentEnvironmentArgs",
-          "default": {}
+          "default": {
+            "again": false
+          }
         }
       },
       "title": "ActivateExperimentEnvironmentCommand",
@@ -1005,8 +1014,15 @@
     },
     "BuildExperimentEnvironmentArgs": {
       "additionalProperties": false,
-      "description": "No args — the build always runs the reserved, REE-owned build script.",
-      "properties": {},
+      "description": "Build with the reserved, REE-owned build script, unless the build's evidence is current already.",
+      "properties": {
+        "again": {
+          "default": false,
+          "description": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "title": "Again",
+          "type": "boolean"
+        }
+      },
       "title": "BuildExperimentEnvironmentArgs",
       "type": "object"
     },
@@ -1021,7 +1037,9 @@
         },
         "args": {
           "$ref": "#/$defs/BuildExperimentEnvironmentArgs",
-          "default": {}
+          "default": {
+            "again": false
+          }
         }
       },
       "title": "BuildExperimentEnvironmentCommand",
@@ -1639,8 +1657,15 @@
     },
     "CheckWorkingEnvironmentArgs": {
       "additionalProperties": false,
-      "description": "No args — runs the REE's check script in its working environment, launched as every script is.",
-      "properties": {},
+      "description": "Runs the REE's check script in its working environment, launched as every script is, unless it passed on this\nhost already and its evidence is current.",
+      "properties": {
+        "again": {
+          "default": false,
+          "description": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "title": "Again",
+          "type": "boolean"
+        }
+      },
       "title": "CheckWorkingEnvironmentArgs",
       "type": "object"
     },
@@ -1655,7 +1680,9 @@
         },
         "args": {
           "$ref": "#/$defs/CheckWorkingEnvironmentArgs",
-          "default": {}
+          "default": {
+            "again": false
+          }
         }
       },
       "title": "CheckWorkingEnvironmentCommand",
@@ -5202,15 +5229,8 @@
     },
     "MaterializeWorkspaceArgs": {
       "additionalProperties": false,
-      "description": "Lay out again the workspace's files that drifted from the source and the overlay, leaving the experiment\nenvironment, outputs and anything else there; ``clean``, the whole workspace from nothing.",
-      "properties": {
-        "clean": {
-          "default": false,
-          "description": "Lay out the whole workspace from nothing, the experiment environment and outputs with it.",
-          "title": "Clean",
-          "type": "boolean"
-        }
-      },
+      "description": "No args: lays out ``workspace/`` from the source and the overlay, a view for people that no step reads.",
+      "properties": {},
       "title": "MaterializeWorkspaceArgs",
       "type": "object"
     },
@@ -5225,9 +5245,7 @@
         },
         "args": {
           "$ref": "#/$defs/MaterializeWorkspaceArgs",
-          "default": {
-            "clean": false
-          }
+          "default": {}
         }
       },
       "title": "MaterializeWorkspaceCommand",
@@ -5706,28 +5724,6 @@
           ],
           "default": null,
           "title": "Drift Recorded"
-        },
-        "workspace_changed": {
-          "anyOf": [
-            {
-              "additionalProperties": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "type": "object"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Workspace Changed"
         },
         "step_evidence_after": {
           "anyOf": [
@@ -7786,6 +7782,12 @@
           "description": "The experiment, as the definition names it.",
           "title": "Experiment Name",
           "type": "string"
+        },
+        "again": {
+          "default": false,
+          "description": "Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+          "title": "Again",
+          "type": "boolean"
         }
       },
       "required": [

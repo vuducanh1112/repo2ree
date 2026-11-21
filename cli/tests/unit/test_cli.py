@@ -640,18 +640,23 @@ def test_a_person_reads_the_rees_paths_from_the_ree() -> None:
 
 def test_a_file_changed_outside_ree_is_shown_and_refused_until_it_is_undone(initialized: Path) -> None:
     layout = ReeLayout(root=initialized)
-    assert ree(initialized, "materialize-workspace").exit_code == 0
-    copy = layout.workspace_file(BUILD_SCRIPT)
-    original = copy.read_text()
-    copy.write_text("echo edited in the workspace\n")
+    original = layout.manifest.read_text()
+    layout.manifest.write_text(original + " ")
 
     status = ree(initialized, "status")
     refused = ree(initialized, "patch-ree-definition", "--name", "renamed")
 
-    assert f"  workspace/{BUILD_SCRIPT}" in status.stdout
+    assert "  ree.json" in status.stdout
     assert refused.exit_code == REFUSED
-    assert f"workspace/{BUILD_SCRIPT}" in refused.stderr
+    assert "ree.json" in refused.stderr
     assert "next:" not in refused.stderr
-    assert copy.read_text() == "echo edited in the workspace\n"
-    copy.write_text(original)
+    layout.manifest.write_text(original)
+    assert ree(initialized, "patch-ree-definition", "--name", "renamed").exit_code == 0
+
+
+def test_an_edit_in_the_workspace_is_no_drift_since_no_step_reads_it(initialized: Path) -> None:
+    layout = ReeLayout(root=initialized)
+    assert ree(initialized, "materialize-workspace").exit_code == 0
+    layout.workspace_file(BUILD_SCRIPT).write_text("echo edited in the workspace\n")
+
     assert ree(initialized, "patch-ree-definition", "--name", "renamed").exit_code == 0

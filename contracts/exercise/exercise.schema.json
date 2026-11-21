@@ -411,7 +411,6 @@
         "part": {
           "enum": [
             "overlay",
-            "workspace",
             "records"
           ],
           "title": "Part",
@@ -849,7 +848,6 @@
         "part": {
           "enum": [
             "overlay",
-            "workspace",
             "records"
           ],
           "title": "Part",

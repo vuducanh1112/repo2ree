@@ -16,7 +16,6 @@ from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_core.workspace.integrity import find_drift
 from repo2ree_protocol.command import (
-    MaterializeWorkspaceArgs,
     MaterializeWorkspaceCommand,
     PatchReeDefinitionArgs,
     PatchReeDefinitionCommand,
@@ -96,16 +95,15 @@ def test_drift_stays_until_it_is_undone(ree):
     assert patch(ree).status == "succeeded"
 
 
-def test_an_edit_in_the_workspace_is_refused_and_kept(ree):
+def test_the_workspace_and_the_source_are_views_no_step_reads_so_editing_them_is_no_drift(ree):
     materialized(ree)
-    copy = ree.workspace / RESERVED_LAUNCH_SCRIPT
-    copy.write_text(copy.read_text() + "echo edited in the workspace\n")
+    (ree.workspace / RESERVED_LAUNCH_SCRIPT).write_text("echo edited in the workspace\n")
+    (ree.workspace / "stray.txt").write_text("left by something")
+    ree.upstream.mkdir(exist_ok=True)
+    (ree.upstream / "added.txt").write_text("not acquired")
 
-    result = patch(ree)
-
-    assert result.status == "failed"
-    assert f"workspace/{RESERVED_LAUNCH_SCRIPT}" in result.failure.message
-    assert copy.read_text().endswith("echo edited in the workspace\n")
+    assert find_drift(ree) == []
+    assert patch(ree).status == "succeeded"
 
 
 def test_a_touched_file_with_the_same_content_is_no_drift(ree):
@@ -171,27 +169,6 @@ def test_an_attempt_rolled_back_leaves_the_workspace_scripts_as_the_ree_records_
     assert written.status == "failed"
     assert copy.read_text() == before
     assert find_drift(ree) == []
-
-
-def test_laying_the_workspace_out_again_discards_its_drift_and_names_it(ree):
-    materialized(ree)
-    copy = ree.workspace / RESERVED_LAUNCH_SCRIPT
-    before = copy.read_text()
-    copy.write_text("echo edited in the workspace\n")
-    stray = ree.workspace / "stray.txt"
-    stray.write_text("left by something")
-
-    assert patch(ree).status == "failed"
-    laid_out = dispatch.run_command(MaterializeWorkspaceCommand(), log=lambda *a: None, layout=ree, run_id="lay-out")
-
-    assert laid_out.status == "succeeded"
-    assert copy.read_text() == before
-    assert find_drift(ree) == []
-    [record] = [item for item in read_operation_history(ree).operations if item.run_id == "lay-out"]
-    # A file nothing lays out is recorded nowhere, so it never drifted, and laying out again leaves it.
-    assert [item.path for item in record.drift_found] == ["workspace/ree-scripts/launch.sh"]
-    assert stray.read_text() == "left by something"
-    assert patch(ree).status == "succeeded"
 
 
 def test_laying_the_workspace_out_again_is_refused_for_drift_elsewhere(ree):
@@ -381,91 +358,3 @@ def test_a_bundle_whose_history_holds_a_commit_ree_did_not_make_is_not_loaded(re
 
     with pytest.raises(ValueError, match=f"holds {by_hand}, which ree did not make"):
         restore_repository(destination, tmp_path / "export")
-
-
-def declared(layout: ReeLayout) -> ReeLayout:
-    """The REE with a source file to lay out and an experiment environment declared at ``venv``."""
-    (layout.upstream / "src").mkdir(parents=True, exist_ok=True)
-    (layout.upstream / "src" / "config.h").write_text("#define X 1\n")
-    materialized(layout)
-    patched = dispatch.run_command(
-        PatchReeDefinitionCommand(
-            args=PatchReeDefinitionArgs(patch={"experiment_environment": {"artifact_path": "venv"}})
-        ),
-        log=lambda *args: None,
-        layout=layout,
-    )
-    assert patched.status == "succeeded", patched
-    return layout
-
-
-def test_a_source_file_a_step_rewrites_is_recorded_and_is_no_drift(ree, monkeypatch):
-    declared(ree)
-
-    real = getattr(dispatch, "handle_patch_ree_definition")  # noqa: B009 — not exported, replaced below
-
-    def configures(*args, **kwargs):
-        (ree.workspace / "src" / "config.h").write_text("#define X 2\n")
-        return real(*args, **kwargs)
-
-    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", configures)
-    configured = patch(ree, "configured")
-    monkeypatch.undo()
-    assert configured.history is not None
-
-    [record] = [
-        item for item in read_operation_history(ree).operations if item.attempt_id == configured.history.attempt_id
-    ]
-    assert list(record.workspace_changed or {}) == ["src/config.h"]
-    assert find_drift(ree) == []
-    (ree.workspace / "src" / "config.h").write_text("#define X 3\n")
-    assert find_drift(ree) == [DriftedFile(path="workspace/src/config.h", part="workspace")]
-
-
-def test_what_nothing_lays_out_is_no_drift(ree):
-    declared(ree)
-    (ree.workspace / "venv").mkdir()
-    (ree.workspace / "venv" / "python").write_text("built")
-    (ree.workspace / "__pycache__").mkdir()
-    (ree.workspace / "__pycache__" / "x.pyc").write_bytes(b"cache")
-
-    assert find_drift(ree) == []
-    (ree.workspace / "venv" / "python").write_text("edited by hand")
-    # The experiment environment is vouched for by the receipts that digest it, not by a drift check.
-    assert find_drift(ree) == []
-
-
-def test_a_derived_file_is_compared_with_its_input_when_the_marker_is_lost(ree):
-    declared(ree)
-    marker = DriftedFile(path=ree.materialize_marker.name, part="records")
-    ree.materialize_marker.unlink()
-    # The marker is a record of the REE, so losing it is drift too; without it, files are read to compare.
-    assert find_drift(ree) == [marker]
-
-    (ree.workspace / "src" / "config.h").write_text("#define X 9\n")
-    assert find_drift(ree) == [marker, DriftedFile(path="workspace/src/config.h", part="workspace")]
-
-
-def test_a_derived_file_whose_mode_changed_is_drift_though_its_time_did_not(ree):
-    declared(ree)
-    target = ree.workspace / "src" / "config.h"
-    target.chmod(0o755)
-
-    assert find_drift(ree) == [DriftedFile(path="workspace/src/config.h", part="workspace")]
-
-
-def test_laying_out_again_keeps_the_experiment_environment_and_clean_does_not(ree):
-    declared(ree)
-    environment = ree.workspace / "venv" / "python"
-    environment.parent.mkdir()
-    environment.write_text("built")
-    (ree.workspace / "src" / "config.h").write_text("edited")
-
-    materialized(ree)
-    assert environment.is_file()
-    assert (ree.workspace / "src" / "config.h").read_text() == "#define X 1\n"
-    cleaned = dispatch.run_command(
-        MaterializeWorkspaceCommand(args=MaterializeWorkspaceArgs(clean=True)), log=lambda *a: None, layout=ree
-    )
-    assert cleaned.status == "succeeded"
-    assert not environment.exists()

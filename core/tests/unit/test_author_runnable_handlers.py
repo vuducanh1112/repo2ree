@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from ree_definitions import LAUNCH, ree_definition, with_fixed_scripts
+from ree_definitions import LAUNCH, SNAPSHOT_DIGEST, ree_definition, with_fixed_scripts, write_snapshot
 
 from repo2ree_core.digests import digest_output_paths
 from repo2ree_core.domain.ree.transitions import commit_receipt, record_seal
@@ -12,7 +12,7 @@ from repo2ree_core.operations.handlers.author import activate_experiment_environ
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError
-from repo2ree_protocol.command import RunExperimentArgs
+from repo2ree_protocol.command import ActivateExperimentEnvironmentArgs, RunExperimentArgs
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import (
     ActivateExperimentEnvironmentDefinition,
@@ -42,7 +42,7 @@ from repo2ree_ree.reserved_paths import (
 )
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
-_SNAPSHOT = digest_bytes(b"snapshot")
+_SNAPSHOT = SNAPSHOT_DIGEST
 _EXPERIMENT_ENVIRONMENT = b"experiment_environment"
 _BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = b"#!/bin/sh\nexit 0\n"
 _ACTIVATE_SCRIPT = b'#!/bin/sh\nexec "$@"\n'
@@ -149,10 +149,13 @@ def _workbench(
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE_SCRIPT)
-    store.workspace.write_bytes(experiment_run_script_path(_EXPERIMENT_NAME), _EXPERIMENT_SCRIPT)
-    store.workspace.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
-    store.workspace.write_bytes("runtime.tar", _EXPERIMENT_ENVIRONMENT)
+    store.overlay.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, _ACTIVATE_SCRIPT)
+    store.overlay.write_bytes(experiment_run_script_path(_EXPERIMENT_NAME), _EXPERIMENT_SCRIPT)
+    store.overlay.write_bytes(experiment_verify_script_path(_EXPERIMENT_NAME), _EXPERIMENT_VERIFY)
+    kept = layout.kept_environment("runtime.tar")
+    kept.parent.mkdir(parents=True, exist_ok=True)
+    kept.write_bytes(_EXPERIMENT_ENVIRONMENT)
+    write_snapshot(layout)
     store.write_ree(with_fixed_scripts(store.layout, ree or _ree()))
     return layout, store
 
@@ -236,10 +239,18 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layout, store = _workbench(tmp_path, monkeypatch)
-    output = layout.workspace / "outputs/result.txt"
-    output.parent.mkdir(parents=True)
-    output.write_bytes(b"result")
-    monkeypatch.setattr(runnable, "run_runnable", lambda **kwargs: _outcome("succeeded"))
+    ran_in: list[Path] = []
+
+    def runs(**kwargs: object) -> ExperimentRunOutcome:
+        workspace = kwargs["workspace"]
+        assert isinstance(workspace, Path)
+        ran_in.append(workspace)
+        output = workspace / "outputs/result.txt"
+        output.parent.mkdir(parents=True)
+        output.write_bytes(b"result")
+        return _outcome("succeeded")
+
+    monkeypatch.setattr(runnable, "run_runnable", runs)
 
     result = run_experiment.handle_run_experiment(
         RunExperimentArgs(experiment_name=_EXPERIMENT_NAME),
@@ -259,11 +270,14 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
     assert receipt.verify_script_digest == digest_bytes(_EXPERIMENT_VERIFY)
     assert receipt.working_environment is not None
     assert receipt.working_environment.host.arch
+    assert (layout.results_dir(_EXPERIMENT_NAME) / "outputs/result.txt").read_bytes() == b"result"
     assert receipt.produced_output_digest == digest_output_paths(
-        layout.workspace,
+        layout.results_dir(_EXPERIMENT_NAME),
         ["outputs/result.txt"],
     )
-    assert (layout.results_dir(_EXPERIMENT_NAME) / "outputs/result.txt").read_bytes() == b"result"
+    # It ran in a workspace of its own, which went once the run succeeded.
+    assert ran_in[0] != layout.workspace
+    assert not ran_in[0].exists()
 
 
 @pytest.mark.parametrize(
@@ -372,7 +386,7 @@ def test_changed_script_is_rejected_before_execution(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
-    store.workspace.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, b"changed")
+    store.overlay.write_bytes(RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, b"changed")
     executed = False
 
     def execute(**kwargs: object) -> ExperimentRunOutcome:
@@ -448,3 +462,83 @@ def test_revision_conflict_does_not_select_the_new_receipt(
     assert result.failure.category == "conflict"
     assert result.failure.retryable is True
     assert store.read_ree().subject.receipts.activate_experiment_environment is None
+
+
+def test_a_step_runs_on_what_the_ree_records_and_nothing_a_view_or_an_earlier_step_left(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout, _store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
+    (layout.workspace / "left-by-a-build.so").write_bytes(b"by-product")
+    layout.upstream.mkdir(exist_ok=True)
+    (layout.upstream / "edited-by-hand.txt").write_text("not acquired")
+    seen: list[set[str]] = []
+
+    def execute(**kwargs: object) -> ExperimentRunOutcome:
+        workspace = kwargs["workspace"]
+        assert isinstance(workspace, Path)
+        seen.append({path.relative_to(workspace).as_posix() for path in workspace.rglob("*") if path.is_file()})
+        return _outcome("succeeded", verified=False)
+
+    monkeypatch.setattr(runnable, "run_runnable", execute)
+    result = activate_experiment_environment.handle_activate_experiment_environment(
+        run_id="activation-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
+    )
+
+    assert result.status == "succeeded"
+    assert "runtime.tar" in seen[0]
+    assert RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT in seen[0]
+    assert not {"left-by-a-build.so", "edited-by-hand.txt"} & seen[0]
+
+
+def test_a_source_snapshot_other_than_the_one_acquired_stops_the_step(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout, store = _workbench(tmp_path, monkeypatch, _ree(activated=False))
+    layout.snapshot_archive.write_bytes(b"another source")
+    monkeypatch.setattr(runnable, "run_runnable", _activate_alone)
+
+    result = activate_experiment_environment.handle_activate_experiment_environment(
+        run_id="activation-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
+    )
+
+    assert result.status == "failed"
+    assert result.failure is not None
+    assert "not the one this REE acquired" in result.failure.message
+    assert store.read_ree().subject.receipts.activate_experiment_environment is None
+
+
+def test_a_current_step_runs_nothing_unless_asked_again(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layout, store = _workbench(tmp_path, monkeypatch)
+    before = store.read_ree().subject.receipts.activate_experiment_environment
+    ran: list[object] = []
+
+    def execute(**kwargs: object) -> ExperimentRunOutcome:
+        ran.append(kwargs)
+        return _outcome("succeeded", verified=False)
+
+    monkeypatch.setattr(runnable, "run_runnable", execute)
+
+    current = activate_experiment_environment.handle_activate_experiment_environment(
+        run_id="activation-1", log=lambda *args: None, is_canceled=lambda: False, layout=layout
+    )
+    assert current.status == "succeeded"
+    assert ran == []
+    assert store.read_ree().subject.receipts.activate_experiment_environment == before
+
+    again = activate_experiment_environment.handle_activate_experiment_environment(
+        ActivateExperimentEnvironmentArgs(again=True),
+        run_id="activation-2",
+        log=lambda *args: None,
+        is_canceled=lambda: False,
+        layout=layout,
+    )
+    assert again.status == "succeeded"
+    assert len(ran) == 1
+    receipt = store.read_ree().subject.receipts.activate_experiment_environment
+    assert receipt is not None
+    assert receipt.run_id == "activation-2"

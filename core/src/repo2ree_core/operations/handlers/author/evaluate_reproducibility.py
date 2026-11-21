@@ -5,7 +5,7 @@ from __future__ import annotations
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
 from repo2ree_core.digests import digest_file, digest_tree
 from repo2ree_core.domain.ree.envelope import receipt_envelope
-from repo2ree_core.domain.ree.transitions import commit_receipt, revision_of
+from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -13,6 +13,7 @@ from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, REPRODUCIBILITY_REPORT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
+from repo2ree_core.workspace.attempt import discard, lay_out
 from repo2ree_protocol.command import EvaluateReproducibilityArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import EvaluateOutputs
@@ -48,9 +49,14 @@ def handle_evaluate_reproducibility(
 
     before_revision = revision_of(ree)
     timer = OperationTimer.start()
-    log("system", "info", f"Workspace: {layout.workspace.resolve()}")
     try:
-        report = analyze_repo(layout.workspace.resolve(), log=log, strict=args.strict)
+        # What the REE records, laid out fresh: the source as acquired and the overlay, not the view in workspace/.
+        workspace = lay_out(layout, ree, run_id, environment=False)
+    except ReePreconditionError as exc:
+        return ActionResult.failed("precondition", f"cannot evaluate reproducibility: {exc}")
+    log("system", "info", f"Workspace: {workspace}")
+    try:
+        report = analyze_repo(workspace, log=log, strict=args.strict)
     except AnalysisError as exc:
         log("system", "error", str(exc))
         return ActionResult.failed("execution", str(exc))
@@ -98,5 +104,6 @@ def handle_evaluate_reproducibility(
         detected_dependencies=report.detected_dependencies,
         report=report.model_dump(mode="json"),
     )
+    discard(layout, run_id)
     log("system", "info", "Evaluate run succeeded")
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump())

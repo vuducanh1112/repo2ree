@@ -161,12 +161,12 @@ class ReeDirectory:
         """Resolve an author-declared artifact path to the file it names.
 
         For the experiment environment, which an author's own build script writes: the declared
-        path is workspace-relative while authoring, but bundling lifts the file
-        into the bundle's ``artifacts/`` and rewrites the manifest to match — so
-        an REE loaded from a bundle declares ``artifacts/<name>``, which is
-        REE-root-relative and never appears under ``workspace/``. Both spellings
-        resolve here, workspace first, so a loaded baseline reads exactly like an
-        authored one to everything downstream. (REE-produced artifacts need none
+        path is where the build leaves it in its workspace, and the build keeps it under
+        ``artifacts/experiment-environment/<declared>``; bundling lifts the file into the
+        bundle's ``artifacts/`` and rewrites the manifest to match, so an REE loaded from a
+        bundle declares ``artifacts/<name>``, which is REE-root-relative. Every spelling
+        resolves here, so a loaded baseline reads exactly like an authored one to everything
+        downstream. (REE-produced artifacts need none
         of this: they are written to their fixed ``artifacts/`` slot from the
         start — see ``ReeLayout.sbom``.)
 
@@ -176,7 +176,7 @@ class ReeDirectory:
         if not declared:
             return None
         for candidate in (
-            self.layout.workspace_file(declared),
+            self.layout.kept_environment(declared),
             self.layout.ree_file(declared),
             self.layout.artifacts / Path(declared).name,
         ):

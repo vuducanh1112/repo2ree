@@ -175,15 +175,9 @@ class ReviewRunExperimentCommand(BaseModel):
 
 
 class MaterializeWorkspaceArgs(BaseModel):
-    """Lay out again the workspace's files that drifted from the source and the overlay, leaving the experiment
-    environment, outputs and anything else there; ``clean``, the whole workspace from nothing."""
+    """No args: lays out ``workspace/`` from the source and the overlay, a view for people that no step reads."""
 
     model_config = ConfigDict(extra="forbid")
-
-    clean: bool = Field(
-        default=False,
-        description="Lay out the whole workspace from nothing, the experiment environment and outputs with it.",
-    )
 
 
 class MaterializeWorkspaceCommand(BaseModel):
@@ -302,9 +296,14 @@ class RemoveSourceCommand(BaseModel):
 
 
 class BuildExperimentEnvironmentArgs(BaseModel):
-    """No args — the build always runs the reserved, REE-owned build script."""
+    """Build with the reserved, REE-owned build script, unless the build's evidence is current already."""
 
     model_config = ConfigDict(extra="forbid")
+
+    again: bool = Field(
+        default=False,
+        description="Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+    )
 
 
 class BuildExperimentEnvironmentCommand(BaseModel):
@@ -355,6 +354,10 @@ class RunExperimentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     experiment_name: Annotated[str, POSITIONAL, Field(description="The experiment, as the definition names it.")]
+    again: bool = Field(
+        default=False,
+        description="Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+    )
 
 
 class RunExperimentCommand(BaseModel):
@@ -378,10 +381,15 @@ class ObserveHardwareCommand(BaseModel):
 
 
 class ActivateExperimentEnvironmentArgs(BaseModel):
-    """No args — activation runs the REE's stored Activation through its
-    experiment environment entry; there is no per-run script path."""
+    """Activation runs the REE's stored Activation through its experiment environment entry, unless its evidence is
+    current already; there is no per-run script path."""
 
     model_config = ConfigDict(extra="forbid")
+
+    again: bool = Field(
+        default=False,
+        description="Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+    )
 
 
 class ActivateExperimentEnvironmentCommand(BaseModel):
@@ -392,9 +400,15 @@ class ActivateExperimentEnvironmentCommand(BaseModel):
 
 
 class CheckWorkingEnvironmentArgs(BaseModel):
-    """No args — runs the REE's check script in its working environment, launched as every script is."""
+    """Runs the REE's check script in its working environment, launched as every script is, unless it passed on this
+    host already and its evidence is current."""
 
     model_config = ConfigDict(extra="forbid")
+
+    again: bool = Field(
+        default=False,
+        description="Run it although its evidence is current, as for a fresh run of a stochastic experiment.",
+    )
 
 
 class CheckWorkingEnvironmentCommand(BaseModel):

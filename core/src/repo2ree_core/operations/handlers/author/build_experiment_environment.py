@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from repo2ree_core.digests import digest_file_if_exists
 from repo2ree_core.domain.ree.audit import audit
 from repo2ree_core.domain.ree.envelope import receipt_envelope
@@ -15,16 +17,18 @@ from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
-from repo2ree_core.workspace.drift import check_workspace_drift
+from repo2ree_core.workspace.attempt import discard, keep_environment, lay_out
+from repo2ree_protocol.command import BuildExperimentEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import BuildExperimentEnvironmentFailureOutputs, BuildExperimentEnvironmentOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree
 from repo2ree_ree.primitives import Digest, ExperimentEnvironmentPath
-from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt
+from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt, WorkspaceDrift
 
 
 def handle_build_experiment_environment(
+    args: BuildExperimentEnvironmentArgs = BuildExperimentEnvironmentArgs(),  # noqa: B008 — frozen by use: no handler changes its args
     *,
     layout: ReeLayout,
     run_id: str,
@@ -37,8 +41,21 @@ def handle_build_experiment_environment(
 
     try:
         ree = load_ree(layout, store)
-        build, experiment_environment_path = _check_preconditions(ree, layout)
-        launch = declared_launch(ree.subject.definition.launch, layout.workspace)
+        build, experiment_environment_path = _check_preconditions(ree)
+        if not args.again and (current := _current_receipt(layout, ree)) is not None:
+            log("system", "info", "the experiment environment is current: nothing to do (--again builds it anyway)")
+            return ActionResult(
+                status="succeeded",
+                exit_code=0,
+                outputs=BuildExperimentEnvironmentOutputs(
+                    build_experiment_environment_script_path=str(build.build_experiment_environment_script_path),
+                    container_exit_code=0,
+                    receipt=current,
+                ).model_dump(mode="json", exclude_none=True),
+            )
+        workspace = lay_out(layout, ree, run_id, environment=False)
+        _check_script(workspace, build)
+        launch = declared_launch(ree.subject.definition.launch, workspace)
     except ReePreconditionError as exc:
         log("system", "error", f"cannot build the experiment environment: {exc}")
         return ActionResult.failed("precondition", f"cannot build the experiment environment: {exc}")
@@ -46,17 +63,13 @@ def handle_build_experiment_environment(
         return failed_from_exception(exc, f"failed to load build inputs: {exc}")
 
     before_revision = revision_of(ree)
-    excluded_paths = {str(experiment_environment_path)}
-    for experiment in ree.subject.definition.experiments:
-        excluded_paths.update(str(path) for path in experiment.output_paths)
-    workspace_drift = check_workspace_drift(layout, excluded_paths=excluded_paths)
 
     timer = OperationTimer.start()
     log("system", "info", f"Starting build run {run_id}")
     log("system", "info", f"REE revision: {before_revision}")
     log("system", "info", f"Build script: {build.build_experiment_environment_script_path}")
     outcome = run_workspace_script(
-        layout.workspace.resolve(),
+        workspace,
         str(build.build_experiment_environment_script_path),
         log=log,
         is_canceled=is_canceled,
@@ -77,7 +90,8 @@ def handle_build_experiment_environment(
             ).model_dump(mode="json"),
         )
 
-    produced_artifact_digest = digest_file_if_exists(layout.workspace / str(experiment_environment_path))
+    kept = keep_environment(layout, workspace, str(experiment_environment_path))
+    produced_artifact_digest = digest_file_if_exists(kept) if kept is not None else None
     if produced_artifact_digest is None:
         message = f"build script succeeded but did not produce {experiment_environment_path}"
         log("system", "error", message)
@@ -92,7 +106,8 @@ def handle_build_experiment_environment(
         snapshot_digest=source.snapshot_digest,
         build_experiment_environment_script_path=build.build_experiment_environment_script_path,
         build_experiment_environment_script_digest=build.build_experiment_environment_script_digest,
-        workspace_drift=workspace_drift,
+        # A build runs in a workspace laid out fresh from what the REE records, so nothing in it drifted.
+        workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=experiment_environment_path,
         produced_artifact_digest=produced_artifact_digest,
         working_environment=observe_working_environment(),
@@ -113,6 +128,7 @@ def handle_build_experiment_environment(
         log("system", "error", f"failed to commit build receipt: {exc}")
         return failed_from_exception(exc, f"failed to commit build receipt: {exc}")
 
+    discard(layout, run_id)
     log(
         "system",
         "info",
@@ -131,38 +147,41 @@ def handle_build_experiment_environment(
     )
 
 
-def _check_preconditions(
-    ree: Ree,
-    layout: ReeLayout,
-) -> tuple[ExperimentEnvironmentDefinition, ExperimentEnvironmentPath]:
+def _check_preconditions(ree: Ree) -> tuple[ExperimentEnvironmentDefinition, ExperimentEnvironmentPath]:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot build an experiment environment")
-    # Currency, not mere presence. A source that has been re-pointed but not
-    # re-acquired leaves the workspace holding the previous tree, so a build on
-    # it would spend minutes producing an experiment environment the seal gate then refuses for
-    # the staleness that was already visible here. Same check the SBOM and
-    # runnable steps make against the build receipt.
+    # Currency, not mere presence: a source re-pointed but not re-acquired would have the build spend minutes
+    # producing an experiment environment the seal gate then refuses, for a staleness visible here already.
     source_audit = audit(ree).acquire_source
     if source_audit.evidence != "current":
-        # The audit names what moved when a receipt has gone stale. It has
-        # nothing to say when no source is declared at all — a fresh REE seeded
-        # with a build script before it has a source — so that case keeps the
-        # message that tells the author what to do next.
+        # The audit names what moved when a receipt has gone stale. It has nothing to say when no source is declared
+        # at all, a fresh REE seeded with a build script before it has a source, so that case says what to do next.
         raise ReePreconditionError("; ".join(source_audit.reasons) or "source has not been acquired")
     build = ree.subject.definition.experiment_environment
     experiment_environment_path = build.artifact_path
     if experiment_environment_path is None:
         raise ReePreconditionError("no experiment environment artifact path is declared")
-    script = layout.workspace / str(build.build_experiment_environment_script_path)
+    return build, experiment_environment_path
+
+
+def _current_receipt(layout: ReeLayout, ree: Ree) -> BuildExperimentEnvironmentReceipt | None:
+    """The build's receipt, when its evidence is current and the environment it made is still kept as it made it."""
+    receipt = ree.subject.receipts.build_experiment_environment
+    if receipt is None or audit(ree).build_experiment_environment.evidence != "current":
+        return None
+    kept = layout.kept_environment(str(receipt.artifact_path))
+    return receipt if digest_file_if_exists(kept) == receipt.produced_artifact_digest else None
+
+
+def _check_script(workspace: Path, build: ExperimentEnvironmentDefinition) -> None:
+    script = workspace / str(build.build_experiment_environment_script_path)
     if not script.is_file():
         raise ReePreconditionError("the build experiment environment script is missing")
-    actual_digest = digest_file_if_exists(script)
     if (
-        actual_digest != build.build_experiment_environment_script_digest
+        digest_file_if_exists(script) != build.build_experiment_environment_script_digest
         or script.stat().st_size != build.build_experiment_environment_script_size
     ):
         raise ReePreconditionError("the build experiment environment script does not match its definition")
-    return build, experiment_environment_path
 
 
 def _launch_digest(ree: Ree) -> Digest:

@@ -63,7 +63,13 @@ set -eu
 EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(contract.artifact_path)}
 IMAGE_TAG={sh_quote(contract.image_ref)}
 
-docker image inspect "$IMAGE_TAG" >/dev/null 2>&1 || docker load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
+# Load the archive unless the image the tag names is the one it holds: a tag alone may name an older build.
+WANTED=$(tar -xOf "$EXPERIMENT_ENVIRONMENT_ARTIFACT" manifest.json 2>/dev/null \\
+  | sed -n 's/.*"Config": *"\\([^"]*\\)".*/\\1/p' | sed 's#.*/##; s/[.]json$//')
+LOADED=$(docker image inspect --format '{{{{.Id}}}}' "$IMAGE_TAG" 2>/dev/null | sed 's/^sha256://')
+if [ -z "$WANTED" ] || [ "$WANTED" != "$LOADED" ]; then
+  docker load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
+fi
 exec docker run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"
 """
         evidence = [
@@ -82,7 +88,8 @@ exec docker run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"
 
 
 class PodmanActivateExperimentEnvironmentRenderer:
-    """Loads the image archive into Podman unless it holds the image, and runs the command in it."""
+    """Loads the image archive into Podman unless the image its tag names is the one the archive holds, and runs the
+    command in it."""
 
     code = "podman_activate_experiment_environment"
     requires: frozenset[BindingKind] = frozenset({"experiment_environment_contract"})
@@ -99,7 +106,13 @@ set -eu
 EXPERIMENT_ENVIRONMENT_ARTIFACT={sh_quote(contract.artifact_path)}
 IMAGE_TAG={sh_quote(contract.image_ref)}
 
-podman image exists "$IMAGE_TAG" || podman load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
+# Load the archive unless the image the tag names is the one it holds: a tag alone may name an older build.
+WANTED=$(tar -xOf "$EXPERIMENT_ENVIRONMENT_ARTIFACT" manifest.json 2>/dev/null \\
+  | sed -n 's/.*"Config": *"\\([^"]*\\)".*/\\1/p' | sed 's#.*/##; s/[.]json$//')
+LOADED=$(podman image inspect --format '{{{{.Id}}}}' "$IMAGE_TAG" 2>/dev/null | sed 's/^sha256://')
+if [ -z "$WANTED" ] || [ "$WANTED" != "$LOADED" ]; then
+  podman load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"
+fi
 exec podman run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"
 """
         evidence = [

@@ -57,8 +57,8 @@ def found(trace: Trace) -> None:
     assert [problem for problem in trace.problems if problem.rule == RULE] == []
 
 
-def test_a_file_changed_in_the_workspace_is_refused_by_the_next_command(tmp_path: Path) -> None:
-    trace = judge(drifted(FileDrift(before=2, ree="author", part="workspace", change="append")), tmp_path)
+def test_a_record_changed_is_refused_by_the_next_command(tmp_path: Path) -> None:
+    trace = judge(drifted(FileDrift(before=2, ree="author", part="records", change="append")), tmp_path)
 
     patched = answered(trace, 2)
     assert patched["status"] == "failed"
@@ -101,8 +101,6 @@ def test_an_ree_no_step_initialized_yet_does_not_drift() -> None:
         Exercise(rees=("author",), steps=steps, drifts=(early,))
     with pytest.raises(ValueError, match="none of the REE's"):
         FileDrift(before=1, ree="author", part="records", change="add")
-    with pytest.raises(ValueError, match="none of the REE's"):
-        FileDrift(before=1, ree="author", part="workspace", change="add")
     assert Exercise(rees=("author",), steps=steps, drifts=(early.model_copy(update={"before": 1}),))
 
 
@@ -161,7 +159,7 @@ def test_a_bundle_of_a_history_committed_to_with_git_is_refused(tmp_path: Path) 
     assert trace.problems == ()
 
 
-@pytest.mark.parametrize(("part", "change"), [("overlay", "write"), ("workspace", "remove"), ("records", "mode")])
+@pytest.mark.parametrize(("part", "change"), [("overlay", "write"), ("overlay", "remove"), ("records", "mode")])
 def test_a_file_put_back_by_hand_before_the_next_command_is_no_drift(
     tmp_path: Path, part: FilePart, change: FileChange
 ) -> None:

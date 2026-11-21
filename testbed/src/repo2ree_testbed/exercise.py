@@ -257,11 +257,12 @@ class Fault(_Model):
     at: FaultPoint
 
 
-# Where in an REE, or in a review of it, the environment changes something: a script as the REE writes it, the
-# workspace its scripts run in, the other files its history holds, or the history itself.
-FilePart = Literal["overlay", "workspace", "records"]
+# Where in an REE, or in a review of it, the environment changes something: a script as the REE writes it, the other
+# files its history holds, or the history itself. Its workspace/ and upstream/ are views no step reads, so nothing
+# changed there is any of the REE's.
+FilePart = Literal["overlay", "records"]
 # How a file changes: written over, added to, removed, its mode changed, or, in the overlay, a file added beside the
-# others: one added to the workspace or beside the records is none of the REE's, so it changes nothing of it.
+# others: one added beside the records is none of the REE's, so it changes nothing of it.
 FileChange = Literal["write", "append", "remove", "mode", "add"]
 # How a history changes, as a person changes it with git: `git add -A` and `git commit`, `git reset --soft` to its last
 # commit's parent, or `git add -A` and `git commit --amend --no-edit`, which keeps the message, ree's record with it.
