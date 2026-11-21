@@ -24,8 +24,9 @@ path = "str"
 type = "str"
 required_in = ["arisen"]
 
+# Every step runs in a workspace laid out fresh from what the REE records, so the REE's own workspace/ and upstream/
+# are views for people that no step reads: nothing changed in them is a drift.
 [facts.part.values]
 overlay = "A script as the REE writes it."
-workspace = "A file of the workspace laid out from the source and the overlay. What else the workspace holds is the experiment environment and outputs, which receipts vouch for, or recorded nowhere, so none of it drifts."
 records = "Any other file the REE's history holds."
 history = "A ref of the history: committed to, reset or rewritten."
