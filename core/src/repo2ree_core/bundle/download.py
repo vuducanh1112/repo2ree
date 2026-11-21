@@ -1,4 +1,9 @@
-"""Download a pinned repository and its selected local LFS objects."""
+"""Download a pinned repository and its selected local LFS objects.
+
+A bundle carries only what ree recorded: it is refused while anything of the REE changed outside ree, and for a
+history that ends in a commit no attempt captured, as one made with git, which the REE that loads it could no longer
+tell apart from its own.
+"""
 
 from __future__ import annotations
 
@@ -14,12 +19,29 @@ from typing import Final
 from repo2ree_core.bundle.export_format import RepositoryExport, ScopeExport
 from repo2ree_core.bundle.repository_export import transfer_scope
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.history import HistoryCaptureError, open_history
+from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
+from repo2ree_core.persistence.integrity import drift_refusal, find_drift
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import history_scopes
 
+
+class BundleRefusedError(ValueError):
+    """The REE is not as ree recorded it, so no bundle of it is given."""
+
+
 # The operations whose commit is a sealed REE as it is exported: the seal, and each signature added beside it.
 SEALED_BY: Final = frozenset({"seal_ree", "sign_ree"})
+
+
+def _unrecorded(layout: ReeLayout, scope: ReeLayout, history: GitHistory, head: str) -> str:
+    """Why a history that does not end in a commit an attempt captured gives no bundle."""
+    within = scope.root.relative_to(layout.root).as_posix()
+    named = "the REE" if within == "." else within
+    if head == history.initial_snapshot():
+        return f"no ree command has worked on {named} since it was initialized, so it has nothing to bundle yet"
+    return (
+        f"the history of {named} ends in {head}, a commit no ree command made: a bundle carries only what ree recorded"
+    )
 
 
 @contextmanager
@@ -32,11 +54,14 @@ def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
         root = staging / "export"
         exports: list[ScopeExport] = []
         with ExitStack() as locks:
-            for scope in history_scopes(layout):
-                history = locks.enter_context(open_history(scope))
+            histories = [(scope, locks.enter_context(open_history(scope))) for scope in history_scopes(layout)]
+            if drift := find_drift(layout):
+                raise BundleRefusedError(drift_refusal(layout, drift))
+            for scope, history in histories:
                 head = history.head_snapshot()
                 if head is None:
                     raise HistoryCaptureError("REE has no captured snapshot to export")
+                tip = head
                 if scope == layout:
                     ree = ReeDirectory(layout).read_ree()
                     if ree.seal:
@@ -56,6 +81,8 @@ def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
                         if found is None:
                             raise HistoryCaptureError("Sealed state has no published successful seal operation")
                         head = found
+                if not history.records_operation(tip):
+                    raise BundleRefusedError(_unrecorded(layout, scope, history, tip))
                 relative = scope.root.relative_to(layout.root).as_posix()
                 exports.append(
                     transfer_scope(

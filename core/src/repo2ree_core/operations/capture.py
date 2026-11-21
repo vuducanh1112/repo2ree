@@ -23,8 +23,8 @@ from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError, open_history
 from repo2ree_core.persistence.integrity import (
     HISTORY,
+    drift_refusal,
     find_drift,
-    history_hints,
     lay_out_scripts,
     recordable_edits,
     stamp_history,
@@ -188,13 +188,7 @@ def _refusal(layout: ReeLayout, drift: list[DriftedFile], records_edit: str | No
     edits = recordable_edits(layout, drift)
     if records_edit is not None and records_edit in edits:
         return None
-    named = ", ".join(item.path for item in drift[:10]) + (f" and {len(drift) - 10} more" if len(drift) > 10 else "")
-    ways = [
-        "edit a script in overlay/, not workspace/, or write it with `ree edit`",
-        "`ree materialize-workspace` lays the workspace out again from what the REE records",
-        *(f"`{hint}` puts the history back where ree left it" for hint in history_hints(layout, drift)),
-    ]
-    return f"the REE changed outside ree: {named}. " + "; ".join(ways)
+    return drift_refusal(layout, drift)
 
 
 def _refuse(

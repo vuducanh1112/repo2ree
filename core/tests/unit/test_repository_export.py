@@ -111,8 +111,13 @@ def test_new_selection_omits_old_object_without_rewriting_history(tmp_path, monk
     store.write_ree(
         ree.model_copy(update={"seal": None, "subject": ree.subject.model_copy(update={"capture": CapturePolicy()})})
     )
-    with open_history(layout) as history:
-        history.capture(operation="test_selection_change")
+    as_recorded(layout)
+    renamed = run_command(
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "reselected"})),
+        log=lambda *args: None,
+        layout=layout,
+    )
+    assert renamed.status == "succeeded", renamed
     with materialized_ree_download(layout) as archive, zipfile.ZipFile(archive) as zipped:
         assert "ree/results/experiment/data.bin" not in zipped.namelist()
         assert not any(pointer.oid in name for name in zipped.namelist())

@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
+from recorded_ree import as_attempt
 
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.operations.initialize import initialize_ree
@@ -144,6 +145,7 @@ def test_git_storage_is_not_a_visible_file_or_bundle_content(tmp_path):
     assert not any(entry.path.startswith(".git/") for entry in list_ree_files(layout))
     with pytest.raises(ValueError, match="Invalid REE file path"):
         read_ree_file_bytes(layout, ".git/config")
+    as_attempt(layout, "patch_ree_definition")
     with materialized_ree_download(layout) as archive_path, zipfile.ZipFile(archive_path) as archive:
         assert "ree/.git/HEAD" in archive.namelist()
     # A symlink must not make private repository bytes visible through another path.

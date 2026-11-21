@@ -12,6 +12,7 @@ import io
 import json
 import os
 import signal
+import subprocess
 import tarfile
 import zipfile
 from pathlib import Path
@@ -551,6 +552,7 @@ def test_a_person_reads_the_log_one_attempt_a_line(initialized: Path) -> None:
 
 
 def test_bundle_before_seal_writes_a_draft_bundle(initialized: Path) -> None:
+    assert ree(initialized, "patch-ree-definition", "--name", "drafted").exit_code == 0
     result = ree(initialized, "bundle")
 
     assert result.exit_code == 0
@@ -559,6 +561,38 @@ def test_bundle_before_seal_writes_a_draft_bundle(initialized: Path) -> None:
         assert "ree.zip" not in archive.namelist()
         manifest = json.loads(archive.read("ree/ree.json"))
     assert "seal" not in manifest
+
+
+def test_a_bundle_of_a_history_committed_to_with_git_is_refused_with_how_to_put_it_back(initialized: Path) -> None:
+    assert ree(initialized, "patch-ree-definition", "--name", "drafted").exit_code == 0
+    layout = ReeLayout(root=initialized)
+    git = (
+        "git",
+        "--git-dir",
+        str(layout.git_dir),
+        "-c",
+        "user.name=someone",
+        "-c",
+        "user.email=someone@example.invalid",
+    )
+    left = subprocess.check_output([*git, "rev-parse", "refs/heads/ree-history"], text=True).strip()
+    by_hand = subprocess.check_output([*git, "commit-tree", f"{left}^{{tree}}", "-p", left, "-m", "my fix"], text=True)
+    subprocess.check_call([*git, "update-ref", "refs/heads/ree-history", by_hand.strip()])
+
+    result = machine(initialized, "bundle")
+
+    assert result.exit_code == REFUSED
+    assert not result.stdout_bytes.startswith(b"PK")
+    failure = json.loads(result.stdout)["failure"]
+    assert (failure["category"], failure["details"]) == ("precondition", {"code": "drift"})
+    assert f"git update-ref refs/heads/ree-history {left}" in failure["message"]
+
+
+def test_an_ree_no_command_worked_on_has_nothing_to_bundle(initialized: Path) -> None:
+    result = ree(initialized, "bundle")
+
+    assert result.exit_code == REFUSED
+    assert "nothing to bundle yet" in result.stderr
 
 
 def test_every_read_a_workbench_can_be_sent_is_a_command() -> None:

@@ -53,7 +53,7 @@ class Stamps(BaseModel):
     refs: dict[str, str]
 
 
-def _stamps_path(layout: ReeLayout) -> Path:
+def stamps_path(layout: ReeLayout) -> Path:
     return layout.git_dir / "repo2ree" / "stamps.json"
 
 
@@ -114,7 +114,7 @@ def _unchanged(path: Path, stamp: Stamp, info: os.stat_result) -> bool:
 
 def read_stamps(layout: ReeLayout) -> Stamps | None:
     """The stamps the last attempt left in this REE or review; None for one no attempt stamped yet."""
-    path = _stamps_path(layout)
+    path = stamps_path(layout)
     if not path.is_file():
         return None
     return Stamps.model_validate_json(path.read_text(encoding="utf-8"))
@@ -135,7 +135,7 @@ def stamp_ree(layout: ReeLayout) -> None:
                 digest=_digest(layout.root / relative, info),
             )
         stamps[relative] = stamp
-    write_json_atomic(_stamps_path(layout), Stamps(files=stamps, refs=_refs(layout)).model_dump(mode="json"))
+    write_json_atomic(stamps_path(layout), Stamps(files=stamps, refs=_refs(layout)).model_dump(mode="json"))
 
 
 def stamp_history(layout: ReeLayout) -> None:
@@ -144,7 +144,7 @@ def stamp_history(layout: ReeLayout) -> None:
     previous = read_stamps(layout)
     if previous is not None:
         restamped = previous.model_copy(update={"refs": _refs(layout)})
-        write_json_atomic(_stamps_path(layout), restamped.model_dump(mode="json"))
+        write_json_atomic(stamps_path(layout), restamped.model_dump(mode="json"))
 
 
 def reviews_of(layout: ReeLayout) -> list[ReeLayout]:
@@ -204,6 +204,17 @@ def history_hints(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:
         where = f" -C {within.rstrip('/')}" if within else ""
         hints.append(f"git{where} update-ref {ref} {left}" if left else f"git{where} update-ref -d {ref}")
     return hints
+
+
+def drift_refusal(layout: ReeLayout, drift: list[DriftedFile]) -> str:
+    """What ree says of an REE that changed outside it: what drifted, and how each part of it is put right."""
+    named = ", ".join(item.path for item in drift[:10]) + (f" and {len(drift) - 10} more" if len(drift) > 10 else "")
+    ways = [
+        "edit a script in overlay/, not workspace/, or write it with `ree edit`",
+        "`ree materialize-workspace` lays the workspace out again from what the REE records",
+        *(f"`{hint}` puts the history back where ree left it" for hint in history_hints(layout, drift)),
+    ]
+    return f"the REE changed outside ree: {named}. " + "; ".join(ways)
 
 
 def recordable_edits(layout: ReeLayout, drift: list[DriftedFile]) -> list[str]:

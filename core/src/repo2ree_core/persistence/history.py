@@ -65,6 +65,23 @@ def _internal_temporary(layout: ReeLayout, path: Path) -> bool:
     )
 
 
+def _operation_record(commit: str, body: str) -> dict[str, Any] | None:
+    """The record of the operation an attempt captured as ``commit``, from its message; None for any other commit."""
+    _subject, separator, metadata = body.partition("\n\n")
+    if not separator or not metadata.lstrip().startswith("{"):
+        return None
+    try:
+        document = json.loads(metadata)
+    except ValueError as exc:
+        raise HistoryCaptureError(f"Unreadable history metadata at {commit}") from exc
+    if not isinstance(document, dict) or document.get("kind") != "operation.completed":
+        return None
+    record = document.get("record")
+    if document.get("schema_version") != 2 or not isinstance(record, dict):
+        raise HistoryCaptureError(f"Unsupported operation history at {commit}")
+    return record
+
+
 @dataclass(frozen=True)
 class GitHistory:
     layout: ReeLayout
@@ -271,18 +288,15 @@ class GitHistory:
             return
         entries = self.git("log", "--format=%H%x00%B%x00", *heads).stdout.decode().split("\0")
         for index in range(0, len(entries) - 1, 2):
-            commit, body = entries[index].strip(), entries[index + 1]
-            _subject, separator, metadata = body.partition("\n\n")
-            if not separator or not metadata.lstrip().startswith("{"):
-                continue
-            try:
-                document = json.loads(metadata)
-            except ValueError as exc:
-                raise HistoryCaptureError(f"Unreadable history metadata at {commit}") from exc
-            if isinstance(document, dict) and document.get("kind") == "operation.completed":
-                if document.get("schema_version") != 2:
-                    raise HistoryCaptureError(f"Unsupported operation history at {commit}")
-                yield commit, document["record"]
+            commit = entries[index].strip()
+            record = _operation_record(commit, entries[index + 1])
+            if record is not None:
+                yield commit, record
+
+    def records_operation(self, commit: str) -> bool:
+        """Whether ``commit`` is one an attempt captured: one that carries its operation's record."""
+        body = self.git("log", "-1", "--format=%B", commit).stdout.decode()
+        return _operation_record(commit, body) is not None
 
     def capture(
         self,

@@ -38,7 +38,7 @@ from repo2ree_cli.models import (
 )
 from repo2ree_cli.options import EXPERIMENT_KINDS, KINDS, TARGET, Spelling, read_stdin
 from repo2ree_cli.schema import ReeCommand, describe
-from repo2ree_core.bundle.download import materialized_ree_download
+from repo2ree_core.bundle.download import BundleRefusedError, materialized_ree_download
 from repo2ree_core.domain.ree.steps import REE_STEPS
 from repo2ree_core.domain.ree.transitions import revision_of
 from repo2ree_core.evidence.review.store import load_reviews, read_review_record
@@ -1102,6 +1102,9 @@ def _bytes(words: str, write: Callable[[ReeLayout, BaseModel], None]) -> Callabl
             write(layout, query)
         except FileNotFoundError as exc:
             refuse(invocation, words, "validation", f"not found: {exc}")
+        except BundleRefusedError as exc:
+            refused = ActionResult.failed("precondition", str(exc), origin="core", details={"code": "drift"})
+            finish(invocation, words, refused)
         except (ValueError, RuntimeError) as exc:
             refuse(invocation, words, "validation", str(exc))
 

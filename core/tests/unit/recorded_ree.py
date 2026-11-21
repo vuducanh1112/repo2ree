@@ -5,6 +5,9 @@ from __future__ import annotations
 from repo2ree_core.persistence.history import open_history
 from repo2ree_core.persistence.integrity import stamp_ree
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_protocol.execution import ExecutionContext
+from repo2ree_protocol.history import CompletedOperation
+from repo2ree_protocol.result import ActionResult
 
 
 def as_recorded(layout: ReeLayout) -> ReeLayout:
@@ -13,3 +16,26 @@ def as_recorded(layout: ReeLayout) -> ReeLayout:
         history.capture(operation="observe_existing_ree", reuse_unchanged=True)
     stamp_ree(layout)
     return layout
+
+
+def as_attempt(layout: ReeLayout, operation: str) -> str:
+    """Commit the files of the REE or review at ``layout`` as a succeeded attempt of ``operation`` publishes them, and
+    stamp them: a test's setup of what a command would have done. Its commit."""
+    context = ExecutionContext.new()
+    result = ActionResult(status="succeeded", outputs={}).model_copy(update={"context": context})
+    with open_history(layout) as history:
+        before = history.head_snapshot() or history.capture(operation="observe_existing_ree")
+        record = CompletedOperation(
+            attempt_id=context.attempt_id,
+            run_id=f"test-{context.attempt_id[:12]}",
+            context=context,
+            command={"operation": operation},
+            scope=layout.root.name,
+            operation_status="succeeded",
+            before_snapshot_id=before,
+            result=result,
+            phases=["pending", "executing", "completed", "captured"],
+        )
+        commit, _changed = history.commit_operation(operation=operation, record=record.model_dump(mode="json"))
+    stamp_ree(layout)
+    return commit

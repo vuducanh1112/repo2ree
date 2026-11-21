@@ -3,6 +3,7 @@ checker holds the next attempt to having found it."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -115,11 +116,38 @@ def test_a_bundle_is_journaled_with_the_heads_it_carries(tmp_path: Path) -> None
         rees=("author", "other"),
         steps=(
             InitializeRee(ree="author"),
+            PatchReeDefinition(ree="author", patch=DefinitionPatch(name="bundled")),
             InitializeRee(ree="other"),
             LoadReeBundle(ree="other", exported_by="author"),
         ),
     )
     trace = judge(exercise, tmp_path)
 
-    assert BUNDLE in trace.reached
-    assert [problem for problem in trace.problems if problem.rule == BUNDLE] == []
+    assert answered(trace, 3)["status"] == "succeeded"
+    [rule] = [
+        rule
+        for rule in json.loads((tmp_path / "check" / "assurance.json").read_text())["rules"]
+        if rule["rule"] == BUNDLE
+    ]
+    assert rule["verdict"] == "passed"
+
+
+def test_a_bundle_of_a_history_committed_to_with_git_is_refused(tmp_path: Path) -> None:
+    exercise = Exercise(
+        rees=("author", "other"),
+        steps=(
+            InitializeRee(ree="author"),
+            PatchReeDefinition(ree="author", patch=DefinitionPatch(name="bundled")),
+            InitializeRee(ree="other"),
+            LoadReeBundle(ree="other", exported_by="author"),
+            PatchReeDefinition(ree="author", patch=DefinitionPatch(name="put-back")),
+        ),
+        drifts=(HistoryDrift(before=3, ree="author", change="commit", until=4),),
+    )
+    trace = judge(exercise, tmp_path)
+
+    loaded = trace.replayed[3]
+    assert loaded.ran is None
+    assert [ran.exit for ran in loaded.prepared] != [0]
+    assert answered(trace, 4)["status"] == "succeeded"
+    assert trace.problems == ()

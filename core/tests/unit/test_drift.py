@@ -5,11 +5,12 @@ import subprocess
 
 import pytest
 
+from repo2ree_core.bundle.download import BundleRefusedError, materialized_ree_download
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.operations.session import pick_up_authored_edits
 from repo2ree_core.persistence.history import GitHistory, HistoryCaptureError
-from repo2ree_core.persistence.integrity import find_drift, stamp_rees
+from repo2ree_core.persistence.integrity import find_drift, stamp_rees, stamps_path
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.command import (
@@ -233,3 +234,45 @@ def test_a_file_changed_in_a_review_is_drift_of_the_ree(ree):
 
     assert find_drift(ree) == [DriftedFile(path=f"reviews/review-1/overlay/{RESERVED_LAUNCH_SCRIPT}", part="overlay")]
     assert patch(ree).status == "failed"
+
+
+def committed_by_hand(layout: ReeLayout) -> str:
+    """A commit on the REE's history made with git, as a person would, of the REE's files as they are."""
+    head = git(layout, "rev-parse", "refs/heads/ree-history")
+    identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
+    by_hand = git(layout, *identity, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", "my fix")
+    git(layout, "update-ref", "refs/heads/ree-history", by_hand)
+    return head
+
+
+def test_a_bundle_of_a_history_committed_to_with_git_is_refused_until_it_is_put_back(ree):
+    assert patch(ree).status == "succeeded"
+    left = committed_by_hand(ree)
+
+    hint = f"git update-ref refs/heads/ree-history {left}"
+    with pytest.raises(BundleRefusedError, match=hint), materialized_ree_download(ree):
+        pass
+
+    git(ree, "update-ref", "refs/heads/ree-history", left)
+    with materialized_ree_download(ree) as archive:
+        assert archive.is_file()
+
+
+def test_a_bundle_of_a_file_changed_outside_ree_is_refused(ree):
+    ree.manifest.write_text(ree.manifest.read_text() + " ")
+
+    with pytest.raises(BundleRefusedError, match=r"ree\.json"), materialized_ree_download(ree):
+        pass
+
+
+def test_a_bundle_of_a_history_no_attempt_ended_is_refused_without_stamps(ree):
+    committed_by_hand(ree)
+    stamps_path(ree).unlink()
+
+    with pytest.raises(BundleRefusedError, match="a commit no ree command made"), materialized_ree_download(ree):
+        pass
+
+
+def test_an_ree_no_command_worked_on_has_nothing_to_bundle(ree):
+    with pytest.raises(BundleRefusedError, match="nothing to bundle yet"), materialized_ree_download(ree):
+        pass

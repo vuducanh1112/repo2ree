@@ -4,6 +4,8 @@ import json
 import subprocess
 import zipfile
 
+from recorded_ree import as_attempt
+
 from repo2ree_core.bundle.download import materialized_ree_download
 from repo2ree_core.operations.dispatch import run_command
 from repo2ree_core.operations.initialize import initialize_ree
@@ -41,17 +43,15 @@ def test_read_history_orders_attempts_and_preserves_legacy_records(tmp_path, mon
 
 
 def test_download_contains_usable_repository_and_preserves_imported_history(tmp_path, monkeypatch):
-    from repo2ree_core.operations.handlers.author.load_ree_bundle import handle_load_ree_bundle
-    from repo2ree_protocol.command import LoadReeBundleArgs
+    from repo2ree_protocol.command import LoadReeBundleArgs, LoadReeBundleCommand
 
     layout = ReeLayout(root=tmp_path / "ree")
     initial = initialize_ree(layout, name="before").snapshot_id
     _patch(layout, "after")
     review = layout.review("review-1")
-    with open_history(review) as history:
-        review.overlay_file("ree-scripts/build_experiment_environment.sh").parent.mkdir(parents=True)
-        review.overlay_file("ree-scripts/build_experiment_environment.sh").write_text("evidence")
-        review_head = history.capture(operation="review")
+    review.overlay_file("ree-scripts/build_experiment_environment.sh").parent.mkdir(parents=True)
+    review.overlay_file("ree-scripts/build_experiment_environment.sh").write_text("evidence")
+    review_head = as_attempt(review, "review_build_experiment_environment")
     with materialized_ree_download(layout) as download:
         payload = download.read_bytes()
         with zipfile.ZipFile(download) as archive:
@@ -80,17 +80,23 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
     destination = ReeLayout(root=tmp_path / "destination")
     destination_initial = initialize_ree(destination, name="blank").snapshot_id
     destination.upload_staging_file("download").write_bytes(payload)
-    result = handle_load_ree_bundle(
-        LoadReeBundleArgs(upload_token="download", archive_name="download.zip"),  # noqa: S106 — local staging identifier
+    result = run_command(
+        LoadReeBundleCommand(
+            args=LoadReeBundleArgs(upload_token="download", archive_name="download.zip")  # noqa: S106 — staging identifier
+        ),
         log=lambda *args: None,
-        is_canceled=lambda: False,
         layout=destination,
     )
     assert result.status == "succeeded"
     assert json.loads(destination.manifest.read_bytes())["subject"]["definition"]["name"] == "after"
     with open_history(destination) as history:
         assert history.initial_snapshot() == destination_initial
-    assert read_operation_history(destination).operations[0].command["args"]["patch"] == {"name": "after"}
+    [patched] = [
+        item
+        for item in read_operation_history(destination).operations
+        if item.command["operation"] == "patch_ree_definition"
+    ]
+    assert patched.command["args"]["patch"] == {"name": "after"}
     with materialized_ree_download(destination) as reexport, zipfile.ZipFile(reexport) as archive:
         assert archive.read("ree/reviews/review-1/overlay/ree-scripts/build_experiment_environment.sh") == b"evidence"
 
@@ -100,6 +106,7 @@ def test_export_holds_lock_only_while_staging(tmp_path):
 
     layout = ReeLayout(root=tmp_path / "ree")
     initialize_ree(layout, name="test")
+    _patch(layout, "bundled")
     with materialized_ree_download(layout) as download:
         assert download.exists()
         with (layout.git_dir / "repo2ree.lock").open("a") as lock:
