@@ -108,13 +108,31 @@ def passed(dossier: Path) -> bool:
     )
 
 
+def current_commits(dossier: Path) -> bool:
+    """Whether the REE histories the dossier keeps are in the current format: each head commit names its own tree."""
+    heads = [git_dir for git_dir in dossier.glob("rees/*/ree/.git") if git_dir.is_dir()]
+    for git_dir in heads:
+        body = subprocess.run(
+            ["git", "--git-dir", str(git_dir), "log", "-1", "--format=%b", "refs/heads/ree-history"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+        try:
+            if "tree" not in json.loads(body):
+                return False
+        except ValueError:
+            return False
+    return bool(heads)
+
+
 def dossiers() -> list[Path]:
-    """Dossiers of the gated tiers' passed tests holding journals and an REE's history."""
+    """Dossiers of the gated tiers' passed tests holding journals and an REE's history, in the current format."""
     found: list[Path] = []
     for path in sorted(path for tier in GATED_TIERS for path in E2E_RUNS.glob(f"{tier}/tests/*/dossier")):
         try:
             dossier = read_dossier(path)
-            if dossier.recorded("journal") and dossier.recorded("git") and passed(path):
+            if dossier.recorded("journal") and dossier.recorded("git") and passed(path) and current_commits(path):
                 found.append(path)
         except (OSError, ValueError):
             continue  # Not a dossier in the current format.
