@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 PROCESS: Final = "environment"
 OWNER: Final = "environment"
 
-type Part = Literal["overlay", "workspace", "records"]
+type Part = Literal["overlay", "workspace", "records", "history"]
 
 
 class _Record(BaseModel):
@@ -81,7 +81,11 @@ class _BundleMessage(_Record):
 
 def part_of(path: str) -> Part:
     """Where in an REE a file is, by its path from the REE."""
-    top = PurePosixPath(path).parts[0]
+    parts = PurePosixPath(path).parts
+    # A review's file is named from the REE, under reviews/<id>/.
+    top = parts[2] if parts[0] == "reviews" and len(parts) > 2 else parts[0]
+    if top == ".git":
+        return "history"
     return "overlay" if top == "overlay" else "workspace" if top == "workspace" else "records"
 
 

@@ -235,15 +235,15 @@ class GitHistory:
             self.git("update-index", "-z", "--index-info", data=bytes(info_lines), index=index)
             return self.git("write-tree", *(() if store else ("--missing-ok",)), index=index).stdout.decode().strip()
 
-    def drifted_paths(self) -> list[tuple[str, str]]:
-        """Each selected file not as the history's head holds it, by its path from the REE or review, with how
-        (``A``dded, ``M``odified, ``D``eleted, a ``T``ype change): what changed beside ree, found by git. Nothing is
-        written."""
-        head = self.head_snapshot()
-        if head is None:
+    def drifted_paths(self, base: str | None = None) -> list[tuple[str, str]]:
+        """Each selected file not as ``base``, else the history's head, holds it, by its path from the REE or review,
+        with how (``A``dded, ``M``odified, ``D``eleted, a ``T``ype change): what changed beside ree, found by git.
+        Nothing is written."""
+        base = base or self.head_snapshot()
+        if base is None:
             return []
         tree = self._tree(store=False)
-        listed = self.git("diff-tree", "-r", "-z", "--no-renames", "--name-status", f"{head}^{{tree}}", tree)
+        listed = self.git("diff-tree", "-r", "-z", "--no-renames", "--name-status", f"{base}^{{tree}}", tree)
         fields = listed.stdout.decode().split("\0")
         return [(fields[index + 1], fields[index][0]) for index in range(0, len(fields) - 1, 2)]
 

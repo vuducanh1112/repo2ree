@@ -197,8 +197,12 @@ def _drift_in(scope: ReeLayout, ree: Path) -> list[DriftedFile]:
         return []
     within = scope.root.relative_to(ree).as_posix()
     prefix = "" if within == "." else f"{within}/"
-    drifted = [DriftedFile(path=f"{prefix}{relative}", part=_part(relative)) for relative, _ in history.drifted_paths()]
     stamps = read_stamps(scope)
+    moved = _moved_refs(scope, history, stamps)
+    # Files are compared with where ree left the history: a moved head may hold an edit committed beside ree.
+    base = _left(scope, HISTORY_REF) if HISTORY_REF in moved else None
+    paths = history.drifted_paths(base)
+    drifted = [DriftedFile(path=f"{prefix}{relative}", part=_part(relative)) for relative, _ in paths]
     if stamps is not None:
         current = _workspace_files(scope)
         for relative in sorted(set(stamps.files) | set(current)):
@@ -206,7 +210,6 @@ def _drift_in(scope: ReeLayout, ree: Path) -> list[DriftedFile]:
             if stamp is not None and info is not None and _unchanged(scope.root / relative, stamp, info):
                 continue
             drifted.append(DriftedFile(path=f"{prefix}{relative}", part="workspace"))
-    moved = _moved_refs(scope, history, stamps)
     return [*drifted, *(DriftedFile(path=f"{prefix}{HISTORY}/{ref}", part="history") for ref in moved)]
 
 
