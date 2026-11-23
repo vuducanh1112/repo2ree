@@ -1,10 +1,3 @@
-"""Each commit of a document judged alone: its receipts' standings, and the digests it records.
-
-The checker reads the committed document and the files the commit holds, and computes every digest
-itself, in the encodings the format's fixtures pin (``contracts/ree/fixtures``). A receipt's standing
-is what its basis gives; what core recorded of it is compared with that, never taken from it.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -36,14 +29,8 @@ from repo2ree_assurance_checker.spec import (
 )
 from repo2ree_assurance_checker.spec.documents import SIGNATURE_SUFFIX
 
-# How a commit's cause reads as a receipt's: the first commit is the receipts' baseline.
 _RECEIPT_CAUSE = {"created": "baseline", "operation": "operation", "external": "external"}
 _EXACT = 2**53
-
-
-# ================================================
-# The checker's own digests
-# ================================================
 
 
 def _fold(entries: list[tuple[str, str]]) -> str:
@@ -58,7 +45,6 @@ def _by_parts(path: str) -> tuple[str, ...]:
 
 
 def paths_digest(files: Mapping[str, CommittedFile], root: str, paths: list[str]) -> str | None:
-    """The declared paths under ``root``, each a file or every file below it; None when none is declared."""
     if not paths:
         return None
     entries: list[tuple[str, str]] = []
@@ -73,8 +59,6 @@ def paths_digest(files: Mapping[str, CommittedFile], root: str, paths: list[str]
 
 
 def canonical(value: JsonValue) -> str:
-    """The canonical encoding: members sorted by their UTF-16 code units, no insignificant space, no
-    floating-point numbers."""
     if value is None:
         return "null"
     if value is True:
@@ -99,11 +83,6 @@ def canonical_digest(domain: str, name: str, value: JsonValue) -> str:
     return f"sha256:{hashlib.sha256(canonical({'domain': domain, name: value}).encode('utf-8')).hexdigest()}"
 
 
-# ================================================
-# Receipts' standings
-# ================================================
-
-
 def _agrees(pair: BasisPair, receipt: JsonValue, document: Mapping[str, JsonValue], item: str | None) -> bool:
     return within(receipt, pair.recorded) == value(document, pair.now, item)
 
@@ -124,7 +103,6 @@ def _standing(
 
 
 def standings(aggregate: AggregateSpec, snapshot: Snapshot) -> dict[str, str]:
-    """Each receipt's standing in one commit, by its step: ``<receipt>`` or ``<receipt>:<item>``."""
     document = snapshot.document or {}
     found: dict[str, str] = {}
     for name, receipt in aggregate.receipts.items():
@@ -150,7 +128,6 @@ def _ordered(evidence: Evidence, snapshots: list[Snapshot]) -> list[Snapshot]:
 
 
 def _witnessed(spec: Spec) -> dict[str, AggregateSpec]:
-    """The aggregates whose receipts all stand on a basis, by the entity whose document they are."""
     return {
         name: aggregate
         for name, aggregate in spec.aggregates.items()
@@ -159,7 +136,6 @@ def _witnessed(spec: Spec) -> dict[str, AggregateSpec]:
 
 
 def receipt_events(spec: Spec, evidence: Evidence) -> Iterator[Event]:
-    """Each receipt's standing as it changes, commit by commit, as its basis gives it."""
     aggregates = _witnessed(spec)
     by_instance: dict[tuple[str, str, str], list[Snapshot]] = defaultdict(list)
     for snapshot in evidence.snapshots:
@@ -200,16 +176,10 @@ def receipt_events(spec: Spec, evidence: Evidence) -> Iterator[Event]:
 
 
 def witness(spec: Spec, evidence: Evidence) -> Evidence:
-    """The evidence with its receipts' standings among its events, as the checker reads them; once."""
     if evidence.witnessed:
         return evidence
     found = tuple(receipt_events(spec, evidence))
     return evidence.model_copy(update={"events": (*evidence.events, *found), "witnessed": True})
-
-
-# ================================================
-# Document rules
-# ================================================
 
 
 def _items_of(document: Mapping[str, JsonValue], path: str) -> list[str | None]:
@@ -321,7 +291,6 @@ def _inventory(rule: DocumentRule, snapshot: Snapshot) -> Iterator[Judged]:
 
 
 def _signatures(rule: DocumentRule, snapshot: Snapshot, *, review: bool = False) -> Iterator[Judged]:
-    """Each signature the commit carries; a review's statement carries the review's record as its predicate."""
     document = snapshot.document or {}
     directory = rule.files or ""
     signed = value(document, rule.subject or "", whole=review)
@@ -404,8 +373,6 @@ def judged(rule: DocumentRule, aggregate: AggregateSpec, snapshot: Snapshot) -> 
 
 
 def check_documents(spec: Spec, evidence: Evidence) -> list[RuleResult]:
-    """Every document rule over every commit of its document: an aggregate's, or a review's beside the REE it
-    reviews."""
     results: list[RuleResult] = []
     for name, rules in spec.documents.items():
         aggregate = spec.aggregates[rules.aggregate]

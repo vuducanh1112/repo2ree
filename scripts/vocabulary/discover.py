@@ -1,13 +1,3 @@
-"""Finding every closed set of names that shares a name with the catalogue, wherever it is written.
-
-A contract's sets are its schemas' string enums and their objects' property names, each at a JSON
-pointer (``openapi:/components/schemas/ReeAudit/properties``). A source's are its literals: Python
-``Literal[...]`` types and tuples, lists, sets and dict keys of strings (``core/.../steps.py::_COMPLETE``),
-and the GUI's arrays, string unions, object keys and values and interface properties, read over the TypeScript
-AST by ``gui/scripts/vocabularySites.mjs`` and named by the declaration they sit in. Tests are
-not searched: what they spell is what they assert, and the code they test is searched.
-"""
-
 from __future__ import annotations
 
 import ast
@@ -29,8 +19,6 @@ def escape(key: str) -> str:
 
 
 def contract_sets(contract: Contract, document: Any) -> Iterator[Located]:
-    """Every string enum and every object's property names in a JSON schema, at its pointer."""
-
     def walk(value: Any, pointer: str) -> Iterator[Located]:
         if isinstance(value, dict):
             enum = value.get("enum")
@@ -55,11 +43,6 @@ def load_contract(contract: Contract) -> Any:
 def tracked(*patterns: str) -> list[str]:
     listed = subprocess.run(["git", "ls-files", *patterns], cwd=ROOT, capture_output=True, text=True, check=True)
     return listed.stdout.split()
-
-
-# ================================================
-# Python
-# ================================================
 
 
 def _strings(nodes: list[ast.expr]) -> list[str] | None:
@@ -92,7 +75,6 @@ def _python_sets(tree: ast.Module) -> Iterator[tuple[ast.AST, list[str]]]:
 
 
 def _symbol(node: ast.AST, parents: dict[int, ast.AST]) -> str:
-    """The node's place as a reader names it: its enclosing definitions and the name it is bound to."""
     parts: list[str] = []
     current: ast.AST | None = node
     while current is not None:
@@ -123,18 +105,12 @@ def python_sites(path: str, source: str, roots: frozenset[str]) -> dict[str, Loc
     return sites
 
 
-# ================================================
-# The GUI
-# ================================================
-
 _NAME = r"[a-z][a-z0-9_]*"
 SITES_SCRIPT = "gui/scripts/vocabularySites.mjs"
 
 
 @dataclass(frozen=True)
 class TypescriptSet:
-    """A set of names the GUI's sites script found: its file, the declaration it sits in, and its offset there."""
-
     path: str
     declaration: str
     start: int
@@ -142,7 +118,6 @@ class TypescriptSet:
 
 
 def typescript_sets(paths: list[str], root: Path = ROOT) -> list[TypescriptSet]:
-    """Every set of names in the given files, read over the TypeScript AST by the GUI's sites script."""
     if not paths:
         return []
     listed = subprocess.run(
@@ -155,7 +130,6 @@ def typescript_sets(paths: list[str], root: Path = ROOT) -> list[TypescriptSet]:
 
 
 def typescript_sites(sets: list[TypescriptSet], roots: frozenset[str]) -> dict[str, Located]:
-    """The sets sharing a name with a root, each named after its declaration, in the order they appear."""
     sites: dict[str, Located] = {}
     for found in sorted(sets, key=lambda found: (found.path, found.start, found.names)):
         if len(found.names) < 2 or not set(found.names) & roots:
@@ -168,7 +142,6 @@ def typescript_sites(sets: list[TypescriptSet], roots: frozenset[str]) -> dict[s
 
 
 def biome_sites(path: str, source: str, roots: frozenset[str]) -> dict[str, Located]:
-    """Biome's naming conventions that name REE keys outright, by their place in its config."""
     sites: dict[str, Located] = {}
     for index, match in enumerate(re.finditer(r'"match":\s*"([^"]+)"', source)):
         values = [part for part in match.group(1).split("|") if re.fullmatch(_NAME, part)]
@@ -179,7 +152,6 @@ def biome_sites(path: str, source: str, roots: frozenset[str]) -> dict[str, Loca
 
 
 def source_sites(roots: frozenset[str]) -> dict[str, Located]:
-    """Every set of names in tracked source, outside tests and generated files, that shares one with a root."""
     sites: dict[str, Located] = {}
     for path in tracked("*.py"):
         if "/src/" in path and "/tests/" not in path:

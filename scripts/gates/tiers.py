@@ -1,22 +1,4 @@
 #!/usr/bin/env python3
-"""Tier receipts: a gated tier's run, certified from its own record, and the gates composed of them.
-
-A tier run leaves evidence (``run.json``, written by the testbed); only this module turns it
-into a receipt, judging the record as raw JSON so no testbed change can bend what it accepts.
-``policy.toml`` says how each tier is judged and what each gate requires.
-
-- ``certify --tier T [--run DIR | --invocation ID] [--if-eligible]`` writes
-  ``.receipts/tiers/<T>/<tree>-<os>-<arch>.json`` when the run qualifies: built from the clean
-  tree still checked out, the whole tier, every test passed (skips only where the policy
-  allows), and for a judged tier every test's behaviour passed or was
-  excused, by the checker in this tree. ``--if-eligible`` reports a run that does not qualify
-  and succeeds anyway, for recipes a developer runs.
-- ``missing GATE --platforms P`` prints, as ``<tier> <recipe>``, each tier the gate needs
-  that this machine could prove and has no current receipt for.
-- ``require GATE --platforms P`` fails unless every tier receipt the gate needs is current.
-- ``plan GATE --platforms P`` shows what is proven for HEAD and how to prove the rest.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -49,7 +31,7 @@ class Tier:
 class GatePolicy:
     name: str
     gates: tuple[str, ...]
-    tiers: dict[str, str]  # tier -> "any", "here", or "each"
+    tiers: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -80,7 +62,6 @@ def load_policy(path: Path = POLICY) -> Policy:
 
 
 def platform() -> str:
-    """This machine's Docker platform, as a run record names it."""
     result = subprocess.run(
         ["docker", "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}"],
         check=False,
@@ -90,13 +71,7 @@ def platform() -> str:
     return result.stdout.strip() if result.returncode == 0 else ""
 
 
-# ================================================
-# Certifying one run
-# ================================================
-
-
 def run_problems(root: Path, record: dict[str, Any], tier: Tier, tree: str) -> list[str]:
-    """Why the run in ``root`` does not certify ``tier`` on ``tree``; empty when it does."""
     problems = []
     if record.get("tier") != tier.name:
         problems.append(f"it is a {record.get('tier')!r} run, not {tier.name}")
@@ -123,7 +98,6 @@ def run_problems(root: Path, record: dict[str, Any], tier: Tier, tree: str) -> l
 
 
 def runs_of(tier: str, invocation: str | None, run: Path | None) -> list[Path]:
-    """The run to certify: the one given, or this tier's runs that name the invocation, newest first."""
     if run is not None:
         return [run.resolve()]
     if not invocation:
@@ -135,7 +109,6 @@ def runs_of(tier: str, invocation: str | None, run: Path | None) -> list[Path]:
 
 
 def certify(tier: Tier, root: Path) -> TierReceipt:
-    """The receipt for the run in ``root``; ReceiptError naming every reason it does not qualify."""
     revision, tree, problems = assurance_gate.clean_head()
     record = json.loads((root / "run.json").read_text())
     problems += run_problems(root, record, tier, tree)
@@ -158,15 +131,8 @@ def certify(tier: Tier, root: Path) -> TierReceipt:
     return receipt
 
 
-# ================================================
-# What a gate needs
-# ================================================
-
-
 @dataclass(frozen=True)
 class Need:
-    """One tier receipt a gate needs: the tier, and the platform (or "any")."""
-
     tier: str
     platform: str
 
@@ -184,7 +150,6 @@ def needs(gate: GatePolicy, platforms: list[str]) -> list[Need]:
 
 
 def current(need: Need, tree: str) -> TierReceipt | None:
-    """A receipt that meets ``need`` on ``tree``, if one exists."""
     directory = ROOT / receipts.DIRECTORY / "tiers" / need.tier
     for path in sorted(directory.glob(f"{tree}-*.json")):
         try:
@@ -197,7 +162,6 @@ def current(need: Need, tree: str) -> TierReceipt | None:
 
 
 def latest(need: Need) -> TierReceipt | None:
-    """The newest receipt for the tier on any tree: what a stale need last had."""
     directory = ROOT / receipts.DIRECTORY / "tiers" / need.tier
     found = []
     for path in directory.glob("*.json"):
@@ -222,7 +186,6 @@ def gate_policy(name: str) -> GatePolicy:
 
 
 def gate_holds(name: str, tree: str) -> bool:
-    """Whether another gate's own proof stands for ``tree``: its receipt, or (zones) its check."""
     if name == "commit-gate":
         receipt = receipts.read(receipts.CommitGateReceipt, receipts.path(ROOT, "commit-gate"))
         return receipt is not None and receipt.tree == tree
@@ -235,7 +198,6 @@ def gate_holds(name: str, tree: str) -> bool:
 
 
 def plan(gate: GatePolicy, platforms: list[str]) -> list[str]:
-    """The gate's needs for HEAD, each with what proves it or the command that would."""
     policy = load_policy()
     _, tree, _ = assurance_gate.clean_head()
     here = platform()
@@ -261,7 +223,7 @@ def plan(gate: GatePolicy, platforms: list[str]) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     certifying = commands.add_parser("certify")
     certifying.add_argument("--tier", required=True)

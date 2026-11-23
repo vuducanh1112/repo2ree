@@ -1,5 +1,3 @@
-"""The verification artifact carries everything a view needs, so views never verify again."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -44,7 +42,7 @@ def test_the_artifact_reads_back_as_the_model_it_verified() -> None:
 def test_the_check_command_writes_the_artifact_beside_its_reports(tmp_path: Path) -> None:
     journals = tmp_path / "journal"
     journals.mkdir()
-    assert main(["check", "--journal", str(journals), "-o", str(tmp_path / "out")]) == 2  # Nothing triggered.
+    assert main(["check", "--journal", str(journals), "-o", str(tmp_path / "out")]) == 2
     written = read_verification(tmp_path / "out" / ARTIFACT)
     assert written.result.verdict == "inconclusive"
     assert written.dossier is None

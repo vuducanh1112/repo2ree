@@ -1,11 +1,3 @@
-"""Whether journal records keep the published contract, judged record by record.
-
-This is the checker's own reading of ``contracts/behaviour/events.schema.json``: the
-schema is generated from the same vocabulary, and a test holds the two to the same
-answer on every record. ``validate-journal`` applies it to journal files, so an owner
-in any language can test what it writes before a gated run judges it.
-"""
-
 from __future__ import annotations
 
 import json
@@ -43,7 +35,6 @@ def header_problems(spec: Spec, record: dict[str, Any]) -> list[str]:
 
 
 def record_problems(spec: Spec, record: object) -> list[str]:
-    """Why one journal line breaks the contract; empty when it keeps it."""
     if not isinstance(record, dict):
         return ["not an object"]
     problems: list[str] = []
@@ -70,7 +61,7 @@ def record_problems(spec: Spec, record: object) -> list[str]:
         return problems + _transition_problems(spec, record, facts)
     if subject in spec.boundaries:
         return problems + _message_problems(spec, record, facts)
-    return problems  # The owner's own subject: never judged.
+    return problems
 
 
 def _transition_problems(spec: Spec, record: dict[str, Any], facts: dict[str, Any]) -> list[str]:
@@ -112,7 +103,6 @@ def _message_problems(spec: Spec, record: dict[str, Any], facts: dict[str, Any])
 
 
 def journal_problems(spec: Spec, path: Path) -> list[str]:
-    """Everything in one journal file that breaks the contract: its sequence, header, and records."""
     try:
         source, _ = read_journal(path)
     except ValueError as exc:
@@ -124,7 +114,7 @@ def journal_problems(spec: Spec, path: Path) -> list[str]:
         try:
             record = json.loads(line)
         except ValueError:
-            continue  # read_journal already reported it.
+            continue
         seq = record.get("seq") if isinstance(record, dict) else None
         where = f"seq {seq}" if isinstance(seq, int) else f"line {number}"
         problems += [f"{where}: {problem}" for problem in record_problems(spec, record)]

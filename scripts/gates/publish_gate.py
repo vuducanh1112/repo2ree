@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""Write and verify the publish gate's receipt: the revision, tree, and local image set it passed on.
-
-Each published platform's images are built and gated on a machine of that platform, so the
-receipt names its platform and lives at ``.receipts/publish-gate-<os>-<arch>.json``
-(``path DIRECTORY`` prints it for this machine's Docker daemon).
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -28,12 +21,10 @@ def image_id(image: str) -> str:
 
 
 def platform() -> str:
-    """The os/arch of the Docker daemon the local images live in."""
     return capture("docker", "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}")
 
 
 def receipt_path(directory: Path, of_platform: str) -> Path:
-    """Where the publish gate's receipt for ``of_platform`` lives under ``directory``."""
     return directory / f"publish-gate-{of_platform.replace('/', '-')}.json"
 
 
@@ -76,7 +67,7 @@ def verify_receipt(path: Path, revision: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("write", "verify", "path"))
     parser.add_argument("receipt", type=Path, help="the receipt; for path, the receipts directory")
     parser.add_argument("revision", nargs="?", default="")

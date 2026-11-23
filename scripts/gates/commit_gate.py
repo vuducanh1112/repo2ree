@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Write and verify the commit gate's receipt: the tree its checks and tests passed on.
-
-``write`` runs after the gate's checks and records the working tree as it would be staged;
-``verify`` (the pre-commit hook) requires the tree being committed to be exactly that tree.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -55,7 +49,7 @@ def verify() -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("write", "verify"))
     args = parser.parse_args()
     try:

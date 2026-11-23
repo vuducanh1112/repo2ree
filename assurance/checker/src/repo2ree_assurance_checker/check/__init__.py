@@ -1,26 +1,3 @@
-"""Check evidence against the specification; the same inputs always give the same verdicts.
-
-Absence is a violation only where a complete source covering the subject could
-have recorded it, and order is asserted only where the evidence establishes it.
-Everything else that cannot be decided is inconclusive, never a pass.
-
-The checker judges only what the vocabulary declares. Owners may record more (other
-subjects, other facts); that is reported as extras and never changes a verdict. A
-declared fact of the wrong type is violated; a required one that is missing leaves the
-record unable to prove anything, so it is inconclusive.
-
-Order comes from three places only: positions within one source, epochs and
-positions within one process's journals, and citations (``cites`` in a boundary
-spec): a record that names another was written after it. Wall-clock time is
-never used, and nothing is assumed about where the receiver did its work.
-
-The package is laid out by concern: ``results`` (what checking finds), ``replay`` (records
-through machines and exchanges), ``order`` (what the evidence can order and could have
-recorded), ``patterns`` (the invariants), ``reconciliation`` (stores against journals),
-``aggregates`` (every part of a committed document, one rule per aggregate), and ``documents`` (each commit of
-a document alone: its receipts' standings, which the checker witnesses, and the digests it records).
-"""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -53,7 +30,6 @@ def check_evidence(spec: Spec, evidence: Evidence) -> RuleResult:
         findings.extend(
             Finding(verdict="inconclusive", subject=source.id, reason=problem) for problem in source.problems
         )
-        # A process the vocabulary places nothing in is the owner's own, like any undeclared subject.
         expected_hosts = spec.hosted_by(source.process)
         if source.kind == "journal" and expected_hosts and source.hosts != expected_hosts:
             findings.append(
@@ -75,7 +51,6 @@ def check_evidence(spec: Spec, evidence: Evidence) -> RuleResult:
 
 
 def extras(spec: Spec, evidence: Evidence) -> tuple[Extra, ...]:
-    """What the evidence holds beyond the vocabulary, for the report; never part of a verdict."""
     found: dict[tuple[str, str | None], list[Event]] = defaultdict(list)
     for event in evidence.events:
         if event.kind == "observed":
@@ -106,7 +81,6 @@ def _by_subject(events: tuple[Event, ...]) -> dict[str, list[Event]]:
 
 
 def replay(spec: Spec, evidence: Evidence) -> tuple[Model, list[RuleResult], Coverage]:
-    """Replay every entity and boundary; the model the invariants and views are evaluated on."""
     by_subject = _by_subject(evidence.events)
     rules: list[RuleResult] = []
     instances: dict[str, dict[str, Instance]] = {}

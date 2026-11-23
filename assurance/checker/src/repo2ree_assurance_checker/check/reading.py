@@ -1,5 +1,3 @@
-"""Reading a committed document: what a path names in it, item by item, and what a rule held a commit to."""
-
 from __future__ import annotations
 
 import re
@@ -11,13 +9,11 @@ from pydantic import JsonValue
 from repo2ree_assurance_checker.spec import ITEM, KEYED
 
 TOKEN = re.compile(r"[a-z_]+|\[\*\]|\[\$name\]")
-# Paths that start here are read from the document itself; every other one from its subject.
 _DOCUMENT_ROOTS = frozenset({"seal", "subject"})
 _ITEM_NAMES = ("name", "experiment_name")
 
 
 def _name(item: JsonValue) -> str | None:
-    """An item's name: an REE's items are named ``name``, a review's ``experiment_name``."""
     if not isinstance(item, dict):
         return None
     for key in _ITEM_NAMES:
@@ -27,7 +23,6 @@ def _name(item: JsonValue) -> str | None:
 
 
 def items(value: JsonValue) -> list[tuple[str, JsonValue]]:
-    """A list's items by their names, or an object's members by their keys."""
     if isinstance(value, list):
         return [(name, item) for item in value if (name := _name(item)) is not None]
     if isinstance(value, dict):
@@ -38,8 +33,6 @@ def items(value: JsonValue) -> list[tuple[str, JsonValue]]:
 def values(
     document: Mapping[str, JsonValue], path: str, item: str | None = None, *, whole: bool = False
 ) -> list[tuple[str | None, JsonValue]]:
-    """What a path names in a document, each with the item it names; ``[$name]`` is ``item``. An REE's paths are
-    read from its subject but for ``seal`` and ``subject``; a ``whole`` document's, a review's, from its top."""
     tokens = TOKEN.findall(path)
     rooted = whole or (tokens and tokens[0] in _DOCUMENT_ROOTS)
     base: JsonValue = dict(document) if rooted else document.get("subject")
@@ -63,7 +56,6 @@ def value(document: Mapping[str, JsonValue], path: str, item: str | None = None,
 
 
 def held(value: JsonValue) -> bool:
-    """Whether a part is set: present, and not empty, an object only when something in it is."""
     if isinstance(value, dict):
         return any(held(inner) for inner in value.values())
     return value not in (None, "", [])
@@ -77,8 +69,6 @@ def within(value: JsonValue, path: str) -> JsonValue:
 
 @dataclass(frozen=True)
 class Judged:
-    """One thing a rule held one commit to: ``None`` where the commit cannot evidence it."""
-
     subject: str
     held: bool | None
     reason: str = ""

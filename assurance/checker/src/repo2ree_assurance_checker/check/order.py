@@ -1,5 +1,3 @@
-"""What the evidence can order and could have recorded: positions, epochs, citations, and cuts."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -23,8 +21,6 @@ from repo2ree_assurance_checker.spec import (
 
 
 class Model:
-    """Replayed instances and exchanges, with what the evidence can order and could have recorded."""
-
     def __init__(
         self,
         spec: Spec,
@@ -37,10 +33,8 @@ class Model:
         self.instances = instances
         self.exchanges = exchanges
         self._sources = {source.id: source for source in evidence.sources}
-        # Citations, as evidence of order: events recorded after an event (they name it), and before it.
         self._later: dict[tuple[str, int], list[Event]] = defaultdict(list)
         self._earlier: dict[tuple[str, int], list[Event]] = defaultdict(list)
-        # Citations that name a record other than the one the evidence holds, per boundary.
         self.miscited: dict[str, list[Finding]] = defaultdict(list)
         self._by_source: dict[str, list[tuple[int, list[Event]]]] | None = None
         for boundary in spec.boundaries.values():
@@ -54,7 +48,7 @@ class Model:
         for key, exchange in self.exchanges.get(boundary.name, {}).items():
             instance = self.instances.get(record.entity, {}).get(key)
             if instance is None:
-                continue  # Its absence is what the invariants requiring it report.
+                continue
             reached = [item for item in instance.reached if item.state == record.reached]
             messages = exchange.carrying(citation.message)
             if isinstance(citation.by, CitingMessage):
@@ -68,8 +62,6 @@ class Model:
                     self._cite(boundary.name, item.event, item.facts.get(record.fact), by_ref)
 
     def _link_across_keys(self, boundary: BoundarySpec, citation: Citation) -> None:
-        """An entity record that names a message of another exchange than its own key's: one started by that
-        request though it has a key of its own, such as an attempt run before the requested one."""
         record = citation.record
         messages = {
             message.ref: (key, message)
@@ -88,7 +80,7 @@ class Model:
 
     def _cite(self, boundary: str, citing: Event, named: JsonValue, candidates: dict[str, Event]) -> None:
         if not isinstance(named, str) or not named:
-            return  # It names nothing, so the order stays unknown.
+            return
         cited = candidates.get(named)
         if cited is None:
             if candidates:
@@ -100,12 +92,6 @@ class Model:
         self._earlier[(citing.source, citing.position)].append(cited)
 
     def coverage(self, owner: str, kind: str, partition: str | None, before: Event | None = None) -> tuple[bool, str]:
-        """Whether a missing record is certain: (complete coverage, explanation).
-
-        ``before`` is the moment the record must precede. A snapshot taken while
-        the system ran (a source with a cut) can only vouch for what happened
-        before it was taken, so without such a moment it cannot vouch at all.
-        """
         covering = [
             source
             for source in self.evidence.sources
@@ -130,12 +116,6 @@ class Model:
         return True, ""
 
     def placed(self, event: Event, cut: Cut) -> Literal["before", "while", "after"] | None:
-        """Where a journal event falls against the cut a snapshot was taken at; None when they share no journal.
-
-        A cut names every journal its owner had when the snapshot was taken, earlier epochs
-        included. The event's own journal decides by position; otherwise its epoch decides
-        against the latest epoch the cut names, the one running when the snapshot was taken.
-        """
         origin = self._sources.get(event.source)
         if origin is None or origin.kind != "journal":
             return None
@@ -164,15 +144,12 @@ class Model:
         return None
 
     def _cited(self, a: Event, b: Event) -> bool:
-        """Whether a citation shows ``a`` was recorded before ``b``: a record at or after ``a`` in its source is
-        named by one at or before ``b`` in its own."""
         for position, citing in self._cited_in(a.source):
             if position >= a.position and any(later is b or self._direct(later, b) for later in citing):
                 return True
         return False
 
     def _cited_in(self, source: str) -> list[tuple[int, list[Event]]]:
-        """The records of ``source`` that others name, by position, with those that name them."""
         if self._by_source is None:
             grouped: dict[str, list[tuple[int, list[Event]]]] = defaultdict(list)
             for (cited_source, position), citing in self._later.items():
@@ -181,7 +158,6 @@ class Model:
         return self._by_source.get(source, [])
 
     def precedes(self, a: Event, b: Event) -> bool | None:
-        """True if ``a`` happened before ``b``, False if after, None if the evidence cannot say."""
         if a is b:
             return False
         if (direct := self._direct(a, b)) is not None:
@@ -193,11 +169,6 @@ class Model:
         return None
 
     def state_at(self, instance: Instance, moment: Event) -> tuple[bool, str | None]:
-        """(known, state) of an instance just before ``moment``.
-
-        An instance that ends with its owner and was left open by a journal that ended before
-        ``moment``'s began is in no state: the process it lived in is gone.
-        """
         state: str | None = None
         last: Event | None = None
         for item in instance.reached:
@@ -214,7 +185,6 @@ class Model:
         return True, state
 
     def _later_epoch(self, earlier: Event, later: Event) -> bool:
-        """Whether ``later`` is in a later journal of the process that journaled ``earlier``."""
         first, second = self._sources.get(earlier.source), self._sources.get(later.source)
         if first is None or second is None or not first.kind == second.kind == "journal":
             return False

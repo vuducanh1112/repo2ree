@@ -1,8 +1,3 @@
-"""Aggregate machines against the evidence: every move of every part, counted, judged, and replayed per instance.
-
-A move no edge allows violates the aggregate's rule; which edges were taken is reported, not required.
-"""
-
 from __future__ import annotations
 
 import re
@@ -24,17 +19,14 @@ from repo2ree_assurance_checker.check.results import (
 from repo2ree_assurance_checker.evidence import Evidence, FieldChange, FileChange
 from repo2ree_assurance_checker.spec import CREATED, KEYED, WILDCARD, AggregateSpec, Spec, SubMachine, place
 
-# Where a move was made between operations rather than by one.
 EXTERNAL = "(between operations)"
 
 
 @dataclass(frozen=True)
 class Move:
-    """One part of one aggregate instance moving along one edge, by one operation."""
-
     machine: SubMachine
     partition: str
-    item: str  # The item of a keyed machine; empty otherwise.
+    item: str
     source: str
     target: str
     operation: str
@@ -59,7 +51,6 @@ def check_aggregates(spec: Spec, evidence: Evidence) -> tuple[AggregateResult, .
 
 
 def _own(aggregate: AggregateSpec, file: FileChange) -> str | None:
-    """A file's path in the aggregate's document's own tree; None for a file of another's history."""
     return file.path.removeprefix(file.scope) if file.subject == aggregate.name else None
 
 
@@ -103,7 +94,6 @@ def check_aggregate(aggregate: AggregateSpec, evidence: Evidence) -> AggregateRe
 def overlay_findings(
     aggregate: AggregateSpec, files: Sequence[FileChange], changes: Sequence[FieldChange]
 ) -> Iterator[Finding]:
-    """An overlay file some field claims, which changes only with that field while the field is set."""
     overlay = aggregate.overlay or ""
     fields_at: dict[tuple[str, int], list[FieldChange]] = defaultdict(list)
     for change in changes:
@@ -136,8 +126,6 @@ def overlay_findings(
 
 
 def signature_findings(aggregate: AggregateSpec, evidence: Evidence) -> Iterator[Finding]:
-    """A signature is added only by an operation that signs, or the restore, to a sealed document, and never
-    changed or removed; a commit that signs changes nothing beside the signatures it adds."""
     directory = aggregate.signatures
     if directory is None:
         return
@@ -167,7 +155,6 @@ def signature_findings(aggregate: AggregateSpec, evidence: Evidence) -> Iterator
 
 
 def tree_findings(aggregate: AggregateSpec, files: Sequence[FileChange]) -> Iterator[Finding]:
-    """A committed file is an entry of the document's tree, which captures it, stored as the tree stores it."""
     if aggregate.layout is None:
         return
     for file in files:
@@ -184,7 +171,6 @@ def tree_findings(aggregate: AggregateSpec, files: Sequence[FileChange]) -> Iter
 
 
 def _item(field: str, slug: str, held: Mapping[str, str]) -> str | None:
-    """The declared item of a keyed field whose name has ``slug``; None while no such item is declared."""
     head = field.removesuffix(KEYED)
     for path in held:
         if path.startswith(f"{head}[") and path.endswith("]") and experiment_slug(path[len(head) + 1 : -1]) == slug:
@@ -193,7 +179,6 @@ def _item(field: str, slug: str, held: Mapping[str, str]) -> str | None:
 
 
 def experiment_slug(name: str) -> str:
-    """An item's name as its files spell it (contracts/ree/fixtures/experiment-slugs.json)."""
     return "-".join(name.split()) or "experiment"
 
 
@@ -202,7 +187,6 @@ def _finding(subject: str, reason: str, file: FileChange) -> Finding:
 
 
 def aggregate_rule(result: AggregateResult) -> RuleResult:
-    """The aggregate as a rule: triggered by every move of every part, violated by each one no edge allows."""
     return RuleResult(
         rule=f"aggregate:{result.aggregate}",
         kind="aggregate",
@@ -216,7 +200,6 @@ def aggregate_rule(result: AggregateResult) -> RuleResult:
 
 
 def histories(spec: Spec, evidence: Evidence) -> tuple[AggregateHistory, ...]:
-    """Each aggregate instance's states, step by step, as its operations moved it."""
     replayed: list[AggregateHistory] = []
     for aggregate in spec.aggregates.values():
         by_instance: dict[str, list[Move]] = defaultdict(list)
@@ -227,7 +210,6 @@ def histories(spec: Spec, evidence: Evidence) -> tuple[AggregateHistory, ...]:
 
 
 def history(aggregate: AggregateSpec, instance: str, found: Sequence[Move]) -> AggregateHistory:
-    """One step per capture and operation; the standings first audited belong to the step that created it."""
     ordered = sorted(found, key=lambda move: move.position)
     creation = next(((m.ref, m.operation) for m in ordered if m.operation == aggregate.created_by), None)
 
@@ -276,7 +258,6 @@ def moves(aggregate: AggregateSpec, evidence: Evidence) -> list[Move]:
 
 
 def lifecycle_moves(aggregate: AggregateSpec, machine: SubMachine, evidence: Evidence) -> Iterator[Move]:
-    """The entity's own transitions that change its state; a capture that keeps it there is no lifecycle move."""
     events = [e for e in evidence.events if e.subject == aggregate.name and e.kind == "transition"]
     for event in evidence.ordered(events):
         if event.source_state != event.target_state and event.partition and event.target_state:
@@ -295,7 +276,6 @@ def lifecycle_moves(aggregate: AggregateSpec, machine: SubMachine, evidence: Evi
 def field_moves(
     aggregate: AggregateSpec, fields: Sequence[SubMachine], changes: Iterable[FieldChange]
 ) -> Iterator[Move]:
-    """Each instance's fields, from the document parts its capture commits changed."""
     by_partition: dict[str, list[FieldChange]] = defaultdict(list)
     for change in changes:
         by_partition[change.partition].append(change)
@@ -306,8 +286,6 @@ def field_moves(
 def _instance_fields(
     aggregate: AggregateSpec, fields: Sequence[SubMachine], partition: str, ordered: Sequence[FieldChange]
 ) -> Iterator[Move]:
-    """An unkeyed field starts where the creating commit left it, set or not; a keyed item when first set."""
-
     def move(machine: SubMachine, item: str, source: str, target: str, change: FieldChange) -> Move:
         return Move(
             machine=machine,
@@ -333,7 +311,6 @@ def _instance_fields(
                     yield move(machine, item, source, _held(change.after), change)
             continue
         if machine.wildcard:
-            # Each member starts with the document, unset unless the creating commit set it.
             members = re.compile(re.escape(machine.name.removesuffix(WILDCARD)) + r"\.(?P<item>[a-z_]+)$")
             for change in ordered:
                 if (match := members.match(change.path)) is not None:
@@ -356,7 +333,6 @@ def _held(digest: str | None) -> str:
 
 
 def receipt_moves(aggregate: AggregateSpec, receipts: Mapping[str, SubMachine], evidence: Evidence) -> Iterator[Move]:
-    """Each receipt's standings, one machine per kind; a kind no machine describes allows nothing."""
     if aggregate.receipt_entity is None:
         return
     events = [e for e in evidence.events if e.subject == aggregate.receipt_entity and e.kind == "transition"]
@@ -365,7 +341,6 @@ def receipt_moves(aggregate: AggregateSpec, receipts: Mapping[str, SubMachine], 
         machine = receipts.get(kind) or SubMachine(
             kind="receipt", name=kind or "(no kind)", group=kind, states=(), edges=()
         )
-        # The vocabulary names a keyed receipt's step "<kind>:<item>".
         step = str(event.facts.get("step", ""))
         yield Move(
             machine=machine,
@@ -380,11 +355,6 @@ def receipt_moves(aggregate: AggregateSpec, receipts: Mapping[str, SubMachine], 
 
 
 def operation(aggregate: AggregateSpec, cause: JsonValue, named: JsonValue) -> str:
-    """The operation a move is counted under: the one its capture names.
-
-    A receipt's first audited standing ("baseline") is the one the aggregate was created
-    with; a change found between captures has no operation.
-    """
     if cause == "baseline":
         return aggregate.created_by
     if cause == "external" or not named:

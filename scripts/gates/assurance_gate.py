@@ -1,25 +1,4 @@
 #!/usr/bin/env python3
-"""The assurance gate: judge per-test e2e runs on their behaviour, and certify the tree they ran on.
-
-Test runs only collect, and ``repo2ree_testbed assess`` reports each test's behaviour verdict
-beside its run (reports/behaviour/<run>/) without failing it. This composes the two into a gate:
-
-- ``judge RUN...`` reads every test's assessment (its verdict in the report's run.json, its rules
-  in the report's verification/assurance.json) and accepts a test only if it passed and its behaviour passed, or the
-  test ``assurance/checker/expected-verdicts.toml`` excuses (an xfail must be) left
-  exactly the rules it names non-passing. An exercise case in ``exercises/`` that expects its
-  exercise to show violations excuses its own test of the e2e-cli tier the same way: exactly the
-  rules it names. Exit 1 if any test is not accepted.
-- ``certify RUN... [--invocation ID]`` judges the runs, and those that name the
-  invocation, then also requires every tier in ``TIERS`` to be among
-  the runs, each built from HEAD with a clean tree that is still HEAD and assessed by it, and every
-  expectation to have been used, and the tests together to reach every specified
-  rule, edge, and message the file does not declare unreached. A run limited to
-  selected tests (``--select``) certifies nothing. It writes the
-  ``.receipts/assurance-gate.json`` receipt, binding the verdicts to HEAD's tree.
-- ``verify`` requires that receipt to cover HEAD's tree, and the tree to be clean.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -37,15 +16,11 @@ from scripts.gates.receipts import AssuranceGateReceipt, Coverage, TestVerdict
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
-# The exercise cases, each one test of the e2e-cli tier, named by its digest.
 CASES = ROOT / "exercises"
 CASE_TEST = "testbed/suites/exercise/test_cases.py::test_a_case_shows_what_it_expects[{digest}]"
 RECEIPT = receipts.path(ROOT, "assurance-gate")
-# Where per-test runs are written; certify --invocation looks for its runs here.
 RUNS = Path(os.environ.get("REPO2REE_TEST_RUN_DIR") or ROOT / "test-artifacts") / "e2e"
-# Where each run's assessment is reported, by the run's name (repo2ree_testbed assess).
 REPORTS = ROOT / "reports" / "behaviour"
-# The per-test tiers whose evidence a receipt stands on.
 TIERS = ("e2e-system", "e2e-gui-instant", "e2e-faults", "e2e-cli")
 ACCEPTED_OUTCOMES = {"passed", "xfailed"}
 NON_PASSING = ("violated", "inconclusive")
@@ -57,7 +32,6 @@ class Expectation:
     violated: frozenset[str]
     inconclusive: frozenset[str]
     reason: str
-    # The file that excuses it.
     source: str = "expected-verdicts.toml"
 
 
@@ -68,7 +42,6 @@ class Judgement:
     outcome: str
     behaviour: str
     rules: dict[str, frozenset[str]] = field(default_factory=dict)
-    # What the specification declares, and what this test's evidence reached of it.
     declared: frozenset[str] = frozenset()
     reached: frozenset[str] = frozenset()
     problems: list[str] = field(default_factory=list)
@@ -98,7 +71,6 @@ def load_expectations(path: Path = EXPECTATIONS) -> dict[str, Expectation]:
 
 
 def load_case_expectations(directory: Path = CASES) -> dict[str, Expectation]:
-    """Each exercise case that expects its exercise to show violated rules, as the excuse of its own test."""
     expectations: dict[str, Expectation] = {}
     for path in sorted(directory.glob("*.json")):
         expects = json.loads(path.read_text())["expects"]
@@ -114,7 +86,6 @@ def load_case_expectations(directory: Path = CASES) -> dict[str, Expectation]:
 
 
 def all_expectations(path: Path = EXPECTATIONS, cases: Path = CASES) -> dict[str, Expectation]:
-    """What expected-verdicts.toml and the exercise cases excuse together; a test excused by both is refused."""
     declared, kept = load_expectations(path), load_case_expectations(cases)
     if twice := sorted(declared.keys() & kept.keys()):
         raise ValueError(f"excused by both {path.name} and an exercise case: {', '.join(twice)}")
@@ -122,7 +93,6 @@ def all_expectations(path: Path = EXPECTATIONS, cases: Path = CASES) -> dict[str
 
 
 def load_unreached(path: Path = EXPECTATIONS) -> dict[str, str]:
-    """Each rule, edge, or message no gated test reaches, with the reason."""
     unreached: dict[str, str] = {}
     for entry in tomllib.loads(path.read_text()).get("unreached", []):
         unknown = set(entry) - {"items", "reason"}
@@ -136,8 +106,6 @@ def load_unreached(path: Path = EXPECTATIONS) -> dict[str, str]:
 
 
 def coverage(report: dict[str, Any]) -> tuple[frozenset[str], frozenset[str]]:
-    """(declared, reached): rules as ``rule:<name>``, machine edges as ``<Machine> <from> -> <to>``,
-    boundary messages as ``<boundary>: <message>``."""
     counts: dict[str, int] = {f"rule:{rule['rule']}": int(rule.get("triggered", 0)) for rule in report["rules"]}
     exercised = report.get("coverage", {})
     for machine, edges in exercised.get("transitions", {}).items():
@@ -148,10 +116,6 @@ def coverage(report: dict[str, Any]) -> tuple[frozenset[str], frozenset[str]]:
 
 
 def coverage_problems(judgements: list[Judgement], unreached: dict[str, str]) -> list[str]:
-    """What the tests together leave unreached and the oracle does not excuse, and excuses gone stale.
-
-    Per-test verdicts pass for a rule nothing triggered; only the suite can say a rule was ever tested.
-    """
     declared = frozenset().union(*(item.declared for item in judgements))
     reached = frozenset().union(*(item.reached for item in judgements))
     excused = frozenset(unreached)
@@ -169,7 +133,6 @@ def coverage_problems(judgements: list[Judgement], unreached: dict[str, str]) ->
 
 
 def check_dossier(directory: Path, test: dict[str, Any]) -> dict[str, Any] | None:
-    """The checker's report on a test's dossier, as its assessment left it; None when it has no verdict."""
     report_path = directory / "verification/assurance.json"
     if test.get("behaviour") not in {"passed", *NON_PASSING} or not report_path.is_file():
         return None
@@ -196,7 +159,6 @@ def judge_test(run: str, directory: Path, test: dict[str, Any], expectations: di
     }
     expected = expectations.get(name)
     if expected is None:
-        # Tests are not oracle: marking a failing test xfail must not be enough to pass the gate.
         if judgement.outcome == "xfailed":
             judgement.problems.append("xfailed, and nothing excuses it")
         if judgement.behaviour != "passed":
@@ -219,7 +181,6 @@ def describe(rules: dict[str, frozenset[str]]) -> str:
 
 
 def assessed(root: Path) -> dict[str, Any]:
-    """A run's record as its assessment reported it, or as the run left it when nothing assessed it."""
     report = REPORTS / root.name / "run.json"
     record: dict[str, Any] = json.loads((report if report.is_file() else root / "run.json").read_text())
     return record
@@ -251,13 +212,11 @@ def git(*args: str) -> str:
 
 
 def clean_head() -> tuple[str, str, list[str]]:
-    """(HEAD's commit, its tree, problems): a dirty tree is a problem, since the receipt names HEAD."""
     problems = ["the working tree is not clean; commit first"] if git("status", "--porcelain") else []
     return git("rev-parse", "HEAD"), git("rev-parse", "HEAD^{tree}"), problems
 
 
 def runs_of(invocation: str, directory: Path = RUNS) -> list[Path]:
-    """The per-test runs one aggregate invocation left: those whose run.json names it."""
     found = []
     for record in sorted(directory.glob("*/run.json")):
         try:
@@ -332,7 +291,7 @@ def verify() -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=("judge", "certify", "verify"))
     parser.add_argument("runs", nargs="*", type=Path, help="run directories `repo2ree_testbed e2e --per-test` wrote")
     parser.add_argument("--invocation", help="also every run that names this invocation (REPO2REE_TEST_RUN_ID)")
@@ -357,7 +316,6 @@ def main() -> int:
     problems = certification_problems(runs, judgements, expectations) + gaps if args.command == "certify" else []
     report(judgements, problems)
     if args.command == "judge":
-        # Coverage belongs to the whole suite; a subset of it may leave items unreached.
         for gap in gaps:
             print(f"note {gap}")
     if problems or not all(item.accepted for item in judgements):

@@ -1,5 +1,3 @@
-"""Each commit of the REE document judged alone: its receipts' standings by their basis, and its digests."""
-
 from __future__ import annotations
 
 import base64
@@ -60,9 +58,6 @@ def digest_of(content: str) -> str:
     return f"sha256:{hashlib.sha256(content.encode()).hexdigest()}"
 
 
-# ---------------------------------------------------------------------------- the format's digests
-
-
 def test_the_digest_of_declared_outputs_is_the_one_the_format_pins() -> None:
     for case in json.loads((FIXTURES / "digests.json").read_text())["paths"]:
         files = committed({f"results/one/{path}": content for path, content in case["files"].items()})
@@ -88,9 +83,6 @@ def test_every_sealed_fixture_s_seal_is_the_canonical_digest_of_its_subject() ->
         ), path.name
 
 
-# ---------------------------------------------------------------------------- standings by the basis
-
-
 SCRIPTS = {
     "overlay/ree-scripts/build_experiment_environment.sh": "build\n",
     "overlay/ree-scripts/activate_experiment_environment.sh": "activate\n",
@@ -102,7 +94,6 @@ SCRIPTS = {
 
 
 def authored(scripts: dict[str, str] | None = None) -> tuple[dict[str, Any], dict[str, CommittedFile]]:
-    """A draft whose every receipt is current: the source acquired, built, activated, one experiment run."""
     scripts = scripts or SCRIPTS
     files = committed(scripts)
 
@@ -298,9 +289,6 @@ def test_snapshots_are_never_written_out_with_the_evidence() -> None:
     assert "snapshots" not in json.loads(evidence.model_dump_json())
 
 
-# ---------------------------------------------------------------------------- the document rules
-
-
 def findings(*snapshots: Snapshot) -> dict[str, list[str]]:
     evidence = Evidence(sources=(git_source(),), events=(), snapshots=snapshots)
     return {
@@ -411,9 +399,6 @@ def test_a_draft_is_held_to_no_seal() -> None:
             assert result.triggered == 0
 
 
-# ---------------------------------------------------------------------------- the specification of them
-
-
 @pytest.mark.parametrize(
     ("rule", "message"),
     [
@@ -453,9 +438,6 @@ def test_document_rules_belong_to_an_aggregate_whose_receipts_all_stand_on_a_bas
         docs.parse()
 
 
-# ---------------------------------------------------------------------------- a sealed REE, read from Git
-
-
 @pytest.mark.skipif(GIT is None, reason="needs git")
 def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> None:
     assert GIT is not None
@@ -467,7 +449,6 @@ def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> Non
     assert "artifacts/runtime.tar" not in held
     result = check(load_spec(), evidence)
     rules = {rule.rule: rule for rule in result.rules}
-    # What core recorded of the standings is the product's: the example is held to that where it is authored.
     for name in (
         "scripts-are-their-digests",
         "carried-evidence-is-its-digests",
@@ -480,8 +461,6 @@ def test_the_sealed_example_holds_every_digest_it_records(tmp_path: Path) -> Non
     assert rules["document:the-seal-is-the-subject"].triggered == 2, "the seal_ree commit and the sign_ree commit"
     assert rules["machine:Receipt"].verdict == "passed"
 
-
-# ---------------------------------------------------------------------------- signatures
 
 AUTHOR_APPROVAL = "https://repo2ree.org/claims/author-approval/v1"
 
@@ -510,8 +489,6 @@ def bundle(
     holder: ec.EllipticCurvePrivateKey | None = None,
     predicate: dict[str, Any] | None = None,
 ) -> bytes:
-    """A Sigstore bundle of a DSSE in-toto statement over ``digest``, signed by ``signer``, whose certificate holds
-    ``holder``'s key: the same key unless a test says otherwise."""
     signer = signer or ec.generate_private_key(ec.SECP256R1())
     algorithm, _, value = digest.partition(":")
     statement = {

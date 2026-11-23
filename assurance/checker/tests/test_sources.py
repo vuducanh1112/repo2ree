@@ -1,5 +1,3 @@
-"""Journals written by the experiment environment are read back with their completeness intact."""
-
 from __future__ import annotations
 
 import hashlib
@@ -60,7 +58,6 @@ def test_journal_records_keep_the_span_they_were_written_in(tmp_path: Path) -> N
     (tmp_path / "api-000001.ndjson").write_text("".join(json.dumps(record) + "\n" for record in records))
     sources, events = read_journals(tmp_path)
     assert [(event.trace_id, event.span_id) for event in events] == [("a" * 32, "b" * 16), (None, None), (None, None)]
-    # Context only: a malformed one never makes the journal incomplete.
     assert sources[0].complete, sources[0].problems
 
 
@@ -70,7 +67,7 @@ def test_a_malformed_header_makes_a_journal_incomplete_instead_of_misread(tmp_pa
     (source,), _ = read_journals(tmp_path)
     assert not source.complete
     assert source.problems[0].startswith("seq 1: malformed journal.opened header")
-    assert source.hosts == frozenset({"api"})  # The process itself, never the letters of a string.
+    assert source.hosts == frozenset({"api"})
 
 
 def _workbench_journal(directory: Path, store: str, epoch: int, *records: dict[str, object]) -> None:
@@ -185,7 +182,6 @@ def test_attempt_records_become_their_proven_transitions() -> None:
         ("executing", "completed"),
         ("completed", "capture_failed"),
     ]
-    # The record's own identity, which the dispatch result cites.
     assert events[-1].facts == {"error": "disk full", "record": "sha256:" + "f" * 64}
     not_started = attempt_events("git:ree", 10, {**record, "operation_status": "not_started"}, None)
     assert [event.target_state for event in not_started] == ["pending", "capture_failed"]
@@ -196,7 +192,6 @@ def test_attempt_records_become_their_proven_transitions() -> None:
 
 
 GIT = os.environ.get("REPO2REE_TOOL_GIT") or shutil.which("git")
-# Git histories are evidence under test: without git these tests would check nothing, so they fail rather than skip.
 if GIT is None:
     raise RuntimeError("checker tests need a git executable: put git on PATH or set REPO2REE_TOOL_GIT")
 
@@ -233,7 +228,6 @@ def test_unreadable_capture_commits_make_git_evidence_incomplete(tmp_path: Path)
 
 
 def ree_commit(root: Path, operation: str, metadata: dict[str, Any], environment: dict[str, str]) -> str:
-    """Commit what is staged in ``root`` as ree does: its message names the commit's parent and tree."""
     assert GIT is not None
 
     def run(*words: str) -> str:
@@ -266,7 +260,6 @@ GIT_ENVIRONMENT = {
 
 
 def captured_repository(root: Path, *attempts: str, ree_id: str | None = "ree-1") -> list[str]:
-    """An REE history with one capture commit per attempt, each naming ``ree_id``; returns the commit ids."""
     assert GIT is not None
     environment = {**os.environ, **GIT_ENVIRONMENT}
     subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True, env=environment)
@@ -285,7 +278,6 @@ def captured_repository(root: Path, *attempts: str, ree_id: str | None = "ree-1"
 
 
 def test_a_downloaded_archive_is_read_through_its_exported_journal(tmp_path: Path) -> None:
-    # An export checks out the seal and keeps the history it came from as imports/<tip>/journal.
     assert GIT is not None
     root = tmp_path / "ree"
     sealed, after_seal = captured_repository(root, "seal", "after-seal")
@@ -308,14 +300,12 @@ def update_ref(root: Path, ref: str, commit: str) -> None:
 
 
 def loaded_repository(tmp_path: Path) -> tuple[Path, str, str, str]:
-    """A reader's REE that loaded an author's bundle: (root, reader's initial, its load, the author's seal)."""
     assert GIT is not None
     author = tmp_path / "author"
     (sealed,) = captured_repository(author, "author-seal")
     root = tmp_path / "reader"
     initial, load = captured_repository(root, "reader-init", "reader-load")
     update_ref(root, "refs/repo2ree/initial", initial)
-    # Loading keeps the head it replaced and fetches the bundle under its own namespace.
     update_ref(root, f"refs/repo2ree/imports/{initial}/journal", initial)
     subprocess.run(
         [GIT, "-C", str(root), "fetch", "-q", str(author), f"+refs/*:refs/repo2ree/imports/{sealed}/*"], check=True
@@ -331,7 +321,6 @@ def test_a_loaded_ree_in_its_workbench_is_read_through_ree_history(tmp_path: Pat
 
 def test_a_downloaded_loaded_ree_is_read_through_its_own_journal_not_the_author_seal(tmp_path: Path) -> None:
     assert GIT is not None
-    # Its export checks out the author's seal; the reader's initialization and load are on the journal ref.
     root, _, load, sealed = loaded_repository(tmp_path)
     update_ref(root, f"refs/repo2ree/imports/{load}/journal", load)
     update_ref(root, "refs/heads/ree-history", sealed)
@@ -366,7 +355,6 @@ def test_a_workbench_repository_is_read_through_ree_history(tmp_path: Path) -> N
 
 
 def snapshot(label: str, *attempts: tuple[str, str | None]) -> Evidence:
-    """One REE's history as a download holds it: each attempt, captured by a commit or still pending."""
     events = [
         event
         for index, (attempt, commit) in enumerate(attempts)
@@ -426,7 +414,6 @@ def test_an_ree_no_control_plane_named_is_named_by_the_history_it_was_collected_
 
 
 def test_a_record_copied_onto_another_commit_is_no_attempt_of_it(tmp_path: Path) -> None:
-    # git copies a message in a cherry-pick or an amend: the copy names the parent and tree of the commit it came from.
     assert GIT is not None
     root = tmp_path / "ree"
     first, second = captured_repository(root, "first", "second")
@@ -450,7 +437,6 @@ def test_a_record_copied_onto_another_commit_is_no_attempt_of_it(tmp_path: Path)
 
 
 def test_a_record_kept_beside_the_history_is_ordered_by_its_sequence_not_after_every_commit(tmp_path: Path) -> None:
-    # A refusal kept beside the history began before the attempts after it: their numbers say so, not the file's place.
     assert GIT is not None
     root = tmp_path / "ree"
     captured_repository(root, "first", "third")

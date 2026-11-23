@@ -1,5 +1,3 @@
-"""Command line: describe or export the spec, validate journals, or check evidence."""
-
 from __future__ import annotations
 
 import argparse
@@ -21,7 +19,7 @@ from repo2ree_assurance_checker.views import diff_specs, render_diff_markdown, s
 
 
 def parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="repo2ree_assurance_checker", description=__doc__)
+    parser = argparse.ArgumentParser(prog="repo2ree_assurance_checker")
     parser.add_argument("--spec", type=Path, default=SPEC_DIR, help="Specification directory")
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -54,7 +52,6 @@ def parser() -> argparse.ArgumentParser:
 
 
 def _write(output: Path | None, text: str) -> None:
-    """To ``output`` when given, else to stdout."""
     if output is not None:
         output.write_text(text)
     else:
@@ -119,7 +116,6 @@ def check(spec: Spec, args: argparse.Namespace) -> int:
         (args.output / "assurance.md").write_text(render_markdown(spec, result))
         (args.output / "assurance.json").write_text(render_json(result))
         (args.output / "assurance.html").write_text(render_html(spec, result))
-        # What later steps (the trace views) read instead of verifying again.
         (args.output / ARTIFACT).write_text(verification.model_dump_json())
     summary = ", ".join(f"{rule.rule}={rule.verdict}" for rule in result.rules)
     sys.stdout.write(f"{result.verdict}: {summary}\n")

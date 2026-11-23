@@ -1,6 +1,3 @@
-"""The repository's vocabulary graph. This file is protected (zones.toml, gates): a relation changes apart from
-the names it holds, so it cannot be loosened beside the code it would fail."""
-
 from __future__ import annotations
 
 from scripts.vocabulary.model import Edge, Graph, Ignored, Origin, Relation, Vocabulary
@@ -22,7 +19,6 @@ EQUALS, WITHIN, DERIVED = Relation.EQUALS, Relation.WITHIN, Relation.DERIVED
 SPEC, CONTRACT, SOURCE = Origin.SPEC, Origin.CONTRACT, Origin.SOURCE
 
 OPERATIONS = ("operations", "review_operations")
-# The author API's actions that run no operation: reads, and the REE's own creation, deletion and upload.
 API_ACTIONS = (
     "create_ree",
     "delete_ree",
@@ -39,7 +35,6 @@ API_ACTIONS = (
     "view_reproducibility_report",
     "watch_action",
 )
-# The REE definition's fields that are no stage's: what the REE is, and the parts its stages declare.
 DEFINITION_FIELDS = ("catalog", "experiment_environment", "experiments", "hbom", "launch", "name", "source")
 
 
@@ -56,10 +51,8 @@ def _gui(name: str, constant: str, summary: str) -> Vocabulary:
 
 
 VOCABULARIES = (
-    # ---- the roots ----
     Vocabulary("operations", SPEC, CatalogueTable("operations"), "Every operation core runs on an REE."),
     Vocabulary("review_operations", SPEC, CatalogueTable("review_operations"), "Every operation on a review."),
-    # ---- the specification ----
     Vocabulary("spec.receipts", SPEC, SpecReceipts(), "The Ree aggregate's receipts."),
     Vocabulary("spec.groups", SPEC, SpecFieldGroups(), "The groups the aggregate's fields are drawn in."),
     Vocabulary(
@@ -90,7 +83,6 @@ VOCABULARIES = (
         "An AuthorApiAction fact's action.",
         "behaviour:/$defs/AuthorApiAction/*/facts/properties/action/enum",
     ),
-    # ---- what the contracts name ----
     Vocabulary("contracts.operation_names", CONTRACT, OperationsNamed(), "Every operation a contract names."),
     Vocabulary("exercise.operations", CONTRACT, OperationsNamed("exercise"), "The operations an exercise's steps run."),
     Vocabulary("cli.commands", CONTRACT, CommandsRunByName(), "The operations a `ree` command spelled as each runs."),
@@ -102,7 +94,6 @@ VOCABULARIES = (
     _contract(
         "run.operations", "A run's operation.", "openapi:/components/schemas/RunSummary/properties/operation/enum"
     ),
-    # ---- the stages ----
     _contract(
         "ree.receipts",
         "The REE's receipts: one slot per stage that files one.",
@@ -158,7 +149,6 @@ VOCABULARIES = (
         "The script template catalogue: each kind's templates and where its scripts belong.",
         "*:/*ScriptTemplateCatalog/properties",
     ),
-    # ---- the GUI's vocabulary, generated from the OpenAPI contract ----
     _gui("gui.steps", "STEP_KEYS", "The steps of authoring an REE, as the GUI reads them."),
     _gui("gui.review_steps", "REVIEW_STEP_KEYS", "The steps of a review attempt, as the GUI reads them."),
     _gui("gui.run_operations", "REE_RUN_OPERATIONS", "A run's operation, as the GUI reads it."),
@@ -172,7 +162,6 @@ VOCABULARIES = (
         SourceSites("gui/biome.json::match.*", "copies"),
         "The wire names Biome lets a property be spelled as, generated with the GUI's vocabulary.",
     ),
-    # ---- source: the literals the contracts render from ----
     _source(
         "protocol.operation_name", "protocol/src/repo2ree_protocol/command.py::OperationName", "A command's operation."
     ),
@@ -184,7 +173,6 @@ VOCABULARIES = (
         "telemetry/src/repo2ree_telemetry/behaviour/events.py::AuthorApiActionName",
         "The author API's actions, as the telemetry records them.",
     ),
-    # ---- source: hand-written copies, held here and nowhere else ----
     _source(
         "protocol.outputs", "protocol/src/repo2ree_protocol/outputs.py::OUTPUTS", "Each operation's outputs model."
     ),
@@ -253,7 +241,6 @@ VOCABULARIES = (
     _source(
         "testbed.script_kind", "testbed/src/repo2ree_testbed/api_models.py::ScriptKind", "The testbed's script kinds."
     ),
-    # ---- the GUI's hand-chosen sets, each typed by its generated vocabulary ----
     _source(
         "gui.dock_steps",
         "gui/src/core/ree-steps/ReeStepParams.ts::REE_STEP_KEYS",
@@ -323,7 +310,6 @@ VOCABULARIES = (
 )
 
 EDGES = (
-    # ---- operations, as the interfaces spell them ----
     Edge("contracts.operation_names", WITHIN, OPERATIONS),
     Edge("exercise.operations", EQUALS, OPERATIONS),
     Edge("exercise.fault_points", EQUALS, ("spec.attempt_unsettled",)),
@@ -335,7 +321,6 @@ EDGES = (
     Edge("run.operations", DERIVED, ("protocol.operation_name",)),
     Edge("behaviour.operations", DERIVED, OPERATIONS),
     Edge("behaviour.author_api_actions", WITHIN, ("operations",), API_ACTIONS),
-    # ---- the stages ----
     Edge("ree.receipts", WITHIN, ("operations",), ("experiments",)),
     Edge("ree.audit", EQUALS, ("ree.receipts",)),
     Edge("protocol.step_key", WITHIN, ("operations",), ("experiments", "metadata")),
@@ -344,7 +329,6 @@ EDGES = (
     Edge("ree.review_step_key", WITHIN, ("operations",), ("experiments",)),
     Edge("review.steps", DERIVED, ("ree.review_step_key",)),
     Edge("review.receipts", EQUALS, ("review.steps",)),
-    # A receipt is named after the operation producing it; the REE keeps the experiments' together.
     Edge("spec.receipts", WITHIN, ("operations",)),
     Edge("spec.receipts", WITHIN, ("ree.receipts",), ("run_experiment",)),
     Edge("ree.receipts", WITHIN, ("spec.receipts",), ("experiments",)),
@@ -355,7 +339,6 @@ EDGES = (
     Edge("script.kinds", DERIVED, ("protocol.target_kind",)),
     Edge("script.templates", EQUALS, ("script.kinds",)),
     Edge("telemetry.author_api_action", EQUALS, ("behaviour.author_api_actions",)),
-    # ---- hand-written copies ----
     Edge("protocol.outputs", WITHIN, OPERATIONS),
     Edge("core.step_complete", EQUALS, ("steps",)),
     Edge("cli.step_hints", EQUALS, ("steps",)),
@@ -373,7 +356,6 @@ EDGES = (
     Edge("authoring.lint.experiment_environment_reference", WITHIN, ("script.kinds",)),
     Edge("authoring.lint.placeholders", WITHIN, ("script.kinds",)),
     Edge("testbed.script_kind", EQUALS, ("script.kinds",)),
-    # ---- the GUI ----
     Edge("gui.steps", DERIVED, ("steps",)),
     Edge("gui.review_steps", DERIVED, ("review.steps",)),
     Edge("gui.run_operations", DERIVED, ("run.operations",)),
@@ -412,5 +394,4 @@ IGNORED = (
     ),
 )
 
-# The catalogue, and the states the specification gives an attempt before it settles.
 GRAPH = Graph(roots=(*OPERATIONS, "spec.attempt_unsettled"), vocabularies=VOCABULARIES, edges=EDGES, ignored=IGNORED)

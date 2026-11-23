@@ -1,5 +1,3 @@
-"""The command line: each command does what it says, from the specification on disk."""
-
 from __future__ import annotations
 
 import json
@@ -36,8 +34,6 @@ def test_map_draws_every_component(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_a_diff_against_the_committed_specification_says_what_changed(tmp_path: Path) -> None:
-    # The working tree's specification as a commit of its own, so the base is one this checker reads even while
-    # its format changes. A separate index leaves the repository's own, and whatever it holds, alone.
     env = {**os.environ, "GIT_INDEX_FILE": str(tmp_path / "index")}
 
     def git(*args: str) -> str:

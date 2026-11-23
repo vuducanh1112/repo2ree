@@ -1,13 +1,3 @@
-"""The specification as data: what views read and compare instead of importing the checker.
-
-Everything the checker holds the evidence to, as the specification's own files name it
-(``from`` and ``to``), with what a reader would otherwise have to derive: each machine's
-merged ``edges``, each aggregate's spelled-out ``machines``, the digests, and a ``kind``
-on every part that takes one of several shapes (a trigger, a requirement, a citation's
-side). ``format`` changes when a field does, so a reader can refuse a document it does
-not know.
-"""
-
 from __future__ import annotations
 
 from typing import Any

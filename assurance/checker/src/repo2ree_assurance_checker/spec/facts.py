@@ -1,9 +1,3 @@
-"""Recorded facts against the specification.
-
-Whether they satisfy a condition, which ones a condition needs that a record lacks, and how they
-disagree with their declarations.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Collection, Iterable, Mapping
@@ -15,12 +9,6 @@ from repo2ree_assurance_checker.spec.base import Condition, FactType
 
 
 def matches(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, JsonValue] | None = None) -> bool:
-    """Absent facts never satisfy a condition, including a negated one; a fact recorded as null is absent.
-
-    A ``{per, in}`` condition reads its key from ``trigger``'s facts: the trigger's, when the
-    facts are another record's; the facts themselves otherwise. ``{has = fact}`` holds when the
-    list the fact is holds the trigger's ``fact``.
-    """
     for name, condition in where.items():
         if facts.get(name) is None:
             return False
@@ -49,7 +37,6 @@ def matches(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, Js
 
 
 def absent(where: Condition, facts: dict[str, JsonValue], trigger: dict[str, JsonValue] | None = None) -> list[str]:
-    """The facts ``where`` needs that the records do not carry, so it cannot be decided either way."""
     missing = [name for name in where if facts.get(name) is None]
     for condition in where.values():
         if isinstance(condition, dict) and ("per" in condition or "has" in condition):
@@ -65,14 +52,6 @@ def fact_problems(
     facts: dict[str, Any],
     allowed: Mapping[str, Collection[str]] | None = None,
 ) -> list[tuple[Literal["violated", "inconclusive"], str]]:
-    """How a record's facts disagree with the vocabulary.
-
-    Undeclared facts are the owner's own and never a problem. A declared fact of another
-    type, or a value its declaration does not list, is violated: the owner gave a declared
-    word another meaning. A required fact
-    that is absent (or null) leaves the record short of what the rules need, so nothing
-    it should have proven can be decided: inconclusive.
-    """
     problems: list[tuple[Literal["violated", "inconclusive"], str]] = []
     for name, value in facts.items():
         kind = declared.get(name)
@@ -97,5 +76,4 @@ def fact_problems(
 
 
 def declared_facts(declared: dict[str, FactType], facts: dict[str, JsonValue]) -> dict[str, JsonValue]:
-    """The facts the vocabulary declares; the rest are the owner's own and never judged."""
     return {name: value for name, value in facts.items() if name in declared}

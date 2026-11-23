@@ -1,5 +1,3 @@
-"""What checking finds: each finding, each rule's result, the coverage, and the check as a whole."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -38,24 +36,18 @@ class RuleResult(EvidenceModel):
 
 
 class Extra(EvidenceModel):
-    """What owners recorded beyond the vocabulary: a subject it does not declare, or a fact of one it does."""
-
     subject: str
-    fact: str | None = None  # None: the whole subject is undeclared.
+    fact: str | None = None
     count: int
     evidence: tuple[str, ...] = ()
 
 
 class Coverage(EvidenceModel):
-    """How often each declared edge and message was observed; zero marks a gap."""
-
     transitions: dict[str, dict[str, int]]
     messages: dict[str, dict[str, int]]
 
 
 class MoveCount(EvidenceModel):
-    """How often an operation moved one part of an aggregate along one edge, and whether an edge allows it."""
-
     kind: MachineKind
     machine: str
     source: str
@@ -66,23 +58,16 @@ class MoveCount(EvidenceModel):
 
 
 class AggregateResult(EvidenceModel):
-    """Every move of every part of one aggregate, and each one its machines do not allow (its rule's findings)."""
-
     aggregate: str
     instances: int
     moves: tuple[MoveCount, ...] = ()
-    # Overlay file changes judged against the fields that claim them.
     files: int = 0
-    # Committed files judged against the document's tree.
     committed: int = 0
-    # Signature file changes judged against the operations that sign, and the document's state.
     signatures: int = 0
     findings: tuple[Finding, ...] = ()
 
 
 class Part(EvidenceModel):
-    """One part of one aggregate instance: a machine, or one item of a keyed machine."""
-
     name: str
     machine: str
     item: str = ""
@@ -91,8 +76,6 @@ class Part(EvidenceModel):
 
 
 class StateStep(EvidenceModel):
-    """An aggregate instance after one operation moved it: every part's state so far, and which moved."""
-
     operation: str
     ref: str
     states: dict[str, str]
@@ -100,8 +83,6 @@ class StateStep(EvidenceModel):
 
 
 class AggregateHistory(EvidenceModel):
-    """One aggregate instance step by step; ``parts`` in the order views draw them."""
-
     aggregate: str
     instance: str
     parts: tuple[Part, ...]
@@ -113,15 +94,12 @@ class CheckResult(EvidenceModel):
     sources: tuple[Source, ...]
     rules: tuple[RuleResult, ...]
     coverage: Coverage
-    # The contract the evidence was judged against; a journal's own stamp is provenance only.
     vocabulary_digest: str = ""
     extras: tuple[Extra, ...] = ()
-    # Every move of every part, for the views; the moves no edge allows are the aggregate rules' findings.
     aggregates: tuple[AggregateResult, ...] = ()
 
     @property
     def verdict(self) -> Verdict:
-        """A check in which no behavioural rule triggered proves nothing, so it is inconclusive."""
         verdicts = {rule.verdict for rule in self.rules}
         if "violated" in verdicts:
             return "violated"
@@ -137,11 +115,9 @@ class CheckResult(EvidenceModel):
 
 
 class Judgement(EvidenceModel):
-    """One invariant occurrence and its verdict, addressed by the event that triggered it."""
-
     rule: str
-    event: str  # Event.ref of the trigger; Git events of one commit share it.
-    subject: str  # The trigger's entity or boundary, and its key: what tells such events apart.
+    event: str
+    subject: str
     key: str
     verdict: Literal["passed", "violated", "inconclusive"]
     findings: tuple[Finding, ...] = ()

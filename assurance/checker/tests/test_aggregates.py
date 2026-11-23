@@ -1,5 +1,3 @@
-"""The Ree aggregate: every part of the committed document as a machine, and the rule they make."""
-
 from __future__ import annotations
 
 import json
@@ -42,9 +40,6 @@ def allowed(kind: str, name: str, source: str, target: str) -> set[str]:
     return set(machine(kind, name).allowed(source, target))
 
 
-# ---------------------------------------------------------------------------- the specification
-
-
 def test_every_field_and_receipt_kind_has_a_machine_after_the_lifecycle() -> None:
     machines = ree().machines
     assert machines[0].kind == "lifecycle"
@@ -60,16 +55,11 @@ def test_a_field_moves_only_by_its_writers_or_by_restoring_the_whole_document() 
         "load_ree_bundle",
     }
     assert allowed("field", "definition.catalog.*", CREATED, "unset") == {"initialize_ree"}
-    # An item of a keyed field starts when it is declared or restored, not with the REE.
     assert allowed("field", "definition.experiments[*]", CREATED, "set") == {"patch_ree_definition", "load_ree_bundle"}
 
 
 def test_a_receipt_goes_stale_when_anything_it_was_made_from_moves() -> None:
-    # The build experiment environment script is a file: writing it changes the declaration the experiment environment
-    # rests on.
     assert {"write_script", "acquire_source"} <= allowed("receipt", "build_experiment_environment", "current", "stale")
-    # A new experiment environment makes everything run on the old one stale, but never the experiment environment
-    # itself.
     assert "build_experiment_environment" in allowed("receipt", "activate_experiment_environment", "current", "stale")
     assert "build_experiment_environment" not in allowed("receipt", "build_experiment_environment", "current", "stale")
     assert allowed("receipt", "build_experiment_environment", "missing", "current") == {
@@ -88,12 +78,10 @@ def test_what_runs_through_the_activation_rests_on_it_and_the_build_does_not() -
 def test_an_experiment_is_made_from_the_activation_and_the_activation_is_about_its_script() -> None:
     assert ree().receipts["activate_experiment_environment"].about == ("definition.activate_experiment_environment",)
     assert "activate_experiment_environment" in ree().receipts["run_experiment"].made_from
-    # Testing the activation again may stale every experiment run through the one before.
     assert "activate_experiment_environment" in allowed("receipt", "run_experiment", "current", "stale")
 
 
 def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch() -> None:
-    # The REE declares no working environment: its check says what the scripts need, and what ran it is the launch.
     assert ree().receipts["check_working_environment"].rests_on == (
         "definition.check_working_environment",
         "definition.launch",
@@ -102,21 +90,18 @@ def test_the_check_of_the_working_environment_rests_on_its_script_and_the_launch
 
 
 def test_whatever_makes_a_receipt_stale_may_make_it_current_again() -> None:
-    # Standing is the receipt against the document as it now stands: undoing an edit undoes its staleness.
     assert {"patch_ree_definition", "write_script", "build_experiment_environment"} <= allowed(
         "receipt", "activate_experiment_environment", "stale", "current"
     )
     assert allowed("receipt", "build_experiment_environment", "current", "stale") <= allowed(
         "receipt", "build_experiment_environment", "stale", "current"
     )
-    # Declaring an orphaned receipt's subject again makes it speak for the REE again.
     assert "patch_ree_definition" in allowed("receipt", "build_experiment_environment", "stale", "current")
 
 
 def test_undeclaring_a_keyed_item_discards_its_receipt() -> None:
     for source in ("current", "stale", "missing"):
         assert "patch_ree_definition" in allowed("receipt", "run_experiment", source, "not_applicable")
-    # An unkeyed receipt is orphaned instead, and only removing the source clears it.
     assert allowed("receipt", "build_experiment_environment", "current", "not_applicable") == {
         "remove_source",
         "load_ree_bundle",
@@ -145,7 +130,6 @@ def test_what_a_receipt_rests_on_and_is_made_from_is_read_off_its_basis() -> Non
         "definition.launch",
     }
     assert build.made_from == ("acquire_source",)
-    # An item's own declaration is the keyed field it falls in.
     assert "definition.experiments[*]" in ree().receipts["run_experiment"].rests_on
 
 
@@ -247,9 +231,6 @@ def test_an_aggregate_must_describe_exactly_the_receipt_kinds_its_receipt_entity
         docs.parse()
 
 
-# ---------------------------------------------------------------------------- reading the document
-
-
 def test_document_parts_leave_out_what_is_empty_and_key_named_lists_by_name() -> None:
     parts = document_parts(
         {
@@ -283,7 +264,6 @@ def test_a_change_deep_in_the_document_changes_every_part_above_it() -> None:
 
 
 def ree_commit(root: Path, operation: str, metadata: dict[str, Any], environment: dict[str, str]) -> str:
-    """Commit what is staged in ``root`` as ree does: its message names the commit's parent and tree."""
     assert GIT is not None
 
     def run(*words: str) -> str:
@@ -358,9 +338,6 @@ def test_changes_across_an_unreadable_document_are_owned_by_no_operation(tmp_pat
     assert any("ree.json is unreadable" in problem for problem in evidence.sources[0].problems)
 
 
-# ---------------------------------------------------------------------------- judging the moves
-
-
 def git_source() -> Source:
     return Source(
         id="git:ree",
@@ -375,7 +352,6 @@ def git_source() -> Source:
 
 
 def commit(position: int) -> str:
-    """Where the readers place a commit's records: every record of commit N shares its locator."""
     return f"git:ree@c{position // 1000}"
 
 
@@ -431,7 +407,6 @@ def change(
 
 
 def authored() -> Evidence:
-    """Created, an experiment environment declared and built, an experiment declared and run, then sealed."""
     return Evidence(
         sources=(git_source(),),
         events=(
@@ -485,12 +460,9 @@ def test_every_part_is_counted_under_the_operation_that_moved_it() -> None:
     moves = counted(authored())
     assert moves[("lifecycle", CREATED, "draft", "initialize_ree")] == 1
     assert moves[("lifecycle", "draft", "sealed", "seal_ree")] == 1
-    # Unkeyed fields start where the creating commit left them, whether it held them or not.
     assert moves[("definition.name", CREATED, "set", "initialize_ree")] == 1
     assert moves[("definition.experiment_environment.artifact_path", "unset", "set", "patch_ree_definition")] == 1
-    # A keyed item starts when it is declared; the parts inside it are not fields of their own.
     assert moves[("definition.experiments[*]", CREATED, "set", "patch_ree_definition")] == 1
-    # A receipt's first audited standing is the one the REE was created with.
     assert moves[("build_experiment_environment", CREATED, "not_applicable", "initialize_ree")] == 1
     assert moves[("run_experiment", "missing", "current", "run_experiment")] == 1
     assert not check_aggregate(ree(), authored()).findings
@@ -532,14 +504,12 @@ def test_a_move_no_edge_allows_violates_the_aggregate_rule() -> None:
     assert rule(before).triggered == sum(move.count for move in before.aggregates[0].moves)
     assert rule(after).findings == after.aggregates[0].findings
     assert (rule(after).verdict, after.verdict) == ("violated", "violated")
-    # Every other rule judges the same evidence as before.
     assert [r for r in after.rules if r.kind != "aggregate"] == [r for r in before.rules if r.kind != "aggregate"]
 
 
 def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved() -> None:
     (replayed,) = histories(load_spec(), authored())
     steps = [(step.operation, step.moved) for step in replayed.steps]
-    # The standings first audited belong to the step that created the REE, which moves nothing yet.
     assert steps[0] == ("initialize_ree", ())
     assert ("patch_ree_definition", ("run_experiment[one]", "definition.experiments[one]")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle", "contents"))
@@ -550,15 +520,11 @@ def test_each_instance_is_replayed_step_by_step_with_what_each_operation_moved()
         "current",
     )
     names = [part.name for part in replayed.parts]
-    # Drawing order: the lifecycle, each receipt after what it is about, the other groups last.
     assert names[0] == "lifecycle"
     assert names.index("definition.experiment_environment.artifact_path") < names.index("build_experiment_environment")
     assert names.index("run_experiment[one]") < names.index("definition.name")
     item = next(part for part in replayed.parts if part.name == "run_experiment[one]")
     assert (item.machine, item.item, item.group) == ("run_experiment", "one", "run_experiment")
-
-
-# ---------------------------------------------------------------------------- the overlay
 
 
 @pytest.mark.parametrize(
@@ -653,7 +619,6 @@ def test_a_file_no_field_claims_violates_the_aggregate_rule() -> None:
         f"Ree {REE} {extra}: is in the overlay, but no field claims it",
         f"Ree {REE} {extra}: is committed, but no entry of the tree is it (it falls in overlay)",
     ]
-    # Taking it away again is what the rule asks for.
     assert overlay_findings(file(5900, extra, "m", None, "write_script", "operation")) == []
 
 
@@ -734,7 +699,6 @@ def test_a_file_stored_otherwise_than_the_tree_says_violates_the_aggregate_rule(
         f"Ree {REE} snapshot.tar.gz: is stored as git, but the tree stores snapshot.tar.gz as lfs",
         f"Ree {REE} artifacts/sbom.json: is stored as lfs, but the tree stores artifacts/sbom.json as git",
     ]
-    # A removal is not judged: the file is no longer committed.
     assert tree_findings(file(1900, "notes.txt", "n", None, "write_script", "operation")) == []
 
 

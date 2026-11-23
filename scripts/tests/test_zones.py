@@ -9,9 +9,6 @@ from scripts.zones import check, conflicts, load, problems, staged
 
 RUNTIME = "core/src/repo2ree_core/operations/capture.py"
 
-# The completeness of the committed declaration (`zones.py verify`) is deliberately
-# not tested here, so commit-gate does not require it yet.
-
 
 def test_a_specification_change_with_its_generated_contract_checker_and_gate_is_allowed() -> None:
     paths = [

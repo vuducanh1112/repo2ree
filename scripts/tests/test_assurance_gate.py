@@ -17,8 +17,6 @@ def write_run(
     selected: tuple[str, ...] = (),
     assessed_tree: str = "tree",
 ) -> Path:
-    """A per-test run, and its assessment reported beside it: each test's outcome, and the checker report
-    its assessment left (None: no dossier)."""
     reported = gate.REPORTS / root.name
     root.mkdir(parents=True)
     entries = []
@@ -78,7 +76,6 @@ def test_a_verdict_is_read_only_where_the_assessment_reached_one(tmp_path: Path)
     run = write_run(tmp_path / "run", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
     reported = gate.REPORTS / run.name / "run.json"
     record = json.loads(reported.read_text())
-    # A checker that failed leaves an earlier check's report behind; it is not this assessment's verdict.
     record["tests"][0]["behaviour"] = "error"
     reported.write_text(json.dumps(record))
     (item,) = judged(run).values()
@@ -125,7 +122,6 @@ def test_an_expectation_excuses_exactly_the_rules_it_names(tmp_path: Path) -> No
     fixed = write_run(tmp_path / "fixed", "e2e-system", {"t": ("passed", checker_report(a="passed"))})
     assert judged(exact, excuse)["t"].excused_by == "known bug"
     assert not judged(more, excuse)["t"].accepted
-    # A test that now conforms makes its excuse stale: remove it with the fix.
     assert not judged(fixed, excuse)["t"].accepted
 
 
@@ -173,7 +169,6 @@ def test_the_committed_expectations_load() -> None:
 def covering(
     report: dict[str, Any], reached: dict[str, int], triggered: dict[str, int] | None = None
 ) -> dict[str, Any]:
-    """A checker report whose evidence reached the given Run edges and triggered the given rules."""
     for rule in report["rules"]:
         rule["triggered"] = (triggered or {}).get(rule["rule"], 0)
     report["coverage"] = {"transitions": {"Run": reached}, "messages": {"dispatch": {"error": 0}}}
@@ -181,7 +176,6 @@ def covering(
 
 
 def test_the_suite_must_reach_every_declared_item_it_does_not_excuse(tmp_path: Path) -> None:
-    # Each test passes rule b, which nothing triggered; only the suite sees it was never tested.
     first = covering(
         checker_report(a="passed", b="not_triggered"), {"queued -> running": 1, "running -> failed": 0}, {"a": 1}
     )
@@ -237,7 +231,7 @@ def test_an_invocation_finds_the_runs_that_name_it(tmp_path: Path) -> None:
     run("e2e-system-0", json.dumps({"tier": "e2e-system", "invocation": "earlier"}))
     run("e2e-gui-instant-0", json.dumps({"tier": "e2e-gui-instant"}))
     run("e2e-faults-0", "{not json")
-    (tmp_path / "e2e-system-2").mkdir()  # still running: no run.json yet
+    (tmp_path / "e2e-system-2").mkdir()
 
     assert gate.runs_of("this", tmp_path) == [faults, system]
     assert gate.runs_of("never", tmp_path) == []

@@ -1,21 +1,3 @@
-"""The behaviour specification: entities, boundaries, and invariants, validated as a whole.
-
-It has two layers. The vocabulary (``vocabulary/*.toml``, with ``components.toml``) is
-the contract owners emit against: each subject's owner, key, states or messages, and
-facts with their types and where they are required; and the catalogue of the operations
-core runs. The rules (``entities/*.toml``,
-``boundaries/*.toml``, ``invariants.toml``) are what the checker holds the evidence to.
-Aggregate machines (``aggregates/*.toml``) follow every part of a document an entity
-commits; a move no edge allows violates the aggregate's rule. Document rules (``documents/*.toml``)
-read one commit of that document at a time, with the files it holds. Only the vocabulary is published to the product
-(``contracts/behaviour``).
-
-The package keeps each part apart: ``base`` (what they share), ``vocabulary`` (what owners
-emit), ``rules`` (machines and exchanges), ``invariants`` (rules across entities), ``facts``
-(recorded facts against all of them), and ``aggregates`` (the parts of a committed
-document). ``Spec`` puts them together and checks that they agree.
-"""
-
 from __future__ import annotations
 
 import json
@@ -116,7 +98,6 @@ class Spec(SpecModel):
 
     @property
     def vocabulary(self) -> dict[str, Any]:
-        """The contract owners emit against, without the rules: what ``contracts/behaviour`` publishes."""
         entity_fields = (
             *("owner", "key", "partition", "evidence", "summary", "states"),
             *("facts", "required", "allowed", "meanings", "groups"),
@@ -141,7 +122,6 @@ class Spec(SpecModel):
 
     @property
     def vocabulary_digest(self) -> str:
-        """Changes with the contract only: rules can change without touching what owners emit."""
         return _digest(self.vocabulary)
 
     def trigger_facts(self, trigger: EntityTrigger | MessageTrigger) -> dict[str, FactType]:
@@ -150,7 +130,6 @@ class Spec(SpecModel):
         return dict(self.boundaries[trigger.boundary].facts.get(trigger.message, {}))
 
     def trigger_allowed(self, trigger: EntityTrigger | MessageTrigger) -> dict[str, tuple[str, ...]]:
-        """The values the trigger's facts may take, for the facts that list them."""
         if isinstance(trigger, EntityTrigger):
             return dict(self.entities[trigger.entity].allowed)
         return dict(self.boundaries[trigger.boundary].allowed.get(trigger.message, {}))
@@ -201,7 +180,6 @@ class Spec(SpecModel):
         return self
 
     def _check_aggregate(self, aggregate: AggregateSpec) -> None:
-        """An aggregate watches a document its entity commits, in that entity's states and receipt kinds."""
         entity = self.entities.get(aggregate.name)
         if entity is None or entity.evidence != "git":
             raise ValueError(f"aggregate {aggregate.name}: not an entity whose evidence is its committed document")
@@ -309,7 +287,6 @@ def _digest(document: object) -> str:
 
 
 def _unconstrained(word: EntityVocabulary) -> dict[str, Any]:
-    """The machine of an entity that has none: any state, any move, never settled."""
     return {"initial": tuple(word.states), "settles_before_close": False, "transitions": (), "constrained": False}
 
 
@@ -335,12 +312,6 @@ def _named_operations(aggregate: AggregateSpec) -> set[str]:
 
 
 def operation_problems(spec: Spec) -> list[str]:
-    """Where the specification names operations the catalogue does not, or leaves one of an REE's unsaid.
-
-    Every operation an aggregate names is catalogued and none is a review's but in an aggregate that reviews
-    another, and each of an REE's operations is named by an aggregate: what it may change, or that it writes
-    nothing. A specification without a catalogue, as older revisions are, has nothing to hold them to.
-    """
     if not spec.operations:
         return []
     catalogued = {*spec.operations, *spec.review_operations}
@@ -367,7 +338,6 @@ def parse_spec(
     aggregates: Sequence[dict[str, Any]] = (),
     documents: Sequence[dict[str, Any]] = (),
 ) -> Spec:
-    """Build the specification from already-parsed TOML documents: the vocabulary, then the rules."""
     component_specs = [Component.model_validate(item) for item in components.get("component", [])]
     if unexpected := set(components) - {"component"}:
         raise ValueError(f"components file has unexpected tables {sorted(unexpected)}")

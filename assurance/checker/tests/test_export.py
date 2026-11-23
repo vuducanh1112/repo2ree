@@ -1,5 +1,3 @@
-"""The exported specification says what the checker's model says, in plain data."""
-
 from __future__ import annotations
 
 import json
@@ -11,7 +9,6 @@ from repo2ree_assurance_checker.spec import Citation, Invariant
 
 
 def shapes(annotation: object) -> set[object]:
-    """The classes a field may hold, through unions and ``type`` aliases."""
     if isinstance(annotation, typing.TypeAliasType):
         return shapes(annotation.__value__)
     members = typing.get_args(annotation)

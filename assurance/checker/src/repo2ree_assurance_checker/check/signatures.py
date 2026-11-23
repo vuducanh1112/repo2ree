@@ -1,10 +1,3 @@
-"""A Sigstore bundle as the checker reads it: the in-toto statement its DSSE envelope signs, and whether the key
-its certificate holds made that signature.
-
-Only what the bundle holds is read. Whether the certificate chains to a trusted root, which identity it names,
-and what the transparency log recorded are a verifier's questions, under a trust root and a policy it is given.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -69,16 +62,13 @@ class _Statement(_Read):
 
 @dataclass(frozen=True)
 class SignedStatement:
-    """What a bundle signs: each subject's digest as ``<algorithm>:<hex>``, the claim's predicate type, and its
-    predicate."""
-
     digests: frozenset[str]
     predicate_type: str
     predicate: JsonValue = None
 
 
 class UnreadableBundleError(ValueError):
-    """The file is no Sigstore bundle of a DSSE in-toto statement, or its signature is not its certificate's."""
+    pass
 
 
 def _decoded(value: str, what: str) -> bytes:
@@ -89,7 +79,6 @@ def _decoded(value: str, what: str) -> bytes:
 
 
 def pae(payload_type: str, payload: bytes) -> bytes:
-    """DSSE's pre-authentication encoding: what the signature is over."""
     kind = payload_type.encode()
     return b"DSSEv1 %d %s %d %s" % (len(kind), kind, len(payload), payload)
 
@@ -112,7 +101,6 @@ def _verified(certificate: bytes, signature: bytes, message: bytes) -> None:
 
 
 def signed_statement(content: bytes) -> SignedStatement:
-    """The statement a Sigstore bundle signs, once its envelope's every signature is its certificate key's."""
     try:
         bundle = _Bundle.model_validate_json(content)
     except ValidationError as exc:

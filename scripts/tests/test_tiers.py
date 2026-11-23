@@ -73,7 +73,6 @@ def test_a_tier_whose_policy_allows_skips_certifies_a_run_with_one(tmp_path: Pat
 
 @pytest.fixture
 def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A checkout at TREE whose receipts land under tmp_path."""
     monkeypatch.setattr(tiers, "ROOT", tmp_path)
     monkeypatch.setattr(assurance_gate, "clean_head", lambda: ("r" * 40, TREE, []))
     monkeypatch.setattr(receipts, "write", lambda path, receipt: _write(path, receipt))

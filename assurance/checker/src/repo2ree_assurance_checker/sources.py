@@ -1,5 +1,3 @@
-"""Read owner journals, REE Git histories, and persisted stores into normalized evidence."""
-
 from __future__ import annotations
 
 import hashlib
@@ -27,21 +25,13 @@ from repo2ree_assurance_checker.evidence import (
 
 JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 HISTORY_REF = "refs/heads/ree-history"
-# The REE's authored files, as its capture commits hold them.
 INITIAL_REF = "refs/repo2ree/initial"
 EXPORTED_JOURNAL = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/journal$")
 MESSAGE_KINDS = {"send", "receive", "abandon"}
 TERMINAL_OUTCOMES = {"succeeded", "failed", "canceled"}
 
 
-# ================================================
-# Owner journals
-# ================================================
-
-
 class JournalHeader(BaseModel):
-    """What a journal.opened record says of the journal: whose it is and whom it speaks for."""
-
     model_config = ConfigDict(extra="ignore", frozen=True)
 
     process: str
@@ -52,7 +42,6 @@ class JournalHeader(BaseModel):
 
 
 def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Event]]:
-    """One process epoch. Gaps, torn lines, and unknown records make it incomplete, not unreadable."""
     match = JOURNAL_NAME.match(path.name)
     if match is None:
         raise ValueError(f"{path.name}: not a journal file name")
@@ -96,7 +85,6 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
             closed = True
             final = record.get("final") is True
         elif kind == "transition" or kind in MESSAGE_KINDS:
-            # Trace context is for views only: a malformed one is dropped, never a reason to distrust the record.
             context = record.get("trace")
             trace = {k: v for k, v in context.items() if isinstance(v, str)} if isinstance(context, dict) else {}
             try:
@@ -149,7 +137,6 @@ def read_journal(path: Path, epoch_gap: bool = False) -> tuple[Source, list[Even
 
 
 def read_journals(directory: Path) -> tuple[list[Source], list[Event]]:
-    """Every epoch in a journal directory; a missing earlier epoch taints the later ones."""
     files: dict[str, list[tuple[int, Path]]] = defaultdict(list)
     for path in sorted(directory.glob("*.ndjson")):
         if match := JOURNAL_NAME.match(path.name):
@@ -162,11 +149,6 @@ def read_journals(directory: Path) -> tuple[list[Source], list[Event]]:
             sources.append(source)
             events.extend(found)
     return sources, events
-
-
-# ================================================
-# REE Git histories
-# ================================================
 
 
 def git(executable: str, repository: Path, *args: str) -> str:
@@ -190,9 +172,6 @@ class Commit:
 
 
 def own_record(commit: Commit) -> dict[str, Any] | None:
-    """The attempt's record ``commit`` carries, when it is the commit that attempt captured: its message says so, and
-    names the commit's own parent and tree. A record copied onto another commit, as git copies a message in a
-    cherry-pick or an amend, is that commit's to claim, not its own."""
     metadata = commit.metadata or {}
     record = metadata.get("record") if metadata.get("kind") == "operation.completed" else None
     if not isinstance(record, dict) or metadata.get("tree") != commit.tree or metadata.get("parent") != commit.parent:
@@ -201,19 +180,6 @@ def own_record(commit: Commit) -> dict[str, Any] | None:
 
 
 def history_head(executable: str, repository: Path) -> tuple[str | None, list[str]]:
-    """The ref holding this lifetime's whole capture history, or None for a repository without one.
-
-    This lifetime's history is the one that grows from its first capture,
-    ``refs/repo2ree/initial``. In a workbench that is ``ree-history``. A downloaded
-    archive checks out the seal instead, and keeps the history it was exported from
-    as ``refs/repo2ree/imports/<tip>/journal``. The seal need not be this lifetime's:
-    an REE that loaded a bundle checks out the author's seal, and its own
-    initialization and load continue only on the journal ref. Loading also keeps the
-    head it replaced as a journal ref, an ancestor of the history that continued it.
-    Other imported refs describe earlier lifetimes elsewhere; they are not this
-    deployment's behaviour. A repository from before the initial ref grows from
-    ``ree-history``.
-    """
     if not _ref_exists(executable, repository, HISTORY_REF):
         return None, []
     anchor = INITIAL_REF if _ref_exists(executable, repository, INITIAL_REF) else HISTORY_REF
@@ -239,7 +205,6 @@ def _is_ancestor(executable: str, repository: Path, ancestor: str, descendant: s
 
 
 def history_commits(executable: str, repository: Path) -> tuple[list[Commit], list[str]]:
-    """The REE's own capture history, oldest first."""
     head, problems = history_head(executable, repository)
     if head is None:
         return [], problems
@@ -252,7 +217,6 @@ def history_commits(executable: str, repository: Path) -> tuple[list[Commit], li
         commit, tree, parents, message = entry.strip("\n").split("\0", 3)
         trees[commit] = tree
         parent = parents.split()[0] if parents.split() else None
-        # Every capture commit is "<operation>\n\n<json metadata>".
         subject, _, body = message.strip().partition("\n\n")
         try:
             metadata = json.loads(body)
@@ -266,8 +230,6 @@ def history_commits(executable: str, repository: Path) -> tuple[list[Commit], li
 
 
 def committed_document(executable: str, repository: Path, commit: str, name: str = "ree.json") -> dict[str, Any] | None:
-    """The document (an REE's ree.json, or a review's review.json) committed in ``commit``; None when it cannot be
-    read."""
     try:
         document = json.loads(git(executable, repository, "show", f"{commit}:{name}"))
     except (subprocess.CalledProcessError, ValueError):
@@ -276,7 +238,6 @@ def committed_document(executable: str, repository: Path, commit: str, name: str
 
 
 def committed_files(executable: str, repository: Path, commit: str, directory: str | None = None) -> dict[str, str]:
-    """Each file committed in ``commit`` (under ``directory``, if one is named), with its blob."""
     listed = git(executable, repository, "ls-tree", "-r", "-z", commit, *(("--", directory) if directory else ()))
     files: dict[str, str] = {}
     for entry in listed.split("\0"):
@@ -286,19 +247,16 @@ def committed_files(executable: str, repository: Path, commit: str, directory: s
     return files
 
 
-# A review's record, and where its signature sits, from the review's root.
 REVIEW_RECORD = "review.json"
 REVIEW_SIGNATURE = "signatures/review.sigstore.json"
 
 
 type Storage = Literal["git", "lfs"]
 type Committed = dict[str, tuple[str, Storage]]
-# A path in .gitattributes, quoted as the recorder writes it or bare, and its attributes.
 ATTRIBUTE_LINE = re.compile(r'^("(?:[^"\\]|\\.)*"|\S+)\s+(.*)$')
 
 
 def lfs_paths(attributes: str) -> frozenset[str]:
-    """The paths a .gitattributes stores as LFS payloads; the recorder anchors each at the root, one per line."""
     found: set[str] = set()
     for line in attributes.splitlines():
         matched = ATTRIBUTE_LINE.match(line.strip())
@@ -309,7 +267,6 @@ def lfs_paths(attributes: str) -> frozenset[str]:
 
 
 def committed_tree(executable: str, repository: Path, commit: str, read: dict[str, frozenset[str]]) -> Committed:
-    """Every file of a commit, with its blob and how the commit stores it; ``read`` keeps each .gitattributes read."""
     files = committed_files(executable, repository, commit)
     lfs: frozenset[str] = frozenset()
     if attributes := files.get(".gitattributes"):
@@ -325,8 +282,6 @@ LFS_POINTER = re.compile(
 
 
 class BlobDigests:
-    """The digest and size of each blob's content, each blob read once: an LFS pointer stands for its payload."""
-
     def __init__(self, executable: str, repository: Path) -> None:
         self._executable = executable
         self._repository = repository
@@ -365,7 +320,6 @@ class BlobDigests:
 
 
 def path_fields(value: JsonValue, path: str = "") -> Iterator[tuple[str, str]]:
-    """Each path a document's ``*_path`` and ``*_paths`` fields hold, under the field's path (lists by item name)."""
     if isinstance(value, dict):
         for key, inner in value.items():
             at = f"{path}.{key}" if path else key
@@ -382,7 +336,6 @@ def path_fields(value: JsonValue, path: str = "") -> Iterator[tuple[str, str]]:
 
 
 def naming(document: JsonValue) -> dict[str, tuple[str, ...]]:
-    """For each path or file name a document's path fields hold, the fields holding it."""
     held: dict[str, set[str]] = defaultdict(set)
     for field_path, value in path_fields(document):
         held[value].add(field_path)
@@ -402,7 +355,6 @@ def changed_files(
     scope: str = "",
     **common: Any,
 ) -> list[FileChange]:
-    """The files a commit added, changed, removed, or now stores otherwise, with ``scope`` before each path."""
     return [
         FileChange(
             path=f"{scope}{path}",
@@ -419,12 +371,6 @@ def changed_files(
 
 
 def document_parts(value: JsonValue, path: str = "") -> dict[str, str]:
-    """Every part of a document by path, with a digest of its value; absent or empty parts are left out.
-
-    Objects are walked into, and so are lists of objects that each carry a string
-    ``name``, one ``path[name]`` per item; other lists are values. An object is empty
-    when everything in it is.
-    """
     parts: dict[str, str] = {}
     children: dict[str, JsonValue] = {}
     if isinstance(value, dict):
@@ -444,12 +390,10 @@ def _named(item: JsonValue) -> bool:
 
 
 def record_digest(content: bytes) -> str:
-    """A record's identity as a result names it: the digest of its bytes, as a commit's is of its content."""
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
 def pending_records(repository: Path, published: set[str]) -> tuple[list[tuple[dict[str, Any], str]], list[str]]:
-    """Each unpublished attempt record, with the digest of its bytes."""
     records: list[tuple[dict[str, Any], str]] = []
     problems: list[str] = []
     for path in sorted((repository / ".git" / "repo2ree" / "operations").glob("*.json")):
@@ -469,9 +413,6 @@ def pending_records(repository: Path, published: set[str]) -> tuple[list[tuple[d
 def beside_position(
     record: dict[str, Any], published: list[tuple[int, Commit, dict[str, Any]]], commits: int, offset: int
 ) -> int:
-    """Where a record kept beside the history goes among the commits' events: after the last published attempt the
-    REE numbered before it, as its attempts are numbered in the order they began, else after every commit. A
-    refusal kept beside a history is no newer than the attempts that came after it, which it would otherwise seem."""
     sequence = record.get("sequence")
     if not isinstance(sequence, int):
         return (commits + 1 + offset) * 1000
@@ -484,7 +425,6 @@ def beside_position(
 
 
 def inferred_phases(record: dict[str, Any], commit: Commit | None) -> list[str]:
-    """The phases a record without its own phase list implies, from its final fields alone."""
     status = record.get("operation_status")
     phases = ["pending"]
     if status != "not_started":
@@ -499,11 +439,6 @@ def inferred_phases(record: dict[str, Any], commit: Commit | None) -> list[str]:
 
 
 def recorded_phases(record: dict[str, Any], commit: Commit | None) -> tuple[list[str], str | None]:
-    """The phases core recorded entering, in order, and why they cannot be trusted, if they cannot.
-
-    A record without them is replayed from its final fields, which follow the machine by
-    construction, so it is reported: such an Attempt history proves nothing about its order.
-    """
     phases = record.get("phases")
     implied = inferred_phases(record, commit)
     attempt = record.get("attempt_id")
@@ -525,11 +460,6 @@ def attempt_events(
     *,
     digest: str | None = None,
 ) -> list[Event]:
-    """The transitions an attempt record proves: the phases core recorded entering, in that order.
-
-    ``changed`` is witnessed from the commit's tree, not taken from the record. An unpublished
-    record's ``digest`` is its identity at capture_failed, which the dispatch result cites.
-    """
     context = record.get("context") or {}
     common: dict[str, Any] = {
         "source": source_id,
@@ -545,15 +475,12 @@ def attempt_events(
             "operation": command.get("operation"),
             "run_id": record.get("run_id"),
             "scope": record.get("scope"),
-            # The journal record of the dispatch that sent it: the attempt's citation of the request.
             "dispatched_by": context.get("dispatch_record"),
-            # What had drifted when it began, and the script edit it records of it.
             "drift_found": [item.get("path") for item in record.get("drift_found") or [] if isinstance(item, dict)],
             "drift_recorded": record.get("drift_recorded"),
         },
         "completed": {
             "outcome": record.get("operation_status"),
-            # What had changed beside it once its handler ran: it ran on a stage, so none of it was its doing.
             "drift_after": [item.get("path") for item in record.get("drift_after") or [] if isinstance(item, dict)],
         },
         "captured": {"commit": commit.id, "changed": commit.tree != commit.parent_tree} if commit else {},
@@ -577,7 +504,6 @@ def attempt_events(
 
 
 def recorded_standings(record: dict[str, Any] | None) -> dict[str, str] | None:
-    """The standings core recorded after an attempt, if it recorded them as standings."""
     after = (record or {}).get("step_evidence_after")
     if not isinstance(after, dict) or not all(isinstance(value, str) for value in after.values()):
         return None
@@ -587,7 +513,6 @@ def recorded_standings(record: dict[str, Any] | None) -> dict[str, str] | None:
 def ree_events(
     executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit]
 ) -> tuple[list[Event], list[FieldChange], list[FileChange], list[Snapshot], list[str]]:
-    """Witnessed Ree transitions, document and file changes, and each capture commit read whole, commit by commit."""
     events: list[Event] = []
     changes: list[FieldChange] = []
     found_files: list[FileChange] = []
@@ -597,7 +522,6 @@ def ree_events(
     digests = BlobDigests(executable, repository)
     problems: list[str] = []
     state: str | None = None
-    # The document as last read; None after one that could not be read, whose changes no operation can own.
     parts: dict[str, str] | None = {}
     document: dict[str, Any] | None = None
     held: dict[str, CommittedFile] = {}
@@ -711,12 +635,6 @@ def ree_events(
 def review_history(
     executable: str, repository: Path, source_id: str, label: str, ree_id: str, commits: list[Commit], scope: str
 ) -> tuple[list[Event], list[FieldChange], list[FileChange], list[Snapshot]]:
-    """A review attempt's history, commit by commit, as one review of the REE: its record's lifecycle and parts,
-    every file it commits, and each commit read whole beside the REE it reviews.
-
-    A review is open until its signature is committed, and signed from then on. Its record is a document of its own,
-    every part of it from the top; the instance is the review, under the REE whose review it is.
-    """
     review_id = scope.removeprefix("reviews/").rstrip("/")
     instance = f"{ree_id}/{scope.rstrip('/')}"
     events: list[Event] = []
@@ -751,7 +669,7 @@ def review_history(
         files = committed
         document = committed_document(executable, repository, commit.id, REVIEW_RECORD)
         if document is None:
-            continue  # Before the attempt wrote its record: nothing of a review yet.
+            continue
         snapshots.append(
             Snapshot(
                 source=source_id,
@@ -807,12 +725,6 @@ def read_git_history(
     scope: str = "",
     ree: str | None = None,
 ) -> Evidence:
-    """One REE history as one source: its attempts, its files, and for an author's REE its document and receipts.
-
-    ``scope`` is where the history sits under the REE root, such as ``reviews/<id>/``; its files' paths carry it.
-    An REE no control plane named, one ``ree`` ran in where no control plane was, has no id in its attempts: it is
-    ``ree``, the name its history was collected under.
-    """
     source_id = f"git:{label}"
     problems: list[str] = []
     events: list[Event] = []
@@ -829,7 +741,7 @@ def read_git_history(
     for index, commit in enumerate(commits):
         metadata = commit.metadata or {}
         if metadata.get("kind") != "operation.completed":
-            continue  # Baselines and drift snapshots are not attempts.
+            continue
         record = metadata.get("record")
         if metadata.get("schema_version") != 2 or not isinstance(record, dict) or "attempt_id" not in record:
             problems.append(f"{commit.id[:12]}: unreadable operation record")
@@ -886,7 +798,6 @@ def read_git_history(
 
 
 def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Path, str, str]]:
-    """An REE root and its review attempts, each with where it sits under the root; each keeps its own history."""
     label = label or root.name
     yield root, label, ""
     reviews = root / "reviews"
@@ -896,12 +807,6 @@ def git_repositories(root: Path, label: str | None = None) -> Iterable[tuple[Pat
                 yield path, f"{label}/reviews/{path.name}", f"reviews/{path.name}/"
 
 
-# ================================================
-# Persisted stores
-# ================================================
-
-
-# A stored run's status, read as the state of the author action it carries.
 RUN_ACTION_STATES = {
     "queued": "requested",
     "provisioning": "running",
@@ -914,11 +819,6 @@ RUN_ACTION_STATES = {
 
 
 def read_stores(directory: Path) -> tuple[Source, list[Event]]:
-    """Final persisted owner state, observed after the owners stopped.
-
-    Each record becomes an ``observed`` event the checker reconciles with the
-    state its journal replays to; disagreement means a change went unjournaled.
-    """
     events: list[Event] = []
     problems: list[str] = []
     position = 0
@@ -943,8 +843,6 @@ def read_stores(directory: Path) -> tuple[Source, list[Event]]:
     for path in sorted((directory / "runs").glob("*/state.json")):
         try:
             run = json.loads(path.read_text())
-            # The API's background runs are the long author actions: a run that carries one
-            # persists that action's state as its status. A reviewer's run carries none.
             if run.get("action_id") is not None:
                 state = RUN_ACTION_STATES[run["status"]]
                 observe(
@@ -963,11 +861,6 @@ def read_stores(directory: Path) -> tuple[Source, list[Event]]:
         problems=tuple(problems),
     )
     return source, events
-
-
-# ================================================
-# Loading
-# ================================================
 
 
 def load_evidence(
@@ -991,8 +884,6 @@ def load_evidence(
         if not (root / ".git").is_dir():
             problems.append(f"{root} is not an REE repository")
             continue
-        # An REE no control plane named is named by the history it was collected under, its reviews with it, as a
-        # dossier names them.
         histories.extend(
             read_git_history(repository, label, git_executable, author=not scope, scope=scope, ree=root.name)
             for repository, label, scope in git_repositories(root)
@@ -1005,7 +896,6 @@ def load_evidence(
 
 
 def combine(*parts: Evidence) -> Evidence:
-    """One body of evidence from several; each source must keep its own identity."""
     sources = tuple(source for part in parts for source in part.sources)
     if len({source.id for source in sources}) != len(sources):
         raise ValueError("two evidence sources share an identity")

@@ -1,5 +1,3 @@
-"""Each rule separates violations, which complete evidence proves, from what it cannot decide."""
-
 from __future__ import annotations
 
 import tomllib
@@ -13,9 +11,6 @@ from repo2ree_assurance_checker.evidence import Event, Evidence, Source
 from repo2ree_assurance_checker.files import load_spec
 from repo2ree_assurance_checker.spec import Invariant, Spec
 
-# Example rules the checker's tests judge beside the specification's, so a pattern
-# stays tested whether or not a specified rule uses it. Each id says ``example-``,
-# so a finding is never mistaken for a specified rule.
 EXAMPLE_RULES = tomllib.loads(
     """
 # A requirement on a message: the citation that orders the journal against Git.
@@ -65,7 +60,6 @@ def journal(source_id: str = "api-000001", *, closed: bool = True, complete: boo
 
 
 def bench(source_id: str = "workbench-000001", *, closed: bool = True, complete: bool = True) -> Source:
-    """A journal of the workbench serving store lab-1, one epoch per process."""
     return Source(
         id=source_id,
         kind="journal",
@@ -80,7 +74,6 @@ def bench(source_id: str = "workbench-000001", *, closed: bool = True, complete:
 
 
 def environment(source_id: str = "environment-000001") -> Source:
-    """The journal of whatever ran ree's commands and changed the REE's files between them."""
     return Source(
         id=source_id,
         kind="journal",
@@ -121,8 +114,6 @@ def stores(cut: dict[str, tuple[int, int]] | None = None) -> Source:
 
 
 class Recorder:
-    """Builds owner-ordered events the way journals and the Git adapter number them."""
-
     def __init__(self) -> None:
         self.events: list[Event] = []
         self.positions: dict[str, int] = {}
@@ -132,7 +123,6 @@ class Recorder:
         self.events.append(Event(source=source, position=self.positions[source], partition=REE, **fields))
 
     def run(self, key: str, *path: str, source: str = "api-000001", **facts: Any) -> None:
-        """An author action through ``path``: build_experiment_environment unless ``action`` names another."""
         for current, target in pairwise([None, *path]):
             assert target is not None
             step = {"action": facts.get("action", "build_experiment_environment")}
@@ -177,7 +167,6 @@ class Recorder:
         drift_after: tuple[str, ...] = (),
         commit: str | None = None,
     ) -> None:
-        """An attempt's phases; with ``failed_record``, its capture failed and that is its record's digest."""
         pending: dict[str, Any] = {"operation": operation, "run_id": "run-1", "scope": "author"}
         pending |= {"drift_found": list(drift_found)} | ({"drift_recorded": drift_recorded} if drift_recorded else {})
         if dispatched_by is not None:
@@ -202,7 +191,6 @@ class Recorder:
             )
 
     def drift(self, key: str, path: str, part: str = "workspace", source: str = "environment-000001") -> None:
-        """A file of the REE drifting, as the environment that changed it journals it."""
         self._add(
             source,
             kind="transition",
@@ -215,7 +203,6 @@ class Recorder:
         )
 
     def undo(self, key: str, source: str = "environment-000001") -> None:
-        """The environment putting back what drifted, as ree left it."""
         self._add(
             source,
             kind="transition",
@@ -228,7 +215,6 @@ class Recorder:
         )
 
     def bundle(self, key: str, *heads: str, source: str = "environment-000001") -> None:
-        """The environment taking the REE's bundle, which names ``heads``; none, a bundle refused."""
         request = {"kind": "send", "message": "export_bundle", "facts": {}}
         answer = (
             {"kind": "receive", "message": "exported", "facts": {"heads": list(heads)}}
@@ -239,8 +225,6 @@ class Recorder:
             self._add(source, owner="environment", subject="export_bundle", key=key, **record)
 
     def command(self, key: str, source: str = "environment-000001", *, beside: str | None = None) -> str:
-        """The environment running one of ree's commands; returns its reference, which the attempts it runs cite.
-        With ``beside``, it changes that file of the REE while the command runs."""
         facts = {"run_id": "run-1"}
         self._add(
             source, kind="send", owner="environment", subject="run_command", key=key, message="run_command", facts=facts
@@ -255,7 +239,6 @@ class Recorder:
         return request
 
     def start(self, key: str, *outcomes: tuple[str, str | None], source: str = "api-000001") -> str:
-        """Record a start_run exchange; returns the request's reference, which the attempt cites."""
         self._add(
             source,
             kind="send",
@@ -281,7 +264,6 @@ class Recorder:
         record: str | None = None,
         source: str = "api-000001",
     ) -> None:
-        """Record one round of a follow_run exchange."""
         self._add(
             source,
             kind="send",
@@ -300,7 +282,6 @@ class Recorder:
             self._add(source, kind=kind, owner=owner, subject="follow_run", key=key, message=message, facts=facts)
 
     def execution(self, key: str, *path: str, start: str | None = None, source: str = "workbench-000001") -> None:
-        """An executor the workbench journals from ``start`` through ``path``."""
         for current, target in pairwise([start, *path]):
             assert target is not None
             facts: dict[str, Any] = (
@@ -332,7 +313,6 @@ class Recorder:
         reason: str | None = None,
         source: str = "api-000001",
     ) -> None:
-        """A workbench's connection to ``store`` from ``start`` through ``path``, as the supervisor journals it."""
         for current, target in pairwise([start, *path]):
             assert target is not None
             facts: dict[str, Any] = {"workbench_id": f"bench-{key}", "nonce": f"n-{key}", "store_id": store}
@@ -359,7 +339,6 @@ class Recorder:
     def receipt(
         self, step: str, current: str | None, target: str, *, attempt_id: str | None, cause: str = "operation"
     ) -> None:
-        """A step's evidence changing standing, as the Git adapter reads it from the attempt's commit."""
         self._add(
             "git:ree",
             kind="transition",
@@ -679,7 +658,6 @@ def test_an_attempt_still_open_when_its_history_was_taken_is_inconclusive() -> N
     recorder = Recorder()
     recorder.follow("a1", ("receive", "settled"))
     recorder.attempt("a1", captured=False)
-    # The history was taken after the request (#1) but before the result (#2) it must precede.
     taken = git(REE, cut={"api-000001": (1, 1)})
     assert findings(recorder, "follow-success-is-captured", journal(), taken) == [
         "inconclusive: Attempt a1 is still completed"
@@ -847,7 +825,6 @@ def test_a_missing_required_fact_leaves_the_machine_inconclusive() -> None:
 def test_a_declared_fact_of_another_type_is_violated() -> None:
     recorder = Recorder()
     recorder.run("run-1", "requested", "failed", action=7)
-    # Both records carry the action, and both mistype it.
     assert findings(recorder, "machine:AuthorApiAction") == ["violated: fact 'action' is not str"] * 2
 
 
@@ -924,9 +901,6 @@ def test_occurrence_verdicts_agree_with_the_rule_verdicts() -> None:
     assert ("api-success-is-recorded", "api-000001#3", "violated") in judgements(recorder)
 
 
-# ---- Snapshots taken while the system ran ---------------------------------------
-
-
 @pytest.mark.parametrize(
     ("cut", "expected"),
     [
@@ -937,7 +911,7 @@ def test_occurrence_verdicts_agree_with_the_rule_verdicts() -> None:
 )
 def test_a_snapshot_must_hold_only_what_happened_before_it_was_taken(cut: tuple[int, int], expected: str) -> None:
     recorder = Recorder()
-    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="missing")  # api-000001#1..3
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="missing")
     recorder.attempt("other")
     sources = (journal(closed=False), git(REE, cut={"api-000001": cut}))
     assert findings(recorder, "api-success-is-recorded", *sources) == [expected]
@@ -971,8 +945,8 @@ def observed(recorder: Recorder, state: str) -> None:
 @pytest.mark.parametrize(
     ("state", "expected"),
     [
-        ("running", []),  # The state when the cut began.
-        ("succeeded", []),  # Written to the store just before the snapshot, journaled just after the cut.
+        ("running", []),
+        ("succeeded", []),
         (
             "requested",
             ["violated: persisted as requested, but around stores the journal shows ['running', 'succeeded']"],
@@ -981,7 +955,7 @@ def observed(recorder: Recorder, state: str) -> None:
 )
 def test_a_live_store_snapshot_holds_a_state_reached_around_its_cut(state: str, expected: list[str]) -> None:
     recorder = Recorder()
-    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")  # api-000001#1..3
+    recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1")
     recorder.attempt("a1")
     observed(recorder, state)
     sources = (journal(closed=False), git(REE), stores(cut={"api-000001": (2, 2)}))
@@ -989,7 +963,6 @@ def test_a_live_store_snapshot_holds_a_state_reached_around_its_cut(state: str, 
 
 
 def test_a_live_store_snapshot_after_a_restart_is_placed_by_each_events_own_epoch() -> None:
-    """A cut names every epoch its owner had; the running one places its events by position."""
     recorder = Recorder()
     recorder.run("run-1", "requested", "running", "succeeded", attempt_id="a1", source="api-000002")
     recorder.attempt("a1")
@@ -998,7 +971,6 @@ def test_a_live_store_snapshot_after_a_restart_is_placed_by_each_events_own_epoc
     assert (
         findings(recorder, "reconciliation", *restarted, stores(cut={"api-000001": (9, 9), "api-000002": (2, 2)})) == []
     )
-    # Journaled wholly in an earlier epoch than any the cut names: before the snapshot.
     earlier = Recorder()
     earlier.run("run-1", "requested", "running", "succeeded", attempt_id="a1")
     earlier.attempt("a1")
@@ -1007,7 +979,6 @@ def test_a_live_store_snapshot_after_a_restart_is_placed_by_each_events_own_epoc
 
 
 def without(recorder: Recorder, state: str, fact: str) -> None:
-    """Drop a fact from the Attempt transition into ``state``, as an owner that failed to record it would."""
     recorder.events = [
         event.model_copy(update={"facts": {k: v for k, v in event.facts.items() if k != fact}})
         if event.subject == "Attempt" and event.target_state == state
@@ -1017,7 +988,6 @@ def without(recorder: Recorder, state: str, fact: str) -> None:
 
 
 def test_a_condition_on_a_fact_the_record_lacks_is_inconclusive_not_violated() -> None:
-    """A required fact that is missing proves nothing either way, in an invariant as in the machine."""
     recorder = Recorder()
     complete_command(recorder)
     without(recorder, "completed", "outcome")
@@ -1047,16 +1017,13 @@ def test_a_store_snapshot_after_the_owners_stopped_must_match_exactly() -> None:
     ]
 
 
-# ---- Order across sources, evidenced by citations ----------------------------------
-
-
 def test_without_citations_the_order_across_sources_is_unknown() -> None:
     recorder = Recorder()
     recorder.run("run-1", "requested", "running")
     recorder.start("a1", ("receive", "accepted"))
     recorder.execution("a1", "started", "exited")
     recorder.follow("a1", ("receive", "settled"), commit=None)
-    recorder.attempt("a1")  # Names no request, and the result names no commit.
+    recorder.attempt("a1")
     recorder.settle("run-1", "running", "succeeded", "a1")
     result = verdicts(recorder)
     assert result["example-execution-was-dispatched"] == "inconclusive"
@@ -1068,7 +1035,6 @@ def test_without_citations_the_order_across_sources_is_unknown() -> None:
 
 
 def failed_capture(recorder: Recorder, *, named: str | None, recorded: str = "sha256:" + "f" * 64) -> None:
-    """A build whose capture failed, settled failed; its result names ``named`` as the attempt's record."""
     recorder.run("run-1", "requested", "running")
     recorder.follow("a1", ("receive", "settled"), commit=None, status="failed", record=named)
     recorder.attempt("a1", failed_record=recorded)
@@ -1079,7 +1045,6 @@ def test_a_failed_capture_is_ordered_by_the_record_its_result_names() -> None:
     cited = Recorder()
     failed_capture(cited, named="sha256:" + "f" * 64)
     assert verdicts(cited)["settled-api-actions-settle-their-attempt"] == "passed"
-    # Without the citation, nothing orders the record in Git against the answer in the journal.
     uncited = Recorder()
     failed_capture(uncited, named=None)
     assert verdicts(uncited)["settled-api-actions-settle-their-attempt"] == "inconclusive"
@@ -1097,8 +1062,8 @@ def test_a_citation_of_a_record_the_evidence_does_not_hold_is_violated() -> None
     recorder = Recorder()
     recorder.run("run-1", "requested", "running")
     recorder.start("a1", ("receive", "accepted"))
-    recorder.follow("a1", ("receive", "settled"), commit="d" * 40)  # Not the commit that captured a1.
-    recorder.attempt("a1", dispatched_by="api-000001#99")  # Not the request that sent it.
+    recorder.follow("a1", ("receive", "settled"), commit="d" * 40)
+    recorder.attempt("a1", dispatched_by="api-000001#99")
     recorder.settle("run-1", "running", "succeeded", "a1")
     assert findings(recorder, "boundary:start_run") == [
         "violated: names api-000001#99, but the evidence records ['api-000001#3']",
@@ -1115,7 +1080,6 @@ def test_a_store_is_served_by_one_session_at_a_time() -> None:
     recorder.session("s1", "lost", start="connected", reason="closed")
     recorder.session("s3", "opened", "connected")
     recorder.session("s3", "lost", start="connected", reason="shutdown")
-    # Another store's session is no rival.
     recorder.session("other", "opened", "connected", store="lab-2")
     recorder.session("other", "lost", start="connected", store="lab-2", reason="shutdown")
     result = verdicts(recorder)
@@ -1141,7 +1105,6 @@ def test_a_session_still_connected_when_the_journal_closed_is_violated_but_open_
 def test_a_session_ends_with_the_api_process_that_crashed_holding_it() -> None:
     recorder = Recorder()
     recorder.session("s1", "opened", "connected")
-    # The API crashed: its journal ended without closing, and the workbench dialed the restarted one.
     recorder.session("s2", "opened", "connected", source="api-000002")
     recorder.session("s2", "lost", start="connected", reason="closed", source="api-000002")
     crashed = (journal("api-000001", closed=False), journal("api-000002"), git(REE))
@@ -1160,8 +1123,6 @@ def test_a_start_names_the_session_it_was_sent_on() -> None:
     ]
     assert findings(recorder, "boundary:start_run") == ["inconclusive: missing required facts ['session']"]
 
-
-# ---- Drift ---------------------------------------------------------------------------------------------------
 
 DRIFT = "drift-is-found-by-the-next-attempt"
 

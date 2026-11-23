@@ -1,9 +1,3 @@
-"""Evidence from a dossier: each source the manifest lists, with its origin and cut.
-
-The format itself (the manifest and its sources) is ``repo2ree_assurance_dossier``, which
-collection writes and every assurance step reads; this turns it into evidence.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,19 +13,17 @@ from repo2ree_assurance_checker.sources import (
 )
 from repo2ree_assurance_dossier import read_dossier
 
-# ``history_head`` is shared with readers of a recorded REE that are not the checker (the views).
 __all__ = ["history_head", "load_dossier", "one_per_history"]
 
 
 def load_dossier(directory: Path, git_executable: str = "git") -> Evidence:
-    """Every evidence source the manifest lists, with its origin and cut; missing ones become problems."""
     dossier = read_dossier(directory)
     parts: list[Evidence] = []
     snapshots: list[Evidence] = []
     problems: list[str] = []
     for recorded in dossier.sources:
         if recorded.kind == "spans":
-            continue  # Context for views, never evidence.
+            continue
         label = f"{recorded.kind} {recorded.name or recorded.path} from {recorded.origin}"
         path = directory / recorded.path
         if recorded.status != "recorded":
@@ -62,18 +54,10 @@ def load_dossier(directory: Path, git_executable: str = "git") -> Evidence:
 
 
 def one_per_history(snapshots: list[Evidence]) -> tuple[list[Evidence], list[str]]:
-    """One snapshot per REE history: the one holding the most, which the others must be prefixes of.
-
-    A history is append-only, so two downloads of one REE (before and after sealing, or a
-    copy kept twice) are snapshots of the same journal, not two journals: reading both
-    would record every attempt twice. A snapshot that is not a prefix of the latest is a
-    divergence the evidence cannot settle, and is reported.
-    """
     groups: dict[tuple[frozenset[str], str], list[Evidence]] = {}
     for snapshot in snapshots:
         (source,) = snapshot.sources
         scope = source.id.partition("/reviews/")[2]
-        # A history with no attempts names no REE; it is its own.
         key = (source.partitions or frozenset({source.id}), scope)
         groups.setdefault(key, []).append(snapshot)
     kept: list[Evidence] = []
@@ -91,7 +75,6 @@ def one_per_history(snapshots: list[Evidence]) -> tuple[list[Evidence], list[str
 
 
 def _captured(snapshot: Evidence) -> dict[str, str]:
-    """Each attempt a snapshot holds, with the commit that captured it ("" while it is pending)."""
     attempts: dict[str, str] = {}
     for event in snapshot.events:
         if event.subject == "Attempt":

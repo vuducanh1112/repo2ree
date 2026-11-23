@@ -1,7 +1,3 @@
-"""A review's commits judged beside the sealed REE it reviews: its expectations are the author's, its observations
-its own receipts', each verdict its ladder's, and its signature the review itself; and each part of it moved only by
-the step that settles it, its signature only by signing, and nothing once it is signed."""
-
 from __future__ import annotations
 
 import copy
@@ -27,7 +23,6 @@ REVIEW = "https://repo2ree.org/claims/review/v1"
 
 
 def author() -> dict[str, Any]:
-    """The sealed REE, as its receipts record what the review expects."""
     return {
         "subject": {
             "receipts": {
@@ -50,7 +45,6 @@ def author() -> dict[str, Any]:
 
 
 def review() -> dict[str, Any]:
-    """A review that rebuilt the image bit for bit and reproduced the experiment's output identically."""
     return {
         "review_id": "r1",
         "subject": {"name": "demo", "ree_digest": SEAL, "experiments": ["hello"]},
@@ -234,8 +228,6 @@ def test_a_review_s_signature_carries_the_review_as_it_stands() -> None:
     ]
 
 
-# ---------------------------------------------------------------------------- the review aggregate
-
 INSTANCE = f"{REE}/reviews/r1"
 
 
@@ -288,7 +280,6 @@ def signature(position: int, operation: str) -> FileChange:
 
 
 def reviewed_history(*extra: FieldChange | Event | FileChange) -> Evidence:
-    """A review opened, its experiment compared, and signed; and whatever a test adds."""
     events = [
         became(2900, None, "open", "review_acquire_source"),
         became(3900, "open", "open", "review_run_experiment"),

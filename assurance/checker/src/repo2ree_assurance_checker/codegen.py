@@ -1,9 +1,3 @@
-"""Render the vocabulary as the JSON Schema owners emit against (``contracts/behaviour/events.schema.json``).
-
-Only the vocabulary is published; the rules stay with the checker, and nothing the
-product runs is generated from the specification.
-"""
-
 from __future__ import annotations
 
 import json
@@ -38,7 +32,6 @@ def _fact(kind: FactType, required: bool, allowed: tuple[str, ...]) -> dict[str,
 def _facts(
     declared: dict[str, FactType], required: Iterable[str] = (), allowed: Mapping[str, tuple[str, ...]] | None = None
 ) -> dict[str, Any]:
-    """Declared facts by type or listed values, open to the owner's own; required ones present and not null."""
     names = sorted(required)
     schema: dict[str, Any] = {
         "type": "object",
@@ -124,7 +117,6 @@ def _boundary(name: str, boundary: BoundarySpec) -> dict[str, Any]:
 
 
 def render_schema(spec: Spec) -> str:
-    """The journal record contract as JSON Schema: the vocabulary, open to what owners add beyond it."""
     declared = sorted({*spec.entities, *spec.boundaries})
     processes = sorted({component.process for component in spec.components.values()})
     opened: dict[str, Any] = {
@@ -138,7 +130,6 @@ def render_schema(spec: Spec) -> str:
             "vocabulary": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         },
         "required": ["kind", "process", "epoch", "hosts", "vocabulary"],
-        # A journal speaks for every component its process hosts, and only for them.
         "allOf": [
             {
                 "if": {"properties": {"process": {"const": process}}},

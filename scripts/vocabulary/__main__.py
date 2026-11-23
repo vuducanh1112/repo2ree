@@ -18,7 +18,7 @@ def context() -> Context:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m scripts.vocabulary", description=__doc__)
+    parser = argparse.ArgumentParser(prog="python -m scripts.vocabulary")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check", help="hold every vocabulary to its edges and every found set to a claim")
     commands.add_parser("graph", help="print the graph as Mermaid")

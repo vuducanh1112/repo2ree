@@ -1,8 +1,3 @@
-"""The rules on the vocabulary.
-
-Each entity's machine, and each boundary's exchange with the records that cite each other.
-"""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -25,16 +20,7 @@ class Transition(SpecModel):
 
 
 class EntitySpec(SpecModel):
-    """One state machine with a single owning component.
-
-    An entity without a machine (no ``entities/<name>.toml``) is unconstrained: it may
-    start in and move between any of its states, never settles, and declares no edges
-    for the evidence to cover. Its records are still checked: owner, facts, partition,
-    and that each move starts where the previous one ended.
-    """
-
     def settles_at(self, closed: bool, final: bool) -> bool:
-        """Whether an instance still open when its owner's journal ended this way is left unsettled."""
         if not closed:
             return False
         return self.settles_before_close is True or (self.settles_before_close == "final" and final)
@@ -46,22 +32,13 @@ class EntitySpec(SpecModel):
     evidence: Literal["journal", "git"]
     initial: tuple[Name, ...] = Field(min_length=1)
     terminal: tuple[Name, ...] = ()
-    # True: terminal whenever its owner's journal closes. "final": it may outlive a restart, but must
-    # be terminal when its owner closes the journal for good. False: no close settles it.
     settles_before_close: bool | Literal["final"]
-    # True: an instance lives no longer than the process that journals it. Still open when that
-    # process's journal ends, it is in no state for anything its next journal records.
     ends_with_owner: bool = False
-    # The states an instance left open by one of its owner's journals moves to first in the next
-    # journal of the same process instance, which must record one before it closes. Only an instance
-    # left in a state with an edge to one that takes it over without settling it outlives its process.
     reconciled_by: tuple[Name, ...] = ()
     summary: str
     states: dict[Name, str]
     facts: dict[Name, FactType] = Field(default_factory=dict)
-    # The facts every transition into a state must carry, by state.
     required: dict[Name, tuple[Name, ...]] = Field(default_factory=dict)
-    # The only values a fact may take, for the facts that list them; what each means; and how they group.
     allowed: dict[Name, tuple[str, ...]] = Field(default_factory=dict)
     meanings: dict[Name, dict[str, str]] = Field(default_factory=dict)
     groups: dict[Name, dict[Name, tuple[str, ...]]] = Field(default_factory=dict)
@@ -81,11 +58,6 @@ class EntitySpec(SpecModel):
         return {state: frozenset(merged.get(state, ())) for state in self.states}
 
     def survives(self, state: str | None) -> bool:
-        """Whether an instance left in ``state`` by its owner's journal is the next journal's to take over.
-
-        It is when ``state`` has an edge into a state that takes it over and does not settle it; an
-        instance in any other state ended with the process that held it.
-        """
         takers = set(self.reconciled_by) - set(self.terminal)
         return state is not None and bool(self.edges.get(state, frozenset()) & takers)
 
@@ -137,33 +109,25 @@ class EntitySpec(SpecModel):
 
 
 class CitedEntity(SpecModel):
-    """An entity's record for the boundary's key, at the transition into ``reached``; ``fact`` is its identity."""
-
     entity: Name
     reached: Name
     fact: Name
 
 
 class CitedMessage(SpecModel):
-    """A message of the exchange; its identity is the journal reference of its record."""
-
     message: Name
 
 
 class CitingEntity(CitedEntity):
-    """An entity's record whose ``fact`` names the cited record."""
+    pass
 
 
 class CitingMessage(SpecModel):
-    """A message whose ``fact`` names the cited record."""
-
     message: Name
     fact: Name
 
 
 class Citation(SpecModel):
-    """One record naming another, which it could only know once the other existed: evidence of order."""
-
     by: CitingEntity | CitingMessage
     cited: CitedEntity | CitedMessage
 
@@ -175,26 +139,22 @@ class Citation(SpecModel):
 
     @property
     def record(self) -> CitedEntity:
-        """The entity side of the citation, citing or cited."""
         if isinstance(self.by, CitingEntity):
             return self.by
         if isinstance(self.cited, CitedEntity):
             return self.cited
-        raise ValueError("a citation without an entity side")  # Refused by the validator above.
+        raise ValueError("a citation without an entity side")
 
     @property
     def message(self) -> str:
-        """The exchange side of the citation, citing or cited."""
         if isinstance(self.by, CitingMessage):
             return self.by.message
         if isinstance(self.cited, CitedMessage):
             return self.cited.message
-        raise ValueError("a citation without a message side")  # Refused by the validator above.
+        raise ValueError("a citation without a message side")
 
 
 class BoundarySpec(SpecModel):
-    """One request/response exchange between two components, recorded by the sender."""
-
     name: Name
     sender: Name
     receiver: Name
@@ -205,14 +165,9 @@ class BoundarySpec(SpecModel):
     responses: tuple[Name, ...] = Field(min_length=1)
     messages: dict[Name, str]
     facts: dict[Name, dict[Name, FactType]] = Field(default_factory=dict)
-    # The facts every record of a message must carry, by message.
     required: dict[Name, tuple[Name, ...]] = Field(default_factory=dict)
-    # The only values a fact may take, by message, for the facts that list them.
     allowed: dict[Name, dict[Name, tuple[str, ...]]] = Field(default_factory=dict)
-    # Rounds of one request and its one outcome may follow each other under one key.
     repeats: bool = False
-    # Records of the exchange and of an entity keyed like it that name each other:
-    # the only way the checker orders evidence across sources.
     cites: tuple[Citation, ...] = ()
 
     @model_validator(mode="after")
@@ -243,8 +198,6 @@ class BoundarySpec(SpecModel):
 
 
 class MachineRules(SpecModel):
-    """One entity's machine: where instances start, the edges they may take, and when they settle."""
-
     name: Name
     initial: tuple[Name, ...] = Field(min_length=1)
     terminal: tuple[Name, ...] = ()
@@ -260,7 +213,5 @@ class MachineRules(SpecModel):
 
 
 class ExchangeRules(SpecModel):
-    """One boundary's rules beyond the exchange pattern itself: the records that name each other."""
-
     name: Name
     cites: tuple[Citation, ...] = ()

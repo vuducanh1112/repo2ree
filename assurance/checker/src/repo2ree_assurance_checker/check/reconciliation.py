@@ -1,5 +1,3 @@
-"""Persisted owner state against what the owner's journal replays to."""
-
 from __future__ import annotations
 
 from repo2ree_assurance_checker.check.order import Model
@@ -14,12 +12,6 @@ from repo2ree_assurance_checker.evidence import Cut, Event
 
 
 def states_around(model: Model, instance: Instance, cut: Cut) -> set[str] | None:
-    """The states a store snapshot taken at ``cut`` may hold for one instance.
-
-    Owners write their store and then journal the change, so the snapshot holds
-    the state at the cut's start, one reached while it was taken, or the first
-    one journaled after it. None when the instance's journal shares no process with the cut.
-    """
     states: set[str] = set()
     last: str | None = None
     for item in instance.reached:
@@ -38,11 +30,6 @@ def states_around(model: Model, instance: Instance, cut: Cut) -> set[str] | None
 
 
 def check_reconciliation(model: Model, observed: list[Event]) -> RuleResult:
-    """Persisted owner state must be what the owner's journal replays to.
-
-    A store record the journal never mentions, or one that disagrees with the
-    replayed state, means some code changed state without journaling it.
-    """
     findings: list[Finding] = []
     for event in observed:
         spec = model.spec.entities.get(event.subject)

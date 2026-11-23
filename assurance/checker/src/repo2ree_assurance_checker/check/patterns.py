@@ -1,5 +1,3 @@
-"""The invariant patterns: each occurrence of a trigger, and what its requirement found."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,7 +43,6 @@ class Occurrence:
 
 
 def occurrences(model: Model, invariant: Invariant) -> list[Occurrence]:
-    """Every event that triggers ``invariant``, with what judging it needs."""
     when = invariant.when
     if isinstance(when, EntityTrigger):
         return [
@@ -94,7 +91,6 @@ def check_requires(
     key = occurrence.key if require.key_from == OWN_KEY else occurrence.facts.get(require.key_from)
     if not isinstance(key, str) or not key:
         return finding("violated", occurrence.subject, f"has no {require.key_from}", occurrence.event)
-    # Only a requirement that precedes the trigger must be in a snapshot taken after it.
     before = occurrence.event if require.order == "before" else None
     if isinstance(require, EntityRequirement):
         target_spec = model.spec.entities[require.entity]
@@ -115,7 +111,6 @@ def check_requires(
                 return _ordered_requirement(model, [item.event for item in satisfying], occurrence, name)
             return None
         if reached:
-            # A fact the condition needs that the record lacks leaves it undecided, as for the machine.
             if missing := sorted(
                 {fact for item in reached for fact in absent(require.where, item.facts, occurrence.facts)}
             ):
@@ -127,8 +122,6 @@ def check_requires(
         how = "settled in" if instance.settled else "is still"
         if instance.settled:
             return finding("violated", occurrence.subject, f"{name} {how} {instance.current}", occurrence.event, last)
-        # Still open: a state it must have reached before the trigger is certainly missing when the
-        # evidence covers everything that happened before the trigger, as for a record never written.
         if require.order == "before":
             certain, why = model.coverage(target_spec.owner, target_spec.evidence, occurrence.partition, before)
             if certain:
@@ -151,7 +144,7 @@ def check_requires(
 
 def check_response(model: Model, eventually: tuple[str, ...], occurrence: Occurrence) -> Finding | None:
     instance = occurrence.instance
-    if instance is None:  # The specification only allows entity triggers here.
+    if instance is None:
         return finding("inconclusive", occurrence.subject, "not an entity transition", occurrence.event)
     later = instance.reached[occurrence.index + 1 :]
     if any(item.state in eventually for item in later):
@@ -159,8 +152,6 @@ def check_response(model: Model, eventually: tuple[str, ...], occurrence: Occurr
     last = instance.reached[-1].event
     if instance.settled:
         return finding("violated", occurrence.subject, f"settled in {instance.current}", occurrence.event, last)
-    # "Eventually" has a horizon only where the owner's journal ended in a way that settles the entity:
-    # after that, nothing can still bring the response.
     source = model.evidence.source(last.source)
     if model.spec.entities[instance.subject].settles_at(source.closed, source.final):
         reason = f"still {instance.current} when {source.id} closed{' for good' if source.final else ''}"
@@ -195,10 +186,6 @@ def check_excludes(model: Model, require: ExclusionRequirement, occurrence: Occu
 
 
 def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -> Finding | None:
-    """The first instance of ``require.entity`` the evidence orders after the trigger, in its partition, as it
-    reaches one of ``require.reached``, satisfies ``require.where``, unless the trigger's instance left the state it
-    reached before that; none following holds. One the evidence cannot order against the trigger, under way as it
-    happened, that satisfies ``require.beside`` holds it in place of the first after it."""
     following: list[tuple[Instance, Reached]] = []
     unordered: list[Event] = []
     for instance in model.instances.get(require.entity, {}).values():
@@ -234,8 +221,6 @@ def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -
     name = f"{require.entity} {instance.key}, the first after it,"
     if matches(require.where, reached.facts, occurrence.facts):
         return None
-    # The trigger holds only while its state lasts: one left before the first instance after it owes that instance
-    # nothing.
     left = occurrence.instance.reached[occurrence.index + 1 :] if occurrence.instance else []
     if any(model.precedes(item.event, reached.event) is True for item in left):
         return None
@@ -248,8 +233,6 @@ def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -
 
 
 def check_each(model: Model, require: EachRequirement, occurrence: Occurrence) -> list[Finding]:
-    """Each value of the trigger's ``require.of`` is the ``require.fact`` of an instance of ``require.entity``, in
-    its partition, that reached one of ``require.reached`` before the trigger."""
     values = occurrence.facts.get(require.of)
     if not isinstance(values, list):
         return [finding("inconclusive", occurrence.subject, f"has no {require.of}", occurrence.event)]
@@ -282,7 +265,6 @@ def check_each(model: Model, require: EachRequirement, occurrence: Occurrence) -
 
 
 def judge(model: Model, invariant: Invariant, occurrence: Occurrence) -> list[Finding]:
-    """What one occurrence of an invariant found; empty when it held."""
     require = invariant.require
     if isinstance(require, ExclusionRequirement):
         return check_excludes(model, require, occurrence)
@@ -312,7 +294,6 @@ def check_invariant(model: Model, invariant: Invariant) -> RuleResult:
 
 
 def judge_occurrences(model: Model) -> list[Judgement]:
-    """Every invariant occurrence with its own verdict, so views can attach rules to the events they checked."""
     judgements: list[Judgement] = []
     for invariant in model.spec.invariants:
         for occurrence in occurrences(model, invariant):

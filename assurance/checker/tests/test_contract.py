@@ -1,5 +1,3 @@
-"""The published contract: the generated schema and the checker agree on every record."""
-
 from __future__ import annotations
 
 import copy
@@ -40,7 +38,6 @@ def header(process: str = "api", **changes: Any) -> dict[str, Any]:
 
 
 def transitions() -> Iterator[dict[str, Any]]:
-    """One record per entity and target state, carrying every declared fact."""
     for name, entity in sorted(SPEC.entities.items()):
         facts = {fact: entity.allowed.get(fact, (SAMPLE[kind],))[0] for fact, kind in entity.facts.items()}
         for target in entity.states:
@@ -80,8 +77,6 @@ def messages() -> Iterator[dict[str, Any]]:
 
 
 def mutations(record: dict[str, Any]) -> Iterator[tuple[str, dict[str, Any]]]:
-    """Ways to break (or legitimately extend) one record; each is judged by both readers."""
-
     def changed(label: str, change: Any) -> tuple[str, dict[str, Any]]:
         copied = copy.deepcopy(record)
         change(copied)

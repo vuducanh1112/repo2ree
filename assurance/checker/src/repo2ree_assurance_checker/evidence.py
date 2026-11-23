@@ -1,5 +1,3 @@
-"""Normalized evidence: owner-ordered events plus what each source can vouch for."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -29,57 +27,36 @@ class EvidenceModel(BaseModel):
 
 
 class Source(EvidenceModel):
-    """One durable journal of one owner.
-
-    ``partitions`` is None when the source covers every partition its owner
-    touched (a process journal); a Git history covers only its own REE.
-
-    ``final`` marks a journal its owner closed for good (a decommissioned
-    deployment, the end of a test stack): an entity the specification lets
-    outlive a restart must still be settled by then.
-
-    ``cut`` is None when the source was taken after the owners it speaks for
-    stopped. A snapshot of a running system carries the journal positions it
-    was taken between: only what happened before the cut must be in it.
-    """
-
     id: str
     kind: Literal["journal", "git", "store"]
     process: str
-    rank: int  # Order among sources of the same process instance (journal epoch).
-    # Which of a process's instances wrote it, where several run at once: the store a workbench serves.
+    rank: int
     instance: str | None = None
-    hosts: frozenset[str]  # Owners whose records this source would hold.
-    complete: bool  # No gaps or unreadable records.
-    closed: bool  # The owner ended the journal deliberately.
-    # The owner closed it for good: it will not resume, so what it still holds open it holds forever.
+    hosts: frozenset[str]
+    complete: bool
+    closed: bool
     final: bool = False
     partitions: frozenset[str] | None = None
-    # Provenance only: the vocabulary the owner says it wrote against. Records are judged by
-    # what they hold, so a journal from an older vocabulary is checked like any other.
     vocabulary: str | None = None
     problems: tuple[str, ...] = ()
-    origin: str | None = None  # Where it was collected from: a control-plane URL, or a local path.
+    origin: str | None = None
     cut: Cut | None = None
 
     @property
     def lineage(self) -> tuple[str, str]:
-        """The process instance whose epochs this source is one of: only its epochs are ordered by rank."""
         return self.process, self.instance or ""
 
     @field_serializer("hosts", "partitions")
     def _sorted(self, values: frozenset[str] | None) -> list[str] | None:
-        """In a stable order, so the same evidence always writes the same report."""
         return None if values is None else sorted(values)
 
 
 class Event(EvidenceModel):
     source: str
-    position: int  # Order within its source.
-    # "observed" is a persisted state read after the owners stopped, for reconciliation.
+    position: int
     kind: Literal["transition", "send", "receive", "abandon", "observed"]
     owner: str
-    subject: str  # Entity name for transitions, boundary name for messages.
+    subject: str
     key: str
     partition: str | None = None
     source_state: str | None = None
@@ -87,8 +64,7 @@ class Event(EvidenceModel):
     message: str | None = None
     facts: dict[str, JsonValue] = {}
     at: str | None = None
-    locator: str | None = None  # A human address for the evidence (commit, file), when positions are synthetic.
-    # The span active when the owner recorded this, if any. Lets views join spans; never used by the checker.
+    locator: str | None = None
     trace_id: str | None = None
     span_id: str | None = None
 
@@ -98,22 +74,13 @@ class Event(EvidenceModel):
 
 
 class FieldChange(EvidenceModel):
-    """One part of a committed document that a capture commit changed, witnessed from the documents themselves.
-
-    ``path`` is relative to the document's subject, and a list keyed by name has one path
-    per item (``definition.experiments[<name>]``). ``before`` and ``after`` are digests of
-    the part's value, None where it is absent or empty. The commit that creates the
-    document lists every part it holds.
-    """
-
     source: str
-    position: int  # The capture commit's place in its source, as its events have it.
+    position: int
     partition: str
     path: str
     before: str | None
     after: str | None
-    operation: str  # The operation the capture commit names.
-    # Whose document the part is of: the REE's, or one review's of it.
+    operation: str
     subject: str = "Ree"
     cause: Literal["created", "operation", "external"]
     locator: str
@@ -124,27 +91,18 @@ class FieldChange(EvidenceModel):
 
 
 class FileChange(EvidenceModel):
-    """One file a capture commit added, changed, or removed; ``before`` and ``after`` name its blob.
-
-    ``path`` is the file's path from the REE root: a review attempt's files carry its ``reviews/<id>/``.
-    The commit that creates a history lists every file.
-    """
-
     source: str
-    position: int  # The capture commit's place in its source, as its field changes have it.
+    position: int
     partition: str
     path: str
     before: str | None
     after: str | None
     operation: str
-    # Whose history committed it: the REE's, or one review's, whose files sit under ``scope`` (``reviews/<id>/``).
     subject: str = "Ree"
     scope: str = ""
     cause: Literal["created", "operation", "external"]
     locator: str
-    # How the commit stores it, by its .gitattributes; None once removed.
     storage: Literal["git", "lfs"] | None = None
-    # The fields of the committed document whose value names it, by its path or its file name.
     named_by: tuple[str, ...] = ()
 
     @property
@@ -153,31 +111,23 @@ class FileChange(EvidenceModel):
 
 
 class CommittedFile(EvidenceModel):
-    """One file a capture commit holds: the digest of its content, an LFS payload's by its pointer."""
-
     digest: str
     size: int
     storage: Literal["git", "lfs"]
-    # What git holds of it, for the document rules that read a file; None for an LFS payload.
     content: bytes | None = None
 
 
 class Snapshot(EvidenceModel):
-    """One capture commit of an REE as the checker reads it: its document, every file it holds, and what
-    core recorded of its receipts' standings, which the checker compares with its own."""
-
     source: str
-    position: int  # The capture commit's place in its source, as its events have it.
-    subject: str  # The entity whose document it commits.
+    position: int
+    subject: str
     partition: str
     locator: str
     cause: Literal["created", "operation", "external"]
-    operation: str | None = None  # The operation of the attempt that made it, if one did.
+    operation: str | None = None
     attempt_id: str | None = None
-    # The committed ree.json; None where it cannot be read.
     document: dict[str, JsonValue] | None = None
     files: dict[str, CommittedFile] = {}
-    # Each receipt's standing as core recorded it after the attempt; None where it recorded none.
     recorded: dict[str, str] | None = None
 
     @property
@@ -189,19 +139,14 @@ class Evidence(EvidenceModel):
     sources: tuple[Source, ...]
     events: tuple[Event, ...]
     problems: tuple[str, ...] = ()
-    # What each capture commit changed in its committed document: aggregate evidence, never an event.
     changes: tuple[FieldChange, ...] = ()
-    # What each capture commit changed in the overlay it committed: aggregate evidence, never an event.
     files: tuple[FileChange, ...] = ()
-    # Every capture commit, read whole, for the document rules; never written out with the evidence.
     snapshots: tuple[Snapshot, ...] = Field(default=(), exclude=True)
-    # Whether the receipts' standings the snapshots give are already among the events.
     witnessed: bool = False
 
     def source(self, source_id: str) -> Source:
         return next(source for source in self.sources if source.id == source_id)
 
     def ordered(self, events: list[Event]) -> list[Event]:
-        """Owner order: source rank, then position. Never wall-clock time."""
         ranks = {source.id: (*source.lineage, source.rank) for source in self.sources}
         return sorted(events, key=lambda event: (*ranks[event.source], event.position))

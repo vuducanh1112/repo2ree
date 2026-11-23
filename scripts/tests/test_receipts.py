@@ -55,6 +55,5 @@ def test_the_receipts_directory_is_ignored_except_its_rules() -> None:
 
 @pytest.mark.parametrize("gate", ["commit_gate", "assurance_gate", "publish_gate"])
 def test_the_gates_run_on_the_standard_library_alone(gate: str) -> None:
-    """The pre-commit hook runs on pre-commit's python, which has none of the workspace's packages."""
     bare = subprocess.run([sys.executable, "-S", "-m", f"scripts.gates.{gate}", "--help"], cwd=ROOT, check=False)
     assert bare.returncode == 0

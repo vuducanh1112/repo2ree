@@ -1,5 +1,3 @@
-"""Replay: each entity's records through its machine and each exchange's messages, with what broke the rules."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -69,7 +67,6 @@ def replay_entity(
     spec: EntitySpec, events: list[Event], evidence: Evidence
 ) -> tuple[dict[str, Instance], RuleResult, dict[str, int]]:
     findings: list[Finding] = []
-    # An unconstrained entity declares no edges, so there is nothing for its evidence to cover.
     counts: dict[str, int] = {}
     if spec.constrained:
         counts = {edge(None, state): 0 for state in spec.initial}
@@ -212,12 +209,6 @@ def replay_boundary(
 
 
 def _rounds(evidence: Evidence, ordered: list[Event], violation: Callable[..., None]) -> Event | None:
-    """Check a repeated exchange's rounds, each one request and then its one outcome; the request still open.
-
-    A request left open by a journal that ended without closing (its process crashed) is
-    superseded by a request from a later journal; one its own journal closed on, or one the
-    same journal sends again before its outcome, is not.
-    """
     pending: Event | None = None
     for event in ordered:
         if event.kind == "send":
@@ -234,7 +225,6 @@ def _rounds(evidence: Evidence, ordered: list[Event], violation: Callable[..., N
 
 
 def later_epoch(evidence: Evidence, earlier: Event, later: Event) -> bool:
-    """Whether ``later`` is in a later journal of the process instance that journaled ``earlier``."""
     first, second = evidence.source(earlier.source), evidence.source(later.source)
     if not first.kind == second.kind == "journal":
         return False
@@ -242,7 +232,6 @@ def later_epoch(evidence: Evidence, earlier: Event, later: Event) -> bool:
 
 
 def unreconciled(evidence: Evidence, last: Event) -> list[Source]:
-    """The closed later journals of the process instance that journaled ``last``: each should have taken it over."""
     origin = evidence.source(last.source)
     if origin.kind != "journal":
         return []

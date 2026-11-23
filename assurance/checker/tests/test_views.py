@@ -1,5 +1,3 @@
-"""Specification views: the system map and the diff between two specifications."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,7 +21,6 @@ def test_the_system_map_places_entities_in_their_owners_and_processes() -> None:
 def test_a_specification_change_is_drawn_as_a_diff(tmp_path: Path) -> None:
     docs = documents()
     action = docs.machine("AuthorApiAction")
-    # The work finishing before the cancel took effect.
     action["transitions"] = [t for t in action["transitions"] if not (t["from"] == "canceling" and "failed" in t["to"])]
     docs.invariants["invariant"] = docs.invariants["invariant"][1:]
     old, new = documents().parse(), docs.parse()

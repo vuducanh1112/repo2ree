@@ -1,5 +1,3 @@
-"""The vocabulary: the words owners emit for each entity and exchange, published to the product."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -20,17 +18,11 @@ type CatalogueTable = Literal["operations", "review_operations"]
 
 
 class FactDeclaration(SpecModel):
-    """A fact with where it must be present; a bare type string declares an optional fact."""
-
     type: FactType
-    # Present (and not null) on every transition of the entity, or on every record of the message.
     required: bool = False
-    # Present (and not null) on every transition into these states; entities only.
     required_in: tuple[Name, ...] = ()
-    # The only values the fact may take, each with what it means; or the same values, grouped.
     values: dict[Name, str] = Field(default_factory=dict)
     groups: dict[Name, dict[Name, str]] = Field(default_factory=dict)
-    # Tables of the operation catalogue whose names the fact takes besides its own groups, each a group of its own.
     catalogue: tuple[CatalogueTable, ...] = ()
 
     @field_validator("required_in", mode="before")
@@ -63,7 +55,6 @@ class FactDeclaration(SpecModel):
 
     @property
     def meanings(self) -> dict[str, str]:
-        """Each listed value with what it means, in declaration order, whether listed or grouped."""
         return {**self.values, **{value: meaning for group in self.groups.values() for value, meaning in group.items()}}
 
 
@@ -75,13 +66,10 @@ def fact_types(declared: dict[str, FactEntry]) -> dict[str, FactType]:
 
 
 def allowed_values(declared: dict[str, FactEntry]) -> dict[str, tuple[str, ...]]:
-    """The facts that list their values, with those values."""
     return {name: entry.allowed for name, entry in declared.items() if not isinstance(entry, str) and entry.allowed}
 
 
 class EntityVocabulary(SpecModel):
-    """The words owners emit for one entity: who records it, how it is keyed, its states and facts."""
-
     kind: Literal["entity"]
     name: Name
     owner: Name
@@ -93,7 +81,6 @@ class EntityVocabulary(SpecModel):
     facts: dict[Name, FactEntry] = Field(default_factory=dict)
 
     def fact_groups(self) -> dict[str, dict[str, tuple[str, ...]]]:
-        """Each fact that groups its values, with the values of each group."""
         return {
             name: {group: tuple(values) for group, values in entry.groups.items()}
             for name, entry in self.facts.items()
@@ -122,8 +109,6 @@ class EntityVocabulary(SpecModel):
 
 
 class BoundaryVocabulary(SpecModel):
-    """The words of one exchange: its ends, key, messages, and each message's facts."""
-
     kind: Literal["boundary"]
     name: Name
     sender: Name
@@ -135,7 +120,6 @@ class BoundaryVocabulary(SpecModel):
     responses: tuple[Name, ...] = Field(min_length=1)
     messages: dict[Name, str]
     facts: dict[Name, dict[Name, FactEntry]] = Field(default_factory=dict)
-    # Whether one key's exchange may be repeated: rounds of one request and its one outcome, in turn.
     repeats: bool = False
 
     @model_validator(mode="after")
@@ -164,7 +148,6 @@ REVIEW_PREFIX = "review_"
 
 
 def with_catalogue(entry: FactEntry, catalogue: Catalogue | None) -> FactEntry:
-    """The fact with each catalogue table it names spelled out as a group of its values."""
     if isinstance(entry, str) or not entry.catalogue:
         return entry
     if catalogue is None:
@@ -181,8 +164,6 @@ def with_catalogue(entry: FactEntry, catalogue: Catalogue | None) -> FactEntry:
 
 
 class Catalogue(SpecModel):
-    """The commands core runs, each with what it means: on an REE, and on a review of one."""
-
     kind: Literal["catalogue"]
     name: Name
     summary: str

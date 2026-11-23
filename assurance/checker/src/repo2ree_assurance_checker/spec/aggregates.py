@@ -1,8 +1,3 @@
-"""Aggregate machines: one machine per part of a document an entity commits after every operation.
-
-The checker reports every move, and each one no edge allows violates the aggregate's rule.
-"""
-
 from __future__ import annotations
 
 import re
@@ -20,34 +15,24 @@ from repo2ree_assurance_checker.spec.base import CREATED, Name, SpecModel
 FIELD_STATES: Final = ("unset", "set")
 STANDINGS: Final = ("not_applicable", "missing", "current", "stale")
 KEYED: Final = "[*]"
-# Ends a field that stands for each of an object's members, one machine each.
 WILDCARD: Final = ".*"
-# A keyed item's own name, where a path names one item of a keyed list.
 ITEM: Final = "[$name]"
-# Where a keyed field's file names its item: the item's name as a slug.
 SLUG: Final = "{slug}"
 
 type Operation = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
-# A path into the document, relative to its subject; ``[*]`` ends a list keyed by name, ``.*`` an object's members.
 type FieldPath = Annotated[str, Field(pattern=r"^[a-z_]+(\.[a-z_]+)*(\[\*\]|\.\*)?$")]
-# A path to a value of the document, relative to its subject (``seal`` from the document itself): ``[*]`` is every
-# item of a list keyed by name or of an object keyed by it, ``[$name]`` the item being judged.
 type DocumentPath = Annotated[str, Field(pattern=r"^[a-z_]+(\.[a-z_]+|\[\*\]|\[\$name\])*$")]
 type MachineKind = Literal["lifecycle", "field", "receipt"]
 type EdgeOperations = dict[tuple[str, str], set[str]]
 
 
 class Edge(SpecModel):
-    """One edge of a sub-machine and the operations allowed to take it."""
-
     source: str = Field(alias="from")
     target: str = Field(alias="to")
     by: tuple[Operation, ...] = Field(min_length=1)
 
 
 class SubMachine(SpecModel):
-    """One part of an aggregate, spelled out; ``bulk`` operations may take many of its edges at once."""
-
     kind: MachineKind
     name: str
     group: str
@@ -55,7 +40,6 @@ class SubMachine(SpecModel):
     edges: tuple[Edge, ...]
     bulk: tuple[Operation, ...] = ()
     keyed: bool = False
-    # One machine per member of an object, each starting with the document.
     wildcard: bool = False
 
     @cached_property
@@ -84,14 +68,11 @@ class Lifecycle(SpecModel):
 
 
 class FieldMachine(SpecModel):
-    """``unset`` (absent or empty) or ``set``; a keyed field has no initial state, its items start when set."""
-
     group: Name
     initial: Literal["unset", "set"] | None = None
     set_by: tuple[Operation, ...] = Field(default=(), alias="set")
     changed_by: tuple[Operation, ...] = Field(default=(), alias="change")
     cleared_by: tuple[Operation, ...] = Field(default=(), alias="clear")
-    # The committed files that are this field's, relative to the aggregate's overlay.
     files: tuple[str, ...] = ()
 
     @property
@@ -100,23 +81,13 @@ class FieldMachine(SpecModel):
 
 
 class BasisPair(SpecModel):
-    """A value the receipt recorded, and what it must still equal for the receipt to be current."""
-
-    recorded: DocumentPath  # In the receipt.
+    recorded: DocumentPath
     now: DocumentPath
 
 
 class ReceiptMachine(SpecModel):
-    """A receipt's standings; its edges follow from what it depends on (``AggregateSpec.receipt_machine``).
-
-    A receipt is named after the operation that produces it: the name is the producer, said once. It is
-    current exactly when it is applicable and every pair of its ``basis`` agrees; what it rests on and is
-    made from are read off the basis, never stated beside it.
-    """
-
     about: tuple[FieldPath, ...] = ()
     applies_without_declaration: bool = False
-    # Where the receipt sits in the document; a keyed receipt's items are keyed by name there.
     at: DocumentPath | None = None
     basis: tuple[BasisPair, ...] | None = None
     rests_on: tuple[FieldPath, ...] = ()
@@ -126,7 +97,6 @@ class ReceiptMachine(SpecModel):
 
 
 def field_of(fields: Iterable[str], path: str) -> str | None:
-    """The declared field a document path falls in: the most specific one holding it."""
     path = path.replace(ITEM, KEYED)
     holding = []
     for name in fields:
@@ -137,7 +107,6 @@ def field_of(fields: Iterable[str], path: str) -> str | None:
 
 
 def _derived_from_basis(document: dict[str, object]) -> dict[str, object]:
-    """Each receipt with a basis, with what it rests on and is made from read off that basis."""
     declared = document.get("fields")
     fields = list(declared) if isinstance(declared, dict) else []
     receipts = document.get("receipts")
@@ -181,7 +150,6 @@ def _derived_from_basis(document: dict[str, object]) -> dict[str, object]:
     return document | {"receipts": derived}
 
 
-# The REE tree as its contract states it (contracts/ree/layout.json); the checker's own reading of that file.
 TREE_FORMAT: Final = "repo2ree-ree-layout/1"
 
 
@@ -197,8 +165,6 @@ class TreeEntry(SpecModel):
     children: tuple[TreeEntry, ...] = ()
 
     def names(self, name: str, named_by: Iterable[str]) -> bool:
-        """Whether this entry is the one called ``name``: by its own name, as one of its keyed kind, or, for an
-        entry a field names, because that field names it."""
         if self.named_by is not None:
             return self.named_by in {re.sub(r"\[[^]]*\]", "[*]", field) for field in named_by}
         if self.key is None:
@@ -208,16 +174,12 @@ class TreeEntry(SpecModel):
 
 @dataclass(frozen=True)
 class Placed:
-    """Where in the tree a committed path falls: the deepest entry on its way, spelled as the tree spells it."""
-
     entry: TreeEntry
     at: str
-    # Whether that entry is the path itself, or a directory the tree leaves open.
     named: bool
 
 
 def place(root: TreeEntry, path: str, named_by: Iterable[str] = ()) -> Placed:
-    """The entry a path from the REE root falls in; ``named_by`` are the fields naming the file the path ends in."""
     entry, at = root, list[str]()
     parts = PurePosixPath(path).parts
     for index, part in enumerate(parts):
@@ -238,21 +200,14 @@ class AggregateSpec(SpecModel):
     name: Name
     summary: str
     created_by: Operation
-    restored_by: Operation  # May move any part.
+    restored_by: Operation
     writes_nothing: tuple[Operation, ...] = ()
-    # Whose transitions are the receipt standings; None for a document with no receipts of its own to stand.
     receipt_entity: Name | None = None
-    # The aggregate this one's documents review, beside them; its operations are review operations.
     reviews: Name | None = None
-    # The committed directory whose every file some field claims (``files``); None: no such directory.
     overlay: str | None = None
-    # The committed directory of signed claims about the sealed document, beside what its seal covers: each file
-    # added only by ``signed_by`` (or the restore) while sealed, and never changed or removed after.
     signatures: str | None = None
     signed_by: tuple[Operation, ...] = ()
-    # The state a document is in once a signature is added to it.
     signed_in: Name = "sealed"
-    # The contract stating the document's file tree, from the repository root; the loader reads it into ``layout``.
     tree: str | None = None
     layout: TreeEntry | None = None
     lifecycle: Lifecycle
@@ -307,10 +262,6 @@ class AggregateSpec(SpecModel):
         return self
 
     def claim(self, path: str) -> tuple[str, str] | None:
-        """The field claiming a file of the overlay, and the slug of its item for a keyed field; None if none does.
-
-        Where several patterns match, the most specific one claims it: ``{slug}.verify.sh`` before ``{slug}.sh``.
-        """
         found: list[tuple[str, str]] = []
         for name, field in self.fields.items():
             for file in field.files:
@@ -327,8 +278,6 @@ class AggregateSpec(SpecModel):
 
     @cached_property
     def machines(self) -> tuple[SubMachine, ...]:
-        """Every part, in the order views draw them: the lifecycle; each receipt after the fields of its
-        group; then the other fields by group, in declared order."""
         fields = [self.field_machine(path) for path in self.fields]
         receipts = [self.receipt_machine(name) for name in self.receipts]
         ordered = [self.lifecycle_machine()]
@@ -370,11 +319,9 @@ class AggregateSpec(SpecModel):
         )
 
     def location(self, name: str) -> str:
-        """Where a receipt sits in the document."""
         return self.receipts[name].at or f"receipts.{name}"
 
     def receipt_machine(self, name: str) -> SubMachine:
-        """Applicable while what it is about is set; stale when what it rests on or is made from moves."""
         receipt = self.receipts[name]
         sets_about = self._writers(receipt.about, "set")
         clears_about = self._writers(receipt.about, "clear")
@@ -390,11 +337,8 @@ class AggregateSpec(SpecModel):
         moves[("missing", "current")].add(name)
         if receipt.applies_without_declaration or name in sets_about:
             moves[("not_applicable", "current")].add(name)
-        # Undeclaring a keyed item discards its receipt; any other receipt is orphaned, and stale.
         orphaning = set() if receipt.applies_without_declaration or receipt.keyed else clears_about
         moves[("current", "stale")] |= (basis_moves | orphaning) - {name}
-        # A standing is the receipt against the document as it now stands, so whatever moved what it
-        # rests on may move it back, and declaring an orphaned receipt's subject again revives it.
         reviving = sets_about if orphaning else set()
         moves[("stale", "current")] |= {name} | basis_moves | orphaning | reviving
         discarding = clears_about if receipt.keyed else set()
@@ -419,7 +363,6 @@ class AggregateSpec(SpecModel):
         )
 
     def initial_standing(self, name: str) -> str:
-        """A receipt's standing when the aggregate is created: no receipt yet, applicable or not."""
         about = self.receipts[name].about
         return "missing" if about and all(self.fields[path].initial == "set" for path in about) else "not_applicable"
 
@@ -432,7 +375,6 @@ class AggregateSpec(SpecModel):
 
 
 def _edges(moves: EdgeOperations) -> tuple[Edge, ...]:
-    """Edges in a stable order, each with its operations sorted; an edge no operation may take is none."""
     return tuple(
         Edge.model_validate({"from": source, "to": target, "by": sorted(ops)})
         for (source, target), ops in sorted(moves.items())

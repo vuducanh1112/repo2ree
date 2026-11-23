@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""The repository's zones, as `zones.toml` declares them.
-
-- ``check [PATH...]`` refuses a change that touches a protected zone and anything
-  unprotected: when one change edits the specification or a gate and the code it
-  judges, a rule, its reading, its excuse, or the gate can be bent to fit the code,
-  and the gate will agree with whatever was written. Without paths it checks what
-  is staged, deletions and both sides of a rename included (the pre-commit hook).
-  Deliberate exceptions: ``SKIP=spec-isolation git commit ...``.
-- ``map [PATH...]`` draws the repository by zone, or places each path given.
-- ``verify`` reports tracked files no entry claims and entries that claim no file.
-- ``export`` prints the zones, where each tracked file belongs, and those problems, as
-  JSON: what views read instead of importing this guard.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -61,7 +47,6 @@ class Zones:
         return [entry for zone in self.zones for group in zone.groups for entry in group.entries]
 
     def entry(self, path: str) -> Entry | None:
-        """The longest declared entry matching ``path``: a directory prefix, or the exact file."""
         matches = [
             item
             for item in self.entries
@@ -105,27 +90,20 @@ def git(*args: str) -> str:
 
 
 def staged() -> list[str]:
-    """Every path the staged change touches; a deletion or a rename's old side changes a zone too."""
     return [path for path in git("diff", "--cached", "--name-only", "--no-renames", "-z").split("\0") if path]
 
 
 def tracked() -> list[str]:
-    """The files a commit of the working tree would hold: tracked or new, not ignored, not deleted."""
     listed = git("ls-files", "-z", "--cached", "--others", "--exclude-standard").split("\0")
     return sorted({path for path in listed if path and (ROOT / path).is_file()})
 
 
 def local_only() -> list[str]:
-    """Top-level paths git ignores: caches, build outputs, and test artifacts."""
     listed = git("ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory").split("\0")
     return sorted({path for path in listed if path and "/" not in path.rstrip("/")})
 
 
-# ---------------------------------------------------------------------------- check
-
-
 def conflicts(paths: Sequence[str], zones: Zones | None = None) -> tuple[list[str], list[str]]:
-    """(protected paths, unprotected paths) when both are present, else two empty lists."""
     zones = zones or load()
     protected = [path for path in paths if zones.protected(path)]
     rest = [path for path in paths if not zones.protected(path)]
@@ -150,11 +128,7 @@ def check(paths: Sequence[str]) -> int:
     return 1
 
 
-# ---------------------------------------------------------------------------- verify
-
-
 def problems(zones: Zones, files: Iterable[str]) -> list[str]:
-    """Tracked files no entry claims, and entries that claim no tracked file."""
     files = list(files)
     unclaimed = [path for path in files if zones.entry(path) is None]
     claimed = {zones.entry(path) for path in files}
@@ -170,8 +144,6 @@ def verify() -> int:
         print(problem, file=sys.stderr)
     return 1 if found else 0
 
-
-# ---------------------------------------------------------------------------- export
 
 FORMAT = "repo2ree-zones/1"
 
@@ -206,8 +178,6 @@ def export(zones: Zones, files: Iterable[str]) -> dict[str, object]:
         "problems": problems(zones, files),
     }
 
-
-# ---------------------------------------------------------------------------- map
 
 COLOURS = {"bold": "1", "dim": "2", "red": "31", "protected": "33", "zone": "36"}
 
@@ -254,7 +224,7 @@ def place(zones: Zones, path: str) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check", help="refuse protected and unprotected changes together").add_argument(
         "paths", nargs="*"

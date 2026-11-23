@@ -1,14 +1,3 @@
-"""The verification of one dossier, as an artifact later steps read instead of verifying again.
-
-``verify`` judges evidence once and keeps everything a view needs: the evidence it
-judged, the rule results, each invariant occurrence's verdict, the replayed entities and
-exchanges, and each aggregate instance's history. ``VerifiedModel`` reads it back with the
-shape views use, so a view draws what was verified and can never reach a verdict of its own.
-
-Events are referred to by their index in ``evidence.events``: references (``Event.ref``)
-are human addresses that Git events of one commit share.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -51,17 +40,16 @@ class VerifiedInstance(EvidenceModel):
 
 
 class Verification(EvidenceModel):
-    dossier: str | None = None  # The dossier directory it verified, when it verified one.
+    dossier: str | None = None
     result: CheckResult
     judgements: tuple[Judgement, ...]
     evidence: Evidence
     instances: dict[str, dict[str, VerifiedInstance]]
-    exchanges: dict[str, dict[str, tuple[int, ...]]]  # Each exchange's events, in owner order.
+    exchanges: dict[str, dict[str, tuple[int, ...]]]
     histories: tuple[AggregateHistory, ...] = ()
 
 
 def verify(spec: Spec, evidence: Evidence, dossier: str | None = None) -> Verification:
-    """Judge the evidence once; everything after reads the result."""
     evidence = witness(spec, evidence)
     result = check(spec, evidence)
     model, _, _ = replay(spec, evidence)
@@ -97,11 +85,6 @@ def read_verification(path: Path) -> Verification:
     return Verification.model_validate_json(path.read_text())
 
 
-# ================================================
-# Read model: the verified evidence, shaped as views use it
-# ================================================
-
-
 @dataclass(frozen=True)
 class Reach:
     source_state: str | None
@@ -131,8 +114,6 @@ class VerifiedExchange:
 
 @dataclass
 class VerifiedModel:
-    """What was verified, with events resolved: the evidence, entities, and exchanges views draw."""
-
     evidence: Evidence
     result: CheckResult
     judgements: tuple[Judgement, ...]

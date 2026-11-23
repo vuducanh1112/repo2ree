@@ -1,15 +1,3 @@
-"""Receipts: what a gate proved, bound to the content it proved it on.
-
-Every gate writes one JSON receipt under ``.receipts/``: the same header (which gate, the
-revision and tree it covered, when it was written) and a body of its own. A receipt
-describes one clone's validation state and is never committed: a tracked receipt would be
-part of the tree it measures, so no receipt could ever match twice. ``write`` refuses a
-receipt git does not ignore.
-
-Standard library only: the pre-commit hook reads the commit gate's receipt on whatever
-Python pre-commit runs, not the workspace's.
-"""
-
 from __future__ import annotations
 
 import json
@@ -30,14 +18,13 @@ type Document = dict[str, Any]
 
 
 class ReceiptError(RuntimeError):
-    """A receipt is missing, unreadable, or covers something other than what is asked."""
+    pass
 
 
 @dataclass(frozen=True)
 class Receipt:
     GATE: ClassVar[Gate]
 
-    # The commit it covered; None for the commit gate, which runs before its commit exists.
     revision: str | None
     tree: str
     written: datetime
@@ -58,7 +45,6 @@ class Receipt:
 
     @classmethod
     def body(cls, document: Document) -> Document:
-        """This gate's own fields, read from the document."""
         return {}
 
     def to_document(self) -> Document:
@@ -67,20 +53,18 @@ class Receipt:
 
 @dataclass(frozen=True)
 class CommitGateReceipt(Receipt):
-    """Checks, the docs build, and unit tests passed on exactly this staged tree."""
-
     GATE: ClassVar[Gate] = "commit-gate"
 
 
 @dataclass(frozen=True)
 class TestVerdict:
-    __test__: ClassVar[bool] = False  # Not a pytest class, despite the name.
+    __test__: ClassVar[bool] = False
 
     run: str
     test: str
     outcome: str
     behaviour: str
-    excused: str | None = None  # The expected-verdicts.toml reason that accepted it.
+    excused: str | None = None
 
     @classmethod
     def from_document(cls, document: Any) -> TestVerdict:
@@ -104,8 +88,6 @@ class Coverage:
 
 @dataclass(frozen=True)
 class AssuranceGateReceipt(Receipt):
-    """Every gated e2e test on HEAD, judged by the checker, together reaching the specification."""
-
     GATE: ClassVar[Gate] = "assurance-gate"
 
     runs: tuple[str, ...]
@@ -130,17 +112,10 @@ class AssuranceGateReceipt(Receipt):
 
 @dataclass(frozen=True)
 class PublishGateReceipt(Receipt):
-    """The publish gate passed on this revision with these local images, built for this platform.
-
-    One per platform: each published platform's image set is built and gated on a machine of
-    its own (``.receipts/publish-gate-<os>-<arch>.json``), so one never overwrites another when
-    a machine's receipts are brought back.
-    """
-
     GATE: ClassVar[Gate] = "publish-gate"
 
-    images: dict[str, str]  # Each image's local ID.
-    platform: str  # The os/arch of the daemon holding them, as an image platform names it.
+    images: dict[str, str]
+    platform: str
 
     def __post_init__(self) -> None:
         for image, digest in self.images.items():
@@ -157,22 +132,15 @@ class PublishGateReceipt(Receipt):
 
 @dataclass(frozen=True)
 class TierReceipt(Receipt):
-    """One gated tier passed, whole, on this tree and platform, with the deployment the policy asks.
-
-    Written by ``scripts/gates/tiers.py`` from the run's own record, never by the tier itself,
-    at ``.receipts/tiers/<tier>/<tree>-<os>-<arch>.json``: a receipt per tree and platform, so
-    one for another branch's tree counts again when that tree is checked out again.
-    """
-
     GATE: ClassVar[Gate] = "tier"
 
     tier: str
     platform: str
     machine: str
-    run: str  # The run directory its record is in.
+    run: str
     tests: int
     skipped: int
-    judged: bool  # Whether every test's behaviour was checked too, and passed or was excused.
+    judged: bool
 
     def __post_init__(self) -> None:
         if not PLATFORM.fullmatch(self.platform):
@@ -207,7 +175,6 @@ def now() -> datetime:
 
 
 def write(path: Path, receipt: Receipt) -> None:
-    """Replace the receipt at ``path`` atomically, refusing one git would track."""
     if subprocess.run(["git", "check-ignore", "-q", str(path)], check=False).returncode != 0:
         raise ReceiptError(
             f"refusing to write {path}: git does not ignore it, and a tracked receipt changes the tree it "
@@ -220,7 +187,6 @@ def write(path: Path, receipt: Receipt) -> None:
 
 
 def read[R: Receipt](model: type[R], path: Path) -> R | None:
-    """The receipt at ``path``, or None when there is none; a ReceiptError when the file is not one."""
     try:
         text = path.read_text()
     except FileNotFoundError:
@@ -232,9 +198,6 @@ def read[R: Receipt](model: type[R], path: Path) -> R | None:
         return model.from_document(document)
     except ValueError as error:
         raise ReceiptError(f"{path}: not a {model.GATE} receipt ({error}); run the gate again") from None
-
-
-# Each reads one field and refuses a wrong type, so a receipt is never half-read.
 
 
 def _str(document: Document, name: str) -> str:

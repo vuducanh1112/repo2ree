@@ -1,8 +1,3 @@
-"""A self-contained HTML assurance report: verdicts first, then the system and its machines drawn.
-
-Per-REE views of the evidence (operations, sequences, step standings) are drawn by repo2ree_assurance_traceview.
-"""
-
 from __future__ import annotations
 
 from html import escape
@@ -61,7 +56,6 @@ def _state_chart(spec: Spec, result: CheckResult, entity: str) -> str:
     counts = result.coverage.transitions.get(entity, {})
     lines = ["stateDiagram-v2"]
     if not machine.constrained:
-        # Any move between its states is allowed: there are no edges to draw or count.
         lines.extend(f"    {state}" for state in machine.states)
     else:
         lines.extend(f"    [*] --> {state}: {counts.get(f'{INITIAL} -> {state}', 0)}" for state in machine.initial)

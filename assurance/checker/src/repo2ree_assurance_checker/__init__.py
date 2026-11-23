@@ -1,11 +1,3 @@
-"""Behaviour specification and assurance checking for repo2ree.
-
-The specification under ``assurance/spec`` declares entities with one
-owner each, the boundaries between components, and cross-entity invariants.
-Owners record their transitions in durable journals; this package checks those
-journals, and the REE Git histories, against the specification.
-"""
-
 from repo2ree_assurance_checker.check import CheckResult, Judgement, Model, check, judge_occurrences, replay
 from repo2ree_assurance_checker.dossier import load_dossier
 from repo2ree_assurance_checker.evidence import Event, Evidence, Source

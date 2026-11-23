@@ -1,10 +1,3 @@
-"""A review's commits judged beside the REE they review: its expectations are the REE's, its observations its own
-receipts', and each verdict the one the checker's own ladder gives from the values the comparison records.
-
-The ladders are the checker's, written apart from core's: nothing core concluded is an input here, only the values
-it recorded beside its conclusion.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
@@ -19,7 +12,6 @@ type Document = Mapping[str, JsonValue]
 
 
 def reviewed(rules: DocumentRules, snapshot: Snapshot, ree: Sequence[Snapshot]) -> Document | None:
-    """The sealed REE the review names, as a commit beside it holds it; None when none here holds that seal."""
     seal = value(snapshot.document or {}, rules.reviews or "", whole=True)
     if not isinstance(seal, str):
         return None
@@ -31,7 +23,6 @@ def reviewed(rules: DocumentRules, snapshot: Snapshot, ree: Sequence[Snapshot]) 
 
 
 def _recorded(document: Document, path: str) -> bool:
-    """Whether the review recorded the part a path starts in: a step it never took has nothing to judge."""
     return value(document, TOKEN.findall(path)[0], whole=True) is not None
 
 
@@ -42,7 +33,6 @@ def _paired(document: Document, path: str) -> Iterator[tuple[str | None, JsonVal
 
 
 def references(pair: ReferencePair, review: Document, ree: Document | None) -> Iterator[Judged]:
-    """The review's value against the reviewed REE's; None where no REE beside it holds the seal it names."""
     for item, recorded in _paired(review, pair.field):
         subject = pair.field if item is None else f"{pair.field} {item}"
         if ree is None:
@@ -63,11 +53,6 @@ def agreements(pair: AgreesPair, review: Document) -> Iterator[Judged]:
             yield Judged(subject, True)
         else:
             yield Judged(subject, False, f"records {recorded!r}, but its {pair.same} is {same!r}")
-
-
-# ================================================
-# The ladders
-# ================================================
 
 
 def _swhid(comparison: Document) -> str:
@@ -122,7 +107,6 @@ def _settled(subject: str, part: JsonValue, ladder: str) -> Judged:
 
 
 def _counts(subject: str, comparison: Document) -> Iterator[Judged]:
-    """Each count against the list beside it, which holds every delta it counts."""
     for listed, count in (
         ("missing", "missing_count"),
         ("extra", "extra_count"),

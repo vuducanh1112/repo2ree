@@ -1,5 +1,3 @@
-"""Where each vocabulary is read from. A reader reads what is written, never what a renderer would write."""
-
 from __future__ import annotations
 
 import fnmatch
@@ -10,15 +8,10 @@ from typing import Any, Literal
 from scripts.vocabulary.discover import ROOT, contract_sets
 from scripts.vocabulary.model import CONTRACTS, Context, Contract, Located, Reader
 
-# ================================================
-# Spelling: how an operation's name is written where it is not written as itself
-# ================================================
-
 REVIEW = "review"
 
 
 def words(operation: str) -> tuple[str, ...]:
-    """The `ree` words that run an operation: ``review_run_experiment`` is ``review run-experiment``."""
     if operation.startswith(f"{REVIEW}_"):
         return (REVIEW, operation.removeprefix(f"{REVIEW}_").replace("_", "-"))
     return (operation.replace("_", "-"),)
@@ -30,7 +23,6 @@ def camel(operation: str) -> str:
 
 
 def route_path(operation: str) -> str:
-    """The path of the route named after an operation, before the parameters that follow it."""
     *review, last = words(operation)
     base = "/api/v1/rees/{ree_id}"
     if review:
@@ -40,11 +32,6 @@ def route_path(operation: str) -> str:
 
 def _parameters_only(rest: str) -> bool:
     return all(part.startswith("{") and part.endswith("}") for part in rest.split("/") if part)
-
-
-# ================================================
-# The specification
-# ================================================
 
 
 @dataclass(frozen=True)
@@ -60,8 +47,6 @@ class CatalogueTable(Reader):
 
 @dataclass(frozen=True)
 class SpecReceipts(Reader):
-    """The Ree aggregate's receipts, each named after the operation producing it."""
-
     def describe(self) -> str:
         return "the Ree aggregate's receipts (assurance/spec/aggregates/ree.toml)"
 
@@ -72,8 +57,6 @@ class SpecReceipts(Reader):
 
 @dataclass(frozen=True)
 class SpecUnsettledStates(Reader):
-    """An entity's states before it settles: every state of its vocabulary but its terminal ones."""
-
     entity: str
 
     def describe(self) -> str:
@@ -95,15 +78,8 @@ class SpecFieldGroups(Reader):
         return (Located("spec:aggregates.Ree.fields.*.group", frozenset(field.group for field in fields)),)
 
 
-# ================================================
-# The contracts
-# ================================================
-
-
 @dataclass(frozen=True)
 class ContractSet(Reader):
-    """A schema's enum or properties, at every pointer one of ``patterns`` matches; the copies must agree."""
-
     patterns: tuple[str, ...]
 
     def describe(self) -> str:
@@ -151,9 +127,6 @@ Http = Literal["declared", "named", "posted"]
 
 @dataclass(frozen=True)
 class RoutedOperations(Reader):
-    """``declared``: operations a route starts. ``named``: those a route is named after, its operationId the
-    name in camel case. ``posted``: those whose named route is a POST to ``route_path``, parameters after it."""
-
     which: Http
 
     def describe(self) -> str:
@@ -178,7 +151,6 @@ class RoutedOperations(Reader):
 
 
 def _operations_named(document: object) -> set[str]:
-    """An ``operation`` property's const values, and the items of ``operations`` and ``x-operations`` lists."""
     named: set[str] = set()
     if isinstance(document, dict):
         properties = document.get("properties")
@@ -198,8 +170,6 @@ def _operations_named(document: object) -> set[str]:
 
 @dataclass(frozen=True)
 class OperationsNamed(Reader):
-    """The operations the contracts name, or only ``contract``'s when one is given."""
-
     contract: Contract | None = None
 
     def describe(self) -> str:
@@ -215,15 +185,8 @@ class OperationsNamed(Reader):
         return (Located(where, frozenset(names)),)
 
 
-# ================================================
-# Source
-# ================================================
-
-
 @dataclass(frozen=True)
 class SourceSet(Reader):
-    """A literal set of names in source, at the site discovery names it by."""
-
     site: str
 
     def describe(self) -> str:
@@ -239,8 +202,6 @@ class SourceSet(Reader):
 
 @dataclass(frozen=True)
 class SourceSites(Reader):
-    """The literal sets at every site matching a pattern: copies, which must agree, or one set they make up."""
-
     pattern: str
     combine: Literal["copies", "union"]
 
@@ -262,8 +223,6 @@ GUI_VOCABULARY = "gui/src/core/generated/vocabulary.ts"
 
 @dataclass(frozen=True)
 class GuiVocabularySet(Reader):
-    """One array of the GUI's generated vocabulary, as the committed module spells it."""
-
     constant: str
 
     def describe(self) -> str:

@@ -1,5 +1,3 @@
-"""Locate and read the specification files."""
-
 from __future__ import annotations
 
 import json
@@ -13,12 +11,10 @@ from repo2ree_assurance_checker.spec import TREE_FORMAT, Spec, operation_problem
 
 ROOT = Path(__file__).resolve().parents[4]
 SPEC_DIR = ROOT / "assurance" / "spec"
-# Where revisions before the assurance/ layout (2026-10-23) kept the specification.
 LEGACY_SPEC_DIR = ROOT / "specifications" / "behaviour"
 
 
 def with_tree(aggregate: dict[str, Any], read: Callable[[str], str]) -> dict[str, Any]:
-    """An aggregate with the tree its ``tree`` names read in, from the repository root."""
     if "tree" not in aggregate:
         return aggregate
     contract = json.loads(read(aggregate["tree"]))
@@ -54,8 +50,6 @@ def load_spec(directory: Path = SPEC_DIR) -> Spec:
 
 
 def load_spec_at(revision: str, executable: str = "git") -> Spec:
-    """The specification as committed at a Git revision, for reviewing behavioural changes."""
-
     def run(*args: str) -> str:
         return subprocess.run([executable, "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout
 
@@ -91,7 +85,6 @@ MACHINE_KEYS = frozenset(
 def split_combined(
     entities: list[dict[str, Any]], boundaries: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-    """Vocabulary and rules from a revision that kept both in one file per subject (before 2026-10-21)."""
     vocabulary = [
         {"kind": "entity"} | {key: value for key, value in document.items() if key not in MACHINE_KEYS - {"name"}}
         for document in entities

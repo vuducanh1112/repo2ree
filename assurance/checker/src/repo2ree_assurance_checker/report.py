@@ -1,5 +1,3 @@
-"""Human views of a check: verdicts first, then the spec drawn with what was exercised."""
-
 from __future__ import annotations
 
 import json
@@ -18,7 +16,6 @@ FINDING_LIMIT = 20
 
 
 def stamped(source: Source, result: CheckResult) -> str:
-    """The vocabulary a journal says it was written against, next to the one it was judged by."""
     if source.kind != "journal":
         return "—"
     if source.vocabulary is None:
@@ -31,7 +28,6 @@ def describe_extra(extra: Extra) -> str:
 
 
 def describe_aggregate(aggregate: AggregateResult) -> str:
-    """One line on an aggregate's moves: how many, and how many no edge allows."""
     moved = sum(moves.count for moves in aggregate.moves)
     return (
         f"{aggregate.aggregate}: {aggregate.instances} instances, {moved} moves along "
@@ -41,12 +37,10 @@ def describe_aggregate(aggregate: AggregateResult) -> str:
 
 
 def state_chart(spec: Spec, result: CheckResult, entity: str) -> str:
-    """The declared machine; each edge is labelled with how often the evidence took it."""
     machine = spec.entities[entity]
     counts = result.coverage.transitions.get(entity, {})
     lines = ["```mermaid", "stateDiagram-v2"]
     if not machine.constrained:
-        # Any move between its states is allowed: there are no edges to draw or count.
         lines.extend(f"    {state}" for state in machine.states)
     else:
         lines.extend(f"    [*] --> {state}: {counts.get(f'{INITIAL} -> {state}', 0)}" for state in machine.initial)

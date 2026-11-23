@@ -1,5 +1,3 @@
-"""Holding the graph to what is written: its edges, its copies, its anchoring, and its claims on what is found."""
-
 from __future__ import annotations
 
 import fnmatch
@@ -13,7 +11,6 @@ from scripts.vocabulary.model import CONTRACTS, Context, Edge, Graph, Located, R
 @dataclass(frozen=True)
 class Report:
     problems: tuple[str, ...]
-    # Each vocabulary's names as read, by name; what each edge found wrong, in the graph's order of edges.
     names: dict[str, frozenset[str]]
     edges: tuple[tuple[str, ...], ...]
     unanchored: frozenset[str]
@@ -29,7 +26,6 @@ def _sample(names: frozenset[str]) -> str:
 
 
 def read_all(graph: Graph, context: Context) -> tuple[dict[str, frozenset[str]], list[str]]:
-    """Each vocabulary's names, and what kept one from being read: a place gone, or copies that disagree."""
     names: dict[str, frozenset[str]] = {}
     problems: list[str] = []
     for vocabulary in graph.vocabularies:
@@ -91,7 +87,6 @@ def structure_problems(graph: Graph) -> list[str]:
 
 
 def downstream(graph: Graph, starts: set[str]) -> set[str]:
-    """Every vocabulary held, through any chain of edges, to one of ``starts``."""
     reached = set(starts)
     queue = deque(starts)
     while queue:
@@ -113,7 +108,6 @@ def anchoring_problems(graph: Graph) -> list[str]:
 
 
 def discovered(context: Context) -> dict[str, Located]:
-    """Every set of names sharing one with the catalogue, in the contracts and in source."""
     roots = context.roots()
     found = {
         located.where: located
@@ -156,7 +150,6 @@ FORMAT = "repo2ree-vocabulary/1"
 
 
 def export(graph: Graph, report: Report) -> dict[str, object]:
-    """The graph as the overview reads it (repo2ree-vocabulary/1): what each vocabulary holds and each edge found."""
     return {
         "format": FORMAT,
         "roots": list(graph.roots),
@@ -187,8 +180,6 @@ def export(graph: Graph, report: Report) -> dict[str, object]:
 
 
 def mermaid(graph: Graph) -> str:
-    """The graph as a Mermaid flowchart: roots at the top, each edge labelled by its relation and extras."""
-
     def node(name: str) -> str:
         return name.replace(".", "_").replace("-", "_")
 

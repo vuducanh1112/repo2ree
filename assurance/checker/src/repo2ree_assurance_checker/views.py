@@ -1,9 +1,3 @@
-"""Pictures of the specification: the system map and the diff between two specifications.
-
-Views of recorded evidence (behaviour traces, sequences, step standings, provenance)
-live in repo2ree_assurance_traceview. Nothing here decides a verdict.
-"""
-
 from __future__ import annotations
 
 import re
@@ -22,21 +16,10 @@ from repo2ree_assurance_checker.spec import (
 
 
 def _safe(text: str) -> str:
-    """Mermaid treats ';' and '#' specially in labels."""
     return re.sub(r"[;#]", ",", text)
 
 
-# ================================================
-# System map
-# ================================================
-
-
 def system_map(spec: Spec) -> str:
-    """Processes containing components containing the entities they own.
-
-    Boundaries are nodes between their sender and receiver; invariants are
-    dashed edges between the entities and boundaries they relate.
-    """
     lines = ["flowchart LR"]
     processes: dict[str, list[str]] = defaultdict(list)
     for name, component in spec.components.items():
@@ -70,11 +53,6 @@ def system_map(spec: Spec) -> str:
             lines.append(f"  {source} -. {invariant.id} .-> {target}")
     lines += ["  classDef anchor fill:none,stroke:none", "  classDef boundary stroke-width:2px"]
     return "\n".join(lines)
-
-
-# ================================================
-# Specification diff
-# ================================================
 
 
 @dataclass(frozen=True)
@@ -159,7 +137,6 @@ def diff_specs(old: Spec, new: Spec) -> SpecDiff:
 
 
 def machine_diff_chart(diff: MachineDiff) -> str:
-    """The machine with added edges labelled '+ added' and removed ones '- removed'."""
     lines = ["stateDiagram-v2"]
     for source, target in diff.kept_edges:
         lines.append(f"    {source} --> {target}")

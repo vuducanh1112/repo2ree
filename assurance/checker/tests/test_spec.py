@@ -1,5 +1,3 @@
-"""The specification is validated as a whole, and the published contract is generated from it."""
-
 from __future__ import annotations
 
 import tomllib
@@ -30,8 +28,6 @@ from repo2ree_assurance_checker.spec import (
 
 @dataclass
 class Documents:
-    """The specification's TOML documents, parsed but not yet validated, for tests to change."""
-
     vocabulary: list[dict[str, Any]]
     entities: list[dict[str, Any]]
     boundaries: list[dict[str, Any]]
@@ -228,16 +224,13 @@ def test_boundary_facts_are_required_on_every_record_of_their_message() -> None:
         docs.parse()
 
 
-# Fields the specification derives from fact declarations, which an old combined file never carried.
 DERIVED = {"required", "allowed", "meanings", "groups", "constrained"}
 
 
 def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
-    """``diff --base`` reads specifications committed before the vocabulary had files of its own."""
     spec = load_spec()
 
     def combined_words(entity: EntitySpec) -> dict[str, Any]:
-        """The entity as one old-style file: its facts keep the values they list, as such files did."""
         dumped = entity.model_dump(mode="json", by_alias=True, exclude=DERIVED)
         for fact in entity.allowed:
             dumped["facts"][fact] = {"type": dumped["facts"][fact], "values": dict(entity.meanings[fact])}
@@ -249,7 +242,6 @@ def test_a_revision_with_vocabulary_and_rules_in_one_file_still_reads() -> None:
     ]
     docs = documents()
     vocabulary, entities, boundaries = split_combined(combined, exchanges)
-    # The rules as loaded, with group conditions already spelled out: the dumped words keep no groups.
     rules = [invariant.model_dump(mode="json", by_alias=True, exclude_none=True) for invariant in spec.invariants]
     invariants = {"invariant": rules}
     old = parse_spec(vocabulary, entities, boundaries, invariants, docs.components)

@@ -1,5 +1,3 @@
-"""Cross-entity invariants: a trigger, what it requires, and how their conditions are spelled and checked."""
-
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping
@@ -29,8 +27,6 @@ class MessageTrigger(SpecModel):
 
 
 class EntityRequirement(SpecModel):
-    """The keyed entity reached one of the states (with facts), optionally before the trigger."""
-
     entity: Name
     key_from: str
     reached: tuple[Name, ...] = Field(min_length=1)
@@ -51,22 +47,15 @@ class MessageRequirement(SpecModel):
 
 
 class GuardRequirement(SpecModel):
-    """The triggering transition's own facts satisfy a condition."""
-
     where: Condition = Field(min_length=1)
 
 
 class ExclusionRequirement(SpecModel):
-    """No instance of the entity in the trigger's partition is in these states at the trigger."""
-
     entity: Name
     in_states: tuple[Name, ...] = Field(min_length=1)
 
 
 class Beside(SpecModel):
-    """What an instance the evidence cannot order against the trigger, one under way as it happened, satisfies as it
-    reaches one of these states, so that it answers for the trigger in place of the first one after it."""
-
     reached: tuple[Name, ...] = Field(min_length=1)
     where: Condition = Field(min_length=1)
 
@@ -77,10 +66,6 @@ class Beside(SpecModel):
 
 
 class NextRequirement(SpecModel):
-    """The first instance of the entity in the trigger's partition that the evidence orders after the trigger, as
-    it reaches one of these states, satisfies the condition, unless the trigger's instance moved on before it, or an
-    instance under way as it happened satisfies ``beside``."""
-
     entity: Name
     reached: tuple[Name, ...] = Field(min_length=1)
     where: Condition = Field(min_length=1)
@@ -93,9 +78,6 @@ class NextRequirement(SpecModel):
 
 
 class EachRequirement(SpecModel):
-    """Every value the trigger's list fact ``of`` holds is the ``fact`` of an instance of the entity in the trigger's
-    partition that reached one of these states before the trigger."""
-
     entity: Name
     reached: tuple[Name, ...] = Field(min_length=1)
     fact: Name
@@ -147,11 +129,6 @@ def check_condition(
     trigger_listed: Mapping[str, tuple[str, ...]],
     trigger_facts: Collection[str],
 ) -> None:
-    """A condition's shape, and each value it names against the values its fact lists, where the fact lists them.
-
-    ``{per = fact, in = {value = [values]}}`` takes its alternatives from the trigger's
-    ``fact``: it gives a list for each value that fact lists, so none is left unsaid.
-    """
     values = listed.get(fact)
 
     def named(items: list[JsonValue], context: str = "") -> None:
@@ -201,11 +178,6 @@ type FactGroups = dict[str, dict[str, dict[str, tuple[str, ...]]]]
 
 
 def spell_out_groups(invariant: dict[str, Any], groups: FactGroups) -> dict[str, Any]:
-    """An invariant with each ``{ group = ... }`` condition replaced by ``{ in = [...] }`` over the groups' values.
-
-    A group condition names one group or a list of them, of the fact as the condition's
-    entity declares it: the trigger's, or the required entity's.
-    """
     when, require = dict(invariant.get("when", {})), dict(invariant.get("require", {}))
 
     def spelled(entity: str | None, where: dict[str, Any]) -> dict[str, Any]:
