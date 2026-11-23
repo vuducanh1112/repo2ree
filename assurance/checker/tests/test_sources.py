@@ -458,3 +458,52 @@ def test_a_record_kept_beside_the_history_is_ordered_by_its_sequence_not_after_e
     evidence = load_evidence(repositories=[root], git_executable=GIT)
     pending = {event.key: event.position for event in evidence.events if event.target_state == "pending"}
     assert pending["first"] < pending["second"] < pending["third"]
+
+
+def loaded_review(root: Path, author: Path) -> str:
+    assert GIT is not None
+    subprocess.run([GIT, "init", "-q", "-b", "ree-history", str(root)], check=True)
+    head = subprocess.run(
+        [GIT, "-C", str(author), "rev-parse", "ree-history"], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    subprocess.run(
+        [GIT, "-C", str(root), "fetch", "-q", str(author), f"+refs/*:refs/repo2ree/imports/{head}/*"], check=True
+    )
+    update_ref(root, "refs/heads/ree-history", head)
+    return head
+
+
+def test_a_review_carried_in_from_a_bundle_is_read_where_it_was_recorded_not_again_where_it_was_loaded(
+    tmp_path: Path,
+) -> None:
+    assert GIT is not None
+    environment = {**os.environ, **GIT_ENVIRONMENT}
+    author, reviewer = tmp_path / "author", tmp_path / "reviewer"
+    captured_repository(author, "author-init", ree_id="author")
+    for review in ("first", "second"):
+        captured_repository(author / "reviews" / review, f"author-{review}", ree_id="author")
+    captured_repository(reviewer, "reviewer-init", ree_id="reviewer")
+    continued = reviewer / "reviews" / "first"
+    loaded_review(continued, author / "reviews" / "first")
+    record = {
+        "attempt_id": "reviewer-first",
+        "context": {"ree_id": "reviewer"},
+        "command": {"operation": "x"},
+        "operation_status": "succeeded",
+        "sequence": 1,
+    }
+    baseline = ree_commit(continued, "baseline_existing_ree", {"kind": "snapshot"}, environment)
+    update_ref(continued, "refs/repo2ree/initial", baseline)
+    ree_commit(continued, "x", {"kind": "operation.completed", "schema_version": 2, "record": record}, environment)
+    loaded_review(reviewer / "reviews" / "second", author / "reviews" / "second")
+
+    evidence = load_evidence(repositories=[author, reviewer], git_executable=GIT)
+
+    read = {(event.key, event.source) for event in evidence.events if event.subject == "Attempt"}
+    assert read == {
+        ("author-init", "git:author"),
+        ("author-first", "git:author/reviews/first"),
+        ("author-second", "git:author/reviews/second"),
+        ("reviewer-init", "git:reviewer"),
+        ("reviewer-first", "git:reviewer/reviews/first"),
+    }

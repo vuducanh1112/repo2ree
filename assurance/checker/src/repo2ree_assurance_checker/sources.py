@@ -27,6 +27,7 @@ JOURNAL_NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.n
 HISTORY_REF = "refs/heads/ree-history"
 INITIAL_REF = "refs/repo2ree/initial"
 EXPORTED_JOURNAL = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/journal$")
+IMPORTED_HEAD = re.compile(r"^refs/repo2ree/imports/[0-9a-f]{40,64}/heads/")
 MESSAGE_KINDS = {"send", "receive", "abandon"}
 TERMINAL_OUTCOMES = {"succeeded", "failed", "canceled"}
 
@@ -204,11 +205,20 @@ def _is_ancestor(executable: str, repository: Path, ancestor: str, descendant: s
     return True
 
 
+def inherited_from(executable: str, repository: Path) -> list[str]:
+    if _ref_exists(executable, repository, INITIAL_REF):
+        return git(executable, repository, "rev-parse", f"{INITIAL_REF}^@").split()
+    refs = git(executable, repository, "for-each-ref", "--format=%(refname)", "refs/repo2ree/imports/").split()
+    return [ref for ref in refs if IMPORTED_HEAD.match(ref)]
+
+
 def history_commits(executable: str, repository: Path) -> tuple[list[Commit], list[str]]:
     head, problems = history_head(executable, repository)
     if head is None:
         return [], problems
-    raw = git(executable, repository, "log", "--reverse", "--format=%H%x00%T%x00%P%x00%B%x1e", head, "--")
+    inherited = inherited_from(executable, repository)
+    excluded = ["--not", *inherited] if inherited else []
+    raw = git(executable, repository, "log", "--reverse", "--format=%H%x00%T%x00%P%x00%B%x1e", head, *excluded, "--")
     trees: dict[str, str] = {}
     commits: list[Commit] = []
     for entry in raw.split("\x1e"):
