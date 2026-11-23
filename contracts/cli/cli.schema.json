@@ -2188,9 +2188,6 @@
             ]
           }
         },
-        "workspace_drift": {
-          "$ref": "#/$defs/WorkspaceDrift"
-        },
         "artifact_path": {
           "title": "Artifact Path",
           "type": "string",
@@ -2254,7 +2251,6 @@
         "snapshot_digest",
         "build_experiment_environment_script_path",
         "build_experiment_environment_script_digest",
-        "workspace_drift",
         "artifact_path",
         "produced_artifact_digest",
         "launch_script_digest"
@@ -9568,42 +9564,6 @@
         "host"
       ],
       "title": "WorkingEnvironmentObservation",
-      "type": "object"
-    },
-    "WorkspaceDrift": {
-      "additionalProperties": false,
-      "properties": {
-        "status": {
-          "enum": [
-            "clean",
-            "modified",
-            "unknown"
-          ],
-          "title": "Status",
-          "type": "string"
-        },
-        "changed_paths": {
-          "default": [],
-          "items": {
-            "type": "string",
-            "x-relative-to": [
-              "workspace"
-            ]
-          },
-          "title": "Changed Paths",
-          "type": "array"
-        },
-        "changed_path_count": {
-          "default": 0,
-          "minimum": 0,
-          "title": "Changed Path Count",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "status"
-      ],
-      "title": "WorkspaceDrift",
       "type": "object"
     },
     "WorkspaceFile": {

@@ -97,7 +97,6 @@ def test_successful_build_commits_one_inline_receipt(
     assert receipt.artifact_path == "runtime.tar"
     assert receipt.produced_artifact_digest == digest_bytes(b"experiment_environment")
     # It ran in a workspace laid out fresh from what the REE records, and the environment it made is kept beside it.
-    assert receipt.workspace_drift.status == "clean"
     assert layout.kept_environment("runtime.tar").read_bytes() == b"experiment_environment"
     # The workspace/ view shows it where a step after the build sees it.
     assert (layout.workspace / "runtime.tar").read_bytes() == b"experiment_environment"

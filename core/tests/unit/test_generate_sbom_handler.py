@@ -22,7 +22,7 @@ from repo2ree_ree.primitives import (
     RunId,
     parse_utc_instant,
 )
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
@@ -76,7 +76,6 @@ def _ree(
             snapshot_digest=_SNAPSHOT,
             build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
-            workspace_drift=WorkspaceDrift(status="unknown"),
             artifact_path=ExperimentEnvironmentPath(experiment_environment_path),
             produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
             launch_script_digest=LAUNCH,

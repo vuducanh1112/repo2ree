@@ -19,7 +19,7 @@ from repo2ree_ree.primitives import (
     RunId,
     parse_utc_instant,
 )
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
@@ -71,7 +71,6 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
             snapshot_digest=digest_bytes(b"snapshot"),
             build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=digest_bytes(script),
-            workspace_drift=WorkspaceDrift(status="unknown"),
             artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=digest_bytes(experiment_environment),
             launch_script_digest=started.launch.launch_script_digest,

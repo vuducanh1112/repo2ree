@@ -135,16 +135,7 @@ function receiptFields(receipt: Record<string, unknown>): ReceiptField[] {
 function fieldValue(key: string, value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (key === "workspace_drift") return workspaceDrift(value);
   return JSON.stringify(value) ?? "";
-}
-
-function workspaceDrift(value: unknown): string {
-  const drift = asRecord(value);
-  if (!drift) return "";
-  const status = stringValue(drift.status) || "unknown";
-  const count = typeof drift.changed_path_count === "number" ? drift.changed_path_count : 0;
-  return count > 0 ? `${status} (${count} paths)` : status;
 }
 
 // Digests are the bulk of a receipt and never read in full at a glance; the

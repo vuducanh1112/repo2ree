@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:d869589cd802512546520862cb1384b7382a9aadbddf646b26ac3364e7a54be1",
+    "ree_digest": "sha256:f114a778a754dd5987cd1d9b8ab739dede660e709152fadae030e7d09ce85c6f",
     "sealed_at": "2026-11-18T12:13:29.017411Z"
   },
   "subject": {
@@ -228,11 +228,6 @@
             "kernel": "6.12.113+deb13-amd64",
             "os": "Debian GNU/Linux 13 (trixie)"
           }
-        },
-        "workspace_drift": {
-          "changed_path_count": 0,
-          "changed_paths": [],
-          "status": "clean"
         }
       },
       "check_working_environment": {

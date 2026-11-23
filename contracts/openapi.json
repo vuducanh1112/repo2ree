@@ -9814,9 +9814,6 @@
               ]
             }
           },
-          "workspace_drift": {
-            "$ref": "#/components/schemas/WorkspaceDrift"
-          },
           "artifact_path": {
             "type": "string",
             "title": "Artifact Path",
@@ -9880,7 +9877,6 @@
           "snapshot_digest",
           "build_experiment_environment_script_path",
           "build_experiment_environment_script_digest",
-          "workspace_drift",
           "artifact_path",
           "produced_artifact_digest",
           "launch_script_digest"
@@ -18114,42 +18110,6 @@
         ],
         "title": "WorkingEnvironmentObservation",
         "description": "Where a step's scripts ran: the host as the step saw it, and whether that was a container."
-      },
-      "WorkspaceDrift": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "clean",
-              "modified",
-              "unknown"
-            ],
-            "title": "Status"
-          },
-          "changed_paths": {
-            "items": {
-              "type": "string",
-              "x-relative-to": [
-                "workspace"
-              ]
-            },
-            "type": "array",
-            "title": "Changed Paths",
-            "default": []
-          },
-          "changed_path_count": {
-            "type": "integer",
-            "minimum": 0.0,
-            "title": "Changed Path Count",
-            "default": 0
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "status"
-        ],
-        "title": "WorkspaceDrift"
       },
       "WorkspaceFile": {
         "properties": {

@@ -22,7 +22,7 @@ from repo2ree_ree.primitives import (
     RunId,
     parse_utc_instant,
 )
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 
 _REE_ID = "ree-1"
@@ -73,7 +73,6 @@ def _ree(*, build_experiment_environment_script_digest: Digest = _SCRIPT_DIGEST)
             snapshot_digest=_SNAPSHOT_DIGEST,
             build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=build_experiment_environment_script_digest,
-            workspace_drift=WorkspaceDrift(status="clean"),
             artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
             launch_script_digest=LAUNCH,

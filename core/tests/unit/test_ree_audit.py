@@ -38,7 +38,6 @@ from repo2ree_ree.receipt import (
     GenerateSbomReceipt,
     ObserveHardwareReceipt,
     RunExperimentReceipt,
-    WorkspaceDrift,
 )
 from repo2ree_ree.reserved_paths import (
     RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
@@ -80,7 +79,6 @@ def _build_receipt(script_digest: Digest = _DIGEST) -> BuildExperimentEnvironmen
         snapshot_digest=_DIGEST,
         build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
         build_experiment_environment_script_digest=script_digest,
-        workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=_EXPERIMENT_ENVIRONMENT_PATH,
         produced_artifact_digest=_EXPERIMENT_ENVIRONMENT_DIGEST,
         launch_script_digest=LAUNCH,

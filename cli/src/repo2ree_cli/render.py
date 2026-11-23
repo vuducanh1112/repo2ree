@@ -304,10 +304,7 @@ def ran(outputs: RunnableOperationOutputs) -> str:
 
 def built(outputs: BuildExperimentEnvironmentOutputs) -> str:
     receipt = outputs.receipt
-    return (
-        f"built {receipt.artifact_path}{_took(receipt)}\n  {receipt.produced_artifact_digest}\n"
-        f"  workspace {receipt.workspace_drift.status}"
-    )
+    return f"built {receipt.artifact_path}{_took(receipt)}\n  {receipt.produced_artifact_digest}"
 
 
 def sbom(outputs: GenerateSbomOutputs) -> str:

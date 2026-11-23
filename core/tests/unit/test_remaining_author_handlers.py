@@ -36,7 +36,6 @@ from repo2ree_ree.receipt import (
     BuildExperimentEnvironmentReceipt,
     EvaluateReproducibilityReceipt,
     GenerateSbomReceipt,
-    WorkspaceDrift,
 )
 from repo2ree_ree.reserved_paths import (
     RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT,
@@ -307,7 +306,6 @@ def _cross_check_ree(
             snapshot_digest=_SNAPSHOT,
             build_experiment_environment_script_path=OverlayPath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT),
             build_experiment_environment_script_digest=digest_bytes(_BUILD),
-            workspace_drift=WorkspaceDrift(status="unknown"),
             artifact_path=ExperimentEnvironmentPath("runtime.tar"),
             produced_artifact_digest=digest_bytes(_EXPERIMENT_ENVIRONMENT),
             launch_script_digest=LAUNCH,

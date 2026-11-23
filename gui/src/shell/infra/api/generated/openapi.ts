@@ -1595,7 +1595,6 @@ export interface components {
             build_experiment_environment_script_path: string;
             /** Build Experiment Environment Script Digest */
             build_experiment_environment_script_digest: string;
-            workspace_drift: components["schemas"]["WorkspaceDrift"];
             /** Artifact Path */
             artifact_path: string;
             /** Produced Artifact Digest */
@@ -4845,24 +4844,6 @@ export interface components {
              * @default false
              */
             container: boolean;
-        };
-        /** WorkspaceDrift */
-        WorkspaceDrift: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "clean" | "modified" | "unknown";
-            /**
-             * Changed Paths
-             * @default []
-             */
-            changed_paths: string[];
-            /**
-             * Changed Path Count
-             * @default 0
-             */
-            changed_path_count: number;
         };
         /**
          * WorkspaceFile

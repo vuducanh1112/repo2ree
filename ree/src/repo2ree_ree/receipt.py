@@ -15,7 +15,6 @@ from repo2ree_ree.primitives import (
     SourceType,
     Swhid,
     UtcInstant,
-    WorkspacePath,
 )
 from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
@@ -54,15 +53,6 @@ class _ReceiptModel(BaseModel):
 def _require_verification_pair(digest: Digest | None, exit_code: int | None) -> None:
     if (digest is None) != (exit_code is None):
         raise ValueError("verification script digest and exit code must be present together")
-
-
-DriftStatus = Literal["clean", "modified", "unknown"]
-
-
-class WorkspaceDrift(_ReceiptModel):
-    status: DriftStatus
-    changed_paths: tuple[WorkspacePath, ...] = ()
-    changed_path_count: int = Field(default=0, ge=0)
 
 
 class ReceiptEnvelope(_ReceiptModel):
@@ -126,7 +116,6 @@ class BuildExperimentEnvironmentReceipt(ReceiptEnvelope):
     snapshot_digest: SnapshotDigest
     build_experiment_environment_script_path: OverlayPath
     build_experiment_environment_script_digest: BuildScriptDigest
-    workspace_drift: WorkspaceDrift
     artifact_path: ExperimentEnvironmentPath
     produced_artifact_digest: EnvironmentDigest
     working_environment: WorkingEnvironmentObservation | None = None

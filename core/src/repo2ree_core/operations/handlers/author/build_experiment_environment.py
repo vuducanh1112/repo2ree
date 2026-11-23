@@ -24,7 +24,7 @@ from repo2ree_protocol.outputs import BuildExperimentEnvironmentFailureOutputs, 
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import ExperimentEnvironmentDefinition, Ree
 from repo2ree_ree.primitives import Digest, ExperimentEnvironmentPath
-from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt
 
 
 def handle_build_experiment_environment(
@@ -107,7 +107,6 @@ def handle_build_experiment_environment(
         build_experiment_environment_script_path=build.build_experiment_environment_script_path,
         build_experiment_environment_script_digest=build.build_experiment_environment_script_digest,
         # A build runs in a workspace laid out fresh from what the REE records, so nothing in it drifted.
-        workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=experiment_environment_path,
         produced_artifact_digest=produced_artifact_digest,
         working_environment=observe_working_environment(),

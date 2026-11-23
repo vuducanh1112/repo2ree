@@ -200,7 +200,6 @@ const visualRee = {
           snapshot_digest: "sha256:source-snapshot",
           build_experiment_environment_script_path: "overlay/build.sh",
           build_experiment_environment_script_digest: "sha256:build-script",
-          workspace_drift: { status: "clean", changed_path_count: 0 },
           artifact_path: "artifacts/climate-runtime.tar",
           produced_artifact_digest: "sha256:experiment-environment",
         },

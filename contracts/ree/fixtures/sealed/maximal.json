@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:15dbf44bd89095d1c2dca3e7ea92a76005786926fd9014a411f7cdfc2bc564f8",
+    "ree_digest": "sha256:dad587345389abbadf83ba09b26ffca71b50526db171e4ba4d1d5a11b616981b",
     "sealed_at": "2026-10-01T09:30:00.123456Z"
   },
   "subject": {
@@ -231,13 +231,6 @@
             "kernel": "6.12.5",
             "os": "Debian GNU/Linux 12"
           }
-        },
-        "workspace_drift": {
-          "changed_path_count": 1,
-          "changed_paths": [
-            "setup.py"
-          ],
-          "status": "modified"
         }
       },
       "experiments": {

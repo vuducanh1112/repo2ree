@@ -50,17 +50,14 @@ describe("parseAuthorReceipts", () => {
       build_experiment_environment: receipt("build_experiment_environment", {
         build_experiment_environment_script_path: "scripts/build.sh",
         produced_artifact_digest: "sha256:0123456789abcdef0123456789abcdef",
-        workspace_drift: { status: "modified", changed_path_count: 3 },
       }),
     });
 
     expect(view.fields.map((field) => field.key)).toEqual([
       "build_experiment_environment_script_path",
       "produced_artifact_digest",
-      "workspace_drift",
     ]);
     expect(view.fields[1].value).toBe("sha256:012345678…");
-    expect(view.fields[2].value).toBe("modified (3 paths)");
   });
 
   it("drops absent or unusable receipt slots", () => {

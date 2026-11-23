@@ -33,7 +33,7 @@ from repo2ree_ree.primitives import (
     RunId,
     parse_utc_instant,
 )
-from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt, WorkspaceDrift
+from repo2ree_ree.receipt import AcquireSourceReceipt, BuildExperimentEnvironmentReceipt
 from repo2ree_ree.reserved_paths import experiment_run_script_path, experiment_verify_script_path
 
 _DIGEST = digest_bytes(b"content")
@@ -107,7 +107,6 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
         snapshot_digest=_DIGEST,
         build_experiment_environment_script_path=OverlayPath("ree-scripts/build_experiment_environment.sh"),
         build_experiment_environment_script_digest=_DIGEST,
-        workspace_drift=WorkspaceDrift(status="clean"),
         artifact_path=ExperimentEnvironmentPath("runtime.tar"),
         produced_artifact_digest=_OTHER_DIGEST,
         launch_script_digest=LAUNCH,
