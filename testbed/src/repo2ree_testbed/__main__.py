@@ -16,6 +16,7 @@ COMMANDS = {
     "prune": "repo2ree_testbed.runs.prune",
     "coverage": "repo2ree_testbed.python_coverage",
     "exercise-coverage": "repo2ree_testbed.runs.exercise_coverage",
+    "exercise-export": "repo2ree_testbed.runs.exercise_export",
     "search": "repo2ree_testbed.runs.search",
     "machine": "repo2ree_testbed.runs.machine",
     "record": "repo2ree_testbed.runs.record",

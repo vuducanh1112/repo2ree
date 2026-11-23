@@ -6,6 +6,7 @@ import os
 import stat
 import subprocess
 import sys
+import time
 import zipfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -131,6 +132,8 @@ class Ran(_Record):
     exit: int
     result: JsonValue = None
     log: tuple[str, ...] = ()
+    started: float | None = None
+    finished: float | None = None
 
 
 class Prepared(NamedTuple):
@@ -258,10 +261,14 @@ class CliReplay:
         return self.workdir / "journal"
 
     def _ran(self, label: Label, words: Sequence[str], stdin: bytes | None = None, plumbing: Sequence[str] = ()) -> Ran:
+        started = time.time()
         answer = self.run(self.root(label), ("--json", *plumbing, *words), stdin)
+        finished = time.time()
         log = tuple(answer.stderr.splitlines()[-LOG_LINES:])
         said = tuple(word.replace(f"{self.workdir}/", "") for word in words)
-        return Ran(words=said, exit=answer.exit, result=_result(answer.stdout), log=log)
+        return Ran(
+            words=said, exit=answer.exit, result=_result(answer.stdout), log=log, started=started, finished=finished
+        )
 
     def _command(self, journal: EnvironmentJournal, label: Label, command: Command) -> Ran:
         attempt_id = uuid4().hex

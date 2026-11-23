@@ -76,8 +76,15 @@ prune *args:
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour and its coverage by the gate and the showcases, architecture, recipes, configuration, API.
 [group('Repository')]
 [parallel]
-repo-overview: generate-diagrams export-zones export-vocabulary export-operations
+repo-overview: generate-diagrams export-zones export-vocabulary export-operations export-exercises
     python -m repo2ree_repoview overview
+
+# Write the exercise cases, the search campaigns that kept some of them, and each case's newest replay kept here (its trace and its REEs' values) as JSON for the overview.
+[group('Repository')]
+export-exercises:
+    mkdir -p {{ quote(EXPORT_DIR) }}
+    python -m repo2ree_testbed exercise-export -o {{ quote(EXPORT_DIR + "/exercises.json") }}
+    {{ STAMP_EXPORTS }} --by export-exercises {{ quote(EXPORT_DIR + "/exercises.json") }}
 
 # Write the zones and each tracked file's place as JSON (repo2ree-zones/1) for the overview.
 [group('Repository')]

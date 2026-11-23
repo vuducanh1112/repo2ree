@@ -15,6 +15,7 @@ from repo2ree_repoview.overview.exports import (
     SPEC_EXPORT,
     VOCABULARY_EXPORT,
     ZONES_EXPORT,
+    Exercises,
     ShowcaseRuns,
     Spec,
     Zones,
@@ -38,6 +39,9 @@ def exports(tmp_path: Path) -> Path:
     (directory / "just-recipes.json").write_text(exported(("just", "--dump", "--dump-format", "json")))
     (directory / "showcases.json").write_text(
         exported((sys.executable, "-m", "repo2ree_testbed", "showcase-runs", "-o", "/dev/stdout"))
+    )
+    (directory / "exercises.json").write_text(
+        exported((sys.executable, "-m", "repo2ree_testbed", "exercise-export", "-o", "/dev/stdout"))
     )
     return directory
 
@@ -85,6 +89,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
         for name in (
             *("index", "zones", "assurance-gate", "receipts", "operations", "vocabulary", "specification", "coverage"),
             "showcase-gate",
+            "exercises",
             *("ree", "review", "architecture", "interfaces", "interfaces-cli", "interfaces-api", "contracts"),
             "vocabulary-graph",
             *("just-recipes", "contracts-environment"),
@@ -95,12 +100,16 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
         for showcase in ShowcaseRuns.model_validate_json((exports / "showcases.json").read_text()).showcases
         if showcase.kind == "showcase"
     }
+    assert {path.name for path in (target / "exercises").glob("*.html")} == {
+        f"{case.digest}.html" for case in Exercises.model_validate_json((exports / "exercises.json").read_text()).cases
+    }
+    assert '<base href="../">' in next((target / "exercises").glob("*.html")).read_text()
     manifest = json.loads((target / "manifest.json").read_text())
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True, text=True)
     assert manifest["revision"] == head.stdout.strip()
     for entry in manifest["copied"]:
         assert sha256(target / entry["path"]) == entry["sha256"], entry["path"]
-    owned = {"spec", "zones", "operations", "just-recipes", "showcases"}
+    owned = {"spec", "zones", "operations", "just-recipes", "showcases", "exercises"}
     kinds = {entry["kind"]: entry["path"] for entry in manifest["copied"] if entry.get("kind") in owned}
     assert kinds == {kind: f"inputs/{kind}.json" for kind in owned}
 

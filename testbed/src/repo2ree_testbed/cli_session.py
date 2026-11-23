@@ -27,12 +27,12 @@ class CliCommand(Record):
     result_bytes: int = 0
     stdout_bytes: int = 0
     log: tuple[str, ...] = ()
-    started: float
-    finished: float
+    started: float | None = None
+    finished: float | None = None
 
     @property
-    def duration(self) -> float:
-        return self.finished - self.started
+    def duration(self) -> float | None:
+        return None if self.started is None or self.finished is None else self.finished - self.started
 
     @property
     def status(self) -> str:

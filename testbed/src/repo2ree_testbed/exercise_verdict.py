@@ -217,7 +217,7 @@ def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: Run
     )
 
 
-def keep(workdir: Path, trace: Trace) -> None:
+def keep(workdir: Path, trace: Trace, *, slim: bool = False) -> None:
     (workdir / "trace.json").write_text(trace.model_dump_json(indent=2) + "\n")
     so_far_file = workdir.parent / "covered.json"
     so_far = SoFar.model_validate_json(so_far_file.read_text()) if so_far_file.is_file() else SoFar()
@@ -239,6 +239,6 @@ def keep(workdir: Path, trace: Trace) -> None:
         arcs=arcs_union(so_far.arcs, arcs),
     )
     so_far_file.write_text(together.model_dump_json() + "\n")
-    if not trace.problems:
-        for heavy in ("rees", "staged"):
-            shutil.rmtree(workdir / heavy, ignore_errors=True)
+    shutil.rmtree(workdir / "staged", ignore_errors=True)
+    if slim and not trace.problems:
+        shutil.rmtree(workdir / "rees", ignore_errors=True)

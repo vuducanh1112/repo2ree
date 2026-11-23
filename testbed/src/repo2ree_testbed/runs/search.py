@@ -8,17 +8,21 @@ import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from hypothesis import HealthCheck, Phase, given, note, settings, target
 from hypothesis.errors import Flaky
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_testbed.artifacts import execution_id, run_dir
 from repo2ree_testbed.exercise import Exercise
 from repo2ree_testbed.exercise_case import (
     CASES,
+    Campaign,
+    CampaignSettings,
+    KeptCase,
     KeptFor,
     NewArcs,
     NewReached,
@@ -26,6 +30,7 @@ from repo2ree_testbed.exercise_case import (
     ShowedProblems,
     case_of,
     cases,
+    checked_out,
     coverage_of,
     covered,
     known,
@@ -33,6 +38,7 @@ from repo2ree_testbed.exercise_case import (
     searched,
     unmeasured,
     write,
+    write_campaign,
 )
 from repo2ree_testbed.exercise_strategy import exercises
 from repo2ree_testbed.exercise_verdict import Arcs, Trace, arc_count, arcs_union, arcs_without, digest, judge, keep
@@ -71,7 +77,8 @@ class RoundEnded(_Model):
     seconds: float
 
 
-type Event = Kept | Unconfirmed | RoundEnded
+type Event = Annotated[Kept | Unconfirmed | RoundEnded, Field(discriminator="event")]
+_EVENT: TypeAdapter[Event] = TypeAdapter(Event)
 
 
 class _Found(Exception):  # noqa: N818
@@ -115,7 +122,7 @@ class Search:
         shutil.rmtree(workdir, ignore_errors=True)
         workdir.mkdir(parents=True)
         trace = self.judge(exercise, workdir, self.measured)
-        keep(workdir, trace)
+        keep(workdir, trace, slim=not stage.startswith("confirm"))
         return trace
 
     def worth(self, trace: Trace) -> KeptFor | None:
@@ -182,7 +189,7 @@ class Search:
         self.known = self.known | {problem.known_as for problem in again.problems}
         self.reached = self.reached | set(again.reached)
         self.arcs = arcs_union(self.arcs, again.arcs or {})
-        self.events.append(Kept(worker=self.worker, case=str(path), steps=len(exercise.steps), kept_for=kept_for))
+        self.events.append(Kept(worker=self.worker, case=path.stem, steps=len(exercise.steps), kept_for=kept_for))
         return path
 
 
@@ -197,11 +204,39 @@ def measure_stale(directory: Path) -> None:
         measure(case, workdir, directory)
 
 
+def _log() -> Path:
+    return run_dir() / "exercises" / execution_id() / "search.ndjson"
+
+
 def _record(event: Event) -> None:
-    log = run_dir() / "exercises" / execution_id() / "search.ndjson"
+    log = _log()
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a") as written:
         written.write(event.model_dump_json() + "\n")
+
+
+def _events() -> list[Event]:
+    log = _log()
+    lines = log.read_text().splitlines() if log.is_file() else []
+    return [_EVENT.validate_json(line) for line in lines if line]
+
+
+def summed(campaign: Campaign, events: list[Event], code: int | None) -> Campaign:
+    rounds = [event for event in events if isinstance(event, RoundEnded)]
+    return campaign.model_copy(
+        update={
+            "rounds": len(rounds),
+            "rounds_found": sum(event.found for event in rounds),
+            "unconfirmed": sum(isinstance(event, Unconfirmed) for event in events),
+            "kept": tuple(
+                KeptCase(case=event.case, kept_for=event.kept_for, steps=event.steps, worker=event.worker)
+                for event in events
+                if isinstance(event, Kept)
+            ),
+            "exit": code,
+            "ended": datetime.now(UTC) if code is not None else None,
+        }
+    )
 
 
 def run(search: Search, *, until: float | None, keep_at_most: int) -> int:
@@ -261,10 +296,38 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--measured", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     until = args.until if args.until is not None else (time.time() + args.hours * 3600 if args.hours else None)
-    if args.search == "branch-cov" and not args.measured:
-        measure_stale(args.cases)
-    if args.workers > 1:
-        return _workers(args, until)
+    if args.measured:
+        return _search(args, until)
+    commit, dirty = checked_out()
+    settings = CampaignSettings(
+        examples=args.examples,
+        steps=args.steps,
+        keep=args.keep,
+        least=args.least,
+        hours=args.hours,
+        workers=args.workers,
+    )
+    campaign = Campaign(
+        run=execution_id(),
+        search=args.search,
+        settings=settings,
+        commit=commit,
+        dirty=dirty,
+        machine=os.environ.get("REPO2REE_MACHINE"),
+        started=datetime.now(UTC),
+    )
+    write_campaign(campaign, args.cases)
+    code = 1
+    try:
+        if args.search == "branch-cov":
+            measure_stale(args.cases)
+        code = _workers(args, until) if args.workers > 1 else _search(args, until)
+    finally:
+        write_campaign(summed(campaign, _events(), code), args.cases)
+    return code
+
+
+def _search(args: argparse.Namespace, until: float | None) -> int:
     search = Search(
         search=args.search,
         directory=args.cases,

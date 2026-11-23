@@ -5,7 +5,7 @@ import html
 import json
 import os
 import subprocess
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -186,16 +186,24 @@ def _flatten(value: Any, path: str = "") -> Iterator[tuple[str, str]]:
         yield path, text if len(text) <= VALUE_WIDTH else text[: VALUE_WIDTH - 1] + "…"
 
 
-def steps(session: tuple[CliCommand, ...], dossier: Path) -> tuple[list[Step], list[Change]]:
+def _commit_of(command: CliCommand) -> str | None:
+    history = (command.result or {}).get("history")
+    commit = history.get("after_snapshot_id") if isinstance(history, dict) else None
+    return commit if isinstance(commit, str) else None
+
+
+def steps(session: tuple[CliCommand, ...], held_in: Iterable[tuple[str, str, Path]]) -> tuple[list[Step], list[Change]]:
     found = [Step(command) for command in session]
     by_run = {step.command.run_id: step for step in found if step.command.run_id}
+    by_commit = {commit: step for step in found if (commit := _commit_of(step.command))}
     unmatched: list[Change] = []
-    for ree, scope, repository in histories(dossier):
+    for ree, scope, repository in held_in:
         held = changes(commits(ree, scope, repository))
         pending: list[Change] = []
         for change in held:
             run = change.commit.run_id
             step = by_run.get(run) or by_run.get(run.rsplit(".", 1)[0]) if run else None
+            step = step or by_commit.get(change.commit.commit)
             if step is None and change.commit.operation == "initialize_ree":
                 step = next(
                     (s for s in found if s.command.ree == ree and s.command.words[:1] == ("initialize-ree",)), None
@@ -292,6 +300,10 @@ def _pretty(document: str | None) -> str:
     return json.dumps(parsed, indent=2) if parsed is not None else (document or "")
 
 
+def _took(command: CliCommand, before: str = "") -> str:
+    return "" if command.duration is None else f"{before}{command.duration:.1f} s"
+
+
 def _step(number: int, step: Step) -> str:
     command = step.command
     typed = "ree " + " ".join(command.words)
@@ -299,14 +311,14 @@ def _step(number: int, step: Step) -> str:
     if not step.changes and status == "succeeded":
         return (
             f'<div class="step read"><span class="muted">{number}</span> <span class="cmd">{_esc(typed)}</span> '
-            f'<span class="ree">{_esc(command.ree)}</span> <span class="muted">read, changed nothing · '
-            f"{command.duration:.1f} s</span></div>"
+            f'<span class="ree">{_esc(command.ree)}</span> <span class="muted">read, changed nothing'
+            f"{_took(command, ' · ')}</span></div>"
         )
     parts = [
         (
             f'<div class="step"><div><span class="muted">{number}</span> <span class="cmd">$ {_esc(typed)}</span>'
             f'{_badge(status)} <span class="ree">{_esc(command.ree)}</span> '
-            f'<span class="muted">exit {command.exit} · {command.duration:.1f} s</span></div>'
+            f'<span class="muted">exit {command.exit}{_took(command, " · ")}</span></div>'
         )
     ]
     if command.stdin is not None:
@@ -382,7 +394,7 @@ def draw(
     session = read_session(evidence / "artifacts" / SESSION)
     if not session:
         return False
-    found, unmatched = steps(session, evidence / "dossier")
+    found, unmatched = steps(session, histories(evidence / "dossier"))
     output.mkdir(parents=True, exist_ok=True)
     shown = os.path.relpath(video, output) if video is not None and video.is_file() else None
     (output / "index.html").write_text(render(name, found, unmatched, about, shown), encoding="utf-8")

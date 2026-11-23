@@ -10,6 +10,8 @@ from repo2ree_repoview.overview.contracts import CliSchema, Environment, OpenApi
 from repo2ree_repoview.overview.exports import (
     EXPORTS,
     Contracts,
+    ExerciseCase,
+    Exercises,
     Operations,
     ShowcaseRuns,
     ShowcaseTest,
@@ -23,6 +25,7 @@ from repo2ree_repoview.overview.pages.architecture import page_architecture
 from repo2ree_repoview.overview.pages.contracts import CONTRACTS, page_contracts
 from repo2ree_repoview.overview.pages.coverage import SHOWCASES, page_coverage, page_showcase_coverage
 from repo2ree_repoview.overview.pages.environment import page_environment
+from repo2ree_repoview.overview.pages.exercises import EXERCISES, page_exercise, page_exercises, session_target
 from repo2ree_repoview.overview.pages.gates import page_gates
 from repo2ree_repoview.overview.pages.home import page_home
 from repo2ree_repoview.overview.pages.interfaces import INTERFACES, page_api, page_cli, page_interfaces
@@ -73,17 +76,19 @@ def sidebar(pages: list[Page], now: Head, current: str | None) -> str:
     )
 
 
-def head(title: str) -> str:
+def head(title: str, base: str = "") -> str:
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        f"<title>{esc(title)} · repo2ree overview</title><style>{STYLE}</style></head>"
+        + (f'<base href="{base}">' if base else "")
+        + f"<title>{esc(title)} · repo2ree overview</title><style>{STYLE}</style></head>"
     )
 
 
 def frame(page: Page, pages: list[Page], now: Head, current: str | None = None) -> str:
+    base = "../" * page.slug.count("/")
     return (
-        f'{head(page.title)}<body><div class="layout">{sidebar(pages, now, current or page.slug)}'
+        f'{head(page.title, base)}<body><div class="layout">{sidebar(pages, now, current or page.slug)}'
         f"<main>{page.body}</main></div><script>{SCRIPT}</script></body></html>"
     )
 
@@ -133,6 +138,13 @@ def showcase_ree_pages(showcases: ShowcaseRuns, records: dict[str, RunRecord]) -
     return pages
 
 
+def _session(bundle: Bundle, case: ExerciseCase) -> bool:
+    if case.replay is None:
+        return False
+    target = session_target(case.digest)
+    return bundle.copy(ROOT / case.replay.session, target, Origin(kind="session")) is not None
+
+
 def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     now = Head.now()
     bundle = Bundle(output or OVERVIEWS / bundle_name(now), now.revision)
@@ -146,6 +158,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     recipes = read_recipes(kept(bundle, exports, "just-recipes"))
     excused = unreached()
     showcases = ShowcaseRuns.model_validate_json(kept(bundle, exports, "showcases"))
+    exercises = Exercises.model_validate_json(kept(bundle, exports, "exercises"))
     showcase_runs = list(runs_on_disk(showcases.runs()))
     showcase_records = {
         str(run.relative_to(ROOT)) if run.is_relative_to(ROOT) else str(run): record for run, record in showcase_runs
@@ -185,6 +198,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
             bundle,
             gate_needs(now, tier_receipts()).get("showcase-gate", []),
         ),
+        page_exercises(exercises),
         *(
             page_aggregate(aggregate, AggregateMoves.over(evidence, name), bundle, registry)
             for name, aggregate in spec.aggregates.items()
@@ -204,9 +218,12 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         (page_cli(cli), INTERFACES),
         (page_api(api), INTERFACES),
         (page_environment(environment), CONTRACTS),
+        *((page_exercise(case, session=_session(bundle, case)), EXERCISES) for case in exercises.cases),
     ]
     for page, parent in subpages:
-        (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now, parent), encoding="utf-8")
+        written_to = bundle.root / f"{page.slug}.html"
+        written_to.parent.mkdir(parents=True, exist_ok=True)
+        written_to.write_text(frame(page, everything, now, parent), encoding="utf-8")
     (bundle.root / f"{FRAME}.html").write_text(shell(everything, now), encoding="utf-8")
     (bundle.root / "manifest.json").write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
     if output is None:

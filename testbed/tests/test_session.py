@@ -48,7 +48,9 @@ def test_dir(tmp_path: Path) -> Path:
 
 
 def test_each_command_is_shown_with_the_commits_its_run_made(test_dir: Path) -> None:
-    found, unmatched = session.steps(read_session(test_dir / "artifacts" / SESSION), test_dir / "dossier")
+    found, unmatched = session.steps(
+        read_session(test_dir / "artifacts" / SESSION), session.histories(test_dir / "dossier")
+    )
 
     assert [step.command.words[0] for step in found] == [
         "initialize-ree",
@@ -66,7 +68,7 @@ def test_each_command_is_shown_with_the_commits_its_run_made(test_dir: Path) -> 
 
 
 def test_a_change_names_the_files_and_the_document_values_it_changed(test_dir: Path) -> None:
-    found, _ = session.steps(read_session(test_dir / "artifacts" / SESSION), test_dir / "dossier")
+    found, _ = session.steps(read_session(test_dir / "artifacts" / SESSION), session.histories(test_dir / "dossier"))
     [written] = found[1].changes
     [defined] = found[2].changes
 

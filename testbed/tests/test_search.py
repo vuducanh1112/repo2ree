@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from repo2ree_testbed.exercise import Exercise
-from repo2ree_testbed.exercise_case import NewArcs, NewReached, Searched, ShowedProblems, Shows, cases
+from repo2ree_testbed.exercise_case import (
+    Campaign,
+    CampaignSettings,
+    KeptCase,
+    NewArcs,
+    NewReached,
+    Searched,
+    ShowedProblems,
+    Shows,
+    cases,
+)
 from repo2ree_testbed.exercise_verdict import Problem, Trace
-from repo2ree_testbed.runs.search import Judge, Search, run
+from repo2ree_testbed.runs.search import Event, Judge, Kept, RoundEnded, Search, Unconfirmed, run, summed
 
 COVERED = "testbed/src/repo2ree_testbed/runs/search.py"
 PROBLEM = Problem(kind="violated", rule="machine:Attempt", subject="Attempt a")
@@ -121,3 +132,30 @@ def test_a_find_another_search_kept_meanwhile_is_not_kept_again(tmp_path: Path) 
     assert first.confirm(found_first) is not None
     assert second.confirm(found_second) is None
     assert len(cases(tmp_path / "cases")) == 1
+
+
+def test_a_campaign_sums_its_rounds_and_the_cases_it_kept() -> None:
+    settings = CampaignSettings(examples=5, steps=4, keep=3, least=1, hours=None, workers=2)
+    started = Campaign(
+        run="run",
+        search="spec-cov",
+        settings=settings,
+        commit="c",
+        dirty=False,
+        machine="vm",
+        started=datetime.now(UTC),
+    )
+    kept = NewReached(items=("deep",))
+    events: list[Event] = [
+        RoundEnded(worker=0, round=1, found=True, seconds=1.0),
+        Kept(worker=0, case="abc", steps=3, kept_for=kept),
+        RoundEnded(worker=1, round=1, found=True, seconds=1.0),
+        Unconfirmed(worker=1, digest="abc", why="kept meanwhile"),
+        RoundEnded(worker=1, round=2, found=False, seconds=1.0),
+    ]
+
+    ended = summed(started, events, 0)
+
+    assert (ended.rounds, ended.rounds_found, ended.unconfirmed, ended.exit) == (3, 2, 1, 0)
+    assert ended.kept == (KeptCase(case="abc", kept_for=kept, steps=3, worker=0),)
+    assert ended.ended is not None

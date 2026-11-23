@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Final, Literal
 
@@ -21,6 +22,7 @@ from repo2ree_testbed.exercise_verdict import (
 
 CASES: Final = ROOT / "exercises"
 COVERAGE: Final = "coverage"
+CAMPAIGNS: Final = "campaigns"
 
 SearchName = Literal["spec-cov", "branch-cov"]
 
@@ -225,3 +227,47 @@ def unmeasured(case: ExerciseCase) -> str | None:
 def searched(search: SearchName, run: str, kept_for: KeptFor) -> Searched:
     commit, dirty = checked_out()
     return Searched(search=search, run=run, commit=commit, dirty=dirty, kept_for=kept_for)
+
+
+class CampaignSettings(_Model):
+    examples: int
+    steps: int
+    keep: int
+    least: int
+    hours: float | None
+    workers: int
+
+
+class KeptCase(_Model):
+    case: str
+    kept_for: KeptFor
+    steps: int
+    worker: int
+
+
+class Campaign(_Model):
+    run: str
+    search: SearchName
+    settings: CampaignSettings
+    commit: str
+    dirty: bool
+    machine: str | None
+    started: datetime
+    ended: datetime | None = None
+    rounds: int = 0
+    rounds_found: int = 0
+    unconfirmed: int = 0
+    kept: tuple[KeptCase, ...] = ()
+    exit: int | None = None
+
+
+def write_campaign(campaign: Campaign, directory: Path = CASES) -> Path:
+    path = directory / CAMPAIGNS / f"{campaign.run}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(campaign.model_dump_json(indent=2) + "\n")
+    return path
+
+
+def campaigns(directory: Path = CASES) -> tuple[Campaign, ...]:
+    found = [Campaign.model_validate_json(path.read_text()) for path in (directory / CAMPAIGNS).glob("*.json")]
+    return tuple(sorted(found, key=lambda campaign: campaign.started, reverse=True))

@@ -469,3 +469,136 @@ class ShowcaseRuns(Export):
 
     def runs(self) -> tuple[str, ...]:
         return tuple(tier.run for tier in self.tiers if tier.run)
+
+
+class KeptFor(Document):
+    kind: Literal["showed_problems", "new_arcs", "new_reached"]
+    items: tuple[str, ...] = ()
+    files: dict[str, int] = Field(default_factory=dict)
+
+
+class CaseOrigin(Document):
+    kind: Literal["hand_written", "searched"]
+    search: str | None = None
+    run: str | None = None
+    kept_for: KeptFor | None = None
+
+
+class ExerciseProblem(Document):
+    kind: str
+    step: int | None = None
+    rule: str
+    subject: str
+    detail: str = ""
+
+
+class CaseExpectation(Document):
+    kind: Literal["conforms", "shows"]
+    problems: tuple[ExerciseProblem, ...] = ()
+
+
+class CaseReached(Document):
+    spec_digest: str
+    items: tuple[str, ...]
+
+
+class CampaignSettings(Document):
+    examples: int
+    steps: int
+    keep: int
+    least: int
+    hours: float | None
+    workers: int
+
+
+class KeptCase(Document):
+    case: str
+    kept_for: KeptFor
+    steps: int
+    worker: int
+
+
+class Campaign(Document):
+    run: str
+    search: str
+    settings: CampaignSettings
+    commit: str
+    dirty: bool
+    machine: str | None
+    started: str
+    ended: str | None
+    rounds: int
+    rounds_found: int
+    unconfirmed: int
+    kept: tuple[KeptCase, ...]
+    exit: int | None
+
+
+class StepRun(Document):
+    step: int
+    ree: str
+    operation: str
+    words: tuple[str, ...] | None
+    exit: int | None
+    status: str | None
+    failure: str | None
+    scope: str | None
+    commit: str | None
+    changed: bool | None
+
+
+class CaseReplay(Document):
+    workdir: str
+    when: str
+    spec_digest: str
+    problems: tuple[ExerciseProblem, ...]
+    reached: tuple[str, ...]
+    steps: tuple[StepRun, ...]
+    session: str
+
+
+class CaseFile(Document):
+    path: str
+    arcs: int
+    unique: int
+    stale: bool
+
+
+class CaseCoverage(Document):
+    commit: str
+    dirty: bool
+    files: tuple[CaseFile, ...]
+
+
+class ExerciseCase(Document):
+    digest: str
+    exercise: dict[str, Any]
+    origin: CaseOrigin
+    expects: CaseExpectation
+    reached: CaseReached
+    unique_reached: tuple[str, ...]
+    coverage: CaseCoverage | None
+    replay: CaseReplay | None
+
+    @property
+    def rees(self) -> tuple[str, ...]:
+        return tuple(self.exercise.get("rees", ()))
+
+    @property
+    def steps(self) -> tuple[dict[str, Any], ...]:
+        return tuple(self.exercise.get("steps", ()))
+
+    @property
+    def drifts(self) -> tuple[dict[str, Any], ...]:
+        return tuple(self.exercise.get("drifts", ()))
+
+    @property
+    def faults(self) -> tuple[dict[str, Any], ...]:
+        return tuple(self.exercise.get("faults", ()))
+
+
+class Exercises(Export):
+    FORMAT = "repo2ree-exercises/1"
+
+    campaigns: tuple[Campaign, ...]
+    cases: tuple[ExerciseCase, ...]
