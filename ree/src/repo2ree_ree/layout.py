@@ -51,6 +51,7 @@ REPRODUCER_README = "REPRODUCING.md"
 SIGNATURES = "signatures"
 RUNS = "runs"
 UPLOAD_STAGING = "upload-staging"
+STAGES = ".stage"
 REVIEWS = "reviews"
 REVIEW_RECORD = "review.json"
 RECEIPTS = "receipts"
@@ -314,6 +315,13 @@ REE_TREE = _directory(
         "never",
         "Source uploads in flight.",
         _file("{upload}.bin", "working", "never", "One upload, by its token.", key="upload"),
+    ),
+    _directory(
+        STAGES,
+        "working",
+        "never",
+        "Where each running attempt runs: what the REE's histories record, checked out, and its other files linked "
+        "in; gone once the attempt is captured.",
     ),
     _directory(REVIEWS, "working", "git", "The review attempts on this REE.", _REVIEW),
 )

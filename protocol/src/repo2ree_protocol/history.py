@@ -5,24 +5,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.result import ActionResult, Failure, OperationStatus
+from repo2ree_protocol.result import ActionResult, DriftedFile, Failure, OperationStatus
 
 SELECTION_VERSION = 2
-
-
-# Where in an REE, or in a review of it, a change is: a script as written (overlay), the workspace scripts run in,
-# the other records its history holds, or a ref of that history.
-ReePart = Literal["overlay", "workspace", "records", "history"]
-
-
-class DriftedFile(BaseModel):
-    """A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed
-    outside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    path: str
-    part: ReePart
 
 
 class OperationRecord(BaseModel):

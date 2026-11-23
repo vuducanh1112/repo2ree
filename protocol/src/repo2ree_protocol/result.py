@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_protocol.execution import ExecutionContext
 
@@ -50,6 +50,21 @@ class Failure(BaseModel):
     details: dict[str, Any] | None = None
 
 
+# Where in an REE, or in a review of it, a change is: a script as written (overlay), the workspace scripts run in,
+# the other records its history holds, or a ref of that history.
+ReePart = Literal["overlay", "workspace", "records", "history"]
+
+
+class DriftedFile(BaseModel):
+    """A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed
+    outside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    path: str
+    part: ReePart
+
+
 class HistoryReference(BaseModel):
     """Capture evidence, separate from operation-specific outputs."""
 
@@ -68,6 +83,9 @@ class HistoryReference(BaseModel):
     # For a failed capture: the digest of the record core left beside the history, which stands in
     # for the commit a capture would have made. None when even that record could not be written.
     record_digest: str | None = None
+    # What the integrity check found of the REE not as this attempt left it, once it was captured: changed beside
+    # the attempt while it ran. The attempt's commit holds none of it; the next command finds it as drift.
+    drift_after: list[DriftedFile] = Field(default_factory=list)
 
 
 class ActionResult(BaseModel):

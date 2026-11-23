@@ -23,7 +23,7 @@ from repo2ree_protocol.command import (
     WriteScriptCommand,
 )
 from repo2ree_protocol.execution import ExecutionContext
-from repo2ree_protocol.history import DriftedFile
+from repo2ree_protocol.result import DriftedFile
 from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.reserved_paths import RESERVED_LAUNCH_SCRIPT
 

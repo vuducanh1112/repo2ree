@@ -282,6 +282,13 @@
         ]
       },
       {
+        "name": ".stage",
+        "kind": "directory",
+        "origin": "working",
+        "capture": "never",
+        "description": "Where each running attempt runs: what the REE's histories record, checked out, and its other files linked in; gone once the attempt is captured."
+      },
+      {
         "name": "reviews",
         "kind": "directory",
         "origin": "working",

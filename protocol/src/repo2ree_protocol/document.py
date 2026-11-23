@@ -6,7 +6,7 @@ from repo2ree_protocol.audit import ReeAudit
 from repo2ree_protocol.catalog import ReeSteps
 from repo2ree_protocol.command import TargetKind
 from repo2ree_protocol.files import ReeFile, WorkspaceFile
-from repo2ree_protocol.history import DriftedFile
+from repo2ree_protocol.result import DriftedFile
 from repo2ree_ree.model import Ree, ReeStatus
 
 

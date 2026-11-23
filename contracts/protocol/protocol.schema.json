@@ -4516,6 +4516,13 @@
           ],
           "default": null,
           "title": "Record Digest"
+        },
+        "drift_after": {
+          "items": {
+            "$ref": "#/$defs/DriftedFile"
+          },
+          "title": "Drift After",
+          "type": "array"
         }
       },
       "required": [

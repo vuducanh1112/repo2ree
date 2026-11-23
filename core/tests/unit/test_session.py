@@ -61,7 +61,7 @@ def test_an_attempt_a_dead_process_left_is_settled_before_the_next_command_runs(
     as_recorded(ree)
 
     def dies(*args, **kwargs):
-        ree.overlay_file("kept.txt").write_text("partial")
+        kwargs["layout"].overlay_file("kept.txt").write_text("partial")
         raise KeyboardInterrupt
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", dies)

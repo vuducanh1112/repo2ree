@@ -12930,6 +12930,13 @@
               }
             ],
             "title": "Record Digest"
+          },
+          "drift_after": {
+            "items": {
+              "$ref": "#/components/schemas/DriftedFile"
+            },
+            "type": "array",
+            "title": "Drift After"
           }
         },
         "additionalProperties": false,

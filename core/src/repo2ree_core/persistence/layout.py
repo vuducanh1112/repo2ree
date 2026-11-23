@@ -181,6 +181,11 @@ class ReeLayout:
         return self.root / _UPLOAD_STAGING_DIRNAME
 
     @property
+    def stages(self) -> Path:
+        """Where each running attempt runs (``operations.stage``)."""
+        return self.root / tree.STAGES
+
+    @property
     def artifacts(self) -> Path:
         return self.root / ARTIFACTS_DIRNAME
 

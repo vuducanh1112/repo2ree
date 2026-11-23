@@ -206,15 +206,15 @@ def pending_record(layout, attempt_id):
     return json.loads((layout.git_dir / "repo2ree" / "operations" / f"{attempt_id}.json").read_text())
 
 
-def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, monkeypatch):
+def test_a_capture_that_fails_after_the_handler_leaves_the_ree_as_it_found_it(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
     as_recorded(ree)
     patch(ree, "observed")  # A clean tree, so the before-snapshot reuses the head and takes no lock.
     head = git(ree, "rev-parse", "HEAD")
 
     def handler(*args, **kwargs):
-        ree.overlay_file("kept.txt").write_text("changed")
-        ree.overlay_file("created.txt").write_text("new")
+        kwargs["layout"].overlay_file("kept.txt").write_text("changed")
+        kwargs["layout"].overlay_file("created.txt").write_text("new")
         lock_history(ree)
         return ActionResult(status="succeeded")
 
@@ -222,7 +222,7 @@ def test_a_capture_that_fails_after_the_handler_rolls_back_what_it_changed(ree, 
     result = patch(ree)
 
     assert (result.status, result.failure.details["code"]) == ("failed", "history_capture_failed")
-    assert "rolled back to how the attempt found them" in result.failure.message
+    assert "left as the attempt found them" in result.failure.message
     assert ree.overlay_file("kept.txt").read_text() == "before"
     assert not ree.overlay_file("created.txt").exists()
     assert git(ree, "rev-parse", "HEAD") == head
@@ -270,21 +270,21 @@ def test_a_record_that_cannot_be_written_before_the_handler_ends_the_attempt(ree
     assert pending_record(ree, result.history.attempt_id)["phases"] == ["pending", "executing", "capture_failed"]
 
 
-def test_a_rollback_that_fails_too_is_said(ree, monkeypatch):
+def test_a_staged_attempt_whose_capture_fails_needs_no_rollback(ree, monkeypatch):
     monkeypatch.setattr(GitHistory, "commit_operation", lambda self, **kwargs: (_ for _ in ()).throw(OSError("full")))
     monkeypatch.setattr(GitHistory, "restore", lambda self, snapshot: (_ for _ in ()).throw(OSError("full")))
 
     result = patch(ree)
 
     assert result.history.capture_status == "failed"
-    assert "could not be rolled back" in result.failure.message
-    assert ReeDirectory(ree).read_ree().subject.definition.name == "after"
+    assert "left as the attempt found them" in result.failure.message
+    assert ReeDirectory(ree).read_ree().subject.definition.name == "before"
 
 
 @pytest.mark.parametrize("outcome", ["failed", "exception"])
 def test_partial_change_captured_with_original_outcome(ree, monkeypatch, outcome):
     def handler(*args, **kwargs):
-        ree.overlay_file("partial.txt").write_text("partial")
+        kwargs["layout"].overlay_file("partial.txt").write_text("partial")
         if outcome == "exception":
             raise RuntimeError("interrupted handler")
         if outcome == "failed":
@@ -306,12 +306,13 @@ def test_a_canceled_attempt_is_rolled_back_before_it_is_captured(ree, monkeypatc
     as_recorded(ree)
 
     def handler(*args, **kwargs):
-        ree.overlay_file("kept.txt").write_text("partial")
-        ree.overlay_file("removed.txt").unlink()
-        ree.overlay_file("created.txt").write_text("partial")
-        manifest = json.loads(ree.manifest.read_text())
+        staged = kwargs["layout"]
+        staged.overlay_file("kept.txt").write_text("partial")
+        staged.overlay_file("removed.txt").unlink()
+        staged.overlay_file("created.txt").write_text("partial")
+        manifest = json.loads(staged.manifest.read_text())
         manifest["subject"]["definition"]["name"] = "partial"
-        ree.manifest.write_text(json.dumps(manifest))
+        staged.manifest.write_text(json.dumps(manifest))
         return ActionResult(status="canceled")
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
@@ -460,15 +461,16 @@ def test_every_command_records_inputs_and_selected_scope(ree, monkeypatch, comma
     scope = ree.review(args.review_id) if hasattr(args, "review_id") else ree
     author_head = git(ree, "rev-parse", "HEAD")
 
-    def execute(*args, **kwargs):
-        scope.overlay.mkdir(parents=True, exist_ok=True)
-        scope.overlay_file("operation.txt").write_text(cmd.operation)
+    def execute(*_args, **kwargs):
+        staged = kwargs["layout"].review(args.review_id) if hasattr(args, "review_id") else kwargs["layout"]
+        staged.overlay.mkdir(parents=True, exist_ok=True)
+        staged.overlay_file("operation.txt").write_text(cmd.operation)
         return ActionResult(status="succeeded")
 
     monkeypatch.setattr(dispatch, "_dispatch", execute)
     monkeypatch.setattr(dispatch, "validate_outputs", lambda *_args: None)
     result = dispatch.run_command(cmd, log=lambda *args: None, layout=ree)
-    assert result.status == "succeeded"
+    assert result.status == "succeeded", result.failure
     assert operation_record(ree, result)["command"] == cmd.model_dump(mode="json")
     assert git(scope, "show", "HEAD:overlay/operation.txt") == cmd.operation
     if scope != ree:
@@ -504,8 +506,8 @@ def _die_mid_handler(ree, monkeypatch):
     as_recorded(ree)
 
     def handler(*args, **kwargs):
-        ree.overlay_file("kept.txt").write_text("partial")
-        ree.overlay_file("created.txt").write_text("partial")
+        kwargs["layout"].overlay_file("kept.txt").write_text("partial")
+        kwargs["layout"].overlay_file("created.txt").write_text("partial")
         raise KeyboardInterrupt
 
     monkeypatch.setattr(dispatch, "handle_patch_ree_definition", handler)
@@ -515,7 +517,7 @@ def _die_mid_handler(ree, monkeypatch):
     return read_operation_history(ree).operations[0].attempt_id
 
 
-def test_an_attempt_whose_executor_died_is_rolled_back_and_captured_as_interrupted(ree, monkeypatch):
+def test_an_attempt_whose_executor_died_is_captured_as_interrupted_with_nothing_it_changed(ree, monkeypatch):
     attempt = _die_mid_handler(ree, monkeypatch)
 
     result = settle_interrupted(layout=ree, attempt_id=attempt, log=lambda *args: None)
@@ -532,6 +534,7 @@ def test_an_attempt_whose_executor_died_is_rolled_back_and_captured_as_interrupt
     assert not ree.overlay_file("created.txt").exists()
     assert json.loads(git(ree, "log", "-1", "--format=%b"))["outcome"] == "interrupted"
     assert not list((ree.git_dir / "repo2ree" / "operations").glob("*.json"))
+    assert not (ree.root / ".stage").exists()
     record = read_operation_history(ree).operations[0]
     assert record.phases == ["pending", "executing", "completed", "captured"]
 
@@ -548,12 +551,12 @@ def test_settling_a_settled_attempt_answers_as_it_settled(ree, monkeypatch):
     assert again.status == "failed"
 
 
-def test_an_attempt_lost_before_its_capture_fails_its_capture_and_rolls_back(ree, monkeypatch):
+def test_an_attempt_lost_before_its_capture_fails_its_capture_and_changed_nothing(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
     as_recorded(ree)
 
     def handler(*args, **kwargs):
-        ree.overlay_file("kept.txt").write_text("changed")
+        kwargs["layout"].overlay_file("kept.txt").write_text("changed")
         return ActionResult(status="succeeded")
 
     def die(*args, **kwargs):

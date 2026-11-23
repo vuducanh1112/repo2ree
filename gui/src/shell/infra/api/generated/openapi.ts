@@ -2822,6 +2822,8 @@ export interface components {
             changed?: boolean | null;
             /** Record Digest */
             record_digest?: string | null;
+            /** Drift After */
+            drift_after?: components["schemas"]["DriftedFile"][];
         };
         /** HostFingerprint */
         HostFingerprint: {

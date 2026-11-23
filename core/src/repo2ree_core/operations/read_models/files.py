@@ -131,6 +131,7 @@ def list_ree_files(
             not path.is_file()
             or _is_history_storage(layout, path)
             or path.is_relative_to(layout.upload_staging)
+            or path.is_relative_to(layout.stages)
             or path.is_relative_to(layout.workspace)
         ):
             continue

@@ -32,6 +32,7 @@ from repo2ree_core.persistence.capture_policy import capture_plan
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.persistence.lfs import LfsPointer, store_payload
+from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
 from repo2ree_protocol.history import SELECTION_VERSION
 from repo2ree_protocol.tools import find_tool
 
@@ -331,6 +332,70 @@ class GitHistory:
                 ree = ReeDirectory(self.layout).read_ree()
                 lfs_paths = set(ree.subject.capture.lfs_paths)
 
+    def entries(self, snapshot: str) -> dict[str, tuple[str, str]]:
+        """Each file ``snapshot`` holds, by its path, with its mode and blob."""
+        recorded: dict[str, tuple[str, str]] = {}
+        for entry in self.git("ls-tree", "-rz", snapshot).stdout.split(b"\0"):
+            if not entry:
+                continue
+            metadata, raw_path = entry.split(b"\t", 1)
+            mode, kind, oid = metadata.decode().split()
+            if kind != "blob":
+                raise HistoryCaptureError(f"Cannot read {os.fsdecode(raw_path)}: not a file")
+            recorded[os.fsdecode(raw_path)] = (mode, oid)
+        return recorded
+
+    def lfs_paths_at(self, snapshot: str) -> set[str]:
+        """The paths ``snapshot`` holds as LFS pointers, as its manifest names them."""
+        manifest = self.layout.manifest.relative_to(self.layout.root).as_posix()
+        shown = self.git("show", f"{snapshot}:{manifest}", check=False)
+        if shown.returncode != 0:
+            return set()
+        return {str(path) for path in parse_ree_manifest(json.loads(shown.stdout)).subject.capture.lfs_paths}
+
+    def check_out(self, snapshot: str, root: Path, *, payloads: Path) -> list[str]:
+        """Write each file ``snapshot`` holds under ``root``, which holds none of them yet; the paths written. An LFS
+        payload is linked from ``payloads``, where the REE keeps it, else copied out of the history's storage."""
+        recorded = self.entries(snapshot)
+        lfs_paths = self.lfs_paths_at(snapshot)
+        for relative, (mode, oid) in recorded.items():
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if mode == "120000":
+                target.symlink_to(os.fsdecode(self.git("cat-file", "blob", oid).stdout))
+                continue
+            if relative in lfs_paths:
+                kept = payloads / relative
+                if kept.is_file() and not kept.is_symlink():
+                    _link_or_copy(kept, target)
+                    continue
+                pointer = LfsPointer.parse(self.git("cat-file", "blob", oid).stdout)
+                if pointer is None:
+                    raise HistoryCaptureError(f"Cannot check out {relative}: expected an LFS pointer")
+                shutil.copyfile(pointer.verify(self.layout.git_dir), target)
+            else:
+                with target.open("wb") as stream:
+                    self.git("cat-file", "blob", oid, output=stream)
+            target.chmod(0o755 if mode == "100755" else 0o644)
+        return sorted(recorded)
+
+    def holds_as(self, path: Path, entry: tuple[str, str] | None, *, lfs: bool) -> bool:
+        """Whether the file at ``path`` is as ``entry`` records it: absent for None; else its kind, mode and content."""
+        if entry is None:
+            return not path.exists() and not path.is_symlink()
+        mode, oid = entry
+        if mode == "120000":
+            if not path.is_symlink():
+                return False
+            found = self.git("hash-object", "--stdin", data=os.fsencode(path.readlink())).stdout.decode().strip()
+            return found == oid
+        if path.is_symlink() or not path.is_file() or _file_mode(path.lstat()) != mode:
+            return False
+        if lfs:
+            pointer = LfsPointer.parse(self.git("cat-file", "blob", oid).stdout)
+            return pointer is not None and _pointer_of(path) == pointer
+        return self.git("hash-object", "--no-filters", str(path)).stdout.decode().strip() == oid
+
     def _commit(
         self,
         tree: str,
@@ -365,13 +430,14 @@ class GitHistory:
             self.git("read-tree", commit)
         return commit
 
-    def commit_operation(self, *, operation: str, record: dict[str, Any]) -> tuple[str, bool]:
-        """Publish a completed attempt, even one whose state tree is unchanged."""
+    def commit_operation(self, *, operation: str, record: dict[str, Any], unchanged: bool = False) -> tuple[str, bool]:
+        """Publish a completed attempt, even one whose state tree is unchanged: with the files as they are, or,
+        ``unchanged``, as the attempt found them."""
         before = record["before_snapshot_id"]
         if self.head_snapshot() != before:
             raise HistoryCaptureError("History head changed before operation publication")
         previous_tree = self.git("rev-parse", f"{before}^{{tree}}").stdout.decode().strip()
-        tree = self._tree()
+        tree = previous_tree if unchanged else self._tree()
         changed = tree != previous_tree
         commit = self._commit(
             tree,
@@ -451,3 +517,11 @@ def open_history(layout: ReeLayout) -> Iterator[GitHistory]:
             yield history
     except OSError as exc:
         raise HistoryCaptureError(f"REE history storage failed: {exc}") from exc
+
+
+def _link_or_copy(source: Path, target: Path) -> None:
+    """``target`` as another name of ``source``; a copy where the filesystem links no files."""
+    try:
+        os.link(source, target)
+    except OSError:
+        shutil.copy2(source, target)

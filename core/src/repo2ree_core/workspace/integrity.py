@@ -15,7 +15,7 @@ from pathlib import Path, PurePosixPath
 
 from repo2ree_core.persistence.history import HISTORY_REF, GitHistory, HistoryCaptureError
 from repo2ree_core.persistence.layout import ReeLayout
-from repo2ree_protocol.history import DriftedFile, ReePart
+from repo2ree_protocol.result import DriftedFile, ReePart
 from repo2ree_protocol.tools import find_tool
 from repo2ree_ree.layout import OVERLAY, WORKSPACE
 from repo2ree_ree.reserved_paths import is_overlay_path
