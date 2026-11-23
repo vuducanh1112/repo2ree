@@ -20,11 +20,15 @@ format:
 
 # Apply safe Python and GUI lint fixes, then normalize formatting.
 [group('Formatting')]
-fix: && format
-    python scripts/no_comments.py --fix
-    cd gui && npm run fix:no-comments
+fix: fix-no-code-comments && format
     ruff check --fix scripts $(python scripts/workspace.py members) conftest.py
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
+
+# Remove every comment and docstring from the Python and the GUI's sources, pragmas aside.
+[group('Formatting')]
+fix-no-code-comments:
+    python scripts/no_code_comments.py --fix
+    cd gui && npm run -s fix:no-code-comments
 
 # Run tests for repository scripts.
 [group('Script tests')]
@@ -36,8 +40,6 @@ test-scripts:
 check-scripts: _check-write-hint check-config
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
-    @echo "Checking for comments and docstrings..."
-    python scripts/no_comments.py
     @echo "Checking python scripts..."
     ruff check scripts conftest.py
     ruff format --check scripts conftest.py
@@ -53,6 +55,12 @@ check-nix: _check-write-hint
     statix check .
     @echo "Running deadnix..."
     git ls-files -z --cached --others --exclude-standard -- '*.nix' | xargs -0 -r deadnix --fail
+
+# Require the Python and the GUI's sources to hold no comment or docstring but pragmas.
+[group('Checks')]
+check-no-code-comments: _check-write-hint
+    python scripts/no_code_comments.py
+    cd gui && npm run -s check:no-code-comments
 
 # Run all GUI static checks.
 [group('Checks')]
@@ -73,8 +81,6 @@ check-gui: _check-write-hint
     npm run check:core-purity
     echo "Checking style architecture..."
     npm run check:style-architecture
-    echo "Checking for comments..."
-    npm run check:no-comments
     echo "Running dependency-cruiser..."
     npx depcruise src tests
 
@@ -125,7 +131,7 @@ test-tooling:
 
 # Run every static analysis check.
 [group('Checks')]
-check: check-docs check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures check-contracts check-vocabulary
+check: check-docs check-no-code-comments check-scripts check-nix check-gui check-backend check-assurance check-tooling check-closures check-contracts check-vocabulary
 
 # Run every container-free unit test suite.
 [group('Tests')]

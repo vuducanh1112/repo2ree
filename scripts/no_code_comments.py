@@ -94,7 +94,7 @@ def _tracked() -> list[Path]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python scripts/no_comments.py")
+    parser = argparse.ArgumentParser(prog="python scripts/no_code_comments.py")
     parser.add_argument("--fix", action="store_true")
     parser.add_argument("paths", nargs="*", type=Path)
     args = parser.parse_args(argv)
@@ -111,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
     for path in commented:
         print(f"{path}: comments or docstrings", file=sys.stderr)
     if commented:
-        print("python scripts/no_comments.py --fix removes them", file=sys.stderr)
+        print("just fix-no-code-comments removes them", file=sys.stderr)
     return 1 if commented else 0
 
 

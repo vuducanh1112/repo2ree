@@ -113,8 +113,6 @@ for (const file of named.length > 0 ? named : tracked()) {
 }
 for (const file of commented) console.error(`${file}: comments`);
 if (commented.length > 0) {
-  console.error(
-    "npm run fix:no-comments removes them; npx biome format --write tidies what is left",
-  );
+  console.error("just fix-no-code-comments removes them; just format tidies what is left");
   process.exit(1);
 }

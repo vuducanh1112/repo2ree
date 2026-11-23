@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.no_comments import main, stripped
+from scripts.no_code_comments import main, stripped
 
 
 def test_comments_and_docstrings_go_and_pragmas_stay() -> None:
