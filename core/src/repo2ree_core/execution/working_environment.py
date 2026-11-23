@@ -1,10 +1,3 @@
-"""The working environment a step's scripts run in, as the step observes it.
-
-``ree`` runs every script where it itself runs: whoever provides the compute decides what that is, a host with its
-toolchain, a container from an image of their choosing, a cluster's node behind the REE's launch. The REE's check
-says what its scripts need; each step records where they ran.
-"""
-
 from __future__ import annotations
 
 import platform
@@ -21,20 +14,16 @@ _OS_RELEASE = Path("/etc/os-release")
 
 @dataclass(frozen=True)
 class ProbeResult:
-    """What a probe printed where the REE's scripts run; ``returncode`` None when it ran out of time."""
-
     returncode: int | None
     stdout: str
     stderr: str
 
 
 def observe_working_environment() -> WorkingEnvironmentObservation:
-    """Where this step's scripts run: this host, and whether it is a container."""
     return WorkingEnvironmentObservation(host=host_fingerprint(), container=in_container())
 
 
 def machine_facts() -> MachineFacts:
-    """The machine ree runs on, as ``ree machine`` reports it."""
     return MachineFacts(arch=platform.machine(), gpus=_gpu_count(), container=in_container())
 
 
@@ -43,13 +32,10 @@ def host_fingerprint() -> HostFingerprint:
 
 
 def in_container() -> bool:
-    """Whether this process runs in a container, as Docker and Podman mark one."""
     return Path("/.dockerenv").exists() or Path("/run/.containerenv").exists()
 
 
 def probe(workspace: Path, argv: list[str], *, seconds: float) -> ProbeResult:
-    """Run ``argv`` where a script runs, from ``workspace``, for at most ``seconds``, keeping what it prints out of
-    the step's logs. A probe reads and writes nothing in the workspace."""
     try:
         done = subprocess.run(argv, cwd=workspace, check=False, capture_output=True, text=True, timeout=seconds)
     except subprocess.TimeoutExpired as expired:
@@ -72,7 +58,6 @@ def _os_name() -> str:
 
 
 def _gpu_count() -> int:
-    """NVIDIA GPUs, as ``nvidia-smi -L`` lists them; none where it is absent or does not answer."""
     if shutil.which("nvidia-smi") is None:
         return 0
     try:

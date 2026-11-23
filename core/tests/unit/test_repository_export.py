@@ -1,5 +1,3 @@
-"""A repository release carries its selected LFS payloads without a server."""
-
 import json
 import subprocess
 import zipfile
@@ -32,7 +30,6 @@ from repo2ree_ree.model import CapturePolicy
 def _sealed(tmp_path, monkeypatch):
     layout = ReeLayout(root=tmp_path / "author")
     initialize_ree(layout, name="offline")
-    # Result files exercise optional bulk payloads without requiring Docker.
     (layout.results / "experiment").mkdir(parents=True)
     payload = b"binary\0result" * 4096
     (layout.results / "experiment/data.bin").write_bytes(payload)
@@ -78,7 +75,7 @@ def test_seal_export_offline_checkout_and_load_preserve_history(tmp_path, monkey
     loaded = run_command(
         LoadReeBundleCommand(
             args=LoadReeBundleArgs(
-                upload_token="offline",  # noqa: S106 — staging identity
+                upload_token="offline",  # noqa: S106
                 archive_name="ree.zip",
             )
         ),
@@ -107,7 +104,6 @@ def test_new_selection_omits_old_object_without_rewriting_history(tmp_path, monk
     layout, pointer, _payload = _sealed(tmp_path, monkeypatch)
     store = ReeDirectory(layout)
     ree = store.read_ree()
-    # Test the storage transition without adding a public reopen command.
     store.write_ree(
         ree.model_copy(update={"seal": None, "subject": ree.subject.model_copy(update={"capture": CapturePolicy()})})
     )
@@ -212,7 +208,6 @@ def test_a_loaded_sealed_ree_holds_exactly_the_files_its_seal_lists(tmp_path, mo
         data = archive.read_bytes()
     destination = ReeLayout(root=tmp_path / "destination")
     initialize_ree(destination, name="blank")
-    # A fresh REE's own helpers and marker differ from the author's; loading must leave the author's.
     destination.acquire_script.write_bytes(b"#!/bin/sh\n# the blank REE's own\n")
     destination.materialize_marker.write_text("{}")
     as_recorded(destination)

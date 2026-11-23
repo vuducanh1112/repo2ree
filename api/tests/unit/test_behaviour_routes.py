@@ -1,5 +1,3 @@
-"""The control plane serves behaviour evidence as the owners wrote it, for collectors that cannot reach its disk."""
-
 from __future__ import annotations
 
 import json
@@ -26,7 +24,6 @@ def evidence(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (journals / "api-000001.ndjson").write_bytes(
         record(1, kind="journal.opened") + record(2, kind="transition") + record(3, kind="journal.closed")
     )
-    # The live epoch, caught mid-append: the torn tail is not a record yet.
     (journals / "api-000002.ndjson").write_bytes(record(1, kind="journal.opened") + record(2, kind="x") + b'{"v":1,')
     (journals / "notes.txt").write_text("not a journal")
     monkeypatch.setattr(service_settings, "BEHAVIOUR_JOURNAL_DIR", journals)
@@ -75,7 +72,7 @@ def test_served_archives_are_listed_with_the_cut_they_were_built_at(client: Test
     from repo2ree_api.control.behaviour import journal_positions, record_archive
 
     before = journal_positions()
-    (evidence / "journal" / "api-000002.ndjson").open("ab").write(b'"seq":3}\n')  # The torn tail completes.
+    (evidence / "journal" / "api-000002.ndjson").open("ab").write(b'"seq":3}\n')
     record_archive("ree-1", "a" * 64, 10, before)
     assert client.get("/api/v1/behaviour/archives").json() == {
         "archives": [

@@ -1,14 +1,9 @@
-/* The hardware BOM: the machine assumptions this REE was authored against,
- * one table per device category. */
-
 .headerActions {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
 }
-
-/* --- Category pills ------------------------------------------------------- */
 
 .categories {
   display: flex;
@@ -70,8 +65,6 @@
   color: var(--accent-primary-deep);
 }
 
-/* --- One category's table ------------------------------------------------- */
-
 .tableHead {
   display: flex;
   align-items: center;
@@ -110,8 +103,6 @@
   gap: var(--space-2);
 }
 
-/* The column track is the caller's — it is derived from the column set — so it
- * arrives as a custom property both the header and the rows read. */
 .grid {
   display: grid;
   grid-template-columns: var(--table-columns);

@@ -11,8 +11,6 @@ export async function expectPageToMeetContrast(
 ): Promise<void> {
   const builder = new AxeBuilder({ page }).withRules(["color-contrast"]);
   if (root) builder.include(root);
-  // Toggle contains no rendered text. Axe treats its decorative knob as text
-  // contrast; non-text control contrast needs a separate WCAG 1.4.11 check.
   builder.exclude('[data-ui="toggle"]');
   const scan = await builder.analyze();
 

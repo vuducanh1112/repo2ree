@@ -243,7 +243,6 @@ def test_build_resource_carries_deploy_identity_from_the_environment(monkeypatch
     monkeypatch.delenv("SERVICE_VERSION", raising=False)
     monkeypatch.delenv("DEPLOY_ENV", raising=False)
     local = build_resource("repo2ree-api")
-    # Unset in local dev, so a dashboard never has to filter on an empty slice.
     assert "service.version" not in local.attributes
     assert "deployment.environment" not in local.attributes
 
@@ -341,7 +340,6 @@ def test_relayed_span_json_renders_scalar_attributes() -> None:
 
     rendered = relayed_span_json(span, resource)
 
-    # Ids carry the SDK's ``0x`` prefix so both writers spell them one way.
     assert rendered["context"] == {"trace_id": "0x" + "0f" * 16, "span_id": "0x" + "1e" * 8, "trace_state": "[]"}
     assert rendered["parent_id"] == "0x" + "2d" * 8
     assert rendered["kind"] == "SpanKind.CLIENT"
@@ -363,7 +361,6 @@ def test_relayed_span_json_uses_none_for_missing_parent() -> None:
 
 
 def test_relayed_span_json_reports_an_unset_status_without_a_description() -> None:
-    """The SDK omits ``description`` when there is no message; so must this."""
     span = PbSpan(name="root", trace_id=bytes.fromhex("01" * 16), span_id=bytes.fromhex("02" * 8))
 
     assert relayed_span_json(span, PbResource())["status"] == {"status_code": "UNSET"}
@@ -376,14 +373,7 @@ def test_anyvalue_falls_back_for_non_scalar_values() -> None:
     assert _anyvalue(value) == str(value)
 
 
-# ================================================
-# Active-span helpers
-# ================================================
-
-
 def test_record_current_span_facts_targets_the_active_span() -> None:
-    # A NonRecordingSpan is what an unsampled or absent trace leaves current;
-    # facts aimed at it must go nowhere rather than raise.
     token = _attach_span(0x33333333333333333333333333333333, 0x4444444444444444)
     try:
         record_current_span_facts({"operation": "build_experiment_environment"})
@@ -430,35 +420,14 @@ def test_span_fact_carrier_base_declares_no_vocabulary_of_its_own() -> None:
         _SpanFactCarrier().apply(cast(Span, _FakeSpan()))
 
 
-# ================================================
-# Bootstrap
-# ================================================
-
-
 @pytest.fixture
 def _no_global_providers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep the bootstrap functions from claiming this process's globals.
-
-    OpenTelemetry's ``set_*_provider`` calls are set-once per process, and this
-    tier shares a process with the core and api unit tiers under the coverage
-    targets. Registering a real provider here would silently become *their*
-    provider too, so the registration is captured instead of performed.
-    """
-    # Patched on the OpenTelemetry modules themselves — the same module objects
-    # bootstrap.py holds its references to.
     monkeypatch.setattr(trace_api, "set_tracer_provider", lambda provider: None)
     monkeypatch.setattr(metrics_api, "set_meter_provider", lambda provider: None)
 
 
 @pytest.fixture
 def _stub_otlp_exporters(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Swap the OTLP/HTTP exporters for in-memory ones.
-
-    The bootstrap functions import their exporters at call time, so patching
-    the exporter modules reaches them. What is under test is the wiring —
-    resource, processors, the duration view — not OTel's network egress, and a
-    real exporter would have this suite POSTing to a dead endpoint on shutdown.
-    """
     import opentelemetry.exporter.otlp.proto.http._log_exporter as log_exporter_module
     import opentelemetry.exporter.otlp.proto.http.metric_exporter as metric_exporter_module
     import opentelemetry.exporter.otlp.proto.http.trace_exporter as trace_exporter_module
@@ -467,8 +436,6 @@ def _stub_otlp_exporters(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(trace_exporter_module, "OTLPSpanExporter", lambda endpoint, **_: InMemorySpanExporter())
     monkeypatch.setattr(log_exporter_module, "OTLPLogExporter", lambda endpoint, **_: InMemoryLogRecordExporter())
     monkeypatch.setattr(metric_exporter_module, "OTLPMetricExporter", lambda endpoint: None)
-    # The reader owns the export cadence; an in-memory one collects on demand
-    # and starts no periodic thread.
     monkeypatch.setattr(metrics_export_module, "PeriodicExportingMetricReader", lambda exporter: InMemoryMetricReader())
 
 
@@ -550,18 +517,7 @@ def test_setup_logs_returns_a_provider_backing_a_logging_handler(
     provider.shutdown()
 
 
-# ================================================
-# Executor span relay
-# ================================================
-
-
 def _relayed_payload(span_name: str = "command.build_experiment_environment") -> str:
-    """Produce one real relay payload the way the executor does.
-
-    Drives ``_RelaySpanExporter`` with a genuine ended span, so everything
-    downstream (the forwarder, the console sink) is tested against bytes the
-    executor would actually emit rather than a hand-built fixture.
-    """
     stream = io.StringIO()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(_RelaySpanExporter(stream)))
@@ -579,8 +535,6 @@ def _relayed_payload(span_name: str = "command.build_experiment_environment") ->
 def test_relay_exporter_writes_one_ndjson_span_event() -> None:
     payload = _relayed_payload()
 
-    # Base64 OTLP protobuf: the supervisor relays the bytes without decoding
-    # them, so the only contract here is that they round-trip.
     assert base64.b64decode(payload)
 
 
@@ -591,15 +545,11 @@ def test_setup_relay_tracing_streams_the_executors_spans_for_relay(monkeypatch: 
     stream = io.StringIO()
     setup_relay_tracing("ree", stream)
 
-    # Registered globally in the executor process; here it is captured, so the
-    # span has to be started on the provider directly.
     (provider,) = registered
     with provider.get_tracer(__name__).start_as_current_span("command.build_experiment_environment"):
         pass
     provider.shutdown()
 
-    # Emitted per span as it ends, not batched: the executor's process exits and
-    # closes the stream the moment its command is done.
     event = json.loads(stream.getvalue().strip())
     assert event["type"] == "span"
     assert base64.b64decode(event["payload"])
@@ -608,7 +558,6 @@ def test_setup_relay_tracing_streams_the_executors_spans_for_relay(monkeypatch: 
 def test_relay_exporter_flush_and_shutdown_are_inert() -> None:
     exporter = _RelaySpanExporter(io.StringIO())
     assert exporter.force_flush() is True
-    # Nothing to tear down: the stream belongs to the executor, not the exporter.
     exporter.shutdown()
 
 
@@ -647,7 +596,6 @@ def test_forward_relayed_spans_swallows_post_failures(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr(requests, "post", _post)
 
-    # Span egress must never break the command flow it rode in on.
     forward_relayed_spans([_relayed_payload()], "http://collector:4318")
 
 
@@ -672,7 +620,7 @@ def test_background_forwarder_drains_submissions_off_the_callers_thread() -> Non
         seen.set()
 
     forwarder = _BackgroundSpanForwarder(_forward)
-    forwarder.submit([])  # nothing to do, and nothing enqueued
+    forwarder.submit([])
     forwarder.submit(["payload-a"])
 
     assert seen.wait(timeout=5.0)
@@ -689,7 +637,6 @@ def test_background_forwarder_survives_a_failing_sink() -> None:
     forwarder = _BackgroundSpanForwarder(_forward)
     forwarder.submit(["first"])
     assert attempts.acquire(timeout=5.0)
-    # The worker must still be draining after one sink failure, not dead.
     forwarder.submit(["second"])
     assert attempts.acquire(timeout=5.0)
 
@@ -706,8 +653,6 @@ def test_background_forwarder_drops_rather_than_blocking_when_the_queue_is_full(
     forwarder.submit(["in-flight"])
     assert started.wait(timeout=5.0)
     forwarder.submit(["queued"])
-    # The queue holds one; this third submission is dropped instead of blocking
-    # the manager's locked, latency-measured path.
     forwarder.submit(["dropped"])
     release.set()
 
@@ -761,8 +706,6 @@ def test_relayed_console_sink_writes_decoded_spans_to_stdout(capsys: pytest.Capt
 
 
 def test_relayed_console_sink_skips_a_malformed_payload(capsys: pytest.CaptureFixture[str]) -> None:
-    # A payload that survives base64 but is not OTLP protobuf: dropped with a
-    # warning, and the good payload beside it still lands.
     _relayed_console_sink(
         [base64.b64encode(b"not-a-protobuf").decode("ascii"), _relayed_payload("command.build_experiment_environment")]
     )
@@ -774,15 +717,6 @@ def test_relayed_console_sink_skips_a_malformed_payload(capsys: pytest.CaptureFi
 def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The trace file must hold one schema, not two.
-
-    Host spans arrive via ``ReadableSpan.to_json``; relayed workbench spans are
-    rebuilt from protobuf. A reader that can parse one line has to be able to
-    parse them all, so this pins the relayed rendering against the SDK's own
-    output for the same span — including the fields a compact console summary
-    used to drop: timing, status, kind, events, links, and the resource that
-    says which service emitted it.
-    """
     captured: list[ReadableSpan] = []
 
     class _Capture(SpanExporter):
@@ -813,20 +747,13 @@ def test_a_relayed_span_lands_in_the_trace_file_in_the_host_exporter_s_own_shape
     relayed = json.loads(trace_file.read_text(encoding="utf-8").strip())
 
     assert relayed == json.loads(captured[0].to_json(indent=None))
-    # Spelled out, because these are the ones a summary loses and a reader needs.
     assert relayed["status"] == {"status_code": "ERROR", "description": "acquire failed"}
     assert relayed["resource"]["attributes"]["service.name"] == "ree"
     assert relayed["start_time"]
     assert relayed["end_time"]
 
 
-# ================================================
-# Service span relay (egress over a control-plane socket)
-# ================================================
-
-
 def _finished_spans(span_name: str) -> list[ReadableSpan]:
-    """One genuinely ended span, as a batch the exporter can encode."""
     captured = InMemorySpanExporter()
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(captured))
@@ -841,8 +768,6 @@ def _span_names(payload: str) -> list[str]:
 
 
 class _Wire:
-    """A send callback that can be disconnected, as a real socket can."""
-
     def __init__(self, connected: bool = True) -> None:
         self.connected = connected
         self.sent: list[str] = []
@@ -859,8 +784,6 @@ def test_callback_exporter_buffers_until_there_is_a_connection() -> None:
     exporter = relay._CallbackSpanExporter(wire.send)
 
     assert exporter.export(_finished_spans("workbench.dial")) is SpanExportResult.SUCCESS
-    # Nothing is lost while unbound: this is the dial span, and the connection it
-    # describes is what will eventually carry it.
     assert wire.sent == []
 
     wire.connected = True
@@ -892,8 +815,6 @@ def test_callback_exporter_sheds_the_oldest_when_it_never_connects() -> None:
     wire.connected = True
     exporter.force_flush()
 
-    # Bounded: a service that never reaches a control plane must not grow a
-    # backlog without limit, so the earliest spans go rather than the newest.
     assert [_span_names(payload) for payload in wire.sent] == [["second"], ["third"]]
 
 
@@ -906,7 +827,6 @@ def test_setup_relayed_span_export_hands_spans_to_the_callback(monkeypatch: pyte
 
     with provider.get_tracer(__name__).start_as_current_span("workbench.request"):
         pass
-    # Batched, unlike the executor's per-span relay: shutdown is what flushes.
     provider.shutdown()
 
     assert registered == [provider]

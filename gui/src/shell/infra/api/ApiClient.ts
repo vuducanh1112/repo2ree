@@ -8,11 +8,6 @@ interface ApiClientOptions {
 export class ApiRequestError extends Error {
   status: number;
   code: string;
-  /**
-   * Whether the caller may safely retry. Sourced from the error envelope so UI
-   * policy can distinguish a transient outage from a conflict or a permanent
-   * validation failure instead of treating every error the same.
-   */
   retryable: boolean;
   details?: ApiErrorEnvelope["error"]["details"];
 

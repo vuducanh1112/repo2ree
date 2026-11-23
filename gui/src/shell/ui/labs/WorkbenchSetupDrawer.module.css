@@ -1,13 +1,3 @@
-/* The workbench setup drawer's contents. Carried over from the standalone
- * WorkbenchLab page this replaced; the bench frame, cradle and dormant pod it
- * used to draw are gone, because the picker behind the drawer already shows the
- * specimen. */
-
-/* The drawer frame keeps its own body clipped so the title bar's close button
- * can never scroll away — a pane inside it scrolls itself or not at all. This
- * one has to: a provisioning log grows without bound, and until it scrolled,
- * everything past the fold (the log's own tail, and the provision button under
- * it) was simply unreachable. */
 .setup {
   display: flex;
   flex: 1;
@@ -50,10 +40,6 @@
   color: var(--ink-muted);
 }
 
-/* --- Contents ------------------------------------------------------------
- * Blank vs. loaded: the REE either starts empty or *is* a downloaded bundle
- * restored onto this workbench. */
-
 .bundle {
   display: flex;
   flex-direction: column;
@@ -64,7 +50,6 @@
   background: var(--chrome-surface);
 }
 
-/* Loading was asked for, so a bundle is the one thing still missing. */
 .bundle[data-required] {
   border-color: var(--chrome-accent-border);
 }

@@ -12,8 +12,6 @@ FAST = RunWatch(stall=0.3, budget=2.0, poll=0.02)
 
 
 class FakeRun:
-    """A run whose status and log follow a script of (seconds since start, status, new log lines)."""
-
     def __init__(self, script: list[tuple[float, str, list[str]]]):
         self.script = script
         self.started = time.monotonic()

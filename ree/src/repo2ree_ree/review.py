@@ -17,7 +17,6 @@ ActivationVerdict = Literal["passed", "failed"]
 ExperimentVerdict = Literal["identical", "reproduced", "different", "inconclusive"]
 
 EvidenceBasis = Literal["independent", "bundled"]
-# How a review launches the author's scripts: through the author's launch script, or directly.
 ReviewLaunchMode = Literal["author", "native"]
 
 
@@ -29,13 +28,6 @@ ReviewExecutionStatus = Literal["succeeded", "failed"]
 
 
 class ReviewLaunch(_ReviewModel):
-    """The reviewer's choice of launch, kept for the whole attempt.
-
-    ``author`` runs every script through the author's launch script where the REE declares one, with ``options``
-    added to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them
-    directly, as an REE with no launch does.
-    """
-
     mode: ReviewLaunchMode = "author"
     options: tuple[LaunchOption, ...] = ()
 
@@ -71,22 +63,17 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
     build_experiment_environment_script_digest: Digest | None = None
     artifact_path: WorkspacePath
     produced_artifact_digest: Digest
-    # The overlay this build copied from the author's, which every later step of the review runs on.
     overlay_digest: OverlayDigest
-    # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: Digest | None = None
     launched: Launched | None = None
 
 
 class ReviewActivateExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
-    """The author's activation, run alone in a workspace of its own around a command that does nothing."""
-
     operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
     activate_experiment_environment_script_digest: Digest
     exit_code: int | None = None
     experiment_environment_path: WorkspacePath
     experiment_environment_digest: Digest
-    # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: Digest | None = None
     launched: Launched | None = None
 
@@ -104,7 +91,6 @@ class ReviewRunExperimentReceipt(ReviewReceiptEnvelope):
     experiment_environment_path: WorkspacePath | None = None
     experiment_environment_digest: Digest | None = None
     produced_output_digest: Digest | None = None
-    # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: Digest | None = None
     launched: Launched | None = None
 
@@ -164,7 +150,6 @@ class ExperimentComparison(_ReviewModel):
     verify_script_digest: str | None = None
     expected_activate_experiment_environment_script_digest: str | None = None
     activate_experiment_environment_script_digest: str | None = None
-    # The author's launch and the review's, side by side; neither decides the verdict.
     expected_launch_script_digest: str | None = None
     launch_script_digest: str | None = None
     expected_verify_exit_code: int | None = None
@@ -191,9 +176,6 @@ class ReviewReceipts(_ReviewModel):
 
 
 class ReviewSubject(_ReviewModel):
-    """The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the
-    experiments it declares, so a record read on its own says which of them it did not compare."""
-
     name: str
     version: str = ""
     ree_digest: Digest | None = None
@@ -201,8 +183,6 @@ class ReviewSubject(_ReviewModel):
 
 
 class ReviewMachine(_ReviewModel):
-    """The machine the review ran on, as its platform names it; where a launch took a script is its receipt's."""
-
     system: str = Field(min_length=1)
     architecture: str = Field(min_length=1)
 

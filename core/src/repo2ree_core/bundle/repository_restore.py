@@ -1,5 +1,3 @@
-"""Validate repository exports in isolation before importing their evidence."""
-
 from __future__ import annotations
 
 import shutil
@@ -27,7 +25,6 @@ def _copy_regular_tree(source: Path, target: Path) -> None:
         for name in files:
             path = directory / name
             relative = path.relative_to(source)
-            # Local external object dependencies must never be activated.
             if relative.parts[0] == "info":
                 continue
             destination = target / relative
@@ -77,7 +74,6 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
             previous = existing.get(record.attempt_id)
             if previous is not None and previous.model_dump() != record.model_dump():
                 raise ValueError(f"Conflicting imported execution attempt: {record.attempt_id}")
-        # Validation above does not modify destination state or execute uploaded config.
         heads = {}
         for entry, history in zip(metadata.scopes, histories, strict=True):
             destination = new_history(layout.root / entry.scope)
@@ -92,8 +88,6 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
                 copy_object(pointer, history.layout.git_dir, destination.layout.git_dir)
             pending = history.layout.git_dir / "repo2ree" / "operations"
             if pending.is_dir():
-                # Kept apart, as the history they belong to is under refs/repo2ree/imports/<head>: they are the
-                # exporting REE's attempts, not this one's.
                 target = destination.layout.git_dir / "repo2ree" / "imports" / entry.head / "operations"
                 target.mkdir(parents=True, exist_ok=True)
                 for path in pending.glob("*.json"):
@@ -102,7 +96,6 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
             if entry.scope != ".":
                 destination.git("update-ref", "-m", f"{REFLOG_MARK} load_ree_bundle", HISTORY_REF, entry.head)
             heads[entry.scope] = entry.head
-        # Remove the old mutable files, retaining active Git storage and upload staging.
         for path in layout.root.iterdir():
             if path.name in {".git", "upload-staging", "reviews"}:
                 continue
@@ -128,7 +121,6 @@ def restore_repository(layout: ReeLayout, bundle_root: Path) -> dict[str, str]:
 
 
 def verify_overlay(root: Path) -> None:
-    """Refuse an REE whose overlay holds anything but its scripts."""
     overlay = root / OVERLAY_DIRNAME
     for path in sorted(overlay.rglob("*")) if overlay.is_dir() else []:
         relative = path.relative_to(overlay).as_posix()

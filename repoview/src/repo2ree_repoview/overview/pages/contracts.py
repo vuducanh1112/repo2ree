@@ -1,8 +1,3 @@
-"""The committed contracts: what each binds and between whom, and each drawn as graphs of its models.
-
-The drawings are those ``just generate-contract-graphs`` made of each contract, one per entry point it names.
-"""
-
 from __future__ import annotations
 
 from repo2ree_repoview.diagrams.contracts import Contract, contracts, drawing_path
@@ -16,12 +11,10 @@ from repo2ree_repoview.stamp import read_svg_stamp
 
 CONTRACTS = "contracts"
 GRAPHS = DIAGRAMS / "contracts"
-# The contracts with a page of their own under this one.
 SUBPAGES: dict[str, str] = {"environment": ENVIRONMENT_PAGE}
 
 
 def graph_anchor(contract: ContractName, entry: str) -> str:
-    """Where the drawing of ``entry``, an entry point of ``contract``, sits on the contracts page."""
     return f"graph-{contract}-{entry}"
 
 

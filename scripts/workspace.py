@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""The Python workspace's packages, as `pyproject.toml` declares them, for recipes to loop over.
-
-- ``backend``, ``assurance``, ``tooling`` print the packages of one role
-  (``[tool.repo2ree.workspace]``); ``members`` prints every package (``[tool.uv.workspace]``).
-  With ``--src``, each package's sources instead (``<package>/src``).
-- ``suites TIER [PACKAGE...]`` prints the suites of the tier, ``unit`` or ``integration``, for
-  the packages given (the backend's by default). A package's unit suite is its
-  ``tests/unit``, or its ``tests`` when it has no tiers; one without ``tests/integration``
-  has no integration suite.
-
-A package added to the workspace is checked, tested, and measured without a recipe of its
-own. The roles must divide the members between them, or this refuses to answer.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -52,7 +38,7 @@ def suites(root: Path, tier: str, packages: Sequence[str]) -> list[str]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     for role in (*ROLES, "members"):
         commands.add_parser(role).add_argument("--src", action="store_true")

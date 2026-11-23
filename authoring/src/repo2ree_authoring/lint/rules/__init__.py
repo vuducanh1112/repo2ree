@@ -1,5 +1,3 @@
-"""Contract-rule registry with import-time catalog validation."""
-
 from __future__ import annotations
 
 from typing import ClassVar, Protocol
@@ -18,8 +16,6 @@ from repo2ree_protocol.lint import Finding
 
 
 class LintRule(Protocol):
-    """What every contract rule exposes."""
-
     codes: ClassVar[frozenset[str]]
     applies_to: ClassVar[frozenset[TargetKind]]
 

@@ -1,5 +1,3 @@
-"""The API records each author action on one REE: requested, then the answer the author is given."""
-
 from __future__ import annotations
 
 import json

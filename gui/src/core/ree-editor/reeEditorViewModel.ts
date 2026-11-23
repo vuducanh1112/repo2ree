@@ -11,13 +11,7 @@ export interface ReeEditorViewModel {
   source: WorkspaceSourceState;
   artifact: ArtifactStatus;
   evaluation: EvaluationState;
-  /**
-   * Whether each executed step's receipt still speaks for this REE. Named for
-   * the backend's `ReeAudit` rather than "evidence" so it cannot be misread as
-   * a sibling of `evaluation`, which carries the readiness axes.
-   */
   audit: ReeAudit;
-  /** Where the REE stands on each authoring step, as the REE itself says. */
   steps: AuthoringProgress;
 }
 

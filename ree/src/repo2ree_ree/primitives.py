@@ -22,8 +22,6 @@ class RunId(StringValue):
 
 
 class ReePath(StringValue):
-    """A relative path; ``RELATIVE_TO`` names the entries of the REE tree it is resolved under, in order."""
-
     RELATIVE_TO: ClassVar[tuple[str, ...]] = (".",)
 
     @classmethod
@@ -46,14 +44,10 @@ class WorkspacePath(ReePath):
 
 
 class ArtifactPath(ReePath):
-    """Spelled from the REE root, into ``artifacts/``."""
+    pass
 
 
 class ExperimentEnvironmentPath(WorkspacePath):
-    """Where the build script writes the environment, under the workspace. A bundle lifts the file into
-    ``artifacts/`` and rewrites the path to ``artifacts/<name>``, spelled from the REE root; a reader
-    resolves it there next, then by its file name in ``artifacts/``."""
-
     RELATIVE_TO: ClassVar[tuple[str, ...]] = ("workspace", ".", "artifacts")
 
 
@@ -77,13 +71,10 @@ class Swhid(StringValue):
         return value
 
 
-# No whitespace, quoting or shell syntax: a launch script splits its options on spaces.
 _LAUNCH_OPTION = re.compile(r"^[^\s'\"`$\\;|&<>(){}]+$")
 
 
 class LaunchOption(StringValue):
-    """One option added to a launcher's own, ``--partition=short`` for instance."""
-
     @classmethod
     def validate(cls, value: str) -> str:
         if not _LAUNCH_OPTION.match(value):

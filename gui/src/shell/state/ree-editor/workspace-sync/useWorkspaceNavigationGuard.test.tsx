@@ -40,11 +40,6 @@ describe("useWorkspaceNavigationGuard", () => {
     await waitFor(() => expect(router.state.location.pathname).toBe("/home"));
   });
 
-  // The guard delays an exit until the draft is durable; it does not hold
-  // someone in a workspace a failing server will never let them leave. It used
-  // to cancel the navigation outright, which turned any unsaveable draft — a
-  // sealed REE, an offline backend — into a route with no way out and no
-  // explanation. The exit goes ahead and the failure is announced instead.
   it("lets the exit through when the flush fails, and says so", async () => {
     const flush = vi.fn().mockRejectedValue(new Error("offline"));
     const onFlushFailed = vi.fn();

@@ -1,5 +1,3 @@
-/* The title/hint pair every glass card opens with. */
-
 .title {
   display: flex;
   align-items: center;

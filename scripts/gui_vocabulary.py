@@ -1,9 +1,3 @@
-"""The GUI's vocabulary, rendered from the committed OpenAPI contract: the sets of names it reads off the wire.
-
-``gui/src/core/generated/vocabulary.ts`` holds each set as an ``as const`` array and its type, and
-``gui/biome.json`` lets a property be spelled as one of their names.
-"""
-
 from __future__ import annotations
 
 import json
@@ -97,7 +91,6 @@ def _wire_names() -> list[str]:
 
 
 def biome_config() -> str:
-    """``gui/biome.json`` with its naming conventions letting a property be spelled as a wire name."""
     config = json.loads(BIOME.read_text(encoding="utf-8"))
     conventions = config["linter"]["rules"]["style"]["useNamingConvention"]["options"]["conventions"]
     names = "|".join(_wire_names())

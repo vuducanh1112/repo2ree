@@ -1,5 +1,3 @@
-"""An REE whose experiment environment is a SIF, entered with Apptainer, each script launched as a Slurm job step."""
-
 from __future__ import annotations
 
 import io

@@ -1,5 +1,3 @@
-"""A recorded scenario the real checker passes: provisioning, operations with authoring between them, a seal."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -18,7 +16,6 @@ REE = "ree-1"
 RECEIPT = "Receipt"
 START = datetime(2026, 10, 18, 10, 0, tzinfo=UTC)
 REQUEST, WORKER, PROVISION = "a" * 32, "b" * 32, "c" * 32
-# The journal of the workbench serving the scenario's store.
 BENCH = "lab-1/workbench-000001"
 
 
@@ -31,16 +28,11 @@ def clock(seconds: float) -> float:
 
 
 class Scenario:
-    """Journal and Git evidence numbered the way the readers number them."""
-
     def __init__(self) -> None:
         self.events: list[Event] = []
         self.seq = 0
-        # What the next records are about; switch them to interleave several REEs in one journal.
         self.ree, self.git = REE, "git:ree"
-        # Each dispatched attempt's request, which its record cites, as the supervisor's context carries it.
         self.requests: dict[str, str] = {}
-        # The API journal being written, and those that ended without closing: a crashed API's.
         self.source = "api-000001"
         self.crashed: set[str] = set()
         self.bench_seq = 0
@@ -59,7 +51,6 @@ class Scenario:
         )
 
     def restart(self) -> None:
-        """The API crashed: its journal ends without closing, and the restarted one begins a new journal."""
         self.crashed.add(self.source)
         epoch = int(self.source.rsplit("-", 1)[1]) + 1
         self.source, self.seq = f"api-{epoch:06d}", 0
@@ -67,7 +58,6 @@ class Scenario:
     def session(
         self, t: float, key: str, current: str | None, target: str, *, store: str = "lab-1", **facts: Any
     ) -> None:
-        """A workbench's connection to ``store`` moving on, as the supervisor journals it."""
         self.journal(
             t,
             partition=store,
@@ -81,7 +71,6 @@ class Scenario:
         )
 
     def run(self, key: str, path: list[tuple[float, str]], trace: str | None = None, *, action: str) -> None:
-        """A long author action, watched as run ``key``, through ``path``."""
         previous: str | None = None
         for t, state in path:
             self.action(t, key, previous, state, trace, action=action)
@@ -105,7 +94,6 @@ class Scenario:
     def dispatch(
         self, attempt: str, operation: str, run_id: str, sent: float, answered: float, trace: str | None = None
     ) -> None:
-        """A command started, run by an executor the workbench journals, and followed to its end."""
         self.journal(
             sent,
             trace,
@@ -163,13 +151,11 @@ class Scenario:
         )
 
     def operation(self, run: str, action: str, attempt: str, operation: str, t: float) -> None:
-        """A long author action whose one dispatched attempt succeeds."""
         self.run(run, [(t, "requested"), (t + 0.1, "running")], action=action)
         self.dispatch(attempt, operation, run, t + 0.2, t + 1.0)
         self.action(t + 1.1, run, "running", "succeeded", action=action, attempt_id=attempt)
 
     def provision(self, run: str, t: float, trace: str | None = None) -> None:
-        """An REE's creation in a store, as the API journals it."""
         self.run(run, [(t, "requested"), (t + 0.01, "running")], trace, action="create_ree")
         self.action(t + 5.3, run, "running", "succeeded", trace, action="create_ree", store_id="lab-1")
 
@@ -185,7 +171,6 @@ class Scenario:
         base, locator, sha = index * 1000, f"{self.git}@c{index}", f"c{index}" + "0" * 38
         common: dict[str, Any] = {"source": self.git, "owner": "core", "partition": self.ree, "locator": locator}
         if attempt is not None:
-            # The two sides cite each other: the attempt names its request, the result the capture commit.
             pending = {"operation": operation, "run_id": run_id, "dispatched_by": self.requests.get(attempt)}
             self.events = [
                 event.model_copy(update={"facts": {**event.facts, "commit": sha}})
@@ -232,7 +217,7 @@ class Scenario:
                     facts=facts,
                 )
             )
-        if ree is None:  # A review history witnesses no Ree.
+        if ree is None:
             return
         cause = "operation" if attempt else "created"
         self.events.append(
@@ -252,7 +237,6 @@ class Scenario:
 def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scenario:
     s = scenario or Scenario()
     s.provision("run-provision", 0.0, PROVISION)
-    # The author declares where the experiment environment goes, then builds it.
     s.dispatch("a-patch", "patch_ree_definition", "patch-definition", 8.0, 8.2)
     s.run("run-build", [(10.0, "requested")], REQUEST, action="build_experiment_environment")
     s.action(10.1, "run-build", "requested", "running", WORKER, action="build_experiment_environment")
@@ -264,14 +248,11 @@ def recorded(*, sealed: bool = False, scenario: Scenario | None = None) -> Scena
     s.dispatch("a-sbom", "generate_sbom", "run-sbom", 20.2, 21.0)
     s.action(21.1, "run-sbom", "running", "succeeded", action="generate_sbom", attempt_id="a-sbom")
     if sealed:
-        # An edit stales the experiment environment; rebuilding refreshes it and stales the SBOM; a rescan; then the
-        # seal.
         s.dispatch("a-edit", "patch_ree_definition", "patch-definition", 30.0, 30.2)
         s.operation("run-rebuild", "build_experiment_environment", "a-rebuild", "build_experiment_environment", 40.0)
         s.operation("run-rescan", "generate_sbom", "a-rescan", "generate_sbom", 45.0)
         s.operation("run-seal", "seal_ree", "a-seal", "seal_ree", 50.0)
 
-    # A new REE declares its activation, and no experiment environment yet: as core's first audit finds it.
     created = [
         ("build_experiment_environment", None, "not_applicable", "baseline"),
         ("generate_sbom", None, "not_applicable", "baseline"),
@@ -439,7 +420,6 @@ def verified(scenario: Scenario) -> VerifiedModel:
         ),
     )
     evidence = Evidence(sources=sources, events=tuple(scenario.events))
-    # Through the artifact, as the command line reads it: a view only ever sees what was verified.
     verification = Verification.model_validate_json(verify(SPEC, evidence).model_dump_json())
     return VerifiedModel.of(verification)
 
@@ -456,5 +436,4 @@ def trace_of(
 
 
 def dossier_of(scenario: Scenario) -> BehaviourTrace:
-    """The whole dossier's trace: every REE, every session, every API journal."""
     return build_dossier(verified(scenario), SpanIndex([]), dossier=DossierInfo(name="synthetic"))

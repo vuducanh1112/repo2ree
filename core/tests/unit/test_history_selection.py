@@ -1,5 +1,3 @@
-"""State selection excludes bookkeeping and preserves declared evidence."""
-
 from repo2ree_core.operations.initialize import initialize_ree
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.history import open_history

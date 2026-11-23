@@ -20,19 +20,10 @@ interface CableGeometryOptions {
   nodePortEls: React.MutableRefObject<Record<string, HTMLSpanElement | null>>;
   ree: ReeEditorViewModel;
   badges: Badges;
-  // `tf` is a re-measure trigger, not an input: measure reads the
-  // resulting DOM transform via getScreenCTM rather than these values directly.
   tf: Transform;
   animate: boolean;
 }
 
-// Measures cable endpoints between each node card and the pod's surface in the
-// stage's screen space (so the world layer's pan/zoom transform is absorbed),
-// then feeds the shared Overview cable look.
-//
-// This hook only reads the DOM. Which cables exist, and where their ends land,
-// is `buildCables` in cableScene.ts — so the layout rules are testable without
-// a browser and only the three measurements below need one.
 export function useCableGeometry({
   stageRef,
   podSvgRef,
@@ -64,8 +55,6 @@ export function useCableGeometry({
     const nodeRects: Partial<Record<string, Rect>> = {};
     const doneKeys = new Set<string>();
     for (const node of CANVAS_NODES) {
-      // Prefer the card's explicit connector. Falling back to the card keeps
-      // the geometry resilient while refs settle during a layout transition.
       const el = nodePortEls.current[node.key] ?? nodeEls.current[node.key];
       if (el) {
         const r = el.getBoundingClientRect();

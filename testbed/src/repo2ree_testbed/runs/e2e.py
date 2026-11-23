@@ -1,5 +1,3 @@
-"""``python -m repo2ree_testbed e2e``: run a suite against source stacks, per test or whole."""
-
 from __future__ import annotations
 
 import argparse
@@ -28,15 +26,11 @@ class Invocation:
     deployment: Deployment
     client: Client
     schedule: Schedule
-    # tests: fail when a test did; run: fail only when the run broke, leaving its tests to whoever judges them.
     exit_on: ExitOn = "tests"
-    # A Sigstore of the run's own, started once for its tests to sign with.
     sigstore: bool = False
 
 
 class Tee(io.TextIOBase):
-    """A console stream that also writes to the run's own log."""
-
     def __init__(self, console: IO[str], log: IO[str]) -> None:
         self.console = console
         self.log = log
@@ -138,7 +132,6 @@ def parse(argv: list[str] | None = None) -> Invocation:
 
 
 def exit_status(status: int, exit_on: ExitOn, completed: bool) -> int:
-    """The process's exit code: a run that completed passes ``exit_on="run"`` whatever its tests did."""
     return 0 if exit_on == "run" and completed else status
 
 
@@ -154,7 +147,6 @@ def main(argv: list[str] | None = None) -> int:
 
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
-    # What this process prints is kept beside the run; its stacks' own processes log to the tests' directories.
     run.root.mkdir(parents=True, exist_ok=True)
     log = (run.root / "tier.log").open("a", encoding="utf-8", buffering=1)
     sys.stdout, sys.stderr = Tee(sys.stdout, log), Tee(sys.stderr, log)

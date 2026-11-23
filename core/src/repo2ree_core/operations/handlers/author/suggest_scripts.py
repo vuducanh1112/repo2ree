@@ -1,16 +1,3 @@
-"""Handler for the read-only script-inference command.
-
-Inference scans the immutable ``upstream`` tree (never the materialized
-workspace, so it can never discover its own generated output as evidence),
-runs the versioned decision DAGs, and returns the full ``InferenceReport`` in
-the result outputs. It is synchronous, persists nothing, and writes no files —
-turning a candidate into a script stays on the existing ``write_script`` path.
-
-Besides the REE, it reads the machine its scripts run on: which container engines
-they can use, and whether Slurm can launch them; each probed where ree runs, when a
-check first asks.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference import infer_scripts
@@ -28,12 +15,10 @@ from repo2ree_protocol.result import ActionResult
 
 
 def engine_probe(layout: ReeLayout) -> EngineProbe:
-    """The probe of the engines this REE's scripts can use, run from its workspace when first asked."""
     return RunnerEngineProbe(layout.workspace)
 
 
 def slurm_probe(layout: ReeLayout) -> SlurmProbeSource:
-    """The probe of whether Slurm can launch this REE's scripts, run from its workspace when first asked."""
     return RunnerSlurmProbe(layout.workspace)
 
 
@@ -55,8 +40,6 @@ def handle_suggest_scripts(
     store = ReeDirectory(layout)
     ree = store.read_ree() if store.manifest_exists() else None
     definition = ree.subject.definition if ree else None
-    # The receipt-chain root that already identifies the acquired source. Read
-    # from the aggregate loaded above rather than re-reading the manifest.
     source_receipt = ree.subject.receipts.acquire_source if ree else None
     snapshot_digest = str(source_receipt.snapshot_digest) if source_receipt else None
     experiment_environment_inputs = build_experiment_environment_inputs(layout, definition)
@@ -75,8 +58,6 @@ def handle_suggest_scripts(
             source_snapshot_digest=snapshot_digest,
         )
     except ValueError as exc:
-        # A malformed selector (experiment name present/absent for the wrong
-        # kind) is a bad request, not an internal fault.
         log("system", "error", f"invalid inference target: {exc}")
         return ActionResult.failed("validation", f"invalid inference target: {exc}")
     except Exception as exc:

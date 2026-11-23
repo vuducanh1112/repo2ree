@@ -1,5 +1,3 @@
-"""The reviewer lifecycle against an REE this suite did not author, the bundle the GUI's review showcase starts from."""
-
 from __future__ import annotations
 
 import zipfile

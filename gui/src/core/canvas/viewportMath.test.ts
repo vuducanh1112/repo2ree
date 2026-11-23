@@ -47,7 +47,6 @@ describe("fitBounds", () => {
   it("enlarges a world smaller than its viewport rather than leaving space unused", () => {
     const fitted = fitBounds({ width: 1600, height: 1000 }, bounds);
     expect(fitted.z).toBeGreaterThan(1);
-    // The tighter axis is the one that binds: height here, at (1000 - 48) / 800.
     expect(fitted.z).toBeCloseTo(952 / 800);
   });
 
@@ -69,8 +68,6 @@ describe("zoomToward", () => {
   });
 
   it("keeps the point under the cursor under the cursor", () => {
-    // The world point at the pointer is (pointer - centre - pan) / z. Zooming
-    // about that pointer must leave it unchanged.
     const pointer = { x: 800, y: 150 };
     const worldAt = (tf: Transform) => ({
       x: (pointer.x - stage.left - stage.width / 2 - tf.x) / tf.z,
@@ -103,8 +100,6 @@ describe("zoomToward", () => {
   });
 
   it("is a no-op at a limit, rather than panning", () => {
-    // The clamp makes the ratio 0, so nothing moves. This is exactly the case
-    // that fires no `transitionend` and needs the measure loop's own timeout.
     const atMax: Transform = { x: 40, y: -20, z: ZOOM_MAX };
     expect(zoomToward(atMax, { x: 800, y: 150 }, stage, IN)).toEqual(atMax);
   });

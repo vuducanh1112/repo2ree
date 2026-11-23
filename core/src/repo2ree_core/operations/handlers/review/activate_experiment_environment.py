@@ -1,16 +1,3 @@
-"""Run the author's activation alone in the experiment environment a review attempt certified.
-
-The reviewer-side counterpart of the author's ``activate_experiment_environment`` step, and the
-only review step that certifies nothing by comparison: there is no author
-artifact to reproduce, so whether the activation enters and hands over is the whole claim.
-
-Two consequences a comparison would otherwise have carried: the ``basis`` is
-inherited from the attempt rather than chosen, and the run is bound to the
-experiment environment digest the build recorded. An activation that does not hand over *completes*
-the step with a ``failed`` verdict; only conditions that stop it running at all
-fail the step.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.digests import digest_file_if_exists
@@ -45,11 +32,6 @@ def _select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
 
 
 def _admit(_record: ReviewRecord, certified: CertifiedExperimentEnvironment) -> str | None:
-    """Unlike an experiment, entering nothing is not a test.
-
-    The activation exists to say the *experiment environment* can be entered, so a baseline that
-    declares none has no question here to answer.
-    """
     if not certified.experiment_environment_path:
         return "The certified build recorded no experiment environment artifact to activate"
     return None
@@ -115,10 +97,6 @@ def handle_review_activate_experiment_environment(
     )
     write_review_activate_experiment_environment_evidence(opened.review_layout, receipt, activation_outcome)
     _log_outcome(activation_outcome, log=log)
-    # Completed either way: an activation that will not hand over is this step
-    # working, not failing. Recording it as a failure would put the attempt into
-    # ``failed`` and lose the difference between "the review could not run" and
-    # "the review found the experiment environment uninhabitable".
     opened.step.settle(
         opened.step.record.model_copy(
             update={
@@ -142,7 +120,6 @@ def handle_review_activate_experiment_environment(
 
 
 def _log_outcome(outcome: ActivationOutcome, *, log: LogSink) -> None:
-    """Say what the activation settled, and on a failure how it exited."""
     log(
         "system",
         "info" if outcome.verdict == "passed" else "warn",

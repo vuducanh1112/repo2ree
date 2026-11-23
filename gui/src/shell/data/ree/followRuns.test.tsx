@@ -48,7 +48,6 @@ function follow(operation: string, reads: ReturnType<typeof document>[]) {
   const { result } = renderHook(
     () => {
       useReeDocumentFollowsRuns({ reeId: "ree-1", enabled: true });
-      // Further subscribers to the run list, as the page has: none of them reads the document.
       useReeRunsQuery("ree-1");
       const listed = useReeRunsQuery("ree-1").data;
       return { listed, awaiting: useRunsAwaitingDocument("ree-1") };
@@ -56,7 +55,6 @@ function follow(operation: string, reads: ReturnType<typeof document>[]) {
     { wrapper: Wrapper },
   );
   const settle = async () => {
-    // The page has loaded with the build running.
     await waitFor(() => expect(result.current.listed).toBeDefined());
     await waitFor(() => expect(getRee).toHaveBeenCalledTimes(1));
     for (const read of reads) getRee.mockResolvedValueOnce(read);
@@ -68,7 +66,6 @@ function follow(operation: string, reads: ReturnType<typeof document>[]) {
 
 describe("useReeDocumentFollowsRuns", () => {
   it("keeps reading the document after a build until it shows the build's receipt", async () => {
-    // The run reports success before a read of the document shows its receipt.
     const { awaiting, getRee, settle } = follow("build_experiment_environment", [
       document(),
       document(),

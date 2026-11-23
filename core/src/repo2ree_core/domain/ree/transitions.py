@@ -1,5 +1,3 @@
-"""Pure transitions over the portable REE aggregate."""
-
 from __future__ import annotations
 
 from repo2ree_ree.model import (
@@ -15,11 +13,10 @@ from repo2ree_ree.receipt import RunExperimentReceipt, RunReceipt
 
 
 class ReePreconditionError(ValueError):
-    """The requested transition is not legal for the current aggregate."""
+    pass
 
 
 def revision_of(ree: Ree) -> Digest:
-    """Optimistic-concurrency identity of the mutable REE head."""
     return canonical_subject_digest(ree.subject)
 
 
@@ -45,7 +42,6 @@ def replace_contents(ree: Ree, contents: BundleContents) -> Ree:
 
 
 def commit_receipt(ree: Ree, receipt: RunReceipt) -> Ree:
-    """Replace the successful receipt slot owned by ``receipt``."""
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot accept new receipts")
     updates: dict[str, object]
@@ -58,11 +54,9 @@ def commit_receipt(ree: Ree, receipt: RunReceipt) -> Ree:
 
 
 def clear_source(ree: Ree) -> Ree:
-    """Remove source evidence and the complete downstream evidence chain."""
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot remove its source")
     definition = ree.subject.definition.model_copy(update={"source": None})
-    # What rests on no source stays: the observed hardware, and the check of the working environment.
     receipts = ReeReceipts(
         observe_hardware=ree.subject.receipts.observe_hardware,
         check_working_environment=ree.subject.receipts.check_working_environment,

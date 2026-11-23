@@ -1,15 +1,3 @@
-"""One operation as a sequence across components: client, API, supervisor, workbench, ree, core.
-
-Journal records and the capture commit sit at their own timestamps. Spans add the hops nothing
-journals yet: a ``ree <words>`` span is one invocation of the command line, called by the
-workbench that started it or else by the client at a terminal. Attempt states carry no
-timestamp: they are placed inside the ``command.<op>`` span, the bracket in which core's
-capture_command runs, and marked inferred. Times are seconds from the
-origin a sequence is given (the trace's first journal record), or else from its own first line.
-
-The lifecycle joins the sequences of every segment of an REE, in evidence order, into one.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence as Seq
@@ -42,15 +30,14 @@ LANES = (
     Lane(id="cli", label="CLI · ree", process="ree"),
     Lane(id="core", label="Core · Git", process="ree"),
 )
-QUIET = 0.1  # A stretch without spans worth pointing out, in seconds.
-MINOR = 0.05  # Docker calls shorter than this in total are left out, in seconds.
+QUIET = 0.1
+MINOR = 0.05
 STAGING = ("copy_open", "copy_chunk", "copy_close")
 UNINTERESTING = ("GET", "OPTIONS", "HTTP")
 EPSILON = 0.0005
 
 
 def invocation(span: Span) -> bool:
-    """Whether ``span`` is one ``ree`` invocation, named ``ree`` and the words of its command."""
     return span.service == "cli" and (span.name == "ree" or span.name.startswith("ree "))
 
 
@@ -85,7 +72,7 @@ class _Builder:
         detail: str | None = None,
         session: str | None = None,
     ) -> None:
-        if t is not None:  # A record without a time cannot be placed in a sequence over time.
+        if t is not None:
             self.rows.append(
                 Row(
                     t=t,
@@ -153,7 +140,6 @@ def build_sequence(
     origin: float | None = None,
     ran: Span | None = None,
 ) -> Sequence:
-    """``ran`` is the run of an attempt ``ree`` ran with no control plane: its spans and the invocation above it."""
     builder = _Builder(origin)
     related = spans.in_traces(event.trace_id for event in (*runs, *exchange))
     if ran is not None:
@@ -224,7 +210,6 @@ def build_sequence(
                 detail=f"exit {code}" if code is not None else None,
             )
         elif span.service == "cli" and span.name.startswith("executor.") and not invoked:
-            # Recorded before ree traced its invocations: the session span, then named executor.<op>, stands in.
             builder.message(span.start, "workbench", "cli", "start ree", "span", detail=span.name)
             builder.activate("cli", span.start, span.end, span.name)
             for mark in span.events:
@@ -250,7 +235,6 @@ def build_sequence(
             builder.note(span.start, "cli", f"$ {span.attribute('repo2ree.exec.argv')}", "span", detail=detail)
     _staging(builder, staged)
     if attempt and not captured:
-        # No command span: the command's exchanges bracket the attempt, as they do for the checker.
         sent = next((e for e in exchange if e.kind == "send"), None)
         outcome = next((e for e in reversed(exchange) if e.kind != "send"), None)
         start, end = _at(sent) if sent else None, _at(outcome) if outcome else None
@@ -270,7 +254,6 @@ def _fact(event: Event, name: str, missing: str = "?") -> str:
 
 
 def _request(builder: _Builder, spans: SpanIndex, related: list[Span], *, background: bool) -> Span | None:
-    """The client's request, and the requests that led up to it (an upload's init and chunks)."""
     request = next((s for s in related if s.kind == "SERVER" and not s.name.startswith(UNINTERESTING)), None)
     if request is None:
         return None
@@ -317,8 +300,6 @@ def _command(builder: _Builder, spans: SpanIndex, span: Span, operation: str) ->
 
 
 class _Bracket:
-    """Where an attempt ran: the command span when there is one, else its dispatch exchange."""
-
     def __init__(self, start: float, end: float, inner: list[Span]) -> None:
         width = end - start
         self.start, self.end = start, end
@@ -337,7 +318,6 @@ def _capture(
     commit: str | None,
     files: int | None,
 ) -> None:
-    """Attempt states placed inside their bracket, and the commit that ends it."""
     m = bracket.margin
     placed = {
         terms.PENDING: bracket.start + m / 2,
@@ -369,11 +349,6 @@ def _capture(
 
 
 def build_lifecycle(parts: Seq[tuple[Segment, Sequence]]) -> Lifecycle:
-    """One sequence of ``parts`` in the order given; a part's activations keep to its own rows.
-
-    Each part's ``first`` and ``last`` are placeholders, set here to where its rows land. Lines matched
-    to a part by time only are left out: across the whole lifecycle they are another part's own lines.
-    """
     rows: list[Row] = []
     activities: list[Activity] = []
     segments: list[Segment] = []
@@ -410,7 +385,6 @@ def build_lifecycle(parts: Seq[tuple[Segment, Sequence]]) -> Lifecycle:
 
 
 def fold(t: float | None, fold: AuthoringFold) -> Sequence:
-    """A single folded line, at ``t`` seconds into the trace, standing for authoring not drawn row by row."""
     builder = _Builder(0.0)
     builder.note(t, "api", "", "journal", tone="fold", said=fold)
     return builder.build()
@@ -419,11 +393,6 @@ def fold(t: float | None, fold: AuthoringFold) -> Sequence:
 def session_sequence(
     event: Event, origin: float, *, returning: str | None = None, new_process: bool = False
 ) -> Sequence:
-    """One workbench session's move, on the lane of the supervisor that holds it.
-
-    ``returning`` is the session the admitted workbench's process held before, if it did; ``new_process``
-    that a workbench seen before came back as another process.
-    """
     facts = event.facts
     state = event.target_state or ""
     code = facts.get(terms.CLOSE_CODE)
@@ -444,7 +413,6 @@ def session_sequence(
 
 
 def epoch_sequence(event: Event, journal: str, origin: float, *, crashed: bool) -> Sequence:
-    """An API journal's first or last record, on the API's lane: a process starting, or one that crashed."""
     builder = _Builder(origin)
     mark = JournalMark(journal=journal, mark="crashed" if crashed else "opened")
     builder.note(_at(event), "api", "", "journal", ref=event.ref, tone="gap" if crashed else None, said=mark)

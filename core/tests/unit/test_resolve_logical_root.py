@@ -1,10 +1,3 @@
-"""Structural coverage for ``resolve_logical_root``.
-
-The function takes only a directory path — no acquisition kind — and peels
-wrapper directories until it reaches a level that looks like a real project
-root. These cases pin the decision table in the design doc.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -31,7 +24,6 @@ def test_single_wrapper_directory_is_peeled(tmp_path: Path) -> None:
 
 
 def test_marker_stops_descent_even_with_single_child(tmp_path: Path) -> None:
-    # A real root that happens to hold one subdirectory plus a marker stops here.
     _tree(tmp_path, ["pyproject.toml", "src/pkg/__init__.py"])
     assert resolve_logical_root(tmp_path) == "."
 

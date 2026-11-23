@@ -1,7 +1,3 @@
-/* A pick-one row. The selected segment is `aria-pressed`, which is both what
- * the styling keys off and what a screen reader announces — the two cannot
- * drift apart. */
-
 .group {
   margin: 0;
   padding: 0;
@@ -47,7 +43,6 @@
   justify-content: center;
 }
 
-/* Tinted by a domain identity — an archive target, a stage. */
 .segment[aria-pressed="true"][data-tinted] {
   border-color: color-mix(in srgb, var(--segment-tint) 60%, transparent);
   color: var(--segment-tint);

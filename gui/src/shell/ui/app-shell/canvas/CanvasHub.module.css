@@ -1,6 +1,3 @@
-/* The hub canvas: the ground the constellation sits on, and the world layer
- * that pans and zooms over it. */
-
 .stage {
   position: absolute;
   inset: 0;
@@ -25,16 +22,11 @@
   cursor: grabbing;
 }
 
-/* Dimmed while a focus dock is open over it. */
 .stage[data-dimmed] {
   opacity: var(--opacity-subtle);
 }
 
 .camera {
-  /* The instrument palette for everything standing on the deck: cool milled
-   * metal, pale optical glass, and the two inks a readout is allowed to use.
-   * It lives with the canvas artwork rather than the theme because no chrome
-   * outside this scene is built from these materials. */
   --machine-metal-light: rgb(248 250 252 / 92%);
   --machine-metal-mid: rgb(206 217 230 / 80%);
   --machine-metal-deep: rgb(100 116 139 / 52%);
@@ -62,8 +54,6 @@
   perspective: var(--scene-depth);
   perspective-origin: 50% 48%;
   transform-style: preserve-3d;
-  /* The perspective plane itself is only a scene container. Let controls
-   * inside it opt back into hit-testing instead of catching far-side clicks. */
   pointer-events: none;
 }
 
@@ -77,8 +67,6 @@
   transform-style: preserve-3d;
 }
 
-/* The semantic navigation wrapper sits between the 3D floor and each terminal.
- * Keep that wrapper from flattening the upright terminal faces into the deck. */
 .floor > nav {
   transform-style: preserve-3d;
   pointer-events: none;
@@ -99,11 +87,6 @@
   pointer-events: none;
 }
 
-/* The deck markings. `outer` is the ellipse the panels actually stand on —
- * drawn from the same --ring-rx/--ring-ry the placement is computed from, so a
- * change to the ring moves the marking with it. The two inner ellipses are
- * concentric reductions of it: they mark the shells the pod reports work in,
- * and they stay proportional rather than becoming circles the layout ignores. */
 .zoneRing {
   position: absolute;
   left: 0;
@@ -133,8 +116,6 @@
   border-color: rgb(79 70 229 / 28%);
 }
 
-/* Animated only when the camera is being moved for the user, not while they
- * are dragging it themselves. */
 .camera[data-animate] {
   transition: transform var(--duration-slow) var(--ease-standard);
 }
@@ -146,7 +127,6 @@
   }
 }
 
-/* The cradle socket: the pod is seated in the bench, not floating. */
 .cradle {
   position: absolute;
   left: 0;

@@ -1,11 +1,3 @@
-/* One bay in the lab grid.
- *
- * This module is on the style guard's colour-value allowlist because the bay is
- * an instrument, not chrome: the milled metal, optical glass and readout ink
- * below are artwork values in the same family as the canvas panels, and there
- * is nothing semantic for them to consume. Everything else on this screen —
- * the rail, the pager, the detail panel — is built from chrome roles. */
-
 .cell {
   --rim: 3px;
   --machine-metal-light: rgb(248 250 252 / 92%);
@@ -44,8 +36,6 @@
   transition: box-shadow var(--duration-normal) var(--ease-standard);
 }
 
-/* The optical glass over the milled housing. A pseudo-element rather than a
- * span so the cell stays one node per bay. */
 .cell::before {
   content: "";
   position: absolute;
@@ -76,8 +66,6 @@
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
-
-/* --- Bezel: identity and state ------------------------------------------ */
 
 .head {
   position: relative;
@@ -116,8 +104,6 @@
   box-shadow: 0 0 5px var(--status-ok-glow);
 }
 
-/* --- Readout ------------------------------------------------------------- */
-
 .body {
   position: relative;
   flex: 1;
@@ -146,8 +132,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* --- Foot ---------------------------------------------------------------- */
 
 .foot {
   position: relative;

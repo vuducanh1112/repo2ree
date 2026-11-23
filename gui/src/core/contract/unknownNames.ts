@@ -1,4 +1,3 @@
-/** A name the backend sent that the generated vocabulary does not know: this build reads an older contract. */
 export class UnknownWireNames extends Error {
   constructor(
     readonly where: string,
@@ -13,7 +12,6 @@ export function isOneOf<T extends string>(known: readonly T[], value: unknown): 
   return typeof value === "string" && (known as readonly string[]).includes(value);
 }
 
-/** Refuse any of `names` outside `known`, so a renamed key fails here rather than reading as missing. */
 export function requireKnownNames<T extends string>(
   where: string,
   known: readonly T[],

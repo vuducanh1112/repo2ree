@@ -1,8 +1,3 @@
-"""Every ``ree`` invocation is one span, named after its command, under the caller's trace, ending as it ended.
-
-Run as a process of its own, as callers run it: telemetry is set up once per process.
-"""
-
 from __future__ import annotations
 
 import json

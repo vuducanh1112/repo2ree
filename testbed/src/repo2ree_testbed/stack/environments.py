@@ -1,5 +1,3 @@
-"""The machines a store's workbench can be installed on, each an image (testbed/environments/)."""
-
 from __future__ import annotations
 
 import os
@@ -12,7 +10,6 @@ from typing import Literal
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.stack.docker import engine_side
 
-# What the stack gives a workbench it runs from source, and the machine's image already holds.
 _SOURCE_ONLY = frozenset({"REPO2REE_CLI_PATH", "WORKBENCH_TOOLS_BUNDLE"})
 
 
@@ -24,25 +21,19 @@ class EnvironmentName(StrEnum):
 
 
 DNS_VARIABLE = "REPO2REE_ENVIRONMENT_DNS"
-# Where `just _load-environment <name>` links each machine's image and records the tag it loaded as.
 LOADED = ROOT / "dist" / "environments"
 
 
 @dataclass(frozen=True)
 class Environment:
     name: EnvironmentName
-    # The container engine the machine offers its scripts, if any.
     engine: Literal["docker", "podman", ""] = ""
-    # Starts services as root, which then drop to the user; what else it may do, a daemon needs.
     privileged: bool = False
-    # Directories its services write to that the image's own layers cannot hold.
     scratch: tuple[str, ...] = ()
-    # Whether it runs a Docker daemon of its own, which needs telling the host's DNS servers.
     nested_daemon: bool = False
 
     @property
     def image(self) -> str:
-        """The machine's image as this checkout built and loaded it, tagged by what it holds."""
         loaded = LOADED / f"{self.name}.image"
         try:
             return loaded.read_text(encoding="utf-8").strip()
@@ -79,11 +70,6 @@ def machine_command(
     network: str,
     mounts: Sequence[Path],
 ) -> list[str]:
-    """The command that runs ``command_on_machine`` on ``environment``, in the foreground.
-
-    It runs as this user, so what it leaves in the store is this process's to read and remove.
-    Its scratch volumes carry the owner's label: a killed run leaves them for its cleanup to find.
-    """
     user = f"{os.getuid()}:{os.getgid()}"
     command = ["docker", "run", "--rm", "--init", "--name", container, "--hostname", environment.name]
     command += ["--label", f"repo2ree.resource-owner={owner}"]
@@ -102,8 +88,6 @@ def machine_command(
     return [*command, environment.image, *command_on_machine]
 
 
-# The machine a stack's first store runs on, as its test client finds it: the environment, the container, and a
-# directory the client and the machine share at the same path.
 MACHINE_VARIABLE = "E2E_MACHINE"
 MACHINE_CONTAINER_VARIABLE = "E2E_MACHINE_CONTAINER"
 MACHINE_WORKDIR_VARIABLE = "E2E_MACHINE_WORKDIR"
@@ -116,13 +100,6 @@ def machine_exec(
     variables: Mapping[str, str] | None = None,
     workdir: Path | None = None,
 ) -> list[str]:
-    """The command that runs ``command_on_machine`` on a running machine, as the user who logs in to it, in
-    ``workdir`` where one is named.
-
-    With the machine's own environment: its PATH, the workbench's tools and ``ree``, and ``variables`` beside it. A
-    machine whose services start as root has its user's home and runtime directory, as its entrypoint gives the
-    workbench.
-    """
     uid, gid = os.getuid(), os.getgid()
     command = ["docker", "exec", "--interactive", "--user", f"{uid}:{gid}"]
     if environment.privileged:

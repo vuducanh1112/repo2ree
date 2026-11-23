@@ -25,7 +25,6 @@ describe("useDebouncedValue", () => {
   });
 
   it("collapses a run of changes into one settle", () => {
-    // The point of the hook: a typed sentence is one check, not thirty.
     const { result, rerender } = renderHook(({ value }) => useDebouncedValue(value, 400), {
       initialProps: { value: "a" },
     });

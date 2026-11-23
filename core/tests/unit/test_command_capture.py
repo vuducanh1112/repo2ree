@@ -1,5 +1,3 @@
-"""Definition patches join their actual filesystem transition to a run."""
-
 import json
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -145,7 +143,6 @@ def test_process_death_after_publication_is_reconciled_from_commit(ree, monkeypa
     assert record.result is not None
     assert record.result.status == "succeeded"
     assert record.after_snapshot_id == git(ree, "rev-parse", "HEAD")
-    # Even unreadable leftovers cannot displace published evidence.
     pending.write_text("incomplete leftover")
     assert read_operation_history(ree).operations[0] == record
 
@@ -169,7 +166,6 @@ def test_cancel_before_handler_is_journaled(ree):
 
 @pytest.mark.parametrize("after_mutation", [False, True])
 def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mutation):
-    # Before the handler, the history is read to find what drifted; after it, the attempt is committed.
     method = "commit_operation" if after_mutation else "drifted_paths"
     real_capture = getattr(GitHistory, method)
 
@@ -184,18 +180,15 @@ def test_capture_failure_reports_whether_handler_ran(ree, monkeypatch, after_mut
     assert result.failure.retryable is False
     assert result.history.capture_status == "failed"
     assert result.history.operation_status == ("succeeded" if after_mutation else "not_started")
-    # What the author is told failed leaves nothing behind: the handler's change is rolled back.
     assert ReeDirectory(ree).read_ree().subject.definition.name == "before"
     assert git(ree, "rev-list", "--count", "HEAD") == "1"
     monkeypatch.setattr(GitHistory, method, real_capture)
-    # A retry does the work itself, and nothing is observed between the attempts.
     retry = patch(ree)
     assert retry.history.changed is True
     assert git(ree, "log", "-1", "--format=%s", "HEAD^") != "observe_existing_ree"
 
 
 def lock_history(layout):
-    """A stale lock on the history ref, as a crashed git process leaves one: update-ref refuses it."""
     lock = layout.git_dir / "refs" / "heads" / "ree-history.lock"
     lock.parent.mkdir(parents=True, exist_ok=True)
     lock.write_text("")
@@ -209,7 +202,7 @@ def pending_record(layout, attempt_id):
 def test_a_capture_that_fails_after_the_handler_leaves_the_ree_as_it_found_it(ree, monkeypatch):
     ree.overlay_file("kept.txt").write_text("before")
     as_recorded(ree)
-    patch(ree, "observed")  # A clean tree, so the before-snapshot reuses the head and takes no lock.
+    patch(ree, "observed")
     head = git(ree, "rev-parse", "HEAD")
 
     def handler(*args, **kwargs):
@@ -228,7 +221,6 @@ def test_a_capture_that_fails_after_the_handler_leaves_the_ree_as_it_found_it(re
     assert git(ree, "rev-parse", "HEAD") == head
     record = pending_record(ree, result.history.attempt_id)
     assert record["phases"] == ["pending", "executing", "completed", "capture_failed"]
-    # The result names the record as written, in place of the commit a capture would have made.
     written = (ree.git_dir / "repo2ree" / "operations" / f"{result.history.attempt_id}.json").read_bytes()
     assert result.history.record_digest == digest_bytes(written)
 
@@ -258,7 +250,7 @@ def test_a_record_that_cannot_be_written_before_the_handler_ends_the_attempt(ree
 
     def write_once(path, value):
         writes.append(path)
-        if len(writes) == 2:  # The record entering executing.
+        if len(writes) == 2:
             raise OSError("no space left on device")
         real_write(path, value)
 
@@ -435,11 +427,6 @@ def test_process_death_leaves_pending_attempt(ree, monkeypatch):
     assert record["capture_status"] == "pending"
     assert record["operation_status"] == "unknown"
     assert record["command"]["args"]["patch"] == {"name": "after"}
-
-
-# Every member of the public union must pass through capture, including new
-# commands. Real handler behavior is covered separately; here each writes one
-# state file to prove routing, scope and command serialization together.
 
 
 @pytest.mark.parametrize("command_cls", get_args(get_args(Command)[0]))

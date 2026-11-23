@@ -1,6 +1,3 @@
-"""An exercise round-trips as JSON, and refuses names it does not hold. That its steps are the catalogue's operations
-is the vocabulary graph's to hold (``just check-vocabulary``)."""
-
 from __future__ import annotations
 
 from typing import Any

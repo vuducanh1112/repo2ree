@@ -1,22 +1,3 @@
-/* The glass page scaffold: the header a page opens with, the section headers
- * inside it, the inset subpanels those sections sit in, and the hint bar at the
- * foot. One module for the family because they are one composition — a section
- * header's icon is the page header's icon a size down, and keeping them apart
- * is how the two drifted in the first place.
- *
- * The three near-identical hairlines these had (44%, 42% and 38% sky) are one
- * `--border-accent` now. They were the same intent recorded three times.
- */
-
-/* --- Page shell ----------------------------------------------------------
- * The scrollable page, the framed board inside it, and the panels on that
- * board. `.pageRoot` is the glass surface boundary: everything under it reads
- * the glass values of the shared roles, so a primitive on a glass page needs no
- * variant of its own. Today the roles are the same at `:root`, which is why the
- * block below restates only what the boundary owns — as more of the app leaves
- * the glass palette, the divergence lands here rather than in a second theme.
- */
-
 .pageRoot {
   height: 100%;
   min-height: 0;
@@ -38,8 +19,6 @@
     linear-gradient(135deg, var(--surface-canvas), var(--surface-accent), var(--chrome-surface));
 }
 
-/* Docked inside the canvas rather than filling the window: the canvas already
- * paints the ground, so the page brings padding and ink and nothing else. */
 .pageRoot[data-variant="docked"] {
   padding: var(--space-12) var(--space-10) var(--space-8);
   background: none;
@@ -75,13 +54,10 @@
   backdrop-filter: blur(18px);
 }
 
-/* Panels that hold a scrolling or clipped body. */
 .panel[data-clipped] {
   overflow: hidden;
 }
 
-/* An aside's panel: padded in place of a section body, since it holds one
- * block rather than a page section. */
 .panel[data-density="compact"] {
   padding: var(--space-4);
 }
@@ -103,8 +79,6 @@
   padding: var(--space-5);
 }
 
-/* --- Page header -------------------------------------------------------- */
-
 .pageHeader {
   display: flex;
   align-items: center;
@@ -122,9 +96,6 @@
   min-width: 0;
 }
 
-/* Tinted by the page's own stage when it has one; the sky default is for the
- * pages that are not a pipeline step. The edge and glow are derived from the
- * tint so a caller supplies one value, not three. */
 .pageIcon {
   display: flex;
   align-items: center;
@@ -171,8 +142,6 @@
   color: var(--ink-muted);
 }
 
-/* --- Section header ------------------------------------------------------ */
-
 .sectionHeader {
   display: flex;
   align-items: center;
@@ -207,11 +176,6 @@
   color: var(--ink-subtle);
 }
 
-/* --- Subpanel ------------------------------------------------------------
- * An inset card for a single section, raised slightly off the main glass panel
- * so each major section reads as its own bounded subpanel rather than blending
- * into one continuous surface. */
-
 .subPanel {
   padding: var(--space-4);
   border-radius: var(--radius-control);
@@ -219,11 +183,6 @@
   background: var(--surface-control);
   box-shadow: var(--shadow-sm);
 }
-
-/* --- Footer --------------------------------------------------------------
- * The muted hint bar at the foot of a page. `bar` is the standalone rounded
- * reading, for pages split into separate subpanels; the default welds to the
- * bottom of a single glass panel. */
 
 .footer {
   display: flex;

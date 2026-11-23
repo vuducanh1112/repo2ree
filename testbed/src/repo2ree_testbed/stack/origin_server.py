@@ -1,12 +1,3 @@
-"""``python -m repo2ree_testbed.stack.origin_server DIRECTORY PORT``: one stack's origins over HTTP.
-
-Serves the bare repositories under DIRECTORY over git's smart HTTP protocol, by handing
-each request to ``git http-backend`` as a CGI program, and every other file under it as
-a static file (the fixture tarball). Smart HTTP, not git's own ``git://`` protocol: an
-author types an http(s) origin, the GUI accepts nothing else, and the product's shallow,
-revision-pinned fetch needs the smart protocol, which a static server cannot speak.
-"""
-
 from __future__ import annotations
 
 import os
@@ -17,7 +8,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-# The request paths git's smart HTTP protocol uses, after the repository's own path.
 _GIT_SUFFIXES = ("/info/refs", "/git-upload-pack", "/git-receive-pack", "/HEAD")
 
 
@@ -64,7 +54,6 @@ class OriginHandler(BaseHTTPRequestHandler):
             "CONTENT_TYPE": self.headers.get("Content-Type", ""),
             "CONTENT_LENGTH": str(len(body)),
             "REMOTE_ADDR": self.client_address[0],
-            # git encodes protocol v2 in this header; the backend reads it from the environment.
             "GIT_PROTOCOL": self.headers.get("Git-Protocol", ""),
         }
         if self.headers.get("Content-Encoding") == "gzip":
@@ -88,15 +77,14 @@ class OriginHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - the http.server signature
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         sys.stderr.write(f"{self.address_string()} {format % args}\n")
 
 
 def main() -> int:
     directory, port = Path(sys.argv[1]).resolve(), int(sys.argv[2])
     handler = type("Handler", (OriginHandler,), {"root": directory})
-    # Benches dial in from their containers, as they dial the API.
-    server = ThreadingHTTPServer(("0.0.0.0", port), handler)  # noqa: S104 - test stack; reachable by design
+    server = ThreadingHTTPServer(("0.0.0.0", port), handler)  # noqa: S104
     server.serve_forever()
     return 0
 

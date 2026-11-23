@@ -1,5 +1,3 @@
-"""The API as a client reads it, typed: every stage a method, every response a validated model."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -50,8 +48,6 @@ class Reproduction:
 
 
 class Client(Protocol):
-    """What a showcase does with an REE, through whichever surface it runs on: the API, or the command line."""
-
     def logs(self, ree_id: str, run: Run) -> str: ...
     def ree(self, ree_id: str) -> Ree: ...
     def audit(self, ree_id: str) -> Audit: ...
@@ -90,8 +86,6 @@ class Client(Protocol):
 
 @dataclass(frozen=True)
 class ApiClient:
-    """The showcases' steps over the API, as a deployment's clients make them."""
-
     api: Api
 
     def _stage(self, ree_id: str, path: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
@@ -115,8 +109,6 @@ class ApiClient:
     def release(self, ree_id: str) -> None:
         self.api.release(ree_id)
 
-    # ---- source ----------------------------------------------------------------
-
     def upload_source(self, ree_id: str, fixture: Project) -> None:
         self.api.acquire(ree_id, fixture)
 
@@ -124,8 +116,6 @@ class ApiClient:
         request = SourceAcquire(origin_url=origin_url, source_type=source_type)
         run = self.api.post(f"/api/v1/rees/{ree_id}/acquire-source", request.model_dump())
         return Run.model_validate(self.api.wait(ree_id, run))
-
-    # ---- definition ------------------------------------------------------------
 
     def declare_name(self, ree_id: str, name: str) -> None:
         self._patch(ree_id, DefinitionPatch(name=name))
@@ -142,8 +132,6 @@ class ApiClient:
         self.api.write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
         self.api.write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
 
-    # ---- authoring -------------------------------------------------------------
-
     def evaluate(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._stage(ree_id, "evaluate-reproducibility", watch=watch)
 
@@ -154,16 +142,12 @@ class ApiClient:
         return result
 
     def check_working_environment(self, ree_id: str, fixture: Project) -> Run:
-        """Write the project's check of what its scripts need, and run it through the launch the project declares."""
         if fixture.launches:
             self.api.declare_launch(ree_id, fixture)
         self.api.write(ree_id, fixture.check_script, fixture.recipe("check_working_environment.sh"))
         return self._stage(ree_id, "check-working-environment", watch=fixture.watch)
 
     def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
-        """Check the working environment as the project does, declare the experiment environment, ask inference for
-        its build, and build with ``script``, else as the project writes it: what inference proposed by the project's
-        rule, or the recipe's. A check that fails is the step's result, and nothing is built."""
         checked = self.check_working_environment(ree_id, fixture)
         if checked.status != "succeeded":
             return checked
@@ -182,23 +166,18 @@ class ApiClient:
         return self._stage(ree_id, "cross-check-sbom", watch=watch)
 
     def activate(self, ree_id: str, fixture: Project) -> Run:
-        """Ask inference for the activate script of the environment just built, then test it as the project writes
-        it: what inference proposed by the project's rule, or the recipe's."""
         proposed = self.infer(ree_id, "activate_experiment_environment")
         rule = fixture.rule("activate_experiment_environment.sh")
         script = proposed.body_of(rule) if rule else None
         return Run.model_validate(self.api.activate(ree_id, script, fixture=fixture))
 
     def run_experiment(self, ree_id: str, fixture: Project) -> Run:
-        """Declare the experiment with the recipe's scripts, which declaring it requires, ask inference for its run
-        and verify scripts, which it infers from the source and the declarations alone, then run the recipe's."""
         self.declare_experiment(ree_id, fixture)
         self.infer(ree_id, "experiment_run", experiment=fixture.experiment)
         self.infer(ree_id, "experiment_verify", experiment=fixture.experiment)
         return Run.model_validate(self.api.experiment(ree_id, fixture=fixture))
 
     def author(self, ree_id: str, fixture: Project) -> None:
-        """Every authoring stage, inference asked for each script before the recipe's is written."""
         self.api.acquire(ree_id, fixture)
         self.api.succeed(ree_id, "evaluate-reproducibility", watch=fixture.watch)
         self.api.succeed(ree_id, "observe-hardware")
@@ -224,8 +203,6 @@ class ApiClient:
         kept: Path | None = self.api.keep_archive(ree_id, label)
         assert kept is not None, "the archive was refused"
         return kept
-
-    # ---- review ----------------------------------------------------------------
 
     def load(self, ree_id: str, bundle: bytes) -> None:
         self.api.load(ree_id, bundle)
@@ -261,8 +238,6 @@ class ApiClient:
         return self._stage(ree_id, f"reviews/{review_id}/run-experiment/{experiment}", watch=watch)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
-        """Author, seal and sign ``fixture``, reproduce it in a second REE, which loads it signed, and sign the
-        review."""
         author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)

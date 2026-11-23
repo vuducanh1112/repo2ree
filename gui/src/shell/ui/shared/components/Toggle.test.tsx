@@ -24,7 +24,6 @@ describe("Toggle", () => {
     await userEvent.click(screen.getByRole("button"));
 
     expect(onChange).toHaveBeenCalledOnce();
-    // The toggle is controlled: it stays off until the parent says otherwise.
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   });
 

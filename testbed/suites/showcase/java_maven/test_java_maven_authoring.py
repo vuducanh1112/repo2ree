@@ -1,5 +1,3 @@
-"""Another language and toolchain through the same lifecycle: Maven compiles and fetches in the project's own build."""
-
 from __future__ import annotations
 
 import zipfile

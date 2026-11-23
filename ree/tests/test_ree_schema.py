@@ -24,7 +24,6 @@ def test_a_sealed_document_conforms_to_the_schema(path: Path) -> None:
 
 
 def annotated(prop: dict[str, object], key: str) -> object:
-    """An ``x-`` annotation on a property, on its non-null branch, or on its items."""
     for place in (prop, *prop.get("anyOf", []), prop.get("items", {})):  # type: ignore[misc]
         if isinstance(place, dict) and key in place:
             return place[key]

@@ -21,13 +21,6 @@ import {
 
 const PROJECT = "instant_docker";
 
-/**
- * The authoring golden path on the product's default bench, one with its own
- * Docker daemon: the build is a real `docker build` on that daemon, the runtime
- * a saved image, activation and the experiment `docker run`s of it. The image is
- * built FROM scratch, so nothing is pulled or downloaded and every stage still
- * takes seconds.
- */
 test.describe("Instant Docker authoring", () => {
   test("authors, seals and downloads the instant Docker project on a dind bench", async ({
     page,
@@ -57,8 +50,6 @@ test.describe("Instant Docker authoring", () => {
     });
 
     await test.step("build the image on the bench's own daemon", async () => {
-      // The recipe adds the bench's busybox to the build context, which an
-      // image FROM scratch needs and inference cannot know.
       await buildExperimentEnvironment(
         page,
         instantRecipe("build_experiment_environment.sh", PROJECT),

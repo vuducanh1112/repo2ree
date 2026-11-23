@@ -1,5 +1,3 @@
-"""The run's own Sigstore, as far as it is checked without starting it: its trust configuration and its tokens."""
-
 from __future__ import annotations
 
 import json

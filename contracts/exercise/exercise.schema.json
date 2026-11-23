@@ -304,7 +304,6 @@
     },
     "Fault": {
       "additionalProperties": false,
-      "description": "A fault injected into one step's attempt once it reaches ``at``: the process that runs it killed there, or\nfrom there on its disk full or its REE's history locked by another.",
       "properties": {
         "step": {
           "minimum": 0,
@@ -340,7 +339,6 @@
     },
     "Fetched": {
       "additionalProperties": false,
-      "description": "A source fetched from its origin.",
       "properties": {
         "kind": {
           "const": "fetched",
@@ -377,7 +375,6 @@
     },
     "FileDrift": {
       "additionalProperties": false,
-      "description": "A file changed: the ``pick``-th, in order, of the files ``part`` holds when it drifts, or, for ``add``, one\nadded. Replay names the file it changed; a part that holds no file to change changes nothing.",
       "properties": {
         "before": {
           "minimum": 0,
@@ -445,7 +442,6 @@
     },
     "FromRecipe": {
       "additionalProperties": false,
-      "description": "A script as a project's recipe writes it.",
       "properties": {
         "kind": {
           "const": "recipe",
@@ -516,7 +512,6 @@
     },
     "HistoryDrift": {
       "additionalProperties": false,
-      "description": "The history changed by git, outside ree, and put back where ree left it before step ``until``, as ree's\nrefusal says to; ``until`` may be the number of steps, for after the last. A history left rewritten is no record\nof the product's to judge.",
       "properties": {
         "before": {
           "minimum": 0,
@@ -573,7 +568,6 @@
     },
     "InitializeRee": {
       "additionalProperties": false,
-      "description": "Make the REE: until a step does, it does not exist.",
       "properties": {
         "ree": {
           "pattern": "^[a-z][a-z0-9-]{0,31}$",
@@ -638,7 +632,6 @@
     },
     "LoadReeBundle": {
       "additionalProperties": false,
-      "description": "Load what another REE of the exercise exports, as it stands at this step, damaged on its way as ``corruption``\nnames.",
       "properties": {
         "ree": {
           "pattern": "^[a-z][a-z0-9-]{0,31}$",
@@ -765,7 +758,6 @@
     },
     "ReflogDrift": {
       "additionalProperties": false,
-      "description": "What git keeps of where the history's refs were, lost: its reflog expired, as `git reflog expire --all` does,\nree's own entries with it. No file of the REE changes, so nothing of it drifts; a drift besides it must still be\nfound.",
       "properties": {
         "before": {
           "minimum": 0,
@@ -827,7 +819,6 @@
     },
     "RevertedDrift": {
       "additionalProperties": false,
-      "description": "A file changed as a ``FileDrift`` changes it, and put back as it was before step ``before`` runs, as an edit\nundone by hand: its content and mode as they were, a file removed made again, a file added removed. Nothing of the\nREE is then other than its last attempt left it, though its files were touched.",
       "properties": {
         "before": {
           "minimum": 0,
@@ -895,7 +886,6 @@
     },
     "ReviewAcquireSource": {
       "additionalProperties": false,
-      "description": "Open the review the exercise calls ``review``, or open it afresh.",
       "properties": {
         "ree": {
           "pattern": "^[a-z][a-z0-9-]{0,31}$",
@@ -1374,7 +1364,6 @@
     },
     "Text": {
       "additionalProperties": false,
-      "description": "A script given whole.",
       "properties": {
         "kind": {
           "const": "text",
@@ -1395,7 +1384,6 @@
     },
     "Uploaded": {
       "additionalProperties": false,
-      "description": "A project's source, packed as an upload.",
       "properties": {
         "kind": {
           "const": "uploaded",
@@ -1466,7 +1454,6 @@
     }
   },
   "additionalProperties": false,
-  "description": "The REEs it names, none of which exists until a step initializes it, the steps run in them in order, the\nfaults, and the drifts.",
   "properties": {
     "format": {
       "const": "repo2ree-exercise/1",

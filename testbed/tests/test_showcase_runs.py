@@ -1,5 +1,3 @@
-"""The overview reads the newest finished run of each showcase tier that ran every test."""
-
 import json
 from pathlib import Path
 

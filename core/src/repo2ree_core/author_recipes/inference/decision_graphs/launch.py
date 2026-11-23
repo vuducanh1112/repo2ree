@@ -1,11 +1,3 @@
-"""The launch-inference decision DAG.
-
-A fork into one branch per launcher, joined by the score-free resolver; Slurm is the only launcher for now. A
-launch is proposed only where its launcher answers, and always for confirmation: what each script needs from
-the cluster (CPUs, memory, time, GPUs) is the author's to say, and nothing in the source says it. Where no
-launcher answers, nothing is inferred, and the REE runs its scripts directly, with no launch script at all.
-"""
-
 from __future__ import annotations
 
 from repo2ree_protocol.inference import CheckNode, DecisionDag, ForkNode, ResolveNode, ResultNode, StrategyLeafNode

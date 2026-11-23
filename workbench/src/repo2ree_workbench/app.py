@@ -1,5 +1,3 @@
-"""Compose and run the workbench service process."""
-
 from __future__ import annotations
 
 import asyncio
@@ -24,10 +22,6 @@ def main(argv: Sequence[str] = ()) -> None:
         structured=config.otlp_endpoint is not None,
         otlp_handler=otlp_log_handler(logger_provider) if logger_provider is not None else None,
     )
-    # Spans go over the control-plane socket when there is no collector this
-    # bench can reach — see WorkbenchConfig.telemetry for how that is decided.
-    # Logs and metrics stay direct-export and are simply a no-op without an
-    # endpoint; relaying those is a separate change.
     span_relay = SpanRelay() if config.telemetry == "relay" else None
     tracer_provider: TracerProvider | None
     if span_relay is not None:
@@ -43,7 +37,6 @@ def main(argv: Sequence[str] = ()) -> None:
         )
     meter_provider = setup_metrics("repo2ree-workbench", endpoint=config.otlp_endpoint, instance_id=config.workbench_id)
     executor = LocalCli(config.store_root, config.cli_path, environment=tool_environment(config.tools_bundle))
-    # The machine the REEs' scripts run on is ree's to say.
     machine = executor.machine()
     service = WorkbenchService(executor, store_id=config.store_id, slots=config.slots)
     try:

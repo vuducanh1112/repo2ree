@@ -1,24 +1,3 @@
-"""Reproducibility threat report.
-
-Pure analysis layer: turns a ``DependencyInventory`` plus a set of workspace
-file signals into a structured report that enumerates concrete threats to
-reproducibility (unpinned dependencies, missing lockfile, floating base image,
-non-declarative system, ...).
-
-No I/O and no subprocess: scanning the repository and serializing the report to
-``artifacts/`` live in the ``evaluate_reproducibility`` handler.  This module
-only computes.
-
-This report reads repository manifests, lockfiles, and environment declarations
-and grades how well the repository declares what it needs. The author handler
-binds its bounded conclusions and payload digest into an
-``EvaluateReproducibilityReceipt``; overall REE evidence status is derived
-separately by ``domain.ree.audit``.
-
-Functions carry design-by-contract assertions (pre-/post-conditions) for the
-invariants that the type system cannot express.
-"""
-
 from __future__ import annotations
 
 import re
@@ -41,29 +20,15 @@ from repo2ree_ree.reproducibility import (
     ThreatCategory,
 )
 
-# ================================================
-# Data models
-# ================================================
-
 
 class FileSignals(BaseModel):
-    """Filesystem-derived signals, gathered by the caller from the workspace."""
-
     has_manifest: bool = False
     has_dockerfile: bool = False
     has_nix_file: bool = False
     has_vm: bool = False
-    # Raw text of any Dockerfiles, used for the apt-pinning heuristic.
     dockerfile_texts: list[str] = Field(default_factory=list)
 
 
-# ================================================
-# Filename classifiers and other pure helpers
-# ================================================
-
-# Only formats the scan registry actually parses may count as manifests: a
-# name here without a parser would score DECLARED while showing no data and
-# suppressing the no-manifest threat (Pipfile used to do exactly that).
 _MANIFEST_NAMES: frozenset[str] = frozenset(
     {
         "requirements.txt",
@@ -98,12 +63,6 @@ def is_vm_artifact_filename(lower_name: str) -> bool:
     )
 
 
-# ================================================
-# Threat catalog
-# ================================================
-
-# Static copy: title / detail / remediation per threat id. The `affected` list and
-# `blocking` flag are filled in at detection time.
 _CATALOG: dict[str, dict[str, Any]] = {
     "no-manifest": {
         "category": ThreatCategory.DEPENDENCY,
@@ -179,9 +138,6 @@ _CATALOG: dict[str, dict[str, Any]] = {
     },
 }
 
-# Per axis, the threat ids (in priority order) that gate the step to the next
-# level on that axis. The first one actually present becomes `blocking` — so each
-# axis surfaces at most one blocking threat.
 _DEP_GATE: dict[DependencyLevel, tuple[str, ...]] = {
     DependencyLevel.NONE: ("no-manifest",),
     DependencyLevel.DECLARED: ("unpinned-deps", "range-pins"),
@@ -199,29 +155,19 @@ _MACHINE_GATE: dict[MachineLevel, tuple[str, ...]] = {
 }
 
 
-# ================================================
-# Internals
-# ================================================
-
-
 _RANGE_TOKENS = ("<", ">", "~", "^", "*", "||", ",")
 
-# A wildcard version component (1.x, 2.7.X, ==1.*) floats no matter how
-# pin-shaped the rest of the string looks.
 _WILDCARD_COMPONENT_RE = re.compile(r"(?:^|\.)[xX*](?:\.|$)")
 
 _EXACT_VERSION_RE = re.compile(r"^[0-9][A-Za-z0-9._+\-]*$")
 
 
 def _classify(version: str | None) -> DependencyStatus:
-    """Classify a declared version string: pinned | ranged | unpinned."""
     if not version or not version.strip():
         return "unpinned"
     normalized = version.strip()
     if normalized.startswith("=="):
-        # PEP 440 exact — unless the version body carries a wildcard (==1.*).
         return "ranged" if _WILDCARD_COMPONENT_RE.search(normalized[2:]) else "pinned"
-    # conda (`numpy=1.21.0`) and npm (`=1.2.3`) spell exact pins with one `=`.
     body = normalized[1:].strip() if normalized.startswith("=") else normalized
     if (
         not any(token in body for token in _RANGE_TOKENS)
@@ -233,9 +179,6 @@ def _classify(version: str | None) -> DependencyStatus:
 
 
 def _dependency_status(dep: Dependency) -> DependencyStatus:
-    """The single classification rule: a lockfile resolution wins, otherwise
-    the declared constraint decides. Feeds both the summary buckets and the
-    per-row status on the wire, so the two can never disagree."""
     return "locked" if dep.locked_version else _classify(dep.declared_constraint)
 
 
@@ -244,19 +187,14 @@ def _dep_label(dep: Dependency) -> str:
 
 
 def _apt_install_is_unpinned(dockerfile_text: str) -> bool:
-    """Heuristic: a Dockerfile apt(-get) install without any `pkg=version` pin."""
     for raw in dockerfile_text.splitlines():
         line = raw.strip()
-        # A pinned install names a version with `pkg=ver`.
         if re.search(r"\bapt(?:-get)?\s+install\b", line) and "=" not in re.sub(r"--[a-z-]+", "", line):
             return True
     return False
 
 
 def _summarize_dependencies(inventory: DependencyInventory) -> DependencySummary:
-    """Per-dependency inventory over the *direct* library dependencies —
-    transitive lockfile closure rows and container image references are the
-    other axes' business."""
     library_deps = [d for d in inventory.dependencies if d.ecosystem != "oci" and d.direct]
     manifests = {d.declared_in for d in library_deps if d.declared_in}
     summary = DependencySummary(manifests=len(manifests))
@@ -279,7 +217,6 @@ def _summarize_dependencies(inventory: DependencyInventory) -> DependencySummary
 
 
 def _dependency_level(summary: DependencySummary) -> DependencyLevel:
-    """Maturity of dependency *declaration*, independent of the environment."""
     if summary.total == 0 and summary.manifests == 0:
         return DependencyLevel.NONE
     if summary.total > 0 and summary.locked == summary.total:
@@ -290,7 +227,6 @@ def _dependency_level(summary: DependencySummary) -> DependencyLevel:
 
 
 def _environment_level(file_signals: FileSignals) -> EnvironmentLevel:
-    """Maturity of the software-stack *capture* (container / declarative)."""
     if file_signals.has_nix_file:
         return EnvironmentLevel.DECLARATIVE
     if file_signals.has_dockerfile:
@@ -299,8 +235,6 @@ def _environment_level(file_signals: FileSignals) -> EnvironmentLevel:
 
 
 def _machine_level(file_signals: FileSignals) -> MachineLevel:
-    """Whether the whole machine/OS is pinned by a VM image — orthogonal to the
-    container/declarative environment axis (the ideal is a VM *and* a container)."""
     return MachineLevel.VM if file_signals.has_vm else MachineLevel.NONE
 
 
@@ -328,7 +262,6 @@ def _detect_threats(
     library_deps = [d for d in inventory.dependencies if d.ecosystem != "oci" and d.direct]
     container_deps = [d for d in inventory.dependencies if d.ecosystem == "oci"]
 
-    # --- Dependency category ---
     if summary.manifests == 0 and summary.total == 0:
         threats.append(_make_threat("no-manifest"))
     else:
@@ -341,7 +274,6 @@ def _detect_threats(
         if summary.pinned > 0 and summary.locked == 0:
             threats.append(_make_threat("no-lockfile"))
 
-    # --- Environment axis ---
     if not file_signals.has_dockerfile and not file_signals.has_nix_file:
         threats.append(_make_threat("no-container"))
     else:
@@ -353,7 +285,6 @@ def _detect_threats(
         if file_signals.has_dockerfile and not file_signals.has_nix_file:
             threats.append(_make_threat("no-nix"))
 
-    # --- Machine axis ---
     if not file_signals.has_vm:
         threats.append(_make_threat("no-vm"))
 
@@ -372,8 +303,6 @@ def _rank_and_mark(
     environment_level: EnvironmentLevel,
     machine_level: MachineLevel,
 ) -> list[Threat]:
-    """Mark the threat that gates the next level on each axis (if present) and sort
-    so blocking threats come first, then by descending severity."""
     present = {threat.id: threat for threat in threats}
     for gate in (
         _DEP_GATE.get(dependency_level, ()),
@@ -402,18 +331,10 @@ def _rank_and_mark(
     return ordered
 
 
-# ================================================
-# Entry point
-# ================================================
-
-
 def build_report(
     inventory: DependencyInventory | None,
     file_signals: FileSignals,
 ) -> ReproducibilityReport:
-    """Build the reproducibility threat report from a dependency inventory and
-    workspace file signals."""
-
     if inventory is None:
         inventory = DependencyInventory()
     summary = _summarize_dependencies(inventory)

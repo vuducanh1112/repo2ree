@@ -1,5 +1,3 @@
-"""Acquire and atomically commit the source evidence for one REE."""
-
 from __future__ import annotations
 
 import re
@@ -161,9 +159,6 @@ def _acquisition_from(args: AcquireSourceArgs) -> _Acquisition:
 
 
 def _current_receipt(layout: ReeLayout, ree: Ree, acquisition: _Acquisition) -> AcquireSourceReceipt | None:
-    """The source's receipt, when the same download was asked for again and its evidence is current, with the
-    snapshot it took still kept: nothing to do. An upload comes under a token of its own, so it is never the same
-    request; a different source is refused, never put in place of this one."""
     receipt = ree.subject.receipts.acquire_source
     if receipt is None or ree.seal is not None or acquisition.mode != "download":
         return None
@@ -265,7 +260,7 @@ def _observe_acquired_source(
     try:
         observed = directory_swhid(layout.upstream)
         swhid = Swhid(observed) if observed else None
-    except Exception as exc:  # an unhashable tree does not undo acquisition
+    except Exception as exc:
         log("system", "warn", f"swhid computation skipped: {exc}")
 
     resolved_revision: str | None = None

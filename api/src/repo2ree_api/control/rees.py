@@ -1,10 +1,3 @@
-"""REE lifecycle: create an REE in a store, observe it, delete it from the store.
-
-Control-plane concerns, not authoring steps — these routes exist for every REE
-regardless of how far through the step graph it is. Authoring the REE's content
-lives under :mod:`repo2ree_api.authoring`.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -50,13 +43,11 @@ rees_router = APIRouter(tags=["rees"])
     responses=ERROR_RESPONSES,
 )
 def create_ree_route(payload: ReeCreatePayload) -> RunSummary:
-    """Create an empty REE in a store, in a background run."""
     ree_id = uuid.uuid4().hex
     return _create_in_store(ree_id, payload.name or ree_id[:8], payload.store_id.strip(), payload)
 
 
 def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePayload) -> RunSummary:
-    """Create the REE in ``store_id``; the workbench serving the store must be connected."""
     if store_registry.get(store_id) is None:
         raise HTTPException(status_code=404, detail=f"Store {store_id} not found")
 
@@ -69,7 +60,7 @@ def _create_in_store(ree_id: str, name: str, store_id: str, payload: ReeCreatePa
         try:
             handle = require_handle(rid)
             command_dispatcher.init_ree(handle, name)
-        except Exception as exc:  # noqa: BLE001 — the REE was not created, whatever stopped it
+        except Exception as exc:  # noqa: BLE001
             ree_registry.delete(rid)
             detail = exc.detail if isinstance(exc, HTTPException) else exc
             _log_run("system", "error", f"The REE was not created in store {store_id}: {detail}")
@@ -90,7 +81,6 @@ def _provisioned_document(handle: ReeRoute) -> dict[str, Any]:
 
 
 def _remember(handle: ReeRoute, ree: Ree) -> None:
-    """Keep what the REE was last seen as, for listings while its store is offline."""
     ree_registry.update_summary(handle.ree_id, name=ree.subject.definition.name, status=ree_status(ree))
 
 
@@ -105,7 +95,6 @@ def list_rees_route(
     limit: int | None = Query(None, ge=1),
     status: str | None = Query(None),
 ) -> ReeList:
-    # Every REE is listed whether or not its store is served now, as it was last seen.
     items = [
         ReeSummary(
             ree_id=record.ree_id,
@@ -147,29 +136,13 @@ def get_ree_route(ree_id: str) -> ReeDocument:
     responses=ERROR_RESPONSES,
 )
 def get_ree_state_route(ree_id: str) -> ReeState:
-    """Compact automation view: durable state and file metadata, never contents.
-
-    In ``audit``, a step's ``evidence`` says whether its receipt is current. Its
-    ``payload`` says whether what it produced travels in the sealed archive:
-    ``present``, ``omitted``, or ``not_applicable`` before the seal.
-    """
     with author_api_action("view_ree_state", ree_id):
         return _ree_state(ree_id)
 
 
 def _ree_state(ree_id: str) -> ReeState:
     handle = require_handle(ree_id)
-    # The workbench returns the same document `getRee` publishes, so it is parsed
-    # as one rather than picked apart by key: this view *is* that document plus
-    # liveness (which bench, which runs are in flight), and assembling it field
-    # by field out of a dict hid that relationship behind an intermediate nobody
-    # could typecheck. It also mixed a raising read (`document["ree"]`) with a
-    # defaulting one (`document.get("workspace_files", [])`) over the same
-    # document; the model's own defaults now settle what may be absent.
     document = ReeDocument.of(handle.ree_id, command_dispatcher.get_ree_state(handle))
-    # Runs are this process's own records, not a workbench's, so they are parsed
-    # strictly: a summary that will not validate is a bug here rather than a peer
-    # speaking a version we do not know, and it should say so loudly.
     runs = [RunSummary.model_validate(run) for run in list_runs(ree_id)]
     bench = next(
         (
@@ -205,7 +178,6 @@ def _ree_state(ree_id: str) -> ReeState:
     responses=ERROR_RESPONSES,
 )
 def delete_ree_route(ree_id: str) -> DeleteReeResponse:
-    """Delete the REE from its store."""
     with author_api_action("delete_ree", ree_id):
         record = ree_registry.get(ree_id)
         if record is None:

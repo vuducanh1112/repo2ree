@@ -1,5 +1,3 @@
-"""Graphviz drawings of the specification: a machine, a part or the evidence of an aggregate, and the system map."""
-
 from __future__ import annotations
 
 import re
@@ -26,14 +24,12 @@ SHAPE = {"check": "box", "fork": "invtrapezium", "strategy_leaf": "box", "resolv
 
 
 def dot_svg(source: str) -> str:
-    # Graphviz names the font it measured with; the page draws them all in its own sans-serif.
     return re.sub(r'font-family="[^"]*"', 'font-family="system-ui,sans-serif"', inline_svg(source))
 
 
 def machine_svg(
     spec: Spec, name: str, edges: Counter[str] | None = None, unreached: dict[str, str] | None = None
 ) -> str:
-    """One machine. With ``edges``, each edge carries how often the receipt's tests took it; without, the spec alone."""
     entity = spec.entities[name]
     why = {(t.source, target): t.why for t in entity.transitions for target in t.targets if t.why}
     lines = [
@@ -70,11 +66,6 @@ def machine_svg(
 
 
 def submachine_svg(machine: SubMachine, moves: Counter[Move]) -> str:
-    """One part of an aggregate: each edge with the operations that took it and how often.
-
-    An edge nothing took is dashed, unless only bulk operations allow it; a move no edge
-    allows is drawn in its own colour, marked ✗.
-    """
     lines = [
         "digraph part {",
         '  rankdir=LR; bgcolor="transparent"; pad=0.1; nodesep=0.3; ranksep=0.5;',
@@ -91,7 +82,6 @@ def submachine_svg(machine: SubMachine, moves: Counter[Move]) -> str:
         ops, counts = allowed.get(pair, set()), taken.get(pair, {})
         if not counts and ops <= set(machine.bulk):
             continue
-        # Quoting turns each newline into DOT's own line break.
         label = "\n".join(f"{op} {count}{'' if op in ops else ' ✗'}" for op, count in sorted(counts.items()))
         style = DISALLOWED if set(counts) - ops else TAKEN if counts else NEVER
         lines.append(f"  {q(pair[0])} -> {q(pair[1])} [label={q(label)}, {style}];")
@@ -100,7 +90,6 @@ def submachine_svg(machine: SubMachine, moves: Counter[Move]) -> str:
 
 
 def never_taken(machine: SubMachine, moves: Counter[Move]) -> list[str]:
-    """Each edge and operation the part allows that nothing took, bulk operations aside."""
     taken = {(move.source, move.target, move.operation) for move in moves}
     return [
         f"{edge.source} → {edge.target} by {op}"
@@ -155,7 +144,6 @@ def system_svg(spec: Spec) -> str:
 
 
 def stales(aggregate: Aggregate) -> dict[str, tuple[str, ...]]:
-    """For each receipt, every receipt made from it, directly or through others: what re-running it stales."""
     made_into: dict[str, set[str]] = defaultdict(set)
     for name, receipt in aggregate.receipts.items():
         for source in receipt.made_from:
@@ -174,7 +162,6 @@ def stales(aggregate: Aggregate) -> dict[str, tuple[str, ...]]:
 
 
 def _tiers(aggregate: Aggregate) -> dict[str, int]:
-    """Each receipt's longest chain of receipts it is made from, so a receipt sits after all of them."""
     depth: dict[str, int] = {}
 
     def rank(name: str) -> int:
@@ -186,11 +173,6 @@ def _tiers(aggregate: Aggregate) -> dict[str, int]:
 
 
 def evidence_svg(aggregate: Aggregate) -> str:
-    """An aggregate's receipts: what each is made from and rests on, and what re-running it stales.
-
-    A receipt goes stale when a receipt it is made from is produced again (grey), or when a field
-    it rests on moves (teal); a field it is only about makes it applicable (dashed).
-    """
     lines = [
         "digraph evidence {",
         '  rankdir=LR; newrank=true; bgcolor="transparent"; pad=0.2; nodesep=0.4; ranksep=0.7;',
@@ -242,10 +224,6 @@ def _node_label(node: Node) -> str:
 
 
 def decision_svg(decision: Decision) -> str:
-    """One inference decision: the whole graph, the nodes the walk visited filled, the edges it took drawn heavy.
-
-    A visited node's tooltip says what its check observed.
-    """
     steps = {step.node_id: step for step in decision.trace.steps}
     walked = {(edge.source, edge.branch, edge.target) for edge in decision.trace.edges}
     lines = [

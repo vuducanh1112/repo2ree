@@ -1,12 +1,5 @@
 import type { ReviewStepKey } from "@core/generated/vocabulary";
 
-/**
- * `uninhabitable` is a verdict, `failed` is a breakdown — activation is the one
- * step where the two are easy to confuse and expensive to. A runtime that will
- * not come up is the review working and reporting the most valuable thing it
- * can; a step that could not run at all says nothing about the runtime. Sharing
- * one token would render the first as "the review failed".
- */
 export type ReviewStepStatus =
   | "unavailable"
   | "ready"
@@ -27,11 +20,6 @@ interface ReviewStepDefinition {
   dependencies: readonly ReviewStepKey[];
 }
 
-/**
- * The independently runnable review lifecycle. Materialization remains an
- * implementation detail of source acquisition: it creates no evidence of its
- * own, so it does not get a button in the reviewer-facing graph.
- */
 export const REVIEW_STEPS: readonly ReviewStepDefinition[] = [
   { key: "acquire_source", label: "Source", dependencies: [] },
   {
@@ -53,7 +41,6 @@ export function reviewStep(key: ReviewStepKey): ReviewStepDefinition {
   return step;
 }
 
-/** Stable topological order used by the whole-lifecycle runner. */
 export function reviewLifecycleOrder(): ReviewStepKey[] {
   const visited = new Set<ReviewStepKey>();
   const ordered: ReviewStepKey[] = [];

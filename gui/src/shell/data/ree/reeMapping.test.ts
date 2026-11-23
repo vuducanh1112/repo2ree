@@ -115,8 +115,6 @@ describe("shell/data/ree/reeMapping", () => {
       }),
     );
 
-    // The console keys its open tabs by node id and prunes any it can no longer
-    // find, so an id that moved with its neighbour's arrival would close tabs.
     expect(later.reeFiles?.map((file) => file.id)).toEqual([
       "ree:artifacts/sbom.json",
       "ree:overlay/build.sh",

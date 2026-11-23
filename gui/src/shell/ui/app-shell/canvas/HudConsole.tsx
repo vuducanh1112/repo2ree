@@ -8,32 +8,22 @@ interface HudConsoleProps {
   onToggle: () => void;
   widthOpen: number;
   widthCollapsed: number;
-  /** The class from the caller's own module that places this console. */
   className?: string;
   bodyClassName?: string;
-  /** Measured geometry the placement class reads. */
   vars?: CssVarValues;
-  /** True while a resize drag owns the width, so the easing stands down. */
   resizing?: boolean;
   icon: React.ReactNode;
-  /** The icon's tone, as a `var(--…)` reference. */
   iconTint?: string;
   title: string;
   subtitle?: React.ReactNode;
-  /** Drives the StatusDot. */
   on: boolean;
   expandLabel: string;
   collapseLabel: string;
-  /** When set, the body animates its max-height to this many px instead of
-   * being conditionally rendered. */
   bodyMaxHeight?: number;
-  /** Optional resize grip, absolutely positioned by the caller. */
   resizeGrip?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-// Shared chrome for the pinned HUD consoles (FileTreeConsole, BenchConsole): the
-// frosted card, the expand/collapse header button, and the collapsible body slot.
 export function HudConsole({
   open,
   onToggle,

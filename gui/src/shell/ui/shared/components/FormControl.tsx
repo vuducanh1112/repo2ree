@@ -8,21 +8,11 @@ import {
 } from "react";
 import styles from "./FormControl.module.css";
 
-/** The composable field primitives.
- *
- * `Field` exists for the association a hand-rolled label/helper pair keeps
- * getting wrong: the control gets a generated id, the label points at it, and
- * the hint is wired through `aria-describedby` so it is read out rather than
- * merely displayed.
- */
-
 interface FieldProps {
   label: ReactNode;
   hint?: ReactNode;
   required?: boolean;
   error?: ReactNode;
-  /** Receives the ids to bind. A render prop because the control is arbitrary —
-   * an Input here, a Select there, occasionally something bespoke. */
   children: (bound: {
     id: string;
     "aria-describedby": string | undefined;
@@ -66,15 +56,11 @@ export function Field({ label, hint, required, error, children }: FieldProps) {
   );
 }
 
-/** `code` switches to the monospace face, for paths, hashes and identifiers. */
 type ControlFlavor = "prose" | "code";
 
 interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "style"> {
   flavor?: ControlFlavor;
-  /** Leaves room at the left edge for a glyph the caller positions over it. */
   adorned?: boolean;
-  /** `compact` is the shorter box used in dense grids — keyword entry, a
-   * contributor's fields — where the full-height control would dominate. */
   density?: "comfortable" | "compact";
 }
 

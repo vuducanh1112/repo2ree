@@ -1,5 +1,3 @@
-"""An REE whose Containerfile is built and run with rootless Podman, on a machine whose scripts can use only Podman."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

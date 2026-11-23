@@ -1,10 +1,3 @@
-"""Add a signature to a sealed REE: a Sigstore bundle, signed elsewhere, over the seal's digest.
-
-The bundle is made where the signer's identity is, never here: core sees no credential, only the bundle. It is
-kept when the key its certificate holds made its signature and its statement names the seal's digest under the
-claim's predicate type, beside what the seal covers, and never written over: a claim is signed once.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.persistence.directory import ReeDirectory
@@ -39,7 +32,6 @@ def handle_sign_ree(args: SignReeArgs, *, layout: ReeLayout, log: LogSink) -> Ac
     if target.exists():
         if target.read_bytes() != content:
             return ActionResult.failed("precondition", f"the REE is signed for {args.claim} already, at {path}")
-        # The very signature it holds, given again: nothing to do.
         staged.unlink(missing_ok=True)
         log("system", "info", f"the REE is signed for {args.claim} with this signature already: nothing to do")
         return ActionResult(

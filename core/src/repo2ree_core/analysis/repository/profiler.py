@@ -1,12 +1,3 @@
-"""Repo profiler — impure orchestration layer.
-
-Collects file signals, scans the manifests into a dependency inventory
-(``sources/manifests.py`` — first-party parsers for the pypi/conda/oci
-ecosystems), and delegates to the pure ``build_report`` function. This is the
-single entry point callers use; a caller has no knowledge of which sources
-are run.
-"""
-
 from __future__ import annotations
 
 import contextlib
@@ -24,25 +15,11 @@ from .reproducibility_report import (
 )
 from .sources.manifests import iter_workspace_files, scan_manifest_files
 
-# ================================================
-# Types
-# ================================================
-
-LogFn = Callable[[str, str, str], None]  # (stream, level, message)
-
-
-# ================================================
-# Exceptions
-# ================================================
+LogFn = Callable[[str, str, str], None]
 
 
 class AnalysisError(RuntimeError):
-    """Raised when strict=True and the scan found no dependency data."""
-
-
-# ================================================
-# Entry point
-# ================================================
+    pass
 
 
 def analyze_repo(
@@ -50,11 +27,6 @@ def analyze_repo(
     log: LogFn | None = None,
     strict: bool = False,
 ) -> ReproducibilityReport:
-    """Build the reproducibility report from the manifest scan and file signals.
-
-    Raises ``AnalysisError`` when ``strict=True`` and the scan produced no
-    per-dependency data at all.
-    """
     if not repo_path.is_dir():
         raise ValueError(f"repo_path must be an existing directory: {repo_path}")
 
@@ -71,14 +43,7 @@ def analyze_repo(
     return build_report(inventory, file_signals)
 
 
-# ================================================
-# Internals
-# ================================================
-
-
 def _collect_file_signals(repo_path: Path) -> FileSignals:
-    # Same pruned walk as the manifest scan: a manifest (or Dockerfile) inside
-    # node_modules or a committed .venv must not count as the repo's own.
     signals = FileSignals()
     for file_path, _relative in iter_workspace_files(repo_path):
         lower_name = file_path.name.lower()

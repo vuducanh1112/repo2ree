@@ -30,21 +30,6 @@ import {
 import { reproduceOffline } from "../helpers/offline";
 import { narrate, narrated } from "./narration";
 
-/**
- * The golden-path journey: one workbench, one runtime build, every pipeline
- * page exercised in order. Provisioning (bench container + nested dockerd
- * boot) and the cold DinD runtime build are the expensive parts of any e2e
- * test, so the per-page assertions live here as steps of a single run instead
- * of each paying that setup again in a spec of its own. Branches off this
- * path (e.g. the origin-URL source fetch, which locks the source config) keep
- * their own specs.
- *
- * A failing step fails the test and skips the rest — by design: every later
- * page depends on the earlier state anyway, and the step name in the failure
- * pinpoints the stage. The workbench release is the last step; the
- * workbenchCleanup fixture still covers teardown when an earlier step fails.
- */
-
 const PROJECT_DIR = "source";
 const EXPERIMENT_ENVIRONMENT_PATH = `${PROJECT_DIR}/runtime.tar`;
 
@@ -62,7 +47,6 @@ test.describe("REE pipeline", () => {
         setup,
         "Pick a lab and provision a workbench: a bench with its own Docker daemon",
       );
-      // Asserts the hub canvas appears and the Source page is reachable.
       await provisionWorkbench(page);
     });
 
@@ -71,14 +55,8 @@ test.describe("REE pipeline", () => {
 
       await expect(clearSource).toBeVisible();
       await expect(page.getByText(/Configuration locked/)).toBeVisible();
-      // The archive name appears both in the committed Source Snapshot field
-      // and as the Name in the Workspace Snapshot metadata, so match the first.
       await expect(page.getByText("python-docker.tar.gz", { exact: true }).first()).toBeVisible();
 
-      // Workspace Snapshot reads the REE's own source declaration and receipt:
-      // acquisition names the type from the archive (a .tar.gz is a tarball),
-      // an upload has no origin to report, and the receipt carries the SWHID
-      // computed over what actually landed in the workspace.
       const snapshot = page.getByRole("region", { name: "Workspace Snapshot" });
       await expect(snapshot.getByText("Origin", { exact: true })).toBeVisible();
       await expect(snapshot.getByText("tarball", { exact: true })).toBeVisible();
@@ -100,10 +78,6 @@ test.describe("REE pipeline", () => {
             .filter((name): name is string => Boolean(name)),
         ),
       ];
-      // The console browses both inventories the backend publishes, in a section
-      // each: the materialized `workspace/`, and the REE tree that excludes it.
-      // An uploaded archive lands in `upstream/`, the acquired source, so the
-      // filter below narrows to the REE section and these entries are its.
       await page.getByPlaceholder("Filter files…").fill("upstream");
       for (const nodeName of archiveNodeNames) {
         const escaped = nodeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -136,20 +110,13 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("generate a build script from the repository", async () => {
-      // Read-only inference: it scans the immutable upstream tree, walks the
-      // published build DAG, and loads a candidate into the editor. Nothing is
-      // written — the build step below authors the script it actually runs.
       await openPort(page, "Build Experiment Environment");
       await expect(
         main(page).getByRole("heading", { name: "Build Experiment Environment", exact: true }),
       ).toBeVisible();
       const { message, graph } = await generateScript(page);
       expect(message).toMatch(/Loaded a generated build script/);
-      // The project carries both a Dockerfile and a requirements.txt, so both
-      // strategies are viable and the result is a decision, not a default.
       expect(message).toMatch(/2 alternatives were available/);
-      // The graph is the executed DAG itself — the explanation that must render
-      // whether or not a candidate came back.
       expect(graph).toContain("build-experiment-environment-inference");
       expect(graph).toContain("single-project-root-dockerfile-v1");
 
@@ -173,8 +140,6 @@ test.describe("REE pipeline", () => {
         EXPERIMENT_ENVIRONMENT_PATH,
       );
 
-      // buildExperimentEnvironment leaves the Build page docked; re-open the Build node to
-      // confirm the build persisted as a completed (re-buildable) run.
       await openPort(page, "Build Experiment Environment");
       await expect(main(page).getByRole("button", { name: /Re-build/ })).toBeVisible();
       await narrate(
@@ -206,8 +171,6 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("generate the activate experiment environment script from the built image", async () => {
-      // The image now exists and is declared, so inference reads its kind and writes the whole
-      // way in: load the saved image and run the given command in a container from it.
       await openPort(page, "Build Experiment Environment");
       const { graph, script } = await generateScript(page, /Generate from experiment environment/);
       expect(graph).toContain("activate-experiment-environment-inference");
@@ -228,13 +191,10 @@ test.describe("REE pipeline", () => {
     });
 
     await test.step("run experiment", async () => {
-      // Asserts the run reaches "pass" and renders the verify script check row.
       await runExperiment(page, {
         name: "python-hello",
         runScript: commandScript(`python ${PROJECT_DIR}/main.py`, EXPERIMENT_OUTPUT_FILE),
         expectedStdout: "Pandas Hello World",
-        // Exercises experiment inference once the experiment is declared: the
-        // scaffold is generated and asserted, then authored over.
         generateFirst: true,
       });
       await narrate(
@@ -257,12 +217,9 @@ test.describe("REE pipeline", () => {
       archive = await keepReeArchive(page);
       const bundle = readFileSync(archive);
       expect(bundle.includes("ree/results/python-hello/result.txt")).toBe(true);
-      // The SBOM was written to the REE's artifacts, so packaging carries it
-      // there verbatim — no lift out of the workspace, same path either side.
       expect(bundle.includes(`ree/${SBOM_ARTIFACT_PATH}`)).toBe(true);
     });
 
-    // The recorded walkthrough shows the product; this step has nothing on screen.
     if (!narrated()) {
       await test.step("reproduce the sealed REE offline, without repo2ree", async () => {
         const output = await reproduceOffline(archive);
@@ -275,8 +232,6 @@ test.describe("REE pipeline", () => {
     }
 
     await test.step("release workbench", async () => {
-      // Asserts the return to the landing view; the workbenchCleanup fixture
-      // then sees a released session and no-ops.
       await releaseWorkbench(page);
     });
   });

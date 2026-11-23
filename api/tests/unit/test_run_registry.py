@@ -1,11 +1,3 @@
-"""The RunRegistry background-run state machine, exercised directly.
-
-Real threads, real lock, real state transitions — only the runner body is
-test-supplied (that is the registry's actual contract: it runs arbitrary
-runners). Covers the paths the Docker-gated tiers never reach: runner
-exceptions, cancellation racing completion, and log sequencing.
-"""
-
 from __future__ import annotations
 
 import tempfile
@@ -23,11 +15,6 @@ from repo2ree_api.control.run_registry import RunRegistry
 from repo2ree_api.storage.json_run_store import JsonRunStore
 from repo2ree_protocol.result import ActionResult
 
-# ================================================
-# Helpers
-# ================================================
-
-
 KNOWN_REE = "ree-1"
 
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
@@ -35,14 +22,6 @@ TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 
 @dataclass
 class _FakeInstrument:
-    """Stands in for an OTel counter/histogram, capturing what was recorded.
-
-    The real instruments bind to the global meter provider, which is set once
-    per process — installing a reader to read them back would leak into every
-    other test in the tier. What is worth asserting is the call sites anyway:
-    which instrument fires, with which value, under which attributes.
-    """
-
     calls: list[tuple[float, dict[str, str]]] = field(default_factory=list)
 
     def add(self, amount: float, attributes: dict[str, str] | None = None) -> None:
@@ -71,7 +50,6 @@ class _Instruments:
 
 @pytest.fixture
 def instruments(monkeypatch: pytest.MonkeyPatch) -> _Instruments:
-    """Swap the module's run-lifecycle instruments for capturing fakes."""
     fakes = _Instruments(
         runs=_FakeInstrument(),
         duration=_FakeInstrument(),
@@ -106,11 +84,6 @@ def _wait_for(registry: RunRegistry, run_id: str, statuses: frozenset[str], time
     pytest.fail(f"run {run_id} did not reach {sorted(statuses)} within {timeout}s")
 
 
-# ================================================
-# Start / success path
-# ================================================
-
-
 def test_start_background_rejects_unknown_ree():
     registry = _registry()
     with pytest.raises(HTTPException) as excinfo:
@@ -126,8 +99,6 @@ def test_successful_run_reaches_succeeded_with_outputs():
         {"mode": "upload"},
         lambda e, r: ActionResult(status="succeeded", outputs={"resolved": "abc"}),
     )
-    # run_state is live — the worker may already have finished by now, so the
-    # queued → running transition is asserted in the blocking-runner lifecycle test
     assert run_state["run_id"].startswith("acquire_source-")
     assert run_state["request"] == {"mode": "upload"}
 
@@ -135,7 +106,6 @@ def test_successful_run_reaches_succeeded_with_outputs():
     assert final["status"] == "succeeded"
     assert final["outputs"] == {"resolved": "abc"}
     assert final["finished_at"] is not None
-    # the internal sequence counter is stripped from the terminal state
     assert "_next_seq" not in final
 
 
@@ -244,17 +214,10 @@ def test_idempotency_key_rejects_different_request_payload():
         )
 
     assert excinfo.value.status_code == 409
-    # Starlette declares ``detail`` as a string; this API raises the structured
-    # error envelope through it, which is what the handler in main.py renders.
     detail = cast(dict[str, Any], excinfo.value.detail)
     assert detail["code"] == "idempotency_conflict"
     assert detail["details"]["run_id"] == first["run_id"]
     _wait_for(registry, first["run_id"], TERMINAL)
-
-
-# ================================================
-# Status lifecycle
-# ================================================
 
 
 def test_run_starts_queued_then_running_with_started_at_stamped():
@@ -266,7 +229,6 @@ def test_run_starts_queued_then_running_with_started_at_stamped():
         return ActionResult(status="succeeded")
 
     run_state = registry.start_background(KNOWN_REE, "build_experiment_environment", {}, _runner)
-    # Created queued with no start time; the worker stamps both when it begins.
     assert run_state["created_at"] is not None
 
     running = _wait_for(registry, run_state["run_id"], frozenset({"running"}))
@@ -292,11 +254,6 @@ def test_provision_run_reports_provisioning_while_working():
     assert _wait_for(registry, run_state["run_id"], TERMINAL)["status"] == "succeeded"
 
 
-# ================================================
-# Failure paths
-# ================================================
-
-
 def test_runner_exception_finalizes_as_failed_with_error_log():
     registry = _registry()
 
@@ -307,8 +264,6 @@ def test_runner_exception_finalizes_as_failed_with_error_log():
     final = _wait_for(registry, run_state["run_id"], TERMINAL)
     assert final["status"] == "failed"
     assert final["outputs"] == {}
-    # A runner that raised is synthesized into an internal failure attributed to
-    # the API worker thread, carried on the run — not just logged.
     assert final["failure"]["category"] == "internal"
     assert final["failure"]["origin"] == "api"
     assert final["failure"]["message"] == "docker cp exploded"
@@ -328,14 +283,11 @@ def test_runner_http_exception_finalizes_as_failed_with_detail_logged():
     assert final["status"] == "failed"
     assert final["failure"]["origin"] == "api"
     assert final["failure"]["message"] == "seal in progress"
-    # The status already says what kind of failure this is; a 409 is a conflict,
-    # not an internal fault of ours.
     assert final["failure"]["category"] == "conflict"
     assert final["logs"][0]["message"] == "seal in progress"
 
 
 def test_structured_http_detail_survives_as_a_typed_failure():
-    """A route's error envelope must not be flattened into a dict repr."""
     registry = _registry()
 
     def _runner(ree_id: str, run_id: str) -> ActionResult:
@@ -354,9 +306,7 @@ def test_structured_http_detail_survives_as_a_typed_failure():
     failure = final["failure"]
     assert failure["category"] == "conflict"
     assert failure["retryable"] is False
-    # The envelope's own message, not `str(detail)`.
     assert failure["message"] == "The file changed since you read it"
-    # Everything else on the envelope stays readable by the client.
     assert failure["details"]["code"] == "version_conflict"
     assert failure["details"]["details"]["path"] == "ree-scripts/build_experiment_environment.sh"
     assert failure["details"]["http_status"] == 409
@@ -389,18 +339,12 @@ def test_a_server_side_http_status_without_a_mapping_stays_internal():
     assert failure["retryable"] is False
 
 
-# ================================================
-# Cancellation
-# ================================================
-
-
 def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
     registry = _registry()
     release = Event()
 
     def _runner(ree_id: str, run_id: str) -> ActionResult:
         release.wait(timeout=5.0)
-        # cooperative cancellation, the way the route runners check the flag
         if registry.is_cancel_requested(ree_id, run_id):
             return ActionResult(status="canceled")
         return ActionResult(status="succeeded")
@@ -419,7 +363,6 @@ def test_cancel_of_in_flight_run_transitions_canceling_then_canceled():
 
 
 def test_cancel_after_runner_crash_still_reports_canceled():
-    """A runner that dies after cancel was requested finalizes as canceled, not failed."""
     registry = _registry()
     release = Event()
 
@@ -434,7 +377,6 @@ def test_cancel_after_runner_crash_still_reports_canceled():
 
 
 def test_completed_run_is_not_retroactively_canceled():
-    """finalize never demotes a result that already succeeded or failed."""
     registry = _registry()
     run_state = registry.start_background(
         KNOWN_REE, "acquire_source", {}, lambda e, r: ActionResult(status="succeeded")
@@ -450,11 +392,6 @@ def test_cancel_of_unknown_run_returns_false():
     registry = _registry()
     assert registry.mark_cancel_requested(KNOWN_REE, "no-such-run") is False
     assert registry.is_cancel_requested(KNOWN_REE, "no-such-run") is False
-
-
-# ================================================
-# Logs
-# ================================================
 
 
 def test_append_log_assigns_monotonic_sequence_numbers():
@@ -478,7 +415,7 @@ def test_append_log_assigns_monotonic_sequence_numbers():
 
 def test_append_log_to_unknown_run_is_a_noop():
     registry = _registry()
-    registry.append_log(KNOWN_REE, "no-such-run", "stdout", "info", "lost")  # must not raise
+    registry.append_log(KNOWN_REE, "no-such-run", "stdout", "info", "lost")
 
 
 def test_observe_returns_only_logs_after_sequence_cursor():
@@ -649,11 +586,6 @@ def test_submit_after_executor_shutdown_settles_run_instead_of_stranding_it():
     assert "could not be scheduled" in run["failure"]["message"]
 
 
-# ================================================
-# Metrics
-# ================================================
-
-
 def test_settled_run_counts_once_and_records_its_duration(instruments: _Instruments):
     registry = _registry()
     run = registry.start_background(
@@ -667,7 +599,6 @@ def test_settled_run_counts_once_and_records_its_duration(instruments: _Instrume
     terminal_attrs = {"repo2ree.operation": "build_experiment_environment", "repo2ree.status": "succeeded"}
     assert instruments.runs.calls == [(1, terminal_attrs)]
     assert instruments.duration.attributes == [terminal_attrs]
-    # One sample, of a real elapsed span rather than a placeholder zero.
     duration, _attrs = instruments.duration.calls[0]
     assert duration > 0
 
@@ -685,7 +616,6 @@ def test_failed_run_is_metered_under_its_terminal_status(instruments: _Instrumen
 
 
 def test_run_is_metered_with_the_settled_status_not_the_proposed_one(instruments: _Instruments):
-    """A run canceled mid-flight counts as canceled, matching what a poller reads."""
     registry = _registry()
     release = Event()
 
@@ -718,8 +648,6 @@ def test_active_gauge_rises_while_running_and_returns_to_zero(instruments: _Inst
 
     release.set()
     _wait_for(registry, run["run_id"], TERMINAL)
-    # The gauge is balanced by the finally, and carries no status: an in-flight
-    # run has no terminal status to slice by.
     assert instruments.active.total == 0
     assert instruments.active.attributes == [{"repo2ree.operation": "build_experiment_environment"}] * 2
 
@@ -786,7 +714,6 @@ def test_idempotent_replay_is_metered_and_the_run_counted_once(instruments: _Ins
     assert instruments.replay.calls == [(1, {"repo2ree.operation": "build_experiment_environment"})]
     release.set()
     _wait_for(registry, first["run_id"], TERMINAL)
-    # The replayed request started no second run, so exactly one settled.
     assert instruments.runs.total == 1
 
 
@@ -812,11 +739,6 @@ def test_idempotency_conflict_is_metered(instruments: _Instruments):
     assert instruments.conflict.calls == [(1, {"repo2ree.operation": "evaluate_reproducibility"})]
     assert instruments.replay.calls == []
     _wait_for(registry, first["run_id"], TERMINAL)
-
-
-# ================================================
-# Runs that follow their command
-# ================================================
 
 
 def test_a_run_following_its_command_takes_no_worker_from_the_pool():

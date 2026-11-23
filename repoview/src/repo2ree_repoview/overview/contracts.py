@@ -1,6 +1,3 @@
-"""The published contracts the overview reads: the command line, the HTTP API, and the environment variables, each
-found by its name in the contract registry."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -24,7 +21,6 @@ class Variable(Document):
 
 
 class Environment(Document):
-    # Where the registry keeps the contract this was read from, and the function that renders it.
     contract_path: str = ""
     rendered_by: str = ""
     variables: dict[str, Variable]
@@ -36,11 +32,6 @@ class Environment(Document):
         return cls.model_validate_json(found.file.read_bytes()).model_copy(
             update={"contract_path": found.path, "rendered_by": found.rendered_by}
         )
-
-
-# ================================================
-# The HTTP API
-# ================================================
 
 
 class _Media(Document):
@@ -57,7 +48,6 @@ class Operation(Document):
     summary: str = ""
     request_body: _Body | None = Field(default=None, alias="requestBody")
     responses: dict[str, _Body] = Field(default_factory=dict)
-    # Where the API's contract says which operations advance each authoring step.
     step_actions: dict[str, list[str]] = Field(default_factory=dict, alias="x-repo2ree-step-actions")
 
     @property
@@ -66,7 +56,6 @@ class Operation(Document):
 
     @property
     def response(self) -> str:
-        """What the first successful response answers with."""
         status = next((code for code in sorted(self.responses) if code.startswith("2")), None)
         return shape(self.responses[status]) if status else ""
 
@@ -94,12 +83,10 @@ class OpenApi(Document):
 
     @property
     def step_actions(self) -> dict[str, list[str]]:
-        """The operations that advance each authoring step, as the contract says."""
         return next((operation.step_actions for _, _, operation in self.each() if operation.step_actions), {})
 
 
 def shape(body: _Body | None) -> str:
-    """What a request or response body carries: its schema's name, ``bytes``, or nothing."""
     if body is None or not body.content:
         return ""
     media, carried = next(iter(body.content.items()))
@@ -109,7 +96,6 @@ def shape(body: _Body | None) -> str:
 
 
 def schema_name(schema: dict[str, JsonValue] | JsonValue) -> str:
-    """A schema as the reader names it: its model, a union of them, a list of one, or its type."""
     if not isinstance(schema, dict):
         return ""
     if isinstance(ref := schema.get("$ref"), str):
@@ -121,11 +107,6 @@ def schema_name(schema: dict[str, JsonValue] | JsonValue) -> str:
         return f"list[{schema_name(schema.get('items'))}]"
     kind = schema.get("type")
     return kind if isinstance(kind, str) else ""
-
-
-# ================================================
-# The command line
-# ================================================
 
 
 class CliParam(Document):

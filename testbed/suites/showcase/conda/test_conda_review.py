@@ -1,5 +1,3 @@
-"""A reviewer rebuilds the conda environment from its file, activates it, and gets the author's result."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

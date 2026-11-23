@@ -1,17 +1,3 @@
-"""Record commands and selected state boundaries independently of telemetry.
-
-All dispatched commands cooperate on the author REE lock. Review snapshots
-live in their own attempt directories; external writers are not synchronized.
-A pending record means completion is unresolved, not that execution rolled back.
-
-The integrity check holds on both sides of an attempt's handler: the attempt begins only on an REE whose files are
-as its histories' heads hold them, and once the handler returns, the attempt records what is no longer so
-(``drift_after``): what changed beside it while it ran. The handler runs on a stage (``operations.stage``), and the
-attempt commits what the handler changed there: a canceled attempt commits nothing it changed, and one whose capture
-failed changed nothing of the REE's files.
-Loading a bundle replaces the REE, its histories with it, so it alone runs on the REE's files, rolled back as before.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -55,17 +41,6 @@ def capture_command(
     execute: Callable[[ReeLayout], ActionResult],
     records_edit: str | None = None,
 ) -> ActionResult:
-    """Capture input, outcome and state; only a canceled attempt is rolled back.
-
-    A cancel ends the attempt without its effects: the selected REE files go back to the
-    before-snapshot, so its capture commit changes nothing. Any other outcome keeps, and
-    commits, whatever the handler changed.
-
-    The attempt begins only on an REE whose files are as the last attempt left them. One that finds drift is
-    refused, and committed with the tree it found in its history, so the drift is never absorbed; only an attempt
-    that records a script edited in the overlay (``records_edit``, its path from the overlay) runs on it.
-    """
-    # Preserve missing-REE preconditions without creating a new REE implicitly.
     if not layout.manifest.is_file():
         return execute(layout)
     scope = _scope(layout, cmd)
@@ -89,7 +64,6 @@ def capture_command(
                 author = ReeDirectory(layout).read_ree()
                 record.author_seal_digest = str(author.seal.ree_digest) if author.seal else None
                 history = stack.enter_context(open_history(scope))
-            # This is outside the snapshot tree and is updated atomically.
             write_json_atomic(record_path, record.model_dump(mode="json"))
             history.capture_initial(existing=True)
             record.drift_found = find_drift(layout)
@@ -98,9 +72,6 @@ def capture_command(
             refusal = _refusal(layout, record.drift_found, records_edit, str(cmd.operation))
             if refusal is not None:
                 return _refuse(layout, scope, history, record, record_path, cmd.operation, refusal, context, log)
-            # Nothing drifted but what the attempt may run on, so it begins on the history's head. An edit being
-            # recorded is on disk already: it is the attempt's change, kept aside to go back as it was if the attempt
-            # does not record it.
             before = history.head_snapshot()
             if before is None:
                 raise HistoryCaptureError("the REE has no history to begin the attempt on")
@@ -119,7 +90,7 @@ def capture_command(
                 try:
                     result = execute(stage.layout if stage is not None else layout)
                     result = result.model_copy(update={"context": context, "history": None})
-                except Exception as exc:  # noqa: BLE001 — capture partial state from escaped handlers
+                except Exception as exc:  # noqa: BLE001
                     log("system", "error", f"{cmd.operation} raised: {exc}")
                     result = failed_from_exception(exc, f"{cmd.operation} raised: {exc}")
                     result = result.model_copy(update={"context": context})
@@ -129,7 +100,6 @@ def capture_command(
                 if stage is not None:
                     record.drift_after = _drift_beside(layout, record.drift_recorded, edited, log)
                 record.phases.append("completed")
-                # Preserve the handler outcome even if snapshot publication fails.
                 write_json_atomic(record_path, record.model_dump(mode="json"))
                 unchanged = result.status == "canceled" or (edited is not None and result.status != "succeeded")
                 if stage is None:
@@ -151,8 +121,6 @@ def capture_command(
                         unchanged=unchanged,
                     )
             except (HistoryCaptureError, OSError, ValueError) as exc:
-                # Still under the REE lock. A staged attempt changed nothing of the REE's files; one on them is put
-                # back as it found them, since it is not recorded.
                 rolled_back = _roll_back(history, before, log) if stage is None else True
                 if stage is not None:
                     staging.discard(stage)
@@ -167,16 +135,13 @@ def capture_command(
                         log("system", "error", f"Cannot put the REE's files as the attempt left them: {exc}")
                 staging.discard(stage)
             elif edited is not None and records_edit is not None and result.status != "succeeded":
-                # Not recorded, so still drift, for the next command to find.
                 layout.overlay_file(records_edit).write_bytes(edited)
-            # The commit is authoritative. Cleanup is best-effort; a stale
-            # pending record is reconciled with the published attempt on read.
             with suppress(OSError):
                 record_path.unlink(missing_ok=True)
     except (_CaptureFailedError, HistoryCaptureError, OSError, ValueError) as exc:
         record_digest: str | None = None
         if not isinstance(exc, _CaptureFailedError):
-            outcome = "nothing ran"  # The before-snapshot was never taken.
+            outcome = "nothing ran"
         elif exc.staged:
             outcome = "the REE files were left as the attempt found them"
         elif exc.rolled_back:
@@ -187,11 +152,8 @@ def capture_command(
         record.capture_error = f"{exc}; {outcome}"
         record.phases.append("capture_failed")
         try:
-            # The unique attempt path is safe to finalize after releasing locks.
-            # If storage is unavailable, the last pending record remains evidence.
             if record_path.parent.is_dir():
                 write_json_atomic(record_path, record.model_dump(mode="json"))
-                # The record as written is what the result cites in place of a commit.
                 record_digest = digest_bytes(record_path.read_bytes())
         except OSError as record_error:
             log("system", "error", f"Cannot finalize history record: {record_error}")
@@ -207,14 +169,10 @@ def capture_command(
     return result.model_copy(update={"history": _references(record)})
 
 
-# Operations that replace the REE, its histories with it, so they run on its files rather than on a stage.
 _ON_THE_REE = frozenset({"load_ree_bundle"})
 
 
 def _drift_beside(layout: ReeLayout, recorded: str | None, edited: bytes | None, log: LogSink) -> list[DriftedFile]:
-    """The integrity check once a staged handler returned: what of the REE is no longer as the attempt found it, so
-    changed beside it. The script edit the attempt records is its own, while it is as the attempt found it, or
-    whenever the attempt kept none of it (``edited``) to compare."""
     try:
         drift = find_drift(layout)
     except (HistoryCaptureError, OSError, ValueError) as exc:
@@ -234,8 +192,6 @@ def _drift_beside(layout: ReeLayout, recorded: str | None, edited: bytes | None,
 
 
 def _refusal(layout: ReeLayout, drift: list[DriftedFile], records_edit: str | None, operation: str) -> str | None:
-    """Why an attempt that found ``drift`` may not run, or None when it may: one recording a script edited in the
-    overlay."""
     if not drift:
         return None
     edits = recordable_edits(layout, drift)
@@ -255,7 +211,6 @@ def _refuse(
     context: ExecutionContext,
     log: LogSink,
 ) -> ActionResult:
-    """Record an attempt refused for drift: nothing runs, and nothing is committed."""
     log("system", "error", message)
     head = history.head_snapshot()
     if head is None:
@@ -268,9 +223,6 @@ def _refuse(
     record.operation_failure = result.failure
     record.result = result
     record.phases.append("completed")
-    # Nothing is committed for it: its history may itself be what drifted, and a commit on a history moved beside ree
-    # would make the move ree's. The refusal stays beside the history, as an attempt whose capture failed, until
-    # what drifted is put right.
     record.capture_status = "failed"
     record.capture_error = "the REE changed outside ree, so the refusal is kept beside its history"
     record.phases.append("capture_failed")
@@ -288,8 +240,6 @@ def _publish(
     *,
     unchanged: bool = False,
 ) -> None:
-    """Commit the attempt's outcome with the REE as it is now, or, ``unchanged``, as the attempt found it; the record
-    learns its commit."""
     if scope.manifest.is_file() and not unchanged:
         current = ReeDirectory(scope).read_ree()
         if current.seal is None:
@@ -315,16 +265,6 @@ def settle_interrupted(
     run_id: str | None = None,
     context: ExecutionContext | None = None,
 ) -> ActionResult | None:
-    """How an attempt ended whose executor stopped without reporting; None when there is no such attempt.
-
-    Given the command the executor was started with, an attempt it never got to record is recorded
-    now, as one whose capture failed before anything ran.
-
-    An attempt it left before its handler started failed its capture, with nothing to undo. One
-    whose handler was running is rolled back to its before-snapshot and captured as interrupted.
-    One whose handler had finished but was never captured is rolled back and failed: its outcome
-    was never recorded, so it is not kept. An attempt that settled already answers as it settled.
-    """
     record = next((item for item in read_operation_history(layout).operations if item.attempt_id == attempt_id), None)
     if record is None:
         if cmd is None or not layout.manifest.is_file():
@@ -342,7 +282,6 @@ def settle_interrupted(
         history = stack.enter_context(open_history(layout))
         if scope != layout:
             history = stack.enter_context(open_history(scope))
-        # A staged attempt changed nothing of the REE's files: what it left is its stage alone.
         staging.discard_left(layout, attempt_id)
         if phase == "pending" or record.before_snapshot_id is None:
             return _capture_failed(record, record_path, "the executor was lost before the attempt began", log)
@@ -405,7 +344,6 @@ def _record_unbegun(
 
 
 def _scope(layout: ReeLayout, cmd: Command) -> ReeLayout:
-    """Where a command's attempt is recorded: a review's own history, or the author's."""
     review_id = getattr(cmd.args, "review_id", None)
     return layout.review(review_id) if review_id else layout
 
@@ -445,8 +383,6 @@ def _digest_of(record_path: Path) -> str | None:
 
 
 class _CaptureFailedError(Exception):
-    """Publishing an attempt failed after its before-snapshot; whether its changes were undone."""
-
     def __init__(self, message: str, *, rolled_back: bool, staged: bool = False) -> None:
         super().__init__(message)
         self.rolled_back = rolled_back
@@ -454,14 +390,12 @@ class _CaptureFailedError(Exception):
 
 
 def _restore(history: GitHistory, snapshot: str) -> None:
-    """Put the REE's files back as ``snapshot`` holds them, with the workspace's scripts as they then are."""
     history.restore(snapshot)
     if history.layout.workspace.is_dir():
         lay_out_scripts(history.layout)
 
 
 def _roll_back(history: GitHistory, snapshot: str, log: LogSink) -> bool:
-    """Restore the before-snapshot of an attempt whose capture failed; whether that worked."""
     try:
         _restore(history, snapshot)
     except (HistoryCaptureError, OSError, ValueError) as exc:
@@ -471,12 +405,11 @@ def _roll_back(history: GitHistory, snapshot: str, log: LogSink) -> bool:
 
 
 def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
-    """Each author step's evidence standing; recording it must never fail the capture."""
     if not layout.manifest.is_file():
         return None
     try:
         report = audit(ReeDirectory(layout).read_ree())
-    except Exception as exc:  # noqa: BLE001 — evidence about the REE, not a precondition of the command
+    except Exception as exc:  # noqa: BLE001
         log("system", "warn", f"Step evidence was not recorded: {exc}")
         return None
     standing = {

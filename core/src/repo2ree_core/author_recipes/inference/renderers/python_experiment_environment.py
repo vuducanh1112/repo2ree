@@ -1,21 +1,3 @@
-"""Shell renderer for the pip-requirements build strategy.
-
-The experiment environment for a plain requirements.txt repository is a Python virtual
-environment, not a container: the build script creates a venv, installs
-requirements.txt into it with pip, and packs the venv as the experiment environment artifact.
-It introduces no technology the repository did not already declare — no
-Dockerfile, no base image, no second file. This mirrors the docker-less flow the
-e2e suite exercises (``ree-pip-pipeline``), where the workbench base image *is*
-the environment and every runnable restores this packed venv instead of loading
-an image.
-
-The venv is built outside the workspace (``VENV_DIR``): the workspace is
-snapshot-hashed on every change, so a multi-thousand-file venv inside it would
-slow every edit, and a venv bakes absolute paths so it must be restored where it
-was built. Only the packed tarball — one workspace file — is the tracked
-artifact.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
@@ -59,9 +41,6 @@ class PipVenvBuildRenderer:
             requirements_path=requirements.requirements_path,
             experiment_environment_artifact=experiment_environment_artifact,
             digest=requirements.digest,
-            # Outside the workspace (see module docstring), and the REE's own: REEs built side
-            # by side on one machine must not share it. The run scaffolds restore it to the same
-            # place, read back from the built venv.
             venv_dir=venv_build_dir(context.ree_name),
         )
 
@@ -78,9 +57,6 @@ class PipVenvBuildRenderer:
                 kind="experiment_environment_declaration",
                 path=experiment_environment_artifact,
                 digest="",
-                # The path these bytes write to, declared or defaulted. It is part
-                # of what justifies them either way: move the declaration and
-                # regeneration produces different bytes, so the candidate is stale.
                 role="experiment_environment",
             )
         )

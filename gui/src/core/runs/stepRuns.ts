@@ -2,7 +2,6 @@ import { REE_RUN_OPERATIONS, type ReeRunOperation } from "@core/generated/vocabu
 import type { ReeRunSummary } from "./ReeRun";
 import { isTerminalReeRunStatus } from "./ReeRunStatus";
 
-/** The operation whose run advances a step: the one the step is keyed by, and for the experiments, running one. */
 function stepOperation(step: string): ReeRunOperation | undefined {
   if (step === "experiments") return "run_experiment";
   return REE_RUN_OPERATIONS.find((operation) => operation === step);

@@ -1,8 +1,3 @@
-/* The button primitive owns its interaction states. Nothing global reaches in:
- * the module is unlayered, so these rules outrank the base defaults, and the
- * hover lift and active press are declared here rather than inherited from a
- * blanket `button:hover` rule. */
-
 .button {
   display: inline-flex;
   align-items: center;
@@ -45,8 +40,6 @@
   filter: none;
 }
 
-/* --- Variants --------------------------------------------------------- */
-
 .button[data-variant="primary"] {
   padding: var(--space-2-5) var(--space-4);
   border: 1px solid var(--border-accent);
@@ -63,10 +56,6 @@
   color: var(--accent-primary-deep);
 }
 
-/* Tinted by a domain identity — the stage a run belongs to, the archive a
- * deposit targets. `--control-line` is the only thing a caller supplies; the
- * washes and edges are derived from it so a tinted control still reads as the
- * same control. */
 .button[data-variant="accent"] {
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--control-line);
@@ -90,8 +79,6 @@
   color: var(--tone-danger-ink);
 }
 
-/* --- Sizes ------------------------------------------------------------- */
-
 .button[data-size="small"] {
   padding: var(--space-1-5) var(--space-3);
   font-size: var(--text-label);
@@ -106,11 +93,6 @@
 .button[data-full-width="true"] {
   width: 100%;
 }
-
-/* --- Icon --------------------------------------------------------------
- * `busy` spins the icon in place. The animation is declared here rather than
- * referenced by name from an inline style, which is what the global keyframes
- * existed for. */
 
 .icon {
   display: flex;

@@ -1,5 +1,3 @@
-"""How each operation travels across components, and how far its checked evidence reaches."""
-
 from __future__ import annotations
 
 import statistics
@@ -18,7 +16,6 @@ REACH: tuple[tuple[Reach, str], ...] = (
 )
 NO_SEQUENCE = "no sequence: only the journal records it"
 
-# Sequence layout: time gutter, component column, provenance column, row height, header height.
 GUTTER, LANE, RIGHT, ROW, TOP = 70, 132, 150, 24, 60
 
 
@@ -94,7 +91,6 @@ def matrix(catalogue: Operations) -> str:
 
 
 def _frame(lanes: Sequence[Lane], x: dict[str, float], height: int) -> list[str]:
-    """Process columns, and a lifeline per component."""
     parts: list[str] = []
     groups: list[list[int]] = []
     for index, lane in enumerate(lanes):
@@ -148,7 +144,6 @@ def sequence_svg(lanes: Sequence[Lane], lines: Sequence[Line], runs: int, name: 
     width = GUTTER + len(lanes) * LANE + RIGHT
     height = TOP + len(lines) * ROW + 16
     x = {lane.id: GUTTER + index * LANE + LANE / 2 for index, lane in enumerate(lanes)}
-    # Notes on the last two components go to their left, inside the drawing.
     rightward = {lane.id: index < len(lanes) - 2 for index, lane in enumerate(lanes)}
     parts = _frame(lanes, x, height)
     for index, line in enumerate(lines):

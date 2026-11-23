@@ -1,16 +1,3 @@
-"""Record the commit a generated report file was made from.
-
-Each recipe records the files it generated in a report folder (reports/diagrams/, reports/exports/,
-reports/metrics/) in a stamp file of its own, ``stamps/<recipe>.json``: for each file, the revision and tree,
-whether the working tree differed from them (with a hash of the difference), when, and by which recipe. A recipe
-writes its stamp file whole and reads no other's, so recipes stamp side by side and none loses another's entries;
-a file's stamp is read from whichever stamp file of its folder names it, and two that name it are an error. An SVG
-also shows the commit in a footer strip added below the drawing, so whoever looks at it sees where it came from,
-and carries the full facts in a <metadata> element for tools.
-
-    python -m repo2ree_repoview stamp --folder reports/diagrams --by generate-gui-graph FILE...
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -34,35 +21,28 @@ HEIGHT = re.compile(r'\bheight="(?P<value>[\d.]+)(?P<unit>[a-z]*)"')
 
 
 class Stamp(Provenance):
-    """Where a generated file came from, and the recipe that generated it."""
-
     by: str
 
 
 class Recorded(Stamp):
-    """A stamp file's entry: the stamp, and the digest of the file as stamped."""
-
     sha256: str
 
 
-# A recipe's stamp file: each file it generated, by its path from the report folder.
 _STAMPS = TypeAdapter[dict[str, Recorded]](dict[str, Recorded])
 STAMPS = "stamps"
 
 
 class StampConflictError(ValueError):
-    """Two recipes record the same file."""
+    pass
 
 
 def label(stamp: Stamp) -> str:
-    """The footer's line: the commit first, since that is what a reader needs."""
     changes = " + uncommitted changes" if stamp.dirty else ""
     generated = stamp.generated.replace("T", " ").replace("+00:00", " UTC")
     return f"repo2ree {stamp.revision[:10]}{changes} · {generated} · {stamp.by}"
 
 
 def unstamp(svg: str) -> str:
-    """The SVG as generated: without an earlier stamp's metadata and footer, its size restored."""
     svg = METADATA.sub("", svg)
     footer = FOOTER.search(svg)
     if footer is None:
@@ -78,7 +58,6 @@ def unstamp(svg: str) -> str:
 
 
 def stamp_svg(path: Path, stamp: Stamp) -> None:
-    """Add a footer strip naming the commit below the drawing, and the facts as <metadata>; replaces a stamp."""
     svg = unstamp(path.read_text(encoding="utf-8"))
     opening = re.search(r"<svg\b[^>]*>\s*", svg)
     viewbox = VIEWBOX.search(opening.group(0)) if opening else None
@@ -110,7 +89,6 @@ def stamp_svg(path: Path, stamp: Stamp) -> None:
 
 
 def read_svg_stamp(path: Path) -> Stamp | None:
-    """The stamp an SVG carries, or None when it carries none this version can read."""
     found = re.search(r"<metadata id=\"repo2ree-provenance\">(.*?)</metadata>", path.read_text(encoding="utf-8"))
     if found is None:
         return None
@@ -121,7 +99,6 @@ def read_svg_stamp(path: Path) -> Stamp | None:
 
 
 def _stamp_files(path: Path) -> tuple[Path, list[Path]]:
-    """The report folder a file is in, the nearest holding stamp files, and those files; none where none is."""
     for folder in path.resolve().parents:
         found = sorted((folder / STAMPS).glob("*.json"))
         if found:
@@ -130,8 +107,6 @@ def _stamp_files(path: Path) -> tuple[Path, list[Path]]:
 
 
 def read_recorded_stamp(path: Path) -> Stamp | None:
-    """The stamp its report folder records for a file as it is now, or None when none records it, or the file
-    changed since."""
     folder, found = _stamp_files(path)
     key = path.resolve().relative_to(folder).as_posix()
     entries: list[Recorded] = []
@@ -150,7 +125,6 @@ def read_recorded_stamp(path: Path) -> Stamp | None:
 
 
 def _kept(folder: Path, target: Path) -> dict[str, Recorded]:
-    """A recipe's earlier entries whose files are still there as it stamped them."""
     try:
         earlier = _STAMPS.validate_json(target.read_bytes())
     except (OSError, ValidationError):
@@ -163,8 +137,6 @@ def _kept(folder: Path, target: Path) -> dict[str, Recorded]:
 
 
 def record(folder: Path, files: list[Path], stamp: Stamp, *, keep: bool = False) -> None:
-    """Write the recipe's stamp file whole: the files it generated in this run, and no others; with ``keep``, also
-    its earlier entries for files still there as it stamped them, which a recipe that skips what is current keeps."""
     target = folder / STAMPS / f"{stamp.by}.json"
     entries = _kept(folder, target) if keep else {}
     entries |= {
@@ -180,7 +152,7 @@ def record(folder: Path, files: list[Path], stamp: Stamp, *, keep: bool = False)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--folder", type=Path, required=True, help="the report folder the files are in")
     parser.add_argument("--by", required=True, help="the recipe that generated the files")
     parser.add_argument(

@@ -1,20 +1,3 @@
-"""Starter templates for the reserved, REE-owned overlay scripts.
-
-Each template is a dedicated ``.sh`` file shipped inside this package — the
-single source of truth for the starter content authors (human or workbench) work
-from. Every script an REE has starts as the first template of its kind: the build, activate, launch and check
-scripts when the REE is created (``ReeDirectory.ensure_reserved_overlay_scripts``), an experiment's run and verify
-scripts when the experiment is declared.
-
-Every script kind carries a catalog of named :class:`ScriptTemplate` variants,
-one per standard case, so new strategies (a nix build, …) slot in as further
-entries. The first variant is the default a script starts as: one that needs no container engine, and for the
-launch, check and verify scripts one that passes everything through.
-
-Leaf module like ``reserved_paths``: it imports nothing from
-``repo2ree_core``, so any layer can load templates without an import cycle.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -41,14 +24,6 @@ def _template(name: str) -> str:
 
 @dataclass(frozen=True)
 class ScriptTemplate:
-    """A named starter-template variant for one of the REE-owned scripts.
-
-    Bodies are ready to run rather than commented-out sketches, with the
-    project-specific knobs (image tag, Dockerfile, run-log path, …) as plainly
-    assigned variables the author edits in place. Verify bodies additionally
-    carry EDIT-ME placeholders for the claim being checked.
-    """
-
     key: str
     label: str
     description: str
@@ -56,11 +31,6 @@ class ScriptTemplate:
 
 
 def reserved_script_template(reserved_path: str) -> str:
-    """The script a fixed script of the REE starts as: the first of its catalog.
-
-    Catalogs are keyed by the script's file name, so the lookup is stable
-    under renames of the reserved directory itself.
-    """
     catalogs = {
         "build_experiment_environment.sh": build_templates,
         "activate_experiment_environment.sh": activate_experiment_environment_templates,
@@ -72,7 +42,6 @@ def reserved_script_template(reserved_path: str) -> str:
 
 
 def build_templates() -> tuple[ScriptTemplate, ...]:
-    """The build-script templates, one per runtime-packaging strategy."""
     return (
         ScriptTemplate(
             key="venv",
@@ -95,7 +64,6 @@ def build_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
-    """The activate experiment environment templates, one per experiment environment strategy."""
     return (
         ScriptTemplate(
             key="venv",
@@ -114,7 +82,6 @@ def activate_experiment_environment_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def launch_templates() -> tuple[ScriptTemplate, ...]:
-    """The launch-script templates, one per launcher; the first runs every script directly."""
     return (
         ScriptTemplate(
             key="direct",
@@ -133,7 +100,6 @@ def launch_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def check_working_environment_templates() -> tuple[ScriptTemplate, ...]:
-    """The check-script templates; the first is the check every REE starts with, which passes as it comes."""
     return (
         ScriptTemplate(
             key="standard-tools",
@@ -146,7 +112,6 @@ def check_working_environment_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
-    """The experiment run templates: the experiment's command, run inside the activated experiment environment."""
     return (
         ScriptTemplate(
             key="command",
@@ -159,13 +124,6 @@ def experiment_run_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def experiment_verify_templates() -> tuple[ScriptTemplate, ...]:
-    """The verify-script templates for the standard verification cases.
-
-    Verify scripts are plain POSIX sh, run from the workspace root after the
-    run script, with nothing injected into their environment; the exit code is
-    the verdict (0 = the declared validation passed). A later reproduction
-    compares a fresh validated run with prior author evidence. The first checks nothing and passes.
-    """
     return (
         ScriptTemplate(
             key="none",
@@ -201,7 +159,6 @@ def experiment_verify_templates() -> tuple[ScriptTemplate, ...]:
 
 
 def script_template_catalog() -> ScriptTemplateCatalog:
-    """Every script kind's templates and where its scripts belong, each environment's default marked."""
     return ScriptTemplateCatalog(
         build_experiment_environment=ReservedScriptTemplates(
             path=RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, templates=_entries(build_templates())

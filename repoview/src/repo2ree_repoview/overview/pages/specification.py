@@ -1,5 +1,3 @@
-"""What the checker holds the evidence to: machines, citations, invariants, and listed values."""
-
 from __future__ import annotations
 
 import json
@@ -33,7 +31,6 @@ from repo2ree_repoview.overview.spec_diagrams import SYSTEM, machine_drawing
 
 
 def literal(value: Scalar) -> str:
-    """A condition's value as written in the specification: names bare, anything else (``""``, ``false``) as JSON."""
     return value if isinstance(value, str) and value else json.dumps(value)
 
 
@@ -41,26 +38,23 @@ type Groups = dict[str, dict[str, tuple[str, ...]]]
 
 
 def whole_groups(values: tuple[Scalar, ...], groups: dict[str, tuple[str, ...]]) -> list[str]:
-    """The groups that together list exactly ``values``, in declaration order; none when no such groups exist."""
     named = [group for group, members in groups.items() if set(members) <= set(values)]
     covered = {value for group in named for value in groups[group]}
     return named if covered == set(values) else []
 
 
 def condition(name: str, value: Condition, groups: Groups) -> str:
-    """A condition as the specification states it: a value list that is whole groups reads as those groups."""
     match value:
         case NotEqual(value=excluded):
             return f"{name} ≠ {literal(excluded)}"
         case Holds(fact=fact):
             return f"{name} holds the trigger's {fact}"
         case PerFact(fact=fact, cases=cases):
-            # The alternatives depend on the trigger's fact: one list for each of its values.
             listed = "; ".join(f"{key}: {', '.join(map(literal, items))}" for key, items in cases.items())
             return f"{name} by the trigger's {fact} ({listed})"
         case OneOf(values=values):
             if named := whole_groups(values, groups.get(name, {})):
-                return f"{name} ∈ {' ∪ '.join(named)}"  # noqa: RUF001 — the union sign, as the page shows it
+                return f"{name} ∈ {' ∪ '.join(named)}"  # noqa: RUF001
             return f"{name} ∈ {{{', '.join(map(literal, values))}}}"
         case _:
             return f"{name} = {literal(value)}"
@@ -123,11 +117,6 @@ def requirement_text(spec: Spec, invariant: Invariant) -> str:
 
 
 def rule_values(spec: Spec) -> tuple[dict[tuple[str, str, Scalar], list[str]], dict[str, list[str]]]:
-    """((entity, fact, value) -> the rules whose trigger names that value, entity -> the rules naming none of its).
-
-    A requirement's conditions on another entity name values of that entity's facts; a guard's
-    condition is what the trigger must satisfy, so the guard applies to every value its trigger admits.
-    """
     named: dict[tuple[str, str, Scalar], list[str]] = defaultdict(list)
     every: dict[str, list[str]] = defaultdict(list)
 
@@ -169,7 +158,6 @@ def rule_values(spec: Spec) -> tuple[dict[tuple[str, str, Scalar], list[str]], d
 
 
 def listed_values(spec: Spec) -> str:
-    """Each value a fact lists, its group and meaning, and which rules name it."""
     named, every = rule_values(spec)
     out = []
     for name, entity in sorted(spec.entities.items()):

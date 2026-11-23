@@ -1,5 +1,3 @@
-"""Definitions for tests: every REE declares its four fixed scripts, so a test names only what it is about."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -19,7 +17,6 @@ PLACEHOLDER = Digest("sha256:" + "0" * 64)
 
 
 def ree_definition(**fields: Any) -> ReeDefinition:
-    """A definition with the fixed declarations filled in where ``fields`` does not give them."""
     fixed = {
         "experiment_environment": ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=PLACEHOLDER, build_experiment_environment_script_size=1
@@ -36,5 +33,4 @@ def ree_definition(**fields: Any) -> ReeDefinition:
 
 
 def bare_ree(**fields: Any) -> Ree:
-    """An REE that declares nothing beyond what every REE does."""
     return Ree(subject=ReeSubject(definition=ree_definition(**fields)))

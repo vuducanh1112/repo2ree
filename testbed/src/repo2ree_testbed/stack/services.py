@@ -1,5 +1,3 @@
-"""The processes of a source stack and the environment each is started with."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -7,8 +5,6 @@ from pathlib import Path
 
 from repo2ree_testbed.stack.docker import first_network, own_container
 from repo2ree_testbed.stack.environments import Environment
-
-# Each compute location is a workbench serving a store of REEs, admitted with that store's token.
 
 
 @dataclass(frozen=True)
@@ -18,11 +14,8 @@ class Deployment:
     state_root: Path
     cli_bundle: Path
     tools_bundle: Path
-    # The machine each store's workbench is installed on; without one, it runs from source here.
     environment: Environment | None = None
-    # An API and a workbench service on each location; without them, the client runs ree on the machine itself.
     control_plane: bool = True
-    # The descriptor of the run's own Sigstore, for tests that sign; None when the run started none.
     sigstore: Path | None = None
 
 
@@ -51,14 +44,12 @@ def backend_environment(control_state: Path, token: str, coverage_file: Path, te
 
 
 def workbench_host() -> tuple[str, str]:
-    """How a bench reaches this process: (host, the Docker network it must join, or "")."""
     container = own_container()
     network = first_network(container) if container else ""
     return (container, network) if container and network else ("host.docker.internal", "")
 
 
 def store_id(index: int) -> str:
-    """The store compute location ``index`` serves."""
     return f"lab-{index}"
 
 

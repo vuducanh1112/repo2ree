@@ -36,7 +36,6 @@ def test_a_selection_is_parts_of_test_ids_given_on_the_command_line() -> None:
     assert parse(command).schedule == PerTest(1, ())
     assert parse([*command, "--select", "test_a test_b"]).schedule == PerTest(1, ("test_a", "test_b"))
     assert parse([*command, "--select", "test_a", "--select", "test_c"]).schedule == PerTest(1, ("test_a", "test_c"))
-    # A recipe passes no selection as an empty one.
     assert parse([*command, "--select", ""]).schedule == PerTest(1, ())
 
 
@@ -56,10 +55,8 @@ def test_a_run_that_completed_passes_when_only_the_run_decides() -> None:
     command = ["--script", "suite.py", "--tier", "e2e-system", "--per-test"]
     assert parse(command).exit_on == "tests"
     assert parse([*command, "--exit-on", "run"]).exit_on == "run"
-    # Failing tests fail a tier run on its own, but not one whose tests the gate judges.
     assert exit_status(1, "tests", completed=True) == 1
     assert exit_status(1, "run", completed=True) == 0
-    # A run that broke before recording itself fails either way.
     assert exit_status(1, "run", completed=False) == 1
     assert exit_status(0, "tests", completed=True) == 0
 

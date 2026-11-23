@@ -1,15 +1,10 @@
-/* The product's single visual theme. This file owns shared visual semantics;
- * component recipes stay in their CSS Modules and domain mappings in tones.css. */
-
 :root {
-  /* Accent identities */
   --accent-primary: var(--palette-sky-500);
   --accent-primary-strong: var(--palette-sky-700);
   --accent-primary-deep: var(--palette-sky-900);
   --accent-secondary: var(--palette-indigo-600);
   --accent-suggestion: var(--palette-indigo-800);
 
-  /* Ink */
   --ink-default: var(--palette-neutral-950);
   --ink-muted: var(--palette-neutral-800);
   --ink-subtle: var(--palette-neutral-600);
@@ -20,7 +15,6 @@
   --ink-accent-strong: var(--accent-primary-strong);
   --ink-code-muted: var(--palette-neutral-300);
 
-  /* A small, perceptible material ladder. */
   --surface-canvas: var(--palette-neutral-025);
   --surface-glass-subtle: rgb(255 255 255 / 45%);
   --surface-raised: rgb(255 255 255 / 62%);
@@ -34,8 +28,6 @@
   --surface-accent: rgb(239 246 255 / 85%);
   --surface-accent-strong: rgb(239 246 255 / 92%);
 
-  /* Border strength is intentionally limited to three neutral and three
-   * accent stops. */
   --border-subtle: rgb(148 163 184 / 28%);
   --border-default: rgb(148 163 184 / 35%);
   --border-strong: rgb(148 163 184 / 45%);
@@ -43,7 +35,6 @@
   --border-accent: rgb(14 165 233 / 42%);
   --border-accent-strong: rgb(14 165 233 / 58%);
 
-  /* Elevation describes depth, not the component using it. */
   --shadow-sm: 0 2px 8px rgb(15 23 42 / 6%);
   --shadow-md: 0 6px 16px rgb(15 23 42 / 10%);
   --shadow-lg: 0 18px 48px rgb(13 17 23 / 16%);
@@ -53,7 +44,6 @@
   --shadow-inset-highlight: inset 0 1px 0 var(--surface-solid);
   --shadow-focus: 0 0 0 3px rgb(14 165 233 / 15%);
 
-  /* Structural chrome */
   --chrome-bg: var(--palette-neutral-075);
   --chrome-surface: var(--palette-white);
   --chrome-surface-alt: var(--palette-neutral-050);
@@ -74,7 +64,6 @@
   --scrollbar-thumb: var(--palette-neutral-200);
   --scrollbar-thumb-hover: var(--palette-neutral-400);
 
-  /* The embedded terminal is deliberately dark inside the light interface. */
   --terminal-surface: #0d1117;
   --terminal-border: #1f2733;
   --terminal-ink: var(--palette-neutral-100);
@@ -83,9 +72,6 @@
   --terminal-warning: var(--palette-amber-300);
   --terminal-danger: var(--palette-red-300);
 
-  /* Syntax roles for the script editor. Named for what the token *is* rather
-   * than reusing a tone role, so "string" never has to be justified as
-   * "success". The editor sits on a light surface, unlike the terminal above. */
   --code-comment: var(--palette-neutral-500);
   --code-keyword: var(--palette-violet-600);
   --code-string: var(--palette-green-700);

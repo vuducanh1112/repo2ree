@@ -7,14 +7,6 @@ export function normalizeSnapshotArchiveName(rawName: string): string {
   return `${stem || "source"}.tar.gz`;
 }
 
-/**
- * Coarse content-type bucket for a file name, used to pick a file-browser icon
- * and the tint its module gives that icon. Presentational only — it never
- * affects file handling. Returns "binary" for anything unrecognized.
- *
- * Not exported: the shell renders the value as a `data-category` attribute and
- * never names the type, which is the point of keying CSS off the identity.
- */
 type FileTypeCategory = "code" | "data" | "doc" | "container" | "archive" | "binary";
 
 const CODE_EXTENSIONS = new Set([
@@ -54,13 +46,6 @@ const DATA_EXTENSIONS = new Set([
 
 const DOC_EXTENSIONS = new Set(["md", "rst", "txt", "log"]);
 
-/**
- * Split a display path into a trailing base name and the directory prefix that
- * precedes it (including the separating slash, e.g. "src/app/"). Used by the
- * file viewer to render the directory dimly and the base name emphasized. Paths
- * without a slash yield an empty prefix; a trailing slash yields an empty base
- * name.
- */
 export function splitDisplayPath(path: string): { dirPrefix: string; baseName: string } {
   const slash = path.lastIndexOf("/");
   if (slash < 0) return { dirPrefix: "", baseName: path };

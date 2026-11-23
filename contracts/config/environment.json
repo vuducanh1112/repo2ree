@@ -83,7 +83,6 @@
       "type": "object"
     },
     "workbench": {
-      "description": "Validated environment accepted by a resident workbench process.",
       "properties": {
         "OTLP_ENDPOINT": {
           "anyOf": [

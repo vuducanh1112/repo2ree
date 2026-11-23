@@ -4,20 +4,12 @@ import styles from "./Toggle.module.css";
 interface ToggleProps {
   on: boolean;
   disabled?: boolean;
-  /** Stable accessible name; pressed state communicates whether it is on. */
   ariaLabel: string;
-  /** The tone the switch reads in when on, as a `var(--…)` reference. */
   tint: string;
   onChange: () => void;
   title?: string;
 }
 
-/**
- * A small on/off switch.
- *
- * The geometry props this used to take — width, height, knobSize, padding,
- * offColor, style — are gone: one caller existed and it passed none of them.
- */
 export function Toggle({ on, disabled = false, ariaLabel, tint, onChange, title }: ToggleProps) {
   return (
     <button

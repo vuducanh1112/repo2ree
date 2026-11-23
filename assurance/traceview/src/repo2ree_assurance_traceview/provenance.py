@@ -1,11 +1,3 @@
-"""Why a sealed REE can be trusted: each step's evidence at seal, the operation that produced it, and its chain.
-
-The chain runs from the receipt back to the request: the attempt that wrote it (Git), the dispatch
-that started the attempt (journal), the run that dispatched it (journal), and the client request
-that created the run (span). Every link carries the verdicts of the rules its own events triggered.
-Built from an behaviour trace alone, so it can never disagree with the other views.
-"""
-
 from __future__ import annotations
 
 from repo2ree_assurance_traceview import terms
@@ -23,14 +15,14 @@ class Link(ViewModel):
 
 class StepOrigin(ViewModel):
     step: str
-    standing: str  # At seal.
+    standing: str
     produced_by: str | None = None
     change: StepChange | None = None
     commit: str | None = None
     rules: tuple[RuleHit, ...] = ()
-    later: tuple[str, ...] = ()  # What happened to the evidence after it was produced, before the seal.
+    later: tuple[str, ...] = ()
     chain: tuple[Link, ...] = ()
-    history: tuple[str, ...] = ()  # The states it went through when it was never produced.
+    history: tuple[str, ...] = ()
 
 
 class Provenance(ViewModel):
@@ -42,8 +34,8 @@ class Provenance(ViewModel):
     seal_rules: tuple[RuleHit, ...]
     standing: dict[str, str]
     steps: tuple[StepOrigin, ...]
-    after_seal: int  # Attempts after sealing; sealed is terminal, so any would be a violation.
-    unreadable_spans: int = 0  # Span records passed over, so a request link may be missing.
+    after_seal: int
+    unreadable_spans: int = 0
 
 
 def _hits(entry: Entry, subject: str, key: str | None = None) -> tuple[RuleHit, ...]:
@@ -51,7 +43,6 @@ def _hits(entry: Entry, subject: str, key: str | None = None) -> tuple[RuleHit, 
 
 
 def chain(entry: Entry) -> tuple[Link, ...]:
-    """The links that led to one entry's capture, from the attempt back to the client's request."""
     if entry.kind == "authoring":
         operations = ", ".join(f"{count}x {name}" for name, count in entry.operations.items())
         return (Link(label=f"authoring: {operations}", source="git"),)
@@ -104,7 +95,6 @@ def _request(entry: Entry) -> str | None:
 
 
 def build_provenance(trace: BehaviourTrace) -> Provenance | None:
-    """None when the dossier never sealed its REE."""
     standing = dict(trace.baseline)
     produced: dict[str, tuple[Entry, StepChange]] = {}
     later: dict[str, list[str]] = {}

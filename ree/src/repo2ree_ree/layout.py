@@ -1,13 +1,3 @@
-"""The file tree of an REE root: what each entry holds, who writes it, and how a bundle carries it.
-
-One tree serves every place an REE root exists: ``<storage_root>/<ree_id>/`` on the host, ``/ree/``
-in a workbench, a review attempt's ``reviews/<review>/``, and what a bundle unpacks to. The names are
-spelled here once; the core's layout joins them into paths, and ``contracts/ree/layout.json`` is this
-tree exported (``just generate-ree-schema``).
-
-An entry whose name is a ``{key}`` stands for one entry per key, e.g. ``results/{experiment}/``.
-"""
-
 from __future__ import annotations
 
 import json
@@ -20,12 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from repo2ree_ree.reserved_paths import RESERVED_SCRIPT_DIR
 
 Kind = Literal["file", "directory"]
-# Who writes it. ``acquired``: the source acquisition. ``authored``: the author, through the file APIs.
-# ``produced``: a run, as evidence. ``derived``: rebuilt from other entries at any time.
-# ``repo2ree``: repo2ree itself, the same for every REE. ``working``: the state of runs in progress.
-# ``signed``: a signer, about the sealed REE.
 Origin = Literal["document", "acquired", "authored", "produced", "derived", "repo2ree", "working", "signed"]
-# How a capture carries it: committed, committed as an LFS payload, or not at all.
 Capture = Literal["git", "lfs", "never"]
 Key = Literal[
     "experiment", "experiment_slug", "experiment_environment", "operation", "step", "run", "review", "upload", "claim"
@@ -70,25 +55,20 @@ class TreeEntry(BaseModel):
     capture: Capture
     description: str
     key: Key | None = None
-    # The REE document field whose value names this entry; such an entry is found through that field, not by name.
     named_by: str | None = None
-    # A review attempt's root is an REE root in its own right: it holds the root's entries too.
     ree_root: bool = False
     children: tuple[TreeEntry, ...] = ()
 
     def at(self, *names: str) -> TreeEntry:
-        """The entry these names lead to, spelled as the tree spells them (``{key}`` for a keyed one)."""
         entry = self
         for name in names:
             entry = next((child for child in entry.children if child.name == name), None) or _missing(entry, name)
         return entry
 
     def names(self, name: str) -> bool:
-        """Whether this entry is the one called ``name``: by its own name, or as one of its keyed kind."""
         return name == self.name or (self.key is not None and _matches(self.name, name))
 
     def find(self, path: str | PurePosixPath) -> TreeEntry:
-        """The entry a path relative to this one falls in: its deepest ancestor the tree names."""
         entry = self
         for part in PurePosixPath(path).parts:
             children = (*entry.children, *(REE_TREE.children if entry.ree_root else ()))
@@ -327,9 +307,6 @@ REE_TREE = _directory(
 )
 
 
-# What a digest field is the digest of. ``file``: one file. ``tree``: every file under a directory.
-# ``paths``: the files a field names, under an entry. ``subject``: the REE document's canonical subject.
-# ``outside``: something the REE does not hold, such as a pulled image.
 Covers = Literal["file", "tree", "paths", "subject", "outside"]
 
 
@@ -337,14 +314,11 @@ class DigestOf(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     covers: Covers
-    # The entries of the tree it is the digest of, spelled as the tree spells them.
     entries: tuple[str, ...] = ()
-    # The REE document field whose value names the file or files.
     named_by: str | None = None
 
 
 def digest_of(covers: Covers, *entries: str, named_by: str | None = None) -> Any:
-    """A digest field's ``Field``: what in the tree it covers, written into the schema as ``x-digest-of``."""
     for entry in entries:
         if entry != ".":
             REE_TREE.at(*PurePosixPath(entry).parts)
@@ -353,6 +327,5 @@ def digest_of(covers: Covers, *entries: str, named_by: str | None = None) -> Any
 
 
 def layout_document() -> str:
-    """``contracts/ree/layout.json``: the tree, for readers that do not import this package."""
     document = {"format": LAYOUT_FORMAT, "root": REE_TREE.model_dump(mode="json", exclude_defaults=True)}
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"

@@ -6,7 +6,6 @@ export interface StepRunFormState {
   stepParams: ReeStepParams;
 }
 
-/** Backend-run projection plus the few local form values a step page owns. */
 export type StepRunState = StepRunFormState & StepRunProjection;
 
 export function createInitialStepRunState(): StepRunFormState {

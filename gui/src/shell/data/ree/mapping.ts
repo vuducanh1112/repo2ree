@@ -7,13 +7,9 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
   const receipts = subject?.receipts;
   const source = definition?.source;
   const sourceReceipt = receipts?.acquire_source;
-  // The axes are evaluate's own finding, so they are read from the receipt that
-  // recorded them rather than from the audit, which reports evidence and nothing else.
   const evaluation = receipts?.evaluate_reproducibility;
 
   return mapRawReeIntentToSlices({
-    // The audit is the REE's own word on whether each receipt still holds; the
-    // shell reads step doneness from it rather than from what this tab ran.
     audit: ree.audit,
     steps: ree.steps,
     reeIntent: {
@@ -34,10 +30,6 @@ export function mapReeDetailToReeSlices(ree: ReeDocument) {
       hbom: definition?.hbom,
     },
     reeSession: {
-      // Payload speaks for a sealed bundle's inventory and nothing else — a
-      // draft's reads not_applicable by construction. Whether the workspace
-      // holds a source is what the acquisition receipt's standing says, so ask
-      // evidence: `current` means the REE still declares the source it acquired.
       source_available: ree.audit.acquire_source.evidence === "current",
       source_included: ree.status === "sealed" && ree.audit.acquire_source.payload === "present",
       experiment_environment_included:

@@ -1,5 +1,3 @@
-"""The author's check of the working environment: run there before the scripts, recorded, and carried by the seal."""
-
 from __future__ import annotations
 
 from pathlib import Path

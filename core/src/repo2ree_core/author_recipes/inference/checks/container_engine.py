@@ -1,12 +1,3 @@
-"""Container-engine checks: whether a script driving an engine would run where the REE's scripts run.
-
-A container file can be built by Docker or by Podman, and an image archive loaded by either, so each engine
-is its own strategy, and these decide whether its script is runnable. They read the machine through the
-context's probe: a probed, usable engine is runnable; a probed engine that is absent or unreachable is not;
-and when nothing could be probed, nothing is known, which proposes the engine's script for confirmation
-rather than ruling it out.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -23,8 +14,6 @@ from repo2ree_protocol.inference import (
 
 
 class ContainerEngineCheck:
-    """Is ``engine`` usable where this REE's scripts run?"""
-
     branches = frozenset({"usable", "unavailable", "unknown"})
     requires: frozenset[BindingKind] = frozenset()
     produces: ClassVar[dict[str, frozenset[BindingKind]]] = {
@@ -54,8 +43,6 @@ class ContainerEngineCheck:
 
 
 class ContractEngineCheck:
-    """Which engine built the image archive, when a generated build says so."""
-
     code = "experiment_environment_engine"
     label = "Which engine's store holds the experiment environment image?"
     branches = frozenset({"docker", "podman", "unknown"})

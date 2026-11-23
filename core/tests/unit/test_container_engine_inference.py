@@ -1,5 +1,3 @@
-"""A container file and an image archive, each proposed for the container engines the REE's scripts can use."""
-
 from __future__ import annotations
 
 import subprocess
@@ -136,7 +134,6 @@ def test_the_podman_activation_loads_the_archive_unless_its_tag_names_the_image_
     assert '  podman load --input "$EXPERIMENT_ENVIRONMENT_ARTIFACT"\n' in body
     assert 'exec podman run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"' in body
     assert subprocess.run(["sh", "-n"], input=body, text=True, check=False).returncode == 0
-    # The image the archive holds is read from it as the script reads it: its config's name, which is its id.
     (tmp_path / "archive.tar").write_bytes(archive)
     wanted = body[body.index("WANTED=") : body.index("\nLOADED=")]
     probe = f'EXPERIMENT_ENVIRONMENT_ARTIFACT={tmp_path / "archive.tar"}\n{wanted}\nprintf %s "$WANTED"\n'

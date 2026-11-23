@@ -1,5 +1,3 @@
-"""Tests for the generated ``materialize_workspace.sh`` (the merge muscle)."""
-
 import subprocess
 from pathlib import Path
 
@@ -47,7 +45,7 @@ def test_merges_upstream_then_overlay_with_overlay_winning(tmp_path):
     ws = tmp_path / WORKSPACE_DIRNAME
     assert (ws / "keep.txt").read_text() == "from upstream\n"
     assert (ws / "sub" / "nested.txt").read_text() == "nested\n"
-    assert (ws / "shared.txt").read_text() == "overlay wins\n"  # overlay wins on conflict
+    assert (ws / "shared.txt").read_text() == "overlay wins\n"
     assert (ws / "build.sh").is_file()
 
 
@@ -61,12 +59,11 @@ def test_clears_stray_workspace_state_before_merge(tmp_path):
 
     result = _run(tmp_path)
     assert result.returncode == 0, result.stderr
-    assert not stray.exists()  # clean slate
+    assert not stray.exists()
     assert (ws / "keep.txt").read_text() == "kept\n"
 
 
 def test_overlay_only_when_upstream_empty(tmp_path):
-    # No upstream dir at all (overlay-only source): not an error.
     overlay = tmp_path / OVERLAY_DIRNAME
     overlay.mkdir()
     (overlay / "run.sh").write_text("#!/bin/sh\n")

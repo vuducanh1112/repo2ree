@@ -1,5 +1,3 @@
-"""What each gate needs for HEAD, tier by tier and platform by platform, and what proves it."""
-
 from __future__ import annotations
 
 from repo2ree_repoview.overview.html import Page, esc, section, table

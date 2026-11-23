@@ -50,7 +50,6 @@ def test_service_routes_every_execution_operation_for_the_ree_it_names(tmp_path:
     service.copy_in("source", "/ree/dest", ree_id="ree-1")
     service.delete_ree("ree-1")
 
-    # The service spells each read as the ree argv that answers it: the outputs of its result, or its bytes.
     assert backend.calls == [
         "initialize-ree",
         "query --json lint-draft -- launch < b'set -eu\\n'",

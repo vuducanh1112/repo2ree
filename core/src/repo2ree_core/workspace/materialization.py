@@ -1,5 +1,3 @@
-"""Record which durable inputs produced the current mutable workspace."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,7 +10,6 @@ from repo2ree_protocol.frames import LogSink
 
 
 def stat_table(workspace: Path) -> dict[str, list[int]]:
-    """Return ``{relpath: [size, mtime_ns]}`` for regular workspace files."""
     if not workspace.is_dir():
         return {}
     table: dict[str, list[int]] = {}
@@ -29,7 +26,6 @@ def record_materialization(
     snapshot_digest: str | None,
     log: LogSink,
 ) -> None:
-    """Record the source, overlay, and workspace facts of a materialization."""
     try:
         marker = {
             "materialized_at": utc_now(),
@@ -38,5 +34,5 @@ def record_materialization(
             "files": stat_table(layout.workspace),
         }
         write_json_atomic(layout.materialize_marker, marker)
-    except Exception as exc:  # noqa: BLE001 — marker failure degrades drift to unknown; it cannot fail the run
+    except Exception as exc:  # noqa: BLE001
         log("system", "warn", f"failed to record workspace materialization: {exc}")

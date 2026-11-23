@@ -1,5 +1,3 @@
-"""Shared recording lifecycle for every pytest suite."""
-
 from __future__ import annotations
 
 import json
@@ -64,7 +62,7 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
                 {
                     "suite": suite,
                     "execution_id": execution_id(),
-                    "exitstatus": exitstatus,  # Status of the whole pytest session, including mixed suites.
+                    "exitstatus": exitstatus,
                     "tests": tests,
                     "artifact_domain": domain,
                 }

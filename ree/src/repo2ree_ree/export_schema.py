@@ -1,5 +1,3 @@
-"""The REE document as JSON Schema, as ``contracts/ree/ree.schema.json`` publishes it (``scripts/contracts.py``)."""
-
 from __future__ import annotations
 
 import json

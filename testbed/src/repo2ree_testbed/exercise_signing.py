@@ -1,10 +1,3 @@
-"""Signatures an exercise asks for, made as a Sigstore signer makes them and handed to ``ree`` as a bundle signed
-elsewhere: a DSSE envelope over an in-toto statement, signed by a key a self-signed certificate holds.
-
-Whether a certificate chains to a trust root is a verifier's to say, never the step's; so a bundle made here is one
-a signer would have made, or wrong in exactly the way the exercise names.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -25,7 +18,6 @@ SEAL_PREDICATE: Final = "https://repo2ree.org/claims/author-approval/v1"
 REVIEW_PREDICATE: Final = "https://repo2ree.org/claims/review/v1"
 UNKNOWN_PREDICATE: Final = "https://repo2ree.org/claims/unknown/v1"
 IN_TOTO: Final = "application/vnd.in-toto+json"
-# What a step signs when there is no seal to sign: the step is refused for that, never for the bundle.
 NO_SEAL: Final = "sha256:" + "0" * 64
 OTHER_SEAL: Final = "sha256:" + hashlib.sha256(b"another seal").hexdigest()
 
@@ -83,7 +75,6 @@ def _bundle(
 
 
 def seal_bundle(seal: str | None, signature: SealSignature) -> bytes:
-    """A bundle over the seal ``seal`` under the author's approval, or wrong in the one way ``signature`` names."""
     digest = seal or NO_SEAL
     statement = _statement(digest, SEAL_PREDICATE, {})
     match signature:
@@ -100,8 +91,6 @@ def seal_bundle(seal: str | None, signature: SealSignature) -> bytes:
 
 
 def review_bundle(seal: str | None, record: JsonValue, signature: ReviewSignature) -> bytes:
-    """A bundle over the reviewed seal with the review's record as its predicate, or wrong in the one way
-    ``signature`` names."""
     digest = seal or NO_SEAL
     statement = _statement(digest, REVIEW_PREDICATE, record)
     match signature:

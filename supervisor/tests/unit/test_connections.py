@@ -1,9 +1,3 @@
-"""The workbench connection registry's fleet view (``list_workbenches``).
-
-No real socket: connections are constructed with a no-op ``send_text`` and a
-reported ``WorkbenchHello``, then the registry is asked to describe them.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -44,7 +38,6 @@ def test_list_workbenches_reports_hello_fields_sorted() -> None:
 
     infos = registry.list_workbenches()
 
-    # Sorted by (hostname, workbench_id): worker-a before worker-b.
     assert [i.workbench_id for i in infos] == ["a-workbench", "z-workbench"]
     first = infos[0]
     assert (first.hostname, first.version, first.store_id) == ("worker-a", "0.2.0", "lab-a")
@@ -94,8 +87,6 @@ def test_displacement_by_different_instance_logs_warning(caplog: pytest.LogCaptu
 
 
 def test_displacement_without_nonces_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
-    # No hello (or an empty nonce) can't prove it's the same instance, so the
-    # registry stays loud rather than assuming a routine reconnect.
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", _connection(None))
     with caplog.at_level("INFO", logger="repo2ree_supervisor.workbench_link"):
@@ -111,17 +102,14 @@ def test_reconnect_displaces_old_connection_without_stale_eviction() -> None:
     new = _connection(WorkbenchHello(workbench_id="a1", store_id="lab-1"))
 
     registry.register("a1", old)
-    registry.register("a1", new)  # same id reconnects; displaces `old`
+    registry.register("a1", new)
 
-    # `new` owns the id; `old` was closed so its callers unblock and it can't route.
     assert registry.pick("a1") is new
     with pytest.raises(WorkbenchUnavailableError, match="workbench connection closed"):
         next(old.request(InitReeRequest(ree_id="ree-1", init=InitRee(name="demo"))))
 
-    # The stale `old` socket tearing down must NOT evict its live successor.
     registry.unregister("a1", old)
     assert registry.pick("a1") is new
 
-    # The current owner tearing down does remove it.
     registry.unregister("a1", new)
     assert registry.list_workbenches() == []

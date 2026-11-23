@@ -15,7 +15,6 @@ class ReceiptEnvelopeFields(TypedDict):
 
 
 def receipt_envelope(run_id: str, timing: OperationTiming) -> ReceiptEnvelopeFields:
-    """Construct the successful receipt envelope for a completed operation."""
     return ReceiptEnvelopeFields(
         run_id=RunId(run_id),
         started_at=timing.started_at,

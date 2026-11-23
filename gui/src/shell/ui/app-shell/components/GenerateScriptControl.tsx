@@ -13,29 +13,15 @@ interface Status {
 }
 
 interface Props {
-  // Any generate mutation: build, activation, or experiment. They all resolve to
-  // the same outcome, so this one control renders every target.
   generate: UseMutationResult<ScriptInferenceOutcome, Error, void>;
-  // Load a generated body into the editor (wire to the editor's externalEdit).
   onLoad: (body: string) => void;
-  // What the button generates, e.g. "build script" / "activation script".
   noun: string;
-  // An extra sentence appended to the not-inferred message, e.g. the concrete
-  // evidence a build target was looking for. Omitted for run scaffolds.
   notInferredHint?: string;
-  // Build only: the runtime path the generated script writes to. Fires once per
-  // generation, so a page can act on it without an effect that re-runs on every
-  // render. Whether to *use* it is the page's call — it knows its own
-  // declaration; this control does not.
   onExperimentEnvironmentPath?: (path: string) => void;
   disabled?: boolean;
   label?: string;
 }
 
-// A "Generate from repository" affordance: it infers a script from the
-// repository / built runtime and loads it into the editor (nothing is saved),
-// then explains the outcome and, collapsibly, the decision graph. One control
-// for every target so build, activation, and experiments behave identically.
 export function GenerateScriptControl({
   generate,
   onLoad,
@@ -82,8 +68,6 @@ export function GenerateScriptControl({
         }
         for (const message of generation.script.blockingMessages) parts.push(message);
         parts.push("Review it, then save to keep it.");
-        // A strategy that warrants confirmation reads as advisory (info); an
-        // automatically-allowed one as a clean success (ok).
         const tone: Tone =
           generation.script.application === "confirmation_required" ? "info" : "ok";
         setStatus({ tone, message: parts.join(" ") });

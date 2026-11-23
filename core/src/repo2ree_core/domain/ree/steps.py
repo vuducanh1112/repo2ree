@@ -1,11 +1,3 @@
-"""Where an REE stands on the steps of authoring it, and what to do next.
-
-A step is ``complete`` when the REE's own records say so: a receipt the audit
-finds ``current``, or a declaration the definition holds. Nothing an author ran
-but the REE did not record counts, so every reader — ``ree status``, the API, the
-GUI — gets the same answer from the same REE.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -108,7 +100,6 @@ def _metadata_given(ree: Ree, _audit: ReeAudit) -> bool:
 
 
 def _hardware_described(ree: Ree, audit: ReeAudit) -> bool:
-    """Observed on a machine, or required by the definition: either describes the hardware."""
     if audit.observe_hardware.evidence == "current":
         return True
     hardware = ree.subject.definition.hbom
@@ -118,7 +109,6 @@ def _hardware_described(ree: Ree, audit: ReeAudit) -> bool:
 
 
 def _experiments_ran(ree: Ree, audit: ReeAudit) -> bool:
-    """Some experiment is declared, and each one's run is current."""
     return bool(ree.subject.definition.experiments) and all(
         experiment.run.evidence == "current" for experiment in audit.experiments
     )
@@ -140,8 +130,6 @@ _COMPLETE: dict[ReeStepKey, Callable[[Ree, ReeAudit], bool]] = {
 
 
 def ree_steps(ree: Ree, audit: ReeAudit) -> ReeSteps:
-    """Each step's status for ``ree``, whose audit is ``audit``, and the lowest-order ready step as the next: none
-    once sealed, since a sealed REE takes no step."""
     complete = {step.key for step in REE_STEPS if _COMPLETE[step.key](ree, audit)}
 
     def status(step: ReeStep) -> ReeStepStatus:

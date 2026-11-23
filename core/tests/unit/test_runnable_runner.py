@@ -1,13 +1,3 @@
-"""Tests for the runnable runner (experiment/run.py).
-
-Each runnable owns a run script; the runner runs it from the workspace root
-through the activate experiment environment script and captures stdout/stderr. When the runnable
-declares a verify script, the runner executes it afterwards — a plain script run
-from the workspace root with nothing injected into its environment, exactly like
-the run script — and its exit code is the verdict. A verify script that wants to
-check the run's stdout reads it from a workspace file the run script wrote.
-"""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -16,10 +6,6 @@ from typing import Any
 
 from repo2ree_core.execution.experiment.run import run_runnable
 from repo2ree_core.execution.experiment.spec import RunnableSpec
-
-# ================================================
-# Helpers
-# ================================================
 
 
 def _log() -> tuple[list[tuple[str, str, str]], Any]:
@@ -67,11 +53,6 @@ def _run(workspace: Path, runnable: RunnableSpec, *, run_id: str = "r1"):
     return outcome, msgs
 
 
-# ================================================
-# Basic execution
-# ================================================
-
-
 def test_script_runs_and_succeeds(tmp_path):
     out_file = tmp_path / "out.txt"
     exp = _experiment(body=f"echo experiment_ran > {out_file}", workspace=tmp_path)
@@ -105,11 +86,6 @@ def test_nonzero_exit_fails(tmp_path):
     assert outcome.run_outputs.verdict == "fail"
 
 
-# ================================================
-# Verify script
-# ================================================
-
-
 def test_verify_script_runs_from_workspace_root(tmp_path, monkeypatch):
     monkeypatch.chdir("/")
     exp = _experiment(
@@ -125,8 +101,6 @@ def test_verify_script_runs_from_workspace_root(tmp_path, monkeypatch):
 
 
 def test_verify_script_reads_materialized_stdout(tmp_path):
-    # The run script materializes its stdout to a workspace file; the verify
-    # script reads it back — there is no injected variable for the streams.
     exp = _experiment(
         body="echo the-claimed-result | tee run.log",
         workspace=tmp_path,
@@ -162,8 +136,6 @@ def test_verify_script_reads_file_outputs_from_workspace(tmp_path):
 
 
 def test_no_injected_environment_for_verify_script(tmp_path):
-    # The old contract exported R2R_* variables; nothing is injected now, so a
-    # verify script that relies on them sees empty values and fails.
     exp = _experiment(
         body="echo hello",
         workspace=tmp_path,
@@ -192,8 +164,6 @@ def test_verify_runs_even_when_run_fails(tmp_path):
     outcome, _ = _run(tmp_path, exp)
     assert outcome.status == "failed"
     assert outcome.run_outputs.verdict == "fail"
-    # The verify script still runs (it may want to report on a failed run), but
-    # a failed run can never verify to pass.
     assert outcome.run_outputs.verify_exit_code == 0
     assert marker.exists()
 

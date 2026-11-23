@@ -1,13 +1,3 @@
-"""The source step: bring an upstream snapshot into the REE, or take it back out.
-
-Two ways in — by reference (``acquire-source``) or by upload (the
-init/PUT/complete sequence) — and both settle into the same
-``AcquireSourceCommand`` in the workbench. The staging mechanics themselves live
-in :mod:`repo2ree_api.workbench.uploads` (receiving bytes) and
-:mod:`repo2ree_api.control.upload_runs` (handing them to the REE); this module
-is the HTTP binding.
-"""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
@@ -78,7 +68,6 @@ def acquire_source_route(ree_id: str, payload: AcquireSourcePayload) -> RunSumma
     responses=ERROR_RESPONSES,
 )
 def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
-    """Start a source upload: a zip or tarball whose bytes go to the returned ``upload_url``."""
     return UploadInitResponse.model_validate(
         mint_upload_token(ree_id, payload, upload_route="source:upload", purpose="source", action="upload_source")
     )
@@ -92,7 +81,6 @@ def upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResp
     responses=ERROR_RESPONSES,
 )
 async def store_upload_bytes_route(ree_id: str, upload_token: str, request: Request) -> UploadStoredResponse:
-    """Store the archive's raw bytes; ``completeSourceUpload`` then extracts them."""
     return UploadStoredResponse.model_validate(
         await stage_upload_bytes(ree_id, upload_token, request, purpose="source")
     )
@@ -145,7 +133,6 @@ def upload_complete_route(ree_id: str, payload: SourceUploadCompletePayload) -> 
     responses=ERROR_RESPONSES,
 )
 def remove_source_route(ree_id: str) -> ReeDocument:
-    """Remove the source, keeping the REE's scripts and definition, so another can be brought in."""
     with author_api_action("remove_source", ree_id):
         handle = require_handle(ree_id)
         with ree_command_span("remove-source", ree_id):

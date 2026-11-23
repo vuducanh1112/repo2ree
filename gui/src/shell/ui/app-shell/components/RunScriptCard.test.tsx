@@ -7,11 +7,6 @@ import { renderWithShell } from "../../../../../tests/support/renderApp";
 import { RunScriptCard } from "./RunScriptCard";
 import { ScriptAnalysis } from "./ScriptAnalysis";
 
-// The seam this file exists for: the analysis panel discovers the findings, but
-// the editor is the thing that can point at the line. The card wires the two
-// together, so only a test that renders both can show that a finding actually
-// lands on the line it names.
-
 const SCRIPT = "#!/usr/bin/env bash\ndocker build .\nexit 0\n";
 
 const FINDING = {
@@ -66,7 +61,6 @@ describe("RunScriptCard", () => {
 
     await screen.findByText("1 warning");
     await waitFor(() => expect(document.querySelectorAll(".cm-lintRange-warning")).toHaveLength(1));
-    // The second line is the one the finding named.
     const marked = document.querySelector(".cm-lintRange-warning");
     expect(marked?.closest(".cm-line")?.textContent).toBe("docker build .");
   });

@@ -1,16 +1,3 @@
-"""Deployment policy for script inference.
-
-Supported experiment environment strategies are a *deployment* fact, not repository detection.
-Phase 1's build strategies both work from the repository's own declared
-technology — a repository Dockerfile drives ``docker build``; a requirements.txt
-drives a ``pip``/venv build — so neither consults a policy-supplied base image,
-and the default policy is intentionally minimal.
-
-The base-image maps remain on the model as latent deployment config for future
-strategies that genuinely synthesize an experiment environment substrate; nothing in Phase 1
-reads them.
-"""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,5 +14,4 @@ class InferencePolicy(BaseModel):
 
 
 def default_policy() -> InferencePolicy:
-    """The built-in policy. Phase 1 strategies need no configured base images."""
     return InferencePolicy()

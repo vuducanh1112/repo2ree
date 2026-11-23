@@ -1,16 +1,3 @@
-"""Draw the behaviour specification's machines for the overview (``just generate-spec-diagrams``).
-
-From the specification as exported (reports/exports/spec.json) and this tree's assessment of the
-assurance-gate receipt's runs and the showcases' (reports/behaviour/), it writes under
-reports/diagrams/spec/: the system map (system.svg), each machine as the specification allows it
-(machines/), each machine with how often the receipt's tests took each edge (coverage/) and the
-showcases' tests (showcase-coverage/), each part of an aggregate with the operations that moved
-it (aggregates/), and each aggregate's receipts with what they are made from and rest on (evidence/).
-It prints each file it wrote, for the recipe to stamp.
-
-    python -m repo2ree_repoview spec-diagrams --spec reports/exports/spec.json -o reports/diagrams/spec
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -46,8 +33,6 @@ def showcase_coverage_drawing(entity: str) -> str:
 
 
 def part_drawing(aggregate: str, part: str) -> str:
-    """A part's drawing; its name, ``definition.experiments[*]`` or ``definition.catalog.*`` say, made safe for a
-    file."""
     return f"spec/aggregates/{aggregate}/{re.sub(r'[^A-Za-z0-9._-]+', '-', part).strip('-.')}.svg"
 
 
@@ -56,7 +41,6 @@ def evidence_drawing(aggregate: str) -> str:
 
 
 def drawings(spec: Spec, evidence: Evidence, excused: dict[str, str], showcases: Evidence) -> dict[str, str]:
-    """Every drawing, by its path under reports/diagrams/."""
     edges = Exercised.over(evidence).edges
     showcase_edges = Exercised.over(showcases).edges
     drawn = {SYSTEM: system_svg(spec)}
@@ -76,7 +60,7 @@ def drawings(spec: Spec, evidence: Evidence, excused: dict[str, str], showcases:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--spec", type=Path, default=EXPORTS / "spec.json", help="the specification as exported")
     parser.add_argument(
         "--showcases", type=Path, default=EXPORTS / "showcases.json", help="the showcase runs, as exported"
@@ -84,7 +68,6 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path, default=DIAGRAMS / "spec", help="where the drawings go")
     args = parser.parse_args()
     spec = Spec.model_validate_json(args.spec.read_text(encoding="utf-8"))
-    # This tree's assessment of the receipt's runs, as assess-behaviour reported it.
     evidence = Evidence(runs=tuple(REPORTS / run.name for run, _ in gate_runs(read_receipt())))
     showcases = ShowcaseRuns.model_validate_json(args.showcases.read_text(encoding="utf-8"))
     showcase_evidence = Evidence(runs=tuple(REPORTS / Path(run).name for run in showcases.runs()))

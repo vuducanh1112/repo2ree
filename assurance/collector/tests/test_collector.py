@@ -1,5 +1,3 @@
-"""A dossier collected through the control plane lists every source with its origin, cut, and problems."""
-
 from __future__ import annotations
 
 import hashlib
@@ -77,8 +75,6 @@ STORE_JOURNAL = record(
 
 
 class Stub:
-    """The control plane's behaviour endpoints, serving canned answers."""
-
     def __init__(self) -> None:
         self.routes: dict[str, tuple[int, bytes]] = {
             "/api/v1/system/build-info": (200, b'{"version": "0.1.0", "revision": "abc123"}'),
@@ -103,7 +99,6 @@ class Stub:
                 b'{"journals": [{"id": "workbench-000001", "process": "workbench", "epoch": 1, "last_seq": 2}]}',
             ),
             "/api/v1/behaviour/stores/lab-1/journals/workbench-000001": (200, STORE_JOURNAL),
-            # What the control plane served, and the journal positions around building each.
             "/api/v1/behaviour/archives": (
                 200,
                 json.dumps(
@@ -153,7 +148,7 @@ def test_a_deployment_is_collected_through_its_control_plane(stub: tuple[Stub, s
 
     assert downloaded.status == "recorded"
     assert downloaded.origin == f"{url}/api/v1/rees/ree-1/ree-archive"
-    assert downloaded.cut == {"api-000001": (1, 2)}  # As the control plane recorded serving it.
+    assert downloaded.cut == {"api-000001": (1, 2)}
     assert (state.status, state.cut) == ("recorded", {"api-000001": (2, 2)})
     assert journals.status == "recorded"
     assert (directory / "journal/api-000001.ndjson").read_bytes() == JOURNAL
@@ -167,7 +162,6 @@ def test_a_deployment_is_collected_through_its_control_plane(stub: tuple[Stub, s
     sources = {source.id: source for source in evidence.sources}
     assert sources["api-000001"].origin == f"{url}/api/v1/behaviour/journals"
     assert sources["stores"].cut == {"api-000001": (2, 2)}
-    # The journal's record is read back; how the checker reads the stored run is its own business.
     assert [event.key for event in evidence.events if event.source == "api-000001"] == ["build-1"]
     assert sources["lab-1/workbench-000001"].origin == f"{url}/api/v1/behaviour/stores/lab-1/journals"
     assert [event.key for event in evidence.events if event.source == "lab-1/workbench-000001"] == ["a1"]
@@ -178,7 +172,7 @@ def test_an_unreachable_control_plane_is_listed_not_skipped(tmp_path: Path) -> N
     assert main([str(directory), "--control-plane", "http://127.0.0.1:9", "--ree", "ree-1"]) == 1
     statuses = {(source.kind, source.status) for source in read_dossier(directory).sources}
     assert statuses == {("git", "error"), ("state", "error"), ("journal", "error")}
-    assert len(load_dossier(directory).problems) == 4  # One per source, naming its origin.
+    assert len(load_dossier(directory).problems) == 4
 
 
 def test_an_archive_the_control_plane_did_not_serve_is_an_error(stub: tuple[Stub, str], tmp_path: Path) -> None:
@@ -189,7 +183,7 @@ def test_an_archive_the_control_plane_did_not_serve_is_an_error(stub: tuple[Stub
     source = download_archive(directory, ControlPlane(url), "ree-3")
     assert (source.status, source.problem) == ("error", "the control plane has no record of serving this archive")
     assert "404" in (download_archive(directory, ControlPlane(url), "ree-9").problem or "")
-    assert sorted(path.name for path in directory.iterdir()) == ["manifest.json"]  # No download left behind.
+    assert sorted(path.name for path in directory.iterdir()) == ["manifest.json"]
 
 
 def test_archives_a_client_kept_are_placed_by_the_control_planes_record(stub: tuple[Stub, str], tmp_path: Path) -> None:
@@ -198,9 +192,9 @@ def test_archives_a_client_kept_are_placed_by_the_control_planes_record(stub: tu
     kept.mkdir(parents=True)
     (kept / "ree-hello-world.zip").write_bytes(ARCHIVE)
     (kept / "attachments").mkdir()
-    (kept / "attachments" / "sealed-ree-bundle-1234.zip").write_bytes(ARCHIVE)  # The same archive, attached again.
-    (kept / "trace.zip").write_bytes(bundle(("trace.json", "{}")))  # A browser trace: not served, passed over.
-    (kept / "older-run.zip").write_bytes(bundle(("ree/.git/HEAD", "older\n")))  # Another run's: passed over.
+    (kept / "attachments" / "sealed-ree-bundle-1234.zip").write_bytes(ARCHIVE)
+    (kept / "trace.zip").write_bytes(bundle(("trace.json", "{}")))
+    (kept / "older-run.zip").write_bytes(bundle(("ree/.git/HEAD", "older\n")))
     directory = tmp_path / "dossier"
     start(directory)
     (source,) = kept_archives(directory, ControlPlane(url), [tmp_path / "playwright", tmp_path / "missing"])
@@ -234,7 +228,7 @@ def test_a_link_in_an_archive_is_kept_but_never_written_through(tmp_path: Path) 
     refused = unpack_archive(directory, escaping, cut=None, origin="x", name="escaping")
     assert refused.problem == "archive member ree/out/x lies under a link the archive made"
     assert list(outside.iterdir()) == []
-    assert not (directory / "rees/escaping").exists()  # Nothing of a refused archive stays behind.
+    assert not (directory / "rees/escaping").exists()
 
 
 def test_lfs_payloads_stay_out_of_the_dossier_and_their_pointers_stand_in(tmp_path: Path) -> None:
@@ -308,7 +302,7 @@ def test_span_files_sharing_a_name_are_both_kept_and_a_missing_one_is_listed(tmp
     assert [(source.path, source.status) for source in listed] == [
         ("telemetry/api.ndjson", "recorded"),
         ("telemetry/api-1.ndjson", "recorded"),
-        ("telemetry/api.ndjson", "recorded"),  # The same file again keeps its name.
+        ("telemetry/api.ndjson", "recorded"),
         ("telemetry/missing.ndjson", "unavailable"),
     ]
     assert (directory / "telemetry/api-1.ndjson").read_text() == "[]\n"
@@ -319,12 +313,11 @@ CLOSED = JOURNAL + record(3, kind="journal.closed", final=True)
 
 
 def stopped_stack(tmp_path: Path) -> tuple[Path, Path]:
-    """The control state an API leaves behind once it stopped: journals and run store."""
     journals, runs = tmp_path / "control/journal", tmp_path / "control/runs/build-1"
     journals.mkdir(parents=True)
     runs.mkdir(parents=True)
     (journals / "api-000001.ndjson").write_bytes(CLOSED)
-    (journals / "ree-archives.ndjson").write_text("{}\n")  # The control plane's record of serving archives.
+    (journals / "ree-archives.ndjson").write_text("{}\n")
     (runs / "state.json").write_text(json.dumps({"run_id": "build-1", "status": "queued"}))
     (runs / "logs.jsonl").write_text("{}\n")
     return journals, runs.parent
@@ -340,7 +333,7 @@ def test_owners_exported_after_they_stopped_replace_the_live_snapshot(stub: tupl
     journal, state = stopped_owners(directory, journals=journals, runs=runs)
 
     assert (journal.status, journal.cut) == ("recorded", None)
-    assert (state.status, state.cut) == ("recorded", None)  # Taken after its owners stopped: must match exactly.
+    assert (state.status, state.cut) == ("recorded", None)
     assert sorted(path.name for path in (directory / "journal").iterdir()) == ["api-000001.ndjson"]
     assert (directory / "journal/api-000001.ndjson").read_bytes() == CLOSED
     assert sorted(path.name for path in (directory / "stores/runs/build-1").iterdir()) == ["state.json"]

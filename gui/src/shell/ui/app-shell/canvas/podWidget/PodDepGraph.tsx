@@ -1,7 +1,6 @@
 import { POD_GRAPHS } from "./podWidgetData";
 
 interface PodDepGraphProps {
-  // Dependency-axis level (0..3); selects the dependency-graph illustration.
   level: number;
   color: string;
 }

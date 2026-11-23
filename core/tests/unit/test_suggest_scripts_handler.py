@@ -1,10 +1,3 @@
-"""Unit coverage for the suggest_scripts operations handler.
-
-Runs the handler against an REE in a tmp root and exercises the precondition
-guard, the read-only success path, and that inference reads the immutable
-upstream tree.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,7 +13,6 @@ from repo2ree_protocol.command import ScriptTargetSelectorArg, SuggestScriptsArg
 
 @pytest.fixture(autouse=True)
 def _docker_machine(monkeypatch: pytest.MonkeyPatch) -> None:
-    """These tests never probe the machine they run on: its scripts can use Docker alone."""
     monkeypatch.setattr(handler, "engine_probe", lambda _layout: FixedEngines("docker"))
 
 
@@ -65,7 +57,7 @@ def test_no_targets_is_validation_error(tmp_path: Path, monkeypatch: pytest.Monk
 
 
 def test_missing_upstream_is_precondition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _store_at(tmp_path, monkeypatch)  # ensure_dirs does not create upstream
+    _store_at(tmp_path, monkeypatch)
     (tmp_path / "upstream").rmdir() if (tmp_path / "upstream").is_dir() else None
     result = handler.handle_suggest_scripts(
         _args("build_experiment_environment"),
@@ -96,8 +88,6 @@ def test_build_success_returns_report(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 def test_inference_ignores_overlay_generated_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # A Dockerfile written only into the overlay/workspace must not be seen: the
-    # scan is over the immutable upstream tree.
     _store_at(tmp_path, monkeypatch)
     _seed_upstream(tmp_path, {"main.py": "y"})
     overlay_dockerfile = tmp_path / "overlay" / "Dockerfile"

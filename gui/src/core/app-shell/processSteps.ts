@@ -23,8 +23,6 @@ const AUTOMATION_BY_KEY: Record<string, ReeStepDefinition> = Object.fromEntries(
   REE_STEPS.map((step) => [step.key, step]),
 ) as Record<string, ReeStepDefinition>;
 
-// Workbench is intentionally absent: it IS the canvas (the lab), not a ring
-// node. Its lifecycle step is tracked separately via `provisioned`.
 export const PROCESS_STEPS: ProcessStep[] = [
   {
     n: 1,
@@ -98,7 +96,6 @@ export const PROCESS_STEPS: ProcessStep[] = [
   },
 ];
 
-/** The audit step whose receipt speaks for each page, for showing it stale: a page does the step it is keyed by. */
 export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, EvidenceStep>>> = {
   [PAGE.ACQUIRE_SOURCE]: PAGE.ACQUIRE_SOURCE,
   [PAGE.OBSERVE_HARDWARE]: PAGE.OBSERVE_HARDWARE,
@@ -108,14 +105,10 @@ export const EVIDENCE_STEP_BY_PAGE: Readonly<Partial<Record<AppShellPage, Eviden
   [PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT]: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
 };
 
-// Whether a page's step is done is the REE's own word (the document's `steps`, what `ree status` prints), so a
-// reload, a second tab or a person at a terminal all see the same thing.
 function authoringStepOf(page: AppShellPage): AuthoringStepKey | undefined {
   return AUTHORING_STEP_KEYS.find((key) => key === page);
 }
 
-// `badges` is the live outcome of runs started here. Deposits are not steps of
-// the REE, so they come from those durable run outcomes.
 function hasProcessStepCompleted(stepKey: AppShellPage, ree: ReeEditorViewModel, badges: Badges) {
   const authoringStep = authoringStepOf(stepKey);
   if (authoringStep) return isAuthoringStepComplete(ree.steps, authoringStep);

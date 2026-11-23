@@ -10,7 +10,6 @@ export interface DisplayDependency {
   version: string | null;
   status: DependencyStatus;
   scope: string | null;
-  /** SBOM cross-check verdict; null until a cross-check ran. */
   experimentEnvironmentPresence: ExperimentEnvironmentPresence | null;
   observedVersion: string | null;
 }
@@ -22,9 +21,6 @@ export interface DependencyGroup {
 }
 
 type StatusTally = Record<DependencyStatus, number> & { total: number };
-
-// How each of these reads is keyed off the identity itself in the shell
-// (theme/tones.css); what core owns is the wording.
 
 export const ECO_LABEL: Record<DependencyEcosystem, string> = {
   pypi: "PyPI",
@@ -49,10 +45,6 @@ export const PRESENCE_LABEL: Record<ExperimentEnvironmentPresence, string> = {
   "not-observed": "not in experiment environment",
 };
 
-/**
- * Present the backend inventory; the status comes classified from the backend
- * and this module never re-derives it.
- */
 export function groupEvaluatedDependencies(dependencies: EvaluatedDependency[]): DependencyGroup[] {
   const groups = new Map<string, DependencyGroup>();
   for (const dependency of dependencies) {
@@ -76,7 +68,6 @@ export function groupEvaluatedDependencies(dependencies: EvaluatedDependency[]):
   return [...groups.values()];
 }
 
-/** One pass over the packages; the single definition of every status count. */
 export function tallyByStatus(packages: Iterable<DisplayDependency>): StatusTally {
   const tally: StatusTally = {
     locked: 0,

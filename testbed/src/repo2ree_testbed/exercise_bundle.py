@@ -1,9 +1,3 @@
-"""A bundle damaged on its way from the REE that exported it to the one that loads it, as a disk, a transfer or a
-person damages one: what replay hands over for a ``load_ree_bundle`` step whose ``corruption`` is not ``intact``.
-
-Each damage touches the REE's own history in the bundle, never a review's, and keeps the rest as it was given.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -18,18 +12,14 @@ from typing import Final
 
 from repo2ree_testbed.exercise import BundleCorruption
 
-# Where the REE's own history is in a bundle, and what is beside it.
 _TREE: Final = "ree/"
 _GIT: Final = "ree/.git/"
 _EXPORT: Final = "export.json"
-# What a damage writes, and who git says made a commit added by hand.
 _DAMAGED: Final = b"damaged on its way\n"
 _IDENTITY: Final = ("-c", "user.name=environment", "-c", "user.email=environment@repo2ree.invalid")
 
 
 def corrupted(archive: bytes, corruption: BundleCorruption, number: int) -> bytes:
-    """``archive`` as it arrives damaged as ``corruption`` names; as it was given when it is ``intact``, or when it
-    holds nothing the damage could touch. ``number`` tells one damage of the exercise from another."""
     if corruption == "intact":
         return archive
     if corruption == "truncated":
@@ -124,8 +114,6 @@ def _git(git_dir: Path, *words: str, stdin: bytes | None = None) -> str | None:
 
 
 def _foreign_commit(entries: dict[str, tuple[zipfile.ZipInfo, bytes]], number: int) -> bool:
-    """A commit on the REE's head that ree did not make, adding a file, its objects put in the bundle and the commit
-    named as the head."""
     export = _export(entries)
     scope = _ree_scope(export) if export is not None else None
     head = scope.get("head") if scope is not None else None

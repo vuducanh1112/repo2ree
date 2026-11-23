@@ -5,14 +5,6 @@ import { reeDirId } from "./fileNodeIds";
 export const FILE_VIEWER_MAX_CHARS = 120_000;
 export const FILE_VIEWER_MAX_LINES = 2_000;
 
-/**
- * The REE-root-relative home of the materialized workspace, mirroring the
- * backend layout's `workspace/`. The workspace inventory arrives on the wire
- * workspace-relative (`README.md`, not `workspace/README.md`) because that is
- * the path space its own read and write endpoints address; prefixing it back on
- * is what lets a workspace file and a REE file be displayed in one place
- * without their paths reading as if they were siblings.
- */
 export const WORKSPACE_PATH_PREFIX = "workspace";
 
 const TEXT_FILE_EXTENSIONS = new Set([

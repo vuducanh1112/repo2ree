@@ -55,8 +55,6 @@ function Row({ label, available, included, tintLine, tintInk, onToggle }: Inclus
   );
 }
 
-/** What the sealed archive carries. Each row is tinted by the step that
- *  produced the content, so the choice reads back to where it came from. */
 export function SealBundleContents({
   sourceAvailable,
   experimentEnvironmentAvailable,

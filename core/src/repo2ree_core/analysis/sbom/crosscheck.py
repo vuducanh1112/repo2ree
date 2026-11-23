@@ -1,19 +1,3 @@
-"""Cross-check: which declared dependencies are actually in the experiment environment.
-
-Pure merge over the IR — fills the ``observed_*`` stage on the scanned
-inventory rows and adds SBOM-only rows for same-ecosystem undeclared
-packages. Reading the SBOM, digesting it, and rewriting the report artifact
-belong to the handler.
-
-Verdict semantics (deliberately asymmetric):
-
-* ``not-observed`` is surfaced, never penalized — dev- and build-only
-  dependencies legitimately never reach the experiment environment.
-* Undeclared packages are only listed for ecosystems the declared inventory
-  actually uses: an unexpected pypi package is the headline signal, the base
-  image's OS packages are noise (they stay in ``observed_total``).
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,8 +15,6 @@ from repo2ree_ree.reproducibility import (
 
 @dataclass(frozen=True)
 class CrossCheckResult:
-    """Enriched rows plus the aggregates both the report and receipt carry."""
-
     dependencies: list[EvaluatedDependency]
     summary: SbomCrossCheckSummary
 
@@ -41,15 +23,11 @@ def cross_check(
     dependencies: list[EvaluatedDependency],
     observed: list[ObservedPackage],
 ) -> CrossCheckResult:
-    """Merge the experiment environment's observed packages into the scanned inventory."""
-
     by_key: dict[tuple[Ecosystem, str], ObservedPackage] = {}
     for package in observed:
         by_key.setdefault((package.ecosystem, package.name), package)
 
     inventory_keys = {(dep.ecosystem, dep.name) for dep in dependencies}
-    # Only manifest-backed ecosystems can have "undeclared" findings; ``oci``
-    # rows are the image itself and ``other`` rows can never join.
     declared_ecosystems = {dep.ecosystem for dep in dependencies if dep.ecosystem not in ("oci", "other")}
 
     merged: list[EvaluatedDependency] = []
@@ -120,12 +98,6 @@ def _presence(dep: Dependency, package: ObservedPackage | None) -> ExperimentEnv
 
 
 def _expected_version(dep: Dependency) -> str | None:
-    """The exact version the inventory expects, when it names one.
-
-    A lockfile resolution wins; otherwise only an exact declared pin
-    (``==1.2.3`` / ``=1.2.3``) is comparable — ranges have nothing to
-    mismatch against.
-    """
     if dep.locked_version:
         return dep.locked_version
     constraint = (dep.declared_constraint or "").strip()
@@ -135,7 +107,6 @@ def _expected_version(dep: Dependency) -> str | None:
         body = constraint[1:].strip()
     else:
         return None
-    # Wildcards and multi-clause constraints are ranges, not pins.
     if not body or any(token in body for token in ("*", ",", " ")):
         return None
     return body

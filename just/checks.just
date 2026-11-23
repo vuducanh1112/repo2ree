@@ -21,6 +21,8 @@ format:
 # Apply safe Python and GUI lint fixes, then normalize formatting.
 [group('Formatting')]
 fix: && format
+    python scripts/no_comments.py --fix
+    cd gui && npm run fix:no-comments
     ruff check --fix scripts $(python scripts/workspace.py members) conftest.py
     cd gui && npx biome check --write {{ GUI_FORMAT_PATHS }}
 
@@ -34,6 +36,8 @@ test-scripts:
 check-scripts: _check-write-hint check-config
     @echo "Running shellcheck..."
     find scripts -name '*.sh' -exec shellcheck {} +
+    @echo "Checking for comments and docstrings..."
+    python scripts/no_comments.py
     @echo "Checking python scripts..."
     ruff check scripts conftest.py
     ruff format --check scripts conftest.py
@@ -69,6 +73,8 @@ check-gui: _check-write-hint
     npm run check:core-purity
     echo "Checking style architecture..."
     npm run check:style-architecture
+    echo "Checking for comments..."
+    npm run check:no-comments
     echo "Running dependency-cruiser..."
     npx depcruise src tests
 

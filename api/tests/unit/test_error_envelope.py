@@ -1,11 +1,3 @@
-"""The API's error contract: every failure is shaped into the error envelope.
-
-The Docker-gated integration tier proves the envelope for one shape (string
-detail) on a live stack; this tier pins the full contract unconditionally —
-each exception-handler branch directly, and the container-free routes that
-raise through them over real HTTP.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -26,10 +18,6 @@ from repo2ree_api.main import (
 )
 from repo2ree_supervisor import ReeRoute, StoreUnavailableError, WorkbenchUnavailableError
 
-# ================================================
-# Helpers
-# ================================================
-
 
 def _body(response: JSONResponse) -> dict[str, Any]:
     payload: dict[str, Any] = json.loads(bytes(response.body))
@@ -37,13 +25,7 @@ def _body(response: JSONResponse) -> dict[str, Any]:
 
 
 def _request() -> Request:
-    # The handlers ignore the request; a minimal ASGI scope satisfies the signature.
     return Request(scope={"type": "http", "method": "GET", "path": "/", "headers": []})
-
-
-# ================================================
-# Handler shapes (each branch, called directly)
-# ================================================
 
 
 def test_string_detail_becomes_envelope():
@@ -110,13 +92,7 @@ def test_unhandled_exception_maps_to_500_internal_error():
     assert body["error"]["retryable"] is False
 
 
-# ================================================
-# Wiring over real HTTP (container-free routes)
-# ================================================
-
-
 def test_unknown_ree_yields_404_envelope(client: TestClient):
-    """Real path: empty registry, no patching — lookup finds no entry."""
     resp = client.get("/api/v1/rees/does-not-exist")
     assert resp.status_code == 404
     body = resp.json()
@@ -142,7 +118,6 @@ def test_a_json_body_sent_as_another_media_type_is_unsupported(client: TestClien
 
 
 def test_violations_quoting_bytes_still_answer_422(client: TestClient):
-    # application/merge-patch+json is JSON by its suffix, so a malformed one is a validation failure.
     resp = client.post("/api/v1/rees", content=b"\xff\xfe", headers={"Content-Type": "application/merge-patch+json"})
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "request_validation_failed"
@@ -163,7 +138,6 @@ def test_routing_failures_use_the_error_envelope(client: TestClient, method: str
 
 
 def _store_offline(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Stage "down-ree" as an REE whose store no workbench serves: the state a killed workbench leaves."""
     real_route = ree_router.route
 
     def route(rid: str) -> Any:
@@ -175,7 +149,6 @@ def _store_offline(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_an_ree_whose_store_is_offline_yields_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    """An REE in the registry whose store no workbench serves: 503, not 404."""
     _store_offline(monkeypatch)
     resp = client.get("/api/v1/rees/down-ree")
     assert resp.status_code == 503
@@ -185,13 +158,6 @@ def test_an_ree_whose_store_is_offline_yields_503(client: TestClient, monkeypatc
 def test_transport_failure_mid_request_yields_503_envelope(
     client: TestClient, online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch
 ):
-    """A container dying mid-query surfaces as the workbench_unavailable envelope.
-
-    The seam failing *is* the scenario: ``get_ree_document`` raises the same
-    ``WorkbenchUnavailableError`` the real transport raises when docker exec
-    reports the container gone.
-    """
-
     def _gone(handle: Any) -> dict[str, Any]:
         raise WorkbenchUnavailableError("docker exec exited 137 — container gone or stopping")
 
@@ -204,8 +170,6 @@ def test_transport_failure_mid_request_yields_503_envelope(
 def test_a_workbench_lost_while_sending_the_archive_yields_503_not_400(
     client: TestClient, online_ree: ReeRoute, monkeypatch: pytest.MonkeyPatch
 ):
-    """The download a client would retry: the bench dropped its connection mid-archive."""
-
     def _gone(handle: Any) -> Any:
         raise WorkbenchUnavailableError("workbench connection closed")
 
@@ -215,9 +179,6 @@ def test_a_workbench_lost_while_sending_the_archive_yields_503_not_400(
     assert resp.json()["error"]["retryable"] is True
 
 
-# Every read route that resolves an REE before answering. Each of these once
-# resolved it its own way, so the same condition read differently depending on
-# which one a client called.
 _REE_READ_ROUTES = [
     "/api/v1/rees/{ree_id}",
     "/api/v1/rees/{ree_id}/reviews",
@@ -229,11 +190,6 @@ _REE_READ_ROUTES = [
 
 @pytest.mark.parametrize("route", _REE_READ_ROUTES)
 def test_an_offline_store_is_503_on_every_read_route(client: TestClient, monkeypatch: pytest.MonkeyPatch, route: str):
-    """Every route resolving an REE agrees on 503 for an REE whose store is offline.
-
-    Reviews and receipts reported 404 for a workbench that exists and
-    is merely unreachable; evaluate blamed a report that had never been run.
-    """
     _store_offline(monkeypatch)
     resp = client.get(route.format(ree_id="down-ree"))
     assert resp.status_code == 503, resp.text
@@ -242,7 +198,6 @@ def test_an_offline_store_is_503_on_every_read_route(client: TestClient, monkeyp
 
 @pytest.mark.parametrize("route", _REE_READ_ROUTES)
 def test_unknown_ree_is_404_naming_the_ree(client: TestClient, route: str):
-    """An unknown REE reads as "not found", naming it — never as "no report yet"."""
     resp = client.get(route.format(ree_id="no-such-ree"))
     assert resp.status_code == 404, resp.text
     assert resp.json()["error"]["message"] == "REE no-such-ree not found"

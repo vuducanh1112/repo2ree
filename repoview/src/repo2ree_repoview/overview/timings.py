@@ -1,11 +1,3 @@
-"""How long recipes took, as the dev shell's `just` recorded them (logs/just/, scripts/just_timing.py).
-
-Each file is one invocation: a ``start`` line, a line per completed recipe, and an ``end`` line
-unless it was interrupted. Lines this build cannot read are skipped, and a file without a start is
-not an invocation. A recipe's lines do not name its arguments, so its timings are per recipe, not
-per call.
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,7 +18,6 @@ SCHEMA = "repo2ree-just-timing/1"
 
 class Start(Document):
     kind: Literal["start"]
-    # `schema` itself would shadow pydantic's own attribute.
     version: str = Field("", alias="schema")
     invocation: str
     argv: tuple[str, ...]
@@ -81,7 +72,6 @@ def read_invocation(path: Path) -> Invocation | None:
 
 
 def read_invocations(logs: Path = LOGS) -> list[Invocation]:
-    """Every recorded invocation, oldest first."""
     found = [invocation for path in sorted(logs.glob("*/*.jsonl")) if (invocation := read_invocation(path))]
     return sorted(found, key=lambda invocation: invocation.start.started)
 
@@ -95,12 +85,8 @@ class Timing(Record):
 
 
 class Timings(Record):
-    """The overview's input: what the invocations it read amount to."""
-
     invocations: int
-    # recipe -> machine -> how long it took
     recipes: dict[str, dict[str, Timing]]
-    # top-level command -> machine -> its wall time, for the invocations that ended
     commands: dict[str, dict[str, Timing]]
 
 

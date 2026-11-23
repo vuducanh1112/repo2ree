@@ -1,6 +1,3 @@
-/* A transient notification, bottom-right. It removes itself after four seconds;
- * the close button is for dismissing it sooner. */
-
 .toast {
   position: fixed;
   bottom: var(--space-5);

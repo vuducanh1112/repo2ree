@@ -246,12 +246,10 @@ _ADAPTERS = {operation: TypeAdapter(shape) for operation, shape in OUTPUTS.items
 
 
 def outputs_of(operation: str, result: ActionResult) -> BaseModel:
-    """The result's outputs as the model its operation declares."""
     model: BaseModel = _ADAPTERS[operation].validate_python(result.outputs)
     return model
 
 
 def validate_outputs(operation: str, result: ActionResult) -> None:
-    """Refuse outputs the operation does not declare; a failed or canceled result may carry none."""
     if result.outputs or result.status == "succeeded":
         outputs_of(operation, result)

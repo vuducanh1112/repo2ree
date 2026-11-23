@@ -14,10 +14,7 @@ export interface paths {
         /** List Rees Route */
         get: operations["listRees"];
         put?: never;
-        /**
-         * Create Ree Route
-         * @description Create an empty REE in a store, in a background run.
-         */
+        /** Create Ree Route */
         post: operations["createRee"];
         delete?: never;
         options?: never;
@@ -36,10 +33,7 @@ export interface paths {
         get: operations["getRee"];
         put?: never;
         post?: never;
-        /**
-         * Delete Ree Route
-         * @description Delete the REE from its store.
-         */
+        /** Delete Ree Route */
         delete: operations["deleteRee"];
         options?: never;
         head?: never;
@@ -53,14 +47,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Ree State Route
-         * @description Compact automation view: durable state and file metadata, never contents.
-         *
-         *     In ``audit``, a step's ``evidence`` says whether its receipt is current. Its
-         *     ``payload`` says whether what it produced travels in the sealed archive:
-         *     ``present``, ``omitted``, or ``not_applicable`` before the seal.
-         */
+        /** Get Ree State Route */
         get: operations["getReeState"];
         put?: never;
         post?: never;
@@ -128,13 +115,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Observe Ree Run
-         * @description Wait up to ``wait_seconds`` for new log entries or the run's end, whichever is first.
-         *
-         *     It can return while the run is still going: call it again with ``next_cursor``
-         *     until ``run.status`` is terminal.
-         */
+        /** Observe Ree Run */
         get: operations["observeRun"];
         put?: never;
         post?: never;
@@ -168,12 +149,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Ree Steps
-         * @description Each authoring step, ordered, with its prerequisites, where the REE stands on
-         *     it (``complete``, ``ready`` or ``blocked``), and the operationIds that advance
-         *     it; ``next`` is the step to do next.
-         */
+        /** List Ree Steps */
         get: operations["listReeSteps"];
         put?: never;
         post?: never;
@@ -190,17 +166,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Script Templates
-         * @description Starter templates for the REE-owned scripts and where each belongs.
-         *
-         *     Static for the command line the REE's workbench runs. Each section marks the
-         *     default entry for each environment with ``is_default``; the default build and
-         *     activate experiment environment templates are the content a fresh REE in that
-         *     environment is seeded with. The experiment templates are for scripts created on
-         *     demand under the reserved experiments directory. For scripts fitted to the REE's
-         *     own project, use ``suggestScripts``.
-         */
+        /** List Script Templates */
         get: operations["listScriptTemplates"];
         put?: never;
         post?: never;
@@ -236,10 +202,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Upload Init Route
-         * @description Start a source upload: a zip or tarball whose bytes go to the returned ``upload_url``.
-         */
+        /** Upload Init Route */
         post: operations["initializeSourceUpload"];
         delete?: never;
         options?: never;
@@ -255,10 +218,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Store Upload Bytes Route
-         * @description Store the archive's raw bytes; ``completeSourceUpload`` then extracts them.
-         */
+        /** Store Upload Bytes Route */
         put: operations["uploadSourceBytes"];
         post?: never;
         delete?: never;
@@ -293,10 +253,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Remove Source Route
-         * @description Remove the source, keeping the REE's scripts and definition, so another can be brought in.
-         */
+        /** Remove Source Route */
         post: operations["removeSource"];
         delete?: never;
         options?: never;
@@ -313,10 +270,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Patch Ree Definition Route
-         * @description Replace top-level fields of the definition and return the whole REE document.
-         */
+        /** Patch Ree Definition Route */
         post: operations["patchReeDefinition"];
         delete?: never;
         options?: never;
@@ -367,13 +321,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Write Script Route
-         * @description Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
-         *
-         *     ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
-         *     the write if the file has changed since its etag was read.
-         */
+        /** Write Script Route */
         post: operations["writeScript"];
         delete?: never;
         options?: never;
@@ -390,18 +338,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Suggest Scripts Route
-         * @description Synchronously generate candidate scripts for the requested targets, from the REE's own project.
-         *
-         *     This proposes the build script (from a Dockerfile or a requirements.txt, say)
-         *     and scaffolds the activation and experiment scripts. Nothing is written:
-         *     ``writeScript`` is how a candidate is adopted.
-         *
-         *     Read-only and always recomputed: every call rescans and re-runs the DAGs
-         *     against current inputs, so it needs no idempotency key and returns the report
-         *     directly rather than a background run.
-         */
+        /** Suggest Scripts Route */
         post: operations["suggestScripts"];
         delete?: never;
         options?: never;
@@ -418,10 +355,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Lint Scripts Route
-         * @description Statically check persisted scripts on every available tier.
-         */
+        /** Lint Scripts Route */
         post: operations["lintScripts"];
         delete?: never;
         options?: never;
@@ -438,10 +372,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Check Script Draft Route
-         * @description Run the checks that start no process against unsaved source, on the REE's workbench.
-         */
+        /** Check Script Draft Route */
         post: operations["checkScriptDraft"];
         delete?: never;
         options?: never;
@@ -490,13 +421,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Reproducibility Report Route
-         * @description The persisted evaluate-run report artifact.
-         *
-         *     A threat's ``blocking`` means it holds its axis at its current level. Nothing
-         *     refuses to run or seal because of one.
-         */
+        /** Get Reproducibility Report Route */
         get: operations["getReproducibilityReport"];
         put?: never;
         post?: never;
@@ -615,10 +540,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Author Receipts
-         * @description Successful receipts carried by the portable aggregate.
-         */
+        /** List Author Receipts */
         get: operations["listAuthorReceipts"];
         put?: never;
         post?: never;
@@ -637,10 +559,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Bundle Upload Init Route
-         * @description Open a staging slot for a downloaded REE bundle (see ``load-ree-bundle``).
-         */
+        /** Bundle Upload Init Route */
         post: operations["initializeReeBundleUpload"];
         delete?: never;
         options?: never;
@@ -674,14 +593,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Load Ree Bundle Route
-         * @description Make this REE be the uploaded bundle: intent, source, evidence, and all.
-         *
-         *     The counterpart of ``ree-archive``. Intended right after ``createRee`` —
-         *     loading replaces whatever the REE holds, so a fresh workbench is the only
-         *     place it is non-destructive.
-         */
+        /** Load Ree Bundle Route */
         post: operations["loadReeBundle"];
         delete?: never;
         options?: never;
@@ -698,10 +610,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Seal Ree Route
-         * @description Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal.
-         */
+        /** Seal Ree Route */
         post: operations["sealRee"];
         delete?: never;
         options?: never;
@@ -718,10 +627,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Signature Upload Init Route
-         * @description Open a staging slot for a Sigstore bundle over the sealed REE's digest (see ``sign-ree``).
-         */
+        /** Signature Upload Init Route */
         post: operations["initializeSignatureUpload"];
         delete?: never;
         options?: never;
@@ -755,10 +661,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Sign Ree Route
-         * @description Add the staged bundle as the sealed REE's signature, beside what the seal covers.
-         */
+        /** Sign Ree Route */
         post: operations["signRee"];
         delete?: never;
         options?: never;
@@ -773,13 +676,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Download Ree Archive Route
-         * @description Download a captured REE repository with selected offline LFS payloads.
-         *
-         *     The extracted directory contains both the working files and Git storage.
-         *     Selected LFS payloads are included locally for offline use.
-         */
+        /** Download Ree Archive Route */
         get: operations["downloadReeArchive"];
         put?: never;
         post?: never;
@@ -813,18 +710,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Ree Index Route
-         * @description Every REE sealed on this node, newest first.
-         *
-         *     ``deposited_only`` narrows to entries some archive has issued an identifier
-         *     for — the subset another node could cite. The rest are local seals, real
-         *     here but not yet citable anywhere else.
-         *
-         *     Note the order is the reverse of the store's: the index's canonical order is
-         *     ascending, because that is what a resumable ``since=`` cursor and a stable
-         *     snapshot digest need, while a reader wants the most recent seal first.
-         */
+        /** List Ree Index Route */
         get: operations["listReeIndex"];
         put?: never;
         post?: never;
@@ -894,14 +780,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Review Build Experiment Environment Route
-         * @description Rebuild the experiment environment inside an attempt whose source was already reproduced.
-         *
-         *     Addressed by review id rather than minting a new one: the build is only
-         *     meaningful against the source *this* attempt fetched for itself, and the
-         *     workbench rejects the command outright when that step has not settled.
-         */
+        /** Review Build Experiment Environment Route */
         post: operations["reviewBuildExperimentEnvironment"];
         delete?: never;
         options?: never;
@@ -918,14 +797,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Review Activate Experiment Environment Route
-         * @description Run the author's activation alone in the experiment environment this attempt certified.
-         *
-         *     Takes no ``basis``, unlike the two steps before it: activation runs in the
-         *     workspace the build left behind and inherits what that evidence is worth
-         *     rather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).
-         */
+        /** Review Activate Experiment Environment Route */
         post: operations["reviewActivateExperimentEnvironment"];
         delete?: never;
         options?: never;
@@ -942,21 +814,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Review Run Experiment Route
-         * @description Reproduce one experiment's result inside an attempt whose experiment environment came up.
-         *
-         *     One experiment per call, addressed by name — the same shape as the author's
-         *     ``run-experiment/{name}``. Reproducing every experiment is the client
-         *     issuing this in sequence rather than a batch route: each run then has its own
-         *     log, receipt, and cancel point, and a reviewer watching a slow experiment can
-         *     stop that one without discarding the verdicts already settled.
-         *
-         *     Like the activation route it takes no ``basis`` (the run inherits what the
-         *     workspace it happens in is worth), and like the author's route it does no
-         *     host-side resolution preflight: an unknown experiment name surfaces as a
-         *     failed run carrying the workbench's own message.
-         */
+        /** Review Run Experiment Route */
         post: operations["reviewRunExperiment"];
         delete?: never;
         options?: never;
@@ -973,10 +831,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Review Signature Upload Init Route
-         * @description Open a staging slot for a Sigstore bundle of the review (see ``sign-review``).
-         */
+        /** Review Signature Upload Init Route */
         post: operations["initializeReviewSignatureUpload"];
         delete?: never;
         options?: never;
@@ -1010,10 +865,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Sign Review Route
-         * @description Add the staged bundle as the review's signature: the review changes no more.
-         */
+        /** Sign Review Route */
         post: operations["signReview"];
         delete?: never;
         options?: never;
@@ -1028,10 +880,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Workbenches
-         * @description Every workbench service currently connected to this control plane.
-         */
+        /** List Workbenches */
         get: operations["listWorkbenches"];
         put?: never;
         post?: never;
@@ -1048,10 +897,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Stores
-         * @description Every store registered here, and the workbench serving each one now, if any.
-         */
+        /** List Stores */
         get: operations["listStores"];
         put?: never;
         post?: never;
@@ -1136,10 +982,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Behaviour State
-         * @description Owners write their store and then journal the change, so the stores are read inside the cut.
-         */
+        /** Get Behaviour State */
         get: operations["getBehaviourState"];
         put?: never;
         post?: never;
@@ -1156,10 +999,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * List Store Behaviour Journals
-         * @description The journals the workbench serving the store keeps in it, read through that workbench.
-         */
+        /** List Store Behaviour Journals */
         get: operations["listStoreBehaviourJournals"];
         put?: never;
         post?: never;
@@ -1313,18 +1153,12 @@ export interface components {
             /** Activate Experiment Environment Script Size */
             activate_experiment_environment_script_size: number;
         };
-        /**
-         * ActivateExperimentEnvironmentPayload
-         * @description Run the activate experiment environment script alone. Takes no parameters of its own.
-         */
+        /** ActivateExperimentEnvironmentPayload */
         ActivateExperimentEnvironmentPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /**
-         * ActivateExperimentEnvironmentReceipt
-         * @description The activate experiment environment script ran a command that does nothing, which exited 0.
-         */
+        /** ActivateExperimentEnvironmentReceipt */
         ActivateExperimentEnvironmentReceipt: {
             /**
              * Schema Version
@@ -1390,16 +1224,7 @@ export interface components {
             /** Exit Code */
             exit_code?: number | null;
         };
-        /**
-         * ArchiveBindingAttestation
-         * @description One claim: an archive's deposit holds the REE with this content digest.
-         *
-         *     Stored beside the sealed bundle and indexed by the control plane; never
-         *     written into the bundle, which is frozen at seal time. ``signature`` and
-         *     ``verification_material`` are optional because an unsigned binding is still
-         *     a useful record — signing makes it *checkable* by a third party rather than
-         *     merely asserted, and can be added later without rewriting anything.
-         */
+        /** ArchiveBindingAttestation */
         ArchiveBindingAttestation: {
             /** Subject Digest */
             subject_digest: string;
@@ -1470,10 +1295,7 @@ export interface components {
             /** Source */
             source: string;
         };
-        /**
-         * BehaviourArchive
-         * @description One REE archive the control plane served, so a collector can place the copy a client kept.
-         */
+        /** BehaviourArchive */
         BehaviourArchive: {
             /** Ree Id */
             ree_id: string;
@@ -1532,10 +1354,7 @@ export interface components {
                 [key: string]: number;
             };
         };
-        /**
-         * BehaviourState
-         * @description The owners' persisted state, read between two sets of journal positions.
-         */
+        /** BehaviourState */
         BehaviourState: {
             /**
              * Cut
@@ -1557,10 +1376,7 @@ export interface components {
                 };
             };
         };
-        /**
-         * BuildExperimentEnvironmentPayload
-         * @description Run the reserved build script. Takes no parameters of its own.
-         */
+        /** BuildExperimentEnvironmentPayload */
         BuildExperimentEnvironmentPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -1604,13 +1420,7 @@ export interface components {
             launch_script_digest: string;
             launched?: components["schemas"]["Launched"] | null;
         };
-        /**
-         * BuildInfo
-         * @description A component's package version and exact source revision.
-         *
-         *     Both fields are optional on the wire so independently deployed workbenches
-         *     remain compatible.
-         */
+        /** BuildInfo */
         BuildInfo: {
             /**
              * Version
@@ -1688,10 +1498,7 @@ export interface components {
              */
             status: "queued" | "provisioning" | "running" | "canceling" | "succeeded" | "failed" | "canceled";
         };
-        /**
-         * CandidateDependency
-         * @description Exactly which evidence justifies a candidate — the staleness key.
-         */
+        /** CandidateDependency */
         CandidateDependency: {
             /**
              * Kind
@@ -1735,10 +1542,7 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /**
-         * CheckWorkingEnvironmentDefinition
-         * @description The script that checks the working environment offers what the REE's scripts need, run there before them.
-         */
+        /** CheckWorkingEnvironmentDefinition */
         CheckWorkingEnvironmentDefinition: {
             /**
              * Check Working Environment Script Path
@@ -1750,18 +1554,12 @@ export interface components {
             /** Check Working Environment Script Size */
             check_working_environment_script_size: number;
         };
-        /**
-         * CheckWorkingEnvironmentPayload
-         * @description Run the REE's check script in its working environment. Takes no parameters of its own.
-         */
+        /** CheckWorkingEnvironmentPayload */
         CheckWorkingEnvironmentPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /**
-         * CheckWorkingEnvironmentReceipt
-         * @description The author's check of the working environment ran there, launched as every script is, and exited 0.
-         */
+        /** CheckWorkingEnvironmentReceipt */
         CheckWorkingEnvironmentReceipt: {
             /**
              * Schema Version
@@ -1820,10 +1618,7 @@ export interface components {
             /** Sources */
             sources?: string[];
         };
-        /**
-         * ContainerEnginesObservation
-         * @description A container-engine check's view of the probe: the engine it judged, and everything the probe saw.
-         */
+        /** ContainerEnginesObservation */
         ContainerEnginesObservation: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -1837,13 +1632,7 @@ export interface components {
             engine: "docker" | "podman";
             probe: components["schemas"]["ContainerEnginesProbe"];
         };
-        /**
-         * ContainerEnginesProbe
-         * @description Which container engines a script run for this REE can use, as probed where it runs.
-         *
-         *     ``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so
-         *     nothing is known about the engines, which is not the same as their absence.
-         */
+        /** ContainerEnginesProbe */
         ContainerEnginesProbe: {
             /**
              * Status
@@ -1881,22 +1670,12 @@ export interface components {
              */
             affiliation_identifier: string;
         };
-        /**
-         * CreateRunPayload
-         * @description The body every "start a run" route accepts.
-         *
-         *     Routes that need nothing else subclass it as-is; the two that take
-         *     parameters (sbom, evaluate) add their fields. Subclassing rather than
-         *     sharing one model keeps each route's schema named after its operation.
-         */
+        /** CreateRunPayload */
         CreateRunPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /**
-         * CrossCheckSbomPayload
-         * @description Cross-check the recorded SBOM against the built experiment environment. No parameters.
-         */
+        /** CrossCheckSbomPayload */
         CrossCheckSbomPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -2092,11 +1871,7 @@ export interface components {
             /** Digest */
             digest: string;
         };
-        /**
-         * DriftedFile
-         * @description A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed
-         *     outside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref.
-         */
+        /** DriftedFile */
         DriftedFile: {
             /** Path */
             path: string;
@@ -2106,10 +1881,7 @@ export interface components {
              */
             part: "overlay" | "workspace" | "records" | "history";
         };
-        /**
-         * EngineObservation
-         * @description One engine as the probe found it where the REE's scripts run.
-         */
+        /** EngineObservation */
         EngineObservation: {
             /**
              * Engine
@@ -2437,15 +2209,7 @@ export interface components {
             /** Advisory */
             advisory?: components["schemas"]["PackageDeltaRecord"][];
         };
-        /**
-         * ExperimentEnvironmentContractBinding
-         * @description A resolved, non-executable experiment environment contract plus how it was established.
-         *
-         *     ``inspected_artifact`` inspected the built artifact itself;
-         *     ``unchanged_generated_build`` reused the constants of a still-unedited
-         *     inference-generated build script. Downstream renderers copy the contract's
-         *     values as explicit literals.
-         */
+        /** ExperimentEnvironmentContractBinding */
         ExperimentEnvironmentContractBinding: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -2514,10 +2278,7 @@ export interface components {
             kind: "experiment_environment_plan";
             plan: components["schemas"]["DockerExperimentEnvironmentPlan"];
         };
-        /**
-         * ExperimentGateObservation
-         * @description The experiment-declaration gate's outcome, for the decision trace.
-         */
+        /** ExperimentGateObservation */
         ExperimentGateObservation: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -2537,29 +2298,14 @@ export interface components {
              */
             declared: boolean;
         };
-        /**
-         * ExperimentScriptTemplates
-         * @description The templates of a script every experiment has, and the path it belongs at.
-         *
-         *     The pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens.
-         */
+        /** ExperimentScriptTemplates */
         ExperimentScriptTemplates: {
             /** Path Pattern */
             path_pattern: string;
             /** Templates */
             templates: components["schemas"]["ScriptTemplateEntry"][];
         };
-        /**
-         * Failure
-         * @description Machine-readable description of why an action did not succeed.
-         *
-         *     A single shared object carried on every ``failed`` :class:`ActionResult`
-         *     (and, over time, through error frames, run records, and HTTP envelopes). The
-         *     contract is that a component *enriches* the same failure as it travels up
-         *     the layers rather than collapsing it to ``str(exc)`` at each hop, so the
-         *     ``category``/``origin`` a client sees are the ones the originating component
-         *     chose.
-         */
+        /** Failure */
         Failure: {
             /**
              * Category
@@ -2590,10 +2336,7 @@ export interface components {
             /** Etag */
             etag?: string | null;
         };
-        /**
-         * Finding
-         * @description One observation about one script.
-         */
+        /** Finding */
         Finding: {
             /** Code */
             code: string;
@@ -2670,14 +2413,7 @@ export interface components {
                 [key: string]: string | boolean | number | null;
             };
         };
-        /**
-         * GenerateSbomPayload
-         * @description Scan the declared experiment environment artifact. Takes no parameters of its own.
-         *
-         *     Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
-         *     the author declared before the build ran and the build receipt binds. The
-         *     handler reads it there; a client cannot name a different one.
-         */
+        /** GenerateSbomPayload */
         GenerateSbomPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -2789,10 +2525,7 @@ export interface components {
             /** Message */
             message: string;
         };
-        /**
-         * HistoryReference
-         * @description Capture evidence, separate from operation-specific outputs.
-         */
+        /** HistoryReference */
         HistoryReference: {
             /**
              * Schema Version
@@ -2837,14 +2570,7 @@ export interface components {
              */
             kernel: string;
         };
-        /**
-         * ImageCommandBinding
-         * @description The experiment environment image's declared command (Entrypoint/Cmd), parsed once when
-         *     the artifact is inspected and carried forward so the command-candidate check
-         *     need not re-open the (possibly multi-hundred-MB) archive. Absent when the
-         *     contract came from an unchanged generated build (no artifact to inspect); the
-         *     exec/shell forms are mutually exclusive, matching what inspection reports.
-         */
+        /** ImageCommandBinding */
         ImageCommandBinding: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -2914,10 +2640,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
-        /**
-         * LaunchDefinition
-         * @description The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``.
-         */
+        /** LaunchDefinition */
         LaunchDefinition: {
             /**
              * Launch Script Path
@@ -2929,10 +2652,7 @@ export interface components {
             /** Launch Script Size */
             launch_script_size: number;
         };
-        /**
-         * Launched
-         * @description Where a launched script ran, as it saw from inside the launch.
-         */
+        /** Launched */
         Launched: {
             /** Node */
             node: string;
@@ -2941,10 +2661,7 @@ export interface components {
             /** Slurm Step Id */
             slurm_step_id?: string | null;
         };
-        /**
-         * LintReport
-         * @description Everything one lint run observed about one script.
-         */
+        /** LintReport */
         LintReport: {
             /**
              * Schema Version
@@ -2971,20 +2688,14 @@ export interface components {
             /** Targets */
             targets: components["schemas"]["ScriptTargetSelectorPayload"][];
         };
-        /**
-         * LintScriptsResponse
-         * @description Reports for existing scripts and paths for requested scripts that are absent.
-         */
+        /** LintScriptsResponse */
         LintScriptsResponse: {
             /** Reports */
             reports?: components["schemas"]["LintReport"][];
             /** Missing Scripts */
             missing_scripts?: string[];
         };
-        /**
-         * LoadReeBundlePayload
-         * @description Load a staged REE bundle into this (freshly provisioned) REE.
-         */
+        /** LoadReeBundlePayload */
         LoadReeBundlePayload: {
             /** Upload Token */
             upload_token: string;
@@ -3005,10 +2716,7 @@ export interface components {
             /** Wrapper Depth */
             wrapper_depth: number;
         };
-        /**
-         * MachineFacts
-         * @description The machine ``ree`` runs on: its architecture and GPUs, and whether it is a container.
-         */
+        /** MachineFacts */
         MachineFacts: {
             /**
              * Arch
@@ -3113,10 +2821,7 @@ export interface components {
                 [key: string]: string | boolean | number | null;
             };
         };
-        /**
-         * ObserveHardwarePayload
-         * @description Profile the workbench host's hardware. Takes no parameters of its own.
-         */
+        /** ObserveHardwarePayload */
         ObserveHardwarePayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -3154,10 +2859,7 @@ export interface components {
             /** Operations */
             operations?: components["schemas"]["OperationRecord"][];
         };
-        /**
-         * OperationRecord
-         * @description One invocation, including no-ops and attempts left pending by process death.
-         */
+        /** OperationRecord */
         OperationRecord: {
             /**
              * Schema Version
@@ -3234,10 +2936,7 @@ export interface components {
             /** Observed Version */
             observed_version?: string | null;
         };
-        /**
-         * PatchReeDefinitionPayload
-         * @description Replace top-level fields of the current portable REE definition.
-         */
+        /** PatchReeDefinitionPayload */
         PatchReeDefinitionPayload: {
             /**
              * Definition Patch
@@ -3327,13 +3026,7 @@ export interface components {
             /** Corresponding Author Identifier */
             corresponding_author_identifier?: string | null;
         };
-        /**
-         * ReeCreatePayload
-         * @description Create a new empty REE in a store.
-         *
-         *     Source acquisition is intentionally a separate lifecycle operation through
-         *     ``acquire-source`` or the upload-init/upload/complete sequence.
-         */
+        /** ReeCreatePayload */
         ReeCreatePayload: {
             /** Name */
             name?: string | null;
@@ -3386,10 +3079,7 @@ export interface components {
             /** Expected Version */
             expected_version?: string | null;
         };
-        /**
-         * ReeDocument
-         * @description The portable aggregate with live workbench file projections.
-         */
+        /** ReeDocument */
         ReeDocument: {
             /** Ree Id */
             ree_id: string;
@@ -3410,10 +3100,7 @@ export interface components {
             /** Ree Files */
             ree_files?: components["schemas"]["ReeFile"][];
         };
-        /**
-         * ReeFile
-         * @description One file under the REE root (upstream/overlay/artifacts/…).
-         */
+        /** ReeFile */
         ReeFile: {
             /** Path */
             path: string;
@@ -3430,10 +3117,7 @@ export interface components {
             /** Content */
             content?: string | null;
         };
-        /**
-         * ReeIndexEntry
-         * @description One sealed REE, plus whatever archives have since been claimed to hold it.
-         */
+        /** ReeIndexEntry */
         ReeIndexEntry: {
             /** Subject Digest */
             subject_digest: string;
@@ -3486,10 +3170,7 @@ export interface components {
             /** Ree Digest */
             ree_digest: string;
         };
-        /**
-         * ReeState
-         * @description Compact control-plane observation without inline file contents.
-         */
+        /** ReeState */
         ReeState: {
             /** Ree Id */
             ree_id: string;
@@ -3516,10 +3197,7 @@ export interface components {
             /** Next */
             next?: ("acquire_source" | "metadata" | "observe_hardware" | "check_working_environment" | "evaluate_reproducibility" | "build_experiment_environment" | "generate_sbom" | "cross_check_sbom" | "activate_experiment_environment" | "experiments" | "seal_ree") | null;
         };
-        /**
-         * ReeStepCatalogEntry
-         * @description One authoring step as the REE stands on it, plus the operations that advance it.
-         */
+        /** ReeStepCatalogEntry */
         ReeStepCatalogEntry: {
             /**
              * Key
@@ -3542,10 +3220,7 @@ export interface components {
             /** Actions */
             actions?: string[];
         };
-        /**
-         * ReeStepState
-         * @description A step as one REE stands on it.
-         */
+        /** ReeStepState */
         ReeStepState: {
             /**
              * Key
@@ -3566,10 +3241,7 @@ export interface components {
              */
             status: "complete" | "ready" | "blocked";
         };
-        /**
-         * ReeSteps
-         * @description Where an REE stands on every step, and the one to do next: the first ready one.
-         */
+        /** ReeSteps */
         ReeSteps: {
             /** Steps */
             steps?: components["schemas"]["ReeStepState"][];
@@ -3623,15 +3295,7 @@ export interface components {
             /** Detected Dependencies */
             readonly detected_dependencies: string;
         };
-        /**
-         * RequirementsProjectBinding
-         * @description A pip ``requirements.txt`` shape at the logical project root.
-         *
-         *     Carries the located file, its digest, and whether every requirement in it is
-         *     pinned by hash — the base image travels via deployment policy, not repository
-         *     evidence, so it is resolved by the base-image check/renderer rather than baked
-         *     into this binding.
-         */
+        /** RequirementsProjectBinding */
         RequirementsProjectBinding: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -3645,10 +3309,7 @@ export interface components {
             /** Hash Locked */
             hash_locked: boolean;
         };
-        /**
-         * ReservedScriptTemplates
-         * @description The templates of a script an REE has once, and the reserved path it belongs at.
-         */
+        /** ReservedScriptTemplates */
         ReservedScriptTemplates: {
             /** Path */
             path: string;
@@ -3693,14 +3354,7 @@ export interface components {
              */
             application: "automatic_allowed" | "confirmation_required" | "unavailable";
         };
-        /**
-         * ReviewAcquireSourcePayload
-         * @description Start a fresh isolated review attempt at source acquisition.
-         *
-         *     ``basis`` chooses what to reproduce from: the recorded origin, or the
-         *     snapshot the REE carries. The default settles it from what the baseline
-         *     has, preferring the origin (see :data:`ReviewBasis`).
-         */
+        /** ReviewAcquireSourcePayload */
         ReviewAcquireSourcePayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -3755,10 +3409,7 @@ export interface components {
             /** Observed Swhid */
             observed_swhid?: string | null;
         };
-        /**
-         * ReviewActivateExperimentEnvironmentReceipt
-         * @description The author's activation, run alone in a workspace of its own around a command that does nothing.
-         */
+        /** ReviewActivateExperimentEnvironmentReceipt */
         ReviewActivateExperimentEnvironmentReceipt: {
             /**
              * Schema Version
@@ -3799,10 +3450,7 @@ export interface components {
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
         };
-        /**
-         * ReviewBuildExperimentEnvironmentPayload
-         * @description Reproduce the experiment environment build inside an existing review attempt.
-         */
+        /** ReviewBuildExperimentEnvironmentPayload */
         ReviewBuildExperimentEnvironmentPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -3856,14 +3504,7 @@ export interface components {
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;
         };
-        /**
-         * ReviewLaunch
-         * @description The reviewer's choice of launch, kept for the whole attempt.
-         *
-         *     ``author`` runs every script through the author's launch script where the REE declares one, with ``options``
-         *     added to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them
-         *     directly, as an REE with no launch does.
-         */
+        /** ReviewLaunch */
         ReviewLaunch: {
             /**
              * Mode
@@ -3877,10 +3518,7 @@ export interface components {
              */
             options: string[];
         };
-        /**
-         * ReviewMachine
-         * @description The machine the review ran on, as its platform names it; where a launch took a script is its receipt's.
-         */
+        /** ReviewMachine */
         ReviewMachine: {
             /** System */
             system: string;
@@ -4001,11 +3639,7 @@ export interface components {
             /** Failure */
             failure?: string | null;
         };
-        /**
-         * ReviewSubject
-         * @description The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the
-         *     experiments it declares, so a record read on its own says which of them it did not compare.
-         */
+        /** ReviewSubject */
         ReviewSubject: {
             /** Name */
             name: string;
@@ -4022,10 +3656,7 @@ export interface components {
              */
             experiments: string[];
         };
-        /**
-         * RunExperimentPayload
-         * @description No fields of its own yet — the extension point for future run options.
-         */
+        /** RunExperimentPayload */
         RunExperimentPayload: {
             /** Idempotency Key */
             idempotency_key?: string | null;
@@ -4233,18 +3864,12 @@ export interface components {
             decision_leaf: string;
             validation: components["schemas"]["ScriptValidation"];
         };
-        /**
-         * ScriptDeclarations
-         * @description The narrow declaration view consumed by contract rules.
-         */
+        /** ScriptDeclarations */
         ScriptDeclarations: {
             /** Experiment Environment Path */
             experiment_environment_path?: string | null;
         };
-        /**
-         * ScriptDraftPayload
-         * @description Unsaved source and the declarations against which to check it.
-         */
+        /** ScriptDraftPayload */
         ScriptDraftPayload: {
             target: components["schemas"]["ScriptTargetSelectorPayload"];
             /** Source */
@@ -4252,10 +3877,7 @@ export interface components {
             /** @default {} */
             declarations: components["schemas"]["ScriptDeclarations"];
         };
-        /**
-         * ScriptTarget
-         * @description A resolved executable target. ``path`` is output-only.
-         */
+        /** ScriptTarget */
         ScriptTarget: {
             /**
              * Kind
@@ -4267,14 +3889,7 @@ export interface components {
             /** Path */
             path: string;
         };
-        /**
-         * ScriptTargetSelectorPayload
-         * @description One target a caller asks inference about: a kind, never a path.
-         *
-         *     The workbench resolves the reserved path from the kind (and, for
-         *     experiments, the reserved slug convention); a caller cannot redirect
-         *     inference at an arbitrary workspace file.
-         */
+        /** ScriptTargetSelectorPayload */
         ScriptTargetSelectorPayload: {
             /**
              * Kind
@@ -4284,10 +3899,7 @@ export interface components {
             /** Experiment Name */
             experiment_name?: string | null;
         };
-        /**
-         * ScriptTemplateCatalog
-         * @description Each script kind's templates and where its scripts belong.
-         */
+        /** ScriptTemplateCatalog */
         ScriptTemplateCatalog: {
             build_experiment_environment: components["schemas"]["ReservedScriptTemplates"];
             activate_experiment_environment: components["schemas"]["ReservedScriptTemplates"];
@@ -4296,13 +3908,7 @@ export interface components {
             experiment_run: components["schemas"]["ExperimentScriptTemplates"];
             experiment_verify: components["schemas"]["ExperimentScriptTemplates"];
         };
-        /**
-         * ScriptTemplateEntry
-         * @description One named starter-template variant for an REE-owned script.
-         *
-         *     Every catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the
-         *     content a fresh REE starts with).
-         */
+        /** ScriptTemplateEntry */
         ScriptTemplateEntry: {
             /** Key */
             key: string;
@@ -4315,14 +3921,7 @@ export interface components {
             /** Is Default */
             is_default: boolean;
         };
-        /**
-         * ScriptValidation
-         * @description Execution validation of a *written* script — distinct from inference.
-         *
-         *     For a candidate that has not been written, ``script_digest`` is the
-         *     candidate's own byte digest and ``status`` is ``not_run``; the other digests
-         *     stay absent until a real run produces a receipt.
-         */
+        /** ScriptValidation */
         ScriptValidation: {
             /**
              * Status
@@ -4364,12 +3963,7 @@ export interface components {
          * @enum {string}
          */
         Severity: "high" | "medium" | "low";
-        /**
-         * ShellCommandCandidate
-         * @description A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is
-         *     never rewritten into guessed argv; the author must make the shell dependency
-         *     explicit (``set -- sh -c '...'``).
-         */
+        /** ShellCommandCandidate */
         ShellCommandCandidate: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4388,10 +3982,7 @@ export interface components {
             /** Source */
             source: string;
         };
-        /**
-         * SignReePayload
-         * @description Add a staged Sigstore bundle over the sealed REE's digest as its signature under ``claim``.
-         */
+        /** SignReePayload */
         SignReePayload: {
             /**
              * Claim
@@ -4406,11 +3997,7 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /**
-         * SignReviewPayload
-         * @description Add a staged Sigstore bundle as the review's signature: its statement names the reviewed seal, with the
-         *     review's record as its predicate.
-         */
+        /** SignReviewPayload */
         SignReviewPayload: {
             /** Upload Token */
             upload_token: string;
@@ -4419,10 +4006,7 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
-        /**
-         * SlurmObservation
-         * @description A launch check's view of the Slurm probe.
-         */
+        /** SlurmObservation */
         SlurmObservation: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4431,11 +4015,7 @@ export interface components {
             kind: "slurm";
             probe: components["schemas"]["SlurmProbe"];
         };
-        /**
-         * SlurmPartition
-         * @description One partition the controller reported: its name, whether jobs land there by default, and its time limit
-         *     as Slurm prints it (``30:00``, ``1-00:00:00``, ``infinite``).
-         */
+        /** SlurmPartition */
         SlurmPartition: {
             /** Name */
             name: string;
@@ -4447,13 +4027,7 @@ export interface components {
             /** Time Limit */
             time_limit?: string | null;
         };
-        /**
-         * SlurmProbe
-         * @description Whether a script run for this REE can launch Slurm job steps, as probed where it runs.
-         *
-         *     ``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;
-         *     ``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence.
-         */
+        /** SlurmProbe */
         SlurmProbe: {
             /**
              * Status
@@ -4704,10 +4278,7 @@ export interface components {
          * @enum {string}
          */
         ThreatCategory: "dependency" | "environment" | "machine";
-        /**
-         * TierStatus
-         * @description Whether an optional analysis tier ran.
-         */
+        /** TierStatus */
         TierStatus: {
             /**
              * Tier
@@ -4772,18 +4343,7 @@ export interface components {
             /** Stored At */
             stored_at: string;
         };
-        /**
-         * VenvExperimentEnvironmentContract
-         * @description A packed Python virtual environment as the experiment environment substrate.
-         *
-         *     The build packs the venv as a gzipped tarball at ``artifact_path``; a
-         *     runnable restores it to ``venv_restore_dir`` (an absolute path, because a
-         *     venv bakes absolute paths and must be restored where it was built) and runs
-         *     the command with that venv's ``bin`` on ``PATH``. There is no image ref: the
-         *     workbench base image is the environment. ``venv_restore_dir`` defaults to the
-         *     path a repo2ree build packs; an inspected artifact overrides it with the path
-         *     recovered from the venv's own ``pyvenv.cfg``.
-         */
+        /** VenvExperimentEnvironmentContract */
         VenvExperimentEnvironmentContract: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -4837,10 +4397,7 @@ export interface components {
              */
             status: string;
         };
-        /**
-         * WorkingEnvironmentObservation
-         * @description Where a step's scripts ran: the host as the step saw it, and whether that was a container.
-         */
+        /** WorkingEnvironmentObservation */
         WorkingEnvironmentObservation: {
             host: components["schemas"]["HostFingerprint"];
             /**
@@ -4849,10 +4406,7 @@ export interface components {
              */
             container: boolean;
         };
-        /**
-         * WorkspaceFile
-         * @description One file projected from the materialized workspace subtree.
-         */
+        /** WorkspaceFile */
         WorkspaceFile: {
             /** Path */
             path: string;

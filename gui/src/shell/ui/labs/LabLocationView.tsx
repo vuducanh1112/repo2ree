@@ -22,15 +22,8 @@ interface LabLocationViewProps {
   onBack: () => void;
 }
 
-// PodWidget's sphere fills only ~40% of its square viewBox, so the box is much
-// larger than the specimen it draws. The bay clips the surplus transparent
-// padding rather than the pod.
 const POD_SIZE = 460;
 
-// Step 1 of REE creation: choose which lab will host the workbench.
-// Picking one arms it; Continue carries its id into the workbench/image step,
-// which pins the REE to that lab on provision. The commit is deliberately two
-// moves — the detail panel is where the choice is confirmed, not the grid.
 export function LabLocationView({ onBack }: LabLocationViewProps) {
   const [searchParams] = useSearchParams();
   const { data: labs, isLoading, isError, error } = useLabs();
@@ -38,18 +31,12 @@ export function LabLocationView({ onBack }: LabLocationViewProps) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Choosing a lab opens the setup drawer over the grid, the same way a canvas
-  // panel opens its authoring page. Closing it leaves the choice standing.
   const [setupOpen, setSetupOpen] = useState(false);
-  // Arrived from "Load existing REE" on the landing screen: the bundle is asked
-  // for in the drawer, because the load runs on the bench it provisions.
   const loadRequested = Boolean(searchParams.get(LOAD_REE_PARAM));
 
   const view = useMemo(() => selectLabPage(labs ?? [], { query, page }), [labs, query, page]);
   const selected = labs?.find((one) => one.id === selectedId) ?? null;
 
-  // One connected lab is not a choice — arm it on arrival so the common
-  // single-lab install is one click, not two.
   useEffect(() => {
     if (selectedId || !labs || labs.length !== 1) return;
     setSelectedId(labs[0].id);

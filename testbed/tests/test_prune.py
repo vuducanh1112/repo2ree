@@ -48,9 +48,9 @@ def test_per_test_runs_keep_the_newest_the_newest_problem_the_receipt_and_runs_i
     root = tmp_path / "e2e"
     for day in range(1, 9):
         per_test_run(root, f"e2e-system-2026100{day}-120000")
-    per_test_run(root, "e2e-system-20261001-130000", outcome="failed")  # older problem, shadowed by a newer one
+    per_test_run(root, "e2e-system-20261001-130000", outcome="failed")
     per_test_run(root, "e2e-system-20261002-130000", behaviour="violated")
-    per_test_run(root, "e2e-system-20261003-090000", done=False)  # crashed long ago: no run.json, old
+    per_test_run(root, "e2e-system-20261003-090000", done=False)
     running = per_test_run(root, "e2e-system-20261009-120000", done=False)
     os.utime(running, (NOW, NOW))
     per_test_run(root, "e2e-gui-instant-20261001-120000")
@@ -58,12 +58,12 @@ def test_per_test_runs_keep_the_newest_the_newest_problem_the_receipt_and_runs_i
     plan = prune.plan_per_test_runs(root, 2, {(root / "e2e-system-20261001-120000").resolve()}, NOW)
 
     assert names(plan.keep) == {
-        "e2e-system-20261009-120000",  # in progress
+        "e2e-system-20261009-120000",
         "e2e-system-20261008-120000",
-        "e2e-system-20261007-120000",  # the newest two finished runs, besides the one in progress
-        "e2e-system-20261002-130000",  # the newest problem: passed, but behaviour violated
-        "e2e-system-20261001-120000",  # named by the assurance-gate receipt
-        "e2e-gui-instant-20261001-120000",  # tiers are counted apart
+        "e2e-system-20261007-120000",
+        "e2e-system-20261002-130000",
+        "e2e-system-20261001-120000",
+        "e2e-gui-instant-20261001-120000",
     }
     assert "e2e-system-20261003-090000" in names(plan.remove)
     assert "e2e-system-20261001-130000" in names(plan.remove)
@@ -135,7 +135,6 @@ def recorded_case(base: Path, path: str, finished: float) -> Path:
 def test_a_case_recording_goes_once_its_test_has_not_finished_for_a_month(tmp_path: Path) -> None:
     live = recorded_case(tmp_path, "core/unit/test_x/test_still_here", NOW - 3600)
     gone = recorded_case(tmp_path, "core/unit/test_x/test_renamed_away", NOW - 31 * 24 * 3600)
-    # What a case holds is part of it, even a file named like a manifest; and an unreadable one is no case.
     (gone / "ree" / "manifest.json").parent.mkdir()
     (gone / "ree" / "manifest.json").write_text("{}")
     (tmp_path / "core" / "stray").mkdir()
@@ -171,7 +170,7 @@ def test_a_directory_another_prune_removed_first_is_no_error(monkeypatch: pytest
 
     def raced(directory: Path) -> Iterator[Path]:
         if directory.name == "b":
-            directory.rmdir()  # the prune beside this one got there first
+            directory.rmdir()
         return listed(directory)
 
     monkeypatch.setattr(Path, "iterdir", raced)

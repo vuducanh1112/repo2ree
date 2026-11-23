@@ -1,6 +1,3 @@
-"""The protocol as JSON Schema, as ``contracts/protocol/protocol.schema.json`` publishes it
-(``scripts/contracts.py``)."""
-
 from __future__ import annotations
 
 import json

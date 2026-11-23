@@ -24,7 +24,6 @@ export interface ReeStepDefinition {
   key: string;
   label: string;
   iconKey: ReeStepIconKey;
-  /** What the step's earned-outcome chip says once its run has succeeded. */
   outcomeLabel: string;
   desc: string;
   params: ReeStepParam[];

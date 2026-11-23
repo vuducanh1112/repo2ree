@@ -86,8 +86,6 @@ describe("mapRawReeAudit", () => {
 });
 
 describe("evidence standing", () => {
-  // The whole point of the split: a stale receipt is still on the aggregate,
-  // so it is not "missing" — but it does not make its step done either.
   it("counts only a current receipt as done, and names a stale one as stale", () => {
     expect(
       isEvidenceCurrent(

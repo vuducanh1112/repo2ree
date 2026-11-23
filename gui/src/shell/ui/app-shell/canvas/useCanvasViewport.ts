@@ -13,7 +13,6 @@ type PanState = { pointerId: number; sx: number; sy: number; x0: number; y0: num
 
 interface CanvasViewport {
   tf: Transform;
-  /** Whether button-driven movement should ease instead of tracking the pointer. */
   animate: boolean;
   isPanning: boolean;
   startPan: (event: React.PointerEvent) => void;
@@ -21,7 +20,6 @@ interface CanvasViewport {
   zoomBy: (factor: number) => void;
 }
 
-/** Owns pan and zoom for the assembled 2.5D canvas. */
 export function useCanvasViewport(
   stageRef: React.RefObject<HTMLDivElement>,
   worldBounds: WorldBounds,

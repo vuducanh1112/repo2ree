@@ -1,5 +1,3 @@
-"""Initialization owns its first version, including retries after capture failure."""
-
 from __future__ import annotations
 
 import json
@@ -148,7 +146,6 @@ def test_git_storage_is_not_a_visible_file_or_bundle_content(tmp_path):
     as_attempt(layout, "patch_ree_definition")
     with materialized_ree_download(layout) as archive_path, zipfile.ZipFile(archive_path) as archive:
         assert "ree/.git/HEAD" in archive.namelist()
-    # A symlink must not make private repository bytes visible through another path.
     (layout.workspace / "git-config").symlink_to(layout.git_dir / "config")
     assert not any(entry.path == "git-config" for entry in list_workspace_files(layout))
     with pytest.raises(ValueError, match="Invalid REE file path"):

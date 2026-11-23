@@ -1,19 +1,3 @@
-"""Orchestrate a single runnable run: run script, then optional verify script.
-
-Each runnable (an experiment or the REE's test activation) owns its run script,
-which the runner executes from the workspace root inside the experiment environment:
-``sh <activate experiment environment script> sh <run script>``, through the REE's launch script when it has one.
-
-Verification is a second author-owned script, not a matcher engine and with no
-magic contract: when the runnable declares a ``verify_script``, the runner
-executes it from the workspace root after a completed run, exactly like the run
-script, and its exit code is the verdict (0 = pass). Nothing is injected into
-its environment. The verify script reads whatever it needs straight from the
-workspace — so an author who wants to check the run's stdout has the run script
-materialize it to a workspace file (e.g. ``… | tee results/run.log``) and the
-verify script reads that file, just like any other output.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,14 +23,7 @@ from repo2ree_telemetry.spans import ScriptSpanAttrs, record_current_span_facts,
 tracer = get_tracer(__name__)
 
 
-# ================================================
-# Result type
-# ================================================
-
-
 class RunnableRunOutputs(BaseModel):
-    """Typed schema of a runnable run's outputs (the run-store payload)."""
-
     model_config = ConfigDict(extra="forbid")
 
     subject_name: str
@@ -57,20 +34,9 @@ class RunnableRunOutputs(BaseModel):
 
 @dataclass
 class ExperimentRunOutcome:
-    """Result of a runnable run.
-
-    ``run_outputs`` is the typed payload for the run store.
-    """
-
     status: ActionStatus
     run_outputs: RunnableRunOutputs
-    # Where the launch put its run script; None when it ran directly.
     launched: Launched | None = None
-
-
-# ================================================
-# Script execution
-# ================================================
 
 
 def _run_script(
@@ -81,17 +47,11 @@ def _run_script(
     activate_rel: str | None = None,
     launch: Launch | None = None,
 ) -> StepOutcome:
-    """Validate a runnable's script path, then run it via the shared runner; with none, the activation alone."""
     if script_rel is not None:
         validate_relative_path(script_rel)
     return run_workspace_script(
         workspace, script_rel, log=log, is_canceled=is_canceled, activate_rel=activate_rel, launch=launch
     )
-
-
-# ================================================
-# Public entrypoint
-# ================================================
 
 
 def run_runnable(
@@ -103,11 +63,6 @@ def run_runnable(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ExperimentRunOutcome:
-    """Run *runnable*'s run script, then its verify script when declared.
-
-    Shared by experiments and the activation through their executable projection; the activation
-    has no run script, and runs alone.
-    """
     workspace = workspace.resolve()
 
     outputs = RunnableRunOutputs(subject_name=label)
@@ -130,7 +85,7 @@ def run_runnable(
                 runnable.launch,
             )
             record_exit_code(span, run_outcome.exit_code)
-    except Exception as exc:  # noqa: BLE001 — the experiment's own failure is the result being recorded, not an error to raise
+    except Exception as exc:  # noqa: BLE001
         log("system", "error", f"Run failed: {exc}")
         return ExperimentRunOutcome(status="failed", run_outputs=outputs)
 
@@ -147,7 +102,6 @@ def run_runnable(
         return ExperimentRunOutcome(status="canceled", run_outputs=outputs, launched=launched)
 
     if not runnable.verify_script:
-        # No verify script declared: the run's exit code is the verdict.
         outputs.verdict = "pass" if run_outcome.status == "succeeded" else "fail"
         log("system", "info" if outputs.verdict == "pass" else "error", f"Verdict: {outputs.verdict.upper()}")
         return ExperimentRunOutcome(status=run_outcome.status, run_outputs=outputs, launched=launched)
@@ -158,7 +112,7 @@ def run_runnable(
             ScriptSpanAttrs(path=runnable.verify_script).apply(span)
             verify_outcome = _run_script(workspace, runnable.verify_script, log, is_canceled, launch=runnable.launch)
             record_exit_code(span, verify_outcome.exit_code)
-    except Exception as exc:  # noqa: BLE001 — a failed verify is a verdict this function returns, not an exception it propagates
+    except Exception as exc:  # noqa: BLE001
         log("system", "error", f"Verify failed: {exc}")
         outputs.verdict = "fail"
         return ExperimentRunOutcome(status="failed", run_outputs=outputs, launched=launched)

@@ -1,21 +1,11 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
-/**
- * Narration for a showcase scenario recorded as the demo: a focus box, a pulse
- * ring and a caption drawn over the part of the page a step is about, held long
- * enough to read. It draws only in a project that says `metadata.narrated`
- * (the demo-gui project); everywhere else {@link narrate} returns at once, so
- * the scenario a demo records is exactly the one the showcase tier judges.
- */
-
 const NARRATION_DWELL_MS = 1500;
 
-/** Whether this run records the demo, which draws narration and shows only what is on screen. */
 export function narrated(): boolean {
   return test.info().project.metadata?.narrated === true;
 }
 
-/** Caption the target and dwell on it, in a narrated run; nothing otherwise. */
 export async function narrate(page: Page, target: Locator, caption: string): Promise<void> {
   if (!narrated()) return;
   const element = target.first();
@@ -25,7 +15,6 @@ export async function narrate(page: Page, target: Locator, caption: string): Pro
   await page.waitForTimeout(NARRATION_DWELL_MS);
 }
 
-/** Draw the focus box, pulse ring, and optional narration label on a target. */
 async function showFocus(locator: Locator, narration?: string) {
   await locator.evaluate((el, text) => {
     const containerId = "__ree_demo_focus_container__";

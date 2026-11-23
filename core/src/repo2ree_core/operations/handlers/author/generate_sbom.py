@@ -1,5 +1,3 @@
-"""Generate an SBOM for the selected built experiment environment and commit its receipt."""
-
 from __future__ import annotations
 
 from repo2ree_core.analysis.sbom.scan import (
@@ -29,7 +27,6 @@ from repo2ree_ree.receipt import GenerateSbomReceipt
 
 
 def _current_receipt(layout: ReeLayout, ree: Ree) -> GenerateSbomReceipt | None:
-    """The SBOM's receipt, when its evidence is current and the document it published is still the one it names."""
     receipt = ree.subject.receipts.generate_sbom
     if receipt is None or audit(ree).generate_sbom.evidence != "current" or not layout.sbom.is_file():
         return None
@@ -37,7 +34,7 @@ def _current_receipt(layout: ReeLayout, ree: Ree) -> GenerateSbomReceipt | None:
 
 
 def handle_generate_sbom(
-    args: GenerateSbomArgs = GenerateSbomArgs(),  # noqa: B008 — frozen by use: no handler changes its args
+    args: GenerateSbomArgs = GenerateSbomArgs(),  # noqa: B008
     *,
     layout: ReeLayout,
     run_id: str,
@@ -160,14 +157,6 @@ def _check_preconditions(
     ree: Ree,
     layout: ReeLayout,
 ) -> ExperimentEnvironmentPath:
-    """Resolve the experiment environment to scan from the build recipe that produced it.
-
-    The path is not a parameter of the scan. The author declared it before the
-    build ran and the build receipt binds it, so a caller could only ever pass
-    back the value the REE already holds — an echo that can agree, never
-    inform. Reading it here keeps one declaration to check the evidence
-    against.
-    """
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot generate an SBOM")
     experiment_environment = ree.subject.definition.experiment_environment

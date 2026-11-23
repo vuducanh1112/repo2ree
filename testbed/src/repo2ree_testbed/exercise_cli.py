@@ -1,16 +1,3 @@
-"""An exercise replayed through ``ree``: each step is one command against the directory its REE's label names.
-
-What a step takes is made before its command runs: a project's source packed as an upload, another REE's export
-(``ree bundle``) as it stands at that step, a signature over the seal or the review record as ``ree`` shows it at
-that step. When what a step takes cannot be made, because the REE it exports does not answer, the step runs no
-command. Replay judges nothing: what each command answered is kept as it answered.
-
-Replay is the REEs' environment, and journals what it does as one (``environment_journal``): each drift before the
-step it comes before, written to the REE's files directly, each step's command, which the attempts it runs cite, and
-each bundle it takes, with the head each history in it names, or the refusal.
-
-"""
-
 from __future__ import annotations
 
 import io
@@ -77,14 +64,13 @@ from repo2ree_testbed.exercise_bundle import corrupted
 from repo2ree_testbed.exercise_signing import review_bundle, seal_bundle
 from repo2ree_testbed.showcases import ALL_PROJECTS, Project, ProjectName
 
-# Long enough for a build that installs offline: a step waits for its command, as a person does.
 STEP_SECONDS: Final = 900
 LOG_LINES: Final = 30
 PROJECTS: Final[dict[ProjectName, Project]] = {project.name: project for project in ALL_PROJECTS}
 
 
 class UnreplayableError(ValueError):
-    """The exercise asks for what this replay cannot do yet."""
+    pass
 
 
 class Answer(NamedTuple):
@@ -97,7 +83,6 @@ type RunRee = Callable[[Path, Sequence[str], bytes | None], Answer]
 
 
 def local_ree(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
-    """``ree -C root`` on this machine, which then runs the REE's scripts here too."""
     done = subprocess.run(
         ["ree", "-C", str(root), *words], input=stdin or b"", capture_output=True, timeout=STEP_SECONDS, check=False
     )
@@ -105,9 +90,6 @@ def local_ree(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
 
 
 def machine_ree(machine: Machine) -> RunRee:
-    """``ree -C`` on the test's machine, which runs the REE's scripts there: its REEs must be in the directory the
-    machine shares with this process. An exercise's REE has no directory until a step initializes it."""
-
     def run(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
         done = machine.ree(root, *words, stdin=stdin, inside=False)
         return Answer(done.status, done.stdout, done.stderr)
@@ -116,8 +98,6 @@ def machine_ree(machine: Machine) -> RunRee:
 
 
 def covered_ree(data: Path) -> RunRee:
-    """``ree`` as ``local_ree`` runs it, measured by coverage.py under the repo's configuration (branches on): each
-    command writes the arcs it executed to a data file of its own in ``data``."""
     data.mkdir(parents=True, exist_ok=True)
     measured = [sys.executable, "-m", "coverage", "run", "--parallel-mode", f"--rcfile={ROOT / 'pyproject.toml'}"]
     variables = {**os.environ, "COVERAGE_FILE": str(data / ".coverage")}
@@ -147,9 +127,6 @@ class _Record(BaseModel):
 
 
 class Ran(_Record):
-    """One ``ree`` command: its words, its exit status, the one result line ``--json`` printed, if it printed one,
-    and the end of its log."""
-
     words: tuple[str, ...]
     exit: int
     result: JsonValue = None
@@ -163,8 +140,6 @@ class Prepared(NamedTuple):
 
 
 class Replayed(_Record):
-    """One step: what replay ran to make what it takes, and its command, unless that could not be made."""
-
     step: int
     ree: Label
     operation: str
@@ -185,8 +160,6 @@ def _switch(name: str, on: bool) -> str:
 
 
 def command_of(step: Step, staged: Path | None = None) -> Command:
-    """The words of the command that runs ``step``, and what it reads on stdin. ``staged`` is the file a step that
-    takes one takes: an upload, a bundle to load, or a signature."""
     match step:
         case InitializeRee(name=name):
             return Command(("initialize-ree", "--name", name or step.ree))
@@ -248,8 +221,6 @@ def command_of(step: Step, staged: Path | None = None) -> Command:
 
 
 def bundle_heads(archive: bytes) -> list[str] | None:
-    """The commit each history in a bundle names as its head, as its ``export.json`` lists them; None for a bundle
-    that does not."""
     try:
         with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
             export = json.loads(bundle.read("export.json"))
@@ -276,8 +247,6 @@ def _outputs(ran: Ran) -> dict[str, JsonValue]:
 
 @dataclass
 class CliReplay:
-    """Replays exercises through ``run``, each REE in ``workdir/rees/<label>``."""
-
     run: RunRee
     workdir: Path
 
@@ -286,7 +255,6 @@ class CliReplay:
 
     @property
     def journals(self) -> Path:
-        """Where replay journals what it did as the REEs' environment."""
         return self.workdir / "journal"
 
     def _ran(self, label: Label, words: Sequence[str], stdin: bytes | None = None, plumbing: Sequence[str] = ()) -> Ran:
@@ -296,8 +264,6 @@ class CliReplay:
         return Ran(words=said, exit=answer.exit, result=_result(answer.stdout), log=log)
 
     def _command(self, journal: EnvironmentJournal, label: Label, command: Command) -> Ran:
-        """Run a step's command as the environment does: journaled before it runs, named by the attempts it runs,
-        and its exit status journaled with the commit, or failed capture's record, its attempt left."""
         attempt_id = uuid4().hex
         run_id = f"exercise-{attempt_id[:12]}"
         cited = journal.command(attempt_id, label, run_id)
@@ -322,19 +288,15 @@ class CliReplay:
     def _undo(
         self, journal: EnvironmentJournal, drifts: list[tuple[int, Drift]], moved: dict[int, str], index: int
     ) -> None:
-        """Put back each history drift due before step ``index`` where ree left it, as ree's refusal says to."""
         for number, drift in drifts:
             if isinstance(drift, HistoryDrift) and drift.until == index and number in moved:
                 _git(self._scope(drift), "update-ref", HISTORY_REF, moved.pop(number))
                 journal.undone(f"drift-{number}", drift.ree)
 
     def _drift(self, journal: EnvironmentJournal, number: int, drift: Drift, moved: dict[int, str]) -> None:
-        """Change the REE outside ree, as an editor, a disk, another program or git would, and journal what changed:
-        nothing, when there was nothing to change. A history's ref is kept in ``moved``, to put back."""
         scope = self._scope(drift)
         prefix = f"reviews/{drift.review}/" if drift.review else ""
         if isinstance(drift, ReflogDrift):
-            # git's record of where the refs were, not a file of the REE: nothing of the REE drifts to journal.
             _git(scope, "reflog", "expire", "--expire=now", "--expire-unreachable=now", "--all")
             return
         if isinstance(drift, HistoryDrift):
@@ -376,7 +338,6 @@ class CliReplay:
             return ran, {}
 
     def _prepare(self, journal: EnvironmentJournal, index: int, step: Step) -> Prepared:
-        """What replay runs to make the file ``step`` takes, and that file, unless it could not be made."""
         match step:
             case AcquireSource(source=Uploaded(project=project)):
                 fixture = PROJECTS[project]
@@ -432,11 +393,9 @@ class CliReplay:
         return tuple(replayed)
 
     def histories(self, exercise: Exercise) -> tuple[Path, ...]:
-        """The REE directories that hold a history once the exercise ran: what the behaviour check reads."""
         return tuple(root for label in exercise.rees if ((root := self.root(label)) / ".git").is_dir())
 
 
-# What a drift writes, and who git says made a commit by hand.
 DRIFTED: Final = "changed outside ree"
 GIT_IDENTITY: Final = ("-c", "user.name=environment", "-c", "user.email=environment@repo2ree.invalid")
 HISTORY_REF: Final = "refs/heads/ree-history"
@@ -454,8 +413,6 @@ def _git(scope: Path, *words: str, index: Path | None = None) -> subprocess.Comp
 
 
 def _files(scope: Path, part: FilePart) -> list[Path]:
-    """The files ``part`` holds now, in order: the history's own for the records, never the workspace's control
-    files, which ree keeps for itself."""
     if part == "records":
         listed = _git(scope, "ls-tree", "-r", "--name-only", HISTORY_REF)
         names = [name for name in listed.stdout.splitlines() if not name.startswith(f"{part_dir('overlay')}/")]
@@ -475,8 +432,6 @@ def part_dir(part: FilePart) -> str:
 
 
 def _drifted_file(scope: Path, drift: FileDrift | RevertedDrift, number: int) -> Path | None:
-    """The file ``drift`` changes in ``scope``: the one it adds, or the ``pick``-th the part holds; None when the part
-    holds none to change."""
     if drift.change == "add":
         base = scope / part_dir(drift.part)
         return base / f"drift-{number}.txt" if base.is_dir() else None
@@ -498,7 +453,6 @@ def _change(target: Path, change: FileChange, number: int) -> None:
 
 
 def _put_back(target: Path, kept: tuple[bytes, int] | None) -> None:
-    """Make ``target`` again what it was: ``kept``, its content and mode, or no file at all."""
     if kept is None:
         target.unlink(missing_ok=True)
         return
@@ -508,8 +462,6 @@ def _put_back(target: Path, kept: tuple[bytes, int] | None) -> None:
 
 
 def _rewrite(scope: Path, change: HistoryChange, number: int) -> str | None:
-    """Change the history of ``scope`` with git as a person would, as ``change`` says; the ref moved, or None when
-    there was none to move."""
     head = _git(scope, "rev-parse", "--verify", "--quiet", HISTORY_REF).stdout.strip()
     if not head:
         return None

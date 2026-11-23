@@ -1,5 +1,3 @@
-"""A CLI test's recording: each command at a prompt, then what it printed, at the times it arrived."""
-
 from __future__ import annotations
 
 import json

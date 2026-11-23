@@ -1,5 +1,3 @@
-"""What an author is offered: the steps of authoring an REE, where an REE stands on them, and script templates."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -21,14 +19,10 @@ ReeStepKey = Literal[
     "experiments",
     "seal_ree",
 ]
-# ``complete``: the REE's records show the step done and still true of the REE as it stands.
-# ``ready``: every step it needs is complete. ``blocked``: some step it needs is not.
 ReeStepStatus = Literal["complete", "ready", "blocked"]
 
 
 class ReeStep(BaseModel):
-    """One authoring step: its place in the order, the steps it needs first, and the ``ree`` commands that do it."""
-
     model_config = ConfigDict(extra="forbid")
 
     key: ReeStepKey
@@ -39,14 +33,10 @@ class ReeStep(BaseModel):
 
 
 class ReeStepState(ReeStep):
-    """A step as one REE stands on it."""
-
     status: ReeStepStatus
 
 
 class ReeSteps(BaseModel):
-    """Where an REE stands on every step, and the one to do next: the first ready one."""
-
     model_config = ConfigDict(extra="forbid")
 
     steps: list[ReeStepState] = Field(default_factory=list)
@@ -54,12 +44,6 @@ class ReeSteps(BaseModel):
 
 
 class ScriptTemplateEntry(BaseModel):
-    """One named starter-template variant for an REE-owned script.
-
-    Every catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the
-    content a fresh REE starts with).
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     key: str
@@ -70,8 +54,6 @@ class ScriptTemplateEntry(BaseModel):
 
 
 class ReservedScriptTemplates(BaseModel):
-    """The templates of a script an REE has once, and the reserved path it belongs at."""
-
     model_config = ConfigDict(extra="forbid")
 
     path: str
@@ -79,11 +61,6 @@ class ReservedScriptTemplates(BaseModel):
 
 
 class ExperimentScriptTemplates(BaseModel):
-    """The templates of a script every experiment has, and the path it belongs at.
-
-    The pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     path_pattern: str
@@ -91,8 +68,6 @@ class ExperimentScriptTemplates(BaseModel):
 
 
 class ScriptTemplateCatalog(BaseModel):
-    """Each script kind's templates and where its scripts belong."""
-
     model_config = ConfigDict(extra="forbid")
 
     build_experiment_environment: ReservedScriptTemplates

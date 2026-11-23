@@ -1,5 +1,3 @@
-"""Filesystem behavior of the temporary JSON background-run backend."""
-
 from __future__ import annotations
 
 from pathlib import Path

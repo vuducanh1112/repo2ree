@@ -1,16 +1,3 @@
-"""The exercise cases in ``exercises/``, each replayed through ``ree``, one test per case: the e2e-cli tier.
-
-A case must show what it expects: that each command answers as ``ree schema`` says it does and the histories conform
-to the specification, or exactly the problems it names (see ``repo2ree_testbed.exercise_case``). In the tier, each
-test runs ``ree`` on a machine the stack starts for it with no service on it, and keeps each REE's histories for the
-behaviour check (``E2E_KEPT_REE_DIR``), with the journal it wrote as their environment (``E2E_KEPT_JOURNAL_DIR``),
-which the assurance gate judges like any other test's; a case's expectation is
-the gate's excuse for exactly the rules it names. Run on its own, it runs ``ree`` on this machine.
-
-What a case reaches now, against what it recorded, and whether its code coverage holds for the code as it stands,
-are reported as warnings, never as failures.
-"""
-
 from __future__ import annotations
 
 import os

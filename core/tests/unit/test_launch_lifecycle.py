@@ -1,5 +1,3 @@
-"""An author's step runs through the REE's launch, its receipt says so, and a changed launch leaves it stale."""
-
 from __future__ import annotations
 
 from pathlib import Path

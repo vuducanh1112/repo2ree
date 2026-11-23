@@ -1,6 +1,3 @@
-"""Sigstore bundles as a signer makes them, without Sigstore: a DSSE envelope over an in-toto statement, signed by a
-key that a self-signed certificate holds."""
-
 from __future__ import annotations
 
 import base64
@@ -49,9 +46,6 @@ def signed_bundle(
     holder: ec.EllipticCurvePrivateKey | None = None,
     carried: dict[str, Any] | None = None,
 ) -> bytes:
-    """``statement`` signed by ``signer``, in a bundle whose certificate holds ``holder``'s key (the signer's unless
-    a test says otherwise) and whose envelope carries ``carried`` (the statement signed unless a test says
-    otherwise)."""
     signer = signer or ec.generate_private_key(ec.SECP256R1())
     signed = json.dumps(statement).encode()
     signature = signer.sign(pae(IN_TOTO, signed), ec.ECDSA(hashes.SHA256()))

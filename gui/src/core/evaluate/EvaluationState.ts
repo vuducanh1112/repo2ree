@@ -2,8 +2,6 @@ export interface EvaluationState {
   dependencyLevel?: number;
   environmentLevel?: number;
   machineLevel?: number;
-  // Machine-produced dependency summary, settled by the evaluate run alongside
-  // the reproducibility levels (mirrors the backend session field).
   detectedDependencies?: string;
 }
 

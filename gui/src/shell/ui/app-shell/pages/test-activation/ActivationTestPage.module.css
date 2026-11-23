@@ -1,5 +1,3 @@
-/* The Test Activation page: run the activation alone, and show what that runs. */
-
 .stack {
   display: flex;
   flex-direction: column;

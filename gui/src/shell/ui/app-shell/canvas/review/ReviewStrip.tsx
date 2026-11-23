@@ -52,14 +52,6 @@ const BASIS_OPTIONS: { value: ReviewBasisRequest; label: string; hint: string }[
   },
 ];
 
-/**
- * The reviewer's graph, on the same strip the authoring workflow uses.
- *
- * It stands where the authoring steps stand and scrolls the same way, so
- * switching workflows changes what the bar is about rather than how the bar
- * behaves. The evidence each step settles is too big for a 72px strip and
- * opens in the drawer beside the canvas instead.
- */
 export function ReviewStrip({
   model,
   openStep,
@@ -101,17 +93,6 @@ export function ReviewStrip({
   );
 }
 
-/**
- * Which evidence the next step should rest on.
- *
- * Native radios, not three pressed buttons: the options are exclusive, and
- * anything else reads as three unrelated switches and loses the arrow-key
- * behaviour a group is supposed to have. It sits ahead of the Source step
- * because that is what it governs — where the graph is allowed to start — and
- * the hint for the current choice is spelled out rather than left in a tooltip,
- * since the difference between these options is the difference between an
- * integrity check and a reproduction.
- */
 function BasisPicker({
   value,
   onChange,

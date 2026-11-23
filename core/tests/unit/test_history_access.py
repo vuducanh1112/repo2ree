@@ -1,5 +1,3 @@
-"""History reads and portable downloads preserve prior state and operation records."""
-
 import json
 import subprocess
 import zipfile
@@ -82,7 +80,7 @@ def test_download_contains_usable_repository_and_preserves_imported_history(tmp_
     destination.upload_staging_file("download").write_bytes(payload)
     result = run_command(
         LoadReeBundleCommand(
-            args=LoadReeBundleArgs(upload_token="download", archive_name="download.zip")  # noqa: S106 — staging identifier
+            args=LoadReeBundleArgs(upload_token="download", archive_name="download.zip")  # noqa: S106
         ),
         log=lambda *args: None,
         layout=destination,

@@ -45,36 +45,24 @@ from repo2ree_telemetry.behaviour import close_journal, open_journal
 from repo2ree_telemetry.bootstrap import otlp_log_handler, setup_logs, setup_metrics, setup_tracing
 from repo2ree_telemetry.log import configure_logging, configure_run_log_export
 
-# ================================================
-# App Setup
-# ================================================
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger_provider = setup_logs("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     log_handler = otlp_log_handler(logger_provider) if logger_provider is not None else None
     configure_logging(structured=service_settings.OTLP_ENDPOINT is not None, otlp_handler=log_handler)
-    # Run-stream lines (workbench LogSink frames landing in the run registry)
-    # ship to the collector too, trace-correlated — but never to stdout.
     configure_run_log_export(otlp_log_handler(logger_provider) if logger_provider is not None else None)
     tracer_provider = setup_tracing("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT, console_fallback=True)
     meter_provider = setup_metrics("repo2ree-api", endpoint=service_settings.OTLP_ENDPOINT)
     create_upload_staging_if_not_exists()
-    # Opened before startup settles interrupted runs, so those transitions are
-    # journaled too; closed only after the worker pool has drained.
     open_journal(service_settings.BEHAVIOUR_JOURNAL_DIR, "api", hosts=("api", "supervisor"))
     startup_runs()
     try:
         yield
     finally:
-        # Following stops, and workbenches still connected lose their connection with the control
-        # plane, which ends every follow: the commands run on for the next API process.
         stop_runs()
         workbench_connections.close_all("shutdown")
         shutdown_runs()
-        # The workers drained, so what is still open was never answered (an upload the author never
-        # completed), or is left to the next process. The former fails here, before the journal closes.
         final = service_settings.BEHAVIOUR_FINAL_SHUTDOWN
         author_actions.settle_open("abandoned", final=final)
         close_journal(final=final)
@@ -88,11 +76,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 _log = logging.getLogger(__name__)
 
-# The app description lands in the OpenAPI document (`info.description`), so it
-# reaches every doc surface at once: Swagger UI (/docs), ReDoc (/redoc), the live
-# /openapi.json, and the committed api/openapi.json contract. It documents the
-# cross-endpoint *sequencing* that no single operation's docstring can carry —
-# per-endpoint payload details stay in the operation schemas.
 _DESCRIPTION = """\
 Author and execute reusable execution environments (REEs) through connected
 workbench services.
@@ -173,9 +156,6 @@ app = FastAPI(
     version="0.1.0",
     description=_DESCRIPTION,
     openapi_tags=_OPENAPI_TAGS,
-    # externalDocs must be an absolute URL — the document is consumed away from
-    # the repo (fetched from a live server), so a repo-relative path would
-    # dangle. Points at the walkthrough script on the public Codeberg mirror.
     openapi_external_docs={
         "description": "End-to-end API authoring walkthrough (real curl session)",
         "url": "https://codeberg.org/vuducanh1112/repo2ree/src/branch/main/testbed/suites/walkthrough/api_walkthrough.py",
@@ -190,14 +170,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# Registration order is document order in the generated OpenAPI, so it is also
-# the reading order a client meets the API in: provision, then the authoring
-# lifecycle in step order, then review, then the control plane.
 ROUTERS = (
-    # Control plane — the REE and its runs exist before any step does.
     rees_router,
     runs_router,
-    # Authoring, in the order `ree steps` lists the steps.
     ree_steps_router,
     script_templates_router,
     source_router,
@@ -209,16 +184,12 @@ ROUTERS = (
     receipts_router,
     seal_router,
     history_router,
-    # What sealing leaves behind, once the workbench above is gone.
     ree_index_router,
-    # Review — the same lifecycle, reproduced independently.
     review_records_router,
     review_stages_router,
     review_signing_router,
-    # The fleet the whole thing runs on.
     workbench_ws_router,
     workbenches_router,
-    # What the fleet's owners recorded, for checking it against the behaviour specification.
     behaviour_router,
 )
 
@@ -236,12 +207,6 @@ def get_build_info() -> BuildInfo:
     return current_build("repo2ree-api")
 
 
-# ================================================
-# Exception Handlers
-# ================================================
-
-
-# Starlette's, not only FastAPI's subclass: routing (404, 405) and body parsing (400) raise Starlette's.
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
     detail = exc.detail
@@ -278,8 +243,6 @@ def _is_json(content_type: str) -> bool:
 @app.exception_handler(RequestValidationError)
 async def request_validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     errors = exc.errors()
-    # A body the route reads as JSON, sent as something else: FastAPI hands it on as raw bytes, which
-    # fail validation, but the request is wrong in its media type, not in its fields.
     if not _is_json(request.headers.get("content-type", "")) and any(error["loc"][:1] == ("body",) for error in errors):
         return JSONResponse(
             status_code=415,
@@ -298,7 +261,6 @@ async def request_validation_error_handler(request: Request, exc: RequestValidat
             "error": {
                 "code": "request_validation_failed",
                 "message": "Request validation failed",
-                # The inputs the violations quote can be anything a client sent, bytes included.
                 "details": {"violations": jsonable_encoder(errors)},
                 "retryable": False,
             }
@@ -352,11 +314,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
             }
         },
     )
-
-
-# ================================================
-# Routes
-# ================================================
 
 
 @app.get(

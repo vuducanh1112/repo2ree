@@ -24,9 +24,6 @@ function renderCard(props: Partial<Parameters<typeof NodeCard>[0]> = {}) {
   const onNavigate = vi.fn();
   const onMove = vi.fn();
   const onDraggingChange = vi.fn();
-  // Queries scoped to this render's own container: two of these tests mount a
-  // second card to compare against the first, and RTL's own bound queries
-  // still search the whole document body.
   const view = render(
     <NodeCard
       node={node}
@@ -52,8 +49,6 @@ function renderCard(props: Partial<Parameters<typeof NodeCard>[0]> = {}) {
   };
 }
 
-/** A pointer press, some travel, and a release — plus the click the browser
- *  fires afterwards, which is the part that makes drag-vs-click delicate. */
 function dragBy(card: HTMLElement, dx: number, dy: number) {
   fireEvent.pointerDown(card, { pointerId: 1, isPrimary: true, button: 0, clientX: 0, clientY: 0 });
   fireEvent.pointerMove(window, { pointerId: 1, clientX: dx, clientY: dy });
@@ -90,8 +85,6 @@ describe("NodeCard dragging", () => {
   });
 
   it("still opens the page when the pointer only jitters", () => {
-    // A press that shifts a pixel or two is a click by any reasonable reading,
-    // and treating it as a drag would make the canvas hard to navigate.
     const { card, onNavigate, onMove } = renderCard();
     dragBy(card, 2, 1);
     expect(onNavigate).toHaveBeenCalled();
@@ -109,7 +102,6 @@ describe("NodeCard dragging", () => {
   });
 
   it("navigates again on the next plain click after a drag", () => {
-    // The swallow is armed for exactly one click, not left latched.
     const { card, onNavigate } = renderCard();
     dragBy(card, 60, 30);
     expect(onNavigate).not.toHaveBeenCalled();
@@ -153,7 +145,6 @@ describe("NodeCard dragging", () => {
   });
 
   it("reads the drag through the camera's zoom", () => {
-    // The same gesture at half zoom covers twice as much bench.
     const near = renderCard({ zoom: 2 });
     dragBy(near.card, 100, 0);
     const far = renderCard({ zoom: 0.5 });
@@ -165,8 +156,6 @@ describe("NodeCard dragging", () => {
 });
 
 describe("NodeCard keyboard placement", () => {
-  // Dragging is a pointer gesture; WCAG 2.2 asks that what it does also be
-  // reachable without one.
   it("moves the focused panel with the arrow keys", () => {
     const { card, onMove } = renderCard();
     fireEvent.keyDown(card, { key: "ArrowRight" });

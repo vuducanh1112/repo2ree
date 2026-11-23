@@ -14,7 +14,6 @@ function lab(overrides: Partial<Lab> = {}): Lab {
   };
 }
 
-/** `count` labs named lab-01, lab-02, … with matching ids. */
 function fleet(count: number): Lab[] {
   return Array.from({ length: count }, (_, index) => {
     const n = String(index + 1).padStart(2, "0");
@@ -34,8 +33,6 @@ describe("selectLabPage", () => {
   });
 
   it("widens the grid as the result set grows", () => {
-    // Two columns keeps a pair of labs from stretching across the deck; the
-    // grid only reaches its full width once there is something to fill it.
     expect(selectLabPage(fleet(2), at()).columns).toBe(2);
     expect(selectLabPage(fleet(3), at()).columns).toBe(3);
     expect(selectLabPage(fleet(6), at()).columns).toBe(3);
@@ -65,8 +62,6 @@ describe("selectLabPage", () => {
   });
 
   it("clamps the page when a filter shrinks the list under it", () => {
-    // The user is deep in a large fleet and then types a filter: the page they
-    // were standing on no longer exists, and the grid must not go blank.
     const view = selectLabPage(fleet(40), at("lab-07", 3));
     expect(view.matches).toHaveLength(1);
     expect(view.page).toBe(0);

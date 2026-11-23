@@ -1,17 +1,5 @@
 import { type Page, test } from "@playwright/test";
 
-/**
- * Capture a named, ordered screenshot at the start or end of a step.
- *
- * Call with `'before'` at the top of a step (increments the counter and writes
- * `01-slug-before.png`) and with `'after'` at the bottom (reuses the same
- * counter and writes `01-slug-after.png`). Together they give a before/after
- * pair for every step, all sorted in execution order.
- *
- * Files land in the test's Playwright output dir, e.g.:
- *   test-artifacts/browser/tests/<project>/<test>/01-provision-workbench-before.png
- *   test-artifacts/browser/tests/<project>/<test>/01-provision-workbench-after.png
- */
 export async function stepShot(page: Page, name: string, timing: "before" | "after") {
   const info = test.info();
   let state = shotStates.get(info);
@@ -39,9 +27,6 @@ export async function stepShot(page: Page, name: string, timing: "before" | "aft
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "step";
-  // Preserve historical names for the primary page. Concurrent secondary
-  // sessions get a stable lane prefix so their before/after captures cannot
-  // overwrite the primary page's files or each other's.
   const lane = pageIndex === 0 ? "" : `${String.fromCharCode(97 + pageIndex)}-`;
   const file = `${lane}${String(seq).padStart(2, "0")}-${slug}-${timing}.png`;
 

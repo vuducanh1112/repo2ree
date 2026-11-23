@@ -1,17 +1,3 @@
-"""How a reviewer's step reaches its verdict.
-
-What settles a verdict differs per step, because the certifiable property does:
-source by SWHID identity, build by experiment environment digest then SBOM closure, experiments
-by the author's own verify script. Activation has no comparison at all — whether
-the reviewer's activation hands over is the whole claim, recorded as an ``ActivationOutcome`` rather
-than a comparison to keep that visible in the type.
-
-The rationale for each is in ``docs/engineering/explanation/review-evidence.md``.
-
-Pure: these functions take facts and return comparison records. Nothing here
-touches the filesystem.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage
@@ -38,13 +24,6 @@ def compare_source_swhids(
     *,
     basis: EvidenceBasis = "independent",
 ) -> SourceComparison:
-    """Compare the author's source identity with the tree the reviewer holds.
-
-    The comparison is the same either way — a SWHID is a SWHID — but what it
-    settles depends on ``basis``: an independently fetched tree agreeing with
-    the recorded identity means the origin still serves the authored source,
-    while an extracted snapshot agreeing means the bundle is intact.
-    """
     normalized_expected = expected.strip() or None
     normalized_observed = observed.strip() or None
     if normalized_expected is None or normalized_observed is None:
@@ -72,17 +51,6 @@ def compare_build_experiment_environments(
     sbom_tool_version: str | None = None,
     basis: EvidenceBasis = "independent",
 ) -> ExperimentEnvironmentComparison:
-    """Certify an experiment environment against the author's record, digests first.
-
-    The ladder, strongest first: equal experiment environment digests mean the build is bit
-    reproducible (``identical``); otherwise the dependency closures decide
-    (``equivalent`` / ``different``); a closure that cannot be compared at all is
-    ``inconclusive`` rather than a pass, because an absent baseline is not
-    agreement.
-
-    The ladder is basis-blind on purpose — what an agreement is worth is carried
-    by ``basis``, not by the verdict.
-    """
     delta = compare_sbom_closures(expected_packages, observed_packages)
     if expected_artifact_digest and expected_artifact_digest == observed_artifact_digest:
         verdict: ExperimentEnvironmentVerdict = "identical"
@@ -128,30 +96,6 @@ def compare_experiment_results(
     expected_launch_script_digest: str | None = None,
     launch_script_digest: str | None = None,
 ) -> ExperimentComparison:
-    """Settle whether one experiment reproduced, by the author's own criterion.
-
-    The ladder, in the order it is decided:
-
-    * No verify script declared, or the author never ran this experiment —
-      ``inconclusive``. An absent baseline is not agreement.
-    * The author criterion is unbound or differs from the script the reviewer
-      ran — ``inconclusive``. A different test cannot reproduce the old claim.
-    * The activate experiment environment script differs from the author's —
-      ``inconclusive``. The experiment ran somewhere other than the author's.
-    * The author's baseline verify did not pass — ``inconclusive``. There is no
-      accepted author claim to reproduce.
-    * Reviewer verify exited nonzero — ``different``. The author's own
-      criterion, applied to the reviewer's results, rejected them.
-    * Verify exited 0 — ``reproduced``, upgraded to ``identical`` when both
-      sides recorded an output digest and the two agree.
-
-    An output digest mismatch never downgrades a passing verify: timestamps,
-    seeds, and hostnames land in output files on every honest re-run. A
-    criterion digest mismatch does, because it means a different test ran.
-
-    The two launches are recorded side by side and decide nothing: where a script ran is the reviewer's choice, and
-    the author's criterion is what judges the result.
-    """
     if (
         expected_verify_exit_code is None
         or expected_verify_script_digest is None

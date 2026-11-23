@@ -1,5 +1,3 @@
-"""Evaluate repository reproducibility and commit its successful receipt."""
-
 from __future__ import annotations
 
 from repo2ree_core.analysis.repository.profiler import AnalysisError, analyze_repo
@@ -56,7 +54,6 @@ def handle_evaluate_reproducibility(
     before_revision = revision_of(ree)
     timer = OperationTimer.start()
     try:
-        # What the REE records, laid out fresh: the source as acquired and the overlay, not the view in workspace/.
         workspace = lay_out(layout, ree, run_id, environment=False)
     except ReePreconditionError as exc:
         return ActionResult.failed("precondition", f"cannot evaluate reproducibility: {exc}")
@@ -120,8 +117,6 @@ def _outputs(report: ReproducibilityReport) -> EvaluateOutputs:
 
 
 def _current_report(layout: ReeLayout, ree: Ree, *, strict: bool) -> ReproducibilityReport | None:
-    """The report the evaluation published, when its evidence is current, it was as strict as asked, and the report
-    is still the one its receipt names."""
     receipt = ree.subject.receipts.evaluate_reproducibility
     report = layout.reproducibility_report
     if receipt is None or receipt.strict != strict or audit(ree).evaluate_reproducibility.evidence != "current":

@@ -67,8 +67,6 @@ describe("layout offsets", () => {
   });
 
   it("leaves untouched nodes identical, not merely equal", () => {
-    // Placement runs on every render; an untouched node must not churn its
-    // identity and invalidate everything memoised downstream of it.
     const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.SEAL_REE, { dx: 10, dy: 10 });
     const build = nodeFor(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(placedNode(build, layout)).toBe(build);
@@ -95,9 +93,6 @@ describe("layout offsets", () => {
 
 describe("dragging", () => {
   it("moves a panel by what the pointer moved on screen, wherever it stands", () => {
-    // The floor is tilted and in perspective, so equal screen deltas are
-    // unequal bench distances. What has to hold is that the panel ends up under
-    // the pointer — which is a statement about the projection, not the floor.
     for (const node of [
       nodeFor(PAGE.SEAL_REE),
       nodeFor(PAGE.EVALUATE_REPRODUCIBILITY),
@@ -175,8 +170,6 @@ describe("stored layouts", () => {
 
 describe("bounds under an arrangement", () => {
   it("follows a panel the user has dragged away from the ring", () => {
-    // `fitView` has to frame what is actually on the bench, not where the ring
-    // would have put it — otherwise moving a panel outward hides it.
     const layout = withNodeMoved(DEFAULT_LAYOUT, PAGE.ACQUIRE_SOURCE, { dx: -600, dy: 0 });
     const moved = canvasWorldBounds(placedNodes(layout));
     expect(moved.left).toBeLessThan(canvasWorldBounds().left);

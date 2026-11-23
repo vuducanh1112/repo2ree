@@ -127,8 +127,6 @@ describe("reviewStepStatuses", () => {
       }),
     );
 
-    // Experiments depend on activation, not on the build_experiment_environment: a certified runtime
-    // that has not been shown to come up is nothing to run results in yet.
     expect(statuses.activate_experiment_environment).toBe("ready");
     expect(statuses.experiments).toBe("unavailable");
     expect(runnableReviewSteps(statuses)).toEqual(
@@ -173,8 +171,6 @@ describe("activate_experiment_environment", () => {
   });
 
   it("distinguishes an experiment environment that did not come up from a step that broke", () => {
-    // The step completed — the reviewer's machine did its job and found
-    // something. Rendering that as "failed" would report the review as broken.
     const statuses = reviewStepStatuses({
       ...settledBuild,
       activationOutcome: { basis: "independent", verdict: "failed", exitCode: 7 },
@@ -190,8 +186,6 @@ describe("activate_experiment_environment", () => {
       activationOutcome: { basis: "independent", verdict: "failed", exitCode: 7 },
     });
 
-    // Experiments run *in* that runtime, so their failures would say nothing
-    // about the experiments themselves.
     expect(statuses.experiments).toBe("unavailable");
     expect(runnableReviewSteps(statuses).has("experiments")).toBe(false);
   });
@@ -252,9 +246,6 @@ describe("experiments", () => {
   });
 
   it("ranks an experiment with no criterion below its siblings' passes", () => {
-    // "inconclusive" means nothing stated what a correct result is. Letting a
-    // sibling's pass outrank it would present the step as settled when part of
-    // it was never judged at all.
     const statuses = reviewStepStatuses({
       ...inhabitable,
       steps: [...inhabitable.steps, step("experiments")],
@@ -293,9 +284,6 @@ describe("experiments", () => {
   });
 
   it("counts what reproduced, not what merely settled", () => {
-    // The counter carries the word "reproduced" next to it, so a `different`
-    // verdict must not swell it — that would report the review's own findings
-    // back as successes.
     const mixed = {
       ...inhabitable,
       experimentComparisons: [
@@ -323,8 +311,6 @@ describe("experiments", () => {
 
 describe("evidence basis", () => {
   it("keeps the verdict and the basis independent of each other", () => {
-    // A bundled attempt still reports the verdict its comparison earned; what
-    // the basis changes is the claim the console makes about it, not the DAG.
     const statuses = reviewStepStatuses(
       attempt({
         steps: [step("acquire_source")],
@@ -359,9 +345,6 @@ describe("selectReviewAttempt", () => {
   });
 
   it("reports the gap rather than falling back to the previous attempt", () => {
-    // The workbench writes the record a moment after the POST returns. Handing
-    // back `previous` here is what let a build join the wrong attempt: its steps
-    // read as settled, so the console offered — and dispatched — the next one.
     expect(selectReviewAttempt([previous], "review-new")).toEqual({
       attempt: undefined,
       pending: true,

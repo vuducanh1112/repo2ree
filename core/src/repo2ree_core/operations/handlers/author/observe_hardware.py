@@ -1,5 +1,3 @@
-"""Observe workbench hardware and commit successful evidence to the REE."""
-
 from __future__ import annotations
 
 from repo2ree_core.analysis.hbom.generate_hbom import generate_hbom

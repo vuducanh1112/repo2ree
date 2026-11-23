@@ -1,5 +1,3 @@
-"""A command run as a session: its run log, its cancel marker, and the attempts a dead process left behind."""
-
 from __future__ import annotations
 
 import fcntl

@@ -1,5 +1,3 @@
-"""The JSON documents the testbed writes and reads, parsed at the boundary."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,7 +32,6 @@ class TestResult(Record):
     finished: float
     rees: tuple[str, ...]
     phases: dict[str, float]
-    # The machine its stack's workbenches were installed on (stack/environments.py), when the suite placed it.
     environment: str = ""
 
     @property
@@ -45,10 +42,6 @@ class TestResult(Record):
 class RunTest(TestResult):
     directory: str
     behaviour: Behaviour | None = None
-    # An execution fact beside the outcome, not part of the behaviour verdict (which
-    # judges the dossier against the spec): the last workbench command that failed
-    # in a failed test, as its dossier's spans recorded it. Where to look first, not
-    # why the test failed — a test may fail commands on purpose, or fail without one.
     last_failed_command: str = ""
 
     @classmethod
@@ -65,21 +58,13 @@ class RunRecord(Record):
     build_revision: str
     jobs: int
     whole_suite: bool = False
-    # What a per-test run was limited to; empty when it ran every test its suite lists.
     selected: tuple[str, ...] = ()
-    # The aggregate invocation it ran in (REPO2REE_TEST_RUN_ID), which the assurance gate finds its runs by.
     invocation: str = ""
-    # The clean tree it was built from, unchanged until it ended; "" for a dirty or moving tree.
     tree: str = ""
-    # What the tier's stacks were deployed with: compute locations, location mode, Docker mode.
     parameters: dict[str, str | int] = {}
-    # The Docker server's os/arch and the machine (`local`, or a machines.toml name) it ran on.
     platform: str = ""
     machine: str = ""
-    # For a suite against built images: each image's local ID.
     images: dict[str, str] = {}
-    # In a report of the run (repo2ree_testbed assess): the clean tree, and its commit, whose checker
-    # assessed every test; "" when assessed from a dirty tree, or its tests from different trees.
     assessed_tree: str = ""
     assessed_revision: str = ""
     tests: tuple[RunTest, ...]
@@ -88,7 +73,6 @@ class RunRecord(Record):
         return self.but(tests=tests)
 
     def problem(self) -> bool:
-        """Whether a test failed, or passed with behaviour assessed as other than passed; unassessed is no problem."""
         return any(
             test.outcome not in {"passed", "xfailed"}
             or (test.outcome == "passed" and test.behaviour not in {None, "passed"})

@@ -1,10 +1,3 @@
-"""Reading a script as words: what the tokenizer sees, and what it refuses to guess.
-
-Line numbers are load-bearing — an editor anchors every finding to one — so the
-cases below are as much about *which line* a token is attributed to as about
-which tokens appear at all.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -29,8 +22,6 @@ def test_quotes_are_resolved_and_their_contents_kept_whole() -> None:
 
 
 def test_every_token_on_a_line_is_attributed_to_that_line() -> None:
-    # shlex.lineno reports where a token stopped being scanned, which is one
-    # line late for whichever token ends a line — usually the interesting one.
     assert _words("set -eu\ndocker load\n") == [
         ("set", 1),
         ("-eu", 1),
@@ -59,8 +50,6 @@ def test_a_pipe_is_an_operator_and_an_or_is_a_different_one() -> None:
 
 
 def test_unbalanced_quoting_keeps_what_was_read_rather_than_raising() -> None:
-    # Saying *why* a script will not parse belongs to the syntax tier. Here it
-    # only means the later lines contribute fewer tokens.
     words = tokenize('echo ok\necho "unterminated\n')
     assert ("ok", 1) in [(w.text, w.line) for w in words.words]
 

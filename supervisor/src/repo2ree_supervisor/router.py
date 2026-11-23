@@ -1,5 +1,3 @@
-"""Where an REE's commands go: to the workbench serving its store, whichever one that is at the moment."""
-
 from __future__ import annotations
 
 from repo2ree_supervisor.handle import ReeRoute
@@ -8,8 +6,6 @@ from repo2ree_supervisor.workbench_link import WorkbenchConnectionRegistry
 
 
 class StoreUnavailableError(RuntimeError):
-    """The REE's store has no workbench connected to serve it."""
-
     def __init__(self, store_id: str) -> None:
         super().__init__(f"no workbench is serving store {store_id!r}")
         self.store_id = store_id
@@ -21,10 +17,6 @@ class ReeRouter:
         self._connections = connections
 
     def route(self, ree_id: str) -> ReeRoute | None:
-        """The workbench to send ``ree_id``'s commands to; None for an REE this control plane does not know.
-
-        Raises ``StoreUnavailableError`` for an REE whose store no workbench serves right now.
-        """
         record = self._rees.get(ree_id)
         if record is None:
             return None

@@ -1,10 +1,3 @@
-"""Startup DAG-validation coverage.
-
-A structurally broken graph must be rejected before it can ever execute. Each
-case corrupts one aspect of the valid build DAG and asserts the validator
-rejects it — the guarantee that the published graph is always executable.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -21,7 +14,7 @@ def _validate(dag: DecisionDag) -> None:
 
 
 def test_reference_build_dag_is_valid() -> None:
-    _validate(BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG)  # must not raise
+    _validate(BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG)
 
 
 def test_experiment_dag_is_valid() -> None:
@@ -29,8 +22,6 @@ def test_experiment_dag_is_valid() -> None:
 
 
 def test_check_short_circuit_to_non_not_inferred_result_is_rejected() -> None:
-    # The experiment DAG's declared-runtime check short-circuits blocked branches
-    # to run-not-inferred. Repointing one at a needs_input result must be caught.
     dag = EXPERIMENT_RUN_DAG.model_copy(deep=True)
     nodes = []
     for node in dag.nodes:
@@ -70,7 +61,7 @@ def test_unhandled_check_branch_is_rejected() -> None:
             "project-root": CheckNode(
                 id="project-root",
                 check="logical_project_root",
-                branches={"root": "runtime-strategies"},  # missing "wrapper"
+                branches={"root": "runtime-strategies"},
             )
         }
     )
@@ -99,15 +90,13 @@ def test_duplicate_node_ids_are_rejected() -> None:
 
 
 def test_missing_binding_is_rejected() -> None:
-    # Route the "none" branch (which produces no dockerfile binding) straight at
-    # the renderer leaf, whose renderer requires the dockerfile binding.
     broken = _mutate(
         {
             "dockerfiles-at-root": CheckNode(
                 id="dockerfiles-at-root",
                 check="dockerfiles_at_project_root",
                 branches={
-                    "none": "dockerfile-complete",  # no dockerfile binding on this path
+                    "none": "dockerfile-complete",
                     "exactly_one": "dockerfile-complete",
                     "more_than_one": "dockerfile-multiple",
                 },
@@ -125,7 +114,7 @@ def test_leaf_joining_wrong_node_is_rejected() -> None:
                 id="dockerfile-not-applicable",
                 strategy="dockerfile",
                 outcome="not_applicable",
-                next="build-complete",  # not the fork's join
+                next="build-complete",
             )
         }
     )

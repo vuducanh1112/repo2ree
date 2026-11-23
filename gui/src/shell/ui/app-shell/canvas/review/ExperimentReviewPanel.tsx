@@ -5,7 +5,6 @@ import { experimentReviewStatus, reproducedExperimentCount } from "@core/reviews
 import { Ic } from "../../../shared/components/Icon";
 import styles from "./ReviewConsole.module.css";
 
-// What each verdict is called; ReviewConsole.module.css decides how it reads.
 const VERDICT_LABEL: Partial<Record<ReviewStepStatus, string>> = {
   ready: "Ready",
   queued: "Queued",
@@ -17,16 +16,6 @@ const VERDICT_LABEL: Partial<Record<ReviewStepStatus, string>> = {
   unavailable: "Locked",
 };
 
-/**
- * Per-experiment reproduction, plus a sweep over all of them.
- *
- * A list rather than one button because an REE's experiments are independent
- * claims: a reviewer reproducing a paper's headline result should not have to
- * sit through five others, and a verdict that differs belongs to *one*
- * experiment rather than to the step. "Run all" is a convenience over the same
- * per-experiment path — it dispatches them one at a time, because they share a
- * workspace and concurrent runs would interleave their output files.
- */
 export function ExperimentReviewPanel({
   attempt,
   experimentNames,
@@ -45,9 +34,6 @@ export function ExperimentReviewPanel({
   onRunAll: () => void;
 }) {
   if (experimentNames.length === 0) return null;
-  // What reproduced, not what ran: an experiment that came back `different` has
-  // a verdict but is not a success, and this counter carries the word
-  // "reproduced" next to it.
   const reproduced = reproducedExperimentCount(attempt);
 
   return (
@@ -120,14 +106,6 @@ function ExperimentRow({
   );
 }
 
-/**
- * What the verdict rests on, in the one line there is room for.
- *
- * A `reproduced` verdict is worth exactly as much as the verify script that
- * granted it, so the script is named rather than hidden — and an experiment
- * that declares none says so, since that is why its verdict is inconclusive
- * rather than a pass.
- */
 function CriterionNote({ comparison }: { comparison: ReviewExperimentComparison }) {
   const criterion = comparison.verifyScriptPath.trim();
   const note =

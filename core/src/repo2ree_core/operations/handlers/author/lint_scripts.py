@@ -1,5 +1,3 @@
-"""Handle read-only lint of scripts present in the overlay."""
-
 from __future__ import annotations
 
 from repo2ree_authoring.lint import ScriptDeclarations, lint_script

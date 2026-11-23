@@ -29,18 +29,12 @@ import { ScriptAnalysis } from "../../components/ScriptAnalysis";
 import styles from "./ExperimentsPage.module.css";
 import type { RunState } from "./useExperimentRun";
 
-// The experiments page is composed from three modules; re-exported here so the
-// page keeps a single import surface.
 export { ExperimentCardList } from "./ExperimentCardList";
 export {
   ExperimentQuickAdd,
   type ExperimentSuggestion,
   ExperimentsCoverageTally,
 } from "./ExperimentsAsides";
-
-// ================================================
-// Detail view
-// ================================================
 
 export function ExperimentDetail({
   experiment,
@@ -73,14 +67,8 @@ export function ExperimentDetail({
     experiment,
     otherNames,
   );
-  // Backend-owned starter templates and path conventions; prefill the editors
-  // until a script exists.
   const { data: templates } = useScriptTemplates();
 
-  // The experiment owns its scripts. The backend settles the run-script path
-  // when the experiment is named; until that (and for the verify script, which
-  // is only declared once authored) derive the same destination from the
-  // catalog's published patterns so there is somewhere to save to.
   const fallbackName = experiment.name || `experiment-${index + 1}`;
   const scriptPath =
     experiment.runScript || (templates ? experimentRunScriptPath(templates, fallbackName) : "");
@@ -88,9 +76,6 @@ export function ExperimentDetail({
     experiment.verifyScript ||
     (templates ? experimentVerifyScriptPath(templates, fallbackName) : "");
 
-  // Read-only inference: generate an experiment run scaffold from the built
-  // runtime and load it into the editor (never written here). Requires the
-  // experiment to be declared (named + saved) so the backend can resolve it.
   const generateExperiment = useGenerateExperimentScript(experiment.name);
   const [runScriptExternalEdit, setRunScriptExternalEdit] = useState<
     { content: string; nonce: number } | undefined
@@ -262,9 +247,6 @@ function DetailBreadcrumb({ index, onBack }: { index: number; onBack: () => void
   );
 }
 
-// The selected experiment's Run / Delete controls, rendered in the page
-// header's top-right (like the Build Runtime page's run controls) rather than
-// inside the detail panel.
 export function ExperimentHeaderActions({
   locked,
   canRun,
@@ -329,15 +311,6 @@ function DetailField({
   );
 }
 
-// ================================================
-// Run result panel
-// ================================================
-
-/**
- * One-line explanation of a terminal run's verdict. The verify script's exit
- * code is the whole story — a pass means the run script exited 0 and, when
- * declared, the verify script exited 0 too; anything else is a fail.
- */
 function runResultSummary(outputs: ExperimentRunOutputs): string {
   if (outputs.verdict === "pass") {
     return "Verify script exited 0 — the declared validation passed.";
@@ -348,12 +321,6 @@ function runResultSummary(outputs: ExperimentRunOutputs): string {
   return `Run script failed (exit code ${outputs.exitCode ?? "?"}).`;
 }
 
-/**
- * The typed reason a run failed without producing outputs — a transport or
- * workbench-availability failure the plain "no output data" line used to
- * swallow. Reuses the shared {@link runFailurePresentation} policy so this reads
- * the same as the run HUD's failure note.
- */
 function ExperimentFailureNote({ failure }: { failure: ReeRunFailure }) {
   const view = runFailurePresentation(failure);
   const color = failureTone(view.tone);
@@ -429,10 +396,6 @@ function RunResultPanel({ runState }: { runState: RunState }) {
   );
 }
 
-// ================================================
-// Resource estimates editor
-// ================================================
-
 function ResourceEstimatesEditor({
   estimates,
   locked,
@@ -485,13 +448,6 @@ function ResourceEstimatesEditor({
   );
 }
 
-// ================================================
-// Declared output paths editor
-// ================================================
-
-// One workspace-relative path per line. A pure declaration: it tells readers
-// (and the drift check) which files the run legitimately (re)writes — the
-// verify script is what actually checks them.
 function parseOutputPathLines(text: string): string[] {
   return text
     .split("\n")
@@ -508,10 +464,6 @@ function OutputPathsEditor({
   locked: boolean;
   onChange: (outputPaths: string[]) => void;
 }) {
-  // Local text state so in-progress newlines/whitespace survive the
-  // parse-normalize round-trip through the parent; the effect only resets the
-  // text when the persisted list diverges from what the text already encodes
-  // (e.g. an external update), never while typing.
   const [text, setText] = useState(outputPaths.join("\n"));
   useEffect(() => {
     setText((current) =>

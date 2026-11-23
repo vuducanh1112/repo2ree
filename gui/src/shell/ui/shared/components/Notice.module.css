@@ -1,6 +1,3 @@
-/* A banner that says something about the page as a whole: a prerequisite is
- * missing, a run succeeded, a caveat applies. */
-
 .notice {
   display: flex;
   align-items: center;
@@ -28,7 +25,6 @@
   --notice-bg: var(--tone-danger-surface);
 }
 
-/* Stacked: a heading, then detail, then whatever action resolves it. */
 .notice[data-layout="stacked"] {
   flex-direction: column;
   align-items: stretch;

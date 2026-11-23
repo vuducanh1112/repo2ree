@@ -88,8 +88,6 @@ describe("lab query states", () => {
   });
 });
 
-// ── The lab picker's grid ─────────────────────────────────────────────────
-
 function lab(overrides: Partial<Lab> = {}): Lab {
   return {
     id: "lab-oslo",
@@ -124,8 +122,6 @@ describe("choosing a lab", () => {
     useLabsMock.mockReturnValue(queryState({ data: fleet(3) }));
     renderPicker();
 
-    // The bay shows "connected" as an unlabelled lamp; the accessible name is
-    // what carries it, and what the e2e selectors match on.
     expect(screen.getAllByRole("button", { name: /available/ })).toHaveLength(3);
     expect(screen.getByRole("button", { name: "lab-02 — available" })).toBeInTheDocument();
   });
@@ -154,8 +150,6 @@ describe("choosing a lab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Close" }));
 
     expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
-    // The lab stays chosen and confirmed in the rail — closing setup is not
-    // the same as unpicking the lab.
     expect(screen.getByRole("button", { name: "lab-02 — available" })).toHaveAttribute(
       "aria-pressed",
       "true",
@@ -176,8 +170,6 @@ describe("choosing a lab", () => {
     await userEvent.click(screen.getByRole("button", { name: "lab-oslo-01 — available" }));
 
     expect(screen.getByText("Specimen pod · assigned")).toBeInTheDocument();
-    // The operator facts a cell has no room for. Where the lab runs scripts is
-    // one of them; nothing here claims what its toolchain supplies: the REE's check says what it needs.
     expect(screen.getByText("MACHINE")).toBeInTheDocument();
     expect(screen.getAllByText("x86_64, 1 GPU").length).toBeGreaterThan(0);
   });
@@ -190,8 +182,6 @@ describe("choosing a lab", () => {
       "aria-pressed",
       "true",
     );
-    // Armed, but not committed: setup is opened by an explicit choice, so the
-    // single-lab install still gets to see the image options before it runs.
     expect(screen.queryByRole("region", { name: "Set up the workbench" })).not.toBeInTheDocument();
   });
 

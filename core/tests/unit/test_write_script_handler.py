@@ -1,8 +1,3 @@
-"""Unit coverage for the write_script operations handler's optimistic-concurrency guard.
-
-The handler runs for real against an REE in a tmp root.
-"""
-
 from __future__ import annotations
 
 import hashlib

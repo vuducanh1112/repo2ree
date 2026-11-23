@@ -1,10 +1,3 @@
-/* The scanned dependency inventory: one card per manifest, filtered by how
- * tightly each package is pinned.
- *
- * A package's status and its runtime-presence verdict are the backend's own
- * classifications, so both select their colours here off `data-status` and
- * `data-presence` rather than being looked up per row. */
-
 .panel {
   display: flex;
   flex-direction: column;
@@ -16,8 +9,6 @@
   flex-direction: column;
   gap: var(--space-2-5);
 }
-
-/* --- Filter chips --------------------------------------------------------- */
 
 .filters {
   display: flex;
@@ -55,8 +46,6 @@
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
-
-/* --- One manifest group --------------------------------------------------- */
 
 .group {
   overflow: hidden;
@@ -123,8 +112,6 @@
   font-weight: var(--weight-bold);
 }
 
-/* Resolved (locked + pinned) against unpinned — the same buckets the filter
- * bar shows, so the two readouts reconcile by addition. */
 .tally {
   flex-shrink: 0;
   font-family: var(--font-mono);
@@ -145,8 +132,6 @@
   margin-left: var(--space-1);
   color: var(--chrome-text-muted);
 }
-
-/* --- The package table ---------------------------------------------------- */
 
 .tableHead,
 .packageRow {
@@ -174,7 +159,6 @@
   background: transparent;
 }
 
-/* Zebra striping, so a wide row stays readable across its three columns. */
 .packageRow[data-odd] {
   background: var(--surface-canvas);
 }
@@ -216,7 +200,6 @@
   color: var(--chrome-text-mid);
 }
 
-/* No version recorded — the constraint column is empty rather than wrong. */
 .version[data-unset] {
   font-style: italic;
   color: var(--chrome-text-muted);

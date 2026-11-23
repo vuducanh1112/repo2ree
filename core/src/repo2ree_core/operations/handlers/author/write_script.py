@@ -1,10 +1,3 @@
-"""Handler for the write_script operation.
-
-Overwrites one of the REE's scripts in /ree/overlay/<path> and mirrors it to
-/ree/workspace/<path>. The overlay holds the scripts and nothing else: the fixed
-ones, and those of the declared experiments.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, replace_definition, revision_of

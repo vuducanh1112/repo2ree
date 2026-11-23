@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Reject environment references that are absent from the formal contract."""
-
 from __future__ import annotations
 
 import ast
@@ -49,9 +47,6 @@ DOCKER_INPUTS = tuple(sorted((ROOT / "docker").rglob("Dockerfile"))) + tuple(
 )
 
 VITE_BUILTINS = frozenset({"BASE_URL", "DEV", "MODE", "PROD", "SSR"})
-# Workflow choices belong in command arguments. Keep this explicit escape hatch
-# for third-party tools only when their interface genuinely requires an
-# environment variable rather than a CLI option.
 ALLOWED_WORKFLOW_ENVIRONMENT: frozenset[str] = frozenset()
 Access = Literal["read", "write", "pass-through", "generated"]
 
@@ -139,13 +134,6 @@ def text_environment_references(path: Path) -> set[EnvironmentReference]:
 
 
 def embedded_shell_environment_references(path: Path) -> set[EnvironmentReference]:
-    """Find environment-style parameter expansion inside generated shell text.
-
-    Uppercase assignments in those templates are ordinary shell locals, so the
-    broader shell scanner would incorrectly turn each of them into a contract
-    entry. Default-value parameter expansion is the deliberate external-input
-    shape used by generated scripts.
-    """
     references: set[EnvironmentReference] = set()
     pattern = re.compile(r"\$\{([A-Z][A-Z0-9_]*):-")
     for line_number, line in enumerate(path.read_text().splitlines(), start=1):
@@ -182,8 +170,6 @@ def referenced_environment() -> dict[str, set[EnvironmentReference]]:
             if "tests" in path.relative_to(ROOT / root_name).parts:
                 continue
             collect(python_environment_references(path))
-            # Generated shell programs live in Python string literals. Reading
-            # the raw source catches their defaulted environment inputs as well.
             collect(embedded_shell_environment_references(path))
     for path in TYPESCRIPT_INPUTS:
         collect(typescript_environment_references(path))

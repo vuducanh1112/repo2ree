@@ -1,8 +1,3 @@
-"""Every command and read as the ``ree`` argv a workbench runs: what it writes, and only what was asked.
-
-That ``ree`` reads each argv back as the same value is ``repo2ree_cli``'s to show (``cli/tests``).
-"""
-
 from __future__ import annotations
 
 from repo2ree_protocol.command import (

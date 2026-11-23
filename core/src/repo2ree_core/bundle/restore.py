@@ -1,5 +1,3 @@
-"""Restore and verify an extracted REE bundle."""
-
 from __future__ import annotations
 
 import json

@@ -1,5 +1,3 @@
-"""Remove acquired source bytes and source-derived evidence from a draft REE."""
-
 from __future__ import annotations
 
 import shutil

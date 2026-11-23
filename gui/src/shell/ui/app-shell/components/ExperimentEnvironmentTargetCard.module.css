@@ -1,6 +1,3 @@
-/* The declared-runtime readout shared by SBOM generation and activation
- * testing: an icon in the page's tone, the path, and whether it is there. */
-
 .target {
   display: flex;
   flex-direction: column;
@@ -46,7 +43,6 @@
   overflow-wrap: anywhere;
 }
 
-/* Once a runtime is named, it reads as the path it is. */
 .path[data-declared] {
   font-family: var(--font-mono);
   color: var(--ink-default);

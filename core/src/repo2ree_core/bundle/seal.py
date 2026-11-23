@@ -1,5 +1,3 @@
-"""Seal a captured repository by including selected local LFS payloads."""
-
 from __future__ import annotations
 
 import os
@@ -35,7 +33,7 @@ class BundleProgress:
 
 
 class BundleSealCanceledError(Exception):
-    """Raised before publication when a seal operation is canceled."""
+    pass
 
 
 ProgressSink = Callable[[BundleProgress], None]
@@ -44,19 +42,6 @@ _COPY_CHUNK_BYTES = 1024 * 1024
 
 
 def _refuse_stale_evidence(ree: Ree) -> None:
-    """Refuse to seal an REE whose receipts no longer describe what it holds.
-
-    Sealing is the step that turns an aggregate into something citable, and a
-    stale receipt is the one defect a reader cannot detect for themselves: the
-    digests all agree, the evidence is all present, and it describes a build
-    script or a source that the bundle no longer contains. Publishing that is
-    worse than publishing nothing, so it is a refusal rather than a warning.
-
-    *Missing* evidence is deliberately not refused. An REE with no SBOM and no
-    activation test is incomplete, which its own audit says plainly and which a
-    reader can weigh; an author may have nothing more to add. Incomplete and
-    self-contradictory are different failures and only the second is a lie.
-    """
     stale = audit(ree).stale_steps()
     if not stale:
         return
@@ -109,7 +94,6 @@ def seal_ree(
     prepare_reproducer(layout, ree)
     write_capture_controls(layout, ree)
     plan = capture_plan(layout, ree)
-    # The document holds the seal, and a signature is about the seal: neither is among what it covers.
     selected = [
         entry
         for entry in plan.entries

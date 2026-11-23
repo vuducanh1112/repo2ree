@@ -46,7 +46,6 @@ LINT = {"operation": "lint_scripts", "args": {"targets": []}}
 
 
 def fake_executor(tmp_path: Path, execute: str = "") -> Path:
-    """A ``ree`` whose ``lint-scripts`` logs a line, runs ``execute``, then reports success with its context."""
     path = tmp_path / "ree"
     marker = tmp_path / "marker"
     path.write_text(
@@ -194,7 +193,6 @@ def test_the_workbench_journals_each_executor_it_starts_and_how_it_ended(tmp_pat
 
 
 def cancellable(tmp_path: Path, on_term: str) -> str:
-    """What ``execute`` does: wait for the cancel marker and report canceled, or report on SIGTERM, or neither."""
     marker = tmp_path / "marker"
     canceled = 'report() { echo \'{"status":"canceled"}\'; exit 0; }'
     if on_term == "cooperative":
@@ -220,7 +218,6 @@ def test_cancel_lets_the_executor_stop_itself_and_forces_only_one_that_does_not(
     assert facts["cause"] == "cancel"
     assert facts["canceled_by"] == "api-000001#9"
     if on_term == "ignore":
-        # Killed, wrapper and all: it could not report, so core settled its attempt.
         assert facts["exit_code"] == -signal.SIGKILL
         assert facts["status"] == "interrupted"
         assert result.status == "failed"
@@ -230,7 +227,6 @@ def test_cancel_lets_the_executor_stop_itself_and_forces_only_one_that_does_not(
 
 
 def launched(tmp_path: Path, runs: Executions, attempt_id: str, execute: str, ree_id: str = "ree") -> Identity:
-    """An executor a previous workbench process of the store started, still running or not."""
     directory = runs.directory / attempt_id
     directory.mkdir(parents=True)
     (directory / "command.json").write_text("{}")

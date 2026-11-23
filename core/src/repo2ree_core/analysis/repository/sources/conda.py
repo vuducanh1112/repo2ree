@@ -1,9 +1,3 @@
-"""conda ecosystem parser: ``environment.yml`` / ``environment.yaml``.
-
-The ``pip:`` sublist yields pypi rows — conda environments routinely mix the
-two ecosystems in one file.
-"""
-
 from __future__ import annotations
 
 import re
@@ -15,7 +9,6 @@ from repo2ree_ree.dependency import Dependency
 from ._common import dependency_from_pep508, make_dependency
 from .base import SourceParser
 
-# conda match specs split at the first comparison operator.
 _CONDA_SPEC_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)\s*((?:[=<>!~].*)?)$")
 
 

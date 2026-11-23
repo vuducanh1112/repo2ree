@@ -32,7 +32,6 @@ describe("filterFileTree", () => {
     expect(result).toHaveLength(1);
     const src = result[0];
     expect(src.name).toBe("src");
-    // README is dropped; tests/ is kept because test_main.py matches.
     expect(src.children?.map((c) => c.name)).toEqual(["main.py", "tests"]);
     expect(src.children?.find((c) => c.name === "tests")?.children?.map((c) => c.name)).toEqual([
       "test_main.py",

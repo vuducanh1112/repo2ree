@@ -1,16 +1,3 @@
-"""Shared shell-rendering helpers.
-
-Experiment environment constants (the image reference, the runtime-artifact path) are derived
-the same way for every build strategy so downstream scripts stay consistent and
-the bytes stay deterministic — no timestamps, no per-call entropy.
-
-A generated build writes to the experiment environment path the REE declares. Build refuses to
-start without one and fails when nothing lands there, so a recipe that wrote
-anywhere else would be a build that cannot pass. The per-strategy
-``.repo2ree/`` defaults below apply only before a declaration exists — a freshly
-seeded script on an REE whose experiment environment is not yet declared.
-"""
-
 from __future__ import annotations
 
 import shlex
@@ -18,37 +5,19 @@ from pathlib import PurePosixPath
 
 from repo2ree_core.author_recipes.inference.naming import ree_name_slug
 
-# Per-strategy fallback artifact names, used only when the REE declares no
-# experiment environment path. Both live beneath the reserved control directory under the
-# logical project root. Docker packs an image tar; pip packs the virtual
-# environment as a gzipped tarball.
 DOCKER_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime.tar"
 VENV_EXPERIMENT_ENVIRONMENT_ARTIFACT_SUFFIX = ".repo2ree/artifacts/runtime-venv.tar.gz"
 
 
 def sh_quote(value: str) -> str:
-    """POSIX-shell-quote a value for safe interpolation into a generated script.
-
-    Repository-derived paths and image references are untrusted (a filename may
-    contain quotes, ``$``, backticks, or spaces). Every such value is passed
-    through this before it lands in the shell body so a crafted name cannot break
-    out of its assignment. Constants the renderer itself controls do not need it,
-    but quoting them anyway is harmless and keeps the renderers uniform.
-    """
     return shlex.quote(value)
 
 
 def sh_comment(value: str) -> str:
-    """Fold an untrusted value onto a single line for a shell comment.
-
-    A newline in a repository-derived value would otherwise end the ``#`` comment
-    and inject a live shell line, so collapse all line breaks to spaces.
-    """
     return " ".join(value.splitlines()) if value else value
 
 
 def experiment_environment_artifact_path(project_root: str, suffix: str) -> str:
-    """The runtime-artifact path beneath the logical project root."""
     if project_root == ".":
         return suffix
     return str(PurePosixPath(project_root) / suffix)
@@ -59,32 +28,13 @@ def build_experiment_environment_artifact_path(
     project_root: str,
     default_suffix: str,
 ) -> str:
-    """Where a generated build script writes its experiment environment.
-
-    The declaration wins: ``ExperimentEnvironmentDefinition.experiment_environment_path`` is where the
-    build is expected to leave its artifact, and the build fails its
-    post-condition when nothing lands there. ``default_suffix`` is the
-    per-strategy fallback for an REE that has not declared one yet.
-
-    Taking primitives rather than a ``DecisionContext`` keeps this module a leaf,
-    and forces every caller to supply both inputs — the single reason the
-    renderers and ``build_regeneration`` cannot drift on this path.
-    """
     declared = (declared_experiment_environment_path or "").strip()
     return declared or experiment_environment_artifact_path(project_root, default_suffix)
 
 
 def experiment_environment_image_ref(ree_name: str) -> str:
-    """The Docker image reference a build tags and downstream scripts load.
-
-    ``ree-runtime:<ree-name-slug>`` — readable and stable for a given REE. The
-    name is slugified to a valid Docker tag component; an empty or unusable name
-    falls back to ``ree``.
-    """
     return f"ree-runtime:{ree_name_slug(ree_name)}"
 
 
 def podman_image_ref(ree_name: str) -> str:
-    """The image reference a Podman build tags: Podman names an image it built ``localhost/<name>``, which is
-    also the name its saved archive records and the name an activation finds it by."""
     return f"localhost/{experiment_environment_image_ref(ree_name)}"

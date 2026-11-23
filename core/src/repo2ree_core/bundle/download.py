@@ -1,10 +1,3 @@
-"""Download a pinned repository and its selected local LFS objects.
-
-A bundle carries only what ree recorded: it is refused while anything of the REE changed outside ree, and for a
-history that ends in a commit no attempt captured, as one made with git, which the REE that loads it could no longer
-tell apart from its own.
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,15 +19,13 @@ from repo2ree_core.workspace.integrity import drift_refusal, find_drift
 
 
 class BundleRefusedError(ValueError):
-    """The REE is not as ree recorded it, so no bundle of it is given."""
+    pass
 
 
-# The operations whose commit is a sealed REE as it is exported: the seal, and each signature added beside it.
 SEALED_BY: Final = frozenset({"seal_ree", "sign_ree"})
 
 
 def _unrecorded(layout: ReeLayout, scope: ReeLayout, history: GitHistory, head: str) -> str:
-    """Why a history that does not end in a commit an attempt captured gives no bundle."""
     within = scope.root.relative_to(layout.root).as_posix()
     named = "the REE" if within == "." else within
     if head == history.initial_snapshot():
@@ -46,7 +37,6 @@ def _unrecorded(layout: ReeLayout, scope: ReeLayout, history: GitHistory, head: 
 
 @contextmanager
 def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
-    """Export captured state; no second domain selection or nested portable archive."""
     if not layout.manifest.is_file():
         raise FileNotFoundError(f"REE not found at {layout.root}")
     with tempfile.TemporaryDirectory() as temporary:
@@ -65,8 +55,6 @@ def materialized_ree_download(layout: ReeLayout) -> Iterator[Path]:
                 if scope == layout:
                     ree = ReeDirectory(layout).read_ree()
                     if ree.seal:
-                        # The seal commit is immutable even if review operations follow it; signing only adds
-                        # signatures beside it, so the newest signature's commit is the seal's with them.
                         found = None
                         for commit, record in history.completed_operations():
                             if (

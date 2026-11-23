@@ -1,5 +1,3 @@
-"""A conda environment made by micromamba, which every script that runs in it activates first."""
-
 from __future__ import annotations
 
 import zipfile

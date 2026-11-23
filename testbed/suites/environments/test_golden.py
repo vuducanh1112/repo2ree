@@ -1,5 +1,3 @@
-"""The golden path, the same on every machine a workbench is installed on."""
-
 from __future__ import annotations
 
 import io

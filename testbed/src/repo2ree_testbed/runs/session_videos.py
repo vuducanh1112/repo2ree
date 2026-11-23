@@ -1,15 +1,3 @@
-"""Render CLI tests' terminal sessions to video, beside the runs as their other reports are.
-
-Each CLI test's recording (``<test>/artifacts/cli-session.cast``) becomes ``reports/sessions/<run>/<test>.mp4``:
-agg draws it to a GIF and ffmpeg encodes that as H.264. The run itself is never written. A video is rendered again
-only when its key changes: the digest of its recording and of how it is rendered (the tools' versions and the
-settings), kept beside it as ``<test>.key``. The paths of the videos this call rendered are printed, one a line, for
-the recipe to stamp; progress goes to stderr. Videos of runs gone from disk, and of tests their run no longer has,
-are removed.
-
-    python -m repo2ree_testbed render-sessions [RUN...] [--jobs N]   # by default, the CLI showcase runs read
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -34,8 +22,6 @@ from repo2ree_testbed.runs.showcase_runs import showcase_runs
 SESSIONS = ROOT / "reports" / "sessions"
 CAST = SESSION.removesuffix(".ndjson") + ".cast"
 AGG = ("--quiet", "--font-size", "12", "--idle-time-limit", "2")
-# x264's SVE code dies with an illegal instruction on an aarch64 machine that reports SVE it cannot run (Docker's
-# linuxkit VM): there it keeps to NEON.
 X264 = ("-x264-params", "asm=NEON") if platform.machine() == "aarch64" else ()
 FFMPEG = (
     "-c:v", "libx264", *X264, "-crf", "28", "-tune", "stillimage", "-preset", "slow", "-movflags", "faststart",
@@ -45,8 +31,6 @@ FFMPEG = (
 
 @dataclass(frozen=True)
 class Session:
-    """One CLI test's recording, and where its video goes."""
-
     cast: Path
     video: Path
 
@@ -56,8 +40,6 @@ class Session:
 
 
 class Rendered(BaseModel):
-    """What the stamp of a video records: the commit that rendered it, whether the tree differed, and when."""
-
     model_config = ConfigDict(extra="ignore", frozen=True)
 
     revision: str
@@ -66,18 +48,15 @@ class Rendered(BaseModel):
     sha256: str
 
 
-# The recipe that stamps the videos it rendered (just render-cli-sessions), and its stamp file's entries.
 STAMPED_BY = "render-cli-sessions"
 _STAMPED = TypeAdapter[dict[str, Rendered]](dict[str, Rendered])
 
 
 def video_of(run: str, test: Path, sessions_dir: Path = SESSIONS) -> Path:
-    """Where the video of a run's test, by its directory in the run, goes."""
     return sessions_dir / run / f"{test.name}.mp4"
 
 
 def rendered_by(video: Path, sessions_dir: Path = SESSIONS) -> Rendered | None:
-    """The stamp of a video as it is now, or None where there is no video, or none of this video."""
     if not video.is_file():
         return None
     try:
@@ -92,7 +71,6 @@ def rendered_by(video: Path, sessions_dir: Path = SESSIONS) -> Rendered | None:
 
 @cache
 def renderer() -> str:
-    """How a video is rendered: the tools' versions and the settings, so that a change to either renders again."""
     agg = subprocess.run(["agg", "--version"], capture_output=True, text=True, check=True).stdout.strip()
     ffmpeg = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, check=True).stdout.splitlines()[0]
     return "\n".join((agg, ffmpeg, " ".join(AGG), " ".join(FFMPEG)))
@@ -105,7 +83,6 @@ def key(session: Session) -> str:
 
 
 def sessions(run: Path, sessions_dir: Path = SESSIONS) -> list[Session]:
-    """The recordings a run's CLI tests left, each with its video's place."""
     return [
         Session(cast, video_of(run.name, cast.parent.parent, sessions_dir))
         for cast in sorted(run.glob(f"tests/*/artifacts/{CAST}"))
@@ -113,7 +90,6 @@ def sessions(run: Path, sessions_dir: Path = SESSIONS) -> list[Session]:
 
 
 def render(session: Session) -> bool:
-    """Render the session's video, unless the one there has its key; whether it rendered."""
     wanted = key(session)
     if session.video.is_file() and session.key_file.is_file() and session.key_file.read_text() == wanted:
         return False
@@ -132,7 +108,6 @@ def render(session: Session) -> bool:
 
 
 def drop_gone(kept: dict[str, list[Session]], sessions_dir: Path = SESSIONS) -> None:
-    """Remove the videos of runs gone from disk, and of tests a rendered run no longer has."""
     for folder in sorted(sessions_dir.iterdir()) if sessions_dir.is_dir() else ():
         if not folder.is_dir() or folder.name == "stamps":
             continue
@@ -147,7 +122,6 @@ def drop_gone(kept: dict[str, list[Session]], sessions_dir: Path = SESSIONS) -> 
 
 
 def chosen(given: list[str]) -> list[Path]:
-    """The runs named, or by default the CLI showcase runs the overview reads."""
     if given:
         return [target(name) for name in given]
     tiers = showcase_runs(run_dir() / "e2e").tiers
@@ -155,7 +129,7 @@ def chosen(given: list[str]) -> list[Path]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("runs", nargs="*", help="runs, by path or name (default: the CLI showcase runs read)")
     parser.add_argument("--jobs", type=int, default=1, help="videos rendered at once (agg and x264 use several cores)")
     args = parser.parse_args()

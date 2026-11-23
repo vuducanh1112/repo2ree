@@ -1,8 +1,3 @@
-"""Faults a test asks its stack to inject, by real means, at the step it chooses.
-
-A workbench fault names the REE whose workbench it hits: the workbench serving its store.
-"""
-
 from __future__ import annotations
 
 import urllib.error
@@ -22,8 +17,6 @@ class KillWorkbench(Record):
 
 
 class RestartWorkbench(Record):
-    """The workbench is stopped and started again, as an upgrade would: what it started runs on."""
-
     kind: Literal["restart_workbench"] = "restart_workbench"
     ree_id: str
 
@@ -49,8 +42,6 @@ class HealWorkbench(Record):
 
 
 class StartRivalWorkbench(Record):
-    """A second workbench for the REE's store, with the store's own token: the store is served already."""
-
     kind: Literal["start_rival_workbench"] = "start_rival_workbench"
     ree_id: str
 
@@ -61,8 +52,6 @@ class StopRivalWorkbench(Record):
 
 
 class LockHistory(Record):
-    """A stale lock on the REE's history ref, as a crashed git process leaves one: no attempt can publish."""
-
     kind: Literal["lock_history"] = "lock_history"
     ree_id: str
 
@@ -100,9 +89,9 @@ class FaultRefusedError(RuntimeError):
 def inject(url: str, fault: Fault) -> None:
     body = FAULT.dump_json(fault)
     headers = {"Content-Type": "application/json"}
-    request = urllib.request.Request(url, data=body, method="POST", headers=headers)  # noqa: S310 - the stack this test runs on
+    request = urllib.request.Request(url, data=body, method="POST", headers=headers)  # noqa: S310
     try:
-        with urllib.request.urlopen(request, timeout=180):  # noqa: S310 - the stack this test runs on
+        with urllib.request.urlopen(request, timeout=180):  # noqa: S310
             return
     except urllib.error.HTTPError as error:
         raise FaultRefusedError(f"{fault.kind}: {error.read().decode(errors='replace')}") from error

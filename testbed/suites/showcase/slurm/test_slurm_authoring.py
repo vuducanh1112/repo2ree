@@ -1,5 +1,3 @@
-"""An REE whose scripts are each launched as a Slurm job step, through the launch inference proposes."""
-
 from __future__ import annotations
 
 import zipfile

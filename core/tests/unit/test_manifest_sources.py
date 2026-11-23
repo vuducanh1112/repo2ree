@@ -1,10 +1,3 @@
-"""Parse coverage for the first-party manifest sources.
-
-Each format parser is pinned with representative input; ``scan_manifest_files``
-is exercised end-to-end over a tmp repo, including the lock-merge and the
-profiler-level report it feeds.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,10 +15,6 @@ from repo2ree_core.analysis.repository.sources.pypi import (
     parse_requirements_txt,
     parse_uv_lock,
 )
-
-# --------------------------------------------------------------------------- #
-# requirements.txt
-# --------------------------------------------------------------------------- #
 
 
 class TestRequirementsTxt:
@@ -64,11 +53,6 @@ class TestRequirementsTxt:
         assert dep.name_as_written == "Typing_Extensions"
 
 
-# --------------------------------------------------------------------------- #
-# pyproject.toml
-# --------------------------------------------------------------------------- #
-
-
 class TestPyproject:
     def test_pep621_dependencies(self) -> None:
         text = '[project]\nname = "x"\ndependencies = ["pandas==2.1.0", "rich>=13; extra == \'cli\'"]\n'
@@ -95,11 +79,6 @@ class TestPyproject:
         assert parse_pyproject("not [valid", "pyproject.toml") == []
 
 
-# --------------------------------------------------------------------------- #
-# environment.yml
-# --------------------------------------------------------------------------- #
-
-
 class TestEnvironmentYml:
     def test_conda_and_pip_entries(self) -> None:
         text = (
@@ -122,11 +101,6 @@ class TestEnvironmentYml:
         assert parse_environment_yml(":\n  - {", "environment.yml") == []
 
 
-# --------------------------------------------------------------------------- #
-# package.json + npm locks
-# --------------------------------------------------------------------------- #
-
-
 class TestNpm:
     def test_package_json_collects_direct_declaration_sections(self) -> None:
         text = """{
@@ -146,8 +120,6 @@ class TestNpm:
         assert all(d.ecosystem == "npm" and d.direct and d.declared_in == "package.json" for d in deps)
 
     def test_package_json_repeated_and_blank_names(self) -> None:
-        """A package named in several sections is one row (first section wins);
-        a blank key is not a package and must not crash the parser."""
         text = """{
           "dependencies": {"react": "^18.3.0", "": "1.0"},
           "peerDependencies": {"react": ">=18"}
@@ -156,8 +128,6 @@ class TestNpm:
         assert [(d.name, d.declared_constraint, d.scope) for d in deps] == [("react", "^18.3.0", None)]
 
     def test_package_lock_repeated_resolutions_collapse(self) -> None:
-        """v1 locks nest the same resolution under several parents; it is one
-        closure row with the union of hashes. Blank keys are skipped."""
         v1 = """{"dependencies": {
           "a": {"version": "1.0", "dependencies": {"left-pad": {"version": "1.3.0", "integrity": "sha512-x"}}},
           "b": {"version": "1.0", "dependencies": {"left-pad": {"version": "1.3.0", "integrity": "sha512-y"}}},
@@ -198,11 +168,6 @@ class TestNpm:
         assert [(d.ecosystem, d.name, d.locked_version) for d in report.dependencies] == [("npm", "react", "18.3.1")]
 
 
-# --------------------------------------------------------------------------- #
-# Dockerfile
-# --------------------------------------------------------------------------- #
-
-
 class TestDockerfile:
     def test_from_variants(self) -> None:
         text = (
@@ -222,20 +187,11 @@ class TestDockerfile:
         assert all(d.ecosystem == "oci" and d.declared_in == "Dockerfile" for d in deps)
 
     def test_stage_aliases_make_parsing_stateful(self) -> None:
-        """Dockerfile parsing is deliberately NOT line-local (unlike
-        requirements.txt): a stage alias changes the meaning of later FROMs,
-        so parse(A + B) != parse(A) + parse(B). Anyone unifying the parsers
-        around line locality breaks multi-stage handling."""
         stage = "FROM python:3.11 AS build\n"
         use = "FROM build\n"
         assert [d.name for d in parse_dockerfile(stage + use, "Dockerfile")] == ["python"]
-        # Parsed alone, `FROM build` is an image reference, not a stage.
         assert [d.name for d in parse_dockerfile(use, "Dockerfile")] == ["build"]
 
-
-# --------------------------------------------------------------------------- #
-# lockfiles
-# --------------------------------------------------------------------------- #
 
 _UV_LOCK = """
 version = 1
@@ -279,8 +235,6 @@ class TestLockfiles:
         assert dep.locked_hashes == ["sha256:whl"]
 
     def test_forked_resolution_merges_hashes_across_forks(self) -> None:
-        """Universal locks list the same package once per marker/platform fork;
-        a declared row matched by several forks must keep every fork's hashes."""
         forked_lock = """
         version = 1
 
@@ -298,16 +252,11 @@ class TestLockfiles:
         """
         declared = parse_requirements_txt("numpy\n", "requirements.txt")
         locked = parse_uv_lock(forked_lock, "uv.lock")
-        assert len(locked) == 2  # both forks survive parsing
+        assert len(locked) == 2
 
         (dep,) = merge_locked(declared, locked)
-        assert dep.locked_version == "1.26.4"  # first fork is the representative
-        assert dep.locked_hashes == ["sha256:old", "sha256:new"]  # union, in order
-
-
-# --------------------------------------------------------------------------- #
-# merge + end-to-end scan
-# --------------------------------------------------------------------------- #
+        assert dep.locked_version == "1.26.4"
+        assert dep.locked_hashes == ["sha256:old", "sha256:new"]
 
 
 class TestMergeAndScan:
@@ -315,7 +264,7 @@ class TestMergeAndScan:
         declared = parse_requirements_txt("requests>=2\n", "requirements.txt")
         locked = parse_uv_lock(_UV_LOCK, "uv.lock")
         merged = merge_locked(declared, locked)
-        (dep,) = merged  # the closure row matched, so no extra row remains
+        (dep,) = merged
         assert dep.direct is True
         assert dep.declared_constraint == ">=2"
         assert dep.locked_version == "2.31.0"
@@ -333,15 +282,15 @@ class TestMergeAndScan:
         assert names == {("pypi", "requests"), ("oci", "python")}
 
         report = analyze_repo(tmp_path)
-        assert report.dependency_level == 3  # Locked
-        assert report.environment_level == 1  # Container
+        assert report.dependency_level == 3
+        assert report.environment_level == 1
         assert report.dependency_summary.total == 1
         assert "floating-base-image" in {t.id for t in report.threats}
 
     def test_scan_unpinned_repo_stays_declared(self, tmp_path: Path) -> None:
         (tmp_path / "requirements.txt").write_text("flask\n")
         report = analyze_repo(tmp_path)
-        assert report.dependency_level == 1  # Declared
+        assert report.dependency_level == 1
         assert {t.id for t in report.threats if t.category.value == "dependency"} == {"unpinned-deps"}
 
     def test_strict_fails_when_the_scan_finds_no_dependency_data(self, tmp_path: Path) -> None:
@@ -355,9 +304,6 @@ class TestMergeAndScan:
         assert report.dependency_summary.total == 1
 
     def test_adding_files_under_skipped_dirs_changes_nothing(self, tmp_path: Path) -> None:
-        """Metamorphic twin of the pruning rule: junk under any skipped
-        directory must leave the whole report — inventory, signals, levels,
-        threats — bit-identical."""
         (tmp_path / "requirements.txt").write_text("requests>=2\n")
         before = analyze_repo(tmp_path)
 
@@ -372,15 +318,12 @@ class TestMergeAndScan:
         assert analyze_repo(tmp_path) == before
 
     def test_vendored_manifests_are_not_the_repos_own(self, tmp_path: Path) -> None:
-        """Pruned directories must not contribute file signals either: a
-        node_modules package.json or a committed .venv requirements.txt would
-        otherwise bump a manifest-less repo to Declared on garbage evidence."""
         (tmp_path / "node_modules" / "leftpad").mkdir(parents=True)
         (tmp_path / "node_modules" / "leftpad" / "package.json").write_text("{}")
         (tmp_path / ".venv").mkdir()
         (tmp_path / ".venv" / "requirements.txt").write_text("garbage==1\n")
 
         report = analyze_repo(tmp_path)
-        assert report.dependency_level == 0  # None — nothing declared by the repo
+        assert report.dependency_level == 0
         assert report.dependency_summary.manifests == 0
         assert "no-manifest" in {t.id for t in report.threats}

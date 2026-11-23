@@ -1,5 +1,3 @@
-"""Local end-to-end coverage for author-side SBOM generation."""
-
 from __future__ import annotations
 
 from pathlib import Path

@@ -9,7 +9,6 @@ export interface StepRunProjection {
   activeRunIds: Record<string, string>;
 }
 
-/** Project the durable run list into the legacy page-facing shape. */
 export function projectStepRuns(runs: readonly ReeRunSummary[]): StepRunProjection {
   const projection: StepRunProjection = {
     actionStates: {},

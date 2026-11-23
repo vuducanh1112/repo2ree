@@ -26,7 +26,6 @@ def test_leaves_no_temporary_behind_on_success(tmp_path):
 
 
 def test_a_failed_write_leaves_the_previous_version_intact(tmp_path):
-    """The whole point: an interrupted write must not publish a partial file."""
     target = tmp_path / "file"
     target.write_bytes(b"the version a reader must still see")
 
@@ -47,7 +46,6 @@ def test_a_failed_write_leaves_no_temporary_behind(tmp_path):
 
 
 def test_cancellation_mid_write_leaves_no_temporary_behind(tmp_path):
-    """KeyboardInterrupt is not an ``Exception`` — the cleanup catches it anyway."""
     target = tmp_path / "file"
 
     with (
@@ -60,7 +58,6 @@ def test_cancellation_mid_write_leaves_no_temporary_behind(tmp_path):
 
 
 def test_concurrent_writers_do_not_share_a_temporary(tmp_path):
-    """Two writes to one path must not be able to publish each other's bytes."""
     target = tmp_path / "file"
     seen = []
 
@@ -78,7 +75,6 @@ def test_concurrent_writers_do_not_share_a_temporary(tmp_path):
 
 
 def test_json_document_is_indented_and_key_sorted(tmp_path):
-    """The persisted spelling: readable and diffable, so a diff is about values."""
     assert json_document_bytes({"b": 1, "a": 2}) == b'{\n  "a": 2,\n  "b": 1\n}'
 
 

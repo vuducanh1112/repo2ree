@@ -63,12 +63,9 @@ describe("toReePatchFromSlices", () => {
       evaluationState,
     });
 
-    // Observed source identity is receipt-owned, so it is never serialized into
-    // the definition patch.
     expect(patch).not.toHaveProperty("revision");
     expect(patch).not.toHaveProperty("resolvedRevision");
     expect(patch).not.toHaveProperty("swhid");
-    // The patch is the backend's wire format: snake_case keys, camelCase gone.
     expect(patch).toEqual({
       name: "demo",
       catalog: {
@@ -112,7 +109,6 @@ describe("toReePatchFromSlices", () => {
     });
   });
 
-  // The source changes only by acquiring or removing it; autosave never carries it.
   it("never carries the source, authored locally or not", () => {
     for (const sourceType of ["git", ""] as const) {
       const patch = toReePatchFromSlices({
@@ -125,8 +121,6 @@ describe("toReePatchFromSlices", () => {
     }
   });
 
-  // Clearing the declared runtime path must clear the declaration — but never
-  // at the cost of the build recipe, which carries the REE's own build script.
   it("clears an undeclared experiment environment path without dropping the build recipe", () => {
     const patch = toReePatchFromSlices({
       reeSpec: { ...createEmptyReeSpec(), experimentEnvironmentPath: "" },

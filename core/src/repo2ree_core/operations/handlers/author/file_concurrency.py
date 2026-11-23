@@ -1,5 +1,3 @@
-"""Optimistic concurrency for authored workspace files."""
-
 from __future__ import annotations
 
 from repo2ree_core.persistence.directory import ReeDirectory

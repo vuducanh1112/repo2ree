@@ -1,5 +1,3 @@
-"""The activate experiment environment decision DAG: the shared experiment environment contract subgraph."""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.decision_graphs._experiment_environment_contract import (

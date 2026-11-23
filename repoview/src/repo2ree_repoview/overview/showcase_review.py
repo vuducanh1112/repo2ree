@@ -1,10 +1,3 @@
-"""The review a showcase's review test left, read from the copy the test preserved.
-
-A review is a Git repository of its own inside the reviewer's REE (``ree/reviews/<review id>``), and its
-``review.json`` at the last commit is its report: what it reviewed, on which machine, each step's state, and its
-verdicts on the source, the experiment environment, the activation and each experiment.
-"""
-
 from __future__ import annotations
 
 import subprocess
@@ -123,7 +116,6 @@ def _git(repo: Path, *args: str) -> bytes:
 
 
 def read_review(repo: Path) -> FinalReview | None:
-    """The review in ``repo`` as of its last commit; None when that commit holds no report it can read."""
     try:
         commit = _git(repo, "rev-parse", "HEAD").decode().strip()
         files = set(_git(repo, "ls-tree", "-r", "--name-only", "-z", commit).decode().split("\0"))
@@ -136,7 +128,6 @@ def read_review(repo: Path) -> FinalReview | None:
 
 
 def preserved_review(test_directory: Path, rees: tuple[str, ...]) -> FinalReview | None:
-    """The newest review in any REE a test preserved."""
     folders = [test_directory / "dossier/rees" / name / "ree" / REVIEWS for name in rees]
     repos = [repo for folder in folders if folder.is_dir() for repo in sorted(folder.iterdir())]
     found = [review for repo in repos if (repo / ".git").exists() and (review := read_review(repo)) is not None]

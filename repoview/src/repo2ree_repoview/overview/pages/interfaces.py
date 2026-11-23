@@ -1,11 +1,3 @@
-"""The interfaces into an REE as their committed contracts specify them: the command line and the HTTP API, each on
-a page of its own, and the authoring steps both advance.
-
-Everything here is read off the contracts, so a page says what a contract says and nothing a contract does not: the
-command line from ``cli-schema``, the API from ``openapi``, each where the contract registry keeps it.
-Each model a page names links to its graph on the contracts page.
-"""
-
 from __future__ import annotations
 
 from repo2ree_repoview.diagrams.contracts import slug
@@ -22,11 +14,6 @@ _NONE = '<span class="muted">&ndash;</span>'
 
 def _part_of() -> str:
     return f'<p class="muted">Part of <a href="{INTERFACES}.html">Interfaces</a>.</p>'
-
-
-# ================================================
-# The hub: both surfaces, and the steps they share
-# ================================================
 
 
 def _steps(cli: CliSchema, api: OpenApi) -> str:
@@ -66,11 +53,6 @@ def page_interfaces(cli: CliSchema, api: OpenApi) -> Page:
     )
     teaser = f"{len(cli.commands)} commands and {api.operations} HTTP operations, and the steps both advance"
     return Page(INTERFACES, "Interfaces", teaser, section(INTERFACES, "Interfaces", lede, cards + _steps(cli, api)))
-
-
-# ================================================
-# The command line
-# ================================================
 
 
 def _param(param: CliParam) -> str:
@@ -148,11 +130,6 @@ def page_cli(cli: CliSchema) -> Page:
     )
     teaser = f"{len(cli.commands)} commands"
     return Page(CLI_PAGE, "Command line", teaser, section(CLI_PAGE, "Command line", lede, body))
-
-
-# ================================================
-# The HTTP API
-# ================================================
 
 
 def page_api(api: OpenApi) -> Page:

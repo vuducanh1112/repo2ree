@@ -1,8 +1,3 @@
-"""A pytest suite as a stack's client: ``--list`` prints its test ids; given ids, it runs only those.
-
-A suite whose tests each need a machine of their own lists each id with its machine, tab-separated.
-"""
-
 from __future__ import annotations
 
 import argparse

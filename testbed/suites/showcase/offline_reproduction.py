@@ -1,5 +1,3 @@
-"""A machine of the reviewer's: Docker and a POSIX shell, no repo2ree, and no network."""
-
 from __future__ import annotations
 
 import os
@@ -18,9 +16,7 @@ def _docker(*args: str, timeout: float = 60) -> subprocess.CompletedProcess[str]
 
 
 def reproduce_offline(archive: Path) -> str:
-    """Unpack the archive and run ``sh run.sh all`` there, as REPRODUCING.md tells a reviewer: what it printed."""
     machine = f"ree-offline-{os.getpid()}-{time.monotonic_ns()}"
-    # An empty TLS directory has the daemon listen on its socket alone: no certificates to make.
     started = _docker(
         *("run", "-d", "--privileged", "--network", "none", "--name", machine),
         *("-e", "DOCKER_TLS_CERTDIR=", DOCKER_IMAGE),
@@ -31,7 +27,6 @@ def reproduce_offline(archive: Path) -> str:
         while _docker("exec", machine, "docker", "info").returncode != 0:
             assert time.monotonic() < deadline, "the offline machine's Docker never started"
             time.sleep(1)
-        # Not /tmp: a tmpfs mounted inside the container, which `docker cp` writes beneath, unseen.
         copied = _docker("cp", str(archive), f"{machine}:/root/ree.zip", timeout=REPRODUCTION_TIMEOUT_SECONDS)
         assert copied.returncode == 0, copied.stderr
         run = _docker(

@@ -5,16 +5,9 @@ interface CornerResizeOptions {
   defaultHeight: number;
   minWidth: number;
   minHeight: number;
-  /** Margin kept between the panel and the viewport edges when clamping. */
   viewportMargin?: number;
 }
 
-/**
- * Drag-to-resize for a corner grip on a panel anchored at its bottom-right:
- * dragging the top-left grip away from the anchor grows the panel. Sizes are
- * clamped to [min, viewport - margin] on every move, so a drag can never push
- * the panel off screen. Session-scoped state — nothing is persisted.
- */
 export function useCornerResize({
   defaultWidth,
   defaultHeight,
@@ -23,8 +16,6 @@ export function useCornerResize({
   viewportMargin = 120,
 }: CornerResizeOptions) {
   const [size, setSize] = useState({ width: defaultWidth, height: defaultHeight });
-  // Grip drags must not animate: width transitions would make the panel lag
-  // behind the cursor, so the consumer disables them while this is true.
   const [resizing, setResizing] = useState(false);
   const drag = useRef<{
     pointerId: number;

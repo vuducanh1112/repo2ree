@@ -1,5 +1,3 @@
-"""The docker-less branch of the pipeline: a pip venv packed as the experiment environment on the bench."""
-
 from __future__ import annotations
 
 import zipfile
@@ -37,7 +35,6 @@ def test_a_pip_venv_is_inferred_built_run_sealed_and_released(client: Client, ne
     run = client.activate(ree_id, F)
     assert run.status == "succeeded", client.logs(ree_id, run)
 
-    # Inference comes before declaring: declaring an experiment needs its run script.
     assert "exit 64" in client.infer(ree_id, "experiment_run", experiment=F.experiment).first_body()
     run = client.run_experiment(ree_id, F)
     logs = client.logs(ree_id, run)

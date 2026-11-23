@@ -1,6 +1,3 @@
-"""A drift replayed through ree: the environment changes an REE's file between two commands, journals it, and the
-checker holds the next attempt to having found it."""
-
 from __future__ import annotations
 
 import json

@@ -12,7 +12,6 @@ TAG = "3fq0x9kz1v2a"
 
 @pytest.fixture(autouse=True)
 def loaded(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Every machine's image loaded from this checkout, as `just _load-environment` records it."""
     for name in EnvironmentName:
         (tmp_path / f"{name}.image").write_text(f"repo2ree-environment-{name}:{TAG}\n")
     monkeypatch.setattr(environments, "LOADED", tmp_path)

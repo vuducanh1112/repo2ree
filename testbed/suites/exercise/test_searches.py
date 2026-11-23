@@ -1,24 +1,3 @@
-"""The searches for exercise cases: exercises drawn by Hypothesis, replayed through ``ree`` on this machine, and judged.
-
-Whatever an exercise's steps, each command answers as ``ree schema`` says it does, and the histories it leaves
-conform to the specification. A search shrinks an exercise that shows a problem no case names, and keeps it as a case
-expecting those problems, in ``exercises/`` unless ``EXERCISE_CASES`` names another directory. A problem a case names
-already passes, so a known one does not stop a search. Two searches draw the same exercises and differ in what steers
-them (``hypothesis.target``): one toward the rules and transitions of the specification, which any implementation of
-it reaches alike; one toward the arcs this implementation executes beyond those the cases cover, measured by
-coverage.py under the repo's configuration. The branch search measures the cases whose coverage is stale first, so it
-steers past what they cover as the code stands; once it ends, it keeps up to ``EXERCISE_KEEP`` exercises that
-conformed as new cases, each adding the most arcs beyond the cases and those kept before it, and each confirmed by a
-second measured replay.
-
-Every exercise judged leaves its trace under the run's ``exercises/<run>/<search>/<digest>/``: ``trace.json`` (the
-exercise, what each command answered, its problems, the rules and transitions it reached, and the arcs it executed
-when measured: which, file by file), the checker's reports in ``check/``, and in the branch search the coverage data
-in ``coverage/``. ``exercises/<run>/<search>/coverage.ndjson`` lists, exercise by exercise, what each reached and what
-of it no exercise before it had; ``covered.json`` holds what they reached together. An exercise that shows a problem
-keeps its REEs too.
-"""
-
 from __future__ import annotations
 
 import os
@@ -65,8 +44,6 @@ class NonconformingError(AssertionError):
 
 
 def judged(exercise: Exercise, search: Literal["confirm"] | SearchName) -> tuple[Trace, Path]:
-    """Replay and judge ``exercise`` in a directory of its own under this run's and this search's, and keep its trace
-    there; the branch search measures what ree executed."""
     workdir = run_dir() / "exercises" / execution_id() / search / digest(exercise)
     shutil.rmtree(workdir, ignore_errors=True)
     trace = judge(exercise, workdir, measured=search in {"branch-cov", "confirm"})
@@ -98,7 +75,6 @@ def _toward_spec_coverage(exercise: Exercise) -> None:
     _unknown(trace, workdir)
 
 
-# What the branch search steers past, and the exercises it may keep: set when it starts.
 BASELINE: Arcs = {}
 CANDIDATES: list[Trace] = []
 
@@ -116,7 +92,6 @@ def _toward_branch_coverage(exercise: Exercise) -> None:
 
 
 def _baseline() -> Arcs:
-    """What the cases cover as the code stands: the stale and unmeasured ones measured again first."""
     for case in cases(DIRECTORY):
         if unmeasured(case):
             workdir = run_dir() / "exercises" / execution_id() / "baseline" / case.digest
@@ -126,9 +101,6 @@ def _baseline() -> Arcs:
 
 
 def _keep_new_arcs() -> list[Path]:
-    """Keep as cases the candidates that add the most arcs beyond the baseline, each confirmed by a second measured
-    replay: only the arcs it adds again, beyond the baseline and the cases kept before it, count, and one that no
-    longer conforms or adds nothing is not kept."""
     kept = []
     so_far = BASELINE
     for first, gained in adding(CANDIDATES, BASELINE, KEEP):
@@ -146,8 +118,6 @@ def _keep_new_arcs() -> list[Path]:
 
 
 def _keeping(search: SearchName, run: Callable[[], None]) -> None:
-    """Run the search ``run``; the exercise it shrinks to is kept as a case expecting its problems before the test
-    fails with it."""
     try:
         run()
     except NonconformingError as found:
@@ -159,14 +129,11 @@ def _keeping(search: SearchName, run: Callable[[], None]) -> None:
 
 @pytest.mark.property
 def test_any_exercise_conforms_steered_by_spec_coverage() -> None:
-    """The search steered toward the rules and transitions of the specification: what any implementation reaches."""
     _keeping("spec-cov", _toward_spec_coverage)
 
 
 @pytest.mark.property
 def test_any_exercise_conforms_steered_by_branch_coverage() -> None:
-    """The search steered toward the arcs this implementation executes beyond what the cases cover: what the
-    specification alone does not tell apart. What it keeps for new arcs is kept whether or not it found a problem."""
     BASELINE.clear()
     BASELINE.update(_baseline())
     CANDIDATES.clear()

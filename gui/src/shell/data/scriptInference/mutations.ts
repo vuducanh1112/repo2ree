@@ -5,24 +5,12 @@ import { resolveReeId } from "../client";
 import { type ScriptTargetKind, selectCandidate, selectDag, selectTrace } from "./candidate";
 import type { ScriptGeneration } from "./generation";
 
-// What every generate mutation resolves to: the script to load into the editor
-// plus the executed decision-DAG walk (the explanation) and the full static
-// graph it overlays onto. One shape so a single control renders any target.
 export interface ScriptInferenceOutcome {
   generation: ScriptGeneration;
-  // The executed decision-DAG walk for the target. Null only if the report has
-  // no such target.
   trace: DecisionTrace | null;
-  // The full static graph the trace overlays onto (all branches).
   dag: DecisionDag | null;
 }
 
-/**
- * Run read-only script inference for the build target and reduce it to the
- * script the build page loads into the editor plus its decision trace. The call
- * persists nothing — the returned body becomes a script only when the author
- * saves it — so there are no queries to invalidate on success.
- */
 export function useGenerateBuildExperimentEnvironmentScript(reeId?: string) {
   return useGenerateScriptForTarget("build_experiment_environment", undefined, reeId);
 }
@@ -31,16 +19,10 @@ export function useGenerateActivateExperimentEnvironmentScript(reeId?: string) {
   return useGenerateScriptForTarget("activate_experiment_environment", undefined, reeId);
 }
 
-/**
- * Run read-only inference for one experiment's run scaffold. The experiment
- * name selects the target; the returned body becomes a script only when saved.
- */
 export function useGenerateExperimentScript(experimentName: string, reeId?: string) {
   return useGenerateScriptForTarget("experiment_run", experimentName, reeId);
 }
 
-// The one generate mutation. Every target requests its own inference report and
-// reduces it identically, so the per-page hooks above only name their target.
 function useGenerateScriptForTarget(
   kind: ScriptTargetKind,
   experimentName: string | undefined,

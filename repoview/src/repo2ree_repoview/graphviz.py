@@ -1,5 +1,3 @@
-"""Running Graphviz on the DOT the views write."""
-
 from __future__ import annotations
 
 import json
@@ -8,11 +6,10 @@ import subprocess
 
 
 def quote(name: str) -> str:
-    """A DOT identifier or label, quoted and escaped; DOT reads UTF-8, so other characters stay as they are."""
     return json.dumps(name, ensure_ascii=False)
 
 
-def render(source: str, format: str) -> bytes:  # noqa: A002 - dot's own name for it
+def render(source: str, format: str) -> bytes:  # noqa: A002
     result = subprocess.run(["dot", f"-T{format}"], input=source.encode(), capture_output=True, check=False)
     if result.returncode != 0:
         raise RuntimeError(f"dot -T{format} failed: {result.stderr.decode(errors='replace').strip()}")
@@ -20,7 +17,6 @@ def render(source: str, format: str) -> bytes:  # noqa: A002 - dot's own name fo
 
 
 def inline_svg(source: str, *, css_class: str = "") -> str:
-    """An SVG to embed in a page: no XML prolog, and with ``css_class``, sized by the page rather than in points."""
     svg = render(source, "svg").decode()
     svg = svg[svg.index("<svg") :]
     if css_class:

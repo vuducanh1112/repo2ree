@@ -1,13 +1,3 @@
-"""Whether this machine can launch an REE's scripts as Slurm job steps, probed where a launch runs.
-
-A launch runs outside the working environment, on the machine that runs the step, so the probe is a small POSIX
-shell script run there: it sees what a launch script would, the same PATH, user and cluster configuration. It asks
-the controller itself (``sinfo``), not only whether ``srun`` is on PATH, and reports its partitions with their time
-limits. It writes nothing.
-
-A probe that cannot run says so (``failed``), which inference reads as unknown, never as absence.
-"""
-
 from __future__ import annotations
 
 import subprocess
@@ -40,7 +30,6 @@ def _partition(line: str) -> SlurmPartition | None:
 
 
 def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> SlurmProbe:
-    """What a finished probe says about Slurm; one that printed nothing it recognises knows nothing."""
     lines = result.stdout.splitlines()
     head = lines[0].split("\t") if lines else []
     state = head[0] if head else ""
@@ -68,8 +57,6 @@ def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> SlurmProbe:
 
 
 class RunnerSlurmProbe:
-    """Probes where ree runs the first time it is asked, and answers the same after."""
-
     def __init__(
         self,
         workspace: Path,

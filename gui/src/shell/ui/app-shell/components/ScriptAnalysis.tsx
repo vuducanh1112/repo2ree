@@ -23,7 +23,6 @@ interface ScriptAnalysisProps {
   disabled?: boolean;
 }
 
-/** Show contract checks for a draft or the full report for saved source. */
 export function ScriptAnalysis({
   target,
   source,
@@ -46,9 +45,6 @@ export function ScriptAnalysis({
     enabled: !disabled,
   });
 
-  // The same findings the list below renders, sent back up to the editor to be
-  // drawn on the lines they name. `state.findings` is the report's own tuple, so
-  // this publishes once per report rather than once per render.
   const findings = state.kind === "findings" ? state.findings : NO_FINDINGS;
   const publish = usePublishScriptDiagnostics();
   useEffect(() => publish(findings), [findings, publish]);

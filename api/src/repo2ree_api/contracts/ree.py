@@ -1,5 +1,3 @@
-"""Public REE response models over the portable aggregate."""
-
 from __future__ import annotations
 
 from typing import Literal
@@ -17,18 +15,14 @@ from repo2ree_ree.model import Ree, ReeStatus
 
 
 class ReeDocument(BaseModel):
-    """The portable aggregate with live workbench file projections."""
-
     model_config = ConfigDict(extra="forbid")
 
     ree_id: str
     ree: Ree
     status: ReeStatus
     audit: ReeAudit
-    # Where the REE stands on each authoring step, as its own records say.
     steps: ReeSteps
     location_id: str | None = None
-    # The store the REE is kept in; deleting it deletes it there.
     store_id: str | None = None
     workspace_files: list[WorkspaceFile] = Field(default_factory=list)
     ree_files: list[ReeFile] = Field(default_factory=list)
@@ -61,7 +55,6 @@ class ReeSummary(BaseModel):
     ree_id: str
     name: str
     status: ReeStatus
-    # The store the REE is kept in.
     location_id: str
 
 
@@ -90,8 +83,6 @@ class WorkbenchStatus(BaseModel):
 
 
 class ReeState(BaseModel):
-    """Compact control-plane observation without inline file contents."""
-
     model_config = ConfigDict(extra="forbid")
 
     ree_id: str

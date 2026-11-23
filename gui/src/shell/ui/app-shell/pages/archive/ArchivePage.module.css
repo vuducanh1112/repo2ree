@@ -1,8 +1,3 @@
-/* Deposit & Share: the archive targets, their parameters, and the prerequisites
- * a deposit really ought to have behind it. */
-
-/* --- Prerequisite advisories ---------------------------------------------- */
-
 .advisory {
   display: flex;
   align-items: flex-start;
@@ -62,8 +57,6 @@
   gap: var(--space-2);
 }
 
-/* One unmet prerequisite. Not a Badge: it names work outstanding rather than a
- * state something is in. */
 .prereq {
   padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-sm);
@@ -74,8 +67,6 @@
   font-size: var(--text-label);
   font-weight: var(--weight-semibold);
 }
-
-/* --- Deposit parameters --------------------------------------------------- */
 
 .paramsLabel {
   display: flex;
@@ -118,13 +109,9 @@
   color: var(--ink-subtle);
 }
 
-/* --- Repository tabs ------------------------------------------------------ */
-
 .tabs {
   margin-bottom: var(--space-5);
 }
-
-/* --- Repository summary --------------------------------------------------- */
 
 .summaryHead {
   display: flex;
@@ -177,7 +164,6 @@
   color: var(--ink-muted);
 }
 
-/* The identifier this archive issued, or the shape one will take. */
 .identifier {
   display: flex;
   align-items: center;
@@ -217,8 +203,6 @@
 .identifier[data-assigned] .identifierValue {
   color: var(--archive-tint);
 }
-
-/* --- Aside panels --------------------------------------------------------- */
 
 .asideHead {
   display: flex;
@@ -281,7 +265,6 @@
   color: var(--ink-subtle);
 }
 
-/* Done: the step behind this prerequisite has a result. */
 .check[data-done] .checkIcon {
   color: var(--tone-success-ink);
 }

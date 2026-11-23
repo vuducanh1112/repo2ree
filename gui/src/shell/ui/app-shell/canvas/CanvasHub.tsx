@@ -42,18 +42,14 @@ interface CanvasHubProps {
   evaluation: EvaluationState;
   badges: Badges;
   provisioned: boolean;
-  /** The page the authoring graph says to do next; its panel is flagged. */
   nextPage?: AppShellPage;
-  /** Canvas node keys whose authoring prerequisites are not yet met. */
   blockedNodeKeys?: ReadonlySet<string>;
-  /** Sealing runs on the client, so it has no entry in the run listing. */
   sealRunning?: boolean;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
   workspaceFiles: FileTreeNode[];
   reeFiles: ReeFile[];
   sourceRepo: SourceRepoMetadata | undefined;
   authorReceipts: ReceiptView[];
-  /** Node keys whose recorded run result is stale (see sealConsistency). */
   staleNodeKeys?: ReadonlySet<string>;
   filesConsoleOpen: boolean;
   onFilesConsoleOpenChange: (open: boolean) => void;
@@ -86,24 +82,16 @@ export const CanvasHub = memo(function CanvasHub({
   onBenchConsoleOpenChange,
 }: CanvasHubProps) {
   const { data: scriptTemplates } = useScriptTemplates();
-  // Read live work from the run listing rather than from what this tab started,
-  // so a step a workbench service (or another tab) is running lights up here too.
   const { data: runs } = useReeRunsQuery();
   const activity = useMemo(
     () => canvasActivity(runs ?? [], sealRunning ? [PAGE.SEAL_REE] : []),
     [runs, sealRunning],
   );
-  // The arrangement is saved per REE, under the same scope the data hooks use.
   const { layout, moveNode, resetLayout, isDefault } = useCanvasLayout(useReeId());
-  // A panel is only ever dragged one at a time, and this flips once at each end
-  // of the gesture rather than on every pointer move — it exists to keep the
-  // cable measure loop running while a panel is moving, not to place anything.
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const onDraggingChange = useCallback((key: string, dragging: boolean) => {
     setDraggingKey(dragging ? key : null);
   }, []);
-  // Bounds follow the arrangement: `fitView` has to frame the bench as the user
-  // has it, or dragging a panel outward would put it beyond the fitted view.
   const nodes = useMemo(() => placedNodes(layout, CANVAS_NODES), [layout]);
   const assembledBounds = useMemo(() => canvasWorldBounds(nodes), [nodes]);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -131,8 +119,6 @@ export const CanvasHub = memo(function CanvasHub({
     ree,
     badges,
     tf,
-    // Cables are measured from the DOM, so they follow a moved panel for free —
-    // but only if something keeps re-measuring while it moves.
     animate: animate || draggingKey !== null,
   });
 
@@ -161,14 +147,9 @@ export const CanvasHub = memo(function CanvasHub({
           "--world-x": `${tf.x}px`,
           "--world-y": `${tf.y}px`,
           "--world-z": tf.z,
-          // The tilt and the scene depth come from core so the geometry the
-          // layout is computed against and the geometry the browser draws are
-          // the same two numbers.
           "--floor-tilt": `${FLOOR_TILT_DEGREES}deg`,
           "--panel-counter-tilt": `${-FLOOR_TILT_DEGREES}deg`,
           "--scene-depth": `${SCENE_DEPTH}px`,
-          // The floor rings are drawn from the same ellipse the nodes stand on,
-          // so the deck markings describe the layout instead of decorating it.
           "--ring-rx": `${RING.rx}px`,
           "--ring-ry": `${RING.ry}px`,
         })}
@@ -179,7 +160,6 @@ export const CanvasHub = memo(function CanvasHub({
             <div aria-hidden className={styles.zoneRing} data-zone="outer" />
             <div aria-hidden className={styles.zoneRing} data-zone="inner" />
             <div aria-hidden className={styles.zoneRing} data-zone="core" />
-            {/* cradle socket: the pod is seated in the bench, not floating */}
             <div aria-hidden className={styles.cradle} />
 
             <SpecimenPod evaluation={evaluation} svgRef={podSvgRef} activity={activity} />

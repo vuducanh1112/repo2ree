@@ -1,12 +1,3 @@
-/* A badge states a fact — a status, an earned outcome, a verdict. Its colours
- * come from `--badge-ink` (the words), `--badge-line` (what the edge is derived
- * from) and `--badge-wash`, which `data-tone` sets for the semantic tones and a
- * caller may set directly (via `cssVars`) when the tone is a domain identity,
- * such as the stage a step outcome belongs to.
- *
- * Ink and line are two properties rather than one because the text carries the
- * 4.5:1 obligation and the edge does not. */
-
 .badge {
   display: inline-flex;
   align-items: center;
@@ -22,7 +13,6 @@
   white-space: nowrap;
 }
 
-/* Paths and identifiers read as code even inside a chip. */
 .badge[data-flavor="code"] {
   font-family: var(--font-mono);
 }

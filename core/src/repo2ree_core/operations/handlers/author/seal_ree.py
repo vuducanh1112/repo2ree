@@ -30,8 +30,6 @@ def _format_bytes(value: int) -> str:
 
 
 class _ProgressLogger:
-    """Turn per-chunk progress into a small, useful run-log stream."""
-
     def __init__(self, log: LogSink) -> None:
         self._log = log
         self._last_phase: str | None = None
@@ -111,8 +109,6 @@ def handle_seal_ree(
         log("system", "warn", "REE sealing canceled")
         return ActionResult(status="canceled")
     except ReePreconditionError as exc:
-        # The REE is not in a state that may be sealed — the author's own tree
-        # said so, and no retry changes that until they act on it.
         log("system", "error", f"seal_ree refused: {exc}")
         return ActionResult.failed("precondition", str(exc))
     except Exception as exc:
@@ -128,8 +124,6 @@ def handle_seal_ree(
 
 
 def _sealed_as_asked(layout: ReeLayout, ree: Ree, args: SealReeArgs) -> bool:
-    """Whether the seal includes what ``args`` asks it to and nothing else: the source snapshot, the experiment
-    environment, the results, as sealing selects them."""
     sealed = {str(path) for path in ree.subject.capture.lfs_paths}
     snapshot = layout.snapshot_archive.relative_to(layout.root).as_posix()
     declared = ree.subject.definition.experiment_environment.artifact_path

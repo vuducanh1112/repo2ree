@@ -3,28 +3,19 @@ import path from "node:path";
 import { type Page, type Response, test } from "@playwright/test";
 import type { components } from "../src/shell/infra/api/generated/openapi";
 
-/**
- * How long a run may go without a new log line before it counts as stalled,
- * and the overall backstop. A run that keeps logging is never failed for being
- * slow; one that goes quiet fails with what it said last.
- */
 export interface RunWatch {
   stallMs: number;
   budgetMs: number;
 }
 
-/** Runs that download nothing and start no daemon: the instant fixture. */
 const INSTANT_RUN: RunWatch = { stallMs: 30_000, budgetMs: 180_000 };
 
-/** Runs that provision a bench, fetch a source, or pull and build on a cold daemon. */
 export const NETWORK_RUN: RunWatch = { stallMs: 120_000, budgetMs: 1_200_000 };
 
-/** The watch the running project names in its `metadata.runWatch`; network runs unless it says `instant`. */
 function projectRunWatch(): RunWatch {
   return test.info().project.metadata?.runWatch === "instant" ? INSTANT_RUN : NETWORK_RUN;
 }
 
-/** For a step whose tool prints nothing while it works, an SBOM scan above all: five minutes of silence. */
 export function quiet(watch: RunWatch = projectRunWatch()): RunWatch {
   return { ...watch, stallMs: Math.max(watch.stallMs, 300_000) };
 }
@@ -51,11 +42,6 @@ async function runStartedBy(response: Response): Promise<StartedRun | null> {
   return { apiBase: url.slice(0, url.indexOf("/api/v1/")), reeId: body.ree_id, runId: body.run_id };
 }
 
-/**
- * Every run the page starts from now on, in order. For actions that start more
- * than one run, or start a run only after another one ends: provisioning a
- * workbench with a bundle loads the bundle once provisioning succeeds.
- */
 export class StartedRuns {
   private readonly started: StartedRun[] = [];
   private readonly waiting: ((run: StartedRun) => void)[] = [];
@@ -72,7 +58,6 @@ export class StartedRuns {
     page.on("response", this.listener);
   }
 
-  /** The next run the page started, waiting up to `timeoutMs` for it to start. */
   async next(timeoutMs: number = projectRunWatch().stallMs): Promise<StartedRun> {
     const ready = this.started.shift();
     if (ready) return ready;
@@ -94,7 +79,6 @@ export class StartedRuns {
   }
 }
 
-/** One line per settled run in the test's output, which is what a stall window is tuned against. */
 function recordRun(record: Record<string, string | number>) {
   const info = test.info();
   info.annotations.push({ type: "run", description: JSON.stringify(record) });
@@ -104,15 +88,9 @@ function recordRun(record: Record<string, string | number>) {
 
 export interface SettleOptions {
   watch?: RunWatch;
-  /** Fail, with the run's failure and last log lines, unless it succeeded. */
   succeed?: boolean;
 }
 
-/**
- * Wait until `run` settles and return it. Fails when the run logs nothing for
- * the watch's stall window or is still going past its budget, with the run's
- * last log lines in the error.
- */
 export async function settleRun(
   page: Page,
   run: StartedRun,
@@ -177,7 +155,6 @@ export async function settleRun(
   }
 }
 
-/** Perform `action` and return the run it started, to be settled later with {@link settleRun}. */
 async function startRun(page: Page, action: () => Promise<unknown>): Promise<StartedRun> {
   const runs = new StartedRuns(page);
   try {
@@ -188,7 +165,6 @@ async function startRun(page: Page, action: () => Promise<unknown>): Promise<Sta
   }
 }
 
-/** Perform `action` and wait for the run it started to settle. */
 export async function runToEnd(
   page: Page,
   action: () => Promise<unknown>,

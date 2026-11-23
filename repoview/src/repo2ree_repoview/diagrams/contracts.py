@@ -1,17 +1,3 @@
-"""Draw the committed JSON contracts as graphs: each model a box of its fields, an edge from a field to each model
-it holds.
-
-Each contract is drawn from the entry points it names itself, one drawing each, so a drawing shows what one reader
-of the contract meets and nothing more: every command's outputs (``cli-schema``), every message, operation's outputs
-and read (``protocol-schema``), the models each group of HTTP operations sends and answers with (``openapi``), the
-behaviour journal's records (``behaviour-schema``), and the REE document (``ree-schema``). Each is found by that name
-in the contract registry, as ``just export-contracts`` exports it.
-
-    python -m repo2ree_repoview contract-graphs -o reports/diagrams/contracts
-
-prints the drawings it wrote, one path a line, and removes the ones of entry points that are gone.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -34,19 +20,15 @@ Kind = Literal["entry", "model", "alias"]
 INK = "#0f172a"
 MUTED = "#475569"
 EDGE = "#64748b"
-# Fill and frame of each kind of box: the entry point, a model with fields, and a union or enumeration.
 COLOURS: dict[Kind, tuple[str, str]] = {
     "entry": ("#e2ece8", "#0f766e"),
     "model": ("#dbeafe", "#3b82f6"),
     "alias": ("#f1f5f9", "#64748b"),
 }
-# Longer types are cut at this many characters, so a long enumeration does not widen its box past reading.
 TYPE_WIDTH = 56
 
 
 class Node(Document):
-    """A JSON Schema, read for what a drawing shows: its fields, the models it holds, and its type."""
-
     ref: str | None = Field(default=None, alias="$ref")
     title: str | None = None
     type: str | list[str] | None = None
@@ -71,7 +53,6 @@ class Node(Document):
         return self.one_of or self.any_of
 
     def held(self, shape: Shape = "one") -> Iterator[tuple[str, Shape]]:
-        """Every model this schema holds, and how: itself, one of a union, a list's items, or a map's values."""
         if self.name:
             yield self.name, shape
             return
@@ -84,7 +65,6 @@ class Node(Document):
             yield from self.additional_properties.held("map")
 
     def text(self) -> str:
-        """The schema's type, as short as it reads in a box."""
         if self.name:
             return self.name
         if self.members:
@@ -115,15 +95,8 @@ def cut(text: str) -> str:
     return text if len(text) <= TYPE_WIDTH else text[: TYPE_WIDTH - 1] + "…"
 
 
-# ================================================
-# What each contract names as its entry points
-# ================================================
-
-
 @dataclass(frozen=True)
 class Entry:
-    """One entry point of a contract: the schema a reader starts from, and what its drawing is called."""
-
     slug: str
     title: str
     root: Node
@@ -131,8 +104,6 @@ class Entry:
 
 @dataclass(frozen=True)
 class Contract:
-    """A contract, its models, and the entry points it is drawn from; keyed by its name in the registry."""
-
     key: ContractName
     path: str
     title: str
@@ -140,7 +111,6 @@ class Contract:
     entries: tuple[Entry, ...]
 
     def reached(self, entry: Entry) -> list[str]:
-        """The models a drawing of ``entry`` shows: every one it holds, at any depth, in the order met."""
         found: list[str] = []
         todo = [name for _field, name, _shape in fields_of(entry.root)]
         while todo:
@@ -153,7 +123,6 @@ class Contract:
 
 
 def fields_of(node: Node) -> Iterator[tuple[str, str, Shape]]:
-    """Each row of a box, and each model the row holds: its fields, or for a union, its members."""
     for field, schema in node.properties.items():
         for name, shape in schema.held():
             yield field, name, shape
@@ -171,12 +140,10 @@ def fields_of(node: Node) -> Iterator[tuple[str, str, Shape]]:
 
 
 def slug(text: str) -> str:
-    """An entry point's name as a file and an anchor spell it."""
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
 def _entry(slug: str, title: str, rows: dict[str, JsonValue]) -> Entry:
-    """An entry point drawn as a box of its own, whose rows are the schemas a reader starts from."""
     return Entry(slug, title, Node.model_validate({"properties": rows}))
 
 
@@ -240,7 +207,6 @@ class _Body(Document):
     content: dict[str, _Media] = Field(default_factory=dict)
 
     def carried(self) -> dict[str, JsonValue] | None:
-        """What the body carries: its JSON schema, or what kind of bytes."""
         if not self.content:
             return None
         media, carried = next(iter(self.content.items()))
@@ -285,8 +251,6 @@ def openapi_contract(registry: Contracts) -> Contract:
 
 
 class _Rooted(Document):
-    """A schema whose root is itself the entry point: its fields, and the records it is one of."""
-
     properties: dict[str, JsonValue] = Field(default_factory=dict)
     one_of: tuple[JsonValue, ...] = Field(default=(), alias="oneOf")
     required: tuple[str, ...] = ()
@@ -316,11 +280,6 @@ def contracts(registry: Contracts) -> tuple[Contract, ...]:
     return tuple(
         read(registry) for read in (cli_contract, protocol_contract, openapi_contract, events_contract, ree_contract)
     )
-
-
-# ================================================
-# Drawing
-# ================================================
 
 
 def esc(text: str) -> str:
@@ -356,7 +315,6 @@ def box(title: str, kind: Kind, node: Node) -> str:
 
 
 def _name(field: str, required: bool) -> str:
-    """A row's field name, ``?`` when it may be left out; a union member's or a list's row has none."""
     if field.startswith("#"):
         return "&#160;"
     return f'<FONT FACE="Courier" POINT-SIZE="10" COLOR="{INK}">{esc(field)}{"" if required else "?"}</FONT>'
@@ -396,7 +354,7 @@ def drawing_path(output: Path, contract: Contract, entry: Entry) -> Path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-o", "--output", type=Path, required=True, help="the directory to draw into")
     parser.add_argument("--contracts", type=Path, help="the contract registry as exported (reports/exports/)")
     args = parser.parse_args()

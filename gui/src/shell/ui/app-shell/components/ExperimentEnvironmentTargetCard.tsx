@@ -7,22 +7,13 @@ import { cssVars } from "../../theme/styleVars";
 import styles from "./ExperimentEnvironmentTargetCard.module.css";
 
 interface ExperimentEnvironmentTargetCardProps {
-  /** Workspace-relative path of the declared runtime, or "" if none yet. */
   experimentEnvironmentPath: string;
   experimentEnvironmentPathExists: boolean;
   icon: ReactNode;
-  /** The page's tone, as a `var(--…)` reference. */
   tint: string;
-  /** The chips under the readout: what this page checks about the target. */
   children: ReactNode;
 }
 
-/**
- * "Here is the experiment environment this step acts on" — the readout SBOM generation and
- * activation testing both open with. It was written twice, once per page, and
- * the two copies had already drifted apart in their icon sizing and their
- * missing-file wording.
- */
 export function ExperimentEnvironmentTargetCard({
   experimentEnvironmentPath,
   experimentEnvironmentPathExists,

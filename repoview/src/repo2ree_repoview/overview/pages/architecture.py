@@ -1,5 +1,3 @@
-"""Import graphs of the backend and the GUI."""
-
 from __future__ import annotations
 
 from repo2ree_repoview.diagrams.architecture import load_config
@@ -10,7 +8,6 @@ from repo2ree_repoview.overview.html import Page, section
 
 def page_architecture(bundle: Bundle) -> Page:
     architecture = DIAGRAMS / "architecture"
-    # The governed packages, not whatever an older run left behind.
     configured, _, _ = load_config()
     packages = [architecture / f"{package}.svg" for package in configured]
     body = diagram(

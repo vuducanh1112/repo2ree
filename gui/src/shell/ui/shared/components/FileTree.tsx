@@ -11,18 +11,10 @@ interface FileNodeProps {
   onSelect: (node: FileTreeNode) => void;
   selectedId: string | null;
   highlightedPaths?: Set<string>;
-  /** Force every folder open (used while a filter is active). */
   forceOpen?: boolean;
-  /**
-   * Folders shallower than this start open. The default reveals the roots'
-   * contents, which suits a shallow tree; pass 0 for one deep enough that an
-   * opened first level would bury whatever follows it.
-   */
   defaultOpenDepth?: number;
 }
 
-// The glyph and the category it belongs to; how the category *reads* is in
-// FileTree.module.css, keyed off the same value classifyFileType returns.
 function fileTypeIcon(name: string, size: number) {
   const category = classifyFileType(name);
   const glyph =

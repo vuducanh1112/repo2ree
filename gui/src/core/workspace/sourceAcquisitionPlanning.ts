@@ -190,9 +190,6 @@ export function planSourceDownloadAction(
     return plan;
   }
 
-  // Revision pins a git fetch to a commit/branch/tag; blank means default-branch
-  // HEAD, and it is irrelevant to tarball/zip sources, so it is omitted entirely
-  // unless a git revision was given.
   const normalizedRevision = originType === "git" ? revision?.trim() : undefined;
 
   return {

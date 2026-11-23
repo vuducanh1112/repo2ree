@@ -1,13 +1,3 @@
-"""Property-based invariants for script inference.
-
-Line coverage over hand-picked examples flatters the parts of this system whose
-correctness is a "for *any* input" claim: the REE-name slug must always be a
-valid Docker tag, ``resolve_logical_root`` must peel single-child chains without
-escaping, the score-free resolver must follow one fixed policy regardless of
-order, and a ``complete``/``automatic_allowed`` build must never carry a
-blocking warning or an empty body. These are exercised generatively here.
-"""
-
 from __future__ import annotations
 
 import io
@@ -44,11 +34,6 @@ pytestmark = pytest.mark.property
 _DOCKER_TAG_REF = re.compile(r"ree-runtime:[a-z0-9_][a-z0-9_.-]{0,127}")
 
 
-# ================================================
-# Image-tag slug: any string -> a valid docker reference
-# ================================================
-
-
 @given(st.text(max_size=300))
 def test_experiment_environment_image_ref_is_always_a_valid_docker_reference(name: str) -> None:
     ref = experiment_environment_image_ref(name)
@@ -57,14 +42,9 @@ def test_experiment_environment_image_ref_is_always_a_valid_docker_reference(nam
 
 @given(st.text(alphabet="  \t\n.-_/", max_size=20))
 def test_pathological_names_fall_back_but_stay_valid(name: str) -> None:
-    # Names that are all separators/whitespace still yield a usable tag.
     ref = experiment_environment_image_ref(name)
     assert _DOCKER_TAG_REF.fullmatch(ref), ref
 
-
-# ================================================
-# Score-free resolver: one fixed policy, order-independent, never ranks
-# ================================================
 
 _OUTCOME_KIND = st.sampled_from(["complete", "candidate", "blocked", "not_applicable"])
 
@@ -101,14 +81,8 @@ def test_resolver_is_order_independent(kinds: list[str], rng) -> None:
 
 @given(st.integers(min_value=2, max_value=6))
 def test_multiple_completes_are_a_decision_never_a_pick(count: int) -> None:
-    # Several complete strategies must never resolve to a single automatic pick.
     result = ScoreFreeViabilityResolver().evaluate(_outcomes(["complete"] * count)).result
     assert result == "needs_input"
-
-
-# ================================================
-# resolve_logical_root: peeling invariants over generated trees
-# ================================================
 
 
 def _make_chain(root: Path, depth: int) -> Path:
@@ -124,7 +98,6 @@ def test_single_child_chain_is_fully_peeled(depth: int) -> None:
     root = Path(tempfile.mkdtemp())
     try:
         leaf = _make_chain(root, depth)
-        # Two meaningful entries at the leaf and no marker => the leaf is the root.
         (leaf / "main.py").write_text("x")
         (leaf / "other.py").write_text("y")
         expected = "." if depth == 0 else "/".join(f"w{i}" for i in range(depth))
@@ -138,7 +111,7 @@ def test_chain_stops_at_a_root_marker(depth: int, marker: str) -> None:
     root = Path(tempfile.mkdtemp())
     try:
         leaf = _make_chain(root, depth)
-        (leaf / marker).write_text("x")  # a lone marker at the leaf
+        (leaf / marker).write_text("x")
         expected = "." if depth == 0 else "/".join(f"w{i}" for i in range(depth))
         assert resolve_logical_root(root) == expected
     finally:
@@ -157,11 +130,6 @@ def test_result_always_names_an_existing_directory(depth: int) -> None:
         assert target.is_dir()
     finally:
         shutil.rmtree(root)
-
-
-# ================================================
-# End-to-end build inference: determinism + the automatic-allowed invariant
-# ================================================
 
 
 def _make_build_tree(root: Path, *, has_docker: bool, has_req: bool, wrapped: bool) -> None:
@@ -186,19 +154,14 @@ def test_build_inference_is_deterministic_and_automatic_is_safe(has_docker: bool
         result_a = infer_scripts(dir_a, selectors, definition=definition).results[0]
         result_b = infer_scripts(dir_b, selectors, definition=definition).results[0]
 
-        # Determinism: identical inputs render byte-identical candidate bodies.
         assert [c.body for c in result_a.candidates] == [c.body for c in result_b.candidates]
 
-        # No candidate is ever an empty-bodied sentinel.
         assert all(c.body for c in result_a.candidates)
 
-        # The automatic-allowed invariant: a complete/automatic build is exactly
-        # one candidate with no blocking warning.
         if result_a.status == "complete" and result_a.application == "automatic_allowed":
             assert len(result_a.candidates) == 1
             assert not any(w.blocking for w in result_a.warnings)
 
-        # not_inferred yields no candidate but always a complete trace.
         if result_a.status == "not_inferred":
             assert result_a.candidates == []
             assert result_a.decision.result_node
@@ -207,13 +170,6 @@ def test_build_inference_is_deterministic_and_automatic_is_safe(has_docker: bool
         shutil.rmtree(dir_b)
 
 
-# ================================================
-# Activation / experiment scaffolds: fail-closed and injection-safe
-# ================================================
-
-# Values a hostile repository could put in a filename, wrapper directory, or
-# image tag. All are relative (no "/" leading, no "..") so they survive path
-# validation and reach the shell renderers.
 _NASTY = [
     'evil"; rm -rf / ; echo "',
     "evil`reboot`",
@@ -242,7 +198,6 @@ def _docker_activate_body(root: Path, experiment_environment_path: str, image_ta
 
 
 def _sh_parses(body: str) -> bool:
-    # `sh -n` parses without executing: broken quoting is a syntax error here.
     return subprocess.run(["sh", "-n"], input=body, text=True, capture_output=True).returncode == 0
 
 
@@ -251,7 +206,6 @@ def test_adversarial_image_tag_cannot_break_the_scaffold(tmp_path: Path, tag: st
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     body = _docker_activate_body(tmp_path, ".repo2ree/artifacts/runtime.tar", tag)
     assert _sh_parses(body), body
-    # `reboot` must never appear as an executable token, only inside a quoted literal.
     assert "\nreboot\n" not in body
 
 
@@ -267,8 +221,6 @@ def test_adversarial_experiment_environment_path_cannot_break_the_scaffold(tmp_p
 def test_adversarial_declared_experiment_environment_cannot_break_the_build_experiment_environment_script(
     tmp_path: Path, suffix: str
 ) -> None:
-    # The build script now interpolates the author's declared experiment environment path, so it
-    # carries the same injection surface the run scaffolds do.
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     experiment_environment_path = f".repo2ree/{suffix}.tar"
     report = infer_scripts(
@@ -306,7 +258,6 @@ def test_every_run_scaffold_is_fail_closed(docker: bool) -> None:
         result = infer_scripts(root, [selector], definition=definition, experiment_environment_inputs=inputs).results[0]
         body = result.candidates[0].body
         assert body is not None
-        # Fail-closed: an empty `set --`, a guard, and exit 64 when unconfigured.
         assert "set --\n" in body
         assert "exit 64" in body
         assert _sh_parses(body)
@@ -319,18 +270,11 @@ def _venv_bytes() -> bytes:
     return archive
 
 
-# ================================================
-# Venv restore-dir recovery: only ever a safe, absolute, reconciled path
-# ================================================
-
 _DIR_NAME = st.text(alphabet="abcdefghijkmnp-_", min_size=1, max_size=12)
 
 
 @given(_DIR_NAME, st.text(alphabet="abcdefghijkmnp-_/", min_size=1, max_size=20), st.booleans())
 def test_recovered_venv_restore_dir_is_absolute_and_reconciled(top_dir: str, target: str, absolute: bool) -> None:
-    # A venv bakes absolute paths, so a recovered restore dir must be absolute
-    # AND its basename must equal the archive's own top directory — otherwise the
-    # `tar -C <parent>` restore would not land there. Anything else -> None.
     prefix = "/" if absolute else ""
     command = f"/usr/bin/python3 -m venv {prefix}{target}"
     inspection = inspect_experiment_environment_artifact(io.BytesIO(venv_archive(top_dir=top_dir, command=command)))

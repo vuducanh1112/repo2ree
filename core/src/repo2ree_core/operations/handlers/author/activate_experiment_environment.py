@@ -1,5 +1,3 @@
-"""Run the REE's activation alone, around a command that does nothing, against current evidence."""
-
 from __future__ import annotations
 
 from repo2ree_core.execution.process import CancelCheck
@@ -11,7 +9,7 @@ from repo2ree_protocol.result import ActionResult
 
 
 def handle_activate_experiment_environment(
-    args: ActivateExperimentEnvironmentArgs = ActivateExperimentEnvironmentArgs(),  # noqa: B008 — frozen by use: no handler changes its args
+    args: ActivateExperimentEnvironmentArgs = ActivateExperimentEnvironmentArgs(),  # noqa: B008
     *,
     layout: ReeLayout,
     run_id: str,

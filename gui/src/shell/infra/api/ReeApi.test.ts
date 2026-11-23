@@ -90,8 +90,6 @@ describe("ReeApi", () => {
       ["/api/v1/rees/ree%2F1/seal-ree", "POST"],
       ["/api/v1/rees/ree%2F1", "DELETE"],
     ]);
-    // The draft carries only the declarations lint reads — no digest, no
-    // size: an editor holds neither, and the route no longer asks.
     expect(client.request.mock.calls[10]?.[1].body).toBe(
       '{"target":{"kind":"build_experiment_environment"},"source":"set -eu\\n","declarations":{"experiment_environment_path":"runtime.tar"}}',
     );

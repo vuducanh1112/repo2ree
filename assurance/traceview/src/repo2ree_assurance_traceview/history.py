@@ -1,5 +1,3 @@
-"""The REE's change history as the verifier replayed it, in the order it drew its parts."""
-
 from __future__ import annotations
 
 from repo2ree_assurance_checker.verification import AggregateHistory, Part
@@ -17,6 +15,5 @@ def change_history(replayed: AggregateHistory) -> ChangeHistory:
 
 
 def _label(part: Part) -> str:
-    """A receipt beside what it is about reads as "receipt"; a field without the definition's prefix."""
     name = "receipt" if part.kind == "receipt" else part.machine.removeprefix("definition.").removesuffix("[*]")
     return f"{name}[{part.item}]" if part.item else name

@@ -8,7 +8,6 @@ const PAGE_BY_STEP: Readonly<Record<AuthoringStepKey, AppShellPage>> = {
   evaluate_reproducibility: PAGE.EVALUATE_REPRODUCIBILITY,
   build_experiment_environment: PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
   generate_sbom: PAGE.GENERATE_SBOM,
-  // The cross-check is the second operation on the SBOM page.
   cross_check_sbom: PAGE.GENERATE_SBOM,
   activate_experiment_environment: PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT,
   experiments: PAGE.EXPERIMENTS,

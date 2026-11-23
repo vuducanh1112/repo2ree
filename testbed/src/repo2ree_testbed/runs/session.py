@@ -1,13 +1,3 @@
-"""Draw a CLI test's session: each ``ree`` command it ran, with what it read and answered, and the REE as each left it.
-
-The commands are the client's session (``cli_session``); the REE is the history the dossier keeps of it. Every
-attempt core runs is a commit whose message records its command, its run and its result, so each command is matched
-to the commits its run made, and each commit shows its document (``ree.json``, or a review's ``review.json``) and
-file tree beside the ones before it. A command that made no commit, a read, changed nothing.
-
-    python -m repo2ree_testbed session <test directory> -o <report directory>
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -24,10 +14,8 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from repo2ree_testbed.cli_session import SESSION, CliCommand, read_session
 
-# Where an REE's history and a review's keep their document.
 DOCUMENTS = ("ree.json", "review.json")
 HISTORY = "refs/heads/ree-history"
-# A value shown in a change is cut at this many characters.
 VALUE_WIDTH = 120
 
 
@@ -39,8 +27,6 @@ class File:
 
 @dataclass(frozen=True)
 class Commit:
-    """One commit of an REE's history: the attempt it records, and the REE as it left it."""
-
     ree: str
     scope: str
     commit: str
@@ -54,8 +40,6 @@ class Commit:
 
 @dataclass(frozen=True)
 class Change:
-    """A commit beside the one before it in its history."""
-
     commit: Commit
     added: tuple[str, ...]
     removed: tuple[str, ...]
@@ -69,15 +53,8 @@ class Change:
 
 @dataclass
 class Step:
-    """One command, and the commits its run made."""
-
     command: CliCommand
     changes: list[Change] = field(default_factory=list)
-
-
-# ================================================
-# Reading the histories
-# ================================================
 
 
 def _git(repository: Path, *args: str) -> str:
@@ -87,7 +64,6 @@ def _git(repository: Path, *args: str) -> str:
 
 
 def histories(dossier: Path) -> Iterator[tuple[str, str, Path]]:
-    """Every history the dossier keeps of an REE: its own, and each review's, with the scope it sits at."""
     for root in sorted((dossier / "rees").glob("*/ree")):
         if (root / ".git").is_dir():
             yield root.parent.name, "", root
@@ -139,8 +115,6 @@ class _Record(_Read):
 
 
 class _Metadata(_Read):
-    """What a commit's message records of the attempt it captured: its run, how it ended, and its record."""
-
     run_id: str | None = None
     outcome: str | None = None
     record: _Record | None = None
@@ -163,7 +137,6 @@ def _files(repository: Path, commit: str) -> dict[str, File]:
 
 
 def changes(found: list[Commit]) -> list[Change]:
-    """Each commit beside the one before it in the same history."""
     result = []
     before: Commit | None = None
     for commit in found:
@@ -183,7 +156,6 @@ def changes(found: list[Commit]) -> list[Change]:
 
 
 def _fields(before: str | None, after: str | None) -> Iterator[tuple[str, str, str]]:
-    """Every value of the document that changed, by its dotted path, with what it was and what it became."""
     old = dict(_flatten(_parsed(before)))
     new = dict(_flatten(_parsed(after)))
     for path in sorted(set(old) | set(new)):
@@ -215,7 +187,6 @@ def _flatten(value: Any, path: str = "") -> Iterator[tuple[str, str]]:
 
 
 def steps(session: tuple[CliCommand, ...], dossier: Path) -> tuple[list[Step], list[Change]]:
-    """Each command with the commits its run made; and the commits no command of the session made."""
     found = [Step(command) for command in session]
     by_run = {step.command.run_id: step for step in found if step.command.run_id}
     unmatched: list[Change] = []
@@ -232,16 +203,11 @@ def steps(session: tuple[CliCommand, ...], dossier: Path) -> tuple[list[Step], l
             if step is None:
                 pending.append(change)
                 continue
-            # A commit no run made (a baseline a review takes first) is shown with the command that came next.
             step.changes += [*pending, change]
             pending = []
         unmatched += pending
     return found, unmatched
 
-
-# ================================================
-# Drawing
-# ================================================
 
 STYLE = """
 body{font:14px/1.5 system-ui,sans-serif;margin:0;color:#0f172a;background:#f8fafc}
@@ -371,7 +337,6 @@ def _step(number: int, step: Step) -> str:
 
 
 def _about(rows: Sequence[tuple[str, str]]) -> str:
-    """Where the page's evidence came from, and what drew it: what a reader needs to tell a stale page."""
     if not rows:
         return ""
     cells = "".join(f"<tr><th>{_esc(label)}</th><td>{_esc(value)}</td></tr>" for label, value in rows)
@@ -414,12 +379,6 @@ def draw(
     about: Sequence[tuple[str, str]] = (),
     video: Path | None = None,
 ) -> bool:
-    """Draw the session a test left in ``evidence`` into ``output``, with where it came from (``about``) and its
-    video, where there is one; False when it left none.
-
-    The video is linked by its path from the page, as ``reports/`` lays both out: the overview bundles them in the
-    same places, so the one page plays it in either.
-    """
     session = read_session(evidence / "artifacts" / SESSION)
     if not session:
         return False
@@ -431,7 +390,7 @@ def draw(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("evidence", type=Path, help="the test's directory in its run")
     parser.add_argument("-o", "--output", type=Path, required=True, help="where to write the session page")
     args = parser.parse_args()

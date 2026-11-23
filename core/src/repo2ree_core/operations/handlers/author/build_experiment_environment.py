@@ -1,5 +1,3 @@
-"""Build the declared experiment environment and atomically commit its successful receipt."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -28,7 +26,7 @@ from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt
 
 
 def handle_build_experiment_environment(
-    args: BuildExperimentEnvironmentArgs = BuildExperimentEnvironmentArgs(),  # noqa: B008 — frozen by use: no handler changes its args
+    args: BuildExperimentEnvironmentArgs = BuildExperimentEnvironmentArgs(),  # noqa: B008
     *,
     layout: ReeLayout,
     run_id: str,
@@ -99,14 +97,13 @@ def handle_build_experiment_environment(
 
     timing = timer.finish()
     source = ree.subject.receipts.acquire_source
-    if source is None:  # guarded by _check_preconditions
+    if source is None:
         raise AssertionError("build preconditions admitted a REE without source evidence")
     receipt = BuildExperimentEnvironmentReceipt(
         **receipt_envelope(run_id, timing),
         snapshot_digest=source.snapshot_digest,
         build_experiment_environment_script_path=build.build_experiment_environment_script_path,
         build_experiment_environment_script_digest=build.build_experiment_environment_script_digest,
-        # A build runs in a workspace laid out fresh from what the REE records, so nothing in it drifted.
         artifact_path=experiment_environment_path,
         produced_artifact_digest=produced_artifact_digest,
         working_environment=observe_working_environment(),
@@ -150,12 +147,8 @@ def handle_build_experiment_environment(
 def _check_preconditions(ree: Ree) -> tuple[ExperimentEnvironmentDefinition, ExperimentEnvironmentPath]:
     if ree.seal is not None:
         raise ReePreconditionError("a sealed REE cannot build an experiment environment")
-    # Currency, not mere presence: a source re-pointed but not re-acquired would have the build spend minutes
-    # producing an experiment environment the seal gate then refuses, for a staleness visible here already.
     source_audit = audit(ree).acquire_source
     if source_audit.evidence != "current":
-        # The audit names what moved when a receipt has gone stale. It has nothing to say when no source is declared
-        # at all, a fresh REE seeded with a build script before it has a source, so that case says what to do next.
         raise ReePreconditionError("; ".join(source_audit.reasons) or "source has not been acquired")
     build = ree.subject.definition.experiment_environment
     experiment_environment_path = build.artifact_path
@@ -165,7 +158,6 @@ def _check_preconditions(ree: Ree) -> tuple[ExperimentEnvironmentDefinition, Exp
 
 
 def _current_receipt(layout: ReeLayout, ree: Ree) -> BuildExperimentEnvironmentReceipt | None:
-    """The build's receipt, when its evidence is current and the environment it made is still kept as it made it."""
     receipt = ree.subject.receipts.build_experiment_environment
     if receipt is None or audit(ree).build_experiment_environment.evidence != "current":
         return None

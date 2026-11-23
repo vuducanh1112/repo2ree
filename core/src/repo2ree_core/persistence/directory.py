@@ -1,17 +1,3 @@
-"""Imperative shell around :class:`ReeLayout`.
-
-All filesystem I/O for a single REE goes through :class:`ReeDirectory`. It takes
-a :class:`ReeLayout` at construction and performs reads, writes, and
-directory bootstrapping at the paths the layout describes. The layout
-itself is pure; this module is intentionally not.
-
-Every write here replaces its target atomically
-(:func:`repo2ree_core.persistence.files.write_atomic`), so a workbench killed mid-write
-leaves the previous version rather than a prefix of the new one. That is what
-lets the readers throughout ``operations`` treat an unparseable document as a
-defect worth reporting rather than an expected state to recover from.
-"""
-
 from __future__ import annotations
 
 import json
@@ -30,29 +16,10 @@ from repo2ree_ree.model import Ree
 from repo2ree_ree.paths import validate_relative_path
 from repo2ree_ree.reserved_paths import RESERVED_OVERLAY_SCRIPTS
 
-# What a half-built or damaged persisted document raises on the way through
-# json and pydantic: an unreadable file, malformed bytes, or content that no
-# longer fits the model. Named for the failure rather than for any one document,
-# because every document this module reads — the manifest, the reproducibility
-# report — fails exactly these four ways and no others. Anything
-# outside this set is a defect in the reader, not a fact about the REE, and must
-# not be mistaken for one.
-#
-# It lives here, beside the writes it is the counterpart of: the atomic-write
-# guarantee above is what makes an unparseable document worth reporting rather
-# than an expected state to recover from. Both step families read REE documents,
-# and neither may import the other, so the shared name has to sit below both.
 UNREADABLE_DOCUMENT = (OSError, json.JSONDecodeError, ValidationError, ValueError)
 
 
 class SubtreeStore:
-    """File operations rooted at a specific subtree of an REE layout.
-
-    Used for ``upstream/``, ``overlay/``, ``artifacts/``, and the
-    materialized ``workspace/``. Every relative path is validated to stay
-    inside the subtree before any I/O happens.
-    """
-
     def __init__(self, root: Path):
         self.root = root
 
@@ -76,13 +43,6 @@ class SubtreeStore:
         return self.absolute(rel).read_text(encoding=encoding)
 
     def write_bytes(self, rel: str | PurePosixPath, content: bytes) -> None:
-        """Replace a subtree file, atomically.
-
-        Overlay content is authored, and the etag a client holds is a digest of
-        what it last read — so a torn write here would both lose edits that
-        exist nowhere else and leave the next optimistic-concurrency check
-        comparing against a half-file.
-        """
         write_atomic(self.absolute(rel), content)
 
     def write_text(
@@ -104,7 +64,6 @@ class SubtreeStore:
         return True
 
     def clear(self) -> None:
-        """Empty the subtree, leaving the root directory itself in place."""
         if not self.root.is_dir():
             return
         for child in self.root.iterdir():
@@ -114,7 +73,6 @@ class SubtreeStore:
                 child.unlink()
 
     def iter_files(self) -> Iterator[PurePosixPath]:
-        """Yield POSIX-style relative paths of every file in the subtree."""
         if not self.root.is_dir():
             return
         for path in sorted(self.root.rglob("*")):
@@ -124,20 +82,12 @@ class SubtreeStore:
 
 
 class ReeDirectory:
-    """Filesystem-backed operations for a single REE.
-
-    Construct with a :class:`ReeLayout`. Methods perform I/O at the paths
-    the layout names; the layout stays a pure value.
-    """
-
     def __init__(self, layout: ReeLayout):
         self.layout = layout
         self._upstream = SubtreeStore(layout.upstream)
         self._overlay = SubtreeStore(layout.overlay)
         self._artifacts = SubtreeStore(layout.artifacts)
         self._workspace = SubtreeStore(layout.workspace)
-
-    # --- Tree accessors -------------------------------------------------
 
     @property
     def upstream(self) -> SubtreeStore:
@@ -155,24 +105,7 @@ class ReeDirectory:
     def workspace(self) -> SubtreeStore:
         return self._workspace
 
-    # --- Whole-REE operations -------------------------------------------
-
     def author_artifact(self, declared: str | None) -> Path | None:
-        """Resolve an author-declared artifact path to the file it names.
-
-        For the experiment environment, which an author's own build script writes: the declared
-        path is where the build leaves it in its workspace, and the build keeps it under
-        ``artifacts/experiment-environment/<declared>``; bundling lifts the file into the
-        bundle's ``artifacts/`` and rewrites the manifest to match, so an REE loaded from a
-        bundle declares ``artifacts/<name>``, which is REE-root-relative. Every spelling
-        resolves here, so a loaded baseline reads exactly like an authored one to everything
-        downstream. (REE-produced artifacts need none
-        of this: they are written to their fixed ``artifacts/`` slot from the
-        start — see ``ReeLayout.sbom``.)
-
-        Returns None when the path is unset or names nothing on disk; callers
-        decide whether that is a failure or merely inconclusive evidence.
-        """
         if not declared:
             return None
         for candidate in (
@@ -185,7 +118,6 @@ class ReeDirectory:
         return None
 
     def ensure_dirs(self) -> None:
-        """Create the full REE directory skeleton. Idempotent."""
         self.layout.root.mkdir(parents=True, exist_ok=True)
         for subtree in (
             self._upstream,
@@ -198,7 +130,6 @@ class ReeDirectory:
         self.layout.runs.mkdir(parents=True, exist_ok=True)
 
     def history_artifacts(self) -> tuple[Path, ...]:
-        """Keep declared experiment environment artifacts even with the root-relative fallback."""
         if not self.manifest_exists():
             return ()
         build = self.read_ree().subject.definition.experiment_environment
@@ -206,13 +137,6 @@ class ReeDirectory:
         return (artifact,) if artifact is not None else ()
 
     def ensure_reserved_overlay_scripts(self) -> None:
-        """Seed the REE-owned scripts with their starter templates.
-
-        Only missing files are created, so authored content is never touched.
-        The overlay is the source of truth, while workspace is its materialized
-        execution view. This method is intentionally separate from
-        :meth:`ensure_dirs`: only REE creation should introduce these files.
-        """
         for path in RESERVED_OVERLAY_SCRIPTS:
             if not self.overlay.exists(path):
                 self.overlay.write_text(path, reserved_script_template(path))
@@ -220,11 +144,8 @@ class ReeDirectory:
                 self.workspace.write_text(path, self.overlay.read_text(path))
 
     def remove(self) -> None:
-        """Delete the entire REE directory tree. No-op if absent."""
         if self.layout.root.exists():
             shutil.rmtree(self.layout.root)
-
-    # --- Portable REE aggregate ----------------------------------------
 
     def manifest_exists(self) -> bool:
         return self.layout.manifest.is_file()
@@ -236,17 +157,9 @@ class ReeDirectory:
         write_atomic(self.layout.manifest, ree_manifest_bytes(ree))
 
     def read_manifest_json(self) -> dict[str, Any]:
-        """The portable REE bytes parsed as JSON, without model validation.
-
-        Used by the executor's ``get-ree-manifest`` passthrough, which must return
-        what is actually on disk rather than a model-normalized projection.
-        Aggregate mutations use :meth:`write_ree`, which is the only writer of
-        the document's one encoding.
-        """
         return _read_json(self.layout.manifest)
 
     def write_manifest_json(self, payload: dict[str, Any]) -> None:
-        """Write raw REE JSON atomically. Companion to :meth:`read_manifest_json`."""
         write_json_atomic(self.layout.manifest, payload)
 
 

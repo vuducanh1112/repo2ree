@@ -9,9 +9,7 @@ interface PodShellCoreProps {
   CY: number;
   SR: number;
   evaluation: EvaluationState;
-  /** An experiment is executing — the core is the thing that runs it. */
   active?: boolean;
-  /** Unique suffix for SVG IDs when multiple pods are on the same page. */
   idSuffix?: string;
 }
 
@@ -25,7 +23,6 @@ export function PodShellCore({
 }: PodShellCoreProps) {
   const depLevel = Math.max(evaluation.dependencyLevel ?? 0, 2);
   const color = axisTone(DEPENDENCY_AXIS.key);
-  // PodDepGraph largest node extent ≈ 50px from center at level 7
   const graphScale = SR / 50;
 
   const gId = `core${idSuffix}`;
@@ -51,12 +48,10 @@ export function PodShellCore({
         </clipPath>
       </defs>
 
-      {/* ambient halo */}
       <g className={active ? styles.breathe : undefined}>
         <circle cx={CX} cy={CY} r={SR * 1.08} fill={color} opacity="0.06" />
       </g>
 
-      {/* deep dark sphere */}
       <circle
         cx={CX}
         cy={CY}
@@ -67,11 +62,8 @@ export function PodShellCore({
         strokeOpacity="0.4"
       />
 
-      {/* nebula bloom */}
       <circle cx={CX} cy={CY} r={SR * 0.72} fill={`url(#${gId}Glow)`} filter={`url(#${gId}Blur)`} />
 
-      {/* neural graph scaled to fill the core. The spin rides its own wrapper:
-       * a CSS transform on the placed group would replace the placement. */}
       <g clipPath={`url(#${gId}Clip)`}>
         <g className={active ? styles.coreSpin : undefined}>
           <g transform={`translate(${CX},${CY}) scale(${graphScale})`}>
@@ -80,10 +72,8 @@ export function PodShellCore({
         </g>
       </g>
 
-      {/* rim ring */}
       <circle cx={CX} cy={CY} r={SR} fill="none" stroke={color} strokeWidth="1.5" opacity="0.35" />
 
-      {/* central spark — it flares on every beat while an experiment runs */}
       <g className={active ? styles.spark : undefined}>
         <circle cx={CX} cy={CY} r={Math.max(SR * 0.07, 3)} fill="white" opacity="0.9" />
         <circle

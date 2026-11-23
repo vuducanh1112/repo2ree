@@ -20,7 +20,6 @@ function sealPage(overrides: Partial<Parameters<typeof SealContent>[0]> = {}) {
   );
 }
 
-/** An REE whose source, runtime, and results are all bundleable. */
 const bundleableRee = patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
   spec: {
     name: "Example",
@@ -52,8 +51,6 @@ describe("SealContent", () => {
   it("counts done steps and names the ones that are not", () => {
     render(sealPage());
 
-    // An empty REE has nothing done, so every step is listed by name rather
-    // than as a bare count.
     expect(screen.getByText("0 of 9 steps done")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("9 steps not done");
     expect(screen.getByText("Reproducibility Readiness")).toBeInTheDocument();

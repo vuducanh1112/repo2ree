@@ -75,7 +75,6 @@ def test_unknown_root_is_rejected() -> None:
 
 
 def suite_recipes(**bodies: tuple[str, list[str], list[dict[str, object]]]) -> dict[str, recipe_graph.Recipe]:
-    """Recipes each with a body, the paths it declares it runs, and its dependencies."""
     return recipe_graph.parse_recipes(
         {
             "recipes": {

@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""The example REE (examples/rees/ree-hello-world.zip), authored again as the Python Docker showcase authors it.
-
-- ``stage`` takes the sealed bundle the newest command-line showcase run of the Python Docker example test
-  wrote, and puts it in test-artifacts/example-bundle/, which a run on a machine brings back (its archives
-  stay on the machine).
-- ``adopt`` checks the staged bundle against the specification, as a sealed REE read from its own history,
-  and replaces the example with it only if every rule holds.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -31,7 +22,6 @@ NAME = "ree-hello-world"
 
 
 def authored(runs: Path = RUNS) -> Path:
-    """The sealed bundle of the newest command-line run of the Python Docker example test."""
     found = sorted(
         runs.glob(f"showcase-cli-*/tests/{TEST}*/artifacts/archives/sealed-*.zip"),
         key=lambda path: path.stat().st_mtime,
@@ -42,7 +32,6 @@ def authored(runs: Path = RUNS) -> Path:
 
 
 def named(bundle: Path) -> str | None:
-    """The name the bundle's REE declares."""
     with zipfile.ZipFile(bundle) as archive:
         document = json.loads(archive.read("ree/ree.json"))
     name = document.get("subject", {}).get("definition", {}).get("name")
@@ -60,13 +49,6 @@ def stage(runs: Path = RUNS, staged: Path = STAGED) -> Path:
 
 
 def check(bundle: Path) -> list[str]:
-    """Why the bundle's REE, read from the history it carries, breaks the specification; empty if it holds.
-
-    A bundle authored through ``ree`` alone names no REE in its attempts, so its history is read under the
-    example's name. Every rule on the REE document must have judged it: a check that read nothing passes nothing.
-    A signature is added after the seal, by its signer, so an unsigned example gives a signature rule nothing to
-    judge and is held to every other rule; an example no one reviewed gives a review's rules nothing to judge.
-    """
     spec = load_spec()
     with tempfile.TemporaryDirectory(prefix="repo2ree-example-") as directory:
         with zipfile.ZipFile(bundle) as archive:
@@ -107,7 +89,7 @@ def adopt(staged: Path = STAGED, example: Path = EXAMPLE) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=("stage", "adopt"))
     args = parser.parse_args(argv)
     if args.command == "stage":

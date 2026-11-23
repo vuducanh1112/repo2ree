@@ -1,7 +1,3 @@
-// Pure decisions for cancelling an in-flight step/source run. The effect
-// (calling the cancel API) and the state read live in the shell; this module
-// only decides *whether* there is a run to cancel and *what* to tell the user.
-
 export function planCancelRequest(activeRunId: string | undefined): { runId: string } | null {
   return activeRunId ? { runId: activeRunId } : null;
 }

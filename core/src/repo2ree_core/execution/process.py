@@ -1,11 +1,3 @@
-"""Generic streaming subprocess runner and the workspace-script execution path.
-
-Containers are the author's concern, not this module's: each runnable owns an
-overlay script that enters its experiment environment itself (e.g. its own ``docker run``),
-and this module just executes such scripts as plain subprocesses with streamed
-logs and cooperative cancellation.
-"""
-
 from __future__ import annotations
 
 import contextlib
@@ -31,39 +23,23 @@ from repo2ree_telemetry.spans import (
 
 tracer = get_tracer(__name__)
 
-CancelCheck = Callable[[], bool]  # True once a cancel has been requested
+CancelCheck = Callable[[], bool]
 
-# Grace period between asking a canceled process group to stop (SIGTERM) and
-# forcing it (SIGKILL). Cooperative shutdown gets a real window; a shell that
-# ignores SIGTERM, or a child that outlives its parent, is killed after it.
 CANCEL_GRACE_SECONDS = 5.0
 
-# How long to wait for the output readers to drain after the process exits. A
-# grandchild that inherited the pipe can hold it open past its parent's exit,
-# and waiting on that indefinitely would hang the command; what is bounded here
-# is the wait, not the truncation it implies — see _stream_process.
 READER_DRAIN_SECONDS = 5.0
 
 
 @dataclass(frozen=True)
 class StepOutcome:
-    """Result of a single lifecycle-script execution."""
-
     status: ActionStatus
     exit_code: int | None = None
     captured_stdout: str = field(default="")
     captured_stderr: str = field(default="")
-    # Where a launch put the script; None when it ran directly.
     launched: Launched | None = None
 
 
-# ================================================
-# Command formatting and output streaming
-# ================================================
-
-
 def format_argv(argv: list[str]) -> str:
-    """Render an argv list as a single, copy-pasteable shell line."""
     return " ".join(shlex.quote(t) for t in argv)
 
 
@@ -88,19 +64,6 @@ def run_streaming_process(
     cwd: Path | str | None = None,
     is_canceled: CancelCheck = lambda: False,
 ) -> StreamingProcessResult:
-    """Run *cmd*, streaming child output while preserving captured streams.
-
-    Each invocation is one ``process.exec`` span carrying the argv, exit
-    code, output sizes, and — on failure — the output tails, so what happened
-    inside the workbench survives the container itself.
-
-    Named for what runs it, not for where it runs. The ``workbench.*``
-    namespace belongs to the supervisor, which provisions and dispatches to
-    workbenches from outside; this span is core, executing inside one it does
-    not manage. Sharing the prefix made component attribution ambiguous for
-    anyone reading a trace, since a span name is the only clue most readers
-    have about who emitted it.
-    """
     with tracer.start_as_current_span("process.exec") as span:
         ExecSpanAttrs(argv=format_argv(cmd), cwd=str(cwd) if cwd is not None else None).apply(span)
         result = _stream_process(cmd, log=log, stdin_text=stdin_text, env=env, cwd=cwd, is_canceled=is_canceled)
@@ -115,23 +78,11 @@ def run_streaming_process(
 
 
 def _signal_group(proc: subprocess.Popen[str], sig: int) -> None:
-    """Send *sig* to the process group led by *proc*.
-
-    ``proc`` is its own group leader (``start_new_session``), so its pid is the
-    pgid and the signal reaches every descendant. A missing group — the tree
-    already exited between the poll and here — is not an error.
-    """
     with contextlib.suppress(ProcessLookupError, PermissionError):
         os.killpg(proc.pid, sig)
 
 
 def _terminate_process_group(proc: subprocess.Popen[str], *, log: LogSink) -> None:
-    """Stop a canceled process tree: SIGTERM, then SIGKILL after a deadline.
-
-    The group gets ``CANCEL_GRACE_SECONDS`` to exit cooperatively; anything
-    still alive after that — a shell ignoring SIGTERM, a child that outlived its
-    parent — is force-killed so cancellation cannot leave the tree running.
-    """
     _signal_group(proc, signal.SIGTERM)
     try:
         proc.wait(timeout=CANCEL_GRACE_SECONDS)
@@ -157,10 +108,6 @@ def _stream_process(
         text=True,
         env=env,
         cwd=cwd,
-        # Put the shell in its own session/process group so a cancel can signal
-        # the whole tree — children and grandchildren the script spawned — not
-        # just the immediate shell, which would leave them orphaned. A new
-        # session also means we never signal the executor that launched us.
         start_new_session=True,
     )
 
@@ -186,8 +133,6 @@ def _stream_process(
         args=(proc.stdout, "stdout", "info", stdout_lines),
         daemon=True,
     )
-    # stderr is a stream, not a severity: BuildKit, pip and apt print their
-    # progress there, so calling every line a warning buries the one error.
     stderr_reader = threading.Thread(
         target=_reader,
         args=(proc.stderr, "stderr", "info", stderr_lines),
@@ -216,10 +161,6 @@ def _stream_process(
     stdout_reader.join(timeout=READER_DRAIN_SECONDS)
     stderr_reader.join(timeout=READER_DRAIN_SECONDS)
     if stdout_reader.is_alive() or stderr_reader.is_alive():
-        # Say so rather than return quietly short. Everything downstream — the
-        # run log, the receipt, the failure tails on the span — is built from
-        # these buffers, and silence in a run log reads as "the script printed
-        # nothing more", which is the one thing that is not true here.
         log(
             "system",
             "warn",

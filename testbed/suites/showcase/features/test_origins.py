@@ -1,5 +1,3 @@
-"""Sources fetched from an origin URL the stack serves itself, and fetched again by a reviewer."""
-
 from __future__ import annotations
 
 import os

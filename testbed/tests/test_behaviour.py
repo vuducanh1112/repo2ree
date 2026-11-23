@@ -1,5 +1,3 @@
-"""Assessing runs and dossiers beside them, and visualizing what was assessed."""
-
 import argparse
 import json
 import sys
@@ -30,8 +28,6 @@ def run_test(directory: str, rees: tuple[str, ...] = ()) -> RunTest:
 
 @pytest.fixture
 def tools(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[tuple[str, ...]]:
-    """The checker and traceview as asked to run, in an e2e run directory of the test's own: the checker
-    finds a violation and writes its verification, traceview draws one page."""
     ran: list[tuple[str, ...]] = []
 
     def tool(log: Path, *args: str) -> int:
@@ -130,7 +126,6 @@ def test_one_dossier_of_a_run_is_assessed_as_its_test_in_the_runs_report(
     report = read(RunRecord, reports / "e2e-system-1/run.json")
     assert report is not None
     assert [test.behaviour for test in report.tests] == ["violated", None]
-    # Not a whole run assessed by one tree.
     assert report.assessed_tree == ""
 
 

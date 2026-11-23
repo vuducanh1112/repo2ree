@@ -6,7 +6,6 @@ interface NoLabsStateProps {
   standalone?: boolean;
 }
 
-/** The shared recovery instruction when the control plane has no runners. */
 export function NoLabsState({ description, standalone = false }: NoLabsStateProps) {
   return (
     <div className={styles.empty} data-standalone={standalone || undefined}>

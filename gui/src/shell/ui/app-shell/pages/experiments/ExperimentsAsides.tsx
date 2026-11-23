@@ -30,13 +30,6 @@ const EXPERIMENT_SUGGESTIONS: ExperimentSuggestion[] = [
   },
 ];
 
-/**
- * Whether the declared experiments are runnable, as one line. This used to be
- * seven stacked meters in a side column — one of which ("Experiments") was
- * value-over-itself and so always full. The per-field detail belongs to the
- * experiment it describes, on its card; the aggregate only ever had to say
- * whether anything still needs work.
- */
 export function ExperimentsCoverageTally({
   total,
   withName,
@@ -63,7 +56,6 @@ export function ExperimentsCoverageTally({
   );
 }
 
-/** Prefilled starting points, offered where an experiment is added. */
 export function ExperimentQuickAdd({
   locked,
   onAdd,

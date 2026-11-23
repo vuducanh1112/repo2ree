@@ -1,9 +1,3 @@
-/* The lab table: runners currently dialed into this control plane.
- *
- * The column track is declared once here rather than shared as a TS constant
- * between the header row and the body rows, which is what kept the two in step
- * by convention rather than by construction. */
-
 .screen {
   min-height: 100vh;
   padding: var(--space-6);
@@ -65,7 +59,6 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-/* Refetching in the background: dimmed, but still usable. */
 .chromeButton[data-busy] {
   opacity: var(--opacity-muted);
 }

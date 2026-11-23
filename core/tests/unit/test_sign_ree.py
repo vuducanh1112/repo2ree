@@ -1,5 +1,3 @@
-"""A sealed REE is signed beside its seal: a Sigstore bundle over its digest, added once, carried with it."""
-
 from __future__ import annotations
 
 import json

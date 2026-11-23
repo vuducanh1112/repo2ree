@@ -68,11 +68,7 @@
   background: var(--tone-success-surface);
 }
 
-/* The one step the graph says to do next. The ring breathes so the eye finds
- * it without reading the whole strip. */
 .step[data-next] {
-  /* Wider than its siblings: the tag has to fit beside the label, and the
-   * step you are being sent to may as well be the biggest thing on the strip. */
   width: 152px;
   border-color: var(--step-next-border);
   background: var(--step-next-surface);
@@ -130,9 +126,6 @@
   color: var(--status-ok);
 }
 
-/* The deep shade, not the line colour: amber-600 on the amber (or, when the
- * next step is also the active one, the accent) wash is only ~3:1, and an
- * 11px numeral is small text — WCAG wants 4.5:1. */
 .step[data-next] .number {
   color: var(--step-next-ink);
 }
@@ -146,7 +139,6 @@
     transition: none;
   }
 
-  /* The ring still reads as a ring, it just stops breathing. */
   .step[data-next] {
     animation: none;
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--step-next-line) 40%, transparent);

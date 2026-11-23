@@ -83,8 +83,6 @@ export function PageMetadataEntry({
 
   const { description, version, website, keywords, contributors } = metadata;
   const correspondingAuthor = metadata.correspondingAuthorIdentifier || "";
-  // Same rule the canvas node reads for this step's doneness — metadata has no
-  // receipt behind it, so "every required field filled" is the whole verdict.
   const identityFilled = isCatalogMetadataComplete(reeSpec);
   const contributorFieldError = (
     context: ContributorError["context"],
@@ -165,9 +163,6 @@ export function PageMetadataEntry({
   };
 
   return (
-    // Minimal form sitting directly on the focus dock — no nested frame/panel
-    // layers. The dock supplies the floating surface over the canvas; the page
-    // only paints its own content.
     <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={Ic.grid(24)}

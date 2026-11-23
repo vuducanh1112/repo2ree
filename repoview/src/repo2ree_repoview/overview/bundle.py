@@ -1,5 +1,3 @@
-"""The overview's folder: its own copy of what it shows from outside the tree, and its manifest."""
-
 from __future__ import annotations
 
 import hashlib
@@ -16,8 +14,6 @@ COMMAND = "python -m repo2ree_repoview overview"
 
 
 class Origin(Record):
-    """What a bundled file is, or which run of the receipt it came from."""
-
     kind: str | None = None
     revision: str | None = None
     run: str | None = None
@@ -41,8 +37,6 @@ class Copied(_Sparse):
 
 
 class Referenced(_Sparse):
-    """A file too large to copy, named by its digest."""
-
     source: str
     sha256: str
     bytes: int
@@ -82,7 +76,6 @@ def is_overview(folder: Path) -> bool:
 
 class Bundle:
     def __init__(self, root: Path, revision: str) -> None:
-        """Start an empty bundle at ``root``; refuses a folder that holds anything but an overview."""
         if root.exists() and any(root.iterdir()) and not is_overview(root):
             raise FileExistsError(f"{root} holds something other than an overview; refusing to replace it")
         shutil.rmtree(root, ignore_errors=True)
@@ -106,7 +99,6 @@ class Bundle:
         )
 
     def copy(self, source: Path, target: str, origin: Origin) -> str | None:
-        """Copy one file to ``target`` (relative to the bundle); None when the source is missing."""
         if not source.is_file():
             return None
         destination = self.root / target
@@ -116,7 +108,6 @@ class Bundle:
         return target
 
     def write(self, target: str, content: str, source: str, origin: Origin) -> None:
-        """Keep a document an owner produced on request (``source`` is the command), as if copied."""
         destination = self.root / target
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(content, encoding="utf-8")

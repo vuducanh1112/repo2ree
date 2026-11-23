@@ -1,9 +1,3 @@
-"""oci ecosystem parser: ``Dockerfile`` / ``Containerfile`` ``FROM`` references.
-
-A base image is a dependency like any other: the tag is its declared
-constraint, a digest pin lands in ``locked_hashes`` (never ``locked_version``).
-"""
-
 from __future__ import annotations
 
 import re
@@ -27,10 +21,10 @@ def parse_dockerfile(text: str, path: str) -> list[Dependency]:
         if alias:
             stage_aliases.add(alias.lower())
         if ref.lower() in stage_aliases | {"scratch"} or "$" in ref:
-            continue  # multi-stage self-reference, empty base, or build arg
+            continue
         name, tag, digest = _split_image_ref(ref)
         if not name:
-            continue  # degenerate ref like ":tag" or "@digest"
+            continue
         deps.append(
             Dependency(
                 ecosystem="oci",
@@ -44,13 +38,10 @@ def parse_dockerfile(text: str, path: str) -> list[Dependency]:
 
 
 def _split_image_ref(ref: str) -> tuple[str, str | None, str | None]:
-    """``image[:tag][@sha256:...]`` → (name, tag, digest)."""
     digest: str | None = None
     if "@" in ref:
         ref, digest = ref.split("@", 1)
     name, tag = ref, None
-    # A colon after the last slash is a tag; earlier ones belong to a registry
-    # host:port prefix.
     slash = ref.rfind("/")
     colon = ref.rfind(":")
     if colon > slash:
@@ -62,7 +53,6 @@ PARSERS: tuple[SourceParser, ...] = (
     SourceParser(
         format_id="dockerfile",
         side="declared",
-        # docker-compose services reference images differently; not parsed yet.
         matches=lambda name: is_dockerfile_filename(name) and not name.startswith("docker-compose"),
         parse=parse_dockerfile,
     ),

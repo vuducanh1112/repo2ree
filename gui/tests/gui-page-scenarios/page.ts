@@ -14,9 +14,6 @@ export async function settleVisualPage(page: Page): Promise<void> {
 export async function openVisualWorkspace(page: Page): Promise<void> {
   await page.goto(`/workspace?reeId=${VISUAL_REE_ID}`);
   await expect(page.getByRole("banner").getByText("climate-model-lab")).toBeVisible();
-  // The canvas navigation is a zero-sized semantic wrapper around absolutely
-  // positioned node buttons, so the wrapper itself is intentionally "hidden"
-  // to Playwright even though its controls are painted and interactive.
   await expect(
     page
       .getByRole("navigation", { name: "Workspace pages" })

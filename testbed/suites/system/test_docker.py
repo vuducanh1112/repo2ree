@@ -1,9 +1,3 @@
-"""The same lifecycle on a bench with its own Docker daemon: the product's default bench.
-
-The experiment environment is an image the bench's daemon builds FROM scratch, so the build runs real
-BuildKit steps on the nested daemon while pulling and downloading nothing.
-"""
-
 from __future__ import annotations
 
 import io
@@ -16,7 +10,6 @@ from repo2ree_testbed.showcases import INSTANT_DOCKER
 
 FIXTURE = INSTANT_DOCKER
 
-# A build whose RUN step fails inside the bench's daemon, as a project's own would.
 FAILING_DOCKER_BUILD = f"""#!/usr/bin/env sh
 set -eu
 CONTEXT=$(mktemp -d)
@@ -67,7 +60,6 @@ def test_a_failing_docker_build_step_leaves_no_receipt(api: Api, new_ree: Callab
     assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
     assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
 
-    # The author's own recipe then builds on the same bench.
     assert api.build_experiment_environment(ree_id, fixture=FIXTURE)["status"] == "succeeded"
     assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
 

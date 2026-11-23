@@ -5,17 +5,11 @@ type NoticeTone = "info" | "success" | "danger";
 
 interface NoticeProps {
   tone?: NoticeTone;
-  /** A heading line above the body. Stacks the notice when present. */
   title?: ReactNode;
   icon?: ReactNode;
   children?: ReactNode;
 }
 
-/**
- * The one banner. A `danger` notice is announced as an alert so a missing
- * prerequisite reaches a screen reader when it appears, rather than only when
- * the user happens to tab through the region.
- */
 export function Notice({ tone = "info", title, icon, children }: NoticeProps) {
   return (
     <div

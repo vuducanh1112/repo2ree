@@ -60,7 +60,7 @@ export function RepoAnalysisThreatsCard({
   threats: Threat[];
   loading: boolean;
 }) {
-  const sorted = threats; // backend already sorts blocking-first, then by severity
+  const sorted = threats;
 
   return (
     <Surface>

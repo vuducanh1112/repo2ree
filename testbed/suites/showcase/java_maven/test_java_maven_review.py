@@ -1,5 +1,3 @@
-"""A reviewer reproduces a Maven project's experiment in its saved image."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

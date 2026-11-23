@@ -1,9 +1,3 @@
-"""End-to-end build inference: positive candidates, decline cases, determinism.
-
-Most of the precision policy lives in decline behavior, so these lean on the
-Docker decline table from the design doc.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -48,13 +42,9 @@ def _build(root: Path, **intent_kwargs: object) -> TargetInferenceResult:
         root,
         [ScriptTargetSelectorArg(kind="build_experiment_environment")],
         definition=definition,
-        # The declared experiment environment path reaches inference on the experiment environment inputs, not
-        # on the definition — the handler builds it there. Passing only the
-        # definition would leave the declaration invisible to the renderer.
         experiment_environment_inputs=ExperimentEnvironmentInputs(
             declared_experiment_environment_path=str(experiment_environment) if experiment_environment else None
         ),
-        # A machine whose scripts can use Docker alone, so a Dockerfile's Docker build is the one runnable.
         machine=machine("docker"),
     )
     return report.results[0]
@@ -77,7 +67,6 @@ def test_flat_single_dockerfile_is_complete_automatic(tmp_path: Path) -> None:
     assert candidate.target.path == "ree-scripts/build_experiment_environment.sh"
     assert "DOCKERFILE=Dockerfile\n" in body
     assert "BUILD_CONTEXT=.\n" in body
-    # No blocking warning on an automatic candidate.
     assert not any(w.blocking for w in result.warnings)
 
 
@@ -101,7 +90,6 @@ def test_two_root_dockerfiles_block(tmp_path: Path) -> None:
 def test_nested_dockerfile_is_ambiguous(tmp_path: Path) -> None:
     _tree(tmp_path, {"docker/Dockerfile": "x", "README.md": "hi", "main.py": "y"})
     result = _build(tmp_path)
-    # Root stays "." (several meaningful entries); nested Dockerfile is ambiguous.
     root_obs = result.decision.steps[0].observed
     assert isinstance(root_obs, LogicalRootObservation)
     assert root_obs.path == "."
@@ -114,7 +102,6 @@ def test_no_dockerfile_is_not_inferred_with_full_trace(tmp_path: Path) -> None:
     result = _build(tmp_path)
     assert result.status == "not_inferred"
     assert result.candidates == []
-    # A decline still carries the complete trace to its result node.
     assert result.decision.result_node == "build-not-inferred"
     kinds = [step.kind for step in result.decision.steps]
     assert kinds[0] == "check"
@@ -124,17 +111,12 @@ def test_no_dockerfile_is_not_inferred_with_full_trace(tmp_path: Path) -> None:
 
 
 def test_experiment_environment_artifact_honors_the_declared_experiment_environment(tmp_path: Path) -> None:
-    # experiment_environment_path is where the build is expected to leave its artifact, and the
-    # build fails its post-condition when nothing lands there — so the generated
-    # recipe writes exactly where the REE declares.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     result = _build(tmp_path, experiment_environment="ree-out/prebuilt.tar")
     assert "EXPERIMENT_ENVIRONMENT_ARTIFACT=ree-out/prebuilt.tar\n" in _body(result)
 
 
 def test_experiment_environment_artifact_falls_back_to_the_strategy_default_when_undeclared(tmp_path: Path) -> None:
-    # The fallback covers inference running before a declaration exists — a
-    # freshly seeded script on an REE whose experiment environment is not yet declared.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     assert "EXPERIMENT_ENVIRONMENT_ARTIFACT=.repo2ree/artifacts/runtime.tar\n" in _body(_build(tmp_path))
 
@@ -180,10 +162,6 @@ def test_candidate_records_dockerfile_dependency(tmp_path: Path) -> None:
 def test_candidate_records_the_experiment_environment_path_it_writes_to(
     tmp_path: Path, declared: str | None, expected: str
 ) -> None:
-    # Declared or defaulted, the path is part of what justifies these bytes:
-    # move it and regeneration renders differently. The dependency does not say
-    # which of the two it was — a client compares it against its own declaration
-    # — so both cases record the same role.
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
     result = _build(tmp_path, experiment_environment=declared) if declared else _build(tmp_path)
     candidate = result.candidates[0]
@@ -191,5 +169,4 @@ def test_candidate_records_the_experiment_environment_path_it_writes_to(
     assert len(declaration) == 1
     assert declaration[0].path == expected
     assert declaration[0].role == "experiment_environment"
-    # The reported path is worthless unless it is the one the script writes to.
     assert f"EXPERIMENT_ENVIRONMENT_ARTIFACT={expected}\n" in _body(result)

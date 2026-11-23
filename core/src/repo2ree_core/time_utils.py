@@ -8,19 +8,15 @@ from repo2ree_ree.instant import UtcInstant, format_utc_instant
 
 
 def utc_now() -> str:
-    """Return the current UTC time as an ISO-8601 string with a trailing 'Z'."""
     return format_utc_instant(datetime.now(UTC))
 
 
 def utc_now_instant() -> UtcInstant:
-    """Return the current UTC instant for typed domain state."""
     return datetime.now(UTC)
 
 
 @dataclass(frozen=True)
 class OperationTiming:
-    """Completed operation timing suitable for a durable receipt."""
-
     started_at: UtcInstant
     finished_at: UtcInstant
     duration_ms: int
@@ -28,8 +24,6 @@ class OperationTiming:
 
 @dataclass(frozen=True)
 class OperationTimer:
-    """Wall timestamps plus monotonic elapsed time for one operation."""
-
     started_at: UtcInstant
     _started_ns: int
 
@@ -46,7 +40,6 @@ class OperationTimer:
 
 
 def format_duration_ms(duration_ms: int) -> str:
-    """Compact human rendering while logs retain the exact millisecond value."""
     total_seconds, milliseconds = divmod(duration_ms, 1000)
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)

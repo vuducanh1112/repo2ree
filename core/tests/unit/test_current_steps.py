@@ -1,6 +1,3 @@
-"""A step whose evidence is current runs nothing: asked again, it answers as it did, and only a different request,
-or --again where a step takes it, does the work again. Signing and sealing again are in test_sign_ree."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -68,7 +65,6 @@ def test_a_current_evaluation_answers_from_its_report_and_a_stricter_one_evaluat
     assert evaluate("evaluate-1") == "succeeded"
     assert evaluate("evaluate-2") == "succeeded"
     assert analyzed == [False]
-    # Asked to be strict, it is a different request: it evaluates (and, with no dependency data here, fails).
     assert evaluate("evaluate-3", strict=True) == "failed"
     assert evaluate("evaluate-4", again=True) == "succeeded"
     assert analyzed == [False, True, False]

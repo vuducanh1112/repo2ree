@@ -6,7 +6,6 @@ import type { ReeProject, SourceRepoMetadata } from "@core/workspace/WorkspaceTy
 import type { ReeDocument } from "../../infra/api/apiTypes";
 import { mapReeDetailToReeSlices } from "./mapping";
 
-// Wire → domain: the API speaks snake_case, the GUI camelCase.
 function mapSourceRepo(ree: ReeDocument): SourceRepoMetadata | undefined {
   const definition = ree.ree.subject?.definition;
   const source = definition?.source;
@@ -26,8 +25,6 @@ function mapSourceRepo(ree: ReeDocument): SourceRepoMetadata | undefined {
   };
 }
 
-// Ids come from `fileNodeIds`, which owns why they are namespaced by inventory
-// and derived from the path.
 function upsertTreeFile(
   roots: FileTreeNode[],
   relativePath: string,

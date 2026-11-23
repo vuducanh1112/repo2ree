@@ -1,12 +1,3 @@
-"""Visualize the behaviour of e2e runs' tests, or of one dossier, from their assessment.
-
-Drawing decides nothing: it reads the reports ``repo2ree_testbed assess`` wrote under
-reports/behaviour/, draws each test's traces and provenance from its verification/ into traces/,
-and writes the pages to browse a run by: one per test (its outcome, verdict, last failed command,
-artifacts, and screenshots, which stay in the run and are linked there) and one for the run. It
-takes what assess takes.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -62,13 +53,10 @@ def page(title: str, body: str) -> str:
 
 
 def links(page: Path, directory: Path, pattern: str) -> list[Path]:
-    """What ``pattern`` finds under ``directory``, as a page in ``page`` links it."""
     return [Path(os.path.relpath(path, page)) for path in sorted(directory.glob(pattern))]
 
 
 def provenance_rows(run: str, record: RunRecord, test: RunTest) -> list[tuple[str, str]]:
-    """Where a test's pages came from: the commit its run was recorded at, the one whose checker assessed it, and
-    the one drawing them now. A page drawn by an older commit than the evidence's, or long after, says so here."""
     drawn, dirty = provenance.head()
     recorded = datetime.fromtimestamp(test.started, tz=UTC).strftime("%Y-%m-%d %H:%M UTC") if test.started else ""
     assessed = provenance.commit(record.assessed_revision) if record.assessed_revision else "a dirty tree, or several"
@@ -80,7 +68,6 @@ def provenance_rows(run: str, record: RunRecord, test: RunTest) -> list[tuple[st
 
 
 def video_rows(video: Path, run: str) -> list[tuple[str, str]]:
-    """The commit that rendered a CLI session's video, as its stamp records it, or how to render one."""
     stamped = rendered_by(video)
     if stamped is None:
         return [("Video", f"not rendered: just render-cli-sessions {run}")]
@@ -94,8 +81,6 @@ def write_test_index(
     failed: FailedCommand | None = None,
     about: Sequence[tuple[str, str]] = (),
 ) -> None:
-    """A test's page, in its report ``directory``, linking what its run left in ``evidence``, and saying where it
-    came from (``about``)."""
     rows = [
         *((label, html.escape(value)) for label, value in about),
         ("Test outcome", f"<span class='{test.outcome}'>{test.outcome}</span> (exit {test.exit_code})"),
@@ -182,7 +167,6 @@ def write_run_index(root: Path, run: RunRecord) -> None:
 
 
 def draw(verification: Path, traces: Path, logs: Path, dossier: Path | None = None) -> bool:
-    """Draw a verification's traces and provenance into ``traces``; False when there is nothing to draw from."""
     if not (verification / "verification.json").is_file():
         return False
     trace = ("repo2ree_assurance_traceview", "trace", str(verification), "-o", str(traces), "--provenance")
@@ -190,7 +174,6 @@ def draw(verification: Path, traces: Path, logs: Path, dossier: Path | None = No
 
 
 def visualize_test(evidence: Path, test: RunTest, report: Path, run: str, record: RunRecord) -> str:
-    """Draw the test whose evidence is in ``evidence`` from its report, and write its page there."""
     drawn = bool(test.rees) and draw(report / "verification", report / "traces", report / "logs", evidence / "dossier")
     about = provenance_rows(run, record, test)
     video = video_of(run, Path(test.directory))
@@ -218,7 +201,6 @@ def visualize_run(run: Path, reports: Path = REPORTS) -> None:
 
 
 def visualize_dossier(dossier: Path, reports: Path = REPORTS) -> None:
-    """Visualize one dossier: as its test in its run's report, or under collected/ when no run left it."""
     found = run_of(dossier)
     if found is None:
         report = reports / COLLECTED / dossier.name
@@ -239,7 +221,7 @@ def visualize_dossier(dossier: Path, reports: Path = REPORTS) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser()
     choosing(parser, "visualize")
     args = parser.parse_args()
     try:

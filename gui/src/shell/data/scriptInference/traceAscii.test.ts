@@ -2,8 +2,6 @@ import type { DecisionDag, DecisionTrace } from "@shell/infra/api/apiTypes";
 import { describe, expect, it } from "vitest";
 import { renderDecisionDiagram, renderDecisionTrace } from "./traceAscii";
 
-// Minimal trace shapes mirroring the backend's build-experiment-environment-inference output; cast
-// through unknown so the fixtures aren't coupled to the full generated type.
 function trace(over: Partial<Record<string, unknown>>): DecisionTrace {
   return {
     dag: "build-experiment-environment-inference",
@@ -69,13 +67,10 @@ describe("renderDecisionTrace", () => {
     expect(text).toContain("logical_project_root -> root");
     expect(text).toContain('logical root "." (depth 0)');
     expect(text).toContain("fork: runtime-strategies");
-    // One indented group per forked strategy, labelled by the fork edge.
     expect(text).toContain("|-- dockerfile");
     expect(text).toContain("|-- pip");
-    // Outcome glyphs from the design legend.
     expect(text).toContain("[*] dockerfile-complete (complete)");
     expect(text).toContain("[!] pip-candidate (candidate)");
-    // Resolver join carries the per-strategy outcomes, then the result node.
     expect(text).toContain("resolve: resolve-runtime-strategies -> needs_input");
     expect(text).toContain("dockerfile=complete, pip=candidate");
     expect(text).toContain("=> build-needs-input (needs_input)");
@@ -85,7 +80,6 @@ describe("renderDecisionTrace", () => {
     const text = renderDecisionTrace(DECISION);
     const lines = text.split("\n");
     const pipIdx = lines.findIndex((l) => l.includes("|-- pip"));
-    // The requirements check belongs to the pip branch, after its label.
     const reqIdx = lines.findIndex((l) => l.includes("requirements_at_project_root"));
     expect(pipIdx).toBeGreaterThanOrEqual(0);
     expect(reqIdx).toBeGreaterThan(pipIdx);
@@ -150,8 +144,6 @@ describe("renderDecisionTrace", () => {
   });
 });
 
-// A trimmed static DAG mirroring build-experiment-environment-inference: a check, a fork, one check per
-// branch, two leaves, a resolver, and two result nodes.
 function dag(): DecisionDag {
   return {
     key: "build-experiment-environment-inference",
@@ -231,8 +223,6 @@ function dag(): DecisionDag {
   } as unknown as DecisionDag;
 }
 
-// A trace that took root -> fork -> (dockerfile none -> df-na) & (pip exactly_one
-// -> pip-cand) -> resolve needs_input -> r-needs.
 const OVERLAY_TRACE = trace({
   steps: [
     {
@@ -273,13 +263,10 @@ const OVERLAY_TRACE = trace({
 describe("renderDecisionDiagram", () => {
   it("shows every node, marking evaluated vs not", () => {
     const text = renderDecisionDiagram(dag(), OVERLAY_TRACE);
-    // Header + legend.
     expect(text).toContain("build-experiment-environment-inference (v1)");
     expect(text).toContain("[>] evaluated");
-    // Evaluated nodes on the path.
     expect(text).toContain("[>] project-root");
     expect(text).toContain("[>] pip-cand");
-    // Unevaluated nodes still rendered (muted marker), not dropped.
     expect(text).toContain("[ ] df-complete");
     expect(text).toContain("[ ] r-complete");
     expect(text).toContain("[ ] r-none");
@@ -287,14 +274,12 @@ describe("renderDecisionDiagram", () => {
 
   it("flags the branch taken out of each visited node", () => {
     const text = renderDecisionDiagram(dag(), OVERLAY_TRACE);
-    // Whitespace-tolerant: branch lines are column-padded for alignment.
     const norm = (s: string) => s.replace(/\s+/g, " ").trim();
     const line = (needle: string) =>
       text
         .split("\n")
         .map(norm)
         .find((l) => l.includes(norm(needle))) ?? "";
-    // Taken branches carry the marker; sibling branches do not.
     expect(line("root -> fork")).toContain("<=");
     expect(line("exactly_one -> pip-cand")).toContain("<=");
     expect(line("needs_input -> r-needs")).toContain("<=");

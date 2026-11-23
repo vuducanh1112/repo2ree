@@ -1,11 +1,3 @@
-"""Keep test-artifacts bounded; every e2e run prunes first.
-
-Per tier it keeps the newest finished runs, the newest with a problem, the runs the assurance-gate
-receipt names, and runs still in progress; old suite folders and stale control state go. A test
-case's recording goes once its test has not finished for a month, which is how a renamed or
-deleted test's recording leaves; so do session files as old.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -28,7 +20,6 @@ SUITE_TOKEN = re.compile(r"^e2e-(?P<tier>.+)-[0-9a-f]{32}$")
 SUITE_FOLDERS = ("recordings", "archives", "telemetry")
 IN_PROGRESS_SECONDS = 6 * 3600
 STALE_CONTROL_SECONDS = 24 * 3600
-# A test case recording, or a session file, nothing has rewritten for this long belongs to no live test.
 STALE_RECORDING_SECONDS = 30 * 24 * 3600
 
 
@@ -105,11 +96,6 @@ def plan_control_state(root: Path, now: float) -> Plan:
 
 
 def plan_case_recordings(base: Path, now: float) -> Plan:
-    """Each test case recording under ``base`` whose test last finished over a month ago.
-
-    A case is the directory of a manifest the pytest plugin wrote. The walk stops there: what a case
-    holds (an REE's own files, its copies) is part of it, and walking it would cost minutes.
-    """
     keep: list[Path] = []
     remove: list[Path] = []
     for directory, subdirectories, files in os.walk(base):
@@ -129,11 +115,6 @@ def plan_session_files(base: Path, now: float) -> Plan:
 
 
 def remove_empty_directories(base: Path) -> None:
-    """The directories under ``base`` a removal left empty, deepest first.
-
-    Prunes run side by side (the gate starts its tiers together): a directory another one removed
-    first is gone already, and one a running test just wrote into is no longer empty.
-    """
     for directory in sorted((path for path in base.rglob("*") if path.is_dir()), key=lambda p: -len(p.parts)):
         try:
             if not any(directory.iterdir()):
@@ -178,7 +159,7 @@ def prune(*, keep_runs: int = 5, keep_suite: int = 3, dry_run: bool = False) -> 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--keep-runs", type=int, default=5, help="per-test runs kept per tier (default 5)")
     parser.add_argument("--keep-suite", type=int, default=3, help="suite runs kept per tier (default 3)")
     parser.add_argument("--dry-run", action="store_true", help="list what would be removed and remove nothing")

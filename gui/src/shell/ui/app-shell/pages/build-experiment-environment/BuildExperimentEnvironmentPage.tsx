@@ -82,8 +82,6 @@ export function PageBuildExperimentEnvironment({
 }: StepPageProps) {
   const files = workspaceFiles || [];
 
-  // The reserved build-script path and template variants are backend-owned;
-  // the file itself arrives seeded with the default template.
   const { data: templateCatalog } = useScriptTemplates();
   const scriptPath = templateCatalog?.build_experiment_environment.path ?? "";
   const scriptFile = useMemo(
@@ -98,7 +96,6 @@ export function PageBuildExperimentEnvironment({
   );
   const activateContent = activateFile?.content || "";
 
-  // Save a file to the overlay — does not change the selected build script.
   const handleSaveFile = useCallback(
     (path: string, content: string) => {
       void onPersistWorkspaceFile?.(path, content);
@@ -114,10 +111,6 @@ export function PageBuildExperimentEnvironment({
     [handleSaveFile, scriptPath],
   );
 
-  // Read-only inference: generate a candidate build script from the repository
-  // and load it into the editor. It is never written here — the author reviews
-  // it and clicks Save build script (exactly like editing by hand). The shared
-  // GenerateScriptControl renders the button, status, and decision graph.
   const generate = useGenerateBuildExperimentEnvironmentScript();
   const generateActivate = useGenerateActivateExperimentEnvironmentScript();
   const [activateEdit, setActivateEdit] = useState<
@@ -164,11 +157,6 @@ export function PageBuildExperimentEnvironment({
     [onReeSpecChange],
   );
 
-  // The rest of the one-click flow: generation reports the path its script
-  // writes to, and an undeclared REE gets the renderer's fallback — so filling
-  // an empty field here lands the script and the declaration it will be checked
-  // against in one action. A path the author already typed always wins; the
-  // backend does not distinguish the two cases, this guard does.
   const handleGeneratedExperimentEnvironmentPath = useCallback(
     (path: string) => {
       if (experimentEnvironmentPath) return;
@@ -177,15 +165,9 @@ export function PageBuildExperimentEnvironment({
     [handleExperimentEnvironmentPathChange, experimentEnvironmentPath],
   );
 
-  // The reserved build script arrives seeded with the starter template, so
-  // this gate only blocks running before the workspace files have loaded (or
-  // if the author blanked the script).
   const hasScript = scriptContent.trim().length > 0;
   const hasMissing = missing.length > 0;
   const statusLabel = buildRunStatusLabel({ running, runDone, runFailed, hasScript });
-  // The build now needs the path it is expected to produce: the backend refuses
-  // to start without a declared experiment_environment_path, so the button says so here rather
-  // than letting the run fail its precondition.
   const canRun = canRunBuild({
     running,
     hasMissing,
@@ -263,9 +245,6 @@ export function PageBuildExperimentEnvironment({
             />
             <ReservedBuildExperimentEnvironmentScriptCard
               currentContent={scriptContent}
-              // Disabled until the catalog delivers the reserved path: an
-              // enabled editor without a save destination would let edits
-              // race the fetch (and silently drop the save).
               disabled={!scriptPath}
               templates={templateCatalog?.build_experiment_environment.templates}
               externalEdit={externalEdit}

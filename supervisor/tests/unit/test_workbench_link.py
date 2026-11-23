@@ -1,12 +1,3 @@
-"""The workbench-dialed WebSocket bridge, driven by an in-memory transport.
-
-No real socket: a fake ``send_text`` captures outbound ``WsRequest``s, and a
-helper feeds ``WsMessage`` responses back through ``on_message`` — the same path
-the API's WebSocket route uses. Requests run in a worker thread (as the real
-synchronous manager would) so the blocking ``request()`` and the frame-feeding
-happen concurrently, exactly like production.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -62,8 +53,6 @@ class _ClosableIterator(Iterator[bytes], Protocol):
 
 
 class FakeSocket:
-    """Captures outbound requests and lets a test push responses back."""
-
     def __init__(self) -> None:
         self.connection = WorkbenchConnection(send_text=self._capture)
         self.sent: list[WorkbenchWsRequest] = []
@@ -78,7 +67,6 @@ class FakeSocket:
         return self.wait_for_nth_request(1, timeout)
 
     def wait_for_nth_request(self, n: int, timeout: float = 2.0) -> WorkbenchWsRequest:
-        """Block until at least ``n`` requests have been sent; return the n-th."""
         with self._cond:
             assert self._cond.wait_for(lambda: len(self.sent) >= n, timeout), f"request #{n} was not sent"
             return self.sent[n - 1]
@@ -92,13 +80,12 @@ class FakeSocket:
 
 
 def _run_in_thread(fn):
-    """Run a blocking client call in a thread; return a getter for its result."""
     box: dict[str, Any] = {}
 
     def target() -> None:
         try:
             box["value"] = fn()
-        except BaseException as exc:  # noqa: BLE001 — re-raised in the test thread
+        except BaseException as exc:  # noqa: BLE001
             box["error"] = exc
 
     thread = threading.Thread(target=target)
@@ -172,7 +159,6 @@ def test_is_running_true_and_no_workbench_false() -> None:
     registry = WorkbenchConnectionRegistry()
     client = WsWorkbenchClient(registry)
 
-    # No workbench connected → False, no raise.
     assert client.is_running("a1") is False
 
     registry.register("a1", socket.connection)
@@ -219,7 +205,6 @@ def test_follow_run_streams_logs_then_result() -> None:
 
 
 def test_a_silent_follow_waits_until_its_connection_closes(monkeypatch: pytest.MonkeyPatch) -> None:
-    # A script may run quietly for hours: only the connection going away ends the wait.
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
@@ -267,7 +252,6 @@ def test_cancel_run_sends_cancel_run_request() -> None:
     ],
 )
 def test_every_request_names_the_ree_it_is_for(call: Any) -> None:
-    # A workbench serving a store runs each request in the directory of the REE it names.
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
@@ -294,7 +278,6 @@ def test_copy_in_offers_the_file_for_one_fetch_beside_the_socket(tmp_path) -> No
     request = socket.wait_for_request().request
     assert isinstance(request, FetchFileRequest)
     assert request.workbench_path == "/ree/dest.bin"
-    # What the API's route hands the workbench for that path: the file, once.
     token = request.transfer_path.removeprefix("/workbench/transfers/")
     assert transfers.serve(token) == source
     with pytest.raises(TransferError):
@@ -302,13 +285,10 @@ def test_copy_in_offers_the_file_for_one_fetch_beside_the_socket(tmp_path) -> No
     socket.respond(DoneFrame())
     join()
 
-    assert source.read_bytes() == b"0123456789"  # the caller's file stays
+    assert source.read_bytes() == b"0123456789"
 
 
 def test_abandoned_stream_sends_cancel_to_the_workbench() -> None:
-    # A consumer that walks away mid-stream (a client dropping a download) must
-    # tell the workbench to stop producing, or the workbench keeps doing the work
-    # for no one.
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
@@ -355,10 +335,7 @@ def test_resolve_workbench_pins_empty_placement_to_a_concrete_workbench() -> Non
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
 
-    # An empty ("any workbench") request resolves to the concrete connected id, so a
-    # provision can pin the REE to it rather than to "".
     assert client.resolve_workbench("") == "a1"
-    # A named workbench resolves to itself.
     assert client.resolve_workbench("a1") == "a1"
 
 
@@ -379,14 +356,11 @@ def test_pick_raises_when_named_workbench_absent() -> None:
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
     client = WsWorkbenchClient(registry)
-    # A different workbench is connected, but the REE is pinned to one that isn't.
     with pytest.raises(WorkbenchUnavailableError, match="workbench 'a2' not connected"):
         client.exec_query("a2", ManifestQuery(), ree_id="ree-1")
 
 
 def test_exec_query_reassembles_multiple_chunks() -> None:
-    # Large results (a sealed archive) arrive as many bounded chunks; the
-    # client must reassemble them in order.
     socket = FakeSocket()
     registry = WorkbenchConnectionRegistry()
     registry.register("a1", socket.connection)
@@ -401,27 +375,18 @@ def test_exec_query_reassembles_multiple_chunks() -> None:
     assert join() == b"part-one-part-two"
 
 
-# ================================================
-# Unsolicited frames (a workbench's own telemetry)
-# ================================================
-
-
 def test_unsolicited_span_frame_reaches_the_span_sink() -> None:
     relayed: list[list[str]] = []
     connection = WorkbenchConnection(send_text=lambda _text: None, span_sink=relayed.append)
 
     connection.on_message(WorkbenchWsMessage(frame=SpanFrame(payload="c3Bhbg==")).model_dump_json())
 
-    # No id: the workbench's own span answers no request, so the pending lookup
-    # that routes every other frame would have dropped it.
     assert relayed == [["c3Bhbg=="]]
 
 
 def test_unsolicited_frame_without_a_sink_is_dropped_quietly() -> None:
     connection = WorkbenchConnection(send_text=lambda _text: None)
 
-    # A control plane with no collector configured still has workbenches
-    # relaying to it; that must not fault the socket's read loop.
     connection.on_message(WorkbenchWsMessage(frame=SpanFrame(payload="c3Bhbg==")).model_dump_json())
 
 
@@ -455,7 +420,6 @@ def test_an_upload_arrives_beside_the_socket_and_is_collected_on_done(tmp_path) 
     request = socket.wait_for_request().request
     assert isinstance(request, ExecUploadRequest)
     assert request.query == BundleQuery()
-    # What the workbench PUTs to the path it was given, as the API's route receives it.
     token = request.transfer_path.removeprefix("/workbench/transfers/")
     asyncio.run(inbox.receive(token, _body(b"PK", b"zip-bytes"), 11))
     socket.respond(DoneFrame())

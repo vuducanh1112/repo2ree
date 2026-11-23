@@ -1,5 +1,3 @@
-"""The words traceview draws by are words the current specification uses."""
-
 from __future__ import annotations
 
 from repo2ree_assurance_checker import load_spec

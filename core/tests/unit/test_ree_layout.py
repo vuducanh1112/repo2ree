@@ -110,13 +110,6 @@ def test_validate_upload_token_accepts_normal():
 
 
 def test_the_published_bundle_layout_is_a_format_promise():
-    """These strings are in every bundle ever published.
-
-    They are derived from the dirnames above them so the bundle cannot drift
-    from the tree it mirrors — which also means a rename there silently changes
-    what repo2ree publishes, and a reader holding last year's bundle resolves
-    these literally. Pinned here so that change has to be made on purpose.
-    """
     assert BUNDLE_ROOT_PREFIX == "ree/"
     assert BUNDLE_REE_MANIFEST_ENTRY_PATH == "ree/ree.json"
     assert BUNDLE_SNAPSHOT_ENTRY_PATH == "ree/snapshot.tar.gz"
@@ -130,7 +123,6 @@ def test_the_published_bundle_layout_is_a_format_promise():
 
 
 def test_an_ree_root_and_a_review_root_are_the_same_tree():
-    """What lets the shared acquire and materialize scripts run in both."""
     layout = ReeLayout.for_ree("/r", "ree1")
     review = layout.review("attempt-1")
 
@@ -151,6 +143,5 @@ def test_an_ree_root_and_a_review_root_are_the_same_tree():
 
     assert tree_paths(layout) == tree_paths(review)
     assert review.root == Path("/r/ree1/reviews/attempt-1")
-    # An attempt keeps its own evidence where an REE keeps its record.
     assert review.sbom == Path("/r/ree1/reviews/attempt-1/artifacts/sbom.json")
     assert review.metadata == Path("/r/ree1/reviews/attempt-1/review.json")

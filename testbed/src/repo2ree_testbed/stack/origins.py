@@ -1,18 +1,3 @@
-"""Origins a stack serves itself: the fixture project by git and as a tarball, instead of a public host.
-
-The suites that fetch a source from an origin URL (and the reviews that fetch it again)
-used to reach a repository on GitHub, so they needed the internet and tested whatever that
-repository held that day. Each stack now serves ``examples/origins/ree-e2e-fixture`` itself:
-
-- by git, over git's smart HTTP protocol (``origin_server``, through ``git http-backend``),
-  which the product's shallow, revision-pinned fetch needs and an http(s) URL reaches;
-- as a ``.tar.gz``, from the same server.
-
-The repository is built with a fixed author, committer and date, and the tarball with
-fixed metadata, so every run serves the same commit and the same bytes. Benches reach
-both the way they reach the API (``host`` below).
-"""
-
 from __future__ import annotations
 
 import gzip
@@ -33,7 +18,6 @@ FIXTURE = ROOT / "examples/origins/ree-e2e-fixture"
 REPOSITORY = "ree-e2e-fixture.git"
 TARBALL = "ree-e2e-fixture.tar.gz"
 UPSTREAM = "upstream"
-# What the repository is committed as, so its commit id never changes between runs.
 _IDENTITY = {
     "GIT_AUTHOR_NAME": "repo2ree e2e",
     "GIT_AUTHOR_EMAIL": "e2e@repo2ree.invalid",
@@ -48,7 +32,6 @@ _IDENTITY = {
 class Served:
     git_url: str
     tarball_url: str
-    # Where a test publishes the releases of an upstream the REEs it authors fetch, and where they fetch them.
     upstream_url: str
     upstream_directory: Path
 
@@ -62,13 +45,11 @@ class Served:
 
 
 def _git(*args: str, cwd: Path) -> None:
-    # No user or system configuration: a signing or hook setting would change the commit.
     environment = {"PATH": os.environ.get("PATH", ""), "HOME": str(cwd), "GIT_CONFIG_NOSYSTEM": "1", **_IDENTITY}
     subprocess.run(["git", *args], cwd=cwd, env=environment, check=True, capture_output=True)
 
 
 def build_repository(served: Path) -> Path:
-    """A bare repository of the fixture, one commit on ``main``, fetchable by commit id."""
     work = served / "work"
     shutil.rmtree(work, ignore_errors=True)
     shutil.copytree(FIXTURE, work)
@@ -78,7 +59,6 @@ def build_repository(served: Path) -> Path:
     bare = served / REPOSITORY
     shutil.rmtree(bare, ignore_errors=True)
     _git("clone", "-q", "--bare", str(work), str(bare), cwd=served)
-    # The product fetches a pinned revision by its id, as public hosts allow.
     _git("config", "uploadpack.allowReachableSHA1InWant", "true", cwd=bare)
     _git("config", "uploadpack.allowAnySHA1InWant", "true", cwd=bare)
     shutil.rmtree(work)
@@ -86,14 +66,13 @@ def build_repository(served: Path) -> Path:
 
 
 def build_tarball(served: Path) -> Path:
-    """The fixture as ``ree-e2e-fixture/…`` in a tarball whose bytes depend on its files alone."""
     archive = io.BytesIO()
     with tarfile.open(fileobj=archive, mode="w") as tar:
         for path in sorted(FIXTURE.rglob("*")):
             info = tar.gettarinfo(str(path), arcname=f"ree-e2e-fixture/{path.relative_to(FIXTURE)}")
             info.uid = info.gid = 0
             info.uname = info.gname = ""
-            info.mtime = 1767225600  # 2026-01-01
+            info.mtime = 1767225600
             info.mode = 0o755 if path.is_dir() else 0o644
             tar.addfile(info, io.BytesIO(path.read_bytes()) if path.is_file() else None)
     target = served / TARBALL
@@ -104,13 +83,11 @@ def build_tarball(served: Path) -> Path:
 
 def free_port() -> int:
     with socket.socket() as probe:
-        probe.bind(("0.0.0.0", 0))  # noqa: S104 - test stack; reachable from workbench containers by design
+        probe.bind(("0.0.0.0", 0))  # noqa: S104
         return int(probe.getsockname()[1])
 
 
 class Origins:
-    """The two origin servers of one stack: started with it, stopped with it."""
-
     def __init__(self, directory: Path, host: str) -> None:
         self.directory = directory
         self.host = host

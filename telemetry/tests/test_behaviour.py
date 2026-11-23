@@ -1,5 +1,3 @@
-"""The journal writer and the typed records owners write through it."""
-
 from __future__ import annotations
 
 import json
@@ -22,7 +20,6 @@ def records(path: Path) -> list[dict[str, object]]:
 
 
 def kept_contract(journals: Path) -> subprocess.CompletedProcess[str]:
-    """What the published contract's own checker says about the journals written here."""
     command = [sys.executable, "-m", "repo2ree_assurance_checker", "validate-journal", str(journals)]
     return subprocess.run(command, capture_output=True, text=True, check=False)
 

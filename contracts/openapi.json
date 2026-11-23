@@ -12,7 +12,6 @@
           "rees"
         ],
         "summary": "Create Ree Route",
-        "description": "Create an empty REE in a store, in a background run.",
         "operationId": "createRee",
         "requestBody": {
           "required": true,
@@ -444,7 +443,6 @@
           "rees"
         ],
         "summary": "Delete Ree Route",
-        "description": "Delete the REE from its store.",
         "operationId": "deleteRee",
         "parameters": [
           {
@@ -577,7 +575,6 @@
           "rees"
         ],
         "summary": "Get Ree State Route",
-        "description": "Compact automation view: durable state and file metadata, never contents.\n\nIn ``audit``, a step's ``evidence`` says whether its receipt is current. Its\n``payload`` says whether what it produced travels in the sealed archive:\n``present``, ``omitted``, or ``not_applicable`` before the seal.",
         "operationId": "getReeState",
         "parameters": [
           {
@@ -1187,7 +1184,6 @@
           "runs"
         ],
         "summary": "Observe Ree Run",
-        "description": "Wait up to ``wait_seconds`` for new log entries or the run's end, whichever is first.\n\nIt can return while the run is still going: call it again with ``next_cursor``\nuntil ``run.status`` is terminal.",
         "operationId": "observeRun",
         "parameters": [
           {
@@ -1511,7 +1507,6 @@
           "ree-steps"
         ],
         "summary": "List Ree Steps",
-        "description": "Each authoring step, ordered, with its prerequisites, where the REE stands on\nit (``complete``, ``ready`` or ``blocked``), and the operationIds that advance\nit; ``next`` is the step to do next.",
         "operationId": "listReeSteps",
         "parameters": [
           {
@@ -1689,7 +1684,6 @@
           "files"
         ],
         "summary": "List Script Templates",
-        "description": "Starter templates for the REE-owned scripts and where each belongs.\n\nStatic for the command line the REE's workbench runs. Each section marks the\ndefault entry for each environment with ``is_default``; the default build and\nactivate experiment environment templates are the content a fresh REE in that\nenvironment is seeded with. The experiment templates are for scripts created on\ndemand under the reserved experiments directory. For scripts fitted to the REE's\nown project, use ``suggestScripts``.",
         "operationId": "listScriptTemplates",
         "parameters": [
           {
@@ -1969,7 +1963,6 @@
           "sources"
         ],
         "summary": "Upload Init Route",
-        "description": "Start a source upload: a zip or tarball whose bytes go to the returned ``upload_url``.",
         "operationId": "initializeSourceUpload",
         "parameters": [
           {
@@ -2113,7 +2106,6 @@
           "sources"
         ],
         "summary": "Store Upload Bytes Route",
-        "description": "Store the archive's raw bytes; ``completeSourceUpload`` then extracts them.",
         "operationId": "uploadSourceBytes",
         "parameters": [
           {
@@ -2402,7 +2394,6 @@
           "sources"
         ],
         "summary": "Remove Source Route",
-        "description": "Remove the source, keeping the REE's scripts and definition, so another can be brought in.",
         "operationId": "removeSource",
         "parameters": [
           {
@@ -2538,7 +2529,6 @@
           "rees"
         ],
         "summary": "Patch Ree Definition Route",
-        "description": "Replace top-level fields of the definition and return the whole REE document.",
         "operationId": "patchReeDefinition",
         "parameters": [
           {
@@ -2973,7 +2963,6 @@
           "files"
         ],
         "summary": "Write Script Route",
-        "description": "Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.\n\n``listScriptTemplates`` says where each script belongs. ``if_match`` refuses\nthe write if the file has changed since its etag was read.",
         "operationId": "writeScript",
         "parameters": [
           {
@@ -3119,7 +3108,6 @@
           "files"
         ],
         "summary": "Suggest Scripts Route",
-        "description": "Synchronously generate candidate scripts for the requested targets, from the REE's own project.\n\nThis proposes the build script (from a Dockerfile or a requirements.txt, say)\nand scaffolds the activation and experiment scripts. Nothing is written:\n``writeScript`` is how a candidate is adopted.\n\nRead-only and always recomputed: every call rescans and re-runs the DAGs\nagainst current inputs, so it needs no idempotency key and returns the report\ndirectly rather than a background run.",
         "operationId": "suggestScripts",
         "parameters": [
           {
@@ -3265,7 +3253,6 @@
           "files"
         ],
         "summary": "Lint Scripts Route",
-        "description": "Statically check persisted scripts on every available tier.",
         "operationId": "lintScripts",
         "parameters": [
           {
@@ -3411,7 +3398,6 @@
           "files"
         ],
         "summary": "Check Script Draft Route",
-        "description": "Run the checks that start no process against unsaved source, on the REE's workbench.",
         "operationId": "checkScriptDraft",
         "parameters": [
           {
@@ -3844,7 +3830,6 @@
           "runs"
         ],
         "summary": "Get Reproducibility Report Route",
-        "description": "The persisted evaluate-run report artifact.\n\nA threat's ``blocking`` means it holds its axis at its current level. Nothing\nrefuses to run or seal because of one.",
         "operationId": "getReproducibilityReport",
         "parameters": [
           {
@@ -4856,7 +4841,6 @@
           "receipts"
         ],
         "summary": "List Author Receipts",
-        "description": "Successful receipts carried by the portable aggregate.",
         "operationId": "listAuthorReceipts",
         "parameters": [
           {
@@ -4989,7 +4973,6 @@
           "rees"
         ],
         "summary": "Bundle Upload Init Route",
-        "description": "Open a staging slot for a downloaded REE bundle (see ``load-ree-bundle``).",
         "operationId": "initializeReeBundleUpload",
         "parameters": [
           {
@@ -5273,7 +5256,6 @@
           "rees"
         ],
         "summary": "Load Ree Bundle Route",
-        "description": "Make this REE be the uploaded bundle: intent, source, evidence, and all.\n\nThe counterpart of ``ree-archive``. Intended right after ``createRee`` \u2014\nloading replaces whatever the REE holds, so a fresh workbench is the only\nplace it is non-destructive.",
         "operationId": "loadReeBundle",
         "parameters": [
           {
@@ -5419,7 +5401,6 @@
           "rees"
         ],
         "summary": "Seal Ree Route",
-        "description": "Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal.",
         "operationId": "sealRee",
         "parameters": [
           {
@@ -5565,7 +5546,6 @@
           "rees"
         ],
         "summary": "Signature Upload Init Route",
-        "description": "Open a staging slot for a Sigstore bundle over the sealed REE's digest (see ``sign-ree``).",
         "operationId": "initializeSignatureUpload",
         "parameters": [
           {
@@ -5849,7 +5829,6 @@
           "rees"
         ],
         "summary": "Sign Ree Route",
-        "description": "Add the staged bundle as the sealed REE's signature, beside what the seal covers.",
         "operationId": "signRee",
         "parameters": [
           {
@@ -5995,7 +5974,6 @@
           "rees"
         ],
         "summary": "Download Ree Archive Route",
-        "description": "Download a captured REE repository with selected offline LFS payloads.\n\nThe extracted directory contains both the working files and Git storage.\nSelected LFS payloads are included locally for offline use.",
         "operationId": "downloadReeArchive",
         "parameters": [
           {
@@ -6261,7 +6239,6 @@
           "ree-index"
         ],
         "summary": "List Ree Index Route",
-        "description": "Every REE sealed on this node, newest first.\n\n``deposited_only`` narrows to entries some archive has issued an identifier\nfor \u2014 the subset another node could cite. The rest are local seals, real\nhere but not yet citable anywhere else.\n\nNote the order is the reverse of the store's: the index's canonical order is\nascending, because that is what a resumable ``since=`` cursor and a stable\nsnapshot digest need, while a reader wants the most recent seal first.",
         "operationId": "listReeIndex",
         "parameters": [
           {
@@ -6846,7 +6823,6 @@
           "reviews"
         ],
         "summary": "Review Build Experiment Environment Route",
-        "description": "Rebuild the experiment environment inside an attempt whose source was already reproduced.\n\nAddressed by review id rather than minting a new one: the build is only\nmeaningful against the source *this* attempt fetched for itself, and the\nworkbench rejects the command outright when that step has not settled.",
         "operationId": "reviewBuildExperimentEnvironment",
         "parameters": [
           {
@@ -7001,7 +6977,6 @@
           "reviews"
         ],
         "summary": "Review Activate Experiment Environment Route",
-        "description": "Run the author's activation alone in the experiment environment this attempt certified.\n\nTakes no ``basis``, unlike the two steps before it: activation runs in the\nworkspace the build left behind and inherits what that evidence is worth\nrather than choosing (see :class:`ReviewActivateExperimentEnvironmentArgs`).",
         "operationId": "reviewActivateExperimentEnvironment",
         "parameters": [
           {
@@ -7156,7 +7131,6 @@
           "reviews"
         ],
         "summary": "Review Run Experiment Route",
-        "description": "Reproduce one experiment's result inside an attempt whose experiment environment came up.\n\nOne experiment per call, addressed by name \u2014 the same shape as the author's\n``run-experiment/{name}``. Reproducing every experiment is the client\nissuing this in sequence rather than a batch route: each run then has its own\nlog, receipt, and cancel point, and a reviewer watching a slow experiment can\nstop that one without discarding the verdicts already settled.\n\nLike the activation route it takes no ``basis`` (the run inherits what the\nworkspace it happens in is worth), and like the author's route it does no\nhost-side resolution preflight: an unknown experiment name surfaces as a\nfailed run carrying the workbench's own message.",
         "operationId": "reviewRunExperiment",
         "parameters": [
           {
@@ -7320,7 +7294,6 @@
           "reviews"
         ],
         "summary": "Review Signature Upload Init Route",
-        "description": "Open a staging slot for a Sigstore bundle of the review (see ``sign-review``).",
         "operationId": "initializeReviewSignatureUpload",
         "parameters": [
           {
@@ -7622,7 +7595,6 @@
           "reviews"
         ],
         "summary": "Sign Review Route",
-        "description": "Add the staged bundle as the review's signature: the review changes no more.",
         "operationId": "signReview",
         "parameters": [
           {
@@ -7777,7 +7749,6 @@
           "fleet"
         ],
         "summary": "List Workbenches",
-        "description": "Every workbench service currently connected to this control plane.",
         "operationId": "listWorkbenches",
         "responses": {
           "200": {
@@ -7899,7 +7870,6 @@
           "fleet"
         ],
         "summary": "List Stores",
-        "description": "Every store registered here, and the workbench serving each one now, if any.",
         "operationId": "listStores",
         "responses": {
           "200": {
@@ -8522,7 +8492,6 @@
           "behaviour"
         ],
         "summary": "Get Behaviour State",
-        "description": "Owners write their store and then journal the change, so the stores are read inside the cut.",
         "operationId": "getBehaviourState",
         "responses": {
           "200": {
@@ -8644,7 +8613,6 @@
           "behaviour"
         ],
         "summary": "List Store Behaviour Journals",
-        "description": "The journals the workbench serving the store keeps in it, read through that workbench.",
         "operationId": "listStoreBehaviourJournals",
         "parameters": [
           {
@@ -9246,8 +9214,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ActivateExperimentEnvironmentPayload",
-        "description": "Run the activate experiment environment script alone. Takes no parameters of its own."
+        "title": "ActivateExperimentEnvironmentPayload"
       },
       "ActivateExperimentEnvironmentReceipt": {
         "properties": {
@@ -9388,8 +9355,7 @@
           "activate_experiment_environment_script_digest",
           "launch_script_digest"
         ],
-        "title": "ActivateExperimentEnvironmentReceipt",
-        "description": "The activate experiment environment script ran a command that does nothing, which exited 0."
+        "title": "ActivateExperimentEnvironmentReceipt"
       },
       "ActivationOutcome": {
         "properties": {
@@ -9536,8 +9502,7 @@
           "archive",
           "identifier"
         ],
-        "title": "ArchiveBindingAttestation",
-        "description": "One claim: an archive's deposit holds the REE with this content digest.\n\nStored beside the sealed bundle and indexed by the control plane; never\nwritten into the bundle, which is frozen at seal time. ``signature`` and\n``verification_material`` are optional because an unsigned binding is still\na useful record \u2014 signing makes it *checkable* by a third party rather than\nmerely asserted, and can be added later without rewriting anything."
+        "title": "ArchiveBindingAttestation"
       },
       "ArgvCommandCandidate": {
         "properties": {
@@ -9613,8 +9578,7 @@
           "size",
           "cut"
         ],
-        "title": "BehaviourArchive",
-        "description": "One REE archive the control plane served, so a collector can place the copy a client kept."
+        "title": "BehaviourArchive"
       },
       "BehaviourArchiveList": {
         "properties": {
@@ -9730,8 +9694,7 @@
           "cut",
           "runs"
         ],
-        "title": "BehaviourState",
-        "description": "The owners' persisted state, read between two sets of journal positions."
+        "title": "BehaviourState"
       },
       "BuildExperimentEnvironmentPayload": {
         "properties": {
@@ -9749,8 +9712,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "BuildExperimentEnvironmentPayload",
-        "description": "Run the reserved build script. Takes no parameters of its own."
+        "title": "BuildExperimentEnvironmentPayload"
       },
       "BuildExperimentEnvironmentReceipt": {
         "properties": {
@@ -9897,8 +9859,7 @@
           }
         },
         "type": "object",
-        "title": "BuildInfo",
-        "description": "A component's package version and exact source revision.\n\nBoth fields are optional on the wire so independently deployed workbenches\nremain compatible."
+        "title": "BuildInfo"
       },
       "BundleContents": {
         "properties": {
@@ -10076,8 +10037,7 @@
           "digest",
           "role"
         ],
-        "title": "CandidateDependency",
-        "description": "Exactly which evidence justifies a candidate \u2014 the staleness key."
+        "title": "CandidateDependency"
       },
       "CapturePolicy": {
         "properties": {
@@ -10168,8 +10128,7 @@
           "check_working_environment_script_digest",
           "check_working_environment_script_size"
         ],
-        "title": "CheckWorkingEnvironmentDefinition",
-        "description": "The script that checks the working environment offers what the REE's scripts need, run there before them."
+        "title": "CheckWorkingEnvironmentDefinition"
       },
       "CheckWorkingEnvironmentPayload": {
         "properties": {
@@ -10187,8 +10146,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CheckWorkingEnvironmentPayload",
-        "description": "Run the REE's check script in its working environment. Takes no parameters of its own."
+        "title": "CheckWorkingEnvironmentPayload"
       },
       "CheckWorkingEnvironmentReceipt": {
         "properties": {
@@ -10277,8 +10235,7 @@
           "working_environment",
           "launch_script_digest"
         ],
-        "title": "CheckWorkingEnvironmentReceipt",
-        "description": "The author's check of the working environment ran there, launched as every script is, and exited 0."
+        "title": "CheckWorkingEnvironmentReceipt"
       },
       "CommandCandidatesBinding": {
         "properties": {
@@ -10367,8 +10324,7 @@
           "engine",
           "probe"
         ],
-        "title": "ContainerEnginesObservation",
-        "description": "A container-engine check's view of the probe: the engine it judged, and everything the probe saw."
+        "title": "ContainerEnginesObservation"
       },
       "ContainerEnginesProbe": {
         "properties": {
@@ -10399,8 +10355,7 @@
         "required": [
           "status"
         ],
-        "title": "ContainerEnginesProbe",
-        "description": "Which container engines a script run for this REE can use, as probed where it runs.\n\n``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so\nnothing is known about the engines, which is not the same as their absence."
+        "title": "ContainerEnginesProbe"
       },
       "Contributor": {
         "properties": {
@@ -10445,8 +10400,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CreateRunPayload",
-        "description": "The body every \"start a run\" route accepts.\n\nRoutes that need nothing else subclass it as-is; the two that take\nparameters (sbom, evaluate) add their fields. Subclassing rather than\nsharing one model keeps each route's schema named after its operation."
+        "title": "CreateRunPayload"
       },
       "CrossCheckSbomPayload": {
         "properties": {
@@ -10464,8 +10418,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "CrossCheckSbomPayload",
-        "description": "Cross-check the recorded SBOM against the built experiment environment. No parameters."
+        "title": "CrossCheckSbomPayload"
       },
       "CrossCheckSbomReceipt": {
         "properties": {
@@ -11033,8 +10986,7 @@
           "path",
           "part"
         ],
-        "title": "DriftedFile",
-        "description": "A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed\noutside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref."
+        "title": "DriftedFile"
       },
       "EngineObservation": {
         "properties": {
@@ -11117,8 +11069,7 @@
           "engine",
           "state"
         ],
-        "title": "EngineObservation",
-        "description": "One engine as the probe found it where the REE's scripts run."
+        "title": "EngineObservation"
       },
       "EnvironmentLevel": {
         "type": "integer",
@@ -12061,8 +12012,7 @@
           "contract",
           "provenance"
         ],
-        "title": "ExperimentEnvironmentContractBinding",
-        "description": "A resolved, non-executable experiment environment contract plus how it was established.\n\n``inspected_artifact`` inspected the built artifact itself;\n``unchanged_generated_build`` reused the constants of a still-unedited\ninference-generated build script. Downstream renderers copy the contract's\nvalues as explicit literals."
+        "title": "ExperimentEnvironmentContractBinding"
       },
       "ExperimentEnvironmentContractObservation": {
         "properties": {
@@ -12239,8 +12189,7 @@
         "required": [
           "result"
         ],
-        "title": "ExperimentGateObservation",
-        "description": "The experiment-declaration gate's outcome, for the decision trace."
+        "title": "ExperimentGateObservation"
       },
       "ExperimentScriptTemplates": {
         "properties": {
@@ -12262,8 +12211,7 @@
           "path_pattern",
           "templates"
         ],
-        "title": "ExperimentScriptTemplates",
-        "description": "The templates of a script every experiment has, and the path it belongs at.\n\nThe pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens."
+        "title": "ExperimentScriptTemplates"
       },
       "Failure": {
         "properties": {
@@ -12320,8 +12268,7 @@
           "message",
           "origin"
         ],
-        "title": "Failure",
-        "description": "Machine-readable description of why an action did not succeed.\n\nA single shared object carried on every ``failed`` :class:`ActionResult`\n(and, over time, through error frames, run records, and HTTP envelopes). The\ncontract is that a component *enriches* the same failure as it travels up\nthe layers rather than collapsing it to ``str(exc)`` at each hop, so the\n``category``/``origin`` a client sees are the ones the originating component\nchose."
+        "title": "Failure"
       },
       "FileMutationResponse": {
         "properties": {
@@ -12432,8 +12379,7 @@
           "message",
           "path"
         ],
-        "title": "Finding",
-        "description": "One observation about one script."
+        "title": "Finding"
       },
       "ForkNode": {
         "properties": {
@@ -12538,8 +12484,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "GenerateSbomPayload",
-        "description": "Scan the declared experiment environment artifact. Takes no parameters of its own.\n\nWhich artifact gets scanned is the build recipe's ``experiment_environment_path``, which\nthe author declared before the build ran and the build receipt binds. The\nhandler reads it there; a client cannot name a different one."
+        "title": "GenerateSbomPayload"
       },
       "GenerateSbomReceipt": {
         "properties": {
@@ -12948,8 +12893,7 @@
           "capture_status",
           "operation_status"
         ],
-        "title": "HistoryReference",
-        "description": "Capture evidence, separate from operation-specific outputs."
+        "title": "HistoryReference"
       },
       "HostFingerprint": {
         "properties": {
@@ -13013,8 +12957,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ImageCommandBinding",
-        "description": "The experiment environment image's declared command (Entrypoint/Cmd), parsed once when\nthe artifact is inspected and carried forward so the command-candidate check\nneed not re-open the (possibly multi-hundred-MB) archive. Absent when the\ncontract came from an unchanged generated build (no artifact to inspect); the\nexec/shell forms are mutually exclusive, matching what inspection reports."
+        "title": "ImageCommandBinding"
       },
       "InferenceEngineInfo": {
         "properties": {
@@ -13215,8 +13158,7 @@
           "launch_script_digest",
           "launch_script_size"
         ],
-        "title": "LaunchDefinition",
-        "description": "The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``."
+        "title": "LaunchDefinition"
       },
       "Launched": {
         "properties": {
@@ -13253,8 +13195,7 @@
         "required": [
           "node"
         ],
-        "title": "Launched",
-        "description": "Where a launched script ran, as it saw from inside the launch."
+        "title": "Launched"
       },
       "LintReport": {
         "properties": {
@@ -13294,8 +13235,7 @@
           "engine_version",
           "target"
         ],
-        "title": "LintReport",
-        "description": "Everything one lint run observed about one script."
+        "title": "LintReport"
       },
       "LintScriptsPayload": {
         "properties": {
@@ -13333,8 +13273,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "LintScriptsResponse",
-        "description": "Reports for existing scripts and paths for requested scripts that are absent."
+        "title": "LintScriptsResponse"
       },
       "LoadReeBundlePayload": {
         "properties": {
@@ -13364,8 +13303,7 @@
           "upload_token",
           "archive_name"
         ],
-        "title": "LoadReeBundlePayload",
-        "description": "Load a staged REE bundle into this (freshly provisioned) REE."
+        "title": "LoadReeBundlePayload"
       },
       "LogicalRootObservation": {
         "properties": {
@@ -13412,8 +13350,7 @@
           }
         },
         "type": "object",
-        "title": "MachineFacts",
-        "description": "The machine ``ree`` runs on: its architecture and GPUs, and whether it is a container."
+        "title": "MachineFacts"
       },
       "MachineLevel": {
         "type": "integer",
@@ -13576,8 +13513,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ObserveHardwarePayload",
-        "description": "Profile the workbench host's hardware. Takes no parameters of its own."
+        "title": "ObserveHardwarePayload"
       },
       "ObserveHardwareReceipt": {
         "properties": {
@@ -13887,8 +13823,7 @@
           "command",
           "scope"
         ],
-        "title": "OperationRecord",
-        "description": "One invocation, including no-ops and attempts left pending by process death."
+        "title": "OperationRecord"
       },
       "PackageDeltaRecord": {
         "properties": {
@@ -13953,8 +13888,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "PatchReeDefinitionPayload",
-        "description": "Replace top-level fields of the current portable REE definition."
+        "title": "PatchReeDefinitionPayload"
       },
       "PathMatchesObservation": {
         "properties": {
@@ -14158,8 +14092,7 @@
         "required": [
           "store_id"
         ],
-        "title": "ReeCreatePayload",
-        "description": "Create a new empty REE in a store.\n\nSource acquisition is intentionally a separate lifecycle operation through\n``acquire-source`` or the upload-init/upload/complete sequence."
+        "title": "ReeCreatePayload"
       },
       "ReeDefinition-Input": {
         "properties": {
@@ -14376,8 +14309,7 @@
           "audit",
           "steps"
         ],
-        "title": "ReeDocument",
-        "description": "The portable aggregate with live workbench file projections."
+        "title": "ReeDocument"
       },
       "ReeFile": {
         "properties": {
@@ -14418,8 +14350,7 @@
           "tag",
           "size"
         ],
-        "title": "ReeFile",
-        "description": "One file under the REE root (upstream/overlay/artifacts/\u2026)."
+        "title": "ReeFile"
       },
       "ReeIndexEntry": {
         "properties": {
@@ -14458,8 +14389,7 @@
           "name",
           "sealed_at"
         ],
-        "title": "ReeIndexEntry",
-        "description": "One sealed REE, plus whatever archives have since been claimed to hold it."
+        "title": "ReeIndexEntry"
       },
       "ReeIndexList": {
         "properties": {
@@ -14691,8 +14621,7 @@
           "steps",
           "workbench"
         ],
-        "title": "ReeState",
-        "description": "Compact control-plane observation without inline file contents."
+        "title": "ReeState"
       },
       "ReeStepCatalog": {
         "properties": {
@@ -14811,8 +14740,7 @@
           "label",
           "status"
         ],
-        "title": "ReeStepCatalogEntry",
-        "description": "One authoring step as the REE stands on it, plus the operations that advance it."
+        "title": "ReeStepCatalogEntry"
       },
       "ReeStepState": {
         "properties": {
@@ -14886,8 +14814,7 @@
           "label",
           "status"
         ],
-        "title": "ReeStepState",
-        "description": "A step as one REE stands on it."
+        "title": "ReeStepState"
       },
       "ReeSteps": {
         "properties": {
@@ -14925,8 +14852,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ReeSteps",
-        "description": "Where an REE stands on every step, and the one to do next: the first ready one."
+        "title": "ReeSteps"
       },
       "ReeSubject": {
         "properties": {
@@ -15090,8 +15016,7 @@
           "digest",
           "hash_locked"
         ],
-        "title": "RequirementsProjectBinding",
-        "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries the located file, its digest, and whether every requirement in it is\npinned by hash \u2014 the base image travels via deployment policy, not repository\nevidence, so it is resolved by the base-image check/renderer rather than baked\ninto this binding."
+        "title": "RequirementsProjectBinding"
       },
       "ReservedScriptTemplates": {
         "properties": {
@@ -15113,8 +15038,7 @@
           "path",
           "templates"
         ],
-        "title": "ReservedScriptTemplates",
-        "description": "The templates of a script an REE has once, and the reserved path it belongs at."
+        "title": "ReservedScriptTemplates"
       },
       "ResolveNode": {
         "properties": {
@@ -15223,8 +15147,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ReviewAcquireSourcePayload",
-        "description": "Start a fresh isolated review attempt at source acquisition.\n\n``basis`` chooses what to reproduce from: the recorded origin, or the\nsnapshot the REE carries. The default settles it from what the baseline\nhas, preferring the origin (see :data:`ReviewBasis`)."
+        "title": "ReviewAcquireSourcePayload"
       },
       "ReviewAcquireSourceReceipt": {
         "properties": {
@@ -15445,8 +15368,7 @@
           "experiment_environment_path",
           "experiment_environment_digest"
         ],
-        "title": "ReviewActivateExperimentEnvironmentReceipt",
-        "description": "The author's activation, run alone in a workspace of its own around a command that does nothing."
+        "title": "ReviewActivateExperimentEnvironmentReceipt"
       },
       "ReviewBuildExperimentEnvironmentPayload": {
         "properties": {
@@ -15474,8 +15396,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ReviewBuildExperimentEnvironmentPayload",
-        "description": "Reproduce the experiment environment build inside an existing review attempt."
+        "title": "ReviewBuildExperimentEnvironmentPayload"
       },
       "ReviewBuildExperimentEnvironmentReceipt": {
         "properties": {
@@ -15625,8 +15546,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ReviewLaunch",
-        "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does."
+        "title": "ReviewLaunch"
       },
       "ReviewMachine": {
         "properties": {
@@ -15647,8 +15567,7 @@
           "system",
           "architecture"
         ],
-        "title": "ReviewMachine",
-        "description": "The machine the review ran on, as its platform names it; where a launch took a script is its receipt's."
+        "title": "ReviewMachine"
       },
       "ReviewReceipts": {
         "properties": {
@@ -16084,8 +16003,7 @@
         "required": [
           "name"
         ],
-        "title": "ReviewSubject",
-        "description": "The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the\nexperiments it declares, so a record read on its own says which of them it did not compare."
+        "title": "ReviewSubject"
       },
       "RunExperimentPayload": {
         "properties": {
@@ -16103,8 +16021,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "RunExperimentPayload",
-        "description": "No fields of its own yet \u2014 the extension point for future run options."
+        "title": "RunExperimentPayload"
       },
       "RunExperimentReceipt": {
         "properties": {
@@ -16726,8 +16643,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "title": "ScriptDeclarations",
-        "description": "The narrow declaration view consumed by contract rules."
+        "title": "ScriptDeclarations"
       },
       "ScriptDraftPayload": {
         "properties": {
@@ -16749,8 +16665,7 @@
           "target",
           "source"
         ],
-        "title": "ScriptDraftPayload",
-        "description": "Unsaved source and the declarations against which to check it."
+        "title": "ScriptDraftPayload"
       },
       "ScriptTarget": {
         "properties": {
@@ -16788,8 +16703,7 @@
           "kind",
           "path"
         ],
-        "title": "ScriptTarget",
-        "description": "A resolved executable target. ``path`` is output-only."
+        "title": "ScriptTarget"
       },
       "ScriptTargetSelectorPayload": {
         "properties": {
@@ -16822,8 +16736,7 @@
         "required": [
           "kind"
         ],
-        "title": "ScriptTargetSelectorPayload",
-        "description": "One target a caller asks inference about: a kind, never a path.\n\nThe workbench resolves the reserved path from the kind (and, for\nexperiments, the reserved slug convention); a caller cannot redirect\ninference at an arbitrary workspace file."
+        "title": "ScriptTargetSelectorPayload"
       },
       "ScriptTemplateCatalog": {
         "properties": {
@@ -16856,8 +16769,7 @@
           "experiment_run",
           "experiment_verify"
         ],
-        "title": "ScriptTemplateCatalog",
-        "description": "Each script kind's templates and where its scripts belong."
+        "title": "ScriptTemplateCatalog"
       },
       "ScriptTemplateEntry": {
         "properties": {
@@ -16891,8 +16803,7 @@
           "body",
           "is_default"
         ],
-        "title": "ScriptTemplateEntry",
-        "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the\ncontent a fresh REE starts with)."
+        "title": "ScriptTemplateEntry"
       },
       "ScriptValidation": {
         "properties": {
@@ -16957,8 +16868,7 @@
         "required": [
           "status"
         ],
-        "title": "ScriptValidation",
-        "description": "Execution validation of a *written* script \u2014 distinct from inference.\n\nFor a candidate that has not been written, ``script_digest`` is the\ncandidate's own byte digest and ``status`` is ``not_run``; the other digests\nstay absent until a real run produces a receipt."
+        "title": "ScriptValidation"
       },
       "SealReePayload": {
         "properties": {
@@ -17027,8 +16937,7 @@
           "command",
           "source"
         ],
-        "title": "ShellCommandCandidate",
-        "description": "A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is\nnever rewritten into guessed argv; the author must make the shell dependency\nexplicit (``set -- sh -c '...'``)."
+        "title": "ShellCommandCandidate"
       },
       "SignReePayload": {
         "properties": {
@@ -17064,8 +16973,7 @@
           "upload_token",
           "archive_name"
         ],
-        "title": "SignReePayload",
-        "description": "Add a staged Sigstore bundle over the sealed REE's digest as its signature under ``claim``."
+        "title": "SignReePayload"
       },
       "SignReviewPayload": {
         "properties": {
@@ -17095,8 +17003,7 @@
           "upload_token",
           "archive_name"
         ],
-        "title": "SignReviewPayload",
-        "description": "Add a staged Sigstore bundle as the review's signature: its statement names the reviewed seal, with the\nreview's record as its predicate."
+        "title": "SignReviewPayload"
       },
       "SlurmObservation": {
         "properties": {
@@ -17115,8 +17022,7 @@
         "required": [
           "probe"
         ],
-        "title": "SlurmObservation",
-        "description": "A launch check's view of the Slurm probe."
+        "title": "SlurmObservation"
       },
       "SlurmPartition": {
         "properties": {
@@ -17146,8 +17052,7 @@
         "required": [
           "name"
         ],
-        "title": "SlurmPartition",
-        "description": "One partition the controller reported: its name, whether jobs land there by default, and its time limit\nas Slurm prints it (``30:00``, ``1-00:00:00``, ``infinite``)."
+        "title": "SlurmPartition"
       },
       "SlurmProbe": {
         "properties": {
@@ -17216,8 +17121,7 @@
         "required": [
           "status"
         ],
-        "title": "SlurmProbe",
-        "description": "Whether a script run for this REE can launch Slurm job steps, as probed where it runs.\n\n``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;\n``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence."
+        "title": "SlurmProbe"
       },
       "SourceComparison": {
         "properties": {
@@ -17854,8 +17758,7 @@
           "tier",
           "status"
         ],
-        "title": "TierStatus",
-        "description": "Whether an optional analysis tier ran."
+        "title": "TierStatus"
       },
       "TraversedEdge": {
         "properties": {
@@ -18007,8 +17910,7 @@
         "required": [
           "artifact_path"
         ],
-        "title": "VenvExperimentEnvironmentContract",
-        "description": "A packed Python virtual environment as the experiment environment substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``."
+        "title": "VenvExperimentEnvironmentContract"
       },
       "WorkbenchList": {
         "properties": {
@@ -18122,8 +18024,7 @@
         "required": [
           "host"
         ],
-        "title": "WorkingEnvironmentObservation",
-        "description": "Where a step's scripts ran: the host as the step saw it, and whether that was a container."
+        "title": "WorkingEnvironmentObservation"
       },
       "WorkspaceFile": {
         "properties": {
@@ -18162,8 +18063,7 @@
           "kind",
           "size"
         ],
-        "title": "WorkspaceFile",
-        "description": "One file projected from the materialized workspace subtree."
+        "title": "WorkspaceFile"
       },
       "WriteScriptPayload": {
         "properties": {

@@ -1,6 +1,3 @@
-// The pod's machined-metal materials, as references to the roles in tones.css.
-// SVG presentation attributes resolve var(), so these go straight into fill and
-// stroke without an adapter.
 export const POD_M: Record<string, string> = {
   face: "var(--pod-face)",
   raised: "var(--pod-raised)",

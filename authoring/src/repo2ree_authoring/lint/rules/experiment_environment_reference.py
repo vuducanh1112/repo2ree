@@ -1,5 +1,3 @@
-"""Check whether the build and activate experiment environment scripts mention the declared artifact path."""
-
 from __future__ import annotations
 
 from typing import ClassVar

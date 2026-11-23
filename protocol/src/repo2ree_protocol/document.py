@@ -22,8 +22,6 @@ class WorkbenchReeDocument(BaseModel):
 
 
 class ScriptState(BaseModel):
-    """One of the REE's scripts: where it is and, when it is written, the digest a guarded write names."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: TargetKind
@@ -33,9 +31,6 @@ class ScriptState(BaseModel):
 
 
 class ReeStatusReport(BaseModel):
-    """Where an REE stands, in one read: its steps, its evidence, its scripts, and the revision a guarded change
-    names; and the run holding it, if one is."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     name: str
@@ -45,6 +40,4 @@ class ReeStatusReport(BaseModel):
     steps: ReeSteps
     audit: ReeAudit
     scripts: list[ScriptState] = Field(default_factory=list)
-    # Every file not as the last attempt left it, which the next command is refused for; None while a run holds
-    # the REE, whose files are then its to change.
     drift: list[DriftedFile] | None = None

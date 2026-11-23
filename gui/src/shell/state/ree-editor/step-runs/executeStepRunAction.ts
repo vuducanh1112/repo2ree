@@ -92,7 +92,6 @@ export async function executeStepRunAction({
       onRunFinished,
     });
   } finally {
-    // The settled run reaches the run list here; the REE document follows it from there.
     await queryClient.invalidateQueries({ queryKey: queryKeys.reeRuns(reeId) });
   }
 }

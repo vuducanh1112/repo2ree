@@ -15,7 +15,6 @@ function createReeQueryOptions<TRee>(
   const resolvedReeId = resolveReeId(runtime, reeId);
   return queryOptions({
     queryKey: queryKeys.ree(resolvedReeId),
-    // A superseded fetch is aborted, not left to queue on the workbench behind the one replacing it.
     queryFn: ({ signal }) => reeClient.getRee(resolvedReeId, signal),
   });
 }

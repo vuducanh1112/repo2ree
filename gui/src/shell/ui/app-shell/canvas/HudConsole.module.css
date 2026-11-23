@@ -1,11 +1,3 @@
-/* Shared chrome for the pinned HUD consoles at the canvas edges — files, bench,
- * logs and workflow. The frosted card, its expand/collapse header, and the
- * collapsible body.
- *
- * Each console's *placement* is this shared arrangement's business; what the card looks
- * like is decided once, here. The `outerStyle` prop this replaces let every
- * caller re-decide the border, radius and shadow. */
-
 .console {
   position: absolute;
   overflow: hidden;
@@ -25,7 +17,6 @@
   box-shadow: var(--shadow-lg);
 }
 
-/* Mid-drag the width is the pointer's, so the easing has to stand down. */
 .console[data-resizing] {
   transition: none;
 }
@@ -87,10 +78,6 @@
   transform: rotate(180deg);
 }
 
-/* --- Body -----------------------------------------------------------------
- * Two shapes: a measured collapse (max-height animated to a known number) and
- * a plain conditional one for bodies that size themselves. */
-
 .collapse {
   overflow: hidden;
   max-height: 0;
@@ -128,11 +115,6 @@
   }
 }
 
-/* --- Placements ----------------------------------------------------------
- * Where each of the four pinned consoles sits. They live together because
- * they are one arrangement — the canvas's four corners and its foot — and
- * splitting them across four modules hid that they have to agree. */
-
 .filesPlacement {
   left: 16px;
   top: 16px;
@@ -168,8 +150,6 @@
   transform: translateX(-50%);
 }
 
-/* --- Body shapes ---------------------------------------------------------- */
-
 .receiptsBody {
   gap: var(--space-2-5);
   overflow-y: auto;
@@ -181,7 +161,6 @@
   padding: 0;
 }
 
-/* Bounded by the height the user dragged the logs console to. */
 .logsBody {
   max-height: var(--hud-logs-height);
 }

@@ -4,27 +4,13 @@ import { test } from "@playwright/test";
 
 const run = promisify(execFile);
 
-/**
- * A machine of the reviewer's: Docker and a POSIX shell, no repo2ree, and no
- * network. The Docker image the stack's stores offer, pinned by digest, so it is
- * already on the machine running the stack and starts without a pull. It must
- * equal DOCKER_IMAGE in testbed/src/repo2ree_testbed/stack/store_images.py.
- */
 const REVIEWER_MACHINE =
   "docker.io/library/docker:29-dind@sha256:66d292e5c26bd33a6f6f61cacb880de2186339a524ecba1ce098dbbaceed6515";
 const DAEMON_START_MS = 60_000;
-// Loading the sealed runtime and running every step: minutes for a real image.
 const REPRODUCTION_TIMEOUT_MS = 10 * 60_000;
 
-/**
- * Reproduce a sealed REE the way REPRODUCING.md tells a reviewer to: unpack the
- * archive and run `sh run.sh all`, on a machine with no repo2ree and no network,
- * so whatever the REE needs must be in the archive. Returns what run.sh printed;
- * it throws when run.sh fails. The output is attached to the test either way.
- */
 export async function reproduceOffline(archive: string): Promise<string> {
   const machine = `ree-offline-${process.pid}-${Date.now()}`;
-  // An empty TLS directory has the daemon listen on its socket alone: no certificates to make.
   execFileSync("docker", [
     ...["run", "-d", "--privileged", "--network", "none", "--name", machine],
     ...["-e", "DOCKER_TLS_CERTDIR=", REVIEWER_MACHINE],
@@ -32,7 +18,6 @@ export async function reproduceOffline(archive: string): Promise<string> {
   let output = "";
   try {
     await waitForDaemon(machine);
-    // Not /tmp: a tmpfs mounted inside the container, which `docker cp` writes beneath, unseen.
     execFileSync("docker", ["cp", archive, `${machine}:/root/ree.zip`]);
     const reproduce = "cd /root && unzip -q ree.zip && cd ree && sh run.sh all";
     try {

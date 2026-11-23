@@ -9,40 +9,17 @@ import { type ReeRuntimeValue, useReeRuntime } from "../apiRuntime";
 import { requireReeId } from "../client";
 
 export interface ReeRunsClient {
-  /**
-   * Create a brand-new REE in a store. Returns the freshly-minted reeId and the
-   * background creation run — poll {@link getReeRunLogs} / {@link getReeRun}
-   * until terminal.
-   *
-   * ``storeId`` names the store the REE is kept in; its workbench serves it.
-   * ``image`` is the image the REE declares its scripts run in, one the store
-   * offers; blank is the store's first, or its own machine when it offers none.
-   */
   createWorkspace(name?: string, storeId?: string): Promise<{ reeId: string; run: ReeRun }>;
-  /**
-   * Make an REE be a downloaded REE bundle — the counterpart of the ree-archive
-   * download. Uploads the bundle's bytes, then starts the background run that
-   * restores them over whatever the REE holds, so it belongs on a freshly
-   * provisioned workbench.
-   */
   loadReeBundle(id: ReeId | string, bundle: File): Promise<ReeRun>;
   startReeRun(
     id: ReeId | string,
     operation: ReeRunOperation,
     params?: Record<string, string | boolean | number | null | undefined>,
   ): Promise<ReeRun>;
-  /**
-   * Run one named experiment. Separate from {@link startReeRun} because the
-   * experiment is addressed by name in the path rather than by a script key,
-   * and returns the resolved reeId alongside the run so the caller can pin what
-   * it observes — but it goes through this client like every other run, so the
-   * cache seeding and cancellation in ``runs/mutations`` apply to it too.
-   */
   startExperimentRun(
     id: ReeId | string,
     experimentName: string,
   ): Promise<{ reeId: string; run: ReeRun }>;
-  /** Every recorded run for the REE, newest first. */
   listReeRuns(id: ReeId | string): Promise<ReeRunSummary[]>;
   getReeRun(id: ReeId | string, runId: string): Promise<ReeRun>;
   getReeRunLogs(id: ReeId | string, runId: string, cursor?: string): Promise<ReeRunLogChunk>;
@@ -195,7 +172,6 @@ function mapRun(run: RunSummary): ReeRun {
   };
 }
 
-/** Reconcile the wire failure (nullable) with the domain's optional shape. */
 function mapFailure(failure: RunSummary["failure"]): ReeRunFailure | undefined {
   if (!failure) {
     return undefined;

@@ -1,5 +1,3 @@
-"""Resolve shared inference and lint selectors to reserved script paths."""
-
 from __future__ import annotations
 
 from repo2ree_protocol.command import ScriptTarget, ScriptTargetSelectorArg
@@ -14,7 +12,6 @@ from repo2ree_ree.reserved_paths import (
 
 
 def resolve_target(selector: ScriptTargetSelectorArg) -> ScriptTarget:
-    """Resolve a selector, rejecting misplaced or missing experiment names."""
     kind = selector.kind
     name = selector.experiment_name
     if kind in ("experiment_run", "experiment_verify"):

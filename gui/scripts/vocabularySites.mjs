@@ -1,20 +1,8 @@
-/* The GUI's sets of names, for the vocabulary graph's discovery (scripts/vocabulary/discover.py).
- *
- *   node gui/scripts/vocabularySites.mjs <path>...
- *
- * Reads each TypeScript file, relative to the working directory, over the compiler's own AST and
- * prints every set of two or more names as JSON: an array of strings, a union of string literal
- * types, an object's keys, an object's string values, and the property names of an interface or a
- * type literal. Each set carries the declaration it sits in and its offset in the file; discovery
- * keeps those sharing a name with the catalogue and names each site after its declaration.
- */
-
 import { readFileSync } from "node:fs";
 import ts from "typescript";
 
 const NAME = /^[a-z][a-z0-9_]*$/;
 
-/** The declarations a set is named after: a const or let, a type, an interface, a function, a class. */
 function declarationName(node) {
   for (let current = node; current; current = current.parent) {
     if (
@@ -37,7 +25,6 @@ function keyName(name) {
   return undefined;
 }
 
-/** Every element's name when each one is a name, else nothing. */
 function allNames(texts) {
   return texts.length >= 2 && texts.every((text) => text !== undefined && NAME.test(text))
     ? texts

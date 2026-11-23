@@ -1,9 +1,3 @@
-"""A review's signature, as the author's is the seal's: staged as an upload, then added by ``sign_review``.
-
-The reviewer signs where their identity is, never here: the API sees only the bundle, whose statement names the
-reviewed seal and carries the review's record. Once it is added, the review changes no more.
-"""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, Request
@@ -32,7 +26,6 @@ review_signing_router = APIRouter(tags=["reviews"])
     responses=ERROR_RESPONSES,
 )
 def review_signature_upload_init_route(ree_id: str, review_id: str, payload: UploadInitPayload) -> UploadInitResponse:
-    """Open a staging slot for a Sigstore bundle of the review (see ``sign-review``)."""
     return UploadInitResponse.model_validate(
         mint_upload_token(
             ree_id,
@@ -53,7 +46,7 @@ def review_signature_upload_init_route(ree_id: str, review_id: str, payload: Upl
 async def store_review_signature_bytes_route(
     ree_id: str, review_id: str, upload_token: str, request: Request
 ) -> UploadStoredResponse:
-    del review_id  # The slot names the REE it belongs to; the review is the sign step's to name.
+    del review_id
     return UploadStoredResponse.model_validate(
         await stage_upload_bytes(ree_id, upload_token, request, purpose="signature")
     )
@@ -67,7 +60,6 @@ async def store_review_signature_bytes_route(
     responses=ERROR_RESPONSES,
 )
 def sign_review_route(ree_id: str, review_id: str, payload: SignReviewPayload) -> RunSummary:
-    """Add the staged bundle as the review's signature: the review changes no more."""
     run_state = start_staged_upload_run(
         ree_id,
         upload_token=payload.upload_token,

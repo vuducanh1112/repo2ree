@@ -3,13 +3,6 @@ import { RECEIPT_OPERATIONS, type ReeRunOperation } from "@core/generated/vocabu
 import type { LogLine } from "../ree/ReeTypes";
 import type { ReeRunStatus } from "./ReeRunStatus";
 
-/**
- * Coarse machine-readable class of a failure, mirroring the protocol's
- * ``FailureCategory``. Lets the UI act on *why* a run failed — retry a
- * transient outage, surface a conflict, flag a validation error — without
- * parsing the log stream. Kept as a domain type (not the wire type) so core
- * stays free of the infra layer; the mapping boundary reconciles the two.
- */
 export type ReeRunFailureCategory =
   | "validation"
   | "precondition"
@@ -19,10 +12,8 @@ export type ReeRunFailureCategory =
   | "unavailable"
   | "internal";
 
-/** The component that first observed the failure, as recorded on the run. */
 export type ReeRunFailureOrigin = "api" | "supervisor" | "workbench" | "executor" | "core";
 
-/** The typed reason a run reached a ``failed`` status. */
 export interface ReeRunFailure {
   category: ReeRunFailureCategory;
   message: string;
@@ -37,24 +28,14 @@ export interface ReeRun {
   createdAt: string;
   startedAt?: string;
   finishedAt?: string;
-  /** Set on a ``failed`` run: the typed reason it did not succeed. */
   failure?: ReeRunFailure;
-  /**
-   * The run's operation-specific outputs, opaque at the domain level. Present
-   * once the backend has recorded them (typically at terminal status); each
-   * surface narrows this to its own typed shape (e.g. an experiment run reads
-   * exit codes and a verdict). Kept opaque so the domain run stays operation-
-   * agnostic while every consumer still goes through the one mapping boundary.
-   */
   outputs?: Record<string, unknown>;
 }
 
-/** The operations whose successful run files a receipt under its own run id. */
 export function filesReceipt(operation: ReeRunOperation): boolean {
   return isOneOf(RECEIPT_OPERATIONS, operation);
 }
 
-/** A run as returned by the run-listing endpoint: a ReeRun plus its operation. */
 export interface ReeRunSummary extends ReeRun {
   operation: ReeRunOperation;
 }

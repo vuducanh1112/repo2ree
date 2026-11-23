@@ -5,19 +5,10 @@ import {
   type ReceiptOperation,
 } from "@core/generated/vocabulary";
 
-// View model for the receipts console: the typed author evidence the backend
-// carries inline (one latest successful receipt per operation). Nothing here
-// derives new facts — it orders, labels and formats what the record states.
-//
-// Review receipts will land as a second section of the same console; keep the
-// shapes below operation-agnostic so they can carry that evidence unchanged.
-
-/** One rendered fact of a receipt's operation-specific payload. */
 export interface ReceiptField {
   key: string;
   label: string;
   value: string;
-  /** Full value when `value` is abbreviated (digests); empty otherwise. */
   title: string;
 }
 
@@ -26,11 +17,9 @@ export interface ReceiptView {
   title: string;
   operation: ReceiptOperation;
   runId: string;
-  /** Compact duration label ("820ms", "12.400s", "3m 7s"). */
   duration: string;
   recordedAt: string;
   fields: ReceiptField[];
-  /** The receipt exactly as recorded, for the raw view. */
   raw: unknown;
 }
 
@@ -46,8 +35,6 @@ const OPERATION_LABELS: Record<ReceiptOperation, string> = {
   run_experiment: "Experiment run",
 };
 
-// The envelope every receipt shares — rendered by the card's own chrome, so
-// the field list holds only what is specific to the operation.
 const ENVELOPE_KEYS: ReadonlySet<string> = new Set([
   "schema_version",
   "operation",
@@ -58,10 +45,6 @@ const ENVELOPE_KEYS: ReadonlySet<string> = new Set([
   "recorded_at",
 ]);
 
-/**
- * Compact duration rendering, matching the backend's `format_duration_ms`
- * so a receipt reads the same in the console and in the operation log. Pure.
- */
 export function formatReceiptDuration(durationMs: number): string {
   const ms = Math.max(0, Math.trunc(durationMs));
   const totalSeconds = Math.floor(ms / 1000);
@@ -75,9 +58,6 @@ export function formatReceiptDuration(durationMs: number): string {
   return `${milliseconds}ms`;
 }
 
-/**
- * Defensively flatten a `ReeReceipts` payload into rendered receipt views.
- */
 export function parseAuthorReceipts(value: unknown): ReceiptView[] {
   const raw = asRecord(value);
   if (!raw) return [];
@@ -116,7 +96,6 @@ function receiptTitle(operation: ReceiptOperation, receipt: Record<string, unkno
   return experiment ? `${label} · ${experiment}` : label;
 }
 
-// The operation-specific payload, in the order the contract declares it.
 function receiptFields(receipt: Record<string, unknown>): ReceiptField[] {
   return Object.entries(receipt)
     .filter(([key, value]) => !ENVELOPE_KEYS.has(key) && value !== null && value !== "")
@@ -138,8 +117,6 @@ function fieldValue(key: string, value: unknown): string {
   return JSON.stringify(value) ?? "";
 }
 
-// Digests are the bulk of a receipt and never read in full at a glance; the
-// card keeps the exact value in a tooltip.
 function abbreviate(value: string): string {
   return value.length > 20 ? `${value.slice(0, 16)}…` : value;
 }
@@ -150,7 +127,6 @@ function compareReceipts(left: ReceiptView, right: ReceiptView): number {
   return left.title.localeCompare(right.title);
 }
 
-// Pipeline order, so the console reads top-to-bottom like the canvas ring.
 function operationRank(operation: ReceiptOperation): number {
   return RECEIPT_OPERATIONS.indexOf(operation);
 }

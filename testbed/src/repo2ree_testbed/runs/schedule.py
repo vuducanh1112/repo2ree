@@ -1,8 +1,3 @@
-"""A suite run: every test on a stack of its own, or the whole suite on one, laid out the same way.
-
-A suite that places its tests runs each on a stack on the machine it names.
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,7 +19,6 @@ from repo2ree_testbed.stack.stack import E2EStack, Layout
 @dataclass(frozen=True)
 class PerTest:
     jobs: int
-    # Parts of test ids; empty runs every test the suite lists.
     select: tuple[str, ...] = ()
 
 
@@ -95,7 +89,6 @@ class SuiteRun:
 
     @property
     def completed(self) -> bool:
-        """Whether the run got as far as recording itself, whatever its tests did."""
         return (self.root / "run.json").is_file()
 
     def run(self) -> int:
@@ -134,7 +127,6 @@ class SuiteRun:
         return {}
 
     def deployment_of(self, case: TestCase) -> Deployment:
-        """The run's deployment, on the machine the test names if it names one."""
         if case.environment is None:
             return self.deployment
         return replace(self.deployment, environment=ENVIRONMENTS[case.environment])
@@ -207,7 +199,6 @@ class SuiteRun:
 
 
 def selected(cases: list[TestCase], select: tuple[str, ...], tier: str) -> list[TestCase]:
-    """The cases whose id contains any of ``select``: a whole id, a file, or a test's name."""
     chosen = [case for case in cases if any(part in case.name for part in select)]
     if not chosen:
         raise RuntimeError(f"no test of the {tier} suite matches {' or '.join(select)}")

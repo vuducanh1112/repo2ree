@@ -1,15 +1,3 @@
-"""``python -m repo2ree_testbed record --tier T -- COMMAND...``: a run record for a tier that is not an e2e run.
-
-The e2e tiers write their own run records. Backend integration and the GUI's
-accessibility and screenshot suites are plain pytest and Playwright runs, so this
-wraps one: it gives the command a directory for JUnit reports
-(``REPO2REE_JUNIT_DIR``, and ``PLAYWRIGHT_JUNIT_OUTPUT_FILE`` for Playwright's
-reporter), runs it, and writes ``test-artifacts/e2e/<tier>-<time>/run.json`` from
-the reports: the same record, with the same tree, platform, and machine, that a
-gate's certifier reads (``scripts/gates/tiers.py``). The command's exit code is
-this command's.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -27,10 +15,9 @@ from repo2ree_testbed.stack.process import capture
 
 
 def outcomes(directory: Path, started: float, finished: float) -> list[RunTest]:
-    """Every test case in the JUnit reports under ``directory``."""
     tests = []
     for report in sorted(directory.glob("*.xml")):
-        root = ElementTree.parse(report).getroot()  # noqa: S314 - a report this run's own test runner wrote
+        root = ElementTree.parse(report).getroot()  # noqa: S314
         for case in root.iter("testcase"):
             outcome: Outcome = "passed"
             reason = ""
@@ -95,7 +82,7 @@ def record(tier: str, command: list[str]) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="repo2ree_testbed record", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog="repo2ree_testbed record")
     parser.add_argument("--tier", required=True)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()

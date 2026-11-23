@@ -1,5 +1,3 @@
-"""Workbench-derived audit and evaluate-report routes."""
-
 from __future__ import annotations
 
 import json

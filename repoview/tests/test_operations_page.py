@@ -1,5 +1,3 @@
-"""The operations page draws traceview's catalogue: each operation's reach, its sequence, and what it left out."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -108,7 +106,6 @@ def test_each_operation_says_how_far_its_checked_evidence_reaches(tmp_path: Path
     assert 'href="#op-build_experiment_environment-succeeded"' in page.body
     assert 'title="API: checked"' in page.body
     assert 'title="Workbench: exchanged"' in page.body
-    # Release has no sequence, so it claims no reach rather than none everywhere.
     assert 'title="Workbench: none"' not in page.body
     assert "no sequence: only the journal records it" in page.body
 

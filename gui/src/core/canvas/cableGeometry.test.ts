@@ -14,9 +14,6 @@ import {
   rectCenter,
 } from "./cableGeometry";
 
-// Both helpers emit an SVG cubic path. The tests assert the properties the look
-// depends on — endpoints, droop direction, the highlight's offset — rather than
-// the exact `d` string, which is a rendering detail free to change.
 function numbers(path: string): number[] {
   return (path.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
 }
@@ -35,7 +32,6 @@ describe("podGeomFromMatrix", () => {
   it("measures relative to the stage, not the page", () => {
     const pod = podGeomFromMatrix(identity, { x: 40, y: 25 });
     expect(pod.center).toEqual({ x: POD_CX - 40, y: POD_CY - 25 });
-    // Subtracting an origin shifts the sphere; it does not resize it.
     expect(pod.radius).toBe(POD_SR);
   });
 
@@ -55,7 +51,6 @@ describe("podGeomFromMatrix", () => {
   });
 
   it("takes the radius from the transformed distance, so rotation cannot shrink it", () => {
-    // A quarter turn: the edge point swings around but stays POD_SR away.
     const rotated: Matrix2D = { a: 0, b: 1, c: -1, d: 0, e: 0, f: 0 };
     expect(podGeomFromMatrix(rotated, noOrigin).radius).toBeCloseTo(POD_SR);
   });
@@ -75,8 +70,6 @@ describe("intercept", () => {
   });
 
   it("degenerates to the centre for a target on the centre, rather than to NaN", () => {
-    // There is no ray to follow, so the `|| 1` guard yields the centre itself.
-    // Off the surface, but finite — a zero-length cable beats an unrenderable one.
     expect(intercept(pod, 100, 100)).toEqual({ x: 100, y: 100 });
   });
 
@@ -86,7 +79,6 @@ describe("intercept", () => {
 });
 
 describe("edgeToward", () => {
-  // 80 wide, 40 tall, centred on (100, 100).
   const rect: Rect = { left: 60, right: 140, top: 80, bottom: 120 };
 
   it("rides the edge facing the target", () => {
@@ -112,7 +104,6 @@ describe("edgeToward", () => {
   });
 
   it("leaves the corner exactly at the corner", () => {
-    // The rect is twice as wide as it is tall, so a 2:1 target hits the corner.
     expect(edgeToward(rect, 100 + 400, 100 + 200)).toEqual({ x: 140, y: 120 });
   });
 
@@ -160,7 +151,6 @@ describe("cablePath", () => {
   });
 
   it("droops downward regardless of which end is left", () => {
-    // Nodes sit on both sides of the pod, so cables run right-to-left too.
     const [, , cy1] = numbers(cablePath(100, 0, 0, 0)).slice(2);
     expect(cy1).toBeGreaterThan(0);
   });
@@ -176,7 +166,6 @@ describe("cableHl", () => {
   it("keeps the same droop shape, so the highlight tracks the cable", () => {
     const cable = numbers(cablePath(0, 0, 300, 0));
     const highlight = numbers(cableHl(0, 0, 300, 0));
-    // Control-point x values are identical; only y is lifted.
     expect(highlight[2]).toBeCloseTo(cable[2]);
     expect(highlight[4]).toBeCloseTo(cable[4]);
     expect(highlight[3]).toBeLessThan(cable[3]);

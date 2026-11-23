@@ -28,7 +28,6 @@ import { ActivationTargetCard } from "./sections";
 
 const ACTIVATION_PAGE_COLOR = stageTone(PAGE.ACTIVATE_EXPERIMENT_ENVIRONMENT);
 
-/** What the activation test runs inside the experiment environment: a command that does nothing. */
 const NOTHING = "true";
 
 export function PageTestActivation({
@@ -51,7 +50,6 @@ export function PageTestActivation({
   const files = workspaceFiles || [];
   const { data: templates } = useScriptTemplates();
 
-  // The activation is the activate script the build page writes, run alone: it has no script of its own.
   const activatePath = templates?.activate_experiment_environment.path ?? "";
   const activateContent = activatePath
     ? (findFileByWorkspacePath(files, activatePath)?.content ?? "")

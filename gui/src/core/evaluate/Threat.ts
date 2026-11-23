@@ -1,13 +1,6 @@
-// Domain model for the reproducibility threat report produced by the backend
-// evaluate run (api/src/repo2ree_api/evaluate.py -> core reproducibility_report.py).
-// The wire is snake_case; the parsers below map it into these camelCase
-// domain fields at the boundary.
-
 import type { AxisKey } from "./axes";
 
 export type ThreatSeverity = "high" | "medium" | "low";
-// Dependency declaration, environment capture, and machine (VM) capture are
-// scored on independent axes (see axes.ts).
 export type ThreatCategory = AxisKey;
 
 export interface Threat {
@@ -30,16 +23,9 @@ export interface DependencySummary {
   locked: number;
 }
 
-// Single source for the ecosystem members: the type union, the runtime parse
-// guard, and presentation tables all derive from this tuple, so adding an
-// ecosystem is one edit (plus the backend Literal in domain/dependency.py).
 export const DEPENDENCY_ECOSYSTEMS = ["pypi", "conda", "npm", "apt", "oci", "other"] as const;
 export type DependencyEcosystem = (typeof DEPENDENCY_ECOSYSTEMS)[number];
 
-// Per-row reproducibility rung, computed by the backend's single classifier
-// (reproducibility_report._dependency_status) — never re-derived client-side.
-// "undeclared" rows come from the SBOM cross-check: present in the runtime,
-// declared by no manifest.
 export const DEPENDENCY_STATUSES = [
   "locked",
   "pinned",
@@ -49,8 +35,6 @@ export const DEPENDENCY_STATUSES = [
 ] as const;
 export type DependencyStatus = (typeof DEPENDENCY_STATUSES)[number];
 
-// Verdict of the runtime-SBOM cross-check for a declared row; null until a
-// cross-check ran. "not-observed" is informational, not a defect.
 export const EXPERIMENT_ENVIRONMENT_PRESENCES = [
   "observed",
   "version-mismatch",
@@ -58,7 +42,6 @@ export const EXPERIMENT_ENVIRONMENT_PRESENCES = [
 ] as const;
 export type ExperimentEnvironmentPresence = (typeof EXPERIMENT_ENVIRONMENT_PRESENCES)[number];
 
-/** A normalized row emitted by the backend manifest scan. */
 export interface EvaluatedDependency {
   ecosystem: DependencyEcosystem;
   name: string;
@@ -81,7 +64,6 @@ export interface UndeclaredPackage {
   version: string | null;
 }
 
-/** Aggregates of the runtime-SBOM cross-check step. */
 export interface SbomCrossCheckSummary {
   sbomDigest: string | null;
   checkedAt: string;
@@ -154,8 +136,6 @@ function parseDependency(value: unknown): EvaluatedDependency | null {
   const raw = asRecord(value);
   if (!raw || typeof raw.name !== "string" || typeof raw.ecosystem !== "string") return null;
   if (!DEPENDENCY_ECOSYSTEMS.includes(raw.ecosystem as DependencyEcosystem)) return null;
-  // A row without a valid backend-computed status is unusable (pre-status
-  // reports regenerate on the next evaluate run) — drop it rather than guess.
   if (!DEPENDENCY_STATUSES.includes(raw.status as DependencyStatus)) return null;
   return {
     ecosystem: raw.ecosystem as DependencyEcosystem,
@@ -191,12 +171,6 @@ function parseUndeclaredPackage(value: unknown): UndeclaredPackage | null {
   };
 }
 
-/**
- * Defensively parse a raw cross-check summary. The evaluate report is written
- * once by the evaluate run and never rewritten — rewriting it would break the
- * report digest that run's receipt attests to — so a later cross-check reports
- * itself through its own run outputs, which is where this reads it from. Pure.
- */
 export function parseSbomCrossCheck(value: unknown): SbomCrossCheckSummary | null {
   const raw = asRecord(value);
   if (!raw) return null;
@@ -216,10 +190,6 @@ export function parseSbomCrossCheck(value: unknown): SbomCrossCheckSummary | nul
   };
 }
 
-/**
- * Defensively parse a raw report payload (e.g. from the API) into a typed report.
- * Returns null when the payload is not a usable report. Pure.
- */
 export function parseReproducibilityReport(value: unknown): ReproducibilityReport | null {
   const raw = asRecord(value);
   if (

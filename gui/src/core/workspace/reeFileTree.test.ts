@@ -20,7 +20,6 @@ describe("isLikelyTextFile", () => {
   });
 
   it("rejects the binaries a run produces, so the viewer never opens them", () => {
-    // `runtime.tar` is what the build step emits — the viewer must decline it.
     expect(isLikelyTextFile("python_hello_world/runtime.tar")).toBe(false);
     expect(isLikelyTextFile("source.tar.gz")).toBe(false);
     expect(isLikelyTextFile("LICENSE")).toBe(false);

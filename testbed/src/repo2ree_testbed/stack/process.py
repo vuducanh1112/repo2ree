@@ -1,5 +1,3 @@
-"""Running commands, waiting on what they start, and stopping it."""
-
 from __future__ import annotations
 
 import json
@@ -62,7 +60,6 @@ def wait_until(description: str, probe: Callable[[], bool]) -> None:
 
 
 def descendants(pid: int) -> list[int]:
-    """Every process started under ``pid``, whatever session or group it moved to."""
     children: dict[int, list[int]] = {}
     for line in capture(["ps", "-A", "-o", "pid=,ppid="]).splitlines():
         child, parent = line.split()
@@ -77,7 +74,6 @@ def descendants(pid: int) -> list[int]:
 
 
 def kill_tree(process: subprocess.Popen[bytes]) -> None:
-    """Kill a process and everything it started at once, as a crash of the machine or container it runs in would."""
     started = descendants(process.pid)
     with suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGSTOP)
@@ -107,7 +103,6 @@ def free_port() -> int:
 
 
 def fetch_as[T](url: str, shape: TypeAdapter[T], timeout: float = 1) -> T | None:
-    """The document at ``url`` read as ``shape``; None when it cannot be fetched or has another shape."""
     document = fetch_json(url, timeout)
     try:
         return shape.validate_python(document) if document is not None else None
@@ -117,7 +112,7 @@ def fetch_as[T](url: str, shape: TypeAdapter[T], timeout: float = 1) -> T | None
 
 def fetch_json(url: str, timeout: float = 1) -> JsonValue:
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310 - a stack this process owns
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
             return _JSON.validate_python(json.load(response))
     except (OSError, ValueError, urllib.error.URLError, ValidationError):
         return None
@@ -125,7 +120,7 @@ def fetch_json(url: str, timeout: float = 1) -> JsonValue:
 
 def reachable(url: str) -> bool:
     try:
-        with urllib.request.urlopen(url, timeout=1) as response:  # noqa: S310 - a stack this process owns
+        with urllib.request.urlopen(url, timeout=1) as response:  # noqa: S310
             return int(response.status) < 400
     except (OSError, urllib.error.URLError):
         return False

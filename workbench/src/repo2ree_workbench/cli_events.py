@@ -1,5 +1,3 @@
-"""Translate executor output into typed protocol frames and results."""
-
 from __future__ import annotations
 
 import json
@@ -18,7 +16,6 @@ def cli_line_to_frame(line: str) -> Frame | None:
     if event.get("type") == "span":
         return SpanFrame(payload=event["payload"])
     if event.get("type") == "started":
-        # The run's id, which the workbench named itself.
         return None
     return LogFrame(stream="system", level="info", message=line)
 

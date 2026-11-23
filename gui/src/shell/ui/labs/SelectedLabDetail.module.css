@@ -35,7 +35,6 @@
 }
 
 .facts {
-  /* <dl> carries a UA margin; the layout owns spacing here. */
   margin: var(--space-1) 0 0;
   display: grid;
   grid-template-columns: 1fr 1fr;

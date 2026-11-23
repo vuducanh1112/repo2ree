@@ -24,9 +24,6 @@ test("semantic text roles", async ({ page }, testInfo) => {
       ["--tone-success-ink", "--tone-success-surface"],
       ["--tone-warning-ink", "--tone-warning-surface"],
       ["--threat-medium-line", "--threat-medium-wash"],
-      // Every stage's badge text on its own wash. Scanned here rather than only
-      // where a page happens to render one: five stages carry an outcome badge
-      // today, and the pairing was wrong for two of them before anyone looked.
       ...[
         "source",
         "metadata",

@@ -1,5 +1,3 @@
-"""Where stacks can run: this checkout, and the SSH machines a developer lists for themselves."""
-
 from __future__ import annotations
 
 import os
@@ -11,9 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from repo2ree_testbed.artifacts import ROOT
 
 LOCAL = "local"
-# Nix on a machine, flakes switched on per command so its Nix needs no configuration.
 NIX = ("nix", "--extra-experimental-features", "nix-command flakes")
-# In the checkout, so it outlives a rebuilt dev container; .gitignore keeps it out of the repository.
 DEFAULT_FILE = ROOT / ".config" / "machines.toml"
 
 
@@ -35,7 +31,6 @@ def machines_file() -> Path:
 
 
 def load_machines(path: Path) -> dict[str, MachineConfig]:
-    """Every machine: ``local``, and each one the file names (a file is optional)."""
     found: dict[str, MachineConfig] = {LOCAL: MachineConfig()}
     if not path.is_file():
         return found

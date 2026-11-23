@@ -1,16 +1,3 @@
-"""Register stores and mint the tokens their workbenches dial in with, on the service host.
-
-    python -m repo2ree_api.store_admin add lab-a --label "Lab A"
-    python -m repo2ree_api.store_admin token lab-a     # prints a new token, once
-    python -m repo2ree_api.store_admin revoke <first 8 characters of a token>
-    python -m repo2ree_api.store_admin revoke -- <first 8 characters>   # of an older token starting with -
-    python -m repo2ree_api.store_admin bootstrap lab-a --token-file PATH   # add if missing, token to PATH
-    python -m repo2ree_api.store_admin list
-
-A token is shown once and kept only as a digest; whoever runs a store's workbench starts it
-with ``--store lab-a=PATH`` and that token.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -50,7 +37,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "bootstrap":
             if stores.get(args.store_id) is None:
                 stores.add(args.store_id, args.label)
-            # Only the workbench that reads it may: the token admits whoever holds it for the store.
             args.token_file.parent.mkdir(parents=True, exist_ok=True)
             args.token_file.touch(mode=0o600)
             args.token_file.chmod(0o600)

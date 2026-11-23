@@ -1,9 +1,3 @@
-"""What the tiers read and send over the public API, typed: a subset of ``contracts/openapi.json``.
-
-The suites reach the product only as a deployment, so these are written here rather than imported from it;
-``testbed/tests/test_api_models.py`` holds them to the contract.
-"""
-
 from __future__ import annotations
 
 from enum import StrEnum

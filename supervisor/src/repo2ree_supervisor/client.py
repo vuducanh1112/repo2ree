@@ -1,12 +1,3 @@
-"""The control plane's client of the workbenches serving stores.
-
-The workbench dials the control plane and holds one outbound socket — it never
-listens, so it works from inside clusters and NATed networks that only permit
-egress. Streaming calls yield typed ``Frame`` records; request/response calls
-return plain values and raise ``WorkbenchUnavailableError`` when the workbench
-reports the backend is gone.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -19,20 +10,14 @@ from repo2ree_supervisor.transfers import ReceivedFile
 
 
 class WorkbenchUnavailableError(RuntimeError):
-    """Raised when the workbench reports the workbench backend is gone or stopping."""
+    pass
 
 
 class ReeBusyError(RuntimeError):
-    """The workbench refused to start a command: another one holds the REE."""
+    pass
 
 
 def raise_for_terminal_error(frame: Frame) -> None:
-    """Translate a terminal error frame into the caller-facing exception.
-
-    The two failure frames mean different things to the control plane: an
-    ``UnavailableFrame`` is the backend being gone (a 503-shaped, retryable
-    condition) while an ``ErrorFrame`` is an operation failure. Both the manager
-    and ``WsWorkbenchClient`` map them the same way, so the mapping lives here."""
     if isinstance(frame, UnavailableFrame):
         raise WorkbenchUnavailableError(frame.detail)
     if isinstance(frame, ErrorFrame):
@@ -40,31 +25,17 @@ def raise_for_terminal_error(frame: Frame) -> None:
 
 
 class WorkbenchClient(Protocol):
-    """The verbs the control plane needs to drive REE commands in a workbench.
+    def init_ree(self, workbench_id: str, init: InitRee, timeout: int = 60, *, ree_id: str) -> None: ...
 
-    The ``workbench_id`` routes directly to the resident process; ``ree_id`` names the REE in
-    the store it serves.
-    """
-
-    def init_ree(self, workbench_id: str, init: InitRee, timeout: int = 60, *, ree_id: str) -> None:
-        """Create the REE in the store the workbench serves."""
-        ...
-
-    def exec_query(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> bytes:
-        """The answer to a read of the REE, as the ``ree`` read wrote it on stdout."""
-        ...
+    def exec_query(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> bytes: ...
 
     def exec_query_stream(
         self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str
     ) -> Iterator[bytes]: ...
 
-    def exec_upload(self, workbench_id: str, query: BundleQuery, timeout: int = 600, *, ree_id: str) -> ReceivedFile:
-        """Bundle the REE in the bench and receive the bundle as a file.
-
-        The bytes travel over HTTP beside the control socket (see
-        ``repo2ree_supervisor.transfers``), never as frames on it; the caller owns
-        the returned file and removes it."""
-        ...
+    def exec_upload(
+        self, workbench_id: str, query: BundleQuery, timeout: int = 600, *, ree_id: str
+    ) -> ReceivedFile: ...
 
     def start_run(
         self,
@@ -77,33 +48,18 @@ class WorkbenchClient(Protocol):
         ree_id: str,
         session: str | None = None,
         wait: float = 0.0,
-    ) -> Iterator[Frame]:
-        """Start a command; with ``session``, only on that session of the workbench's connection.
-
-        It waits up to ``wait`` for another command in the REE to end before it is refused."""
-        ...
+    ) -> Iterator[Frame]: ...
 
     def follow_run(
         self, workbench_id: str, attempt_id: str, after: int, *, ree_id: str, session: str | None = None
-    ) -> Iterator[Frame]:
-        """Follow a started command from its ``after``-th log line until it ends, or the session does."""
-        ...
+    ) -> Iterator[Frame]: ...
 
     def cancel_run(self, workbench_id: str, run_id: str, *, ree_id: str, record: str | None = None) -> None: ...
 
-    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str) -> None:
-        """Stream a control-plane-local file into the bench at ``workbench_path``.
+    def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str) -> None: ...
 
-        ``source_path`` need only exist on the control plane; the bytes travel
-        as a chunked transfer (see ``repo2ree_protocol.workbench``)."""
-        ...
-
-    def delete_ree(self, workbench_id: str, ree_id: str) -> None:
-        """Delete an REE and its directory from the store the workbench serves."""
-        ...
+    def delete_ree(self, workbench_id: str, ree_id: str) -> None: ...
 
     def is_connected(self, workbench_id: str) -> bool: ...
 
-    def session_of(self, workbench_id: str) -> str | None:
-        """The WorkbenchSession a command for ``workbench_id`` would be sent on now, if it is connected."""
-        ...
+    def session_of(self, workbench_id: str) -> str | None: ...

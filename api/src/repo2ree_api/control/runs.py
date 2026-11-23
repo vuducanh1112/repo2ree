@@ -32,17 +32,8 @@ from repo2ree_supervisor import StoreUnavailableError
 
 logger = logging.getLogger(__name__)
 
-# ================================================
-# Router
-# ================================================
-
 
 runs_router = APIRouter(tags=["runs"])
-
-
-# ================================================
-# Route Handlers
-# ================================================
 
 
 @runs_router.get(
@@ -63,8 +54,6 @@ def list_ree_runs(
 def _list_runs(ree_id: str, cursor: str | None, limit: int | None) -> RunList:
     runs = list_runs(ree_id)
     if not runs:
-        # No historical run can establish the identifier; require a current
-        # REE only for this empty-list case. Non-empty history is local.
         require_handle(ree_id)
     page, next_cursor, _has_more = keyset_paginate(
         runs,
@@ -131,11 +120,6 @@ def observe_ree_run(
     wait_seconds: Annotated[float, Query(ge=0, le=30)] = 25,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
 ) -> RunObservation:
-    """Wait up to ``wait_seconds`` for new log entries or the run's end, whichever is first.
-
-    It can return while the run is still going: call it again with ``next_cursor``
-    until ``run.status`` is terminal.
-    """
     with author_api_action("watch_action", ree_id, run_id=run_id, about_action_id=run_action_id(ree_id, run_id)):
         return _observe(ree_id, run_id, cursor, wait_seconds, limit)
 
@@ -174,7 +158,6 @@ def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
         "Cancel requested by user",
     )
 
-    # Wherever the REE's commands go: its store's workbench, or the bench set up for it.
     try:
         handle = ree_router.route(ree_id)
     except StoreUnavailableError:
@@ -182,7 +165,7 @@ def cancel_ree_run(ree_id: str, run_id: str) -> CancelRunResponse:
     if handle is not None:
         try:
             deliver_cancel(ree_id, run_id, handle)
-        except Exception:  # cancellation is best-effort; a failed signal must not fail the cancel request
+        except Exception:
             logger.warning("failed to signal cancellation for %s", run_id, exc_info=True)
             append_run_log(
                 ree_id,

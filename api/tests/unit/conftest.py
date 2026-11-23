@@ -1,21 +1,3 @@
-"""Fixtures for the container-free API unit tier.
-
-This tier runs the real FastAPI app over ``TestClient`` — real routers, real
-exception handlers, real run registry, real upload staging — with no Docker
-and no workbench containers, so it runs unconditionally on every machine.
-
-The one seam is the workbench dispatch boundary: tests stage an REE served by
-a store by patching ``route`` on the real module-level ``ReeRouter`` singleton. No workbench *behavior* is ever
-faked — nothing fabricates an ``ActionResult`` to pretend a command ran.
-Everything that crosses the boundary for real belongs to the Docker-gated
-integration tier.
-
-Host-side state (upload staging, the workbench registry) is redirected into a
-throwaway directory via env vars *before* the app module —
-and with it the router singleton — is imported, so a developer's
-``.env`` or live registry can't leak into the tests.
-"""
-
 from __future__ import annotations
 
 import os
@@ -30,9 +12,6 @@ from repo2ree_testbed.artifacts import service_dir
 
 TEST_RESULTS_DIR = service_dir("api-unit")
 
-# Settings and the registry singleton built from them are read at import time,
-# so the isolated test paths must be in the process environment before any
-# repo2ree_api import below.
 _state_dir = Path(tempfile.mkdtemp(prefix="repo2ree-api-utest-"))
 os.environ["UPLOAD_STAGING_DIR"] = str(_state_dir / "upload-staging")
 os.environ["CONTROL_STATE_DIR"] = str(_state_dir / "control")
@@ -40,11 +19,6 @@ os.environ["REE_INDEX_FILE"] = str(_state_dir / "ree-index.json")
 os.environ["RUN_REGISTRY_DIR"] = str(_state_dir / "runs")
 os.environ["BEHAVIOUR_JOURNAL_DIR"] = str(_state_dir / "journal")
 
-# OpenTelemetry's set_tracer_provider is honored once per process, so two API
-# tiers in one pytest run share a single provider baked to whichever tier booted
-# first — the other's spans silently flow to the wrong file. Just runs the tiers
-# as separate processes; this turns the unsafe `pytest api/tests` path into a
-# loud, explained failure instead of wrong traces.
 _claimed = os.environ.get("_REPO2REE_TRACE_TIER")
 if _claimed and _claimed != "api-unit":
     raise RuntimeError(
@@ -55,11 +29,6 @@ if _claimed and _claimed != "api-unit":
     )
 os.environ["_REPO2REE_TRACE_TIER"] = "api-unit"
 
-# Start each run with a fresh trace file. The file span exporter opens in
-# append mode, so without clearing, spans pile up across runs. Only clear the
-# path we own — if TRACE_FILE was set externally (e.g. pointed at a shared
-# file), leave it untouched. The per-test slices (api/tests/conftest.py) are
-# cleared alongside it.
 if "TRACE_FILE" not in os.environ:
     _trace_file = TEST_RESULTS_DIR / "traces.ndjson"
     os.environ["TRACE_FILE"] = str(_trace_file)
@@ -72,32 +41,15 @@ from repo2ree_api.deps import ree_router  # noqa: E402
 from repo2ree_api.main import app  # noqa: E402
 from repo2ree_supervisor import ReeRoute  # noqa: E402
 
-# ================================================
-# Fixtures
-# ================================================
-
 
 @pytest.fixture(scope="session")
 def client() -> Iterator[TestClient]:
-    """The real app over HTTP, with the lifespan running.
-
-    Session-scoped because the lifespan bootstraps the process-global tracer
-    provider, which OpenTelemetry only allows to be set once. Server
-    exceptions are returned as responses (not re-raised) so tests can assert
-    the 500 error envelope the way a client would see it.
-    """
     with TestClient(app, raise_server_exceptions=False) as client:
         yield client
 
 
 @pytest.fixture
 def online_ree(monkeypatch: pytest.MonkeyPatch) -> ReeRoute:
-    """Stage one REE as served by a store's connected workbench.
-
-    Patches ``route`` so routes resolve this REE without a store; every other ID
-    falls through to the real (empty-registry) behavior. Anything that
-    *dispatches* through the route is out of scope for this tier.
-    """
     ree_id = uuid4().hex
     handle = ReeRoute(ree_id=ree_id, workbench_id=f"wb-{ree_id}", store_id="lab-test")
     real_route = ree_router.route
@@ -107,7 +59,6 @@ def online_ree(monkeypatch: pytest.MonkeyPatch) -> ReeRoute:
 
 @pytest.fixture
 def staging_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Per-test upload staging dir, so tests can assert on staged files."""
     from repo2ree_api.settings import service_settings
 
     staging = tmp_path / "upload-staging"

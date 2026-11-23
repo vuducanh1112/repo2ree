@@ -163,8 +163,6 @@ def test_a_delete_reaches_the_service_and_is_acknowledged() -> None:
 
 
 class _Receiver(BaseHTTPRequestHandler):
-    """A control plane's transfer route: keeps each PUT body by path, serves each offered file once."""
-
     received: ClassVar[dict[str, bytes]] = {}
     offered: ClassVar[dict[str, bytes]] = {}
 
@@ -185,7 +183,7 @@ class _Receiver(BaseHTTPRequestHandler):
         self.send_response(204)
         self.end_headers()
 
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - the http.server signature
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
 
 

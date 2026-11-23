@@ -1,10 +1,3 @@
-/* The durable record of what this control plane has sealed, and where each one
- * was deposited. Outlives the workbench that authored it.
- *
- * Shares the lab table's chrome shape but not its module: the two are
- * different tables of different things, and folding them together would mean a
- * variant per column set. */
-
 .screen {
   min-height: 100vh;
   padding: var(--space-6);
@@ -66,7 +59,6 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-/* The filter is a toggle, so it says so rather than only looking pressed. */
 .chromeButton[aria-pressed="true"] {
   border-color: var(--chrome-accent-border);
   background: var(--chrome-accent-bg);
@@ -123,7 +115,6 @@
   color: var(--chrome-text-muted);
 }
 
-/* Deposited somewhere: the seal reads as settled rather than merely recorded. */
 .sealIcon[data-deposited] {
   color: var(--status-ok);
 }
@@ -137,8 +128,6 @@
   color: var(--chrome-text);
 }
 
-/* The digest is the identity; the name is only a label, and two nodes can
- * disagree about it while meaning the same REE. */
 .digest {
   margin-top: var(--space-1);
   font-family: var(--font-mono);
@@ -181,7 +170,6 @@
   color: var(--chrome-text-mid);
 }
 
-/* Linkable only when the archive said where the record lives. */
 .identifier[data-linked] {
   color: var(--chrome-accent);
 }

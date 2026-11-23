@@ -1,10 +1,3 @@
-"""OpenTelemetry spans as recorded by the e2e stack's console exporter, and an index to find them.
-
-Spans are context. Nothing here decides a verdict or an order: they explain where time went and
-show hops no owner journals yet. So a record that cannot be read (a process killed mid-write
-leaves half of one) is counted and passed over; it never costs the page.
-"""
-
 from __future__ import annotations
 
 import json
@@ -49,9 +42,6 @@ class Span(SpanModel):
 
 def timestamp(value: str) -> float:
     return datetime.fromisoformat(value).timestamp()
-
-
-# The console exporter's record, as far as the views read it.
 
 
 class _Exported(BaseModel):
@@ -114,10 +104,6 @@ def _hex(value: str | None) -> str:
 
 
 def _documents(text: str) -> Iterator[object | None]:
-    """The exporter's records, pretty-printed back to back; None for one that is not JSON.
-
-    Each record starts on a line of its own with ``{``, so after a broken one reading resumes there.
-    """
     decoder, index = json.JSONDecoder(), 0
     while True:
         while index < len(text) and text[index].isspace():
@@ -137,7 +123,6 @@ def _documents(text: str) -> Iterator[object | None]:
 
 
 def parse_spans(text: str) -> tuple[list[Span], int]:
-    """The spans in one exported file, and how many of its records could not be read."""
     spans: list[Span] = []
     unreadable = 0
     for document in _documents(text):
@@ -151,7 +136,7 @@ def parse_spans(text: str) -> tuple[list[Span], int]:
 class SpanIndex:
     def __init__(self, spans: Iterable[Span] = (), unreadable: int = 0) -> None:
         self.spans = sorted(spans, key=lambda span: span.start)
-        self.unreadable = unreadable  # Records passed over; the page says how many.
+        self.unreadable = unreadable
         self._by_trace: dict[str, list[Span]] = defaultdict(list)
         self._children: dict[str, list[Span]] = defaultdict(list)
         self._by_id = {span.id: span for span in self.spans}
@@ -174,7 +159,6 @@ class SpanIndex:
         return self._by_id.get(span.parent) if span.parent else None
 
     def ancestors(self, span: Span) -> list[Span]:
-        """The spans above ``span``, nearest first."""
         found: list[Span] = []
         parent = self.parent(span)
         while parent is not None:
@@ -183,14 +167,12 @@ class SpanIndex:
         return found
 
     def subtree(self, span: Span) -> list[Span]:
-        """``span`` and every span below it, in start order."""
         found = [span]
         for child in self.children(span):
             found += self.subtree(child)
         return sorted(found, key=lambda each: each.start)
 
     def run(self, run_id: str) -> Span | None:
-        """The outermost span that names the run ``run_id``."""
         named = self._by_run.get(run_id, [])
         ids = {span.id for span in named}
         return next((span for span in named if span.parent not in ids), None)

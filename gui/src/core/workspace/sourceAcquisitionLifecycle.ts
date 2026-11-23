@@ -4,11 +4,6 @@ import { parseWorkspaceResetPayload } from "../../core/workspace/WorkspaceReset"
 import type { ReeRunPollResult, ReeRunUpdate } from "../ree-steps/stepRunLifecycle";
 import { runExecutionLifecycle } from "../ree-steps/stepRunLifecycle";
 
-// Once source acquisition actually starts, it is a run like any other, so the
-// start/observe/report-once bookkeeping is the shared lifecycle. What is
-// specific to source is the branch above it: a request carrying no mode is a
-// workspace reset, which never becomes a run at all.
-
 interface SourceExecutionResult {
   runId?: string;
   status: ReeRunPollResult["status"];

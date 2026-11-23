@@ -1,5 +1,3 @@
-"""A reviewer reruns the notebook: its numbers and figure hold, and the run times it records keep it from identical."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

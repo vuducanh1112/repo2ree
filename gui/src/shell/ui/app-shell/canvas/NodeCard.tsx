@@ -12,20 +12,14 @@ interface NodeCardProps {
   setRef: (el: HTMLButtonElement | null) => void;
   setPortRef: (el: HTMLSpanElement | null) => void;
   done: boolean;
-  /** Done, but the recorded run's inputs no longer match the workspace. */
   stale?: boolean;
   active: boolean;
-  /** A run for this step is in flight right now. */
   running: boolean;
-  /** The step the authoring graph says to do next. */
   next?: boolean;
-  /** The step has unmet prerequisites in the authoring graph. */
   blocked?: boolean;
   overview: CanvasNodeOverview;
   onNavigate: (page: AppShellPage, originRect?: DOMRect) => void;
-  /** Where the user has moved this panel, relative to where the ring puts it. */
   offset: NodeOffset;
-  /** The camera's zoom, so a screen drag can be read in world units. */
   zoom: number;
   onMove: (key: string, offset: NodeOffset) => void;
   onDraggingChange: (key: string, dragging: boolean) => void;
@@ -48,10 +42,6 @@ export function NodeCard({
   onMove,
   onDraggingChange,
 }: NodeCardProps) {
-  // A panel's state — running, or the step to do next — is state, not identity:
-  // it rides on the description so the panel's accessible name stays the node's
-  // label, which is how every caller — and every navigation selector —
-  // addresses it. One note at a time, by the same precedence the badge uses.
   const stateNoteId = useId();
   const { placed, dragging, onPointerDown, onKeyDown, suppressClick } = useNodeDrag({
     node,
@@ -63,14 +53,10 @@ export function NodeCard({
   const position = {
     "--node-x": `${placed.x}px`,
     "--node-y": `${placed.y}px`,
-    // Cancels the perspective at this node's depth, so a panel at the back of
-    // the bench reads at the same size as one at the front. See `nodeScale`.
     "--node-scale": nodeScale(placed),
     "--node-stand-height": `${node.standHeight}px`,
     "--node-tint": stageTone(node.key),
   };
-  // What is happening now outranks what the panel has to report: a step that is
-  // running is running whether or not it also holds a stale result.
   const state = running
     ? "running"
     : stale
@@ -109,8 +95,6 @@ export function NodeCard({
             onPointerDown={onPointerDown}
             onKeyDown={onKeyDown}
             onClick={(e) => {
-              // A drag ends with a click the browser fires anyway; opening the
-              // page on it would make every rearrangement a navigation.
               if (suppressClick()) return;
               onNavigate(node.key, e.currentTarget.getBoundingClientRect());
             }}
@@ -220,9 +204,7 @@ export function NodeCard({
   );
 }
 
-/** Below this much pointer travel the gesture is still a click, not a drag. */
 const DRAG_THRESHOLD_PX = 4;
-/** One arrow-key press, in world units. Shift moves by a panel's width. */
 const NUDGE_STEP = 16;
 const NUDGE_STEP_LARGE = 96;
 
@@ -234,20 +216,6 @@ interface NodeDragOptions {
   onDraggingChange: (key: string, dragging: boolean) => void;
 }
 
-/**
- * Lets a panel be moved anywhere on the bench.
- *
- * The offset in flight is local state, so a drag re-renders the one card being
- * dragged rather than the whole canvas and its ten siblings on every pointer
- * move. It is committed upward once the pointer lifts.
- *
- * A card is a button that opens its page, so a drag has to be told apart from a
- * click: nothing happens until the pointer has travelled {@link
- * DRAG_THRESHOLD_PX}, and the click the browser fires at the end of a drag is
- * swallowed. Arrow keys move a focused panel too — dragging is a pointer
- * gesture, and WCAG 2.2 asks that anything it can do have a path that does not
- * require one.
- */
 function useNodeDrag({ node, offset, zoom, onMove, onDraggingChange }: NodeDragOptions) {
   const [liveOffset, setLiveOffset] = useState<NodeOffset | null>(null);
   const gesture = useRef<{
@@ -257,7 +225,6 @@ function useNodeDrag({ node, offset, zoom, onMove, onDraggingChange }: NodeDragO
     from: NodeOffset;
     moved: boolean;
   } | null>(null);
-  // Set when a drag ends so the click it produces can be ignored exactly once.
   const swallowClick = useRef(false);
 
   const effective = liveOffset ?? offset;
@@ -301,13 +268,9 @@ function useNodeDrag({ node, offset, zoom, onMove, onDraggingChange }: NodeDragO
         if (!active.moved) {
           if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
           active.moved = true;
-          // Capture only once the gesture has become a drag, so an ordinary
-          // click keeps the button's own activation behaviour.
           target.setPointerCapture?.(active.pointerId);
           onDraggingChange(node.key, true);
         }
-        // The camera's zoom sits outside the scene's perspective, so undo it
-        // before the projection is inverted.
         setLiveOffset(nodeOffsetAfterDrag(node, active.from, { dx: dx / zoom, dy: dy / zoom }));
       };
       const onUp = (up: PointerEvent) => {

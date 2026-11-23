@@ -1,14 +1,3 @@
-"""The engine's own types for script inference: its context, the protocols its
-checks, renderers, and resolvers implement, and what they hand each other. The
-report it publishes, and the closed unions inside it, are
-:mod:`repo2ree_protocol.inference`.
-
-The load-bearing rule of this design is that the *published, versioned decision
-DAG is the only control-flow authority* (see ``docs/engineering/explanation/script-inference.md``).
-These models are the data that DAG is built from and the trace it emits; there
-is no parallel imperative rule implementation.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar, Literal, Protocol, runtime_checkable
@@ -26,10 +15,6 @@ from repo2ree_protocol.inference import (
     StrategyOutcomesObservation,
 )
 
-# ================================================
-# Bindings — closed, discriminated typed dataflow along the DAG
-# ================================================
-
 BindingKind = Literal[
     "project_root",
     "dockerfile",
@@ -44,35 +29,14 @@ BindingKind = Literal[
 ]
 
 
-# ================================================
-# Decision context and check / resolver / renderer contracts
-# ================================================
-
-
 class DecisionContext(BaseModel):
-    """Immutable evaluation context: repository facts, deployment policy, and the
-    typed bindings accumulated along the walk so far.
-
-    The engine never mutates a context in place: appending a binding produces a
-    new context (``with_bindings``), and at most one binding of each kind may
-    exist on any path.
-    """
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     facts: RepositoryFacts
     policy: InferencePolicy
-    # The REE's declared name, used to derive a readable experiment environment image tag.
     ree_name: str = ""
-    # Authored state that does not come from scanning ``upstream``: the declared
-    # experiment environment path, experiment declarations, and access to the built artifact /
-    # written build script. Empty for build inference, which needs none of it.
     experiment_environment: ExperimentEnvironmentInputs = Field(default_factory=lambda: ExperimentEnvironmentInputs())
-    # The machine the REE's scripts run on, as far as a check may ask about it: its container engines.
     machine: MachineInputs = Field(default_factory=lambda: MachineInputs())
-    # The experiment a run/verify experiment target names. Empty for build and
-    # activation targets. Set per-target by ``infer_scripts`` because the name
-    # lives on the target, not on the shared scan.
     requested_experiment: str = ""
     bindings: tuple[DecisionBinding, ...] = ()
 
@@ -100,10 +64,6 @@ class CheckResult(BaseModel):
     observed: DecisionObservation
     bindings: tuple[DecisionBinding, ...] = ()
     evidence: list[InferenceEvidence] = Field(default_factory=list)
-    # Warnings a check observes at evaluation time (e.g. a blocked experiment environment
-    # contract). Unlike a strategy leaf's static warning codes, these depend on
-    # what the check saw, so they ride on the result. The engine folds them into
-    # the target's warning union along whatever path the walk takes.
     warnings: list[InferenceWarning] = Field(default_factory=list)
 
 
@@ -119,11 +79,6 @@ class Check(Protocol):
 
 
 class RenderedScript(BaseModel):
-    """A renderer's output: one self-contained script body plus the evidence
-    trail that justifies it. Inference produces only the shell script — a
-    generated recipe (a synthesized Dockerfile) is embedded inline in the body,
-    never emitted as a second file."""
-
     model_config = ConfigDict(extra="forbid")
 
     body: str
@@ -166,8 +121,6 @@ class Resolver(Protocol):
     def evaluate(self, outcomes: dict[str, StrategyOutcome]) -> ResolverResult: ...
 
 
-# Deferred imports resolved at module end to keep the union definitions above
-# free of forward-reference clutter while avoiding an import cycle.
 from repo2ree_core.author_recipes.inference.experiment_environment_inputs import ExperimentEnvironmentInputs  # noqa: E402
 from repo2ree_core.author_recipes.inference.machine import MachineInputs  # noqa: E402
 from repo2ree_core.author_recipes.inference.policy import InferencePolicy  # noqa: E402

@@ -57,8 +57,6 @@ def test_a_component_only_one_side_versions_is_not_drift() -> None:
 
 
 def test_other_ecosystem_deltas_are_advisory_never_decisive() -> None:
-    # ``other`` collapses distinct purl types onto the name alone, so it cannot
-    # tell its own members apart and must not settle a verdict.
     author = [_pkg("numpy"), _pkg("busybox", "1.36", ecosystem="other")]
     reviewer = [_pkg("numpy"), _pkg("busybox", "1.37", ecosystem="other")]
 
@@ -83,8 +81,6 @@ def test_delta_lists_hold_every_delta_their_counts_count() -> None:
 
     assert delta.missing_count == 70
     assert [package.name for package in delta.missing] == sorted(package.name for package in author)
-    # Inconclusive here (the reviewer side is empty), but the delta still records
-    # everything the comparison saw.
     assert delta.expected_total == 70
 
 

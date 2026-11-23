@@ -8,19 +8,12 @@ import { Ic } from "@shell/ui/shared/components/Icon";
 interface ReservedBuildExperimentEnvironmentScriptCardProps {
   currentContent: string;
   disabled?: boolean;
-  // Backend-owned build-script template variants; the picker inserts into the
-  // editor only, saving stays on the button. The build script itself is seeded
-  // at REE creation, so the card's content arrives already prefilled.
   templates?: ScriptTemplateEntry[];
-  // A generated candidate to load into the editor (replaces the body, leaves it
-  // dirty; the author still saves manually). Bump the nonce on each load.
   externalEdit?: { content: string; nonce: number };
   renderAnalysis?: RunScriptCardProps["renderAnalysis"];
   onSave: (content: string) => void;
 }
 
-// The REE-owned build script editor — a thin specialization of RunScriptCard
-// that speaks in build terms.
 export function ReservedBuildExperimentEnvironmentScriptCard({
   currentContent,
   disabled = false,

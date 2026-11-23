@@ -1,28 +1,3 @@
-"""Command line: collect a deployment's behaviour evidence into a dossier, through its control plane if any.
-
-  python -m repo2ree_assurance_collector DIR [--control-plane URL]
-      [--archives-in FOLDER]...  REE archives clients downloaded and kept there
-      [--ree ID]...              REEs to download now, as their owner would
-      [--kept-rees FOLDER]       REEs a client ran ree in itself, one folder each with the histories it kept
-      [--environment-journal-dir DIR]
-                                 the journals the client kept as the REEs' environment
-      [--skip-owners]            leave the owners' journals and state to a later export
-      [--journal-dir DIR [--runs-dir DIR]]
-                                 the owners' journals and state, exported after they stopped
-      [--store-journal-dir STORE=DIR]...
-                                 a store's journals, copied after its workbench stopped
-      [--spans FILE]...          span files the deployment exported
-      [--suite NAME] [--test NAME] [--outcome OUTCOME]
-
-Through the control plane, collects the owners' persisted state, then their journals, so the
-journals reach past the state's cut. A deployment shutting down for good can instead export
-them after its owners stopped (--journal-dir): only then do the journals carry their close.
-A deployment with no control plane, where a client ran ``ree`` itself, is collected from the
-REEs it kept (--kept-rees) and its span files alone. Collecting into an existing dossier adds
-to it. Exits 1 when any source could not be collected; the dossier still lists it, with the
-problem, so verification reports the gap instead of judging around it.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -49,7 +24,7 @@ from repo2ree_assurance_dossier import DossierSource
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="repo2ree_assurance_collector", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+        prog="repo2ree_assurance_collector", formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("directory", type=Path, help="The dossier to write (created if absent)")
     parser.add_argument("--control-plane", help="The API's base URL")

@@ -25,15 +25,12 @@ VM = MachineConfig(host="vm")
 COMPOSE = "docker compose --project-name repo2ree-dev -f docker-compose.dev.yml -f docker/dev/machine.compose.yml"
 GATE = f"{REVISION} just assurance-gate 4"
 SYSTEM = f"{REVISION} just test-e2e-system"
-# What a gate writes: a run, and the receipt for the tree.
 WRITTEN = (
     "test-artifacts/e2e/e2e-system-20261027-120000/run.json",
     "test-artifacts/e2e/e2e-system-20261027-120000/tests/a/verdict.json",
     ".receipts/assurance-gate.json",
 )
 
-# What tells the calls apart: asking for the jobs, claiming a workspace, showing a job, its exit code, and what
-# it wrote.
 STATES = "|| exit 0\nstates"
 CLAIM = "git init -q repo2ree"
 SHOW = "tail -n +1 -f"
@@ -45,10 +42,6 @@ type Listing = tuple[str, str] | list[tuple[str, str, str]]
 
 
 class FakeRunner:
-    """A machine whose jobs are listed as ``states`` says in turn (then every one ``fetched``): a ``(state, command)``
-    of the clone's job, or ``(workspace, state, command)`` for each workspace. A run claims ``claim``. Its job ended
-    with ``code`` having ``written`` those files, and its calls exit as ``codes`` says by a part of what they run."""
-
     def __init__(
         self,
         *states: Listing,
@@ -96,19 +89,16 @@ class FakeRunner:
     def pipe(self, producer: Sequence[str], consumer: Sequence[str]) -> int:
         self.piped.append((list(producer), list(consumer)))
         if "dist/images" in producer[-1]:
-            # What an archive set unpacks to: its platform's directory, under the consumer's -C.
             name = shlex.split(_on_host(producer))[-1]
             (Path(consumer[-1]) / name).mkdir(parents=True)
             (Path(consumer[-1]) / name / "manifest.json").write_text(f"{name}\n")
         return 0
 
     def ran(self, part: str) -> list[str]:
-        """What the calls containing ``part`` ran on the host."""
         return [_on_host(call) for call in self.calls if call[0] == "ssh" and part in call[-1]]
 
 
 def _git(argv: Sequence[str]) -> str:
-    """A committed checkout."""
     match list(argv):
         case ["git", "status", "--porcelain"]:
             return ""
@@ -123,7 +113,6 @@ def committed(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _on_host(call: Sequence[str]) -> str:
-    """What an ssh call runs on the host, once its login shell has unquoted it."""
     assert call[:-1] == ["ssh", *SSH_OPTIONS, "vm"]
     return shlex.split(call[-1])[-1]
 
@@ -161,8 +150,6 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
 
     assert gate(Machine("vm", VM, runner), None) == 0
 
-    # A plain clone in the SSH user's home, which HEAD is pushed to by the host's Git; the run claims its first
-    # workspace, the clone itself, and records the job there before anything else can take it.
     [claim] = runner.ran(CLAIM)
     assert "test -d repo2ree/.git || git init -q repo2ree" in claim
     assert f"printf '%s\\n' {shlex.quote(GATE)} > \"$dir/test-artifacts/machine-job\"/command" in claim
@@ -179,13 +166,9 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     ]
     assert push in runner.calls
     assert runner.ran("checkout") == [f"cd repo2ree && git checkout -q --detach --force {REVISION} && git clean -fdq"]
-    # The dev container comes up from the clone as it does here, once its user is set up; rebuilt only while no
-    # other job is busy.
     [up] = runner.ran("up -d --build")
     assert f"{COMPOSE} up -d --build --quiet-pull --wait" in up
     assert 'if test -n "$(busy .)"' in up
-    # The job runs detached in it, in a process group of its own, in the clone's .envrc and knowing the machine's
-    # name, its log and exit code in the clone.
     [start] = runner.ran("exec -d")
     body = (
         "echo $$ > /repo2ree/test-artifacts/machine-job/pid;"
@@ -193,13 +176,9 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
         " echo $? > /repo2ree/test-artifacts/machine-job/exit"
     )
     assert f"{COMPOSE} exec -d --user nixuser --workdir /repo2ree dev setsid bash -lc {shlex.quote(body)}" in start
-    # Shown until it ends: its exit code is written, or its process is gone.
     [show] = runner.ran(SHOW)
     assert "tail -n +1 -f test-artifacts/machine-job/log & shown=$!" in show
     assert "while ! test -f test-artifacts/machine-job/exit && alive /repo2ree; do" in show
-    # What it wrote since it started, its run, the receipt, and its timings alike, empty folders too, comes straight
-    # from the clone on the host into this checkout, leaving experiment environment tarballs, archives and kept REE
-    # histories there; then the job is fetched.
     [(fetch, unpack)] = runner.piped
     assert _on_host(fetch) == (
         "cd repo2ree && { find test-artifacts .receipts logs \\( -type f -o -type d -empty \\)"
@@ -216,7 +195,6 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert runner.ran("touch test-artifacts/machine-job/fetched") == [
         "cd repo2ree && touch test-artifacts/machine-job/fetched"
     ]
-    # The connection gives up within a minute, and knows the machine only by the checkout's known hosts.
     assert "ConnectTimeout=20" in SSH_OPTIONS
     assert f"UserKnownHostsFile={ROOT}/.config/known_hosts ~/.ssh/known_hosts" in SSH_OPTIONS
     assert "StrictHostKeyChecking=yes" in SSH_OPTIONS
@@ -228,9 +206,7 @@ def test_a_run_beside_a_running_job_runs_in_a_further_workspace_and_brings_back_
 
     assert gate(Machine("vm", VM, runner), None) == 0
 
-    # The other job is neither shown nor waited for.
     assert not runner.ran("alive /repo2ree;")
-    # Its commit goes to a ref of its own in the clone, which the workspace fetches from.
     assert any(call[-1] == f"{REVISION}:refs/testbed/workspace-1" for call in runner.calls if "push" in call)
     assert runner.ran("git fetch") == [
         (
@@ -256,7 +232,6 @@ def test_a_failed_job_still_brings_back_what_it_wrote(capsys: pytest.CaptureFixt
     runner = FakeRunner(("none", ""), ("ended", GATE), code=1)
     assert gate(Machine("vm", VM, runner), None) == 1
     assert len(runner.piped) == 1
-    # Each run once, and each other file as it is.
     out = capsys.readouterr().out
     assert ">> from vm: test-artifacts/e2e/e2e-system-20261027-120000\n>> from vm: .receipts/assurance-gate.json" in out
 
@@ -308,7 +283,6 @@ def test_an_ended_job_of_another_command_is_brought_back_before_this_one_starts(
     assert gate(Machine("vm", VM, runner), None) == 0
     assert _pushed(runner)
     assert _started(runner)
-    # What the tier wrote, then what the gate wrote.
     assert len(runner.piped) == 2
 
 
@@ -323,7 +297,6 @@ def test_a_job_that_dies_while_shown_ends_the_run_as_failed(capsys: pytest.Captu
     runner = FakeRunner(("none", ""), ("dead", GATE), code=None)
     assert gate(Machine("vm", VM, runner), None) == 1
     assert "died on vm without an exit code" in capsys.readouterr().out
-    # What it wrote before it died comes back.
     assert len(runner.piped) == 1
 
 
@@ -360,8 +333,6 @@ WIP = "fedcba9876543210fedcba9876543210fedcba98"
 
 
 class WorkingTree:
-    """A checkout with uncommitted changes: what each git call was given, and its answer."""
-
     def __init__(self, *, email: str = "") -> None:
         self.email = email
         self.calls: list[tuple[list[str], dict[str, str]]] = []
@@ -397,7 +368,6 @@ def test_a_working_tree_runs_as_a_commit_beside_the_branch(monkeypatch: pytest.M
     assert run_recipe(Machine("vm", VM, runner), ["test-e2e-system"], wip=True) == 0
 
     assert _shipped(runner) == [WIP]
-    # Staged into an index of its own, so neither the branch nor the developer's index moves.
     index = tree.env_of("git", "add", "-A")["GIT_INDEX_FILE"]
     assert index == tree.env_of("git", "read-tree", "HEAD")["GIT_INDEX_FILE"]
     assert index == tree.env_of("git", "write-tree")["GIT_INDEX_FILE"]
@@ -583,8 +553,6 @@ def test_a_machine_without_archive_sets_says_so() -> None:
     assert Machine("vm", VM, FakeRunner(archives=[])).fetch_archives() == 1
 
 
-# The stub engine of a host: `exec` greps the command lines in $HOME/processes as the dev container's /proc;
-# anything else is recorded in $HOME/docker.log.
 DOCKER = """#!/bin/sh
 for last; do :; done
 case " $* " in
@@ -595,8 +563,6 @@ esac
 
 
 class Host:
-    """A host the scripts really run on, in a home of their own, with the stub engine."""
-
     def __init__(self, home: Path) -> None:
         self.home = home
         (home / "bin").mkdir(parents=True)
@@ -640,21 +606,17 @@ def test_each_job_beside_a_busy_one_claims_a_workspace_of_its_own_and_a_free_one
 
     assert machine._claim(GATE) == Workspace(".")
     assert (tmp_path / "repo2ree/.git").is_dir()
-    # Claimed, it is starting until its process group is there.
     assert _states(machine) == [(".", "starting", GATE)]
     assert machine._claim(SYSTEM) == Workspace(FURTHER)
     assert _states(machine) == [(".", "starting", GATE), (FURTHER, "starting", SYSTEM)]
 
-    # A started job runs while its process does, and is dead once it is gone without an exit code.
     (host.job(".") / "pid").write_text("7\n")
     host.alive(".")
     (host.job(FURTHER) / "pid").write_text("8\n")
     assert _states(machine) == [(".", "running", GATE), (FURTHER, "dead", SYSTEM)]
 
-    # A third job, while the others are neither free nor brought back, makes another workspace.
     assert machine._claim("third") == Workspace(".machine-workspaces/2")
 
-    # Ended, then brought back: the clone is free again and the next job takes it first.
     (host.job(".") / "exit").write_text("0\n")
     assert _states(machine)[0] == (".", "ended", GATE)
     (host.job(".") / "fetched").touch()

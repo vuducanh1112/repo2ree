@@ -1,5 +1,3 @@
-"""Script report responses remain valid when real dispatch captures history."""
-
 import pytest
 
 from repo2ree_api.deps import command_dispatcher
@@ -15,7 +13,6 @@ def test_script_report_excludes_capture_metadata(client, online_ree, monkeypatch
     initialize_ree(layout, name="reports")
     layout.upstream.mkdir(exist_ok=True)
     (layout.upstream / "Dockerfile").write_text("FROM python:3.13-slim\n")
-    # Laid out as materializing lays it out, so the workspace is as ree left it.
     (layout.workspace / "Dockerfile").write_text("FROM python:3.13-slim\n")
     outputs = {}
 

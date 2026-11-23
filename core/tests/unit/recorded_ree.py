@@ -1,5 +1,3 @@
-"""A test's REE with files it wrote itself, as if an attempt had recorded them."""
-
 from __future__ import annotations
 
 from repo2ree_core.persistence.history import open_history
@@ -10,16 +8,12 @@ from repo2ree_protocol.result import ActionResult
 
 
 def as_recorded(layout: ReeLayout) -> ReeLayout:
-    """Commit the REE's files as they are, as ree's snapshot: a test's setup, which is no drift of the REE it sets
-    up."""
     with open_history(layout) as history:
         history.capture(operation="test_setup", reuse_unchanged=True)
     return layout
 
 
 def as_attempt(layout: ReeLayout, operation: str) -> str:
-    """Commit the files of the REE or review at ``layout`` as a succeeded attempt of ``operation`` publishes them: a
-    test's setup of what a command would have done. Its commit."""
     context = ExecutionContext.new()
     result = ActionResult(status="succeeded", outputs={}).model_copy(update={"context": context})
     with open_history(layout) as history:

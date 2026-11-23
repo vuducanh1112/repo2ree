@@ -1,20 +1,3 @@
-"""What an author asks of one REE through this API, as the behaviour journal records it.
-
-Every request about one REE is one author action: it is ``requested`` when the API
-accepts it, a long one is ``running`` while a worker does it, and it settles with the
-answer the author is given. Synchronous routes wrap their work in
-:func:`author_api_action`; background runs carry their action on the stored run, and
-the run store moves it along with the run's status (:func:`follow_run`); an upload
-starts its action when its slot is opened and continues it when the upload completes.
-
-This module owns the AuthorApiAction records. It keeps the actions this process has
-open, so each record starts where the last one ended, collects the facts a rule needs
-from the work done meanwhile (the attempt the workbench reported, the REE's store),
-and settles what is still open before the journal closes. It never
-touches tracing: spans and metrics stay with the routes and the run registry, so
-sampling or switching tracing off cannot change the evidence.
-"""
-
 from __future__ import annotations
 
 import threading
@@ -35,7 +18,6 @@ from repo2ree_telemetry.behaviour.events import AuthorApiActionFacts, AuthorApiA
 TERMINAL: frozenset[AuthorApiActionState] = frozenset({"succeeded", "failed", "canceled"})
 ACTION_NAMES: frozenset[str] = frozenset(get_args(AuthorApiActionName))
 
-# How a stored run's status reads as its action's state.
 RUN_STATES: dict[str, AuthorApiActionState] = {
     "queued": "requested",
     "provisioning": "running",
@@ -52,9 +34,7 @@ class _Open:
     action: AuthorApiActionName
     ree_id: str
     state: AuthorApiActionState
-    # Facts learned while the action ran, recorded when it settles.
     learned: AuthorApiActionFacts = field(default_factory=lambda: AuthorApiActionFacts())
-    # Left to the next API process: its command runs on, and that process resumes it.
     detached: bool = False
 
 
@@ -81,11 +61,6 @@ def record(
     previous: AuthorApiActionState | None = None,
     facts: AuthorApiActionFacts | None = None,
 ) -> None:
-    """Move one action to ``target``; a move to where it already is records nothing.
-
-    ``previous`` says where an action this process does not hold open was, such as a
-    run interrupted by an earlier process that this one now settles.
-    """
     with _lock:
         held = _open.get(action_id)
         source = held.state if held is not None else previous
@@ -104,14 +79,12 @@ def record(
 
 
 def start(action: AuthorApiActionName, ree_id: str, **facts: str | None) -> str:
-    """A request about ``ree_id`` was accepted; returns its action id."""
     action_id = new_action_id()
     record(action_id, "requested", action=action, ree_id=ree_id, facts=_described(facts))
     return action_id
 
 
 def settle(action_id: str, target: AuthorApiActionState, **facts: str | int | None) -> None:
-    """Give an open action its answer; an action this process does not hold is left alone."""
     with _lock:
         held = _open.get(action_id)
     if held is not None:
@@ -119,7 +92,6 @@ def settle(action_id: str, target: AuthorApiActionState, **facts: str | int | No
 
 
 def learn(**facts: str | None) -> None:
-    """Facts the current action's rules need, recorded when it settles."""
     action_id = _current.get()
     if action_id is None:
         return
@@ -130,19 +102,12 @@ def learn(**facts: str | None) -> None:
 
 
 def learn_attempt(result: ActionResult) -> None:
-    """The attempt the workbench reported, if it recorded one in the REE's history.
-
-    A command that never reached the workbench, or failed before core opened its
-    attempt record, has no attempt to name; naming the id it was sent with would
-    point at an attempt that does not exist.
-    """
     if result.history is not None and result.context is not None:
         learn(attempt_id=result.context.attempt_id)
 
 
 @contextmanager
 def acting(action_id: str) -> Iterator[None]:
-    """Make ``action_id`` the current action, so the work done here can :func:`learn` facts for it."""
     token = _current.set(action_id)
     try:
         yield
@@ -152,7 +117,6 @@ def acting(action_id: str) -> Iterator[None]:
 
 @contextmanager
 def author_api_action(action: AuthorApiActionName, ree_id: str, **facts: str | None) -> Iterator[str]:
-    """One synchronous author action: requested on entry, settled by the answer the route gives."""
     action_id = start(action, ree_id, **facts)
     try:
         with acting(action_id):
@@ -164,7 +128,6 @@ def author_api_action(action: AuthorApiActionName, ree_id: str, **facts: str | N
 
 
 def http_status(exc: BaseException) -> int:
-    """The status the author is answered with for ``exc``, as the API's error handlers map it."""
     if isinstance(exc, HTTPException):
         return exc.status_code
     if isinstance(exc, WorkbenchUnavailableError):
@@ -175,7 +138,6 @@ def http_status(exc: BaseException) -> int:
 
 
 def refuse(action: AuthorApiActionName, ree_id: str, action_id: str | None, exc: BaseException) -> None:
-    """A request refused before any work was started for it: its action fails with the refusal."""
     if action_id is None or not is_open(action_id):
         action_id = start(action, ree_id)
     settle(action_id, "failed", http_status=http_status(exc))
@@ -192,7 +154,6 @@ def follow_run(
     attempt_id: str | None,
     failure_category: str | None,
 ) -> None:
-    """Move a run's action along with the run: the run store calls this after each durable change."""
     if action not in ACTION_NAMES:
         return
     target = RUN_STATES[status]
@@ -206,14 +167,12 @@ def follow_run(
 
 
 def resume(action_id: str, action: str, ree_id: str, status: str) -> None:
-    """This process takes over an action an earlier one left while its command ran on."""
     if action in ACTION_NAMES:
         named = cast("AuthorApiActionName", action)
         record(action_id, "resumed", action=named, ree_id=ree_id, previous=RUN_STATES[status])
 
 
 def detach(action_id: str) -> None:
-    """Leave an action to the next API process: this one stops, and its command runs on."""
     with _lock:
         held = _open.get(action_id)
         if held is not None:
@@ -221,10 +180,6 @@ def detach(action_id: str) -> None:
 
 
 def settle_open(failure_category: str, *, final: bool = False) -> None:
-    """Fail every action still open before the journal closes: an upload never completed, work never answered.
-
-    An action left to the next process stays open, unless no process comes after this one.
-    """
     with _lock:
         held = [action_id for action_id, item in _open.items() if final or not item.detached]
     for action_id in held:
@@ -232,5 +187,4 @@ def settle_open(failure_category: str, *, final: bool = False) -> None:
 
 
 def _described(facts: Mapping[str, str | int | None]) -> AuthorApiActionFacts:
-    """Facts given by name, without the ones that are absent."""
     return cast("AuthorApiActionFacts", {name: value for name, value in facts.items() if value is not None})

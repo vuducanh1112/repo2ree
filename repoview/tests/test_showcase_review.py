@@ -1,5 +1,3 @@
-"""A showcase's final review: the report its review test's reviewer left, read from the review's own history."""
-
 from __future__ import annotations
 
 import json
@@ -52,8 +50,6 @@ def review(reviews: Path, review_id: str, body: dict[str, object], *, signed: bo
 
 
 def reviewed_test(tmp_path: Path) -> Path:
-    """A review test's preserved REEs: the author's, with no review, and the reviewer's, with an older review and
-    the newest, signed."""
     test = tmp_path / "test"
     (test / "dossier/rees/author/ree").mkdir(parents=True)
     reviews = test / "dossier/rees/reviewer/ree/reviews"
@@ -101,7 +97,6 @@ def test_the_final_review_is_the_newest_at_its_last_commit(tmp_path: Path) -> No
 
     assert found is not None
     assert found.report.review_id == "review-new"
-    # The last commit's report, not the first's.
     assert found.report.status == "completed"
     assert found.signed
     assert found.report.experiment_comparisons[0].verdict == "different"

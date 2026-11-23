@@ -1,5 +1,3 @@
-"""What import-linter cannot see: the suites are scripts beside the harness, not a package."""
-
 import ast
 from pathlib import Path
 

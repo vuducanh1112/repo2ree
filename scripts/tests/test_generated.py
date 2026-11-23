@@ -50,7 +50,6 @@ def test_what_no_claim_covers_is_found_as_high_up_as_it_can_be_named(tmp_path: P
         kept,
     )
 
-    # Root by root, in the registry's order.
     assert found == [
         tmp_path / "test-artifacts/python/old",
         tmp_path / "test-artifacts/retired",

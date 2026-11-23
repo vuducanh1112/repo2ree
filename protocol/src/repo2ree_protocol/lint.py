@@ -13,8 +13,6 @@ FindingSeverity = Literal["info", "warning", "error"]
 
 
 class Finding(BaseModel):
-    """One observation about one script."""
-
     model_config = ConfigDict(extra="forbid")
 
     code: str
@@ -29,8 +27,6 @@ class Finding(BaseModel):
 
 
 class TierStatus(BaseModel):
-    """Whether an optional analysis tier ran."""
-
     model_config = ConfigDict(extra="forbid")
 
     tier: FindingTier
@@ -41,8 +37,6 @@ class TierStatus(BaseModel):
 
 
 class LintReport(BaseModel):
-    """Everything one lint run observed about one script."""
-
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal[1] = 1
@@ -53,20 +47,16 @@ class LintReport(BaseModel):
 
     @property
     def ok(self) -> bool:
-        """Whether the report contains no blocking finding."""
         return not any(finding.blocking for finding in self.findings)
 
 
 class ScriptDeclarations(BaseModel):
-    """The narrow declaration view consumed by contract rules."""
-
     model_config = ConfigDict(extra="forbid")
 
     experiment_environment_path: str | None = None
 
     @classmethod
     def from_definition(cls, definition: ReeDefinition | None) -> ScriptDeclarations:
-        """Project a persisted definition into the view the rules read."""
         build_experiment_environment = definition.experiment_environment if definition else None
         experiment_environment_path = (
             build_experiment_environment.artifact_path if build_experiment_environment else None

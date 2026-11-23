@@ -16,7 +16,6 @@ export function useAppShell() {
     ...reeEditor,
     chrome: {
       ...uiChrome,
-      // Immutability is a fact of the backend REE, never a reversible browser flag.
       locked: !!reeEditor.model.ree.artifact.sealedAt,
     },
   };

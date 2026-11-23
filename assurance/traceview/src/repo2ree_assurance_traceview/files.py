@@ -1,5 +1,3 @@
-"""Read what a dossier holds besides the checker's evidence: spans, its context, REE names, capture commit sizes."""
-
 from __future__ import annotations
 
 import json
@@ -15,7 +13,6 @@ from repo2ree_assurance_traceview.spans import Span, SpanIndex, parse_spans
 
 
 def read_spans(directory: Path, dossier: Dossier) -> SpanIndex:
-    """Every spans file the manifest lists, one per process that exported them."""
     spans: list[Span] = []
     unreadable = 0
     for source in dossier.recorded("spans"):
@@ -37,7 +34,6 @@ def repositories(directory: Path, dossier: Dossier) -> list[Path]:
 
 
 def ree_names(directory: Path, dossier: Dossier, executable: str = "git") -> dict[str, str]:
-    """The name each REE's definition gives it, as its history last recorded it."""
     names: dict[str, str] = {}
     for source in dossier.recorded("git"):
         repository = directory / source.path
@@ -61,7 +57,6 @@ def ree_names(directory: Path, dossier: Dossier, executable: str = "git") -> dic
 
 
 def commit_sizes(repositories: list[Path], executable: str = "git") -> dict[str, int]:
-    """How many paths each capture commit changed, for display."""
     sizes: dict[str, int] = {}
     for repository in repositories:
         try:

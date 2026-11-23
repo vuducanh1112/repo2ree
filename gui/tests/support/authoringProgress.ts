@@ -27,7 +27,6 @@ const REQUIRES: Readonly<Partial<Record<AuthoringStepKey, readonly AuthoringStep
   experiments: ["build_experiment_environment"],
 };
 
-/** The REE's word on its steps, as the document ships it: those not named are blocked. */
 export function authoringProgress(
   statuses: Partial<Record<AuthoringStepKey, AuthoringStepStatus>> = {},
   next?: AuthoringStepKey,

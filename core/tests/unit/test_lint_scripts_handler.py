@@ -1,10 +1,3 @@
-"""Unit coverage for the lint_scripts operations handler.
-
-Runs the handler against an REE in a tmp root and covers the validation guard,
-reading scripts out of the overlay, and the distinction between a script that is
-absent and one that is empty.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -70,8 +63,6 @@ def test_a_written_script_is_read_from_the_overlay_and_reported_on(
 
 
 def test_an_unwritten_script_is_listed_rather_than_reported_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # "Nothing written yet" and "written, and says nothing" are different things
-    # to tell an author, so an absent script never becomes an empty report.
     _store_at(tmp_path, monkeypatch)
 
     result = _run(ReeLayout(root=tmp_path), _args("build_experiment_environment"))
@@ -82,8 +73,6 @@ def test_an_unwritten_script_is_listed_rather_than_reported_on(tmp_path: Path, m
 
 
 def test_lint_needs_no_acquired_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Unlike inference, which scans upstream: a script can be checked from the
-    # moment it is typed, before any source exists.
     _store_at(tmp_path, monkeypatch)
     upstream = tmp_path / "upstream"
     if upstream.is_dir():

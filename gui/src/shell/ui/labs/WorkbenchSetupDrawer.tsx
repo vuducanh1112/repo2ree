@@ -16,19 +16,10 @@ import { Notice } from "../shared/components/Notice";
 import styles from "./WorkbenchSetupDrawer.module.css";
 
 interface WorkbenchSetupDrawerProps {
-  /** The lab the REE will be kept in — already chosen in the grid. */
   lab: Lab;
-  /** Arrived from "Load existing REE": a bundle is required before provisioning. */
   loadRequested: boolean;
 }
 
-/**
- * Everything between choosing a lab and having a workbench: what
- * the bench starts with, and the run that brings it online. It lives in the
- * canvas's drawer because that is what the drawer is for — the surface where
- * one chosen thing is configured and acted on.
-
- */
 export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawerProps) {
   const navigate = useNavigate();
   const runsClient = useReeRunsClient();
@@ -36,27 +27,18 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [log, setLog] = useState<LogEntry | null>(null);
-  // An REE can start blank or be a downloaded bundle restored onto the bench.
-  // The bundle is chosen here rather than on the landing screen because the
-  // load runs on the workbench this step provisions.
   const [bundle, setBundle] = useState<File | null>(null);
 
   async function handleProvision() {
     setLoading(true);
     setError(null);
     const startedTs = appShellPorts.clock.nowIso();
-    // Preamble lines we own locally; the run's streamed log lines are appended
-    // after these on every poll update.
     const preamble: LogLine[] = [
       { type: "info", msg: "Powering up the workbench…", ts: startedTs },
       { type: "out", msg: `Location: ${lab.label}`, ts: startedTs },
     ];
     setLog({ lines: preamble, ts: startedTs });
     try {
-      // The REE's display name is owned by the Metadata page; provision with a
-      // neutral default and let the user rename it there. Provisioning runs in
-      // the background so its log streams live — observeReeRun tails the
-      // run's log feed into this drawer until it finishes.
       const { reeId, run } = await runsClient.createWorkspace("REE", lab.id);
       const result = await observeReeRun(queryClient, runsClient, {
         reeId,
@@ -64,8 +46,6 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
         onUpdate: ({ lines, ts }) => setLog({ lines: [...preamble, ...lines], ts }),
       });
       if (result.status !== "succeeded") {
-        // Prefer the typed failure reason over a bare status, so the user sees
-        // *why* provisioning failed (e.g. "Workbench unavailable").
         const reason = result.failure
           ? runFailurePresentation(result.failure).label
           : `Provisioning ${result.status}`;
@@ -85,9 +65,6 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
     }
   }
 
-  // Restore a downloaded REE onto the workbench just provisioned. Its log feed
-  // is tailed into the same console, appended after the provisioning lines the
-  // user has been watching.
   async function loadBundleOnto(reeId: string, file: File) {
     setLog((l) =>
       appendLine(
@@ -151,9 +128,6 @@ export function WorkbenchSetupDrawer({ lab, loadRequested }: WorkbenchSetupDrawe
   );
 }
 
-// Blank vs. loaded: the REE either starts empty or *is* a downloaded bundle
-// (sealed or draft) restored onto this workbench — intent, source, and the
-// author's receipts, the baseline a review reproduces against.
 function BundleChoice({
   bundle,
   disabled,

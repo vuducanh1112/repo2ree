@@ -1,16 +1,3 @@
-"""API-facing projection of a portable REE and its live file views.
-
-Everything here is read off the REE tree itself, which is why no handle for
-that tree appears on the document. A tree is addressed by its
-:class:`ReeLayout` — the value that already means "this REE lives here" — and
-the name a control plane files it under is that control plane's, owned by
-whoever resolved it. Echoing one back as a field would publish an address as
-though it were content: inside a workbench the volume is always mounted at
-``/ree``, so the only value this layer could supply is identical for every
-REE. The API's own ``ReeDocument`` carries the real handle, which the control
-plane alone knows.
-"""
-
 from __future__ import annotations
 
 from repo2ree_authoring.targets import resolve_target
@@ -47,7 +34,6 @@ def get_ree_document(layout: ReeLayout, *, include_content: bool = True) -> Work
 
 
 def get_ree_steps(layout: ReeLayout) -> ReeSteps:
-    """Where the REE at ``layout`` stands on each authoring step."""
     directory = ReeDirectory(layout)
     if not directory.manifest_exists():
         raise FileNotFoundError(f"REE not found at {layout.root}")
@@ -56,8 +42,6 @@ def get_ree_steps(layout: ReeLayout) -> ReeSteps:
 
 
 def get_ree_status(layout: ReeLayout) -> ReeStatusReport:
-    """Where the REE at ``layout`` stands: its steps, its evidence, its scripts, its revision, and the run holding
-    it."""
     directory = ReeDirectory(layout)
     if not directory.manifest_exists():
         raise FileNotFoundError(f"REE not found at {layout.root}")

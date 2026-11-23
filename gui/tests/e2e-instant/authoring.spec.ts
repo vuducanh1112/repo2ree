@@ -19,12 +19,6 @@ import {
   uploadSource,
 } from "../helpers/flow";
 
-/**
- * The authoring golden path on the instant project: every stage from an empty
- * bench to a sealed, downloaded REE, on a bench without a Docker daemon and
- * with nothing to download. Each step leaves a before/after screenshot for
- * inspection; the run's behaviour recording is checked separately.
- */
 test.describe("Instant authoring", () => {
   test("authors, seals and downloads the instant project", async ({ page }) => {
     await test.step("provision a bench without a Docker daemon", async () => {
@@ -49,7 +43,6 @@ test.describe("Instant authoring", () => {
       await expect(page.getByLabel("Build experiment environment script")).toContainText(
         /python -m venv/,
       );
-      // The script, not the page: the Environment card names docker build as what an engine is for.
       await expect(page.getByLabel("Build experiment environment script")).not.toContainText(
         /docker build/,
       );

@@ -1,5 +1,3 @@
-"""The engine probe, run for real against engines that are shell scripts on PATH."""
-
 from __future__ import annotations
 
 import shutil
@@ -22,7 +20,6 @@ def _engine(directory: Path, name: str, script: str) -> None:
 
 @pytest.fixture
 def engines(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A directory first on PATH, before only what the probe itself needs."""
     directory = tmp_path / "bin"
     directory.mkdir()
     tools = tmp_path / "tools"

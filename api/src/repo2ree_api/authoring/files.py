@@ -1,11 +1,3 @@
-"""Authoring the workspace itself: read, write, and delete REE files.
-
-The step graph never names these — writing the reserved build script is how the
-``build`` step becomes runnable, not a step of its own — but every scripted step
-passes through here, so they are their own module rather than an appendix to one
-of them.
-"""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, Response
@@ -52,11 +44,6 @@ def get_ree_file_raw_route(ree_id: str, path: str = Query(...)) -> Response:
     responses=ERROR_RESPONSES,
 )
 def write_script_route(ree_id: str, payload: WriteScriptPayload) -> FileMutationResponse:
-    """Write a text file in the REE's workspace, such as a script under ``ree-scripts/``.
-
-    ``listScriptTemplates`` says where each script belongs. ``if_match`` refuses
-    the write if the file has changed since its etag was read.
-    """
     with author_api_action("write_script", ree_id, path=payload.path):
         return _write_file(ree_id, payload)
 
@@ -64,14 +51,8 @@ def write_script_route(ree_id: str, payload: WriteScriptPayload) -> FileMutation
 def _write_file(ree_id: str, payload: WriteScriptPayload) -> FileMutationResponse:
     handle = require_handle(ree_id)
     with ree_command_span("write-file", ree_id):
-        # The if_match check rides inside the command so the workbench verifies
-        # it under the same per-REE serialization as the write — an API-side
-        # pre-read could pass and still lose to a concurrent writer.
         cmd = WriteScriptCommand(
             args=WriteScriptArgs(path=payload.path, content=payload.content, expected_etag=payload.if_match or "")
         )
         NoOutputs.model_validate(dispatch_or_fail(handle, cmd, "write-file", "Workbench write_script failed").outputs)
-        # The workbench validates a later ``if_match`` against
-        # ``workspace_content_etag``, which digests the stored bytes the same
-        # way — one shared helper so the compare cannot drift across processes.
         return FileMutationResponse(etag=digest_bytes(payload.content.encode()))

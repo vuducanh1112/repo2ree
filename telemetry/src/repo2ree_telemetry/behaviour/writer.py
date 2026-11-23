@@ -1,13 +1,3 @@
-"""Durable, owner-written behaviour journals.
-
-Each process writes one journal file per epoch: ``<process>-<epoch>.ndjson``.
-Records carry a contiguous sequence number assigned here, so a reader can prove
-that nothing between two records was lost. A record that cannot be written
-still consumes its number: a failed write becomes a visible gap, never a
-silent omission. Owners record after their own durable state change, so a
-journal can lag its owner's state but never run ahead of it.
-"""
-
 from __future__ import annotations
 
 import json
@@ -26,17 +16,12 @@ _log = logging.getLogger(__name__)
 
 type Fact = str | int | bool | None
 
-# The vocabulary these records were written against (the schema's ``x-vocabulary``).
-# Provenance only: journals are judged by what they hold. Update it when the records in
-# ``events`` are brought up to a new vocabulary.
 VOCABULARY = "sha256:4b153a7f23f100704b38fea8f45a22a6f27072cac9919cef8bbe041f45c94cda"
 
 _NAME = re.compile(r"^(?P<process>[a-z][a-z0-9-]*)-(?P<epoch>[0-9]{6})\.ndjson$")
 
 
 class Journal:
-    """The recording interface owners call. The base class records nothing."""
-
     def transition(
         self,
         owner: str,
@@ -71,7 +56,6 @@ class Journal:
         partition: str | None,
         facts: Mapping[str, Fact] | None = None,
     ) -> str | None:
-        """Record a request; returns its reference (``<journal>#<seq>``) for the receiver to cite, if written."""
         return self._message("send", owner, boundary, message, key, partition, facts)
 
     def receive(
@@ -87,7 +71,6 @@ class Journal:
         self._message("receive", owner, boundary, message, key, partition, facts)
 
     def abandon(self, owner: str, boundary: str, key: str, *, partition: str | None, reason: str) -> None:
-        """The sender stopped waiting without receiving any response."""
         self._message("abandon", owner, boundary, None, key, partition, {"reason": reason})
 
     def close(self, *, final: bool = False) -> None:
@@ -116,7 +99,6 @@ class Journal:
         )
 
     def _record(self, record: dict[str, Any]) -> str | None:
-        """Write one record; its reference when it was written, else None."""
         return None
 
 
@@ -137,7 +119,6 @@ class FileJournal(Journal):
             self.epoch = max(epochs, default=0) + 1
             self.path = directory / f"{process}-{self.epoch:06d}.ndjson"
             try:
-                # Exclusive creation: two processes can never share an epoch.
                 self._stream = self.path.open("x", encoding="utf-8")
                 break
             except FileExistsError:
@@ -159,7 +140,6 @@ class FileJournal(Journal):
         return f"{self.instance}/{self.path.stem}" if self.instance else self.path.stem
 
     def close(self, *, final: bool = False) -> None:
-        """End the journal; ``final`` when this owner will not resume, so what it still holds is held for good."""
         with self._lock:
             if self._closed:
                 return
@@ -176,7 +156,6 @@ class FileJournal(Journal):
         return None if seq is None else f"{self.id}#{seq}"
 
     def _append(self, record: dict[str, Any]) -> int | None:
-        """Write one record; its sequence number when it was written, else None."""
         with self._lock:
             if self._closed:
                 _log.error("behaviour journal %s is closed; dropping %s", self.path.name, record.get("kind"))
@@ -192,7 +171,6 @@ class FileJournal(Journal):
                 self._stream.flush()
                 os.fsync(self._stream.fileno())
             except (OSError, ValueError):
-                # The sequence number stays consumed, so the loss is visible to readers.
                 _log.exception("behaviour journal %s lost seq %d", self.path.name, self._sequence)
                 return None
             return self._sequence
@@ -203,11 +181,6 @@ _current_lock = threading.Lock()
 
 
 def open_journal(directory: Path, process: str, hosts: Iterable[str] = (), instance: str | None = None) -> FileJournal:
-    """Start this process's journal epoch; replaces (and closes) any previous one.
-
-    ``instance`` names which of a process's instances this is, where several write journals of
-    their own at once: the store a workbench serves.
-    """
     global _current
     opened = FileJournal(directory, process, hosts, instance)
     with _current_lock:
@@ -217,7 +190,6 @@ def open_journal(directory: Path, process: str, hosts: Iterable[str] = (), insta
 
 
 def close_journal(*, final: bool = False) -> None:
-    """End this process's journal; ``final`` when the process will not resume (see ``FileJournal.close``)."""
     global _current
     with _current_lock:
         previous, _current = _current, Journal()

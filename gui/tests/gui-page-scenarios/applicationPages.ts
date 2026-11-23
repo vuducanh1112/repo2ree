@@ -32,16 +32,12 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     },
   },
   {
-    // Setup has no route of its own any more: it is the drawer choosing a lab
-    // opens, so the scenario has to choose one to reach it.
     name: "workbench setup drawer",
     screenshot: "workbench-setup.png",
     prepare: async (page) => {
       await page.goto("/lab-location");
       await page.getByRole("button", { name: "Oslo lab — available" }).click();
       await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
-      // Every image the lab offers is on screen at once, named by its ref, and
-      // the lab's first one already reading as chosen.
       await expect(page.getByText("docker.io/library/python:3.12-slim")).toBeVisible();
       await expect(page.getByRole("button", { name: /python:3\.12-slim/ })).toHaveAttribute(
         "aria-pressed",
@@ -81,8 +77,6 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
     prepare: async (page) => {
       await openVisualWorkspace(page);
       await page.getByRole("button", { name: "Switch to review workflow" }).click();
-      // The strip carries the graph; its evidence opens in the drawer beside
-      // the canvas, so the shot needs both surfaces.
       await expect(page.getByRole("navigation", { name: "Review workflow" })).toBeVisible();
       await page
         .getByRole("button", { name: /^Open Build Experiment Environment review evidence/ })
@@ -136,8 +130,6 @@ export const applicationPageScenarios: ApplicationPageScenario[] = [
   workspaceScenario("archive", "archive.png", "Archive", async (page) => {
     await expect(page.getByRole("heading", { name: "Deposit & Share" })).toBeVisible();
   }),
-  // The fixture REE carries every step-backed cable, so the preflight is clean
-  // and the seal is offered on its own terms rather than as an override.
   workspaceScenario("seal readiness", "seal-ready.png", "Seal", async (page) => {
     await expect(page.getByRole("button", { name: "Seal REE" })).toBeVisible();
   }),

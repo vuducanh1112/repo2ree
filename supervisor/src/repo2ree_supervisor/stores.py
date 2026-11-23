@@ -1,11 +1,3 @@
-"""The stores an operator registered, and the tokens their workbenches present.
-
-A store is a directory of REEs on some machine. The workbench serving it dials in with a
-token minted for that store alone, so a token never admits a workbench to another store,
-and revoking it shuts that workbench out. Only token digests are kept, in a file readable
-by its owner only.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -21,9 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_supervisor.json_file import write_json_atomic
 
-# A store id names a store in URLs and on the command line: one plain segment.
 _STORE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
-# How much of a token its owner sees again, to name it when revoking.
 TOKEN_PREFIX_LENGTH = 8
 
 
@@ -75,7 +65,6 @@ class StoreRegistry:
             return sorted(self._read()[0].values(), key=lambda record: record.store_id)
 
     def mint_token(self, store_id: str) -> str:
-        """A new token admitting a workbench to ``store_id``; shown once, kept only as a digest."""
         with self._lock:
             stores, tokens = self._read()
             if store_id not in stores:
@@ -90,7 +79,6 @@ class StoreRegistry:
             return token
 
     def authenticate(self, token: str, store_id: str) -> bool:
-        """Whether ``token`` was minted for ``store_id`` and is not revoked."""
         if not token:
             return False
         digest = _digest(token)
@@ -102,7 +90,6 @@ class StoreRegistry:
         )
 
     def revoke(self, prefix: str) -> int:
-        """Revoke every live token starting with ``prefix``; how many."""
         with self._lock:
             stores, tokens = self._read()
             revoked = 0

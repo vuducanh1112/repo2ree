@@ -17,7 +17,6 @@ def overview(root: Path, name: str, when: float) -> Path:
 def test_the_newest_overviews_stay_and_so_does_the_one_latest_points_to(tmp_path: Path) -> None:
     oldest, old, _newer, _newest = (overview(tmp_path, f"rev{index}", 1000 + index) for index in range(4))
     (tmp_path / "latest").symlink_to(oldest.name)
-    # Not an overview: never touched, however old.
     (tmp_path / "notes").mkdir()
     os.utime(tmp_path / "notes", (1, 1))
 

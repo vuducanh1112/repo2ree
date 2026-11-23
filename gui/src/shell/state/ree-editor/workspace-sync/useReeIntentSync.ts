@@ -31,17 +31,6 @@ interface UseReeIntentSyncArgs {
   ree: ReeEditorViewModel;
   reeId: string;
   provisioned: boolean;
-  /**
-   * The REE is sealed, and therefore read-only.
-   *
-   * Not a save that might fail — a request the domain forbids: the backend
-   * refuses to author a sealed REE at all. Sealing hydrates the store with the
-   * backend's own copy of the REE, whose spec need not round-trip to the same
-   * patch the local draft produced, and without this that difference reads as
-   * an unsaved edit. The autosave then PATCHes a document that can never accept
-   * it, the draft stays dirty forever, and the navigation guard below turns
-   * that into a workspace nobody can leave.
-   */
   sealed: boolean;
   hydrateWorkspace: (workspace: HydratedWorkspaceSnapshot) => void;
 }
@@ -129,11 +118,6 @@ export function useReeIntentSync({
 
   const buildReePatch = useCallback(() => toReePatchFromSlices(toPatchSlices(ree)), [ree]);
 
-  // Single owner of the PATCH + refresh round-trip, shared by the debounced
-  // autosave and the explicit flush() below. Publishing the in-flight promise
-  // on pendingSyncRef lets a flush() await it instead of racing a concurrent
-  // PATCH. Intentionally does NOT swallow errors — callers decide (the
-  // autosave retries on next edit; flush() surfaces the failure to its caller).
   const runReeIntentSync = useCallback(
     (patch: ReturnType<typeof buildReePatch>, patchKey: string): Promise<void> => {
       const sync = (async () => {
@@ -155,9 +139,6 @@ export function useReeIntentSync({
         }
       })();
       pendingSyncRef.current = sync;
-      // `finally()` creates a second promise. Consume rejection on that cleanup
-      // branch while leaving `sync` itself rejected for flush/autosave callers;
-      // otherwise a failed PATCH produces an unrelated unhandled rejection.
       void sync
         .finally(() => {
           if (pendingSyncRef.current === sync) {
@@ -170,15 +151,7 @@ export function useReeIntentSync({
     [updateReeIntent, refreshWorkspaceFiles],
   );
 
-  // Force the latest local edits to the backend now, bypassing the debounce.
-  // Callers that depend on a freshly-persisted draft (e.g. running an
-  // experiment, which the backend validates against the saved draft) await
-  // this first so they never race the 300ms autosave timer below.
   const flush = useCallback(async () => {
-    // A sealed REE has nothing to save and nothing that could be saved, so this
-    // resolves rather than rejecting: callers — the autosave timer, the
-    // navigation guard, the seal operation itself — all read a rejection as
-    // "the draft is at risk", which a frozen REE never is.
     if (sealed) return;
     if (provisioned && hydration.status !== "ready") {
       throw hydration.status === "error"
@@ -186,10 +159,6 @@ export function useReeIntentSync({
         : new Error("The workspace is still loading");
     }
 
-    // Drain any in-flight sync(s) before issuing our own so we never run two
-    // concurrent PATCHes. A `while` (not `if`) is required: two flush() calls
-    // can both await the same pending sync, so after it settles we re-check —
-    // by then an earlier flush may have started a fresh sync we must wait on.
     while (pendingSyncRef.current) {
       await pendingSyncRef.current;
     }
@@ -275,9 +244,6 @@ export function useReeIntentSync({
 
     syncTimerRef.current = setTimeout(() => {
       syncTimerRef.current = null;
-      // `flush` serializes behind an in-flight PATCH and publishes failures in
-      // `syncState`; consuming the rejection here only prevents an unrelated
-      // unhandled-promise report from the background branch.
       void flush().catch(() => {});
     }, 300);
 
@@ -301,8 +267,6 @@ export function useReeIntentSync({
     refreshWorkspaceFiles,
     flush,
     syncState,
-    // A frozen REE is never dirty: there is no edit to protect, so nothing
-    // here may hold a navigation back.
     isDirty: !sealed && syncState.phase !== "clean",
     retrySync: flush,
   };

@@ -1,20 +1,3 @@
-"""Docker image-config command candidates for the runtime-command fork.
-
-Turns the image's declared ``Entrypoint``/``Cmd`` — parsed once when the artifact
-was inspected and carried here on the ``image_command`` binding — into *candidate*
-commands: suggestions the author confirms, never an automatic selection.
-Exec-form (JSON) values become argv candidates; shell-form values are offered
-verbatim as shell candidates (never rewritten into guessed argv) and flag that
-the experiment environment needs a shell. Plausibly long-running commands (servers, daemons) are
-flagged too.
-
-The candidates ride into rendering as commented ``set --`` examples. When no
-``image_command`` binding is present (a contract established from an unchanged
-generated build, not an inspected artifact) or it declares no command, the
-candidate set is simply empty and the fail-closed scaffold still renders. This
-check reads only the already-parsed binding — it never re-opens the archive.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -32,7 +15,6 @@ from repo2ree_protocol.inference import (
     ShellCommandCandidate,
 )
 
-# Substrings that mark a plausibly persistent command (server / daemon).
 _LONG_RUNNING_HINTS = ("serve", "server", "runserver", "gunicorn", "uvicorn", "daemon", "http.server")
 
 

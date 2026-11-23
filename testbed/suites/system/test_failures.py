@@ -1,10 +1,3 @@
-"""Stages that fail, by the author's script or by the system around it.
-
-A failure must leave no evidence behind: no receipt for what did not happen,
-and the REE as it stood before. Faults are injected by real means only: a
-script that fails, a cancel request, a workbench container the stack kills.
-"""
-
 from __future__ import annotations
 
 import time
@@ -43,7 +36,6 @@ def test_failing_build_leaves_no_receipt(api: Api, new_ree: Callable[..., str]) 
     assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
     assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
 
-    # The author fixes the script; the same REE then builds.
     assert api.build_experiment_environment(ree_id)["status"] == "succeeded"
     assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
 
@@ -65,12 +57,10 @@ def test_failing_activation_and_unverified_experiment_leave_no_receipts(api: Api
 
     assert api.activate(ree_id, "#!/usr/bin/env sh\nexit 7\n")["status"] == "failed"
     assert api.ree(ree_id)["subject"]["receipts"]["activate_experiment_environment"] is None
-    # An experiment runs inside the activation, so only once the activation has been tested.
     assert api.experiment(ree_id)["status"] == "failed"
     assert EXPERIMENT not in api.ree(ree_id)["subject"]["receipts"]["experiments"]
 
     assert api.activate(ree_id, recipe("activate_experiment_environment.sh"))["status"] == "succeeded"
-    # The run succeeds but its claimed result does not hold: the verify script decides.
     wrong_claim = recipe("experiment.verify.sh").replace("Hello, World!", "Goodbye, World!")
     assert api.experiment(ree_id, verify=wrong_claim)["status"] == "failed"
     assert EXPERIMENT not in api.ree(ree_id)["subject"]["receipts"]["experiments"]
@@ -92,14 +82,11 @@ def test_canceling_a_running_build(api: Api, new_ree: Callable[..., str]) -> Non
     assert settled["status"] == "canceled"
     assert time.monotonic() - started < 30, "cancel waited for the script instead of stopping it"
     assert api.ree(ree_id)["subject"]["receipts"]["build_experiment_environment"] is None
-    # The attempt ended, it was not abandoned: captured, and canceled. (That its capture changed
-    # nothing is witnessed from Git by the behaviour check: canceled-attempts-change-nothing.)
     attempts = [
         item for item in api.get(f"/api/v1/rees/{ree_id}/history")["operations"] if item["run_id"] == run["run_id"]
     ]
     assert [(item["operation_status"], item["capture_status"]) for item in attempts] == [("canceled", "captured")]
 
-    # The workbench is still usable after the canceled build.
     assert api.build_experiment_environment(ree_id)["status"] == "succeeded"
 
 
@@ -115,19 +102,16 @@ def test_a_store_outlives_its_workbench_killed_during_a_build(api: Api, new_ree:
         assert time.monotonic() < deadline, "the build never started"
         time.sleep(0.5)
 
-    # Killed as a crash, and started again as its service manager would.
     fault(KillWorkbench(ree_id=ree_id))
 
     settled = api.wait(ree_id, run, timeout=90)
     assert settled["status"] == "failed"
-    # The REE lives in the store, not in the workbench: it is there, as it was, once its workbench is back.
     deadline = time.monotonic() + RECONNECT_BOUND
     while (answer := api.request("GET", f"/api/v1/rees/{ree_id}", expect=None)).status_code == 503:
         assert time.monotonic() < deadline, answer.text
         time.sleep(1)
     assert answer.status_code == 200, answer.text
     assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "missing"
-    # Its executor died with it, so the restarted workbench had core roll the attempt back and capture it.
     attempts = [
         item for item in api.get(f"/api/v1/rees/{ree_id}/history")["operations"] if item["run_id"] == run["run_id"]
     ]
@@ -142,7 +126,6 @@ def test_an_ree_refuses_another_command_while_one_runs_in_it(api: Api, new_ree: 
     run = api.post(f"/api/v1/rees/{ree_id}/build-experiment-environment")
     api.wait_for_status(ree_id, run["run_id"], "running")
 
-    # It waits a minute for the build to end, which takes two, and is refused.
     busy = api.request(
         "POST",
         f"/api/v1/rees/{ree_id}/write-script",

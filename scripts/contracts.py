@@ -1,15 +1,3 @@
-"""The repository's generated contracts: each file, the function that renders it, and what it binds.
-
-A contract is correct when its file equals what its render function returns now, however the file was written:
-by a recipe, by ``write``, or by hand. ``check`` holds every contract to that, and holds ``contracts/`` to holding
-nothing but contracts and fixtures: the files written by hand, each under a ``fixtures/`` directory. The names the
-contracts spell are held to the catalogue of operations by the vocabulary graph (``python -m scripts.vocabulary``).
-
-    python -m scripts.contracts write [NAME...]   # every contract, in the order below, or the named ones
-    python -m scripts.contracts check             # exit 1 on a missing, stale or unaccounted file
-    python -m scripts.contracts export            # the registry as JSON (repo2ree-contracts/1)
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -78,7 +66,6 @@ def behaviour_schema() -> str:
 
 
 def openapi_types() -> str:
-    """The GUI's TypeScript view of the committed OpenAPI contract: if that is stale, ``check`` fails on it first."""
     tool = ROOT / OPENAPI_TYPESCRIPT
     if not tool.is_file():
         raise RuntimeError(f"{OPENAPI_TYPESCRIPT} is missing: run `npm ci` in gui/")
@@ -90,7 +77,6 @@ def openapi_types() -> str:
     return done.stdout
 
 
-# The order `write` with no names follows: a contract rendered from another comes after it.
 REGISTRY: tuple[Contract, ...] = (
     Contract(
         Name.REE_SCHEMA,
@@ -185,7 +171,6 @@ class Problem:
 def write(
     names: Sequence[Name] = (), *, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT
 ) -> list[PurePosixPath]:
-    """Write the named contracts, or all of them, in registry order; the paths whose content changed."""
     written: list[PurePosixPath] = []
     for contract in registry:
         if names and contract.name not in names:
@@ -245,7 +230,6 @@ def export(*, registry: Sequence[Contract] = REGISTRY, root: Path = ROOT) -> str
 
 
 def _files(root: Path, directory: PurePosixPath) -> list[PurePosixPath]:
-    """The files under ``directory`` that a commit would hold: tracked or unignored, and present."""
     listed = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", str(directory)],
         cwd=root,
@@ -257,7 +241,7 @@ def _files(root: Path, directory: PurePosixPath) -> list[PurePosixPath]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="python -m scripts.contracts", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog="python -m scripts.contracts")
     commands = parser.add_subparsers(dest="command", required=True)
     writing = commands.add_parser("write", help="write every contract, or the named ones")
     writing.add_argument("names", nargs="*", type=Name, choices=list(Name), metavar="NAME")

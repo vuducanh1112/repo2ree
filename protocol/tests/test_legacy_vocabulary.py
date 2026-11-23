@@ -1,5 +1,3 @@
-"""Keep the removed runtime-agent vocabulary from returning to active surfaces."""
-
 from __future__ import annotations
 
 import re
@@ -32,11 +30,9 @@ SCAN_FILES = (
 )
 TEXT_SUFFIXES = {".css", ".json", ".mjs", ".nix", ".py", ".sh", ".toml", ".ts", ".tsx", ".yml"}
 
-# Construct the retired term so this guard does not have to exempt itself.
 RETIRED = "ag" + "ent"
 VOCABULARY = re.compile(rf"(?i)\b{RETIRED}s?\b|{RETIRED}_|repo2ree_{RETIRED}")
 
-# No retired experiment environment vocabulary is allowed in active code or tests.
 ALLOWED_MATCHES: Counter[tuple[str, str]] = Counter()
 
 

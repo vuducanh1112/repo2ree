@@ -1,17 +1,3 @@
-"""The single wiring of the build DAG's checks, resolver, and renderers.
-
-Both the registry (the deployment surface) and ``build_regeneration`` (which
-re-runs the build DAG to establish an experiment environment contract before the artifact
-exists) need the exact set of checks/resolver/renderers the build graph walks.
-Keeping that set in one place means the two callers can never drift: adding a
-build strategy here updates both at once, so ``unchanged_generated_build`` can
-never compute an expected body from a different wiring than the registry serves.
-
-This module imports only build-side pieces — never the run-side checks/renderers
-or the registry — so ``build_regeneration`` can import it without the import
-cycle that pulling in the full registry would create.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.checks.container_engine import ContainerEngineCheck

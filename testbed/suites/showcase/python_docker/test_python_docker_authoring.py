@@ -1,5 +1,3 @@
-"""The golden path over the API: one REE through every authoring stage, as the GUI's python-docker showcase walks it."""
-
 from __future__ import annotations
 
 import re
@@ -20,7 +18,6 @@ CPU = Cpu(vendor="Intel", cores_per_cpu=24)
 
 
 def authored(client: Client, new_ree: NewRee) -> str:
-    """An REE authored through every stage up to its seal, each stage's evidence current."""
     ree_id: str = new_ree()
 
     client.upload_source(ree_id, F)
@@ -99,7 +96,6 @@ def test_provision_through_seal_offline_reproduction_and_release(client: Client,
 
 
 def test_the_example_ree_is_sealed_without_its_experiment_environment(client: Client, new_ree: NewRee) -> None:
-    """The REE examples/rees/ree-hello-world.zip is: its image is hundreds of MB, too large to version."""
     ree_id = authored(client, new_ree)
     sealed = client.seal(ree_id, experiment_environment_included=False, watch=F.watch)
     assert sealed.status == "succeeded"

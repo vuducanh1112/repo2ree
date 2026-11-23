@@ -41,8 +41,6 @@ def _wait_pid_gone(pid: int, timeout: float = 5.0) -> bool:
 
 
 def _cancel_once_pid_recorded(pid_file: Path) -> CancelCheck:
-    """is_canceled that flips true as soon as the child has recorded its pid."""
-
     def is_canceled() -> bool:
         return pid_file.is_file() and pid_file.read_text().strip() != ""
 
@@ -50,11 +48,7 @@ def _cancel_once_pid_recorded(pid_file: Path) -> CancelCheck:
 
 
 def test_cancel_kills_whole_process_tree(tmp_path):
-    """A cooperative child (and its parent shell) die when the run is canceled."""
     pid_file = tmp_path / "child.pid"
-    # Background a child that records its pid, then the shell waits on it. The
-    # child is a descendant, not the shell itself — the point is that signalling
-    # only the shell leader would leave it orphaned.
     script = f"sleep 30 & echo $! > {pid_file}; wait"
 
     result = run_streaming_process(
@@ -69,13 +63,8 @@ def test_cancel_kills_whole_process_tree(tmp_path):
 
 
 def test_cancel_escalates_to_sigkill_when_sigterm_ignored(tmp_path, monkeypatch):
-    """A process that traps SIGTERM is still killed after the grace deadline."""
-    # Keep the test fast: shrink the SIGTERM->SIGKILL window the ladder waits.
     monkeypatch.setattr(run_script, "CANCEL_GRACE_SECONDS", 0.5)
     pid_file = tmp_path / "child.pid"
-    # Run a script (avoids nested-shell quoting) whose process ignores TERM and
-    # loops forever, so only SIGKILL to the group can stop it. It records its own
-    # pid ($$) so we can watch that exact process.
     stubborn = tmp_path / "stubborn.sh"
     stubborn.write_text(f"trap '' TERM\necho $$ > {pid_file}\nwhile true; do sleep 0.2; done\n")
 
@@ -93,16 +82,7 @@ def test_cancel_escalates_to_sigkill_when_sigterm_ignored(tmp_path, monkeypatch)
 
 
 def test_truncated_output_is_reported_rather_than_returned_quietly(tmp_path, monkeypatch):
-    """A grandchild holding the pipe open past the drain window is announced.
-
-    Everything downstream — run log, receipt, span failure tails — is built from
-    the captured buffers, so a short read that says nothing reads as "the script
-    printed nothing more", which is the one thing it does not mean.
-    """
-    # Keep the test fast: shrink the window the readers get to drain.
     monkeypatch.setattr(run_script, "READER_DRAIN_SECONDS", 0.2)
-    # The parent exits immediately; the backgrounded subshell inherits its
-    # stdout and holds the pipe open well past the drain deadline.
     holder = tmp_path / "holder.sh"
     holder.write_text("printf 'first\\n'\n(sleep 2; printf 'late\\n') &\n")
 
@@ -113,9 +93,7 @@ def test_truncated_output_is_reported_rather_than_returned_quietly(tmp_path, mon
     )
 
     assert result.returncode == 0
-    # What was read before the deadline is still returned.
     assert "first" in result.stdout
-    # ...and the fact that more may be missing is said out loud.
     assert any(stream == "system" and level == "warn" and "truncated" in msg for stream, level, msg in logged), (
         f"truncation was not reported: {logged}"
     )

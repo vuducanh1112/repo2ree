@@ -1,12 +1,4 @@
-/* Step 1 of REE creation: choose the lab that will host the workbench.
- *
- * App chrome, not a glass page — this screen runs before any REE exists. The
- * bays it lists are instruments and own their own materials (LabCell); the rail
- * and the pager around them are built from chrome roles like every other
- * pre-workspace screen. */
-
 .bench {
-  /* The setup drawer docks absolutely inside this landmark. */
   position: relative;
   display: flex;
   align-items: stretch;
@@ -17,8 +9,6 @@
   background: var(--chrome-bg);
   font-family: var(--font-sans);
 }
-
-/* --- Left rail: the question, the specimen, the confirmation ------------- */
 
 .rail {
   flex: none;
@@ -92,8 +82,6 @@
   color: var(--chrome-text-muted);
 }
 
-/* --- "What is a lab?" ---------------------------------------------------- */
-
 .why {
   border-radius: var(--radius-control);
   border: 1px solid var(--chrome-border);
@@ -139,8 +127,6 @@
   font-weight: var(--weight-semibold);
 }
 
-/* Takes the rail's slack so the specimen centres between the question above it
- * and the confirmation panel pinned below. */
 .podBay {
   flex: 1;
   position: relative;
@@ -148,10 +134,6 @@
   overflow: hidden;
 }
 
-/* The pod's box is wider than the rail. Alignment can't centre it: an
- * overflowing grid or flex item is clamped to the start edge rather than
- * hanging off both, which offsets it by half the overhang. A transform has no
- * such rule, so the surplus padding is clipped evenly on both sides. */
 .podFrame {
   position: absolute;
   left: 50%;
@@ -159,8 +141,6 @@
   display: flex;
   transform: translate(-50%, -50%);
 }
-
-/* --- Right: filter, grid, pager ------------------------------------------ */
 
 .fleet {
   flex: 1;
@@ -215,7 +195,6 @@
   cursor: pointer;
 }
 
-/* No left chevron in the icon set; the right one, turned. */
 .pageBack {
   transform: rotate(180deg);
 }

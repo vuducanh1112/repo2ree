@@ -1,26 +1,3 @@
-"""The whole REE authoring pipeline over HTTP, captured as one trace record.
-
-The lifecycle test beside this one proves the HTTP envelope on a short path
-(source in, file written, sealed). This one exists for a different reason: to
-drive *every* authoring stage in one run so the trace file holds the complete
-flow, and a reader can follow one REE from an empty store directory to a sealed
-bundle. Its assertions are deliberately shallow — that each stage reaches a
-terminal ``succeeded`` and leaves the evidence the next stage needs — because
-what each handler *does* is already pinned by the unit and core suites. What is
-not pinned anywhere else is that the stages compose over the real transport.
-
-Deliberately not a recording. The demo walkthrough
-(``testbed/suites/walkthrough/api_walkthrough.py``) drives the same surface for a human
-audience, with narration and asciinema; it needs a live stack and a person to
-read it. This runs in CI and leaves a span record behind
-(``test-artifacts/python/services/api-integration/``), which is what the trace journal
-renders.
-
-Scripts here are trivial by intent. A real Dockerfile build is the walkthrough's
-job and needs a network and minutes; this one wants the *shape* of the flow —
-which stage feeds which — at a cost CI can pay on every run.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -42,14 +19,6 @@ EXPERIMENT_SCRIPT = f"ree-scripts/experiments/{EXPERIMENT_NAME}.sh"
 EXPERIMENT_ENVIRONMENT_ARTIFACT = "runtime.tar"
 EXPERIMENT_OUTPUT = "results/demo.txt"
 
-# A real image build, because the SBOM scanner reads ``docker-archive:`` — a
-# plain tar is not an experiment environment it can open. Built ``FROM scratch`` so the bench
-# needs no network and the whole stage stays inside the seconds CI can afford;
-# the walkthrough is where a realistic base image gets exercised.
-#
-# A module constant rather than a literal at the call site because the staleness
-# stage rewrites this file: the edit has to be a *change* to the same script, so
-# both writes must agree on what the original was.
 BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT_BODY = (
     "#!/bin/sh\n"
     "set -eu\n"
@@ -67,13 +36,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-# ================================================
-# Helpers
-# ================================================
-
-
 def _project_zip() -> bytes:
-    """A small source tree with a dependency manifest for the evaluate stage."""
     buffer = BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("README.md", "# pipeline demo\n")
@@ -83,13 +46,6 @@ def _project_zip() -> bytes:
 
 
 def _await_run(client: TestClient, ree_id: str, run: dict[str, Any], *, what: str) -> None:
-    """Poll one background run to a terminal status, failing with its log tail.
-
-    A stage that fails here is almost never wrong in the way the status says —
-    the reason is in the run log, and printing it is the difference between a
-    one-line assertion failure and a debugging session against a container that
-    no longer exists.
-    """
     run_id = run["run_id"]
     settled = settle_run(client_getter(client), ree_id, run_id, NETWORK_RUN)
     status = settled.run["status"]
@@ -136,35 +92,22 @@ def _upload_source(client: TestClient, ree_id: str, data: bytes) -> dict[str, An
     return summary
 
 
-# ================================================
-# Flow
-# ================================================
-
-
 def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmstrip: ReeFilmstrip) -> None:
     ree_id = ree["ree_id"]
-    # One frame per authoring act, recording what the REE became. The labels
-    # are the stage names above them, so the capture reads as this test does.
     filmstrip.frame(ree_id, "created")
 
-    # --- source ---------------------------------------------------------
     _await_run(client, ree_id, _upload_source(client, ree_id, _project_zip()), what="acquire_source")
 
     filmstrip.frame(ree_id, "acquire_source")
 
-    # --- evaluate: reads the declared dependencies off the source --------
     _stage(client, ree_id, "evaluate-reproducibility", {}, what="evaluate")
 
     filmstrip.frame(ree_id, "evaluate")
 
-    # --- hardware: an observation of the machine this runs on ------------
     _stage(client, ree_id, "observe-hardware", {}, what="hbom")
 
     filmstrip.frame(ree_id, "hbom")
 
-    # --- build: declare where the experiment environment lands, then produce it ---------
-    # The declaration comes first on purpose: the build receipt binds this path
-    # to what it finds there, so a build with nowhere to look is refused.
     _put_file(client, ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT_BODY)
     definition = _patch_definition(
         client, ree_id, {"experiment_environment": {"artifact_path": EXPERIMENT_ENVIRONMENT_ARTIFACT}}
@@ -180,13 +123,6 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     filmstrip.frame(ree_id, "build_experiment_environment")
 
-    # --- staleness: a receipt stops speaking for what it describes -------
-    # Editing the build script after its receipt exists is the ordinary way an
-    # REE goes stale, and until here nothing exercised it over the transport.
-    # Placed before the SBOM so only the experiment environment step has evidence to lose: the
-    # scan and the cross-check have not run, so the edit stales exactly one
-    # step, and the rebuild below returns it to current before anything
-    # downstream is built on it.
     _put_file(
         client,
         ree_id,
@@ -205,24 +141,18 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     assert recovered["build_experiment_environment"]["evidence"] == "current", recovered["build_experiment_environment"]
     filmstrip.frame(ree_id, "rebuild")
 
-    # --- sbom: scan what the build produced, then reconcile it -----------
-    # The scan reads the experiment environment archive, not the source; the cross-check then
-    # compares that against the dependencies the evaluate stage read off the
-    # source, so it needs both of the stages above to have run.
     _stage(client, ree_id, "generate-sbom", {}, what="generate_sbom")
     filmstrip.frame(ree_id, "generate_sbom")
     _stage(client, ree_id, "cross-check-sbom", {}, what="sbom cross-check")
 
     filmstrip.frame(ree_id, "sbom cross-check")
 
-    # --- activation: does it enter the experiment environment and hand over ---------------
     _put_file(client, ree_id, ACTIVATE_SCRIPT, '#!/bin/sh\nset -eu\ntar -tf runtime.tar > /dev/null\nexec "$@"\n')
     filmstrip.frame(ree_id, "write activation")
     _stage(client, ree_id, "activate-experiment-environment", {}, what="activate_experiment_environment")
 
     filmstrip.frame(ree_id, "activate_experiment_environment")
 
-    # --- experiment: the runnable the REE exists to reproduce ------------
     definition = _patch_definition(
         client,
         ree_id,
@@ -240,12 +170,6 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
 
     filmstrip.frame(ree_id, "experiment")
 
-    # --- catalog: what a reader is told this REE is ----------------------
-    # The one authoring act that rests on nothing and that nothing rests on:
-    # citation metadata is not evidence, so writing it moves no audit verdict.
-    # Placed last because that is when an author knows what they have — and it
-    # is the case that proves the audit answers for evidence rather than for
-    # every edit the definition accepts.
     before = client.get(f"/api/v1/rees/{ree_id}/state").json()["audit"]
     definition = _patch_definition(
         client,
@@ -271,7 +195,6 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     assert after == before, "describing an REE is not evidence and must not disturb the audit"
     filmstrip.frame(ree_id, "describe")
 
-    # --- seal: refused if any receipt above has gone stale ---------------
     response = client.post(
         f"/api/v1/rees/{ree_id}/seal-ree",
         json={"include_source": True, "include_experiment_environment": True, "include_results": True},
@@ -282,7 +205,6 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
     assert sealed["seal"]["ree_digest"].startswith("sha256:")
     filmstrip.frame(ree_id, "sealed")
 
-    # Every stage that ran left a receipt the seal is now bound to.
     receipts = sealed["subject"]["receipts"]
     assert receipts["acquire_source"] is not None
     assert receipts["evaluate_reproducibility"] is not None
@@ -319,8 +241,6 @@ def test_full_authoring_pipeline(client: TestClient, ree: dict[str, Any], filmst
             assert len(payload) == obj["size"]
             assert hashlib.sha256(payload).hexdigest() == oid
 
-    # Load the downloaded release into a fresh REE through the real transport (a sealed REE
-    # loads nothing). The journal arrives with it, and the load contributes a new completed attempt.
     downloaded = response.content
     created = client.post("/api/v1/rees", json={"name": "api-itest-reload", "store_id": STORE_ID})
     assert created.status_code == 200, created.text

@@ -1,12 +1,3 @@
-"""Every shipped starter template lints clean, and the known-bad shapes do not.
-
-This is the test that keeps the catalog honest. The templates are what repo2ree
-hands an author to start from; a rule that fires on one of them is either a bug
-in the rule or a bug in the template, and either way somebody has to look. The
-counterpart cases below are the documented pitfalls the guides warn about, each
-pinned to the code that names it.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,9 +16,6 @@ from repo2ree_ree.reserved_paths import (
 
 _TEMPLATES = Path(__file__).resolve().parents[2] / "authoring/src/repo2ree_authoring/templates"
 
-# Each template names its experiment environment, so an REE declaring that path is the one it
-# is written for. Declaring something else would make every template "wrong" for
-# a reason that is about the REE, not about the template.
 _DOCKER = ScriptDeclarations(experiment_environment_path="runtime.tar")
 _VENV = ScriptDeclarations(experiment_environment_path="runtime-venv.tar.gz")
 
@@ -71,9 +59,6 @@ def test_a_run_or_build_template_lints_clean(name: str, kind: TargetKind) -> Non
     ],
 )
 def test_a_verify_template_says_only_that_it_is_unedited(name: str) -> None:
-    # Verify templates ship EDIT-ME on the parts that carry the claim, by
-    # design: an unedited one must fail rather than pass vacuously. Saying so is
-    # the correct reading, and it must be the *only* thing said.
     assert set(_lint_template(name, "experiment_verify")) <= {"unedited_placeholder"}
 
 
@@ -83,7 +68,6 @@ def test_a_fresh_ree_starts_with_scripts_that_need_no_container_engine() -> None
 
 
 def test_every_template_is_covered_by_a_case_above() -> None:
-    # A new template that nobody linted would quietly escape this file.
     covered = {
         "build_experiment_environment_docker.sh",
         "activate_experiment_environment_docker.sh",
@@ -102,14 +86,7 @@ def test_every_template_is_covered_by_a_case_above() -> None:
     assert {path.name for path in _TEMPLATES.glob("*.sh")} == covered
 
 
-# ================================================
-# The pitfalls the guides warn about
-# ================================================
-
-
 def test_the_teed_run_script_the_tutorial_teaches_is_reported() -> None:
-    # docs/public/how-to/experiments.md names this: a pipeline reports tee's
-    # exit status, so a failing run is recorded as a pass.
     source = 'docker run --rm img python main.py | tee "result.txt"\n'
     report = lint_script(
         ScriptTarget(kind="experiment_run", path="ree-scripts/experiments/e.sh"),
@@ -117,18 +94,14 @@ def test_the_teed_run_script_the_tutorial_teaches_is_reported() -> None:
         tiers=CONTRACT_ONLY,
     )
     assert "exit_status_masked_by_pipe" in {finding.code for finding in report.findings}
-    # Advisory: the author may have meant it. Lint reports; it does not refuse.
     assert report.ok
 
 
 @pytest.mark.parametrize(
     ("source", "codes"),
     [
-        # Launches nothing: the script it was asked to run never runs.
         ("exec srun -N1 ${REE_LAUNCH_OPTIONS:-} true\n", {"launch_command_dropped"}),
-        # Fixed options only: a reproducer on another cluster has to edit it.
         ('exec srun -N1 "$@"\n', {"launch_options_ignored"}),
-        # Submits and returns before the job has run.
         ('exec sbatch ${REE_LAUNCH_OPTIONS:-} --wrap "$*" "$@"\n', {"launch_does_not_wait"}),
     ],
 )

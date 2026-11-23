@@ -13,8 +13,6 @@ vi.mock("@shell/data/scriptTemplates/catalog", () => ({
     },
   }),
 }));
-// The analysis panel under each editor has its own tests; this file is about
-// what the detail sections render, so its queries are stubbed like the rest.
 vi.mock("@shell/data/scriptLint/queries", () => ({
   useScriptDraftLint: () => ({ data: undefined, isFetching: false, error: null }),
   useSavedScriptLint: () => ({ data: undefined, isFetching: false, error: null }),

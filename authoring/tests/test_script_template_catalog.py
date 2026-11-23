@@ -1,5 +1,3 @@
-"""The script-template catalog ``ree templates`` prints."""
-
 from __future__ import annotations
 
 from repo2ree_authoring.templates import (
@@ -19,7 +17,6 @@ from repo2ree_ree.reserved_paths import (
 
 def _assert_entries_match(entries: list[ScriptTemplateEntry], expected_keys: list[str]) -> None:
     assert [entry.key for entry in entries] == expected_keys
-    # The first entry is the default, and the only one.
     assert [entry.is_default for entry in entries] == [index == 0 for index in range(len(entries))]
     for entry in entries:
         assert entry.label
@@ -31,8 +28,6 @@ def _assert_entries_match(entries: list[ScriptTemplateEntry], expected_keys: lis
 def test_the_catalog_names_every_script_kind_and_where_it_belongs() -> None:
     catalog = script_template_catalog()
 
-    # Build and activate carry the seeded reserved paths and their named
-    # template variants (venv first, the default a fresh REE is seeded with).
     assert catalog.build_experiment_environment.path == RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     _assert_entries_match(catalog.build_experiment_environment.templates, [t.key for t in build_templates()])
     assert catalog.build_experiment_environment.templates[0].key == "venv"
@@ -43,7 +38,6 @@ def test_the_catalog_names_every_script_kind_and_where_it_belongs() -> None:
     )
     assert catalog.activate_experiment_environment.templates[0].key == "venv"
 
-    # Each experiment script kind states its path convention and its variants.
     assert catalog.experiment_run.path_pattern == f"{RESERVED_EXPERIMENT_SCRIPT_DIR}/{{slug}}.sh"
     _assert_entries_match(catalog.experiment_run.templates, [t.key for t in experiment_run_templates()])
     assert catalog.experiment_run.templates[0].key == "command"

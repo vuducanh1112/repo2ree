@@ -1,5 +1,3 @@
-"""The landing page: the head, the gates' receipts, the repository by zone, and the bundle's provenance."""
-
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -34,7 +32,6 @@ def page_overview(now: Head, found: list[ReceiptState]) -> str:
 
 
 def file_tree(declared: Zones) -> str:
-    """The repository's top level, alphabetically, each entry coloured by the zones of the files under it."""
     entries: dict[str, Counter[str]] = defaultdict(Counter)
     for placed in declared.files:
         top, separator, _ = placed.path.partition("/")

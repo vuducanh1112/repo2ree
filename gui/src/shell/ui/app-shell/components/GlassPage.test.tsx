@@ -20,8 +20,6 @@ describe("GlassPageHeader", () => {
   });
 
   it("carries the page's tone as one custom property, not three colours", () => {
-    // The `iconTint` object this replaces made every call site restate the
-    // border and the glow; they are derived from the tint now.
     const { container } = render(
       <GlassPageHeader
         icon={<svg aria-hidden />}
@@ -80,8 +78,6 @@ describe("GlassPanelFooter", () => {
 
 describe("GlassSubPanel", () => {
   it("wraps its section and takes nothing else", () => {
-    // It used to accept a `style` object; no caller ever passed one, so the
-    // hole closed rather than being re-typed.
     const { container } = render(
       <GlassSubPanel>
         <p>section</p>

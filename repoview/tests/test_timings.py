@@ -25,9 +25,8 @@ def test_invocations_are_read_as_recorded_and_what_this_build_cannot_read_is_ski
     invocation(
         tmp_path, "a", {"argv": ["commit-gate"], "started": "2026-10-29T10:00:00Z"}, recipe("check", 27), end(0, 30)
     )
-    # Interrupted: no end line; and a line this build cannot read.
     invocation(tmp_path, "b", {"argv": ["test-unit"], "started": "2026-10-29T11:00:00Z"}, "{torn", recipe("check", 1))
-    (tmp_path / "2026-10-29" / "c.jsonl").write_text(json.dumps(recipe("orphan", 9)) + "\n")  # no start
+    (tmp_path / "2026-10-29" / "c.jsonl").write_text(json.dumps(recipe("orphan", 9)) + "\n")
     invocation(tmp_path, "d", {"schema": "repo2ree-just-timing/0", "started": "2026-10-29T12:00:00Z"})
 
     found = read_invocations(tmp_path)
@@ -59,7 +58,6 @@ def test_timings_are_medians_per_recipe_and_machine_with_the_last_run_beside_the
     local = timings.recipes["test-unit-package"]["local"]
     assert (local.runs, local.median, local.last, local.last_revision, local.last_exit) == (3, 64, 62, "bbbbbbbb2", 1)
     assert timings.recipes["test-unit-package"]["vm"].runs == 1
-    # Only invocations that ended have a wall time.
     assert set(timings.commands["commit-gate"]) == {"local"}
     assert timings.commands["commit-gate"]["local"].median == 88
     assert timings.invocations == 4

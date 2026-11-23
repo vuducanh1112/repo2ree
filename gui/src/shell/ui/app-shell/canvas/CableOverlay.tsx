@@ -6,7 +6,6 @@ import styles from "./CableOverlay.module.css";
 interface CableOverlaySvgProps {
   geo: CableGeo;
   levelMeta: { bg: string };
-  /** Panels whose step is running; their cable carries visible traffic. */
   runningKeys: ReadonlySet<AppShellPage>;
 }
 
@@ -26,7 +25,6 @@ interface CableStrandProps {
   innerOpacity: number;
   knobFill: string;
   knobStroke: string;
-  /** Draws the travelling charge along the strand, panel end to pod. */
   energized: boolean;
 }
 

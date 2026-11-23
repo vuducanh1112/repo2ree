@@ -70,7 +70,6 @@ describe("ScriptAnalysis", () => {
   });
 
   it("says which tier did not run rather than looking clean", async () => {
-    // A bench without shellcheck must not be mistaken for a clean script.
     const checkScriptDraft = vi.fn().mockResolvedValue(
       report({
         tiers: [
@@ -85,7 +84,6 @@ describe("ScriptAnalysis", () => {
   });
 
   it("asks the workbench once the editor is clean, and says so", async () => {
-    // Only the saved path can carry the tiers that need a process.
     const lintScripts = vi
       .fn()
       .mockResolvedValue({ reports: [report({ findings: [FINDING] })], missing_scripts: [] });

@@ -1,11 +1,3 @@
-"""A client of a running deployment's public API, for the system suite.
-
-Everything goes through HTTP, as any client's requests would: the suite holds
-no in-process handle on the stack it drives. Imported by name from the test
-modules (a uniquely named module, so it cannot collide with another tier's
-``conftest``).
-"""
-
 from __future__ import annotations
 
 import os
@@ -33,7 +25,6 @@ LAUNCH_SCRIPT = "ree-scripts/launch.sh"
 TERMINAL = frozenset({"succeeded", "failed", "canceled"})
 
 
-# The instant project's names, as most suites use it.
 PROJECT = INSTANT.source
 PROJECT_DIR = SOURCE
 EXPERIMENT_ENVIRONMENT = INSTANT.experiment_environment_path
@@ -50,8 +41,6 @@ def project_archive() -> bytes:
     return INSTANT.archive()
 
 
-# How long a workbench whose network came back takes to reconnect: a ping unanswered (40s), the close
-# handshake (10s), the pause before dialing (3s), and the dial (10s), and some margin.
 RECONNECT_BOUND = 78
 
 
@@ -59,7 +48,6 @@ class ApiError(AssertionError):
     pass
 
 
-# What a signature is called while it is staged.
 SIGNED = "author_approval.sigstore.json"
 SIGNED_REVIEW = "review.sigstore.json"
 
@@ -85,8 +73,6 @@ class Api:
     def post(self, path: str, payload: dict[str, Any] | None = None, **kwargs: Any) -> Any:
         return self.request("POST", path, json=payload or {}, **kwargs).json()
 
-    # ---- runs ---------------------------------------------------------------
-
     def wait(
         self,
         ree_id: str,
@@ -95,11 +81,6 @@ class Api:
         *,
         watch: RunWatch = INSTANT_RUN,
     ) -> dict[str, Any]:
-        """Wait for a background run to settle and return it; see :func:`settle_run`.
-
-        An explicit ``timeout`` is for a run expected to go quiet, a frozen or lost
-        workbench above all: it bounds the whole wait and nothing else.
-        """
         run_id = run if isinstance(run, str) else run["run_id"]
         if timeout is not None:
             watch = RunWatch.silent(timeout)
@@ -121,7 +102,6 @@ class Api:
     def stage(
         self, ree_id: str, path: str, payload: dict[str, Any] | None = None, *, watch: RunWatch = INSTANT_RUN
     ) -> dict[str, Any]:
-        """Start a background stage and wait for it to settle, whatever its outcome."""
         return self.wait(ree_id, self.post(f"/api/v1/rees/{ree_id}/{path}", payload), watch=watch)
 
     def succeed(
@@ -132,17 +112,13 @@ class Api:
             raise ApiError(f"{path} ended {run['status']}\n{self.logs(ree_id, run['run_id'])}")
         return run
 
-    # ---- REE lifecycle ------------------------------------------------------
-
     def store(self) -> str:
-        """The first store a workbench serves now."""
         served = [store["store_id"] for store in self.get("/api/v1/stores")["stores"] if store["connected"]]
         if not served:
             raise ApiError("no workbench serves a store")
         return str(served[0])
 
     def create(self, name: str, *, location: str | None = None) -> str:
-        """A new REE in a store: the first served, or ``location``."""
         created = self.post("/api/v1/rees", {"name": name, "store_id": location or self.store()})
         ree_id = str(created["ree_id"])
         provisioned = self.wait(ree_id, created, watch=NETWORK_RUN)
@@ -151,10 +127,6 @@ class Api:
         return ree_id
 
     def keep_archive(self, ree_id: str, label: str) -> Path | None:
-        """Download the REE as its owner would and keep it where the collector looks; None if refused.
-
-        A bench reconnecting after a fault answers 503 (retryable) until it is back; wait it out.
-        """
         deadline = time.monotonic() + RECONNECT_BOUND
         while True:
             response = self.request("GET", f"/api/v1/rees/{ree_id}/ree-archive", expect=None, timeout=120.0)
@@ -170,8 +142,6 @@ class Api:
 
     def release(self, ree_id: str) -> None:
         self.request("DELETE", f"/api/v1/rees/{ree_id}", expect=None)
-
-    # ---- authoring ----------------------------------------------------------
 
     def upload_source(self, ree_id: str, data: bytes, name: str = INSTANT.upload_name) -> dict[str, Any]:
         upload = self.post(
@@ -200,7 +170,6 @@ class Api:
         return dict(report["results"][0])
 
     def proposed(self, ree_id: str, kind: str, rule: str, **selector: str) -> str:
-        """The script inference proposes for ``kind`` by ``rule``."""
         result = self.infer(ree_id, kind, **selector)
         bodies = [str(c["body"]) for c in result["candidates"] if c["inference_rule"] == rule]
         if not bodies:
@@ -224,8 +193,6 @@ class Api:
         return self.stage(ree_id, "seal-ree", payload, watch=watch)
 
     def sign(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
-        """Sign the sealed REE's digest with the run's Sigstore, as its author's own client does, and give the
-        bundle to the REE."""
         ree = self.ree(ree_id)
         digest = str(ree["seal"]["ree_digest"])
         local = local_sigstore()
@@ -249,8 +216,6 @@ class Api:
         )
 
     def sign_review(self, ree_id: str, review_id: str, *, watch: RunWatch = INSTANT_RUN) -> dict[str, Any]:
-        """Sign the review with the run's Sigstore as its reviewer, as the reviewer's own client does: the statement
-        names the reviewed seal, with the record as the API serves it as its predicate."""
         record = self.get(f"/api/v1/rees/{ree_id}/reviews/{review_id}")
         digest = str(record["subject"]["ree_digest"])
         local = local_sigstore()
@@ -275,15 +240,12 @@ class Api:
         )
 
     def load(self, ree_id: str, bundle: bytes) -> None:
-        """Seat a sealed REE's archive in ``ree_id``, as a reviewer does."""
         upload = self.post(
             f"/api/v1/rees/{ree_id}/ree:upload-init",
             {"file_name": "ree.zip", "size": len(bundle), "content_type": "application/zip"},
         )
         self.request("PUT", upload["upload_url"], content=bundle)
         self.succeed(ree_id, "load-ree-bundle", {"upload_token": upload["upload_token"], "archive_name": "ree.zip"})
-
-    # ---- a fixture project, step by step ------------------------------------
 
     def acquire(self, ree_id: str, fixture: Project = INSTANT) -> None:
         run = self.upload_source(ree_id, fixture.archive(), fixture.upload_name)
@@ -293,11 +255,6 @@ class Api:
     def build_experiment_environment(
         self, ree_id: str, script: str | None = None, fixture: Project = INSTANT
     ) -> dict[str, Any]:
-        """Declare the experiment environment, author its build (given, else as the project writes it), and run it.
-
-        An activate script the recipe brings is written beside it; one inference proposes waits for the build. A
-        project that launches its scripts declares its launch first, so the build runs through it too.
-        """
         self.patch(ree_id, {"experiment_environment": {"artifact_path": fixture.experiment_environment_path}})
         if fixture.launches:
             self.declare_launch(ree_id, fixture)
@@ -316,15 +273,12 @@ class Api:
         return self.stage(ree_id, "build-experiment-environment", watch=fixture.watch)
 
     def declare_launch(self, ree_id: str, fixture: Project) -> None:
-        """Write the launch every script then runs through, as inference proposes it or the recipe writes it."""
         rule = fixture.rule("launch.sh")
         script = self.proposed(ree_id, "launch", rule) if rule else fixture.recipe("launch.sh")
         self.write(ree_id, LAUNCH_SCRIPT, script)
         self.patch(ree_id, {"launch": {}})
 
     def activate(self, ree_id: str, script: str | None = None, fixture: Project = INSTANT) -> dict[str, Any]:
-        """Test the activation alone; with ``script``, or what inference proposes for a project that writes it so,
-        after writing it as the activate script."""
         rule = fixture.rule("activate_experiment_environment.sh")
         if script is None and rule:
             script = self.proposed(ree_id, "activate_experiment_environment", rule)
@@ -341,7 +295,6 @@ class Api:
         return self.stage(ree_id, f"run-experiment/{fixture.experiment}", watch=fixture.watch)
 
     def author(self, ree_id: str, fixture: Project = INSTANT) -> None:
-        """Every authoring stage of a fixture project, each required to succeed."""
         self.acquire(ree_id, fixture)
         self.succeed(ree_id, "evaluate-reproducibility", watch=fixture.watch)
         self.succeed(ree_id, "observe-hardware")
@@ -358,11 +311,8 @@ class Api:
 
 
 def fault(injected: Fault) -> None:
-    """Ask the stack this suite runs on to inject a fault, now."""
     inject(os.environ[FAULTS_URL], injected)
 
-
-# ---- fixtures every suite on a stack shares -----------------------------------
 
 BASE_URL = os.environ.get("E2E_API_BASE_URL", "")
 ARCHIVE_DIR = Path(os.environ.get("E2E_ARCHIVE_DIR", "test-artifacts/python/system/archives"))
@@ -383,7 +333,6 @@ def api() -> Api:
 
 @pytest.fixture
 def new_ree(api: Api, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
-    """Create REEs on demand; each is downloaded, then released, when the test ends."""
     created: list[str] = []
     label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
 

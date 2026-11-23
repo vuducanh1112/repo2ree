@@ -1,18 +1,3 @@
-"""The generic decision-DAG engine: startup validator and evaluator.
-
-The engine is the *only* thing that runs a DAG. There is no parallel imperative
-rule: the versioned ``DecisionDag`` data is the control-flow authority, and this
-module walks it — invoking registered pure checks, fanning into strategy
-branches, and joining their outcomes through a named resolver. The same walk
-that produces the candidates produces the trace shown to the user, so the graph
-can never drift from its explanation.
-
-``validate_dag`` runs at registry import time and rejects a structurally invalid
-graph before any request can execute it. ``evaluate_target`` runs one target and
-returns its ``TargetInferenceResult`` — including a complete trace when nothing
-is inferred.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import (
@@ -47,12 +32,7 @@ from repo2ree_ree.digest import digest_bytes
 
 
 class DagValidationError(ValueError):
-    """A DAG is structurally invalid and must not be served."""
-
-
-# ================================================
-# Startup validation
-# ================================================
+    pass
 
 
 def validate_dag(
@@ -62,15 +42,6 @@ def validate_dag(
     resolvers: dict[str, Resolver],
     renderers: dict[str, Renderer],
 ) -> None:
-    """Reject a DAG unless it is fully wired and its typed dataflow is sound.
-
-    Enforces every invariant the design requires at startup: unique node ids;
-    referenced checks/resolvers/renderers/nodes/branches all exist; every check
-    branch and resolver result is handled; fork/join and resolver/fork pairs
-    agree; every leaf of a fork converges on that fork's join; required bindings
-    exist on every incoming path; result nodes are reachable; and the graph is
-    acyclic.
-    """
     nodes = dag.nodes
     ids = [node.id for node in nodes]
     if len(ids) != len(set(ids)):
@@ -85,7 +56,6 @@ def validate_dag(
         if target not in by_id:
             raise DagValidationError(f"{dag.key}: {source} points at unknown node {target!r}")
 
-    # --- reference and branch-coverage checks ---
     for node in nodes:
         if isinstance(node, CheckNode):
             check = checks.get(node.check)
@@ -98,9 +68,6 @@ def validate_dag(
                 )
             for branch, target in node.branches.items():
                 require_target(f"node {node.id} branch {branch!r}", target)
-                # A check may short-circuit straight to a result (a blocked
-                # prefix, e.g. an unresolved experiment environment contract). That path renders
-                # no candidate, so it may only reach a not_inferred result.
                 dest = by_id[target]
                 if isinstance(dest, ResultNode) and dest.status != "not_inferred":
                     raise DagValidationError(
@@ -146,8 +113,6 @@ def validate_dag(
                 if not isinstance(by_id[target], ResultNode):
                     raise DagValidationError(f"{dag.key}: resolve {node.id} branch {branch!r} is not a result node")
 
-    # --- fork/leaf convergence: every leaf reachable from a fork's branches
-    #     must name that fork's join as its next ---
     for node in nodes:
         if isinstance(node, ForkNode):
             for leaf in _reachable_leaves(dag, node, by_id):
@@ -174,7 +139,6 @@ def _successors(node: DecisionNode) -> list[str]:
 
 
 def _reachable_leaves(dag: DecisionDag, fork: ForkNode, by_id: dict[str, DecisionNode]) -> list[StrategyLeafNode]:
-    """Leaves reachable from a fork's strategy branches (not through its join)."""
     leaves: list[StrategyLeafNode] = []
     seen: set[str] = set()
     stack = list(fork.branches.values())
@@ -193,7 +157,7 @@ def _reachable_leaves(dag: DecisionDag, fork: ForkNode, by_id: dict[str, Decisio
 
 
 def _validate_acyclic(dag: DecisionDag, by_id: dict[str, DecisionNode]) -> None:
-    color: dict[str, int] = {}  # 0=visiting, 1=done
+    color: dict[str, int] = {}
 
     def visit(node_id: str) -> None:
         state = color.get(node_id)
@@ -231,8 +195,6 @@ def _validate_bindings(
     checks: dict[str, Check],
     renderers: dict[str, Renderer],
 ) -> None:
-    """Prove that every check's and renderer's required bindings exist on every
-    incoming path, via an intersection fixpoint over guaranteed binding kinds."""
     incoming: dict[str, frozenset[BindingKind] | None] = {node.id: None for node in dag.nodes}
     incoming[dag.root] = frozenset()
 
@@ -271,13 +233,9 @@ def _validate_bindings(
 
 
 def _binding_edges(node: DecisionNode) -> list[tuple[str, str]]:
-    """(branch_key, target) edges that carry bindings forward."""
     if isinstance(node, CheckNode):
         return list(node.branches.items())
     if isinstance(node, ForkNode):
-        # Fork branches inherit the prefix bindings; the join edge is carried by
-        # each leaf's ``next`` instead, and resolvers consume outcomes, not
-        # bindings, so the join is not a binding edge.
         return list(node.branches.items())
     if isinstance(node, StrategyLeafNode):
         return [("join", node.next)]
@@ -290,11 +248,6 @@ def _produced_bindings(node: DecisionNode, branch: str, checks: dict[str, Check]
     return frozenset()
 
 
-# ================================================
-# Evaluation
-# ================================================
-
-
 def evaluate_target(
     dag: DecisionDag,
     context: DecisionContext,
@@ -304,18 +257,12 @@ def evaluate_target(
     resolvers: dict[str, Resolver],
     renderers: dict[str, Renderer],
 ) -> TargetInferenceResult:
-    """Walk ``dag`` for one target and assemble its result and full trace."""
     steps: list[DecisionStep] = []
     edges: list[TraversedEdge] = []
     by_id = {node.id: node for node in dag.nodes}
 
-    # Rendered candidates are held aside during the branch walk and finalized
-    # only after resolution decides the target's status/application.
     rendered: dict[str, tuple[StrategyLeafNode, RenderedScript]] = {}
     outcomes: dict[str, StrategyOutcome] = {}
-    # Warnings observed by prefix checks (before/after the fork). A blocked
-    # runtime-contract prefix short-circuits straight to a result and surfaces
-    # its reason through these; the command fork never runs on that path.
     prefix_warnings: list[InferenceWarning] = []
 
     current = dag.root
@@ -412,11 +359,6 @@ def _walk_branch(
     renderers: dict[str, Renderer],
     rendered: dict[str, tuple[StrategyLeafNode, RenderedScript]],
 ) -> tuple[StrategyOutcome, list[DecisionStep], list[TraversedEdge]]:
-    """Walk one strategy branch (checks only) until its terminal leaf.
-
-    Runs on a copy of the shared prefix context so bindings a branch produces
-    never leak to a sibling branch.
-    """
     steps: list[DecisionStep] = []
     edges: list[TraversedEdge] = []
     branch_warnings: list[InferenceWarning] = []
@@ -468,13 +410,6 @@ def _finalize_candidates(
     outcomes: dict[str, StrategyOutcome],
     rendered: dict[str, tuple[StrategyLeafNode, RenderedScript]],
 ) -> list[ScriptCandidate]:
-    """Build the target's candidate list from the viable, rendered strategies.
-
-    ``complete`` yields the single selected candidate; ``needs_input`` yields
-    every viable alternative. Each candidate takes the target's resolved
-    status/application so a caller can enforce automation policy off the result
-    alone.
-    """
     if result_node.status == "not_inferred":
         return []
     candidates: list[ScriptCandidate] = []
@@ -514,12 +449,6 @@ def _collect_warnings(
     candidates: list[ScriptCandidate],
     prefix_warnings: list[InferenceWarning],
 ) -> list[InferenceWarning]:
-    """Stable, de-duplicated union of every warning affecting the target.
-
-    A caller may enforce automation policy on this alone: it includes the prefix
-    checks' warnings (e.g. a blocked experiment environment contract) plus blocked and
-    not-applicable leaves' warnings plus every returned candidate's.
-    """
     seen: set[tuple[str, tuple[str, ...]]] = set()
     union: list[InferenceWarning] = []
     for warning in prefix_warnings:

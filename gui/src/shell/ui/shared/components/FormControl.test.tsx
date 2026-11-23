@@ -4,9 +4,6 @@ import { describe, expect, it } from "vitest";
 import { Field, Input, Select, Textarea } from "./FormControl";
 
 describe("Field", () => {
-  // The association is the whole reason this primitive exists: the hand-rolled
-  // label/helper pairs it replaces rendered the text and stopped there, so the
-  // control had no accessible name and the hint was never read out.
   it("names its control, so the field is addressable by its label", () => {
     render(
       <Field label="Repository">

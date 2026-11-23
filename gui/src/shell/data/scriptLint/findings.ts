@@ -1,8 +1,6 @@
 import type { ScriptKind } from "@core/generated/vocabulary";
 import type { LintFinding, LintReport, LintTierStatus } from "@shell/infra/api/apiTypes";
 
-/** The finding shape, re-exported for the UI: components read server state
- * through this layer rather than reaching into the API client themselves. */
 export type { LintFinding } from "@shell/infra/api/apiTypes";
 
 const LINT_TARGET_KINDS = [

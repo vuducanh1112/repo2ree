@@ -66,10 +66,7 @@ export interface PageExperimentsProps {
   onReeChange: React.Dispatch<React.SetStateAction<ReeSpec>>;
   onGoPage: (key: AppShellPage) => void;
   onFocusedFieldChange: React.Dispatch<React.SetStateAction<string | null>>;
-  // Persist pending draft edits before an experiment run, so the backend
-  // validates against the just-typed script rather than a stale draft.
   onBeforeRun: () => Promise<void>;
-  // Each experiment owns a run script stored in the workspace overlay.
   onPersistWorkspaceFile: (path: string, content: string) => Promise<void>;
 }
 
@@ -97,12 +94,10 @@ export interface StepPageProps {
   evaluationState: EvaluationState;
   badges: Badges;
   workspaceFiles: FileTreeNode[];
-  /** The REE's own files (artifacts/, overlay/, …), not the materialized tree. */
   reeFiles: ReeFile[];
   log: LogEntry | null;
   running: boolean;
   runDone: boolean;
-  /** The last run finished without succeeding (failed or canceled). */
   runFailed: boolean;
   badge: StepOutcome | null;
   ts: string | undefined;

@@ -1,11 +1,3 @@
-"""Whether the REE's scripts can be launched as Slurm job steps where they run.
-
-A launch proposes how each script is launched, so it is only proposed where its launcher answers: a probed,
-reachable controller is usable; ``srun`` that is absent, or one whose controller does not answer, is not; and
-when nothing could be probed, nothing is known, which proposes the launch for confirmation rather than ruling it
-out.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar

@@ -7,11 +7,6 @@ interface SourceRunProjection {
   displayName?: string;
 }
 
-/**
- * Read acquisition metadata from the backend run bound to the REE's current
- * source receipt. The original upload name is operational provenance rather
- * than part of SourceDefinition, so its durable owner is the run output.
- */
 export function projectCurrentSourceRun(
   audit: ReeAudit,
   runs: readonly ReeRunSummary[],

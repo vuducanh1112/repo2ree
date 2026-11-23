@@ -14,48 +14,26 @@ import { ScriptDiagnosticsBridge } from "./scriptDiagnostics";
 const NO_FINDINGS: readonly LintFinding[] = [];
 
 export interface RunScriptCardProps {
-  // Workspace-relative path the script is stored at. When set, it is shown as a
-  // mono caption under the helper.
   scriptPath?: string;
   currentContent: string;
-  // Persist the edited script content to the workspace at scriptPath.
   onSave: (content: string) => void;
   label?: string;
   helper?: string;
-  // The catalog section this script prefills from. Renders a picker above the
-  // editor; choosing a template replaces the editor content locally — nothing
-  // is persisted until the save button. The entry marked `isDefault` doubles
-  // as the prefill for a script that doesn't exist yet.
   templates?: ScriptTemplateEntry[];
   disabled?: boolean;
-  // Load content into the editor from outside (e.g. a generated candidate),
-  // exactly like a template click: it replaces the editor body locally and
-  // leaves it dirty — nothing is persisted until the save button. The `nonce`
-  // makes re-loading the same body reapply; bump it on every load.
   externalEdit?: { content: string; nonce: number };
-  // Optional header icon rendered beside the label.
   icon?: React.ReactNode;
-  // Optional control rendered above the editor (e.g. a "Generate from
-  // repository" affordance that loads a candidate via `externalEdit`).
   generateSlot?: React.ReactNode;
   renderAnalysis?: (
     content: string,
     dirty: boolean,
     focusLine: (line: number) => void,
   ) => React.ReactNode;
-  // Button content and footer status text — overridable so callers (e.g. the
-  // reserved build script) can speak in their own terms.
   saveButtonContent?: React.ReactNode;
   savedLabel?: string;
   unsavedLabel?: string;
 }
 
-// A self-contained editor for a runnable's run script — used by activation, each
-// experiment, and (via props) the reserved build script. The script lives in
-// the workspace overlay; this card edits and persists it. Starter templates are
-// backend-owned (GET /script-templates): seeded scripts arrive prefilled as file
-// content, and scripts that don't exist yet prefill from the entry of
-// `templates` the backend marks as the default.
 export function RunScriptCard({
   scriptPath,
   currentContent,
@@ -75,15 +53,8 @@ export function RunScriptCard({
   const defaultTemplate = templates?.find((template) => template.is_default)?.body ?? "";
   const [content, setContent] = useState(currentContent || defaultTemplate);
   const [savedContent, setSavedContent] = useState(currentContent);
-  // What the editor was last synced to — the baseline for "has the user
-  // diverged". Distinct from savedContent, which tracks persistence for the
-  // dirty flag.
   const syncedRef = useRef(currentContent || defaultTemplate);
 
-  // Syncs when the persisted content changes (e.g. after a save round-trips,
-  // or when the seeded script / starter template arrives from a background
-  // fetch) — but never over the user's unsaved edits: content the user has
-  // diverged from the last synced baseline stays put.
   useEffect(() => {
     const next = currentContent || defaultTemplate;
     setContent((prev) => (prev === syncedRef.current ? next : prev));
@@ -91,9 +62,6 @@ export function RunScriptCard({
     setSavedContent(currentContent);
   }, [currentContent, defaultTemplate]);
 
-  // Apply an external load (a generated candidate) once per nonce, the same way
-  // a template click replaces the editor body. Distinct from the sync effect
-  // above, which only follows persisted content and never clobbers divergence.
   const appliedNonceRef = useRef<number | null>(null);
   useEffect(() => {
     if (externalEdit && externalEdit.nonce !== appliedNonceRef.current) {
@@ -107,9 +75,6 @@ export function RunScriptCard({
   const editorRef = useRef<CodeEditorHandle | null>(null);
   const focusLine = (line: number) => editorRef.current?.focusLine(line);
 
-  // What the analysis panel below found, on its way back into the editor as
-  // underlines and gutter markers. Identity-stable per report, so re-rendering
-  // never re-dispatches the same set into CodeMirror.
   const [findings, setFindings] = useState<readonly LintFinding[]>(NO_FINDINGS);
   const marks = useMemo<CodeEditorMark[]>(
     () =>

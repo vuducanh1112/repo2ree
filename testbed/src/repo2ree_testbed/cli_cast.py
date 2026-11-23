@@ -1,11 +1,3 @@
-"""A CLI test's session as a terminal recording: each ``ree`` command at a prompt, then what it printed, when.
-
-The CLI showcase client appends every command to ``<test>/artifacts/cli-session.cast`` (asciicast v2) beside the
-session; ``asciinema play`` plays it back with idle time cut to ``IDLE_SECONDS``. Each prompt names the directory the
-command ran in. The bytes are those the command printed, stdout and stderr as they arrived; ``ree`` prints the same
-with or without a terminal.
-"""
-
 from __future__ import annotations
 
 import codecs
@@ -29,8 +21,6 @@ type Stream = Literal["stdout", "stderr"]
 
 
 class Printed(NamedTuple):
-    """A chunk a command printed, on which stream, and when it arrived."""
-
     at: float
     stream: Stream
     data: bytes
@@ -48,13 +38,11 @@ class Header(BaseModel):
 
 
 def cast_file() -> Path | None:
-    """Where this test's recording goes; None outside a stack that names the test's directory."""
     directory = os.environ.get(TEST_DIR_VARIABLE)
     return Path(directory) / "artifacts" / CAST if directory else None
 
 
 def prompt(command: Sequence[str], stdin_bytes: int, where: str | None = None) -> str:
-    """The command as typed in ``where``, with what it read on stdin noted beside it."""
     typed = shlex.join(command)
     if stdin_bytes:
         typed += f"  # {stdin_bytes} bytes on stdin"
@@ -63,12 +51,10 @@ def prompt(command: Sequence[str], stdin_bytes: int, where: str | None = None) -
 
 
 def _terminal(text: str) -> str:
-    """Text as a terminal is sent it: every line ends in CR LF."""
     return text.replace("\r\n", "\n").replace("\n", "\r\n")
 
 
 def _binary(printed: Sequence[Printed]) -> frozenset[Stream]:
-    """The streams that carried bytes no terminal shows as text, such as an archive written to stdout."""
     streams: set[Stream] = set()
     for stream in ("stdout", "stderr"):
         try:
@@ -79,7 +65,6 @@ def _binary(printed: Sequence[Printed]) -> frozenset[Stream]:
 
 
 def _origin(path: Path, started: float) -> int:
-    """The recording's start, from its header; a recording not yet begun begins now."""
     if path.is_file():
         with path.open(encoding="utf-8") as cast:
             return Header.model_validate_json(cast.readline()).timestamp
@@ -99,10 +84,6 @@ def append_command(
     finished: float,
     printed: Sequence[Printed],
 ) -> None:
-    """Add one command to the recording: its prompt when it started, each chunk when it arrived.
-
-    A stream that is not text is recorded as a note of how many bytes it carried, when its last chunk arrived.
-    """
     origin = _origin(path, started)
     binary = _binary(printed)
     decoders = {stream: codecs.getincrementaldecoder("utf-8")(errors="replace") for stream in ("stdout", "stderr")}

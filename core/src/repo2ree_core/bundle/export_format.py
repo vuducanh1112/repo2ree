@@ -1,5 +1,3 @@
-"""Versioned transport metadata; domain file selection belongs to capture."""
-
 from __future__ import annotations
 
 from typing import Literal

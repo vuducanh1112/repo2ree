@@ -9,18 +9,9 @@ import { queryKeys } from "../queryKeys";
 import { useReeRunsQuery } from "../runs/queries";
 import { useReeQuery } from "./queries";
 
-// How long the document may lag behind a run that filed a receipt before the
-// wait is given up, and how the re-reads are spaced meanwhile.
 const FOLLOW_FOR_MS = 15_000;
 const RETRY_DELAYS_MS = [0, 500, 1000, 2000, 4000];
 
-/**
- * Keeps the REE document in step with the runs that change it: the one place
- * that re-reads it when a run settles. A run that filed a receipt is followed
- * until the document names it, since the run can report success before a read
- * of the document shows its receipt; until then the run is published as awaited
- * (see {@link useRunsAwaitingDocument}). Mount it once per REE.
- */
 export function useReeDocumentFollowsRuns({
   reeId,
   enabled,
@@ -42,7 +33,6 @@ export function useReeDocumentFollowsRuns({
   useEffect(() => {
     if (!runs) return;
     const terminal = runs.filter((run) => isTerminalReeRunStatus(run.status));
-    // Runs that had ended before this page loaded are already in the document it loaded.
     if (seen.current === null) {
       seen.current = new Set(terminal.map((run) => run.runId));
       return;
@@ -64,7 +54,6 @@ export function useReeDocumentFollowsRuns({
   }, [runs]);
 
   const audit = document.data?.ree?.audit;
-  // Every read counts, an identical one included: structural sharing keeps the data the same.
   const { dataUpdatedAt, errorUpdatedAt } = document;
   // biome-ignore lint/correctness/useExhaustiveDependencies: a read or a settled run is what re-checks.
   useEffect(() => {
@@ -84,7 +73,6 @@ export function useReeDocumentFollowsRuns({
     const timer = setTimeout(() => {
       refetchOwed.current = false;
       attempt.current += 1;
-      // A read already under way is joined, not cancelled and started again.
       void queryClient.refetchQueries(
         { queryKey: queryKeys.ree(resolvedReeId), exact: true },
         { cancelRefetch: false },
@@ -94,7 +82,6 @@ export function useReeDocumentFollowsRuns({
   }, [audit, dataUpdatedAt, errorUpdatedAt, settled, enabled, queryClient, resolvedReeId]);
 }
 
-/** The runs whose receipts the REE document does not show yet (see {@link useReeDocumentFollowsRuns}). */
 export function useRunsAwaitingDocument(reeId?: string): ReadonlySet<string> {
   const runtime = useReeRuntime();
   const resolvedReeId = resolveReeId(runtime, reeId);

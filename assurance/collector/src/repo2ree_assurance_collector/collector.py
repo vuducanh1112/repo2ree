@@ -1,11 +1,3 @@
-"""Write evidence fetched through the control plane into a dossier, one source at a time.
-
-Every source ends up listed in the manifest: recorded, or with what went wrong (``_collect``), so
-the checker reports a gap instead of judging around it. A source's files are written to a
-staging folder and moved into place only once complete, and the manifest is updated after each
-source, so an interrupted collection still lists what it finished and nothing it did not.
-"""
-
 from __future__ import annotations
 
 import filecmp
@@ -53,11 +45,8 @@ JOURNALS = "/api/v1/behaviour/journals"
 STATE = "/api/v1/behaviour/state"
 ARCHIVES = "/api/v1/behaviour/archives"
 STORES_LISTED = "/api/v1/stores"
-# An owner's journal epoch, as the experiment environment names it: ``<process>-<epoch>.ndjson``.
 JOURNAL_FILE = re.compile(r"^[a-z][a-z0-9-]*-[0-9]{6}\.ndjson$")
 
-# What collecting one source can run into. Anything else is a bug in the collector, not a gap in
-# the evidence, and is raised.
 GAPS = (ControlPlaneError, OSError, ValueError, zipfile.BadZipFile)
 
 
@@ -69,7 +58,6 @@ def start(
     test: str | None = None,
     build_revision: str | None = None,
 ) -> None:
-    """Begin a dossier; it lists nothing until sources are collected into it."""
     context = DossierContext(suite=suite, test=test, started=time.time())
     dossier = Dossier(control_plane=control_plane, build_revision=build_revision, context=context)
     write_dossier(directory, dossier)
@@ -85,7 +73,6 @@ def _failed(source: DossierSource, problem: object) -> DossierSource:
 
 
 def _collect(directory: Path, source: DossierSource, gather: Callable[[], DossierSource]) -> DossierSource:
-    """Collect one source and list it either way: as gathered, or failed with the reason."""
     try:
         gathered = gather()
     except GAPS as exc:
@@ -95,7 +82,6 @@ def _collect(directory: Path, source: DossierSource, gather: Callable[[], Dossie
 
 @contextmanager
 def _staged(directory: Path, relative: str) -> Iterator[Path]:
-    """A fresh folder that replaces ``directory/relative`` only once everything was written to it."""
     final = directory / relative
     final.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{final.name}-", dir=final.parent))
@@ -107,13 +93,7 @@ def _staged(directory: Path, relative: str) -> Iterator[Path]:
         shutil.rmtree(staging, ignore_errors=True)
 
 
-# ================================================
-# REEs, as the product downloads them
-# ================================================
-
-
 def unpack_archive(directory: Path, path: Path, *, cut: Cut | None, origin: str, name: str) -> DossierSource:
-    """Unpack a downloaded REE archive into the dossier, listed with the cut it was built at."""
     source = DossierSource(kind="git", path=f"{REES}/{name}/ree", origin=origin, name=name, cut=cut)
 
     def gather() -> DossierSource:
@@ -127,7 +107,6 @@ def unpack_archive(directory: Path, path: Path, *, cut: Cut | None, origin: str,
 
 
 def _served_archives(control_plane: ControlPlane) -> dict[str, ServedArchive]:
-    """The archives the control plane served, by the digest of their bytes."""
     return {served.sha256: served for served in control_plane.get(ServedArchives, ARCHIVES).archives}
 
 
@@ -147,11 +126,6 @@ def _served_copy(directory: Path, control_plane: ControlPlane, path: Path, serve
 
 
 def kept_archives(directory: Path, control_plane: ControlPlane, folders: list[Path]) -> list[DossierSource]:
-    """REE archives a client downloaded and kept, placed by the control plane's record of serving them.
-
-    A zip the control plane did not serve (another run's, a browser trace) is not evidence of this
-    deployment and is passed over.
-    """
     try:
         served = _served_archives(control_plane)
     except ControlPlaneError as exc:
@@ -160,19 +134,12 @@ def kept_archives(directory: Path, control_plane: ControlPlane, folders: list[Pa
     found = sorted({path for folder in folders if folder.is_dir() for path in folder.rglob("*.zip")})
     copies: dict[str, Path] = {}
     for path in found:
-        # One source per archive served: a client may keep several copies (a report attachment).
         if (sha := digest(path)) in served:
             copies.setdefault(sha, path)
     return [_served_copy(directory, control_plane, path, served[sha]) for sha, path in copies.items()]
 
 
 def kept_rees(directory: Path, folder: Path) -> list[DossierSource]:
-    """REEs a client ran ``ree`` in itself, with no control plane between them, as the client kept their histories.
-
-    The client keeps a folder for every REE it creates, as it creates it, and copies the REE's histories into it
-    (its own ``.git``, and each review's) before it removes the REE. A folder with no history in it is an REE the
-    client created and kept nothing of: it is listed as unavailable, so a verdict cannot pass over it.
-    """
     if not folder.is_dir():
         return []
     return [_kept(directory, root) for root in sorted(path for path in folder.iterdir() if path.is_dir())]
@@ -197,7 +164,6 @@ def _kept(directory: Path, root: Path) -> DossierSource:
 
 
 def download_archive(directory: Path, control_plane: ControlPlane, ree_id: str) -> DossierSource:
-    """Download an REE through the control plane, as its owner would, and list it with its cut."""
     path = f"/api/v1/rees/{ree_id}/ree-archive"
     source = DossierSource(kind="git", path=f"{REES}/{ree_id}/ree", origin=control_plane.address(path), name=ree_id)
     if not SAFE_NAME.fullmatch(ree_id):
@@ -214,14 +180,11 @@ def download_archive(directory: Path, control_plane: ControlPlane, ree_id: str) 
         return _served_copy(directory, control_plane, target, served)
 
 
-# Where a REE keeps its Git LFS payloads, and how it marks a path as one (repo2ree_core's capture
-# controls write one exact, JSON-quoted path per line).
 _LFS_OBJECTS = "ree/.git/lfs/objects/"
 _LFS_ATTRIBUTE = re.compile(r'^("(?:[^"\\]|\\.)*")\s.*\bfilter=lfs\b', re.MULTILINE)
 
 
 def _lfs_paths(bundle: zipfile.ZipFile) -> frozenset[str]:
-    """The archive members the REE stores in Git LFS, from its ``.gitattributes``."""
     try:
         attributes = bundle.read("ree/.gitattributes").decode()
     except KeyError:
@@ -230,7 +193,6 @@ def _lfs_paths(bundle: zipfile.ZipFile) -> frozenset[str]:
 
 
 def _lfs_pointer(member: IO[bytes]) -> bytes:
-    """The Git LFS pointer of a payload: what the REE's history commits in its place."""
     hashed = hashlib.sha256()
     size = 0
     while chunk := member.read(1 << 20):
@@ -240,17 +202,6 @@ def _lfs_pointer(member: IO[bytes]) -> bytes:
 
 
 def extract(path: Path, destination: Path) -> None:
-    """Unpack an REE archive as evidence, keeping its symlinks as links, never writing outside ``destination``.
-
-    A link may point anywhere (a venv's interpreter does) and is never followed: a member under a
-    link the archive itself created, or at one, is refused, since writing it would go wherever the
-    link points.
-
-    LFS payloads stay out (an experiment environment image can be gigabytes, copied at every collection and every
-    fetch of a run): the payload store is skipped, and each file the REE keeps in LFS is written
-    as the pointer its history commits. What the checker reads, the history and the operation
-    records, is complete without them; the payloads remain in the archive the test kept.
-    """
     with zipfile.ZipFile(path) as bundle:
         lfs = _lfs_paths(bundle)
         for info in bundle.infolist():
@@ -277,13 +228,7 @@ def extract(path: Path, destination: Path) -> None:
                     shutil.copyfileobj(member, output, 1 << 20)
 
 
-# ================================================
-# The owners' journals and persisted state
-# ================================================
-
-
 def record_deployment(directory: Path, control_plane: ControlPlane) -> None:
-    """Name the deployment the dossier was collected from: its control plane and, if it says, its build."""
     dossier = read_dossier(directory)
     if dossier.build_revision is None:
         try:
@@ -295,7 +240,6 @@ def record_deployment(directory: Path, control_plane: ControlPlane) -> None:
 
 
 def collect_control_plane(directory: Path, control_plane: ControlPlane) -> list[DossierSource]:
-    """The owners' persisted state, then their journals, so the journals reach past the state's cut."""
     record_deployment(directory, control_plane)
     return [
         _state(directory, control_plane),
@@ -333,7 +277,6 @@ def _journals(directory: Path, control_plane: ControlPlane) -> DossierSource:
 
 
 def _store_journals(directory: Path, control_plane: ControlPlane) -> list[DossierSource]:
-    """Each store's journals, read through the workbench serving it: one source per store."""
     try:
         stores = control_plane.get(Stores, STORES_LISTED).stores
     except GAPS as exc:
@@ -358,7 +301,6 @@ def _store_journal(directory: Path, control_plane: ControlPlane, store_id: str) 
 
 
 def stopped_stores(directory: Path, stores: dict[str, Path]) -> list[DossierSource]:
-    """Each store's journals, copied from the store after its workbench stopped."""
     collected: list[DossierSource] = []
     for store_id, journals in sorted(stores.items()):
         relative = f"{STORE_JOURNALS}/{store_id}"
@@ -380,8 +322,6 @@ def stopped_stores(directory: Path, stores: dict[str, Path]) -> list[DossierSour
 
 
 def environment_journals(directory: Path, journals: Path) -> list[DossierSource]:
-    """The journals of the REEs' environment, as the client that stood in for it kept them: the commands it ran and
-    the files that drifted between them. A client that kept none drifted none, so a missing folder lists nothing."""
     if not journals.is_dir():
         return []
     origin = f"{journals} (kept by the client that ran ree)"
@@ -400,17 +340,9 @@ def environment_journals(directory: Path, journals: Path) -> list[DossierSource]
 
 
 def stopped_owners(directory: Path, *, journals: Path, runs: Path | None) -> list[DossierSource]:
-    """The owners' journals and persisted state, exported after they stopped.
-
-    Only after its owner stops does a journal carry its close, and only a close gives
-    "eventually" a horizon, so this is the evidence a deployment that is shutting down for
-    good can give. Taken after the owners stopped, the state carries no cut and must match
-    the journals exactly. It replaces whatever was collected through the control plane.
-    """
     journal = DossierSource(kind="journal", path=JOURNAL, origin=f"{journals} (after its owners stopped)", name="api")
 
     def copy_journals() -> DossierSource:
-        # Only the owners' journals: the directory also keeps the control plane's record of serving archives.
         found = sorted(path for path in journals.glob("*.ndjson") if JOURNAL_FILE.match(path.name))
         if not found:
             raise FileNotFoundError(f"no journals in {journals}")
@@ -434,16 +366,7 @@ def stopped_owners(directory: Path, *, journals: Path, runs: Path | None) -> lis
     return [*listed, _collect(directory, state, copy_stores)]
 
 
-# ================================================
-# Spans and the dossier's context
-# ================================================
-
-
 def spans(directory: Path, files: list[Path], origin: str) -> list[DossierSource]:
-    """List span files, copying in those that live outside the dossier, each under a name of its own.
-
-    A file that is not there is listed as unavailable rather than passed over.
-    """
     return [_span(directory, path, origin) for path in files]
 
 
@@ -466,7 +389,6 @@ def _span(directory: Path, path: Path, origin: str) -> DossierSource:
 
 
 def _free_name(directory: Path, path: Path) -> str:
-    """The name ``path`` gets among the dossier's span files: its own, numbered while another file holds it."""
     name, number = path.name, 1
     while (directory / TELEMETRY / name).exists() and not filecmp.cmp(
         directory / TELEMETRY / name, path, shallow=False

@@ -1,10 +1,3 @@
-"""Node.js ecosystem parsers for ``package.json`` and npm lockfiles.
-
-``package.json`` supplies the direct declarations.  ``package-lock.json`` and
-``npm-shrinkwrap.json`` supply the full resolved closure, which is merged with
-the declarations by the manifest scan just like Python lockfiles.
-"""
-
 from __future__ import annotations
 
 import json
@@ -16,20 +9,12 @@ from repo2ree_ree.dependency import Dependency, normalize_package_name
 from ._common import make_dependency, make_locked_dependency
 from .base import SourceParser
 
-# Section -> row scope. ``dependencies`` is the root (None) environment; the
-# other sections are distinct install scopes. A package named in several
-# sections is one dependency — the first (most runtime-relevant) section wins.
 _DECLARATION_SECTIONS: tuple[tuple[str, str | None], ...] = (
     ("dependencies", None),
     ("devDependencies", "dev"),
     ("optionalDependencies", "optional"),
     ("peerDependencies", "peer"),
 )
-
-
-# ================================================
-# Declared side
-# ================================================
 
 
 def parse_package_json(text: str, path: str) -> list[Dependency]:
@@ -44,7 +29,7 @@ def parse_package_json(text: str, path: str) -> list[Dependency]:
             continue
         for raw_name, constraint in entries.items():
             if not isinstance(raw_name, str) or not raw_name.strip():
-                continue  # totality over hostile input: a blank key is not a package
+                continue
             name = normalize_package_name("npm", raw_name)
             if name in seen:
                 continue
@@ -61,21 +46,7 @@ def parse_package_json(text: str, path: str) -> list[Dependency]:
     return deps
 
 
-# ================================================
-# Locked side
-# ================================================
-
-
 def parse_package_lock(text: str, path: str) -> list[Dependency]:
-    """Parse npm lockfile v1-v3 without assuming a particular npm version.
-
-    Modern locks have a ``packages`` map keyed by installation path.  v1 locks
-    only have recursive ``dependencies`` objects.  Both describe the complete
-    closure, so every emitted row is ``direct=False``.  The same package can
-    occur once per installation path; identical ``(name, version)`` entries
-    collapse to one row (hashes unioned) while genuine version conflicts stay
-    as separate fork rows for the lock merge to resolve.
-    """
     data = _load_json_object(text)
     if data is None:
         return []
@@ -94,7 +65,7 @@ def _parse_packages_map(packages: dict[str, Any], path: str) -> Iterator[Depende
             continue
         raw_name = _name_from_install_path(install_path)
         if raw_name is None:
-            continue  # root package entry or an unsupported path
+            continue
         yield make_locked_dependency(
             "npm",
             raw_name,
@@ -105,8 +76,6 @@ def _parse_packages_map(packages: dict[str, Any], path: str) -> Iterator[Depende
 
 
 def _parse_v1_dependencies(entries: dict[str, Any], path: str) -> Iterator[Dependency]:
-    # Iterative walk: v1 locks nest arbitrarily deep, and totality over hostile
-    # input must not depend on the interpreter's recursion limit.
     stack: list[dict[str, Any]] = [entries]
     while stack:
         for raw_name, package in stack.pop().items():
@@ -125,8 +94,6 @@ def _parse_v1_dependencies(entries: dict[str, Any], path: str) -> Iterator[Depen
 
 
 def _dedupe_locked(rows: Iterator[Dependency]) -> list[Dependency]:
-    """Collapse identical ``(name, version)`` occurrences (one per install
-    path) into a single row with the union of their hashes."""
     by_resolution: dict[tuple[str, str | None], Dependency] = {}
     for row in rows:
         key = (row.name, row.locked_version)
@@ -139,7 +106,6 @@ def _dedupe_locked(rows: Iterator[Dependency]) -> list[Dependency]:
 
 
 def _name_from_install_path(install_path: str) -> str | None:
-    """Extract the package name from a v2/v3 installation path."""
     marker = "node_modules/"
     if marker not in install_path:
         return None
@@ -155,11 +121,6 @@ def _load_json_object(text: str) -> dict[str, Any] | None:
     except (json.JSONDecodeError, TypeError, RecursionError):
         return None
     return data if isinstance(data, dict) else None
-
-
-# ================================================
-# Registry entries
-# ================================================
 
 
 PARSERS: tuple[SourceParser, ...] = (

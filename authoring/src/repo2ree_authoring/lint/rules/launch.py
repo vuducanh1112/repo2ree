@@ -1,5 +1,3 @@
-"""Check that a launch script runs the command it is given, under a launcher that waits, open to a reproducer."""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -9,7 +7,6 @@ from repo2ree_authoring.lint.models import ScriptContext
 from repo2ree_protocol.command import TargetKind
 from repo2ree_protocol.lint import Finding
 
-# Submit and return, or open a shell: neither runs the command and waits for it.
 _NOT_WAITING = ("sbatch", "salloc")
 
 

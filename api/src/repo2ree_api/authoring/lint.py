@@ -1,5 +1,3 @@
-"""Read-only routes for saved-script lint and contract checks on drafts."""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -25,8 +23,6 @@ class LintScriptsPayload(BaseModel):
 
 
 class LintScriptsResponse(BaseModel):
-    """Reports for existing scripts and paths for requested scripts that are absent."""
-
     model_config = ConfigDict(extra="forbid")
 
     reports: list[LintReport] = Field(default_factory=list)
@@ -34,8 +30,6 @@ class LintScriptsResponse(BaseModel):
 
 
 class ScriptDraftPayload(BaseModel):
-    """Unsaved source and the declarations against which to check it."""
-
     model_config = ConfigDict(extra="forbid")
 
     target: ScriptTargetSelectorPayload
@@ -51,7 +45,6 @@ class ScriptDraftPayload(BaseModel):
     responses=ERROR_RESPONSES,
 )
 def lint_scripts_route(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
-    """Statically check persisted scripts on every available tier."""
     with author_api_action("lint_scripts", ree_id):
         return _lint(ree_id, payload)
 
@@ -78,7 +71,6 @@ def _lint(ree_id: str, payload: LintScriptsPayload) -> LintScriptsResponse:
     responses=ERROR_RESPONSES,
 )
 def check_script_draft_route(ree_id: str, payload: ScriptDraftPayload) -> LintReport:
-    """Run the checks that start no process against unsaved source, on the REE's workbench."""
     handle = require_handle(ree_id)
     query = LintDraftQuery(
         kind=payload.target.kind,

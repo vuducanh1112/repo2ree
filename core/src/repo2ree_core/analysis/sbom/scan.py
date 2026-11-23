@@ -1,23 +1,3 @@
-"""Running the SBOM scanner over a built experiment environment archive.
-
-Shared by the author-side ``generate_sbom`` handler and the reviewer-side build
-reproduction. Both sides must mean exactly the same thing by "observed in the
-experiment environment" — otherwise an SBOM comparison measures the scanner, not the build —
-so the tool, its scope, and the output format are pinned here once rather than
-spelled at each call site.
-
-Shell module: it runs a subprocess and writes the scanner's output file. The
-parsing of that output into the IR stays in :mod:`repo2ree_core.analysis.sbom.cyclonedx`.
-
-The scan runs through the shared process runner rather than a blocking
-``subprocess.run``. Scanning a multi-gigabyte experiment environment tarball is the longest
-non-script operation in the system, and going through the runner is what makes
-it behave like one: progress reaches the run log while it happens, a cancel
-signals the whole process group instead of being noticed once the tool has
-already finished, and the invocation lands on a ``process.exec`` span like
-every other subprocess the workbench runs.
-"""
-
 from __future__ import annotations
 
 import json
@@ -29,42 +9,24 @@ from repo2ree_core.execution.process import CancelCheck, format_command, run_str
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.tools import resolve_tool
 
-# The one format both the cross-check and the reviewer comparison parse.
 SBOM_FORMAT = "cyclonedx-json"
 
-# Scanning consumes a tarball, never a live image. Which kind of tarball is the
-# scanner's to detect: an image archive (docker or OCI) is read as an image, and
-# anything else is unpacked and read as a filesystem.
 EXPERIMENT_ENVIRONMENT_ARCHIVE_SUFFIXES = (".tar", ".tar.gz", ".tgz")
 
-# The catalogers syft uses for images, pinned for every source: a filesystem
-# would otherwise also be read for manifests and lockfiles, which declare
-# packages rather than show them installed.
 CATALOGERS = "image"
 
-# The sources the scanner may detect, in the order it tries them; never a daemon
-# or a registry, whatever the tarball turns out to be.
 SOURCES = ("docker-archive", "oci-archive", "file")
 
 
 @dataclass(frozen=True)
 class ScanOutcome:
-    """What a scan run produced: how it ended, and the tool that produced it.
-
-    ``canceled`` is its own field rather than a distinguished exit code: a
-    scanner killed by a cancel exits nonzero the same way a scanner that choked
-    on the archive does, and only one of those is news about the experiment environment.
-    """
-
     returncode: int | None
     tool_version: str | None = None
     canceled: bool = False
-    # What the scanner took the experiment environment for: CycloneDX's ``container`` or ``file``.
     source_kind: str | None = None
 
 
 def is_experiment_environment_archive(path: str) -> bool:
-    """Whether a declared experiment environment path is a tarball the scanner can consume."""
     return path.lower().endswith(EXPERIMENT_ENVIRONMENT_ARCHIVE_SUFFIXES)
 
 
@@ -75,22 +37,6 @@ def scan_experiment_environment_archive(
     log: LogSink,
     is_canceled: CancelCheck = lambda: False,
 ) -> ScanOutcome:
-    """Scan an experiment environment tarball into a CycloneDX document at ``output_path``.
-
-    The scanner detects an image archive itself and falls back to unpacking any
-    other tarball; the experiment environment path says nothing about what a build script
-    packed. ``--scope
-    squashed`` and the catalogers are pinned explicitly: "observed in the
-    experiment environment" must mean the installed packages of the squashed filesystem, and
-    scanner defaults must not drift underneath the recorded evidence. Neither a
-    non-zero return code nor a cancel is raised — both are reported, and the
-    caller decides whether a scan that did not finish is fatal or merely leaves
-    the evidence inconclusive.
-
-    The scanner writes ``output_path`` itself, so a run that did not succeed can
-    leave a partial document there. Callers that publish the result as durable
-    evidence scan into a staging path and promote it only on success.
-    """
     syft = resolve_tool("syft")
     argv = [
         syft,
@@ -117,7 +63,6 @@ def scan_experiment_environment_archive(
 
 
 def read_source_kind(sbom_path: Path) -> str | None:
-    """What the scanner took the experiment environment for, out of a written CycloneDX document."""
     metadata = _metadata(sbom_path)
     component = metadata.get("component") if metadata else None
     kind = component.get("type") if isinstance(component, dict) else None
@@ -125,12 +70,6 @@ def read_source_kind(sbom_path: Path) -> str | None:
 
 
 def read_tool_version(sbom_path: Path) -> str | None:
-    """The generating syft version out of a written CycloneDX document.
-
-    ``metadata.tools`` is a ``{"components": [...]}`` object on CycloneDX >= 1.5
-    and a bare list of tool objects on 1.4; absence is not an error, and neither
-    is an unreadable document — the version is provenance, not a result.
-    """
     metadata = _metadata(sbom_path)
     tools = metadata.get("tools") if metadata else None
     entries = tools.get("components") if isinstance(tools, dict) else tools
@@ -146,7 +85,7 @@ def read_tool_version(sbom_path: Path) -> str | None:
 def _metadata(sbom_path: Path) -> dict[str, Any] | None:
     try:
         data: Any = json.loads(sbom_path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 — metadata is provenance, not a result — absence is not an error
+    except Exception:  # noqa: BLE001
         return None
     metadata = data.get("metadata") if isinstance(data, dict) else None
     return metadata if isinstance(metadata, dict) else None

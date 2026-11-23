@@ -1,11 +1,3 @@
-/* Document-level defaults. Deliberately narrow: box sizing and the minimal
- * reset, document/body defaults, focus defaults, scrollbar policy, and the
- * reduced-motion policy. Component appearance — including hover and active
- * effects — belongs to the component's own module, not here.
- * The former runtime-injected blanket button rules are gone. Each control owns
- * its interaction styling in its component module.
- */
-
 /* biome-ignore-all lint/complexity/noImportantStyles: the reduced-motion policy
  * at the foot of this file is the one accepted use of !important — it has to
  * outrank every animation in the app. checkStyleArchitecture.mjs is what keeps
@@ -35,8 +27,6 @@ textarea {
   outline: none;
 }
 
-/* Focus defaults: a visible ring for keyboard focus, nothing for pointer
- * focus. Controls may restyle the ring; they must not remove it. */
 :where(button, [role="button"], a, input, select, textarea):focus-visible {
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
@@ -46,8 +36,6 @@ textarea {
   outline: none;
 }
 
-/* Scrollbar policy: the app's panes are dense, and the platform scrollbar
- * eats layout the canvas needs. */
 ::-webkit-scrollbar {
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
@@ -66,9 +54,6 @@ textarea {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* Motion policy. This block is the one accepted use of `!important`: it has to
- * outrank every animation and transition in the app, including ones declared
- * later in the cascade. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

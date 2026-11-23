@@ -1,17 +1,3 @@
-"""A Sigstore of the run's own, so a showcase signs as an author does, under no real identity and into no public log.
-
-``python -m repo2ree_testbed.stack.sigstore smoke`` starts one, signs a statement, verifies it, and stops it.
-
-Five services, each a container on the network the run's machines share, so ``ree`` on a machine reaches them by
-name: Fulcio certifies a key for the identity a token names, under a root this run makes; Tesseract, a CT log,
-witnesses each certificate (the signer refuses one it did not); Rekor, on Trillian and MySQL, logs each signature.
-The OIDC issuer Fulcio trusts is this run's too: a key, and its discovery documents served by a process here. Tokens
-are minted with that key for one test identity, so nobody signs in. What a client needs is one Sigstore client trust
-configuration, written beside the descriptor tests read (``LocalSigstore``).
-
-Files reach the containers by ``docker cp``: a machine's daemon may not see this process's paths.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -47,25 +33,19 @@ IMAGES: Final = {
     "tesseract": "ghcr.io/transparency-dev/tesseract/posix:v0.2.0",
     "fulcio": "ghcr.io/sigstore/fulcio:v1.10.1",
 }
-# The run's two signers: the author of an REE, and a reviewer of it.
 AUTHOR: Final = "author@repo2ree.invalid"
 REVIEWER: Final = "reviewer@repo2ree.invalid"
-# Where a test finds the run's Sigstore: the path of its descriptor (LocalSigstore).
 SIGSTORE_VARIABLE: Final = "REPO2REE_TEST_SIGSTORE"
-# The claim a showcase's author makes, by its published predicate type, as any Sigstore client names it.
 AUTHOR_APPROVAL: Final = "https://repo2ree.org/claims/author-approval/v1"
 REVIEW: Final = "https://repo2ree.org/claims/review/v1"
 _CLIENT_ID: Final = "sigstore"
-_CA_PASSWORD: Final = "fulcio"  # noqa: S105 - the run's throwaway CA, as Fulcio's own compose spells it
+_CA_PASSWORD: Final = "fulcio"  # noqa: S105
 _MYSQL_DSN: Final = "test:zaphod@tcp({host}:3306)/test?parseTime=true&interpolateParams=true"
 _START: Final = "2026-01-01T00:00:00Z"
 _READY_SECONDS: Final = 300
 
 
 class LocalSigstore(BaseModel):
-    """What a test needs of the run's Sigstore: its trust configuration, its two signers, and how to mint a token
-    for either."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     trust_config: Path
@@ -79,11 +59,10 @@ class LocalSigstore(BaseModel):
         return cls.model_validate_json(descriptor.read_text(encoding="utf-8"))
 
     def token(self, signer: str, lifetime: int = 600) -> str:
-        """An OIDC token for ``signer``, one of the run's two, as the issuer Fulcio trusts would mint it."""
         if signer not in {self.author, self.reviewer}:
             raise ValueError(f"{signer} is neither of the run's signers")
         key = serialization.load_pem_private_key(self.signing_key.read_bytes(), password=None)
-        assert isinstance(key, ec.EllipticCurvePrivateKey)  # noqa: S101 - the run wrote it so
+        assert isinstance(key, ec.EllipticCurvePrivateKey)  # noqa: S101
         now = int(time.time())
         claims = {
             "iss": self.issuer,
@@ -102,7 +81,6 @@ class LocalSigstore(BaseModel):
 
 
 def local_sigstore() -> LocalSigstore:
-    """The run's Sigstore, as the run names it to its tests."""
     descriptor = os.environ.get(SIGSTORE_VARIABLE)
     if not descriptor:
         raise RuntimeError(f"no Sigstore for this run: {SIGSTORE_VARIABLE} is unset (run the tier with --sigstore)")
@@ -177,7 +155,7 @@ def _root_ca() -> tuple[ec.EllipticCurvePrivateKey, x509.Certificate]:
 
 
 def _http(url: str, timeout: float = 5) -> bytes:
-    with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310 - the run's own services
+    with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
         return bytes(response.read())
 
 
@@ -187,8 +165,6 @@ def _docker(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
 
 @dataclass
 class SigstoreStack:
-    """The run's Sigstore: started once, shared by its tests, stopped with the run."""
-
     directory: Path
     log: Path
     name: str = field(default_factory=lambda: f"repo2ree-sigstore-{uuid.uuid4().hex[:8]}")
@@ -199,7 +175,6 @@ class SigstoreStack:
         return f"{self.name}-{service}"
 
     def start(self) -> Path:
-        """Start every service, wait until each answers, and write the descriptor tests read; its path."""
         self.directory.mkdir(parents=True, exist_ok=True)
         own, network = workbench_host()
         if not network:
@@ -219,7 +194,7 @@ class SigstoreStack:
         rekor_key = serialization.load_pem_public_key(
             self._ready("rekor", f"http://{self.host('rekor')}:3000/api/v1/log/publicKey")
         )
-        assert isinstance(rekor_key, ec.EllipticCurvePublicKey)  # noqa: S101 - rekor's memory signer is ECDSA
+        assert isinstance(rekor_key, ec.EllipticCurvePublicKey)  # noqa: S101
         trust = self.directory / "trust_config.json"
         trust.write_text(json.dumps(self._trust_config(issuer, root, ct_key.public_key(), rekor_key), indent=2))
         descriptor = self.directory / "sigstore.json"
@@ -245,8 +220,6 @@ class SigstoreStack:
             self.issuer_process.terminate()
             self.issuer_process.wait(timeout=10)
             self.issuer_process = None
-
-    # ---- the issuer ------------------------------------------------------------------
 
     def _start_issuer(self, own: str) -> str:
         key = ec.generate_private_key(ec.SECP256R1())
@@ -275,14 +248,12 @@ class SigstoreStack:
         (served / "keys").write_text(json.dumps({"keys": [_jwk(key.public_key())]}))
         with self.log.open("ab") as out:
             self.issuer_process = subprocess.Popen(
-                [sys.executable, "-m", "http.server", str(port), "--bind", "0.0.0.0", "--directory", str(served)],  # noqa: S104 - Fulcio reaches it from its container
+                [sys.executable, "-m", "http.server", str(port), "--bind", "0.0.0.0", "--directory", str(served)],  # noqa: S104
                 stdout=out,
                 stderr=subprocess.STDOUT,
             )
         self._ready("issuer", f"http://127.0.0.1:{port}/.well-known/openid-configuration")
         return issuer
-
-    # ---- keys and configuration ------------------------------------------------------
 
     def _write_root(self) -> x509.Certificate:
         key, certificate = _root_ca()
@@ -300,7 +271,6 @@ class SigstoreStack:
     def _write_ct_key(self) -> ec.EllipticCurvePrivateKey:
         key = ec.generate_private_key(ec.SECP256R1())
         (self.directory / "ctfe").mkdir(exist_ok=True)
-        # Tesseract reads an EC key in the SEC 1 encoding only.
         (self.directory / "ctfe/privkey.pem").write_bytes(
             key.private_bytes(
                 serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()
@@ -310,7 +280,6 @@ class SigstoreStack:
 
     def _write_fulcio_config(self, issuer: str) -> None:
         (self.directory / "fulcio-config").mkdir(exist_ok=True)
-        # Fulcio reads its configuration as JSON first, in JSON's own keys; YAML's would leave it no issuer.
         config = {"OIDCIssuers": {issuer: {"IssuerURL": issuer, "ClientID": _CLIENT_ID, "Type": "email"}}}
         (self.directory / "fulcio-config/config.yaml").write_text(json.dumps(config))
 
@@ -365,8 +334,6 @@ class SigstoreStack:
             },
         }
 
-    # ---- containers ------------------------------------------------------------------
-
     def _container(
         self,
         service: str,
@@ -377,7 +344,6 @@ class SigstoreStack:
         environment: dict[str, str] | None = None,
         files: dict[str, str] | None = None,
     ) -> str:
-        """Create a service's container, copy its files in, and start it."""
         name = self.host(service)
         create = ["create", "--name", name, "--network", network, "--user", "root"]
         for key, value in (environment or {}).items():
@@ -471,8 +437,6 @@ class SigstoreStack:
         )
         self._ready("fulcio", f"http://{self.host('fulcio')}:5555/healthz")
 
-    # ---- waiting ---------------------------------------------------------------------
-
     def _ready(self, what: str, url: str) -> bytes:
         deadline = time.monotonic() + _READY_SECONDS
         while True:
@@ -504,9 +468,7 @@ def sign(
     signer: str,
     predicate: dict[str, Any] | None = None,
 ) -> bytes:
-    """A Sigstore bundle of an in-toto statement over ``sha256``, signed as ``signer`` (the run's author or its
-    reviewer), as that signer's own Sigstore client signs."""
-    from sigstore.dsse import DigestSet, StatementBuilder, Subject  # noqa: PLC0415 - only a signing test needs it
+    from sigstore.dsse import DigestSet, StatementBuilder, Subject  # noqa: PLC0415
     from sigstore.models import ClientTrustConfig  # noqa: PLC0415
     from sigstore.oidc import IdentityToken  # noqa: PLC0415
     from sigstore.sign import SigningContext  # noqa: PLC0415
@@ -519,13 +481,11 @@ def sign(
         .predicate(predicate or {})
         .build()
     )
-    # Cached, so the certificate's key is the one that signs (sigstore makes a new key per use without it).
     with SigningContext.from_trust_config(trust).signer(IdentityToken(local.token(signer))) as signing:
         return signing.sign_dsse(statement).to_json().encode()
 
 
 def smoke(directory: Path) -> None:
-    """Start the run's Sigstore, sign a statement, verify the bundle against it, and stop it."""
     from sigstore.models import Bundle, ClientTrustConfig  # noqa: PLC0415
     from sigstore.verify import Verifier, policy  # noqa: PLC0415
 

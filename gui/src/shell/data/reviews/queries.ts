@@ -5,13 +5,6 @@ import { resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 import { mapReviewRecord } from "./mapping";
 
-/**
- * Review attempts for this REE.
- *
- * `enabled` is the caller's switch, not a convenience: this listing polls, and
- * the model that owns it now lives above the review surfaces rather than inside
- * them, so a workspace nobody is reviewing would otherwise poll forever.
- */
 export function useReviewsQuery({ enabled = true }: { enabled?: boolean } = {}) {
   const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);

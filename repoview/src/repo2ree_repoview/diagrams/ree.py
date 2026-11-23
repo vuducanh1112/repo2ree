@@ -1,15 +1,3 @@
-"""Draw the REE contract's anatomy: every part of an REE, the files it is about, and how the two meet.
-
-From the contract alone: the REE schema and the file tree it points into, ``ree-schema`` and ``ree-layout`` in the
-contract registry as ``just export-contracts`` exports it. The definition's sections stand on the left, the receipts
-and the bundle in the middle, the tree on the right. Each digest field is joined to the files it is the digest of
-(``x-digest-of``), so a declaration and the receipts that ran it meet at the same file; a path field names where it
-is resolved (``x-relative-to``). Where no file joins them, a declared field is joined straight to the receipt field
-that records it: the section's own name, the same fields, or the experiment's name.
-
-    python -m repo2ree_repoview ree-anatomy -o reports/diagrams/ree/anatomy.svg
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -39,9 +27,7 @@ ZONE = "#94a3b8"
 PAIR = "#0f766e"
 DIGEST = "#64748b"
 TREE = ("#f8fafc", "#475569")
-# How each kind of capture reads in the tree.
 CAPTURES: dict[Capture, str] = {"git": "#0f172a", "lfs": "#7c3aed", "never": "#94a3b8"}
-# Fill and frame of each role's boxes; the receipts and declared fields as the evidence graph draws them.
 COLOURS: dict[Role, tuple[str, str]] = {
     "definition": ("#e2ece8", "#0f766e"),
     "receipt": ("#dbeafe", "#3b82f6"),
@@ -68,7 +54,6 @@ class Property(Document):
     format: str | None = None
 
     def target(self) -> tuple[str, Shape] | None:
-        """The $def this property holds, and how it holds it."""
         if self.ref:
             return self.ref.rsplit("/", 1)[-1], "one"
         for alternative in self.any_of:
@@ -81,14 +66,12 @@ class Property(Document):
         return None
 
     def annotated(self) -> Property:
-        """Where its ``x-`` annotations sit: on itself, on its non-null branch, or on its items."""
         for place in (self, *self.any_of, *([self.items] if self.items else [])):
             if place.digest_of or place.relative_to:
                 return place
         return self
 
     def text(self) -> str:
-        """The property's type, as short as it reads in the drawing."""
         annotated = self.annotated()
         optional = "?" if any(alternative.type == "null" for alternative in self.any_of) else ""
         if annotated.relative_to:
@@ -136,7 +119,6 @@ class TreeEntry(Document):
     children: tuple[TreeEntry, ...] = ()
 
     def walk(self, at: str = "", depth: int = 0) -> Iterator[tuple[str, int, TreeEntry]]:
-        """Every entry below this one, depth first, by its path from the root as the tree spells it."""
         for child in self.children:
             path = f"{at}/{child.name}" if at else child.name
             yield path, depth, child
@@ -161,8 +143,6 @@ class Schema(Document):
 
 @dataclass(frozen=True)
 class Box:
-    """One part of an REE: a $def with the fields it shows."""
-
     name: str
     role: Role
     type: str
@@ -177,8 +157,6 @@ class Box:
 
 @dataclass(frozen=True)
 class Pair:
-    """A declared field, and the receipt field that records what a run took it to be."""
-
     section: str
     field: str | None
     receipt: str
@@ -188,8 +166,6 @@ class Pair:
 
 @dataclass(frozen=True)
 class Link:
-    """A digest field, and an entry of the tree it is the digest of (``.`` for the root)."""
-
     node: str
     field: str
     role: Role
@@ -203,12 +179,10 @@ class Anatomy:
     pairs: tuple[Pair, ...]
     tree: TreeEntry
     links: tuple[Link, ...]
-    # Where the file tree is kept, as the contract registry says.
     tree_source: str = ""
 
 
 def anatomy(schema: Schema, layout: Layout, tree_source: str = "") -> Anatomy:
-    """Every part of an REE, from the schema's root down to the sections of its definition and receipts."""
     subject = schema.of(schema.properties["subject"])
     definition = schema.of(subject.properties["definition"])
     receipts = schema.of(subject.properties["receipts"])
@@ -244,7 +218,6 @@ def anatomy(schema: Schema, layout: Layout, tree_source: str = "") -> Anatomy:
 
 
 def expanded(schema: Schema, fields: dict[str, Property]) -> dict[str, Property]:
-    """A bundle part's fields, with the fields of each list item beneath its list, e.g. ``entries[*].digest``."""
     shown: dict[str, Property] = {}
     for name, prop in fields.items():
         shown[name] = prop
@@ -254,7 +227,6 @@ def expanded(schema: Schema, fields: dict[str, Property]) -> dict[str, Property]
 
 
 def in_tree(declared: dict[str, dict[str, Property]], pair: Pair) -> bool:
-    """Whether the declared field is about a file, so the two meet in the tree rather than by a pairing."""
     if pair.field is None:
         return False
     annotated = declared[pair.section][pair.field].annotated()
@@ -326,7 +298,6 @@ def table(box: Box) -> str:
 
 
 def tree_table(tree: TreeEntry) -> str:
-    """The tree as one listing: each entry indented under its directory, with how a capture carries it."""
     fill, frame = TREE
     head = (
         f'<TR><TD ALIGN="LEFT" BGCOLOR="{frame}" PORT=".&lt;"><FONT COLOR="#ffffff"><B>./</B></FONT></TD>'
@@ -405,7 +376,7 @@ def svg(drawn: Anatomy) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--contracts", type=Path, help="the contract registry as exported (reports/exports/)")
     parser.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     args = parser.parse_args()

@@ -1,7 +1,3 @@
-/* The dot renders one derived state, not three style objects. `data-state` is
- * the semantic classification the component computes; the colors are semantic
- * roles from tones.css. */
-
 .dot {
   flex-shrink: 0;
   width: 7px;

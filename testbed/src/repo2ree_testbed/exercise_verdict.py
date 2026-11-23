@@ -1,13 +1,3 @@
-"""What holds of a replayed exercise, whatever its steps: each command answered as ``ree schema`` says it answers,
-and the histories it left conform to the specification.
-
-The specification is the checker's to read: it runs as a command on the REE directories, as the testbed runs every
-evidence tool, and only the rules it finds violated are kept. Whether one step should have succeeded is never asked.
-
-A problem is compared by what stays the same between runs (its kind, step, rule and subject), never by its detail,
-which may name an attempt or a digest.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -40,9 +30,6 @@ class _Model(BaseModel):
 
 
 class Problem(_Model):
-    """A command that answered other than ``ree schema`` declares (``answer``, at its step, its subject the command),
-    or a rule the checker found violated (``violated``, its subject what the finding is about)."""
-
     kind: ProblemKind
     step: int | None = None
     rule: str
@@ -55,7 +42,6 @@ class Problem(_Model):
 
     @property
     def known_as(self) -> tuple[ProblemKind, str, str]:
-        """What makes it the same problem in another exercise: its step aside."""
         return self.kind, self.rule, self.subject
 
     def __str__(self) -> str:
@@ -65,14 +51,10 @@ class Problem(_Model):
 
 class Judged(_Model):
     problems: tuple[Problem, ...]
-    # The rules that triggered and each entity's transitions taken.
     reached: tuple[str, ...]
-    # The specification they were judged against.
     spec_digest: str
 
 
-# Each file measured, from the repo root, and the arcs executed in it as coverage.py numbers them (from, to): a
-# negative line is the entry to or the exit from the code object starting there.
 type Arcs = dict[str, tuple[tuple[int, int], ...]]
 
 
@@ -81,7 +63,6 @@ def arc_count(arcs: Arcs) -> int:
 
 
 def arcs_without(arcs: Arcs, known: Arcs) -> Arcs:
-    """The arcs of ``arcs`` that ``known`` does not hold."""
     left: Arcs = {}
     for path, pairs in arcs.items():
         seen = set(known.get(path, ()))
@@ -95,10 +76,6 @@ def arcs_union(arcs: Arcs, more: Arcs) -> Arcs:
 
 
 class Trace(_Model):
-    """One exercise as it ran: what each command answered, the problems it showed, what of the specification it
-    reached, and, when its commands ran measured, the arcs ree executed. The checker's reports, with the behaviour
-    trace it judged, lie beside it in ``check/``; the coverage data the arcs were read from, in ``coverage/``."""
-
     exercise: Exercise
     replayed: tuple[Replayed, ...]
     problems: tuple[Problem, ...]
@@ -116,10 +93,6 @@ class Trace(_Model):
 
 
 class Covered(_Model):
-    """One exercise's line in a search's ``coverage.ndjson``: what it reached and how many arcs it executed, and of
-    those what no exercise of the search before it had, so that what each adds, and where they overlap, is read off
-    the lines in order."""
-
     digest: str
     steps: int
     problems: int
@@ -130,8 +103,6 @@ class Covered(_Model):
 
 
 class SoFar(_Model):
-    """What a search's exercises reached together so far: ``covered.json`` beside its ``coverage.ndjson``."""
-
     exercises: int = 0
     reached: tuple[str, ...] = ()
     arcs: Arcs = {}
@@ -144,7 +115,6 @@ def cli_schema() -> dict[str, Any]:
 
 
 def schema_command(words: Sequence[str]) -> dict[str, Any]:
-    """The command of ``ree schema`` that ``words`` run: the one whose words they start with, the longest first."""
     commands = sorted(cli_schema()["commands"], key=lambda command: -len(command["words"]))
     return next(command for command in commands if tuple(words[: len(command["words"])]) == tuple(command["words"]))
 
@@ -178,8 +148,6 @@ def _answer_problems(step: int, ran: Ran) -> list[Problem]:
 
 
 def answer_problems(replayed: Sequence[Replayed]) -> list[Problem]:
-    """Each command that answered other than ``ree schema`` declares: an undeclared exit status, no result, or a
-    result or outputs of another shape."""
     return [
         problem
         for step in replayed
@@ -189,8 +157,6 @@ def answer_problems(replayed: Sequence[Replayed]) -> list[Problem]:
 
 
 def behaviour(histories: Sequence[Path], output: Path, journals: Path | None = None) -> Judged:
-    """Run the checker on the REE directories ``histories``, beside the environment's ``journals``, its reports into
-    ``output``: the rules it found violated, and what the histories reached."""
     gits = [word for history in histories for word in ("--git", str(history))]
     journaled = ["--journal", str(journals)] if journals is not None and journals.is_dir() else []
     command = [sys.executable, "-m", "repo2ree_assurance_checker", "check", *gits, *journaled, "-o", str(output)]
@@ -220,8 +186,6 @@ def digest(exercise: Exercise) -> str:
 
 
 def arcs_executed(data: Path) -> Arcs:
-    """Combine the data files the measured commands wrote in ``data`` into ``data/.coverage``: the distinct arcs they
-    executed, in each file."""
     measured = Coverage(data_file=str(data / ".coverage"), config_file=str(ROOT / "pyproject.toml"))
     try:
         measured.combine([str(data)])
@@ -237,8 +201,6 @@ def arcs_executed(data: Path) -> Arcs:
 
 
 def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: RunRee = local_ree) -> Trace:
-    """Replay ``exercise`` in ``workdir`` through ``run`` and judge it: what each command answered, then what the
-    histories show; ``measured``, through ``ree`` on this machine under coverage.py, also the arcs it executed."""
     data = workdir / "coverage"
     replay = CliReplay(covered_ree(data) if measured else run, workdir)
     replayed = replay.replay(exercise)
@@ -256,9 +218,6 @@ def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: Run
 
 
 def keep(workdir: Path, trace: Trace) -> None:
-    """Keep ``trace`` in ``workdir`` as ``trace.json``, and its coverage as one more line of the search's
-    ``coverage.ndjson`` beside it, with what it adds to what the search reached so far (``covered.json``). The REEs
-    and the files staged for them stay only when it showed a problem."""
     (workdir / "trace.json").write_text(trace.model_dump_json(indent=2) + "\n")
     so_far_file = workdir.parent / "covered.json"
     so_far = SoFar.model_validate_json(so_far_file.read_text()) if so_far_file.is_file() else SoFar()

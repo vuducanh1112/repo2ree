@@ -12,7 +12,6 @@ import { buildSealStepItems, SEAL_STEPS } from "./sealSteps";
 
 const activationStep: EvidenceStep = "activate_experiment_environment";
 
-/** Half-authored: some steps hold a receipt, some only a declaration. */
 function halfAuthoredRee() {
   return patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
     spec: {
@@ -27,8 +26,6 @@ function halfAuthoredRee() {
 }
 
 describe("buildSealStepItems", () => {
-  // The invariant the seal page exists to keep: it projects the authoring
-  // steps, and never holds a second opinion about them.
   it("agrees with the authoring rail on every step-backed entry", () => {
     const ree = halfAuthoredRee();
     const badges: Badges = {};
@@ -53,7 +50,6 @@ describe("buildSealStepItems", () => {
     expect(done(patchReeEditorViewModel(ree, { spec: { swhid: "" } }))).toBe(false);
   });
 
-  // The drift this file used to pin: a declared path is not a built runtime.
   it.each([
     [
       PAGE.BUILD_EXPERIMENT_ENVIRONMENT,
@@ -82,8 +78,6 @@ describe("buildSealStepItems", () => {
     expect(metadata({ metadata: "complete" })).toBe(true);
   });
 
-  // Experiments are the REE's scientific payload; the seal used to be silent
-  // about them while warning about a deposit it could never satisfy.
   it("carries an experiments entry and no unachievable archive entry", () => {
     const keys = buildSealStepItems(createEmptyReeEditorViewModel(), {}).map((item) => item.key);
 

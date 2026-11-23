@@ -1,9 +1,3 @@
-"""How a step runs one of the REE's scripts: launched and activated, where ``ree`` runs.
-
-The command is composed outside in: the REE's launch (a scheduler, or nothing), the recorder of where the launch put
-it, the activation, and the script. It runs from the workspace, as a process of this one.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,9 +13,6 @@ from repo2ree_telemetry.spans import ScriptSpanAttrs, record_command_status, rec
 tracer = get_tracer(__name__)
 
 
-# What the activation runs inside the experiment environment when it is tested alone: a command that does
-# nothing, so the run shows only that the activation enters the environment and hands over. It takes no
-# options, because an activation may hand its command to a tool that parses on past the command (srun does).
 NOTHING = ("true",)
 
 
@@ -34,20 +25,6 @@ def run_workspace_script(
     activate_rel: str | None = None,
     launch: Launch | None = None,
 ) -> StepOutcome:
-    """Run a workspace-relative script under ``sh`` from the workspace root.
-
-    The single execution path shared by the lifecycle runner
-    (``experiment/run.py``) and the build/activation/check handlers: the script
-    runs where ``ree`` runs, through the REE's launch when it declares one.
-    Running from the workspace root lets authors reference project files by their
-    workspace-relative paths regardless of where REE keeps its own scripts;
-    wrapper scripts are POSIX ``sh`` while project scripts that need bash or their
-    own directory (e.g. ``docker build .``) invoke it
-    explicitly. Scripts that resolve outside the workspace are rejected.
-
-    With no ``script_rel`` the activation runs alone, around a command that does nothing. With a ``launch``, the
-    whole command runs through the REE's launch script, and the outcome says where the launch put it.
-    """
     workspace = workspace.resolve()
     if script_rel is None and activate_rel is None:
         raise ValueError("nothing to run: no script and no activation")

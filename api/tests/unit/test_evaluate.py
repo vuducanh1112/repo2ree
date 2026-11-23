@@ -12,8 +12,6 @@ def temp_storage(tmp_path, monkeypatch):
 
 
 def test_get_report_endpoint_404_when_no_workbench():
-    # With no workbench registered for the REE, the report endpoint reports 404
-    # rather than falling back to any host-side artifact.
     from fastapi import HTTPException
 
     from repo2ree_api.authoring.stages import get_reproducibility_report_route

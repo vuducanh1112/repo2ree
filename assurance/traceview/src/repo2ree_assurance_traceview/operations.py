@@ -1,30 +1,3 @@
-"""The behaviour trace of one REE: setup, the operations that produce evidence, and the authoring between them.
-
-An operation is an author attempt that belongs to a run (acquire_source, build_experiment_environment, …): the run
-names its attempt, or, when it failed before it could (its workbench was lost), the attempt's dispatch
-names the run. Attempts without a run of their own (definition patches, file writes, lints) are
-authoring and are collapsed between operations. Every entry is grouped from the verification of the dossier (the
-verifier's artifact, read back), and carries the verdict of each rule occurrence its events triggered.
-
-Order: attempts keep capture order, which step evidence depends on. Setup, which only
-the journal records, is merged in by the journal position of each attempt's dispatch, the request
-the attempt's record cites, which is how the checker orders Git evidence too. Wall-clock time places
-nothing.
-
-Scope: the REE's own history is the Git source that witnesses its Ree transitions. Review histories
-of the same REE are not drawn yet (reviews are not specified); they are only counted.
-
-Built in three steps: the REE's history is cut into commits (``_commits``), each commit that
-captured an attempt is read as a capture (``_Capture.of``), and a ``_Timeline`` folds them, in
-order and with the journal-only setups between them, into entries.
-
-The lifecycle then joins every entry's sequence and the actions no entry draws (a deletion, a
-request refused before anything was dispatched) in journal order: the order the author and the
-control plane saw them in, where entries keep the order their attempts were captured in. Beside
-them it draws the workbench sessions of the REE's store while the REE lived, and the API's journals
-starting and crashing. The dossier's lifecycle draws every REE, every session, and every journal.
-"""
-
 from __future__ import annotations
 
 from collections import Counter, defaultdict, deque
@@ -68,8 +41,6 @@ TOP_SPANS = 6
 
 
 class _Evidence:
-    """One REE's share of a verification: its events in order, and the verdicts they triggered."""
-
     def __init__(self, model: VerifiedModel, spans: SpanIndex, ree: str) -> None:
         self.model = model
         self.spans = spans
@@ -77,10 +48,8 @@ class _Evidence:
         kinds = {source.id: source.kind for source in model.evidence.sources}
         self.journal = [e for e in self.events if kinds.get(e.source) == "journal"]
         self.position = {e.ref: index for index, e in enumerate(self.journal)}
-        # Every journal record of the dossier, whatever it is about: what places the REE among the others.
         self.everything = model.evidence.ordered([e for e in model.evidence.events if kinds.get(e.source) == "journal"])
         self.order = {e.ref: index for index, e in enumerate(self.everything)}
-        # The store the REE was created in: an REE never moves.
         self.store = next(
             (
                 str(e.facts[terms.STORE_ID])
@@ -94,7 +63,6 @@ class _Evidence:
         self.git = [e for e in self.events if kinds.get(e.source) == "git" and e.source in own]
         reviewed = (e for e in self.events if kinds.get(e.source) == "git" and e.source not in own)
         self.reviews = len({e.key for e in reviewed if e.subject == terms.ATTEMPT})
-        # Times count from the dossier's first journal record, so every REE of it shares one clock.
         self.origin = min((timestamp(e.at) for e in self.everything if e.at), default=0.0)
         self.judged = _judged(model.judgements)
         self.flagged = _flagged(model)
@@ -108,7 +76,7 @@ class _Evidence:
     def rules(self, events: list[Event]) -> tuple[RuleHit, ...]:
         hits = [
             RuleHit(rule=j.rule, verdict=j.verdict, event=j.event, subject=j.subject, key=j.key)
-            for ref in dict.fromkeys(e.ref for e in events)  # Git events of one commit share a ref.
+            for ref in dict.fromkeys(e.ref for e in events)
             for j in self.judged.get(ref, [])
         ]
         hits += [
@@ -124,7 +92,6 @@ class _Evidence:
         return Machine(key=events[0].key, states=states, facts=facts)
 
     def span_summary(self, events: list[Event], ran: Span | None = None) -> tuple[SpanSummary, ...]:
-        """The longest spans in the traces these events were recorded in, or of the run ``ree`` ran."""
         found = self.spans.subtree(ran) if ran is not None else self.spans.in_traces(e.trace_id for e in events)
         related = [s for s in found if not any(n in s.name for n in NOISE)]
         top = sorted(related, key=lambda span: -span.duration)[:TOP_SPANS]
@@ -141,7 +108,6 @@ class _Evidence:
 
 
 def _judged(judgements: Iterable[Judgement]) -> dict[str, list[Judgement]]:
-    """Each invariant occurrence's verdict, by the event that triggered it."""
     judged: dict[str, list[Judgement]] = defaultdict(list)
     for judgement in judgements:
         judged[judgement.event].append(judgement)
@@ -149,7 +115,6 @@ def _judged(judgements: Iterable[Judgement]) -> dict[str, list[Judgement]]:
 
 
 def _flagged(model: VerifiedModel) -> dict[str, str]:
-    """The machine or boundary rule each event broke, by the event."""
     return {
         ref: rule.rule
         for rule in model.result.rules
@@ -161,28 +126,16 @@ def _flagged(model: VerifiedModel) -> dict[str, str]:
 
 
 def rees(model: VerifiedModel) -> list[str]:
-    """The REEs a dossier holds, each witnessed by its own Git history."""
     return sorted(model.instances.get(terms.REE, {}))
-
-
-# ================================================
-# Journal-only work: setup
-# ================================================
 
 
 @dataclass
 class _Setup:
-    """Journal-only work: an REE's creation."""
-
     position: int
     run: list[Event]
 
 
 def _runs(evidence: _Evidence) -> dict[str, list[Event]]:
-    """The author actions the author watched as runs, by action: the long ones, which carry a run_id.
-
-    A synchronous action (an edit, a lint) answers within its request; its attempt is authoring.
-    """
     actions: dict[str, list[Event]] = defaultdict(list)
     for event in evidence.journal:
         if event.subject == terms.ACTION and event.kind == "transition":
@@ -214,15 +167,8 @@ def _setup_entry(evidence: _Evidence, setup: _Setup) -> Entry:
     )
 
 
-# ================================================
-# The REE's history: commits, and the attempts they captured
-# ================================================
-
-
 @dataclass(frozen=True)
 class _Commit:
-    """One commit of the REE's own history: a capture of an attempt, or a snapshot between attempts."""
-
     attempt: list[Event]
     receipts: list[Event]
     ree: list[Event]
@@ -244,18 +190,15 @@ def _commits(evidence: _Evidence) -> list[_Commit]:
 
 @dataclass(frozen=True)
 class _Capture:
-    """A commit that captured an attempt, with the dispatch that started it and the run it belongs to."""
-
     commit: _Commit
     key: str
     operation: str
     outcome: str | None
-    changes: list[StepChange]  # What the attempt changed; a baseline is the standing it found.
+    changes: list[StepChange]
     exchange: list[Event]
     sent: Event | None
     answered: Event | None
-    run: list[Event] | None  # None for authoring: an attempt no watched action names.
-    # The run's spans when ``ree`` ran the attempt with no control plane: every invocation is an operation.
+    run: list[Event] | None
     ran: Span | None = None
 
     @classmethod
@@ -351,15 +294,10 @@ def _operation_entry(evidence: _Evidence, capture: _Capture, run: list[Event], f
     )
 
 
-# ================================================
-# Folding the history into entries
-# ================================================
-
-
 @dataclass
 class _Authoring:
     start: float | None
-    position: int | None  # Its first dispatch's place in the journal.
+    position: int | None
     end: float | None = None
     operations: Counter[str] = field(default_factory=Counter)
     failed: int = 0
@@ -368,17 +306,15 @@ class _Authoring:
 
 
 class _Timeline:
-    """Folds the REE's commits, in capture order, into entries; keeps each step's standing as it goes."""
-
     def __init__(self, evidence: _Evidence, setups: list[_Setup], files: Mapping[str, int]) -> None:
         self.evidence = evidence
         self.pending = deque(setups)
         self.files = files
         self.entries: list[Entry] = []
-        self.positions: list[int | None] = []  # Each entry's place in the journal, where it has one.
-        self.drawn: set[str] = set()  # The actions whose runs the entries draw.
+        self.positions: list[int | None] = []
+        self.drawn: set[str] = set()
         self.standing: dict[str, str] = {}
-        self.baseline: dict[str, str] | None = None  # Each step's standing before the first capture.
+        self.baseline: dict[str, str] | None = None
         self.authoring: _Authoring | None = None
 
     def add(self, commit: _Commit, capture: _Capture | None) -> None:
@@ -406,7 +342,6 @@ class _Timeline:
             self.positions.append(None)
 
     def setups_before(self, position: int | None) -> None:
-        """Journal-only entries the journal places before ``position`` (all of them when None)."""
         while self.pending and (position is None or self.pending[0].position < position):
             self.close_authoring()
             setup = self.pending.popleft()
@@ -448,7 +383,6 @@ class _Timeline:
 def _timeline(
     model: VerifiedModel, spans: SpanIndex, ree: str, commit_files: Mapping[str, int] | None
 ) -> tuple[_Evidence, _Timeline]:
-    """One REE's evidence, folded into its entries."""
     evidence = _Evidence(model, spans, ree)
     runs = _runs(evidence)
     run_of_attempt = {
@@ -474,7 +408,6 @@ def build_trace(
     dossier: DossierInfo,
     commit_files: Mapping[str, int] | None = None,
 ) -> BehaviourTrace:
-    """One REE's behaviour trace, drawn from a verification: its verdicts are the verifier's, never redrawn."""
     evidence, timeline = _timeline(model, spans, ree, commit_files)
     standing = timeline.standing
     steps = [s for s in terms.STEP_ORDER if s in standing] + sorted(s for s in standing if s not in terms.STEP_ORDER)
@@ -502,13 +435,6 @@ def build_trace(
 def _runs_by_dispatch(
     evidence: _Evidence, runs: dict[str, list[Event]], named: Mapping[str, list[Event]], ree: str
 ) -> dict[str, list[Event]]:
-    """The runs no attempt was named for, by the attempt whose dispatch names them.
-
-    A run whose workbench was lost fails without naming its attempt; the attempt's dispatch still
-    carries the run's id. Reads that watch a run carry its id too, and are not it. An REE's creation
-    dispatches its own patch under the creation's run id, so creations are left out: they are setups,
-    never an attempt's run.
-    """
     claimed = {id(events) for events in named.values()}
     by_id = {
         run_id: events
@@ -529,7 +455,6 @@ def _runs_by_dispatch(
 
 
 def _dispatches_by_run(evidence: _Evidence) -> dict[str, list[Event]]:
-    """Each dispatch exchange this REE's journal records, by the run its request names."""
     journaled = evidence.position
     found: dict[str, list[Event]] = defaultdict(list)
     for exchange in _commands(evidence).values():
@@ -542,8 +467,6 @@ def _dispatches_by_run(evidence: _Evidence) -> dict[str, list[Event]]:
 
 @dataclass(frozen=True)
 class _Command:
-    """A command's exchanges as one: the request that started it, then each round that followed it."""
-
     events: list[Event]
 
     @property
@@ -552,7 +475,6 @@ class _Command:
 
     @property
     def outcome(self) -> Event | None:
-        """How the last exchange ended: the command's end once a follow settled it."""
         return next((event for event in reversed(self.events) if event.kind in {"receive", "abandon"}), None)
 
 
@@ -569,7 +491,6 @@ def _command(evidence: _Evidence, key: str) -> _Command | None:
 
 
 def _loose(evidence: _Evidence, drawn: set[str]) -> list[tuple[int, list[Event]]]:
-    """The actions no entry draws, with their journal position: neither a read nor any entry's run or attempt."""
     actions: dict[str, list[Event]] = defaultdict(list)
     for event in evidence.journal:
         if event.subject == terms.ACTION and event.kind == "transition":
@@ -587,7 +508,6 @@ type _Part = tuple[int, Segment, Sequence]
 
 
 def _told(entry: Entry) -> tuple[str | None, str | None, str | None]:
-    """What the author was told of an entry, and how its attempt and its dispatch ended where they say otherwise."""
     told = entry.run.states[-1].state if entry.run and entry.run.states else entry.outcome
     attempt = entry.attempt.outcome if entry.attempt and entry.attempt.outcome != told else None
     dispatch = entry.dispatch.outcome if entry.dispatch and entry.dispatch.outcome != told else None
@@ -595,10 +515,6 @@ def _told(entry: Entry) -> tuple[str | None, str | None, str | None]:
 
 
 def _parts(evidence: _Evidence, timeline: _Timeline, ree: str | None = None) -> list[_Part]:
-    """Every entry's sequence and every action no entry draws, by journal order over the whole dossier.
-
-    An entry the journal does not place (authoring without a recorded dispatch) stays after the one before it.
-    """
     placed: list[_Part] = []
     last = -1
     for index, (entry, position) in enumerate(zip(timeline.entries, timeline.positions, strict=True)):
@@ -626,7 +542,6 @@ def _parts(evidence: _Evidence, timeline: _Timeline, ree: str | None = None) -> 
         name = _str(events[0].facts.get(terms.ACTION_NAME)) or "action"
         told = events[-1].target_state
         segment = Segment(kind="action", label=name, outcome=told, ree=ree, told=told, first=0, last=0)
-        # A run that dispatched an attempt no capture recorded (its workbench died) still shows its dispatch.
         run_ids = {_str(e.facts.get(terms.RUN_ID)) for e in events} - {None}
         exchange = [e for run_id in sorted(r for r in run_ids if r) for e in dispatched.get(run_id, [])]
         sequence = build_sequence(evidence.spans, runs=events, exchange=exchange, origin=evidence.origin)
@@ -635,10 +550,6 @@ def _parts(evidence: _Evidence, timeline: _Timeline, ree: str | None = None) -> 
 
 
 def _system(evidence: _Evidence, store: str | None, window: tuple[int, int] | None) -> list[_Part]:
-    """The workbench sessions and the API journals around the REEs: of one store within ``window``, or all.
-
-    A session that was serving the store when ``window`` opened is drawn by the move that admitted it.
-    """
     order = evidence.order
     moves = [
         e
@@ -680,9 +591,8 @@ def _system(evidence: _Evidence, store: str | None, window: tuple[int, int] | No
 
 
 def _returning(moves: list[Event]) -> tuple[dict[str, str], set[str]]:
-    """For each admission of a workbench seen before: the session its process held before, or that it is a new one."""
-    seen: set[str] = set()  # The workbench ids admitted so far.
-    sessions: dict[str, str] = {}  # Each nonce's last session.
+    seen: set[str] = set()
+    sessions: dict[str, str] = {}
     returning: dict[str, str] = {}
     renewed: set[str] = set()
     for move in moves:
@@ -699,8 +609,7 @@ def _returning(moves: list[Event]) -> tuple[dict[str, str], set[str]]:
 
 
 def _joined(parts: list[_Part]) -> Lifecycle:
-    """The parts in journal order; a store's sessions, or the API's journals, one after another are one stretch."""
-    parts = sorted(parts, key=lambda part: part[0])  # Stable: an unplaced entry keeps its place after its predecessor.
+    parts = sorted(parts, key=lambda part: part[0])
     joined: list[tuple[Segment, Sequence]] = []
     for _, segment, sequence in parts:
         if joined and segment.kind in ("session", "epoch") and joined[-1][0].label == segment.label:
@@ -713,7 +622,6 @@ def _joined(parts: list[_Part]) -> Lifecycle:
 
 
 def _lifecycle(evidence: _Evidence, timeline: _Timeline) -> Lifecycle:
-    """The REE's lifecycle: its entries and actions, with its store's sessions and the API's journals beside them."""
     parts = _parts(evidence, timeline)
     window = (min(p for p, _, _ in parts), max(p for p, _, _ in parts)) if parts else None
     return _joined(parts + (_system(evidence, evidence.store, window) if evidence.store else []))
@@ -734,10 +642,6 @@ def build_dossier(
     dossier: DossierInfo,
     commit_files: Mapping[str, int] | None = None,
 ) -> BehaviourTrace:
-    """The whole dossier as one trace: every REE's lifecycle, every workbench session, every API journal.
-
-    It names no REE and has no entries of its own: each segment says which REE it belongs to.
-    """
     parts: list[_Part] = []
     evidence: _Evidence | None = None
     for ree in rees(model):

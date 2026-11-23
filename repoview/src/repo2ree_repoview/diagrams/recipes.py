@@ -1,17 +1,3 @@
-"""Render the declared Just recipe dependency graph.
-
-Edges follow execution order: prerequisites point to the recipe that consumes
-them, while subsequent dependencies point away from the recipe whose body runs
-first. Recipes with no incoming execution edge share the first rank.
-
-What a recipe runs, a test suite or the exercise cases, it declares as data:
-``[metadata("runs", "<path>")]``, each path from the repository root. The graph
-draws each path as a node of its own, with an edge from every recipe that runs
-it. ``undeclared_runs`` holds the declarations to the recipes: every suite a
-recipe names (a ``testbed/suites/`` path, a Playwright project, a showcase
-command) is declared, and every declared path exists.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -74,7 +60,6 @@ class _Dump(Document):
 class Dependency:
     recipe: str
     subsequent: bool = False
-    # The arguments written as literals.
     arguments: tuple[str, ...] = ()
 
 
@@ -87,9 +72,7 @@ class Recipe:
     dependencies: tuple[Dependency, ...]
     doc: str = ""
     parameters: tuple[str, ...] = ()
-    # What it declares it runs: test suites and the exercise cases, each a path from the repository root.
     runs: tuple[str, ...] = ()
-    # The literal text of its body.
     text: str = ""
 
     @property
@@ -98,12 +81,10 @@ class Recipe:
 
 
 def parse_recipes(document: dict[str, Any]) -> dict[str, Recipe]:
-    """Convert Just's JSON dump into the small model the diagram and the overview draw."""
     return _recipes(_Dump.model_validate(document))
 
 
 def _strings(value: JsonValue) -> Iterator[str]:
-    """The literal strings of a fragment of Just's dump, in order."""
     if isinstance(value, str):
         yield value
     elif isinstance(value, list):
@@ -112,7 +93,6 @@ def _strings(value: JsonValue) -> Iterator[str]:
 
 
 def _runs(attributes: tuple[JsonValue, ...]) -> tuple[str, ...]:
-    """The paths of a recipe's ``[metadata("runs", ...)]`` attributes."""
     paths: list[str] = []
     for attribute in attributes:
         values = attribute.get("metadata") if isinstance(attribute, dict) else None
@@ -147,7 +127,6 @@ def _recipes(dump: _Dump) -> dict[str, Recipe]:
 
 
 def read_recipes(dump: str) -> dict[str, Recipe]:
-    """The recipes of Just's JSON dump (``just --dump --dump-format json``)."""
     return _recipes(_Dump.model_validate_json(dump))
 
 
@@ -183,24 +162,20 @@ def execution_edges(recipes: dict[str, Recipe]) -> set[tuple[str, str, bool]]:
     return edges
 
 
-# What runs a suite without naming its path: the command, and the suite it runs.
 SUITE_COMMANDS = {
     "repo2ree_testbed api-showcase run": "testbed/suites/showcase",
     "repo2ree_testbed cli-showcase run": "testbed/suites/showcase",
 }
-# The recipe that runs the Playwright project its first argument names.
 PLAYWRIGHT_RECIPE = "_source-stack-playwright"
 PLAYWRIGHT_CONFIG = "gui/playwright.config.ts"
 
 
 def playwright_projects(config: str) -> dict[str, str]:
-    """Each Playwright project of ``config``'s text, and the directory it runs, from the repository root."""
     pairs = re.findall(r'name:\s*"([^"]+)",\s*testDir:\s*"\./([^"]+)"', config)
     return {name: f"gui/{directory.rstrip('/')}" for name, directory in pairs}
 
 
 def _named_suites(recipe: Recipe, projects: dict[str, str]) -> set[str]:
-    """The suites ``recipe`` names: by path, by Playwright project, or by a command that runs one."""
     named = {match.rstrip("/.") for match in re.findall(r"testbed/suites/[\w./-]+", recipe.text)}
     names = set(re.findall(r"--project[= ]([\w-]+)", recipe.text))
     names |= {
@@ -214,14 +189,11 @@ def _named_suites(recipe: Recipe, projects: dict[str, str]) -> set[str]:
 
 
 def _suite_of(path: str) -> str:
-    """The suite a path in one names: ``testbed/suites/<suite>``, or the path itself."""
     parts = path.split("/")
     return "/".join(parts[:3]) if parts[:2] == ["testbed", "suites"] else path
 
 
 def undeclared_runs(recipes: dict[str, Recipe], root: Path = ROOT) -> list[str]:
-    """How the recipes' ``runs`` declarations fall short: a suite a recipe names that it does not declare, or a
-    declared path that is not there."""
     projects = playwright_projects((root / PLAYWRIGHT_CONFIG).read_text(encoding="utf-8"))
     problems: list[str] = []
     for name, recipe in sorted(recipes.items()):
@@ -293,7 +265,7 @@ def render_dot(recipes: dict[str, Recipe], *, root: str = "") -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument("--root", default="", help="draw only this recipe and its declared dependencies")
     parser.add_argument("--dump", type=Path, help="Just's JSON dump to draw (default: dump the justfile now)")
     parser.add_argument("-f", "--format", choices=("svg", "dot"), default="svg")

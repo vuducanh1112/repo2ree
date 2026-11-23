@@ -1,5 +1,3 @@
-"""A trace page says which commit drew it, beside the build its dossier was recorded at."""
-
 from __future__ import annotations
 
 import shutil

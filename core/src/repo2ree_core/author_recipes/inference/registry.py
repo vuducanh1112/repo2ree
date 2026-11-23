@@ -1,11 +1,3 @@
-"""Registries of checks, resolvers, renderers, and decision DAGs.
-
-The registry is the deployment surface: adding an ecosystem means registering
-its checks and renderer and attaching a versioned strategy branch to a DAG here.
-Every registered DAG is validated at import time, so a structurally broken graph
-fails the process at startup rather than at request time.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.build_wiring import BUILD_CHECKS, BUILD_RENDERERS, BUILD_RESOLVERS
@@ -38,8 +30,6 @@ from repo2ree_core.author_recipes.inference.renderers.slurm_launch import SlurmL
 from repo2ree_core.author_recipes.inference.renderers.venv_experiment import VenvExperimentRenderer
 from repo2ree_protocol.inference import DecisionDag
 
-# The build wiring is shared with ``build_regeneration`` (see ``build_wiring``) so
-# the two can never drift; the run-side checks/renderers are layered on top here.
 CHECKS: dict[str, Check] = {
     **BUILD_CHECKS,
     **{
@@ -82,9 +72,6 @@ DECISION_DAGS: dict[str, DecisionDag] = {
     LAUNCH_DAG.key: LAUNCH_DAG,
 }
 
-# Which DAG serves each target kind. Verify targets are deferred (they need an
-# explicit author verification claim that has no field on ReeDefinition yet), so
-# they stay unregistered and return a well-formed not_inferred result.
 DAG_FOR_TARGET_KIND: dict[str, str] = {
     "build_experiment_environment": BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG.key,
     "activate_experiment_environment": ACTIVATE_EXPERIMENT_ENVIRONMENT_DAG.key,
@@ -98,5 +85,4 @@ def validate_all() -> None:
         validate_dag(dag, checks=CHECKS, resolvers=RESOLVERS, renderers=RENDERERS)
 
 
-# Fail fast at import: a broken DAG is a deployment defect, not an experiment environment error.
 validate_all()

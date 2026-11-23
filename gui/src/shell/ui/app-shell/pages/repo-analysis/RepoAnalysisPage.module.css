@@ -1,6 +1,3 @@
-/* Source Repository Analysis: what the repository gives anyone who clones it,
- * across three independent axes. */
-
 .stack {
   display: flex;
   flex-direction: column;
@@ -32,8 +29,6 @@
   line-height: var(--leading-snug);
   color: var(--ink-subtle);
 }
-
-/* --- Axis tracks ---------------------------------------------------------- */
 
 .axes {
   display: flex;
@@ -90,14 +85,12 @@
   font-weight: var(--weight-bold);
 }
 
-/* Reached: the repository is at least this good on this axis. */
 .axisStep[data-reached] {
   border-color: color-mix(in srgb, var(--axis-tint) 33%, transparent);
   background: color-mix(in srgb, var(--axis-tint) 8%, transparent);
   color: var(--axis-tint);
 }
 
-/* Current: the level it actually sits at. */
 .axisStep[data-current] {
   border-color: color-mix(in srgb, var(--axis-tint) 67%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--axis-tint) 13%, transparent);
@@ -113,8 +106,6 @@
 .axisLink[data-reached] {
   background: color-mix(in srgb, var(--axis-tint) 53%, transparent);
 }
-
-/* --- Empty results -------------------------------------------------------- */
 
 .placeholder {
   padding: var(--space-4);
@@ -149,8 +140,6 @@
   flex-wrap: wrap;
   margin-top: var(--space-3);
 }
-
-/* --- Expected manifests --------------------------------------------------- */
 
 .manifests {
   display: flex;
@@ -211,8 +200,6 @@
   color: var(--ink-subtle);
 }
 
-/* --- The workspace-inputs aside ------------------------------------------- */
-
 .asideHead {
   display: flex;
   align-items: center;
@@ -236,10 +223,6 @@
   flex-direction: column;
   gap: var(--space-3);
 }
-
-/* --- Reproducibility threats ----------------------------------------------
- * A threat's severity is the backend's classification; how it reads follows
- * from that rather than from a table beside the component. */
 
 .dimensions {
   display: flex;
@@ -290,7 +273,6 @@
   --threat-edge: var(--threat-low-edge);
 }
 
-/* Blocking the next level: the row itself takes the severity's colour. */
 .threat[data-blocking] {
   border-color: var(--threat-edge);
   background: var(--threat-wash);
@@ -366,7 +348,6 @@
   color: var(--ink-subtle);
 }
 
-/* What to do about it — always present, and always reads as the way out. */
 .remedy {
   display: flex;
   gap: var(--space-2);

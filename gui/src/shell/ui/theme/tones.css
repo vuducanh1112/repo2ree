@@ -1,10 +1,4 @@
-/* Semantic tone mappings for product-domain identities and user feedback.
- * Layout, glass recipes, and feature presentation belong to the active theme
- * or to the CSS Module that owns them.
- */
-
 :root {
-  /* Run and step state */
   --status-ok: var(--palette-green-700);
   --status-ok-glow: color-mix(in srgb, var(--palette-green-500) 53%, transparent);
   --status-stale: var(--palette-amber-500);
@@ -12,23 +6,11 @@
   --status-fault: var(--palette-red-600);
   --status-idle: var(--palette-neutral-200);
 
-  /* The one authoring step the graph says to do next. Warm on purpose: green
-   * already means "has a result", the chrome accent means "on screen", and the
-   * canvas is lit by sky and indigo pools that swallow anything cool. */
   --step-next-line: var(--palette-amber-600);
   --step-next-ink: var(--palette-amber-800);
   --step-next-surface: var(--palette-amber-050);
   --step-next-border: var(--palette-amber-300);
 
-  /* --- Stage tones -------------------------------------------------------
-   * One family per pipeline stage, keyed by the page key the stage already
-   * has (`PAGE.SOURCE` is `"source"`), so a component renders
-   * `data-step={node.key}` and never carries a second copy of the same fact.
-   *
-   *   line — the stage's own colour: cable, icon, rule
-   *   ink  — its deep shade: cable shadow, knob stroke
-   *   wash — its palest tint: earned-outcome badge background
-   */
   --stage-acquire_source-line: var(--palette-amber-500);
   --stage-acquire_source-ink: var(--palette-amber-800);
   --stage-acquire_source-wash: var(--palette-amber-050);
@@ -56,16 +38,10 @@
   --stage-archive-line: var(--palette-red-600);
   --stage-archive-ink: var(--palette-red-900);
   --stage-archive-wash: var(--palette-red-050);
-  /* The seal is not a peer of the stages it freezes, so it takes no hue from
-   * their wheel: every hue there is a category marker, and the ones left over
-   * are the system accent and the danger tone. Ink instead — the one
-   * monochrome action in a product of coloured ones, and the colour a seal is
-   * pressed in. */
   --stage-seal_ree-line: var(--palette-neutral-950);
   --stage-seal_ree-ink: var(--palette-neutral-950);
   --stage-seal_ree-wash: var(--palette-neutral-075);
 
-  /* --- Reproducibility axes --------------------------------------------- */
   --axis-dependency-line: var(--palette-blue-500);
   --axis-dependency-ink: var(--palette-blue-700);
   --axis-environment-line: var(--palette-cyan-500);
@@ -73,7 +49,6 @@
   --axis-machine-line: var(--palette-indigo-500);
   --axis-machine-ink: var(--palette-indigo-800);
 
-  /* --- Dependency ecosystems -------------------------------------------- */
   --eco-pypi-line: var(--palette-blue-500);
   --eco-pypi-wash: var(--palette-blue-050);
   --eco-conda-line: var(--palette-green-500);
@@ -87,12 +62,6 @@
   --eco-other-line: var(--palette-neutral-500);
   --eco-other-wash: var(--palette-neutral-050);
 
-  /* --- Dependency pinning status and SBOM cross-check verdict ------------
-   * `observed` and `version-mismatch` deliberately reuse the pinned/ranged
-   * tones: a dependency present in the runtime reads as settled, a version
-   * mismatch as the same caution as a loose range. `not-observed` stays muted
-   * because dev-only dependencies legitimately never reach the runtime.
-   */
   --dependency-locked-line: var(--palette-blue-600);
   --dependency-locked-wash: var(--palette-blue-100);
   --dependency-locked-edge: var(--palette-blue-300);
@@ -112,7 +81,6 @@
   --presence-not-observed-wash: var(--palette-neutral-050);
   --presence-not-observed-edge: var(--palette-neutral-100);
 
-  /* --- Archive repositories ---------------------------------------------- */
   --archive-swh-line: var(--palette-red-600);
   --archive-swh-ink: var(--palette-red-900);
   --archive-zenodo-line: var(--palette-blue-700);
@@ -120,7 +88,6 @@
   --archive-dataverse-line: var(--palette-violet-600);
   --archive-dataverse-ink: var(--palette-violet-950);
 
-  /* A finished experiment run's verdict. */
   --verdict-pass-ink: var(--tone-success-ink);
   --verdict-pass-wash: var(--tone-success-surface);
   --verdict-fail-ink: var(--tone-danger-line);
@@ -128,9 +95,6 @@
   --verdict-idle-ink: var(--ink-subtle);
   --verdict-idle-wash: var(--surface-hover);
 
-  /* --- Feedback and domain-specific states ----------------------------- */
-  /* One regular tone matrix serves badges, notices, toasts, callouts and
-   * feature state. Components own emphasis and layout. */
   --tone-neutral-ink: var(--palette-neutral-600);
   --tone-neutral-surface: var(--surface-hover);
   --tone-neutral-border: var(--border-default);
@@ -159,14 +123,12 @@
   --tone-danger-surface-strong: var(--palette-red-100);
   --tone-danger-border: var(--palette-red-300);
 
-  /* Run lifecycle, as the logs console reports it. */
   --run-active: var(--chrome-accent);
   --run-succeeded: var(--palette-green-600);
   --run-failed: var(--status-fault);
   --run-canceling: var(--palette-amber-600);
   --run-idle: var(--chrome-text-muted);
 
-  /* How badly a reproducibility threat blocks the next level. */
   --threat-high-line: var(--palette-red-600);
   --threat-high-wash: var(--palette-red-050);
   --threat-high-edge: var(--palette-red-300);
@@ -180,7 +142,6 @@
   --remedy-edge: var(--tone-success-border);
   --remedy-ink: var(--tone-success-ink);
 
-  /* The manifest files the evaluator looks for, before it has run. */
   --manifest-pip: var(--palette-blue-500);
   --manifest-pyproject: var(--palette-violet-500);
   --manifest-conda: var(--palette-green-500);
@@ -188,8 +149,6 @@
   --manifest-container: var(--palette-cyan-600);
   --manifest-nix: var(--palette-violet-600);
 
-  /* --- Run log lines ------------------------------------------------------
-   * A streamed line's severity, which the backend already classifies. */
   --log-info-ink: var(--palette-neutral-600);
   --log-out-ink: var(--palette-neutral-800);
   --log-ok-ink: var(--palette-green-600);
@@ -199,10 +158,6 @@
   --log-err-ink: var(--palette-red-600);
   --log-err-bg: var(--palette-red-050);
 
-  /* --- Run failure tone --------------------------------------------------
-   * The three classes an API user acts on differently: an outage worth
-   * retrying, an actionable rejection, a genuine fault.
-   */
   --failure-transient-line: var(--palette-amber-600);
   --failure-rejected-line: var(--palette-amber-600);
   --failure-fault-line: var(--palette-red-600);

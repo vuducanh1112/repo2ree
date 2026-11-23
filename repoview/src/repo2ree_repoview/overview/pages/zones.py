@@ -1,5 +1,3 @@
-"""What each part of the repository is for, and which parts humans review."""
-
 from __future__ import annotations
 
 from repo2ree_repoview.overview.exports import Zones

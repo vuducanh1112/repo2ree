@@ -48,7 +48,6 @@ def test_global_cleanup_takes_the_machines_of_stacks_whose_clients_no_longer_run
         f"e2e-live-1\t{label}=e2e-live",
         f"e2e-dead-1\tother=x,{label}=e2e-dead",
         f"e2e-dead-2\t{label}=e2e-dead",
-        # A job a workbench started for a stack without machines: no machine says that stack is gone.
         f"repo2ree-job-x\t{label}=e2e-plain",
     ]
     monkeypatch.setattr(cleanup, "lines", lambda args: listed if f"label={label}" in args else [])

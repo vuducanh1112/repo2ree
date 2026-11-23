@@ -7,7 +7,6 @@ import styles from "./MissingInputsBanner.module.css";
 interface MissingInputsBannerProps {
   missing: ReeStepRequirement[];
   onGoFields?: () => void;
-  /** Label for the jump-back button (when onGoFields is set). */
   goLabel?: string;
 }
 

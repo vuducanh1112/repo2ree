@@ -1,9 +1,3 @@
-/* The open-files window: a tab strip over the viewer.
- *
- * The panel grows with the canvas instead of sitting at a fixed 560×620 —
- * small viewports get a panel that still fits beside the tree, large ones an
- * editor-sized window. Its origin is measured, so it arrives as properties. */
-
 .panel {
   position: absolute;
   left: var(--tabs-left);
@@ -79,7 +73,6 @@
   color: var(--chrome-text);
 }
 
-/* The active file's full path, elided from the left so the filename survives. */
 .path {
   flex-shrink: 0;
   overflow: hidden;

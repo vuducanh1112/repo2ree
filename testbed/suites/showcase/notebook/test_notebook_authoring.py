@@ -1,5 +1,3 @@
-"""A Jupyter notebook run headless over its data: its figure, the data the figure draws, and the executed notebook."""
-
 from __future__ import annotations
 
 import base64
@@ -24,7 +22,6 @@ def test_an_executed_notebook_its_figure_and_its_result_are_sealed(client: Clien
     assert b"rate: 0.1735 per hour" in results["result.txt"]
     assert results["figure.png"].startswith(PNG)
 
-    # What the figure shows is kept as data: the table behind it, and each panel as it was drawn.
     curve = results["curve.csv"].decode().splitlines()
     assert (curve[0], len(curve)) == ("hour,measured,fitted", 13)
     panels = json.loads(results["figure.json"])["panels"]

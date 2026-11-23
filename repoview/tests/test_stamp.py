@@ -37,7 +37,6 @@ def test_an_svg_shows_its_commit_below_the_drawing_and_carries_the_facts(tmp_pat
     stamped = svg.read_text()
     assert read_svg_stamp(svg) == FACTS.model_copy(update={"dirty": True})
     assert "repo2ree aaaaaaaaaa + uncommitted changes · 2026-10-20 15:16:24 UTC · generate-gui-graph" in stamped
-    # The strip is added below the drawing: the canvas grows, nothing is drawn over the graph.
     assert 'viewBox="0 0 200 118"' in stamped
     assert 'height="118pt"' in stamped
     assert stamped.index("<g/>") < stamped.index("repo2ree-stamp")

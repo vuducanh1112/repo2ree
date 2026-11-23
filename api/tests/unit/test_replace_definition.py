@@ -1,5 +1,3 @@
-"""PUT /definition sends every portable definition field as one replacement."""
-
 from __future__ import annotations
 
 from typing import Any

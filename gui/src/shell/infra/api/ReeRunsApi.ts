@@ -121,9 +121,6 @@ export class ReeRunsApi {
   }
 }
 
-// A command's own output carries no severity: its stream is not one (BuildKit,
-// pip and apt print progress on stderr). Only a stderr line that plainly
-// reports an error stands out from the rest.
 const REPORTS_ERROR = /\bERROR\b|(^|\s)(error|fatal):/;
 
 export function mapRunLogsToLines(lines: RunLogEntry[]): Array<{

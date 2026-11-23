@@ -1,5 +1,3 @@
-"""``python -m repo2ree_repoview <command> [args]``: one entry point, so recipes do not name modules."""
-
 from __future__ import annotations
 
 import importlib

@@ -1,11 +1,3 @@
-"""Remove Docker resources left by workbench runs.
-
-A stack removes what it started when it stops. A stack that dies first, its run interrupted or its dev
-container restarted, leaves its machines running on the engine: they are ``docker run`` containers, and
-killing the client that started one does not stop it. They carry their stack's label, and a machine whose
-client is no longer running here is one no stack will stop.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -23,7 +15,6 @@ PROCESSES = Path("/proc")
 
 
 def workbench_containers(owner: str | None) -> list[str]:
-    """The containers a run left (its jobs carry its label), or every job and bench container."""
     if owner:
         return sorted(set(lines(["docker", "ps", "-aq", "--filter", f"label=repo2ree.resource-owner={owner}"])))
     return sorted(
@@ -36,11 +27,6 @@ def workbench_containers(owner: str | None) -> list[str]:
 
 
 def save_bench_logs(owner: str, directory: Path) -> list[Path]:
-    """Keep what each container of the run still alive at teardown printed.
-
-    What a job container prints exists only in ``docker logs``, which the cleanup
-    that follows deletes with the container.
-    """
     saved = []
     listing = ["docker", "ps", "-a", "--format", "{{.Names}}", "--filter", f"label=repo2ree.resource-owner={owner}"]
     for name in sorted(set(lines(listing))):
@@ -53,7 +39,6 @@ def save_bench_logs(owner: str, directory: Path) -> list[Path]:
 
 
 def running_commands(processes: Path = PROCESSES) -> list[tuple[str, ...]]:
-    """The argv of every process running here."""
     commands = []
     for cmdline in processes.glob("[0-9]*/cmdline"):
         try:
@@ -66,7 +51,6 @@ def running_commands(processes: Path = PROCESSES) -> list[tuple[str, ...]]:
 
 
 def started_here(container: str, commands: Iterable[tuple[str, ...]]) -> bool:
-    """Whether a ``docker run --name <container>`` that started it is still running here."""
     return any(
         "docker" in Path(argv[0]).name and "run" in argv and (*argv, "")[argv.index("--name") + 1] == container
         for argv in commands
@@ -75,8 +59,6 @@ def started_here(container: str, commands: Iterable[tuple[str, ...]]) -> bool:
 
 
 def orphaned_owners(commands: Iterable[tuple[str, ...]] | None = None) -> list[str]:
-    """The stacks whose machines (the containers ``<owner>-<n>`` a stack starts) are still on the engine with none
-    of their clients running here."""
     machines: dict[str, list[str]] = {}
     listing = ["docker", "ps", "-a", "--filter", f"label={OWNER_LABEL}", "--format", "{{.Names}}\t{{.Labels}}"]
     for line in lines(listing):
@@ -93,7 +75,6 @@ def owned_volumes(owner: str) -> list[str]:
 
 
 def global_volumes() -> list[str]:
-    """The anonymous volumes no container uses any more."""
     return sorted(
         name
         for name in lines(["docker", "volume", "ls", "-q", "--filter", "dangling=true"])
@@ -112,8 +93,6 @@ def remove(kind: str, values: list[str], owner: str | None) -> None:
 
 
 def cleanup(owner: str | None) -> None:
-    """Remove what the stack ``owner`` left, or, with no owner, what every run left: job and bench containers,
-    the machines of stacks no longer running, and the volumes nothing uses any more."""
     if owner:
         remove("containers", workbench_containers(owner), owner)
         remove("volumes", owned_volumes(owner), owner)
@@ -124,7 +103,6 @@ def cleanup(owner: str | None) -> None:
 
 
 def cleanup_orphans() -> None:
-    """Remove what the stacks no longer running left, and nothing of the stacks running beside them."""
     for orphan in orphaned_owners():
         remove("containers", workbench_containers(orphan), orphan)
         remove("volumes", owned_volumes(orphan), orphan)

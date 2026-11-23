@@ -1,11 +1,3 @@
-/* The one window frame for everything floating over the canvas. A desktop-style
- * title bar above a separate content area: the bar never scrolls, so the close
- * button is always reachable.
- *
- * Placement is the caller's — each window's own module positions it — but the
- * frame itself is fixed here, which is what the `outerStyle` prop used to let
- * every caller re-decide. */
-
 .window {
   display: flex;
   flex-direction: column;
@@ -35,9 +27,6 @@
   min-width: 0;
 }
 
-/* The complete title bar is the move handle, including its padding and flexible
- * space. Interactive descendants keep their own cursors and are rejected by
- * the pointer handler rather than shrinking the draggable hit area. */
 .bar[data-draggable] {
   cursor: grab;
   touch-action: none;
@@ -84,8 +73,6 @@
 .body[data-scroll] {
   overflow-y: auto;
 }
-
-/* --- Title-bar content ---------------------------------------------------- */
 
 .titleIcon {
   display: flex;

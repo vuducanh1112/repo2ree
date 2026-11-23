@@ -1,5 +1,3 @@
-"""``ree templates`` and ``ree lint-draft``: what an author is offered."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,7 +12,7 @@ from repo2ree_protocol.result import ActionResult
 runner = CliRunner()
 
 
-def ree(tmp_path: Path, *words: str, input: str | None = None) -> Result:  # noqa: A002 — CliRunner's name
+def ree(tmp_path: Path, *words: str, input: str | None = None) -> Result:  # noqa: A002
     return runner.invoke(cli, ["-C", str(tmp_path), *words], input=input)
 
 
@@ -84,7 +82,6 @@ def test_an_experiment_draft_without_a_name_is_refused(tmp_path: Path) -> None:
 
 
 def test_the_draft_check_reads_no_ree(tmp_path: Path) -> None:
-    # Nothing at -C is an REE: the check needs only the kind and the source.
     draft(tmp_path, "set -eu\n")
 
     assert not any(tmp_path.iterdir())

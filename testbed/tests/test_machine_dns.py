@@ -1,5 +1,3 @@
-"""A daemon nested on a machine resolves names through the host's DNS servers."""
-
 import pytest
 
 from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName

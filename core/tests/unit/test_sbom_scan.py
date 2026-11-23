@@ -1,5 +1,3 @@
-"""The scanner runs through the shared process runner, not a blocking call."""
-
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +14,6 @@ from repo2ree_core.execution.process import StreamingProcessResult
 
 @pytest.fixture
 def fake_syft(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
-    """Capture what the scanner would have run, without running anything."""
     seen: dict[str, Any] = {}
     monkeypatch.setattr(scan_module, "resolve_tool", lambda _name: "/usr/bin/syft")
 
@@ -33,8 +30,6 @@ def fake_syft(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
 
 def test_cancel_check_reaches_the_process_runner(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """The whole point: a cancel must be able to stop a scan mid-flight."""
-
     def never() -> bool:
         return False
 
@@ -45,7 +40,6 @@ def test_cancel_check_reaches_the_process_runner(fake_syft: dict[str, Any], tmp_
 
 
 def test_scope_stays_pinned_to_squashed(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """Both sides must mean the same thing by 'observed in the experiment environment'."""
     scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     cmd = fake_syft["cmd"]
     assert cmd[cmd.index("--scope") + 1] == "squashed"
@@ -54,7 +48,6 @@ def test_scope_stays_pinned_to_squashed(fake_syft: dict[str, Any], tmp_path: Pat
 def test_the_scanner_detects_the_kind_of_tarball_but_never_looks_beyond_it(
     fake_syft: dict[str, Any], tmp_path: Path
 ) -> None:
-    """An image archive and a packed filesystem both scan; a daemon or registry never does."""
     experiment_environment = tmp_path / "rt.tar.gz"
     scan_experiment_environment_archive(experiment_environment, tmp_path / "sbom.json", log=lambda *_: None)
     cmd = fake_syft["cmd"]
@@ -63,14 +56,12 @@ def test_the_scanner_detects_the_kind_of_tarball_but_never_looks_beyond_it(
 
 
 def test_catalogers_stay_pinned_to_installed_packages(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """A packed filesystem must not report what its lockfiles merely declare."""
     scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     cmd = fake_syft["cmd"]
     assert cmd[cmd.index("--override-default-catalogers") + 1] == "image"
 
 
 def test_a_canceled_scan_is_not_reported_as_a_failed_one(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """A killed scanner exits nonzero like a broken one; only one is news."""
     fake_syft["result"] = StreamingProcessResult(returncode=-15, stdout="", stderr="", canceled=True)
     outcome = scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     assert outcome.canceled
@@ -78,7 +69,6 @@ def test_a_canceled_scan_is_not_reported_as_a_failed_one(fake_syft: dict[str, An
 
 
 def test_a_cancel_arriving_after_the_scanner_exited_still_counts(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """The runner did not see it, but the caller must not settle a verdict."""
     fake_syft["result"] = StreamingProcessResult(returncode=0, stdout="", stderr="")
     outcome = scan_experiment_environment_archive(
         tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None, is_canceled=lambda: True
@@ -120,7 +110,6 @@ def test_a_successful_scan_reports_what_it_took_the_experiment_environment_for(
 
 
 def test_scanner_output_is_streamed_not_captured_and_replayed(fake_syft: dict[str, Any], tmp_path: Path) -> None:
-    """The runner owns the log lines, so nothing is buffered until the end."""
     scan_experiment_environment_archive(tmp_path / "rt.tar", tmp_path / "sbom.json", log=lambda *_: None)
     assert "log" in fake_syft["kwargs"]
 

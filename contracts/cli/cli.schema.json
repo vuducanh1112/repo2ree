@@ -407,7 +407,7 @@
         "edit"
       ],
       "summary": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.",
-      "help": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.\n\nA script not written yet starts from its default template. The edit is written only if the script did not change\nmeanwhile.\n",
+      "help": "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.\n\nA script not written yet starts from its default template. The edit is written only if the script did not change\nmeanwhile.",
       "runs": true,
       "operations": [
         "write_script"
@@ -878,7 +878,7 @@
         "all"
       ],
       "summary": "Review every step: the source, the experiment environment, the activation and each experiment.",
-      "help": "Review every step: the source, the experiment environment, the activation and each experiment.\n\nStops at the first step that does not succeed. --basis applies to the source and the build.\n",
+      "help": "Review every step: the source, the experiment environment, the activation and each experiment.\n\nStops at the first step that does not succeed. --basis applies to the source and the build.",
       "runs": true,
       "operations": [
         "review_acquire_source",
@@ -1061,7 +1061,7 @@
         "schema"
       ],
       "summary": "Describe every command, or the one WORDS names, as data: its arguments, its stdin and its outputs.",
-      "help": "Describe every command, or the one WORDS names, as data: its arguments, its stdin and its outputs.\n\nWhat an agent reads to learn ree; the exit statuses and failure categories come with it.\n",
+      "help": "Describe every command, or the one WORDS names, as data: its arguments, its stdin and its outputs.\n\nWhat an agent reads to learn ree; the exit statuses and failure categories come with it.",
       "runs": false,
       "operations": [],
       "params": [
@@ -1383,7 +1383,7 @@
         "verify-signatures"
       ],
       "summary": "Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.",
-      "help": "Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.\n\nEach signature is held to what the REE says of it (the seal it names, its claim, a review's record), then to\nSigstore (the chain to the trust root, the transparency log, the key that signed), then to the policy. Nothing is\nwritten. Every signature is reported; the command fails unless there is one and each is verified.\n",
+      "help": "Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.\n\nEach signature is held to what the REE says of it (the seal it names, its claim, a review's record), then to\nSigstore (the chain to the trust root, the transparency log, the key that signed), then to the policy. Nothing is\nwritten. Every signature is reported; the command fails unless there is one and each is verified.",
       "runs": false,
       "operations": [],
       "params": [
@@ -1836,7 +1836,6 @@
     },
     "ActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
-      "description": "The activate experiment environment script ran a command that does nothing, which exited 0.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -2425,7 +2424,6 @@
     },
     "CancelRequested": {
       "additionalProperties": false,
-      "description": "``cancel``: the run asked to stop.",
       "properties": {
         "run_id": {
           "title": "Run Id",
@@ -2440,7 +2438,6 @@
     },
     "CandidateDependency": {
       "additionalProperties": false,
-      "description": "Exactly which evidence justifies a candidate — the staleness key.",
       "properties": {
         "kind": {
           "enum": [
@@ -2543,7 +2540,6 @@
     },
     "CheckWorkingEnvironmentDefinition": {
       "additionalProperties": false,
-      "description": "The script that checks the working environment offers what the REE's scripts need, run there before them.",
       "properties": {
         "check_working_environment_script_path": {
           "default": "ree-scripts/check_working_environment.sh",
@@ -2578,7 +2574,6 @@
     },
     "CheckWorkingEnvironmentReceipt": {
       "additionalProperties": false,
-      "description": "The author's check of the working environment ran there, launched as every script is, and exited 0.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -2733,7 +2728,6 @@
     },
     "ContainerEnginesObservation": {
       "additionalProperties": false,
-      "description": "A container-engine check's view of the probe: the engine it judged, and everything the probe saw.",
       "properties": {
         "kind": {
           "const": "container_engines",
@@ -2762,7 +2756,6 @@
     },
     "ContainerEnginesProbe": {
       "additionalProperties": false,
-      "description": "Which container engines a script run for this REE can use, as probed where it runs.\n\n``not_probed``: nothing probed (no probe was supplied); ``failed``: the probe could not run there, so\nnothing is known about the engines, which is not the same as their absence.",
       "properties": {
         "status": {
           "enum": [
@@ -3335,7 +3328,6 @@
     },
     "DriftedFile": {
       "additionalProperties": false,
-      "description": "A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed\noutside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref.",
       "properties": {
         "path": {
           "title": "Path",
@@ -3361,7 +3353,6 @@
     },
     "EngineObservation": {
       "additionalProperties": false,
-      "description": "One engine as the probe found it where the REE's scripts run.",
       "properties": {
         "engine": {
           "enum": [
@@ -4164,7 +4155,6 @@
     },
     "ExperimentEnvironmentContractBinding": {
       "additionalProperties": false,
-      "description": "A resolved, non-executable experiment environment contract plus how it was established.\n\n``inspected_artifact`` inspected the built artifact itself;\n``unchanged_generated_build`` reused the constants of a still-unedited\ninference-generated build script. Downstream renderers copy the contract's\nvalues as explicit literals.",
       "properties": {
         "kind": {
           "const": "experiment_environment_contract",
@@ -4359,7 +4349,6 @@
     },
     "ExperimentGateObservation": {
       "additionalProperties": false,
-      "description": "The experiment-declaration gate's outcome, for the decision trace.",
       "properties": {
         "kind": {
           "const": "experiment_gate",
@@ -4390,7 +4379,6 @@
     },
     "ExperimentScriptTemplates": {
       "additionalProperties": false,
-      "description": "The templates of a script every experiment has, and the path it belongs at.\n\nThe pattern carries a ``{slug}`` placeholder: the experiment name with whitespace collapsed to hyphens.",
       "properties": {
         "path_pattern": {
           "title": "Path Pattern",
@@ -4413,7 +4401,6 @@
     },
     "Failure": {
       "additionalProperties": false,
-      "description": "Machine-readable description of why an action did not succeed.\n\nA single shared object carried on every ``failed`` :class:`ActionResult`\n(and, over time, through error frames, run records, and HTTP envelopes). The\ncontract is that a component *enriches* the same failure as it travels up\nthe layers rather than collapsing it to ``str(exc)`` at each hop, so the\n``category``/``origin`` a client sees are the ones the originating component\nchose.",
       "properties": {
         "category": {
           "enum": [
@@ -4472,7 +4459,6 @@
     },
     "Finding": {
       "additionalProperties": false,
-      "description": "One observation about one script.",
       "properties": {
         "code": {
           "title": "Code",
@@ -4940,7 +4926,6 @@
     },
     "HistoryReference": {
       "additionalProperties": false,
-      "description": "Capture evidence, separate from operation-specific outputs.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -5098,7 +5083,6 @@
     },
     "ImageCommandBinding": {
       "additionalProperties": false,
-      "description": "The experiment environment image's declared command (Entrypoint/Cmd), parsed once when\nthe artifact is inspected and carried forward so the command-candidate check\nneed not re-open the (possibly multi-hundred-MB) archive. Absent when the\ncontract came from an unchanged generated build (no artifact to inspect); the\nexec/shell forms are mutually exclusive, matching what inspection reports.",
       "properties": {
         "kind": {
           "const": "image_command",
@@ -5311,7 +5295,6 @@
     },
     "Initialized": {
       "additionalProperties": false,
-      "description": "``init``: the REE and the snapshot its first version is.",
       "properties": {
         "root": {
           "title": "Root",
@@ -5340,7 +5323,6 @@
     },
     "LaunchDefinition": {
       "additionalProperties": false,
-      "description": "The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``.",
       "properties": {
         "launch_script_path": {
           "default": "ree-scripts/launch.sh",
@@ -5375,7 +5357,6 @@
     },
     "Launched": {
       "additionalProperties": false,
-      "description": "Where a launched script ran, as it saw from inside the launch.",
       "properties": {
         "node": {
           "minLength": 1,
@@ -5415,7 +5396,6 @@
     },
     "LintReport": {
       "additionalProperties": false,
-      "description": "Everything one lint run observed about one script.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -5523,7 +5503,6 @@
       "type": "object"
     },
     "MachineFacts": {
-      "description": "The machine ``ree`` runs on: its architecture and GPUs, and whether it is a container.",
       "properties": {
         "arch": {
           "default": "",
@@ -5791,7 +5770,6 @@
     },
     "OperationRecord": {
       "additionalProperties": false,
-      "description": "One invocation, including no-ops and attempts left pending by process death.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -6347,7 +6325,6 @@
     },
     "ReeFile": {
       "additionalProperties": false,
-      "description": "One file under the REE root (upstream/overlay/artifacts/…).",
       "properties": {
         "path": {
           "title": "Path",
@@ -6515,7 +6492,6 @@
     },
     "ReeStatusReport": {
       "additionalProperties": false,
-      "description": "Where an REE stands, in one read: its steps, its evidence, its scripts, and the revision a guarded change\nnames; and the run holding it, if one is.",
       "properties": {
         "name": {
           "title": "Name",
@@ -6586,7 +6562,6 @@
     },
     "ReeStepState": {
       "additionalProperties": false,
-      "description": "A step as one REE stands on it.",
       "properties": {
         "key": {
           "enum": [
@@ -6661,7 +6636,6 @@
     },
     "ReeSteps": {
       "additionalProperties": false,
-      "description": "Where an REE stands on every step, and the one to do next: the first ready one.",
       "properties": {
         "steps": {
           "items": {
@@ -6729,7 +6703,6 @@
     },
     "RequirementsProjectBinding": {
       "additionalProperties": false,
-      "description": "A pip ``requirements.txt`` shape at the logical project root.\n\nCarries the located file, its digest, and whether every requirement in it is\npinned by hash — the base image travels via deployment policy, not repository\nevidence, so it is resolved by the base-image check/renderer rather than baked\ninto this binding.",
       "properties": {
         "kind": {
           "const": "requirements_project",
@@ -6760,7 +6733,6 @@
     },
     "ReservedScriptTemplates": {
       "additionalProperties": false,
-      "description": "The templates of a script an REE has once, and the reserved path it belongs at.",
       "properties": {
         "path": {
           "title": "Path",
@@ -7027,7 +6999,6 @@
     },
     "ReviewActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
-      "description": "The author's activation, run alone in a workspace of its own around a command that does nothing.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -7295,7 +7266,6 @@
     },
     "ReviewLaunch": {
       "additionalProperties": false,
-      "description": "The reviewer's choice of launch, kept for the whole attempt.\n\n``author`` runs every script through the author's launch script where the REE declares one, with ``options``\nadded to its launcher's own (``REE_LAUNCH_OPTIONS``), so a reviewer's cluster options win; ``native`` runs them\ndirectly, as an REE with no launch does.",
       "properties": {
         "mode": {
           "default": "author",
@@ -7320,7 +7290,6 @@
     },
     "ReviewMachine": {
       "additionalProperties": false,
-      "description": "The machine the review ran on, as its platform names it; where a launch took a script is its receipt's.",
       "properties": {
         "system": {
           "minLength": 1,
@@ -7499,7 +7468,6 @@
     },
     "ReviewRun": {
       "additionalProperties": false,
-      "description": "``review all``: the review, each step it ran, and the review as it stands after them.",
       "properties": {
         "review_id": {
           "title": "Review Id",
@@ -7824,7 +7792,6 @@
     },
     "ReviewSubject": {
       "additionalProperties": false,
-      "description": "The REE under review, as the review found it when it opened: by its seal, once it is sealed, and the\nexperiments it declares, so a record read on its own says which of them it did not compare.",
       "properties": {
         "name": {
           "title": "Name",
@@ -8215,7 +8182,6 @@
     },
     "ScriptEdited": {
       "additionalProperties": false,
-      "description": "``edit``: the script, and whether the edit changed it.",
       "properties": {
         "path": {
           "title": "Path",
@@ -8235,7 +8201,6 @@
     },
     "ScriptState": {
       "additionalProperties": false,
-      "description": "One of the REE's scripts: where it is and, when it is written, the digest a guarded write names.",
       "properties": {
         "kind": {
           "enum": [
@@ -8287,7 +8252,6 @@
     },
     "ScriptTarget": {
       "additionalProperties": false,
-      "description": "A resolved executable target. ``path`` is output-only.",
       "properties": {
         "kind": {
           "enum": [
@@ -8327,7 +8291,6 @@
     },
     "ScriptTemplateCatalog": {
       "additionalProperties": false,
-      "description": "Each script kind's templates and where its scripts belong.",
       "properties": {
         "build_experiment_environment": {
           "$ref": "#/$defs/ReservedScriptTemplates"
@@ -8361,7 +8324,6 @@
     },
     "ScriptTemplateEntry": {
       "additionalProperties": false,
-      "description": "One named starter-template variant for an REE-owned script.\n\nEvery catalog section lists these; its first entry carries ``is_default`` (for the seeded scripts it is the\ncontent a fresh REE starts with).",
       "properties": {
         "key": {
           "title": "Key",
@@ -8396,7 +8358,6 @@
     },
     "ScriptValidation": {
       "additionalProperties": false,
-      "description": "Execution validation of a *written* script — distinct from inference.\n\nFor a candidate that has not been written, ``script_digest`` is the\ncandidate's own byte digest and ``status`` is ``not_run``; the other digests\nstay absent until a real run produces a receipt.",
       "properties": {
         "status": {
           "enum": [
@@ -8466,7 +8427,6 @@
     },
     "ScriptWritten": {
       "additionalProperties": false,
-      "description": "``infer --write``: the script written, and the proposal it is.",
       "properties": {
         "path": {
           "title": "Path",
@@ -8521,7 +8481,6 @@
     },
     "ShellCommandCandidate": {
       "additionalProperties": false,
-      "description": "A shell-form command (e.g. a Docker shell-form ENTRYPOINT/CMD). It is\nnever rewritten into guessed argv; the author must make the shell dependency\nexplicit (``set -- sh -c '...'``).",
       "properties": {
         "kind": {
           "const": "shell",
@@ -8606,7 +8565,6 @@
     },
     "SignatureVerification": {
       "additionalProperties": false,
-      "description": "One signature, as the verifier found it: the signer it carries, when the log recorded it, and why it is not\nverified, where it is not.",
       "properties": {
         "path": {
           "title": "Path",
@@ -8679,7 +8637,6 @@
     },
     "SignatureVerifications": {
       "additionalProperties": false,
-      "description": "Every signature of the REE's seal, or of one review of it, as one verifier found them under its policy.",
       "properties": {
         "ree_digest": {
           "title": "Ree Digest",
@@ -8718,7 +8675,6 @@
     },
     "Signer": {
       "additionalProperties": false,
-      "description": "An identity Sigstore certifies (an email address, or a CI workflow's URI), and the OIDC issuer that proved\nit.",
       "properties": {
         "identity": {
           "minLength": 1,
@@ -8740,7 +8696,6 @@
     },
     "SlurmObservation": {
       "additionalProperties": false,
-      "description": "A launch check's view of the Slurm probe.",
       "properties": {
         "kind": {
           "const": "slurm",
@@ -8760,7 +8715,6 @@
     },
     "SlurmPartition": {
       "additionalProperties": false,
-      "description": "One partition the controller reported: its name, whether jobs land there by default, and its time limit\nas Slurm prints it (``30:00``, ``1-00:00:00``, ``infinite``).",
       "properties": {
         "name": {
           "title": "Name",
@@ -8792,7 +8746,6 @@
     },
     "SlurmProbe": {
       "additionalProperties": false,
-      "description": "Whether a script run for this REE can launch Slurm job steps, as probed where it runs.\n\n``absent``: no ``srun`` on PATH; ``unreachable``: ``srun`` is there but the controller did not answer;\n``usable``: it answered with its partitions. ``failed`` and ``not_probed`` know nothing, which is not absence.",
       "properties": {
         "status": {
           "enum": [
@@ -9021,7 +8974,6 @@
     },
     "StepRun": {
       "additionalProperties": false,
-      "description": "One command a composite ran: its words, its run, and how it ended.",
       "properties": {
         "words": {
           "items": {
@@ -9302,7 +9254,6 @@
     },
     "TierStatus": {
       "additionalProperties": false,
-      "description": "Whether an optional analysis tier ran.",
       "properties": {
         "tier": {
           "enum": [
@@ -9391,7 +9342,6 @@
     },
     "VenvExperimentEnvironmentContract": {
       "additionalProperties": false,
-      "description": "A packed Python virtual environment as the experiment environment substrate.\n\nThe build packs the venv as a gzipped tarball at ``artifact_path``; a\nrunnable restores it to ``venv_restore_dir`` (an absolute path, because a\nvenv bakes absolute paths and must be restored where it was built) and runs\nthe command with that venv's ``bin`` on ``PATH``. There is no image ref: the\nworkbench base image is the environment. ``venv_restore_dir`` defaults to the\npath a repo2ree build packs; an inspected artifact overrides it with the path\nrecovered from the venv's own ``pyvenv.cfg``.",
       "properties": {
         "kind": {
           "const": "venv_archive",
@@ -9422,7 +9372,6 @@
     },
     "VerificationPolicy": {
       "additionalProperties": false,
-      "description": "Whose signature counts for which claim, under which Sigstore's trust root.",
       "properties": {
         "trust": {
           "default": "production",
@@ -9499,7 +9448,6 @@
     },
     "Waited": {
       "additionalProperties": false,
-      "description": "``wait``: the run that held the REE when the wait began, if one did.",
       "properties": {
         "held_by": {
           "anyOf": [
@@ -9563,7 +9511,6 @@
     },
     "WorkingEnvironmentObservation": {
       "additionalProperties": false,
-      "description": "Where a step's scripts ran: the host as the step saw it, and whether that was a container.",
       "properties": {
         "host": {
           "$ref": "#/$defs/HostFingerprint"
@@ -9582,7 +9529,6 @@
     },
     "WorkspaceFile": {
       "additionalProperties": false,
-      "description": "One file projected from the materialized workspace subtree.",
       "properties": {
         "path": {
           "title": "Path",

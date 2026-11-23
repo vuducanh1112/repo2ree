@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""The system suite as a stack's client (``python -m repo2ree_testbed e2e --script``).
-
-Its Docker tests run on a machine with a Docker daemon of its own, which sees the paths their scripts do; the
-others beside the stack.
-"""
-
 import sys
 from pathlib import Path
 

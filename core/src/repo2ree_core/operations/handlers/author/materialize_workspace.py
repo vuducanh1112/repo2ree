@@ -1,11 +1,3 @@
-"""Handler for the materialize_workspace operation.
-
-Rebuilds /ree/workspace as the merge of /ree/upstream and /ree/overlay (overlay
-wins on conflict) by running the generated ``materialize_workspace.sh`` — the
-single, shared merge muscle also shipped in the bundle and called by run.sh.
-Idempotent: the script clears the workspace first.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,13 +19,6 @@ from repo2ree_ree.digest import Digest
 
 
 def _write_materialize_script(*, log: LogSink, layout: ReeLayout) -> Path:
-    """Persist ``materialize_workspace.sh`` in the REE.
-
-    Written to the reserved root path so it is sealed into the bundle and run.sh
-    can call the very same file. Materialize only ever runs inside a workbench
-    REE, so the REE root is always present. The script takes no per-source inputs
-    — it merges whatever is on disk under the fixed layout dirs.
-    """
     write_atomic(layout.materialize_script, build_materialize_sh())
     log("system", "info", f"wrote materialize script → {MATERIALIZE_SCRIPT_FILENAME}")
     return layout.materialize_script
@@ -46,17 +31,8 @@ def materialize_workspace(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    """Rebuild ``workspace/`` and record what it was materialized from.
-
-    ``snapshot_digest`` is passed in rather than read back off the state: a
-    caller that just froze the snapshot already holds the digest, and reading
-    it through disk would make this depend on whether that value had been
-    committed yet.
-    """
     log("system", "info", f"materializing {layout.workspace}")
 
-    # The script owns the fixed REE layout paths and the clear-and-merge; the
-    # handler only writes it and drives it.
     script = _write_materialize_script(log=log, layout=layout)
     cmd = ["sh", str(script)]
     log("system", "info", format_command(cmd))
@@ -86,7 +62,6 @@ def handle_materialize_workspace(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    """Lay out ``workspace/`` again from the source and the overlay: a view for people, which no step reads."""
     store = ReeDirectory(layout)
     source_receipt = store.read_ree().subject.receipts.acquire_source if store.manifest_exists() else None
     committed_digest = source_receipt.snapshot_digest if source_receipt else None

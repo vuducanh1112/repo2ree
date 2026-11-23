@@ -1,15 +1,3 @@
-"""An exercise: one replayable input to the domain, as ``contracts/exercise/exercise.schema.json`` publishes it.
-
-An exercise names the REEs it works in, the operations it runs in each, in order, the faults it injects at
-some of them, and the files that drift between them: changed outside ree, as an editor, a disk or another program
-changes one. It says what goes in, never how: a source, a script or a signature is named as a fixture or as
-another REE's export, and replay turns it into whatever the surface it runs on takes. Every operation is spelled
-by its name in the specification's catalogue, and nothing in an exercise names this implementation.
-
-An exercise is any such sequence, a refused one included: whether an operation should succeed is the
-specification's to judge from the trace, not the exercise's to know.
-"""
-
 from __future__ import annotations
 
 import json
@@ -24,15 +12,10 @@ FORMAT: Final = "repo2ree-exercise/1"
 
 Label = Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]{0,31}$")]
 ExperimentName = Annotated[str, Field(min_length=1)]
-# How replay makes a signature over what the step signs: as a signer would, or wrong in one named way.
 SealSignature = Literal["valid", "foreign_key", "other_seal", "other_claim", "tampered"]
 ReviewSignature = Literal["valid", "foreign_key", "other_seal", "other_record", "tampered"]
-# How replay hands over the bundle a step loads: as it was given, or damaged on its way in one named way: cut short,
-# naming a head no history in it holds, with the objects of its REE's history gone, with a file beside that history
-# changed, or with a commit ree did not make added to that history and named as its head.
 BundleCorruption = Literal["intact", "truncated", "unknown_head", "objects_removed", "file_changed", "foreign_commit"]
 FaultKind = Literal["kill", "no_space", "history_locked"]
-# Where in a step's attempt a fault lands: each state the specification gives an attempt before it settles.
 FaultPoint = Literal["pending", "executing", "completed"]
 
 
@@ -40,19 +23,12 @@ class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-# ---- What goes in --------------------------------------------------------------------------------------------
-
-
 class Uploaded(_Model):
-    """A project's source, packed as an upload."""
-
     kind: Literal["uploaded"] = "uploaded"
     project: ProjectName
 
 
 class Fetched(_Model):
-    """A source fetched from its origin."""
-
     kind: Literal["fetched"] = "fetched"
     origin_url: Annotated[str, Field(min_length=1)]
     source_type: Literal["git", "tarball", "zip"]
@@ -60,16 +36,12 @@ class Fetched(_Model):
 
 
 class FromRecipe(_Model):
-    """A script as a project's recipe writes it."""
-
     kind: Literal["recipe"] = "recipe"
     project: ProjectName
     file: RecipeScript
 
 
 class Text(_Model):
-    """A script given whole."""
-
     kind: Literal["text"] = "text"
     text: str
 
@@ -78,18 +50,12 @@ type Source = Annotated[Uploaded | Fetched, Field(discriminator="kind")]
 type ScriptContent = Annotated[FromRecipe | Text, Field(discriminator="kind")]
 
 
-# ---- Steps, one per catalogued operation -----------------------------------------------------------------------
-
-
 class _Step(_Model):
     ree: Label
 
 
 class InitializeRee(_Step):
-    """Make the REE: until a step does, it does not exist."""
-
     operation: Literal["initialize_ree"] = "initialize_ree"
-    # The name the REE declares itself by; the exercise's label for it when none is given.
     name: Annotated[str, Field(min_length=1)] | None = None
 
 
@@ -103,12 +69,8 @@ class RemoveSource(_Step):
 
 
 class LoadReeBundle(_Step):
-    """Load what another REE of the exercise exports, as it stands at this step, damaged on its way as ``corruption``
-    names."""
-
     operation: Literal["load_ree_bundle"] = "load_ree_bundle"
     exported_by: Label
-    # Left out where it is intact, so an exercise written before bundles could be damaged keeps its digest.
     corruption: BundleCorruption = Field(default="intact", exclude_if=lambda corruption: corruption == "intact")
 
 
@@ -193,8 +155,6 @@ class SignRee(_Step):
 
 
 class ReviewAcquireSource(_Step):
-    """Open the review the exercise calls ``review``, or open it afresh."""
-
     operation: Literal["review_acquire_source"] = "review_acquire_source"
     review: Label
     basis: ReviewBasis = "auto"
@@ -252,44 +212,24 @@ type Step = Annotated[
 ]
 
 
-# ---- Faults and the exercise ---------------------------------------------------------------------------------
-
-
 class Fault(_Model):
-    """A fault injected into one step's attempt once it reaches ``at``: the process that runs it killed there, or
-    from there on its disk full or its REE's history locked by another."""
-
     step: NonNegativeInt
     kind: FaultKind
     at: FaultPoint
 
 
-# Where in an REE, or in a review of it, the environment changes something: a script as the REE writes it, the other
-# files its history holds, or the history itself. Its workspace/ and upstream/ are views no step reads, so nothing
-# changed there is any of the REE's.
 FilePart = Literal["overlay", "records"]
-# How a file changes: written over, added to, removed, its mode changed, or, in the overlay, a file added beside the
-# others: one added beside the records is none of the REE's, so it changes nothing of it.
 FileChange = Literal["write", "append", "remove", "mode", "add"]
-# How a history changes, as a person changes it with git: `git add -A` and `git commit`, `git reset --soft` to its last
-# commit's parent, or `git add -A` and `git commit --amend --no-edit`, which keeps the message, ree's record with it.
 HistoryChange = Literal["commit", "reset", "amend"]
 
 
 class _Drift(_Model):
-    """Something of an REE, or of its review ``review``, changed outside ree before step ``before``; ``before`` may
-    be the number of steps, for a drift after the last. Only an REE a step has initialized drifts: before that, its
-    files are what initializing it starts from, which is no change of what it records."""
-
     before: NonNegativeInt
     ree: Label
     review: Label | None = None
 
 
 class FileDrift(_Drift):
-    """A file changed: the ``pick``-th, in order, of the files ``part`` holds when it drifts, or, for ``add``, one
-    added. Replay names the file it changed; a part that holds no file to change changes nothing."""
-
     kind: Literal["file"] = "file"
     part: FilePart
     change: FileChange
@@ -303,10 +243,6 @@ class FileDrift(_Drift):
 
 
 class HistoryDrift(_Drift):
-    """The history changed by git, outside ree, and put back where ree left it before step ``until``, as ree's
-    refusal says to; ``until`` may be the number of steps, for after the last. A history left rewritten is no record
-    of the product's to judge."""
-
     kind: Literal["history"] = "history"
     change: HistoryChange
     until: NonNegativeInt
@@ -319,10 +255,6 @@ class HistoryDrift(_Drift):
 
 
 class RevertedDrift(_Drift):
-    """A file changed as a ``FileDrift`` changes it, and put back as it was before step ``before`` runs, as an edit
-    undone by hand: its content and mode as they were, a file removed made again, a file added removed. Nothing of the
-    REE is then other than its last attempt left it, though its files were touched."""
-
     kind: Literal["reverted"] = "reverted"
     part: FilePart
     change: FileChange
@@ -336,10 +268,6 @@ class RevertedDrift(_Drift):
 
 
 class ReflogDrift(_Drift):
-    """What git keeps of where the history's refs were, lost: its reflog expired, as `git reflog expire --all` does,
-    ree's own entries with it. No file of the REE changes, so nothing of it drifts; a drift besides it must still be
-    found."""
-
     kind: Literal["reflog"] = "reflog"
 
 
@@ -347,9 +275,6 @@ type Drift = Annotated[FileDrift | HistoryDrift | RevertedDrift | ReflogDrift, F
 
 
 class Exercise(_Model):
-    """The REEs it names, none of which exists until a step initializes it, the steps run in them in order, the
-    faults, and the drifts."""
-
     format: Literal["repo2ree-exercise/1"] = FORMAT
     rees: tuple[Label, ...] = Field(min_length=1)
     steps: tuple[Step, ...]
@@ -383,7 +308,6 @@ class Exercise(_Model):
         return self
 
     def initialized(self, ree: Label) -> int | None:
-        """The step that first initializes ``ree``; None when no step does."""
         return next(
             (index for index, step in enumerate(self.steps) if isinstance(step, InitializeRee) and step.ree == ree),
             None,
@@ -391,7 +315,6 @@ class Exercise(_Model):
 
 
 def schema_document() -> str:
-    """The exercise format as ``contracts/exercise/exercise.schema.json`` publishes it."""
     schema = {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "urn:repo2ree:exercise:1",

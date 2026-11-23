@@ -1,5 +1,3 @@
-"""Run optional, bounded shell analyzers over source supplied on stdin."""
-
 from __future__ import annotations
 
 import subprocess
@@ -17,7 +15,6 @@ _DIALECT = "sh"
 def run_syntax_check(
     source: str, *, path: str, timeout: float = _TIMEOUT_SECONDS
 ) -> tuple[TierStatus, tuple[Finding, ...]]:
-    """Parse source with the host's POSIX shell without executing it."""
     shell = find_tool("sh")
     if shell is None:
         return _unavailable("syntax", "no POSIX shell is available to parse the script"), ()
@@ -36,7 +33,6 @@ def run_syntax_check(
 def run_shellcheck(
     source: str, *, path: str, timeout: float = _TIMEOUT_SECONDS
 ) -> tuple[TierStatus, tuple[Finding, ...]]:
-    """Lint the script with ShellCheck, in the same dialect the bench runs it in."""
     shellcheck = find_tool("shellcheck")
     if shellcheck is None:
         return _unavailable("shell", "shellcheck is not installed on this bench"), ()
@@ -51,7 +47,6 @@ def run_shellcheck(
 
 
 def _run(argv: list[str], stdin: str, timeout: float) -> subprocess.CompletedProcess[str] | None:
-    """The tool's result, or None when it could not be run at all."""
     try:
         return subprocess.run(
             argv,
@@ -76,7 +71,6 @@ def _version(shellcheck: str, timeout: float) -> str | None:
 
 
 def _line_from(message: str | None) -> int | None:
-    """Extract a line number from a shell diagnostic when one is present."""
     if not message:
         return None
     for token in message.replace(":", " ").split():

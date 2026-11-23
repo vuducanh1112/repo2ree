@@ -19,13 +19,6 @@ import {
   uploadSource,
 } from "../helpers/flow";
 
-/**
- * Another language and toolchain through the same lifecycle: a Maven project
- * whose Dockerfile builds it on a Temurin JDK (pinned by digest) and resolves
- * its one dependency, org.json, from Maven Central. The build is the project's
- * own `docker build` on the bench's daemon; the runtime is the saved image.
- */
-
 const PROJECT_DIR = "source";
 const EXPERIMENT_ENVIRONMENT_PATH = `${PROJECT_DIR}/runtime.tar`;
 const IMAGE = "java-hello";

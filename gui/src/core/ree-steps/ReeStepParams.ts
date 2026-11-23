@@ -1,6 +1,5 @@
 import type { StepKey } from "@core/generated/vocabulary";
 
-// The steps a page runs from its dock, each with the parameters it takes.
 export const REE_STEP_KEYS = [
   "evaluate_reproducibility",
   "build_experiment_environment",

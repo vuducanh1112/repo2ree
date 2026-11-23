@@ -1,14 +1,3 @@
-"""Streaming response frames of the workbench wire.
-
-Every call the control plane issues to a workbench (``repo2ree_protocol.workbench``)
-answers with a stream of these frames tagged with the request id.
-
-Calls that produce incremental output (a followed command's log) emit ``log``/``span``
-frames and end with a terminal frame (``result`` / ``unknown`` / ``done``, or
-``unavailable`` / ``error``). Request/response calls emit a single terminal frame
-(``done`` / ``accepted`` / ``busy``, or ``unavailable`` / ``error``).
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -17,10 +6,6 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_protocol.result import ActionResult
-
-# ================================================
-# Frames
-# ================================================
 
 
 class LogFrame(BaseModel):
@@ -32,7 +17,6 @@ class LogFrame(BaseModel):
     message: str
 
 
-# stream, level, message: a LogFrame before it is framed.
 LogSink = Callable[[str, str, str], None]
 
 
@@ -40,13 +24,10 @@ class SpanFrame(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["span"] = "span"
-    # A single serialized span, relayed verbatim to the collector (SpanSink).
     payload: str
 
 
 class ResultFrame(BaseModel):
-    """Terminal frame of a completed action."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["result"] = "result"
@@ -54,24 +35,18 @@ class ResultFrame(BaseModel):
 
 
 class DoneFrame(BaseModel):
-    """Terminal frame of a call with no payload (init_ree, remove, …)."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["done"] = "done"
 
 
 class AcceptedFrame(BaseModel):
-    """Terminal frame of start_run: an executor runs the command now."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["accepted"] = "accepted"
 
 
 class BusyFrame(BaseModel):
-    """Terminal frame of start_run: another execution holds the REE, so nothing was started."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["busy"] = "busy"
@@ -79,8 +54,6 @@ class BusyFrame(BaseModel):
 
 
 class UnknownFrame(BaseModel):
-    """Terminal frame of follow_run: the workbench knows no execution of the attempt."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["unknown"] = "unknown"
@@ -88,8 +61,6 @@ class UnknownFrame(BaseModel):
 
 
 class UnavailableFrame(BaseModel):
-    """Terminal frame: the backend was gone or stopping mid-stream."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["unavailable"] = "unavailable"
@@ -97,8 +68,6 @@ class UnavailableFrame(BaseModel):
 
 
 class ErrorFrame(BaseModel):
-    """Terminal frame: the operation failed for a non-gone reason."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["error"] = "error"
@@ -109,18 +78,12 @@ COPY_CHUNK_BYTES = 256 * 1024
 
 
 class BytesChunkFrame(BaseModel):
-    """One bounded slice of a byte-returning query's result (exec_query).
-
-    Incremental, like ``log``; a terminal ``done`` ends the stream. For small
-    results only: a file goes beside the socket (``exec_upload``)."""
-
     model_config = ConfigDict(extra="forbid")
 
     type: Literal["bytes_chunk"] = "bytes_chunk"
     data_b64: str
 
 
-# Tagged union discriminated on 'type'.
 Frame = Annotated[
     LogFrame
     | SpanFrame
@@ -137,6 +100,4 @@ Frame = Annotated[
 
 frame_adapter: TypeAdapter[Frame] = TypeAdapter(Frame)
 
-# Frame types that terminate a request's response stream. Everything else
-# (log, span, bytes_chunk) is incremental and more frames follow.
 TERMINAL_FRAME_TYPES = frozenset({"result", "done", "accepted", "busy", "unknown", "unavailable", "error"})

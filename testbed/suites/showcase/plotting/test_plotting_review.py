@@ -1,5 +1,3 @@
-"""A reviewer's rebuild from hash-pinned wheels draws the author's figure again, byte for byte."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

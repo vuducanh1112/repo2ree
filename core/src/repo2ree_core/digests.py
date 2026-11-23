@@ -1,14 +1,3 @@
-"""Canonical content digests for run receipts and seal-time checks.
-
-Every digest in the receipt and audit vocabulary is a ``sha256:<hex>``
-string — one format from day one, so recorded and current values are always
-directly comparable. Digests are recorded as *receipts* (provenance), never
-used as cache keys.
-
-Leaf-ish module: imports nothing from ``repo2ree_core`` so ree, operations,
-and workspace layers can all share it without an import cycle.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -21,13 +10,6 @@ _CHUNK_SIZE = 1024 * 1024
 
 
 def short_hash(data: bytes, *, length: int = 12) -> str:
-    """A truncated hex hash for identifiers, not provenance.
-
-    Deliberately not a canonical digest: it labels a value (a candidate id, a
-    config fingerprint) so equal inputs get equal labels. Never record one in a
-    receipt — those must stay comparable, which is what :func:`digest_bytes` is
-    for.
-    """
     return hashlib.sha256(data).hexdigest()[:length]
 
 
@@ -38,26 +20,17 @@ def digest_file(path: Path) -> Digest:
             hasher.update(chunk)
     digest = Digest(DIGEST_PREFIX + hasher.hexdigest())
 
-    # ── postcondition ──
     assert is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
-    # ───────────────────
     return digest
 
 
 def digest_file_if_exists(path: Path) -> Digest | None:
-    """Digest of ``path``, or ``None`` when it is not a regular file."""
     if not path.is_file():
         return None
     return digest_file(path)
 
 
 def digest_tree(root: Path) -> Digest:
-    """Digest of a directory tree: every file's relative path and content.
-
-    Path and content digest are folded in with delimiters so no two distinct
-    trees can collide by concatenation. Empty or absent trees hash to the
-    digest of the empty input.
-    """
     hasher = hashlib.sha256()
     if root.is_dir():
         for path in sorted(root.rglob("*")):
@@ -70,21 +43,11 @@ def digest_tree(root: Path) -> Digest:
             hasher.update(b"\0")
     digest = Digest(DIGEST_PREFIX + hasher.hexdigest())
 
-    # ── postcondition ──
     assert is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
-    # ───────────────────
     return digest
 
 
 def digest_output_paths(base: Path, output_paths: list[str]) -> Digest | None:
-    """Digest of an experiment's declared outputs, resolved under ``base``.
-
-    ``None`` when the experiment declares no outputs (nothing to bind); a
-    declared-but-absent path contributes nothing. Each declared path is folded
-    in under its declared relative form (files directly, directories by their
-    contained files) so the digest is stable regardless of iteration order and
-    directly comparable between capture time (over the workspace) and seal time.
-    """
     if not output_paths:
         return None
     hasher = hashlib.sha256()
@@ -106,19 +69,11 @@ def digest_output_paths(base: Path, output_paths: list[str]) -> Digest | None:
                 hasher.update(b"\0")
     digest = Digest(DIGEST_PREFIX + hasher.hexdigest())
 
-    # ── postcondition ──
     assert is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
-    # ───────────────────
     return digest
 
 
 class HashingWriter:
-    """Binary writer wrapper that hashes every byte passing through it.
-
-    Lets archive writers produce a content digest of exactly the bytes they
-    persisted, without a second read of the file.
-    """
-
     def __init__(self, target: IO[bytes]):
         self._target = target
         self._hasher = hashlib.sha256()
@@ -134,7 +89,5 @@ class HashingWriter:
     def digest(self) -> Digest:
         digest = Digest(DIGEST_PREFIX + self._hasher.hexdigest())
 
-        # ── postcondition ──
         assert is_canonical_digest(digest), f"non-canonical digest: {digest}"  # noqa: S101
-        # ───────────────────
         return digest

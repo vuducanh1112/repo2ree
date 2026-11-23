@@ -6,10 +6,6 @@ import { RunActionButton } from "./RunActionButton";
 const base = { label: "Run build", running: false, disabled: false, onRun: () => {} };
 
 describe("RunActionButton", () => {
-  // The component's doc comment states this as its reason to exist: the icon is
-  // aria-hidden so its <title> ("Play"/"Loading") stays out of the accessible
-  // name. Every other test in the suite selects these buttons by label, so the
-  // guarantee is load-bearing and worth asserting directly.
   it("is named by its visible label alone, with no icon text leaking in", () => {
     render(<RunActionButton {...base} />);
     expect(screen.getByRole("button", { name: "Run build" })).toBeInTheDocument();

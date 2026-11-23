@@ -12,9 +12,6 @@ import {
   translucent,
 } from "./appearance";
 
-// A tone reference that names nothing is the migration's quietest failure: CSS
-// drops the declaration, the element renders unstyled, and nothing throws. So
-// the mappings are checked against the stylesheet that has to declare them.
 const tones = readFileSync(fileURLToPath(new URL("./tones.css", import.meta.url)), "utf8");
 
 const declared = (reference: string): boolean => {
@@ -24,8 +21,6 @@ const declared = (reference: string): boolean => {
 
 describe("appearance", () => {
   it("resolves every stage to a declared tone", () => {
-    // The canvas ring and the run catalog between them use every page key, and
-    // `line`/`ink` are what a cable needs, so both are required for all of them.
     const stages = Object.values(PAGE).filter(
       (page) => page !== PAGE.CANVAS && page !== PAGE.WORKBENCH,
     );

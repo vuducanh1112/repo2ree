@@ -1,5 +1,3 @@
-"""Every project is laid out alike, and every showcase has its machine and a test of each workflow."""
-
 import subprocess
 from typing import get_args
 

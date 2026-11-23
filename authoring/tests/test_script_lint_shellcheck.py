@@ -1,10 +1,3 @@
-"""Reading ShellCheck's output, against recorded documents rather than a binary.
-
-The mapping is what these fix: which severity a level becomes, that the codes
-stay in ShellCheck's own namespace, and that a document this does not recognize
-produces no claims at all.
-"""
-
 from __future__ import annotations
 
 import json
@@ -13,8 +6,6 @@ import pytest
 
 from repo2ree_authoring.lint.shellcheck_json import parse_json1
 
-# One real `shellcheck --shell sh --format=json1` document, trimmed to the
-# fields the parser reads plus the `fix` block it deliberately ignores.
 _REAL_OUTPUT = json.dumps(
     {
         "comments": [
@@ -44,8 +35,6 @@ def test_a_comment_becomes_a_finding_in_shellchecks_own_namespace() -> None:
 
 
 def test_shellcheck_never_blocks() -> None:
-    # Its vocabulary is not ours: it reports nothing for the pitfalls that
-    # matter here, and its advice is occasionally the bug. It advises only.
     (finding,) = parse_json1(_REAL_OUTPUT, path="x.sh")
     assert finding.blocking is False
 
@@ -82,6 +71,4 @@ def test_a_clean_script_produces_nothing() -> None:
     ],
 )
 def test_output_this_does_not_recognize_yields_no_claims(payload: str) -> None:
-    # A shape we cannot read means a ShellCheck the caller should treat as
-    # unavailable — never a script to invent findings about.
     assert parse_json1(payload, path="x.sh") == ()

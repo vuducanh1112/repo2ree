@@ -1,19 +1,4 @@
 #!/usr/bin/env python3
-"""Run `just` and record how long each of its recipes took, in logs/just/.
-
-The dev shell's `just` is this script in front of the real one: ``just_timing.py REAL_JUST ARGS...``.
-Only the outermost `just` of an invocation records. It runs the real one with ``JUST_TIME=true``,
-passes its stderr through as it arrives, and writes one JSON line per recipe that just reports
-(``---> RECIPE completed in Ns``) to ``logs/just/<date>/<time>-<id>.jsonl``, between a ``start``
-and an ``end`` line. A `just` that one of its recipes starts finds ``REPO2REE_JUST_TIMING`` set
-and hands over to the real one at once: its lines reach the outermost one through the stderr they
-share, so every recipe is recorded once. Commands that run no recipe (--list, --dump, ...) are
-not recorded.
-
-Recording never changes what just does: the exit code is just's own, and a record that cannot be
-written is warned about once and given up.
-"""
-
 from __future__ import annotations
 
 import json
@@ -34,11 +19,8 @@ from uuid import uuid4
 SCHEMA = "repo2ree-just-timing/1"
 ROOT = Path(__file__).resolve().parents[1]
 LOGS = ROOT / "logs" / "just"
-# Set for every process of an invocation that records: the file it records into.
 MARKER = "REPO2REE_JUST_TIMING"
-# A day directory older than this is removed when an invocation starts.
 KEPT_DAYS = 30
-# Options under which just runs no recipe.
 NOT_RUNS = frozenset(
     {
         "--changelog",
@@ -83,7 +65,6 @@ def runs_recipes(args: list[str]) -> bool:
 
 
 def completed(line: str) -> tuple[str, float] | None:
-    """The recipe and seconds of a line `just --time` prints, if it is one."""
     match = COMPLETED.match(ANSI.sub("", line).rstrip("\r\n"))
     return (match[1], float(match[2])) if match else None
 
@@ -101,8 +82,6 @@ def now() -> str:
 
 
 class Recorder:
-    """Lines appended to one invocation's file; the first failure to write ends the recording."""
-
     def __init__(self, path: Path) -> None:
         self.path = path
         self.stream: IO[str] | None = None
@@ -129,7 +108,6 @@ class Recorder:
 
 
 def prune(logs: Path, today: datetime) -> None:
-    """Remove the day directories older than KEPT_DAYS; whatever cannot be removed stays."""
     oldest = (today - timedelta(days=KEPT_DAYS)).date().isoformat()
     for day in logs.glob("????-??-??"):
         if day.name < oldest:
@@ -137,17 +115,10 @@ def prune(logs: Path, today: datetime) -> None:
 
 
 class Chunked(Protocol):
-    """A stream that returns what is there now, as just's piped stderr does."""
-
     def read1(self, size: int = ..., /) -> bytes: ...
 
 
 def forward(source: Chunked, target: IO[bytes], recorder: Recorder) -> None:
-    """Pass ``source`` to ``target`` as it arrives, recording every completed recipe it reports.
-
-    It reads to the end even when ``target`` is gone (``just ... 2>&1 | head``), so just never
-    blocks on a pipe nobody empties.
-    """
     pending = b""
     shown: IO[bytes] | None = target
     while chunk := source.read1(65536):
@@ -192,8 +163,6 @@ def record(real: str, args: list[str]) -> int:
     except OSError as error:
         sys.stderr.write(f">> just timings are not recorded ({error})\n")
         run_plainly(real, args)
-    # Only now: a child would inherit the ignored SIGINT. Ctrl-C reaches just through the terminal,
-    # and this process waits for it to end and records that; a SIGTERM is passed on.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, lambda signum, _frame: child.send_signal(signum))
     if child.stderr is None:
@@ -202,7 +171,6 @@ def record(real: str, args: list[str]) -> int:
     reader = threading.Thread(target=forward, args=(source, sys.stderr.buffer, recorder), daemon=True)
     reader.start()
     code = child.wait()
-    # Done when just is: a process a recipe left behind may hold stderr open for as long as it likes.
     reader.join(timeout=2)
     exit_code = code if code >= 0 else 128 - code
     recorder.write({"kind": "end", "exit": exit_code, "seconds": round(time.monotonic() - begun, 3)})
@@ -212,7 +180,7 @@ def record(real: str, args: list[str]) -> int:
 
 def run_plainly(real: str, args: list[str]) -> NoReturn:
     signal.signal(signal.SIGINT, signal.SIG_DFL)
-    os.execv(real, [real, *args])  # noqa: S606 — the real just takes this process's place, arguments as given
+    os.execv(real, [real, *args])  # noqa: S606
 
 
 def main(argv: list[str]) -> int:

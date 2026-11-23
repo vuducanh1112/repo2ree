@@ -1,6 +1,3 @@
-/* Bringing source into the workspace: the URL field, the tarball dropzone, and
- * the pending/committed states between picking a file and adding it. */
-
 .field {
   display: flex;
   flex-direction: column;
@@ -12,7 +9,6 @@
   position: relative;
 }
 
-/* The link glyph sits inside the input's left padding. */
 .urlIcon {
   position: absolute;
   left: 10px;
@@ -47,10 +43,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* --- Pending upload ------------------------------------------------------
- * A tarball chosen but not yet committed. Amber throughout: nothing has
- * happened to the workspace yet, and confirming resets downstream results. */
 
 .pending {
   display: flex;
@@ -115,10 +107,6 @@
   outline-offset: var(--focus-ring-offset);
 }
 
-/* --- Committed upload ----------------------------------------------------
- * The tarball is in the workspace. Green because this is the settled state,
- * not a warning about one. */
-
 .committed {
   display: flex;
   align-items: center;
@@ -145,8 +133,6 @@
   font-weight: var(--weight-semibold);
   color: var(--tone-success-ink);
 }
-
-/* --- Dropzone ------------------------------------------------------------ */
 
 .dropzone {
   display: flex;
@@ -213,8 +199,6 @@
   font-size: var(--text-caption);
   color: var(--chrome-text-muted);
 }
-
-/* --- Upload field wrapper ------------------------------------------------ */
 
 .uploadField {
   padding: var(--space-2) 0 var(--space-3);

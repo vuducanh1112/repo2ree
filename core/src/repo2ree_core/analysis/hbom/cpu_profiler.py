@@ -57,16 +57,10 @@ def _parse_cpuinfo_text(text: str) -> dict[str, Any]:
     threads = max(1, threads_per_core)
     logical_cpus = len(processors)
 
-    # ── postcondition ──
-    # The topology counts feed ``CPUDefinition`` fields that all carry ``ge=1``;
-    # normalise them so a malformed /proc/cpuinfo can never construct an invalid
-    # definition downstream, and pin ``logical_cpus`` to exactly one entry per
-    # parsed processor block.
     assert quantity >= 1, quantity  # noqa: S101
     assert cores_per_cpu >= 1, cores_per_cpu  # noqa: S101
     assert threads >= 1, threads  # noqa: S101
     assert logical_cpus == len(processors), logical_cpus  # noqa: S101
-    # ───────────────────
 
     return {
         "model_name": first.get("model name") or first.get("Processor") or "",

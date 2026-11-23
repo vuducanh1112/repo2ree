@@ -1,5 +1,3 @@
-"""The suites a stack serves: a Playwright project or a test script, each listing its tests and running them."""
-
 from __future__ import annotations
 
 import os
@@ -31,7 +29,6 @@ class TestCase:
     name: str
     slug: str
     selection: tuple[str, ...]
-    # The machine its stack's workbenches are installed on, when the suite places each test itself.
     environment: EnvironmentName | None = None
 
 
@@ -115,7 +112,6 @@ class _Listing(BaseModel):
 @dataclass(frozen=True)
 class Playwright:
     project: str
-    # The machine each spec that names one runs on, by its path.
     machines: Mapping[Path, EnvironmentName] = field(default_factory=dict)
 
     @property
@@ -203,7 +199,7 @@ class Script:
 def reported_outcome(report: Path, status: int) -> tuple[Outcome, str]:
     fallback: tuple[Outcome, str] = ("passed", "") if status == 0 else ("failed", "")
     try:
-        case = ElementTree.parse(report).getroot().find(".//testcase")  # noqa: S314 - written by our own client
+        case = ElementTree.parse(report).getroot().find(".//testcase")  # noqa: S314
     except (OSError, ElementTree.ParseError):
         return fallback
     if case is None:

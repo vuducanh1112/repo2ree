@@ -1,12 +1,3 @@
-"""The REE a showcase's authoring test sealed, read from the copy the test preserved.
-
-The preserved copy is the REE's Git repository (``dossier/rees/<name>/ree``). Every operation is a commit whose
-message carries its record, so the REE itself says what inference proposed (``suggest_scripts``) and what
-was written (``write_script``). Each script under ``overlay/`` at the seal is matched against those proposals: the
-bytes of a candidate as proposed, bytes chosen over what inference proposed, bytes written where inference was asked
-and proposed nothing, or bytes written without inference being asked.
-"""
-
 from __future__ import annotations
 
 import subprocess
@@ -20,12 +11,10 @@ from repo2ree_repoview.documents import Document
 
 OVERLAY = "overlay/"
 SCRIPTS = OVERLAY + "ree-scripts/"
-# The scripts in the order an REE runs them: its environment built, then activated; its experiments after.
 RUN_ORDER = (SCRIPTS + "build_experiment_environment.sh", SCRIPTS + "activate_experiment_environment.sh")
 SEAL = "seal_ree"
 INFER = "suggest_scripts"
 LFS_POINTER = b"version https://git-lfs.github.com/spec/v1"
-# Text files up to this size are shown in full.
 SHOWN_BYTES = 64_000
 
 InferenceStatus = Literal["complete", "needs_input", "not_inferred"]
@@ -175,8 +164,6 @@ class ContainerEnginesSeen(Document):
 
 
 class OtherSeen(Document):
-    """An observation of a kind this view does not know yet: named, not described."""
-
     kind: str
 
     def summary(self) -> str:
@@ -290,7 +277,6 @@ class TargetResult(Document):
     status: InferenceStatus
     application: Application
     candidates: tuple[Candidate, ...] = ()
-    # Absent from records older than the trace.
     decision: Trace | None = None
 
 
@@ -316,18 +302,13 @@ class Operation:
 
 @dataclass(frozen=True)
 class Request:
-    """One ``suggest_scripts``: what inference answered for each target it was asked about."""
-
     commit: str
     results: tuple[TargetResult, ...]
-    # The whole graphs its results walked, by key.
     dags: dict[str, Dag]
 
 
 @dataclass(frozen=True)
 class Decision:
-    """How inference reached an answer: the whole graph, and the walk it took through it."""
-
     dag: Dag
     trace: Trace
 
@@ -344,12 +325,9 @@ class Script:
     path: str
     body: str
     written: Written
-    # The candidate whose bytes it is.
     proposal: Proposal | None
     proposals: tuple[Proposal, ...]
-    # What inference last answered for its path, whether or not it proposed anything.
     answer: TargetResult | None
-    # How it reached that answer, where the record carries the walk and its graph.
     decision: Decision | None
 
 
@@ -364,7 +342,6 @@ class Entry:
     path: str
     size: int
     lfs: LfsPayload | None
-    # Its text when it is small UTF-8 text; None otherwise.
     text: str | None
 
 
@@ -386,7 +363,6 @@ def _git(repo: Path, *args: str) -> bytes:
 
 
 def _commits(repo: Path) -> list[tuple[str, str, _Commit | None]]:
-    """Every commit oldest first: its hash, subject, and the operation record its message carries."""
     found = []
     for entry in _git(repo, "log", "--reverse", "--format=%H%x1f%s%x1f%b%x1e").decode().split("\x1e"):
         if not entry.strip():
@@ -456,7 +432,6 @@ def _script(entry: Entry, requests: tuple[Request, ...]) -> Script:
 
 
 def read_sealed(repo: Path, ree_id: str) -> SealedRee | None:
-    """The REE in ``repo`` as of its last seal; None when it was never sealed."""
     commits = _commits(repo)
     sealed_at = max((index for index, (_, subject, _) in enumerate(commits) if subject == SEAL), default=None)
     if sealed_at is None:
@@ -507,7 +482,6 @@ def read_sealed(repo: Path, ree_id: str) -> SealedRee | None:
 
 
 def preserved_ree(test_directory: Path, rees: tuple[str, ...]) -> SealedRee | None:
-    """The first REE a test preserved that was sealed."""
     for name in rees:
         repo = test_directory / "dossier/rees" / name / "ree"
         if not (repo / ".git").is_dir():

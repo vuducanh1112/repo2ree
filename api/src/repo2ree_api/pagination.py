@@ -7,9 +7,6 @@ from fastapi import HTTPException
 _KEYSET_SEP = "~"
 
 
-# ItemT is the paginated item. Generic because keyset pagination is about the *key*, not
-# the payload: a route that projects a typed summary before paginating should
-# not have to widen it back to a dict to get a page out.
 def keyset_paginate[ItemT](
     items: Sequence[ItemT],
     *,
@@ -17,14 +14,6 @@ def keyset_paginate[ItemT](
     limit: int | None,
     key: Callable[[ItemT], tuple[str, str]],
 ) -> tuple[list[ItemT], str | None, bool]:
-    """Paginate a sequence sorted descending by ``key`` with a keyset cursor.
-
-    ``key`` returns a (sort value, unique tiebreak) string pair; the cursor
-    encodes the last returned item's key. Unlike an offset cursor, items
-    created or deleted between pages cannot shift page boundaries — the next
-    page is simply "everything strictly after the cursor key". Neither key
-    component may contain the separator character.
-    """
     if cursor is not None:
         sort_value, sep, tiebreak = cursor.partition(_KEYSET_SEP)
         if not sep:

@@ -1,7 +1,3 @@
-/* The read-only file preview. Its lightweight Dockerfile/shell highlighter
- * classifies a line into one of four kinds; what each kind reads as is here,
- * not in the classifier. */
-
 .viewer {
   display: flex;
   flex-direction: column;
@@ -54,7 +50,6 @@
   color: var(--ink-default);
 }
 
-/* Not the file's content — a note standing in for it. */
 .code[data-muted] {
   color: var(--ink-subtle);
 }

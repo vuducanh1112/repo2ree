@@ -3,9 +3,7 @@ import { cssVars } from "../../theme/styleVars";
 import styles from "./GlassPage.module.css";
 
 interface GlassSectionHeaderProps {
-  /** Omitted by a page whose section has no siblings to be told apart from. */
   icon?: React.ReactNode;
-  /** The section's tone, as a `var(--…)` reference. Defaults to the page's. */
   tint?: string;
   title: string;
   subtitle?: string;

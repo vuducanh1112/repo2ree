@@ -1,5 +1,3 @@
-"""A showcase's final REE: each script matched against what inference proposed in the REE's own history."""
-
 from __future__ import annotations
 
 import json
@@ -132,8 +130,6 @@ def write(repo: Path, path: str, body: str) -> None:
 
 
 def sealed_test(tmp_path: Path) -> Path:
-    """A test's preserved REE: one script as inferred, one chosen over a proposal, one where inference proposed
-    nothing, one never asked about."""
     test = tmp_path / "test"
     repo = test / "dossier/rees/abc/ree"
     repo.mkdir(parents=True)
@@ -172,7 +168,6 @@ def test_each_script_says_whether_it_is_what_inference_proposed(tmp_path: Path) 
         f"overlay/{EXPERIMENT}": "not_asked",
         f"overlay/{VERIFY}": "no_candidate",
     }
-    # In the order an REE runs them, not by name: built, activated, then its experiments.
     assert [script.path for script in ree.scripts] == [
         f"overlay/{BUILD}",
         f"overlay/{ACTIVATE}",
@@ -184,7 +179,6 @@ def test_each_script_says_whether_it_is_what_inference_proposed(tmp_path: Path) 
     assert build is not None
     assert build.dag.key == "build"
     assert build.trace.result_node == "build-needs-input"
-    # A record older than the trace carries no walk; the script has no decision to show.
     assert decided[f"overlay/{ACTIVATE}"] is None
     assert ree.sealed is not None
     assert ree.sealed.ree_digest == "sha256:aa"
@@ -214,12 +208,10 @@ def test_the_page_shows_the_final_scripts_and_what_inference_was_asked(tmp_path:
     assert "inference not asked" in page.body
     assert "inference proposed nothing" in page.body
     assert "Inference proposed <code>venv-activate-experiment-environment-v1</code>" in page.body
-    # The decision graph: the walk drawn over the whole graph, each step with what it observed.
     assert "<svg" in page.body
     assert "How inference decided: <code>build</code> v1, ending at <code>build-needs-input</code>" in page.body
     assert "probed in docker:29-dind: docker usable; podman absent" in page.body
     assert "a_kind_not_known_yet" in page.body
-    # The files as a tree: a folder holding its files, each text file opening to its contents.
     assert '<summary><b>overlay/</b><span class="meta">4 files</span></summary>' in page.body
     assert '<summary>ree.json<span class="meta">2 B · Git</span></summary><pre class="code">{}</pre>' in page.body
     assert '<li>snapshot.tar.gz<span class="meta">4.1 kB · <span class="lfs">LFS</span></span></li>' in page.body

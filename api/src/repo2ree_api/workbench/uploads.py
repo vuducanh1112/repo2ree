@@ -1,12 +1,3 @@
-"""The staging half of the two-phase upload: mint a slot, then receive bytes.
-
-Everything here runs on the request thread and answers to the client that is
-uploading: it validates the declared size, claims a token for one REE and one
-purpose, and streams the body onto control-plane disk. Nothing here touches a
-workbench or starts a run — handing staged bytes to the REE is the other half,
-in :mod:`repo2ree_api.control.upload_runs`.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -36,7 +27,6 @@ from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 def mint_upload_token(
     ree_id: str, payload: UploadInitPayload, *, upload_route: str, purpose: str, action: AuthorApiActionName
 ) -> dict[str, Any]:
-    """Open an upload slot: the author's ``action`` is requested here, and continues when the upload completes."""
     action_id = author_actions.start(action, ree_id)
     try:
         return _mint(ree_id, payload, upload_route=upload_route, purpose=purpose, action_id=action_id)
@@ -71,7 +61,6 @@ def _mint(
 
 
 async def stage_upload_bytes(ree_id: str, upload_token: str, request: Request, *, purpose: str) -> dict[str, Any]:
-    """Receive an upload's bytes; a refusal fails the upload's action, since its bytes never arrived."""
     try:
         return await _stage(ree_id, upload_token, request, purpose=purpose)
     except BaseException as exc:

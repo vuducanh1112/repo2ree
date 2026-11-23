@@ -6,9 +6,6 @@ export interface WorkspaceBinaryDownload {
   fileName?: string;
 }
 
-// Display-ready source-repository facts, computed by the backend
-// (repo2ree_core.source_repo) and passed through untouched. The GUI never
-// re-derives these — it only renders them.
 export interface SourceRepoMetadata {
   name: string;
   origin: string;
@@ -24,10 +21,8 @@ export interface ReeProject<TFile = unknown, TRee = unknown> {
   files: TFile[];
   reeFiles?: ReeFile[];
   ree?: TRee;
-  /** Author evidence parsed from the portable REE document. */
   authorReceipts?: ReceiptView[];
   sourceRepo?: SourceRepoMetadata;
-  /** The store the REE is kept in; deleting the REE deletes it there. */
   storeId?: string;
   workbenchLocation?: string;
 }

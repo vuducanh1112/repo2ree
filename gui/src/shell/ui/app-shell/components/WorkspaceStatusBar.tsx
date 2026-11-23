@@ -14,13 +14,10 @@ export type WorkflowMode = "authoring" | "review";
 
 interface WorkspaceStatusBarProps {
   page: AppShellPage;
-  /** Owned by the shell, so the canvas highlights the same next step this does. */
   authoring: AuthoringWorkflowModel;
-  /** Owned by the shell too: the strip and the evidence drawer are one attempt. */
   review: ReviewWorkflowModel;
   mode: WorkflowMode;
   onModeChange: (mode: WorkflowMode) => void;
-  /** The review step whose evidence the drawer is showing, if any. */
   openReviewStep: ReviewStepKey | null;
   onOpenReviewStep: (step: ReviewStepKey) => void;
   workspaceFiles: FileTreeNode[];
@@ -33,7 +30,6 @@ interface WorkspaceStatusBarProps {
   onReceiptsOpenChange: (open: boolean) => void;
 }
 
-/** Persistent workflow and evidence navigation above the live canvas. */
 export function WorkspaceStatusBar({
   page,
   authoring,
@@ -86,8 +82,6 @@ export function WorkspaceStatusBar({
           </button>
         </div>
 
-        {/* Both workflows stand on the same strip: the bar's height and layout
-         * are the same whichever one is showing. */}
         <div className={styles.body}>
           {reviewing ? (
             <ReviewStrip model={review} openStep={openReviewStep} onOpenStep={onOpenReviewStep} />

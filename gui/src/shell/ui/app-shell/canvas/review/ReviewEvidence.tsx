@@ -7,14 +7,6 @@ import styles from "./ReviewConsole.module.css";
 import { STATUS_LABEL } from "./ReviewStepCard";
 import type { ReviewWorkflowModel } from "./useReviewWorkflowModel";
 
-/**
- * Everything one review attempt has settled, in the order the graph settles it.
- *
- * The whole attempt rather than the step that was clicked: evidence accumulates
- * while a reviewer works, and a reader who has to click each step to see what
- * landed cannot watch a reproduction happen. The strip's step decides what is
- * scrolled to and marked current, not what is rendered.
- */
 export function ReviewEvidence({
   model,
   focusStep,
@@ -25,8 +17,6 @@ export function ReviewEvidence({
   const { attempt, statuses, experimentNames, error } = model;
   const focusRef = useRef<HTMLElement>(null);
 
-  // Re-runs when the strip selects another step, which is the only thing that
-  // moves this drawer's attention.
   useEffect(() => {
     if (!focusStep) return;
     focusRef.current?.scrollIntoView?.({ block: "nearest" });
@@ -89,13 +79,6 @@ export function ReviewEvidence({
   );
 }
 
-/**
- * One step's findings, or why there are none yet.
- *
- * A step with nothing to show still gets its heading: the drawer answers for
- * the whole graph, and a missing section would read as evidence that was never
- * looked for rather than work not yet done.
- */
 function EvidenceSection({
   label,
   status,
@@ -140,22 +123,11 @@ function EvidenceSection({
   );
 }
 
-/**
- * States plainly when a settled verdict rests on the REE's own bytes.
- *
- * Without this the console would show "identical" for a bundled attempt exactly
- * as it does for a fetched-and-rebuilt one, and the two mean very different
- * things — the first says the bundle is intact, the second says the work
- * reproduces. The verdict colour is deliberately left alone; this is a
- * qualification of the claim, not a downgrade of it.
- */
 function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
   const bundled: string[] = [];
   if (attempt.sourceComparison?.basis === "bundled") bundled.push("source");
   if (attempt.experimentEnvironmentComparison?.basis === "bundled")
     bundled.push("experiment environment");
-  // Activation inherits its basis, so naming it separately would double-count
-  // the same weakness the source or runtime line already reports.
   if (bundled.length === 0) return null;
 
   return (
@@ -166,7 +138,6 @@ function BasisNotice({ attempt }: { attempt: ReviewAttempt }) {
   );
 }
 
-/** What the activation, run alone, settled, and on a failure how it exited. */
 function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
   const outcome = attempt.activationOutcome;
   if (!outcome) return null;
@@ -185,11 +156,6 @@ function ActivationOutcomeDetail({ attempt }: { attempt: ReviewAttempt }) {
   );
 }
 
-/**
- * Why the build earned its verdict. A digest line and a closure line, because
- * "equivalent" is a claim about the dependency closure and a reviewer should
- * see the counts it rests on without opening the run log.
- */
 function ExperimentEnvironmentVerdictDetail({ attempt }: { attempt: ReviewAttempt }) {
   const comparison = attempt.experimentEnvironmentComparison;
   if (!comparison) return null;

@@ -18,11 +18,6 @@ export function buildRunStatusLabel(input: {
   return "Ready";
 }
 
-// The runtime path is a declaration made before the build, not a pick made
-// after it: the author says where the build script will write the artifact, and
-// the build refuses to run without it and fails if nothing lands there. So an
-// undeclared path is the author's missing input, while a declared path with no
-// file yet is simply a build that has not run.
 type ExperimentEnvironmentArtifactStatus = "undeclared" | "declared" | "produced";
 
 export function experimentEnvironmentArtifactStatus(input: {

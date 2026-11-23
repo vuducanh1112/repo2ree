@@ -1,12 +1,3 @@
-"""Every command as the words a caller runs: a ``ree`` verb, its arguments, and its stdin.
-
-The command line is the one interface into an REE, for a person at a terminal as much as for a workbench, so a
-``Command`` and its argv are two spellings of one value. ``to_argv`` writes the argv a caller runs; ``ree`` reads it
-back with options generated from the same command models (``repo2ree_cli.options``), so the spellings cannot drift.
-
-A command's words are its operation's catalogued name in kebab case, a review's under ``review``.
-"""
-
 from __future__ import annotations
 
 from typing import get_args
@@ -45,12 +36,10 @@ REVIEW = "review"
 
 
 def command_types() -> tuple[type[BaseModel], ...]:
-    """Every member of the ``Command`` union."""
     return get_args(get_args(Command)[0])
 
 
 def words_of(operation: str) -> tuple[str, ...]:
-    """The words that run an operation: ``review_run_experiment`` is ``review run-experiment``."""
     if operation.startswith(f"{REVIEW}_"):
         return (REVIEW, operation.removeprefix(f"{REVIEW}_").replace("_", "-"))
     return (operation.replace("_", "-"),)
@@ -60,7 +49,6 @@ VERBS: dict[type[BaseModel], tuple[str, ...]] = {
     command: words_of(str(command.model_fields["operation"].default)) for command in command_types()
 }
 
-# What each command does, in a line of its help. The steps shared with run.sh say what they say there.
 SUMMARIES: dict[type[BaseModel], str] = {
     AcquireSourceCommand: "Acquire the REE's source from an origin (--origin-url) or an archive (--archive)",
     RemoveSourceCommand: "Remove the REE's source, keeping its scripts and definition",
@@ -91,6 +79,5 @@ SUMMARIES: dict[type[BaseModel], str] = {
 
 
 def to_argv(cmd: Command) -> tuple[list[str], bytes | None]:
-    """The argv after ``ree`` that runs ``cmd``, and what it reads on stdin."""
     words, stdin = encode_args(cmd.args)
     return [*VERBS[type(cmd)], *words], stdin

@@ -1,5 +1,3 @@
-"""Telemetry for a command-line process: where its spans and logs go, and the one span of each invocation."""
-
 from __future__ import annotations
 
 import os
@@ -26,7 +24,6 @@ TRACE_RELAY_ENV = "TRACE_RELAY"
 TRACEPARENT_ENV = "TRACEPARENT"
 OTLP_ENDPOINT_ENV = "OTLP_ENDPOINT"
 
-# Seconds a collector gets per export before the process gives up on it: a person waits on the exit.
 _EXPORT_TIMEOUT = 2.0
 _PROGRAM = "ree"
 _ATTR_COMMAND = "repo2ree.cli.command"
@@ -35,12 +32,6 @@ tracer = get_tracer(__name__)
 
 
 def setup_command_line_telemetry(service_name: str, relay: TextIO) -> Callable[[], None]:
-    """Send this process's spans and logs where its environment says, and return what flushes them at exit.
-
-    The first that is set wins: ``TRACE_RELAY`` (the workbench) has spans ride ``relay`` as NDJSON,
-    ``OTLP_ENDPOINT`` exports spans and logs to that collector, and ``TRACE_FILE`` appends spans to that file.
-    With none of them, nothing is recorded.
-    """
     if os.environ.get(TRACE_RELAY_ENV):
         configure_logging()
         setup_relay_tracing(service_name, relay)
@@ -66,10 +57,6 @@ def setup_command_line_telemetry(service_name: str, relay: TextIO) -> Callable[[
 
 @contextmanager
 def invocation_span() -> Iterator[None]:
-    """One span for the whole invocation, under the caller's ``TRACEPARENT``, ended with the exit status.
-
-    It is named ``ree`` until ``name_invocation`` names the command; a command line that names none stays ``ree``.
-    """
     with tracer.start_as_current_span(
         _PROGRAM,
         context=remote_context(os.environ.get(TRACEPARENT_ENV)),
@@ -91,7 +78,6 @@ def invocation_span() -> Iterator[None]:
 
 
 def name_invocation(words: Sequence[str]) -> None:
-    """Name the invocation's span after the command's words, as ``ree review all``."""
     span = trace.get_current_span()
     command = " ".join(words)
     span.update_name(f"{_PROGRAM} {command}")
@@ -99,7 +85,6 @@ def name_invocation(words: Sequence[str]) -> None:
 
 
 def record_invocation_result(result: ActionResult) -> None:
-    """Record the result the invocation ends with on its span; called where no command's span is open."""
     span = trace.get_current_span()
     record_failure(span, result.failure)
     record_command_status(span, result.status)

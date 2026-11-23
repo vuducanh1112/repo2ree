@@ -1,5 +1,3 @@
-"""Offline Git LFS objects and canonical pointers; no ambient filters or network."""
-
 from __future__ import annotations
 
 import hashlib
@@ -32,7 +30,6 @@ class LfsPointer(BaseModel):
         return git_dir / "lfs" / "objects" / self.oid[:2] / self.oid[2:4] / self.oid
 
     def verify(self, git_dir: Path) -> Path:
-        # The history's storage itself may be reached by a link, as an attempt's stage reaches it; nothing in it may.
         git_dir = git_dir.resolve()
         path = self.object_path(git_dir)
         if (
@@ -49,7 +46,6 @@ class LfsPointer(BaseModel):
 
 
 def store_payload(source: Path, git_dir: Path, *, on_chunk: Callable[[int], None] = lambda _size: None) -> LfsPointer:
-    """Publish immutable bytes before their pointer can enter a commit."""
     if source.is_symlink() or not source.is_file():
         raise ValueError(f"LFS payload must be a regular file: {source.name}")
     git_dir = git_dir.resolve()
@@ -72,7 +68,6 @@ def store_payload(source: Path, git_dir: Path, *, on_chunk: Callable[[int], None
         if destination.exists():
             pointer.verify(git_dir)
         else:
-            # Hard-link publication is atomic and leaves NamedTemporaryFile cleanup intact.
             os.link(staged.name, destination)
         return pointer
 

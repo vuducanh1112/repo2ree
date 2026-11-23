@@ -1,5 +1,3 @@
-"""Minimal executable view of an activation or experiment definition."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,13 +8,10 @@ from repo2ree_ree.paths import validate_relative_path
 
 @dataclass(frozen=True)
 class RunnableSpec:
-    """A script run inside the activation, or with no run script the activation alone."""
-
     activate_script: str
     run_script: str = ""
     verify_script: str = ""
     output_paths: tuple[str, ...] = ()
-    # The launch every one of its scripts runs through; None runs them directly.
     launch: Launch | None = None
 
     def __post_init__(self) -> None:

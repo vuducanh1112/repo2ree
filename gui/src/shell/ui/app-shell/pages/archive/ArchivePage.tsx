@@ -73,9 +73,6 @@ export function PageArchive({
   const missing = repo.requires.filter((requiredField) => !requirementValues[requiredField.field]);
   const canRun = missing.length === 0 && !running;
 
-  // Deposit identifiers are archive-binding attestations held server-side, not
-  // fields on the REE. Undefined until the deposit API reads them back; the
-  // cards below already render their placeholder in that state.
   const assignedId: string | undefined = undefined;
 
   const buildDone = isAuditCurrent(ree.audit, "build_experiment_environment");

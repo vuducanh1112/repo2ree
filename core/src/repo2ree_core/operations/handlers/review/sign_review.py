@@ -1,13 +1,3 @@
-"""Sign a review: a Sigstore bundle, signed elsewhere, whose statement names the reviewed seal and carries the
-review's record as its predicate.
-
-The bundle is made where the reviewer's identity is, never here: core sees no credential, only the bundle. It is
-kept for a review of a sealed REE that is not running, when the key its certificate holds made its signature and
-its statement names the seal the review names, under the review predicate type, with the record exactly as the
-review holds it as its predicate. A review is signed once, and changes no more after: its steps refuse it
-(``refuse_signed_review``).
-"""
-
 from __future__ import annotations
 
 import json

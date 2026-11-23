@@ -1,11 +1,3 @@
-"""What lint refuses to do.
-
-The catalog's central policy is that only a script that cannot run at all
-blocks. Everything else is advice, because these are the author's scripts. That
-is a product decision rather than an implementation detail, so it is asserted
-here directly rather than left implicit in each rule's fixtures.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -22,8 +14,6 @@ def test_only_a_syntax_error_blocks() -> None:
 
 
 def test_an_uncatalogued_code_cannot_be_emitted() -> None:
-    # Rules name codes; the catalog owns what they mean. A rule that invents one
-    # fails loudly rather than shipping a finding nobody defined.
     with pytest.raises(KeyError):
         make_finding("not_a_real_code", path="x")
 

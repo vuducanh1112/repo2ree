@@ -1,31 +1,7 @@
-"""The build-experiment-environment-inference decision DAG.
-
-A shared project-root prefix, a fork into one branch per experiment environment strategy
-(``dockerfile`` and ``podman`` for a container file, ``pip``), and an explicit score-free resolver
-join. This is deployment-static, versioned data — the sibling of
-``REE_STEPS`` — and it is the *only* control-flow authority: the generic
-engine walks exactly these nodes. Adding an ecosystem later means adding a fork
-branch and another input edge to the same resolver, never a priority number.
-
-The container branches are locational (see ``checks/dockerfile.py``) and then ask the
-machine: more than one project-root container file blocks (can't pick which); a nested
-one blocks on ambiguous build context; exactly one at the root is built by Docker on
-the ``dockerfile`` branch and by Podman on the ``podman`` branch, each complete where its
-engine is usable, blocked where it is not, and a candidate where the engines could not be
-probed. Either engine builds either file name, so the name decides nothing. The pip
-branch yields a ``candidate`` rather than a complete outcome, so a lone
-requirements.txt resolves to ``needs_input`` and a Dockerfile alongside it makes
-the two strategies an explicit decision.
-"""
-
 from __future__ import annotations
 
 from repo2ree_protocol.inference import CheckNode, DecisionDag, ForkNode, ResolveNode, ResultNode, StrategyLeafNode
 
-# The build-strategy rule ids the leaves below emit. They are the authority:
-# ``build_regeneration`` imports these to map a regenerated build candidate back
-# to the experiment environment it produces, so the rule name lives in exactly one place and the
-# two cannot drift apart behind a string literal.
 DOCKER_BUILD_RULE = "single-project-root-dockerfile-v1"
 PIP_BUILD_RULE = "root-pip-requirements-v1"
 PODMAN_BUILD_RULE = "single-project-root-containerfile-podman"
@@ -121,7 +97,6 @@ BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG = DecisionDag(
             outcome="not_applicable",
             next="resolve-runtime-strategies",
         ),
-        # --- podman strategy branch: the same container file, built with Podman ---
         CheckNode(
             id="containerfiles-at-root",
             check="dockerfiles_at_project_root",
@@ -193,7 +168,6 @@ BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG = DecisionDag(
             outcome="not_applicable",
             next="resolve-runtime-strategies",
         ),
-        # --- pip-requirements strategy branch ---
         CheckNode(
             id="requirements-at-root",
             check="requirements_at_project_root",
@@ -205,9 +179,6 @@ BUILD_EXPERIMENT_ENVIRONMENT_INFERENCE_DAG = DecisionDag(
         StrategyLeafNode(
             id="pip-candidate",
             strategy="pip",
-            # A generated build strategy is viable but requires confirmation: a
-            # lone candidate therefore resolves to needs_input, and a Dockerfile
-            # alongside it makes the two strategies an explicit decision.
             outcome="candidate",
             rule=PIP_BUILD_RULE,
             inference_version=1,

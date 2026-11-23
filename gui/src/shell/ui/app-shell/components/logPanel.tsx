@@ -8,8 +8,6 @@ const MAX_COPY_LOG_LINES = 2000;
 
 type LogLineType = LogLine["type"];
 
-// The severity gutter, padded so the lines align. How each severity *reads* is
-// in logPanel.module.css, keyed off the same `type` the backend sends.
 const LOG_PREFIX: Record<LogLineType, string> = {
   info: "  INFO",
   ok: "    OK",
@@ -38,9 +36,6 @@ function formatLineTimestamp(ts?: string): string {
 export function LogPanel({ log, running = false }: LogPanelProps) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
-  // Tail the log as new lines stream in. We "stick" to the bottom unless the
-  // user scrolls up to read history, then resume sticking once they return
-  // near the bottom. Without this the panel stays pinned at the first lines.
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
 

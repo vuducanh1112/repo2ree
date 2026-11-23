@@ -26,8 +26,6 @@
   padding: var(--space-2) var(--space-3);
 }
 
-/* Stacked rather than side by side: the strip is height-rich and
- * width-poor, so the toggle pays for itself in the 72px it isn't using. */
 .modeToggle {
   display: grid;
   grid-template-rows: 1fr 1fr;
@@ -65,9 +63,6 @@
   font-size: var(--text-micro);
 }
 
-/* Both workflows render their strip here. Review used to drop a panel over the
- * canvas from `top: 100%`; its evidence lives in the drawer now, so the bar has
- * one body and one height. */
 .body {
   min-width: 0;
   padding: 0 var(--space-3) 0 0;

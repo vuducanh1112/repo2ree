@@ -11,8 +11,6 @@ function stepFor(key: string) {
   return step;
 }
 
-// Doneness is the REE's own word on its steps, not what this session ran, so
-// every case below leaves `badges` empty — the state a freshly reloaded tab is in.
 function reeWhere(statuses: Parameters<typeof authoringProgress>[0]) {
   return { ...createEmptyReeEditorViewModel(), steps: authoringProgress(statuses) };
 }
@@ -56,7 +54,6 @@ describe("authoring step navCompleted", () => {
 });
 
 describe("deposit step navCompleted", () => {
-  // Deposits have no audited receipt on the aggregate, so they stay session-badged.
   it("completes on any archive badge", () => {
     const ree = createEmptyReeEditorViewModel();
     expect(resolveNavCompleted(stepFor(PAGE.ARCHIVE), ree, { zenodo: true } as Badges)).toBe(true);

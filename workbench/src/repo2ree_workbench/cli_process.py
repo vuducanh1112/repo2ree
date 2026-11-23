@@ -1,9 +1,3 @@
-"""Running `ree` against the REEs of the store this workbench serves, each in a process of its own.
-
-A workbench serves a store: it keeps one directory per REE beneath its root and runs each command
-against the directory of the REE the request names.
-"""
-
 from __future__ import annotations
 
 import os
@@ -20,24 +14,20 @@ from repo2ree_protocol.machine import MachineFacts
 from repo2ree_protocol.result import ActionResult
 from repo2ree_telemetry.spans import current_traceparent
 
-# An REE id names a directory in the store: one path segment, nothing a shell or a path could misread.
 _REE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
 
 def ree_directory(store: Path, ree_id: str) -> Path:
-    """The directory of ``ree_id`` in ``store``; refuses an id that is not one plain path segment."""
     if not _REE_ID.fullmatch(ree_id) or ree_id in {".", ".."}:
         raise ValueError(f"not an REE id: {ree_id!r}")
     return store / ree_id
 
 
 def _outputs(stdout: str) -> dict[str, Any]:
-    """The outputs of the one result line ``ree --json`` prints."""
     return ActionResult.model_validate_json(stdout).outputs
 
 
 def _failure(stdout: bytes) -> str | None:
-    """Why a ``ree --json`` read failed, as its result line says; None when it printed none."""
     try:
         failure = ActionResult.model_validate_json(stdout).failure
     except ValueError:
@@ -46,8 +36,6 @@ def _failure(stdout: bytes) -> str | None:
 
 
 class LocalCli:
-    """Run executor processes locally, each against one REE of the store."""
-
     def __init__(
         self,
         root: Path,
@@ -57,11 +45,9 @@ class LocalCli:
     ) -> None:
         self.root = root.resolve()
         self.cli_path = cli_path
-        # What every executor is started with besides this process's own environment (the tools).
         self.tools = environment or {}
 
     def ree_root(self, ree_id: str) -> Path:
-        """The root an REE's commands run against: its directory in the store."""
         return ree_directory(self.root, ree_id)
 
     def delete_ree(self, ree_id: str) -> None:
@@ -77,7 +63,6 @@ class LocalCli:
         return environment
 
     def build_info(self) -> BuildInfo:
-        """Ask the configured executor to identify itself, tolerating older binaries."""
         try:
             result = subprocess.run(
                 [self.cli_path, "--json", "build-info"],
@@ -94,7 +79,6 @@ class LocalCli:
         return BuildInfo()
 
     def machine(self) -> MachineFacts:
-        """The machine the REEs' scripts run on, as the executor reports it; nothing known when it cannot say."""
         try:
             result = subprocess.run(
                 [self.cli_path, "--json", "machine"],
@@ -111,11 +95,9 @@ class LocalCli:
         return MachineFacts()
 
     def at(self, root: Path, argv: list[str]) -> list[str]:
-        """The command line that runs ``argv`` against the REE at ``root``."""
         return [self.cli_path, "-C", str(root), *argv]
 
     def run(self, root: Path, argv: list[str], timeout: int) -> str:
-        """Run an executor subcommand against ``root``; its stdout."""
         result = subprocess.run(
             self.at(root, argv),
             check=False,
@@ -149,7 +131,6 @@ class LocalCli:
             yield bytes(view[offset : offset + 256 * 1024])
 
     def exec_query_to_file(self, argv: list[str], target: Path, timeout: int = 600, *, ree_id: str) -> None:
-        """Run an executor query with its stdout written straight to ``target``, never held in memory."""
         root = self.ree_root(ree_id)
         with target.open("wb") as output:
             result = subprocess.run(

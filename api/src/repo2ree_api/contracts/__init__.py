@@ -1,10 +1,3 @@
-"""The published wire vocabulary: request payloads, responses, and the envelope.
-
-Split by subject (``runs``, ``ree``, ``requests``, ``errors``, ``behaviour``) and re-exported
-here, so route modules keep importing from one place — ``repo2ree_api.contracts``
-— while the definitions stay grouped by what they describe.
-"""
-
 from repo2ree_api.contracts.behaviour import (
     BehaviourArchive,
     BehaviourArchiveList,

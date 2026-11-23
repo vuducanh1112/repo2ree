@@ -1,5 +1,3 @@
-"""One file selection for snapshots, seals, and repository exports."""
-
 from __future__ import annotations
 
 import json
@@ -73,7 +71,6 @@ def _raise(error: OSError) -> None:
 
 
 def write_capture_controls(layout: ReeLayout, ree: Ree) -> None:
-    """Ordinary Git commands share the recorder's optional-payload policy."""
     paths = ree.subject.capture.lfs_paths
     attributes = "".join(f"{json.dumps('/' + str(path))} filter=lfs diff=lfs merge=lfs -text\n" for path in paths)
     write_atomic(layout.root / tree.GIT_ATTRIBUTES, attributes.encode())

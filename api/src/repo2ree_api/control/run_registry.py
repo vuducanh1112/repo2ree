@@ -38,15 +38,6 @@ tracer = get_tracer(__name__)
 _meter = get_meter(__name__)
 _log = logging.getLogger(__name__)
 
-# ================================================
-# Metrics
-# ================================================
-#
-# The background-run counterpart of the ``ree.command`` instruments in
-# workbench/commands.py, named and attributed the same way so one query spans
-# both halves of the API's work. Spans already carry each run as a wide event;
-# these exist for the questions a trace store answers badly — run rate, error
-# rate, and duration distribution over a window.
 
 _run_counter = _meter.create_counter(
     "ree.run",
@@ -61,10 +52,6 @@ _runs_active = _meter.create_up_down_counter(
     "ree.run_active",
     description="Background runs currently executing, by operation.",
 )
-# The two idempotency outcomes are separate instruments rather than one counter
-# with an outcome attribute: they answer different questions (a replay is a
-# client retrying correctly; a conflict is a client reusing a key it shouldn't)
-# and only the second is ever alertable.
 _run_replay_counter = _meter.create_counter(
     "ree.run_idempotent_replay",
     description="Number of run requests answered with an existing run because their idempotency key matched.",
@@ -74,24 +61,12 @@ _run_idempotency_conflict_counter = _meter.create_counter(
     description="Number of run requests rejected because their idempotency key was reused with a different payload.",
 )
 
-# ================================================
-# Types
-# ================================================
 
 TERMINAL_STATUSES: frozenset[str] = frozenset({"succeeded", "failed", "canceled"})
 ACTIVE_STATUSES: frozenset[str] = frozenset({"running", "queued", "provisioning", "canceling"})
 
-# JSON field name for the REE id in run state and summaries.
 _REE_ID_FIELD = "ree_id"
 
-# HTTP status → the failure category it already means.
-#
-# A route that raised a typed 4xx knew what kind of failure it had; the worker
-# thread that catches it does not, and re-minting it as `internal` would tell
-# the client the fault was repo2ree's when the client is the one who can fix
-# it. The contract is that a layer enriches a failure rather than collapsing it
-# (see repo2ree_protocol.result.Failure), and this is where that has to hold
-# for a run started over HTTP.
 _STATUS_CATEGORIES: dict[int, FailureCategory] = {
     400: "validation",
     404: "precondition",
@@ -103,21 +78,10 @@ _STATUS_CATEGORIES: dict[int, FailureCategory] = {
     503: "unavailable",
     504: "timeout",
 }
-# The statuses whose meaning is "try again" — same set the HTTP error envelope
-# in main.py defaults `retryable` from, so a run failure and the immediate
-# response to the request that started it agree.
 _RETRYABLE_STATUSES: frozenset[int] = frozenset({429, 502, 503, 504})
 
 
 def _failure_from_http_exception(exc: HTTPException) -> Failure:
-    """The typed failure an ``HTTPException`` raised by a runner already carries.
-
-    Routes raise the structured error envelope through ``detail``. Stringifying
-    that dict produced a failure whose message was a Python repr; instead the
-    envelope's own message becomes the message, and everything else on it —
-    ``code``, ``details`` — is preserved under ``Failure.details`` where a
-    client can still read it.
-    """
     default_category: FailureCategory = "validation" if exc.status_code < 500 else "internal"
     category = _STATUS_CATEGORIES.get(exc.status_code, default_category)
     retryable = exc.status_code in _RETRYABLE_STATUSES
@@ -139,8 +103,6 @@ def _resuming(resume: Callable[[StoredRun], ActionResult], run: StoredRun) -> Ca
 
 
 class RunRegistry:
-    """Durable background-run state machine for a single API process."""
-
     def __init__(
         self,
         require_ree: Callable[[str], None],
@@ -151,16 +113,13 @@ class RunRegistry:
         self._require_ree = require_ree
         self._store = store
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="repo2ree-run")
-        # Runs whose commands run on in their workbench are followed outside the pool: they take no worker.
         self._followers: list[threading.Thread] = []
         self._run_control: dict[str, Future[None]] = {}
         self._lock = RLock()
         self._changed = Condition(self._lock)
-        # Set when this process stops: following ends, and the commands run on for the next one.
         self.stopping = threading.Event()
 
     def startup(self, resume: Callable[[StoredRun], ActionResult]) -> None:
-        """Take over the runs a previous API process left following their commands, and settle the rest."""
         interrupted = self._store.interrupt_incomplete()
         for run in self._store.resumable_incomplete():
             if run.action is not None and run.action_id is not None:
@@ -171,11 +130,9 @@ class RunRegistry:
                 self._changed.notify_all()
 
     def stop(self) -> None:
-        """Stop following: the runs whose commands still run stay as they are, for the next process."""
         self.stopping.set()
 
     def shutdown(self) -> None:
-        """Drain the bounded worker pool and the followers during orderly API shutdown."""
         self.stopping.set()
         self._executor.shutdown(wait=True, cancel_futures=False)
         for follower in self._followers:
@@ -270,7 +227,6 @@ class RunRegistry:
         context: ExecutionContext | None = None,
         history: HistoryReference | None = None,
     ) -> str:
-        """Atomically settle a run and return the status actually stored."""
         with self._changed:
             stored = self._store.finalize(
                 ree_id,
@@ -287,23 +243,11 @@ class RunRegistry:
             return stored.status
 
     def _terminal_from_failure(self, ree_id: str, run_id: str, failure: Failure) -> ActionResult:
-        """Terminal result for a runner that raised, carrying ``failure``.
-
-        A cancel in flight settles to `canceled` — which carries no failure, per
-        the ActionResult contract — and anything else fails with the typed
-        failure the caller derived from what was actually raised.
-        """
         if self.is_cancel_requested(ree_id, run_id):
             return ActionResult(status="canceled")
         return ActionResult(status="failed", exit_code=1, failure=failure)
 
     def _terminal_from_exception(self, ree_id: str, run_id: str, message: str) -> ActionResult:
-        """Terminal result for a runner that raised something untyped.
-
-        The last frame of a background run: nothing above it can report, and an
-        exception that reached here was not anticipated by the code that raised
-        it, so it is an `internal` fault originating in this API worker thread.
-        """
         return self._terminal_from_failure(
             ree_id,
             run_id,
@@ -324,13 +268,6 @@ class RunRegistry:
         initial_outputs: dict[str, Any] | None = None,
         resumable: bool = False,
     ) -> dict[str, Any]:
-        """Start a durable background run.
-
-        ``action`` is the author action the run carries out, or None for work no author
-        asked for through the API (a reviewer's run). ``action_id`` continues an action
-        already requested (an upload opened earlier); otherwise the run's creation
-        requests a new one.
-        """
         try:
             return self._start_background(
                 ree_id,
@@ -363,14 +300,10 @@ class RunRegistry:
         initial_outputs: dict[str, Any] | None,
         resumable: bool,
     ) -> dict[str, Any]:
-        # A provisioning run *creates* its REE, so it can't require the REE
-        # to already exist; every other run runs against a live REE.
         if require_ree_exists:
             self._require_ree(ree_id)
         normalized_key = (idempotency_key or "").strip()
         fingerprint = json.dumps(request_payload, sort_keys=True, separators=(",", ":"), default=str)
-        # Capture request context before persistence: if the tracing provider
-        # itself is broken, no durable queued run is left without a worker.
         request_link = current_span_link()
         run_id = f"{operation}-{uuid4().hex}"
         proposed = StoredRun(
@@ -414,9 +347,6 @@ class RunRegistry:
         try:
             future = self._executor.submit(self._worker(stored, runner, request_link, begin=True))
         except RuntimeError as exc:
-            # Executor shutdown or thread creation failure happened before this
-            # request returned. Preserve the durable run, but settle it instead
-            # of leaving a queued record that can never start.
             failure = Failure(
                 category="internal",
                 message=f"Background run could not be scheduled: {exc}",
@@ -425,7 +355,7 @@ class RunRegistry:
             )
             try:
                 self.append_log(ree_id, run_id, "system", "error", failure.message)
-            except Exception:  # noqa: BLE001 -- finalization must still run
+            except Exception:  # noqa: BLE001
                 _log.exception("failed to append scheduling failure for run %s", run_id)
             self.finalize(ree_id, run_id, "failed", {}, failure)
             failed = self._store.get(ree_id, run_id)
@@ -445,7 +375,6 @@ class RunRegistry:
     def _follow(
         self, run: StoredRun, runner: Callable[[str, str], ActionResult], link: Any, *, begin: bool = False
     ) -> None:
-        """Run a run that only starts its command and follows it, on a thread of its own: it may take days."""
         follower = threading.Thread(
             target=self._worker(run, runner, link, begin=begin), name=f"repo2ree-follow-{run.run_id}", daemon=True
         )
@@ -459,9 +388,6 @@ class RunRegistry:
         ree_id, run_id, operation = stored.ree_id, stored.run_id, stored.operation
 
         def _instrumented_worker() -> None:
-            # Root span for the background run: it outlives the HTTP response, so
-            # it anchors its own trace. The dispatch_action span (same thread)
-            # nests under it.
             links = [request_link] if request_link is not None else None
             with tracer.start_as_current_span(f"run.{operation}", links=links) as span:
                 CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id).apply(span)
@@ -475,24 +401,18 @@ class RunRegistry:
                         with author_actions.acting(stored.action_id) if stored.action_id else nullcontext():
                             result = runner(ree_id, run_id)
                     except FollowStoppedError:
-                        # This process stops; the command runs on, and the next process follows it.
                         if stored.action_id is not None:
                             author_actions.detach(stored.action_id)
                         return
                     except HTTPException as exc:
                         failure = _failure_from_http_exception(exc)
-                        # The envelope's message, not the dict it arrived in:
-                        # this line is what a user reads in the run log.
                         self.append_log(ree_id, run_id, "system", "error", failure.message)
                         result = self._terminal_from_failure(ree_id, run_id, failure)
-                    except Exception as exc:  # noqa: BLE001 — the registry is the last frame of a background run; nothing above it can report
+                    except Exception as exc:  # noqa: BLE001
                         span.record_exception(exc)
                         message = str(exc)
                         self.append_log(ree_id, run_id, "system", "error", message)
                         result = self._terminal_from_exception(ree_id, run_id, message)
-                    # The run root is the trace a user finds first; make it a
-                    # self-sufficient wide event by recording the outputs — and the
-                    # failure, when there is one — here too.
                     CommandSpanAttrs(operation=operation, run_id=run_id, ree_id=ree_id, execution=result.context).apply(
                         span
                     )
@@ -505,42 +425,31 @@ class RunRegistry:
                         ree_id, run_id, result.status, result.outputs, result.failure, result.context, result.history
                     )
                     record_result_boundary(span, "api.finalized", result.model_copy(update={"status": settled}))
-                    # Attributed with the *settled* status, so the counter agrees
-                    # with what a poller reads back and with the run's own span.
                     terminal_attrs = command_metric_attrs(operation, status=settled)
                     _run_duration.record(time.monotonic() - started, terminal_attrs)
                     _run_counter.add(1, terminal_attrs)
                 finally:
-                    # In the finally so a raise anywhere above cannot strand the
-                    # gauge one run high for the life of the process.
                     _runs_active.add(-1, active_attrs)
 
         def _worker() -> None:
-            """Last-resort boundary for tracing, metrics, and persistence faults."""
             try:
                 _instrumented_worker()
-            except Exception as exc:  # noqa: BLE001 -- last frame of a background Future
+            except Exception as exc:  # noqa: BLE001
                 message = str(exc) or type(exc).__name__
                 current = self._store.get(ree_id, run_id)
                 if current is not None and current.status in TERMINAL_STATUSES:
-                    # Telemetry can fail after durable finalization. Report that
-                    # operational fault without rewriting a completed command.
                     _log.exception("post-finalization worker failure for run %s", run_id)
                     return
                 try:
                     self.append_log(ree_id, run_id, "system", "error", message)
-                except Exception:  # noqa: BLE001 -- preserve the original worker failure
+                except Exception:  # noqa: BLE001
                     _log.exception("failed to append terminal log for run %s", run_id)
                 terminal = self._terminal_from_exception(ree_id, run_id, message)
-                # Let a storage failure escape into the Future: a failed store
-                # cannot represent its own failure, but control cleanup still
-                # happens through the Future's done callback.
                 self.finalize(ree_id, run_id, terminal.status, terminal.outputs, terminal.failure)
 
         return _worker
 
     def action_of(self, ree_id: str, run_id: str) -> str | None:
-        """The author action a run carries out, if it carries one."""
         run = self._store.get(ree_id, run_id)
         return run.action_id if run is not None else None
 
@@ -561,7 +470,6 @@ class RunRegistry:
         return {key: run_state.get(key) if key in {"context", "history"} else run_state[key] for key in keys}
 
     def list_runs(self, ree_id: str) -> list[dict[str, Any]]:
-        """Summaries of every recorded run for ree_id, newest first."""
         return [self.run_summary(self._snapshot(run, include_logs=False)) for run in self._store.list_runs(ree_id)]
 
     def get_run_state(self, ree_id: str, run_id: str) -> dict[str, Any]:
@@ -585,7 +493,6 @@ class RunRegistry:
         wait_seconds: float,
         limit: int,
     ) -> tuple[dict[str, Any], list[dict[str, Any]], str | None, bool]:
-        """Wait boundedly for new log entries or terminal run state."""
         deadline = time.monotonic() + wait_seconds
         with self._changed:
             while True:

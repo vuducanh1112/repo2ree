@@ -1,5 +1,3 @@
-"""The system suite's fixtures, on a stack whose workbench is installed on a machine of its own."""
-
 import sys
 from pathlib import Path
 

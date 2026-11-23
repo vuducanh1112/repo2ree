@@ -1,10 +1,3 @@
-"""Unit coverage for the SBOM cross-check: the CycloneDX adapter and the merge.
-
-The adapter carries the same totality obligation as the manifest parsers
-(malformed input yields the rows that did parse, never an exception); the
-merge's verdicts are the contract the report and receipt aggregates rely on.
-"""
-
 from __future__ import annotations
 
 import json
@@ -12,10 +5,6 @@ import json
 from repo2ree_core.analysis.sbom.crosscheck import cross_check
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_ree.reproducibility import EvaluatedDependency
-
-# ================================================
-# Adapter
-# ================================================
 
 
 def _doc(components: list[object]) -> str:
@@ -35,13 +24,10 @@ def test_parse_maps_purl_types_to_ecosystems() -> None:
         )
     )
     assert packages == [
-        # pypi names are PEP 503-normalized: the join key matches the parsers'.
         ObservedPackage(ecosystem="pypi", name="pillow", version="10.1.0"),
         ObservedPackage(ecosystem="conda", name="numpy", version="1.26.4"),
-        # npm keeps its (percent-decoded) scope in the name.
         ObservedPackage(ecosystem="npm", name="@scope/leftpad", version="1.0.0"),
         ObservedPackage(ecosystem="apt", name="libssl3", version="3.0.11-1"),
-        # Unmapped purl types stay countable but can never join.
         ObservedPackage(ecosystem="other", name="musl", version="1.2.4"),
     ]
 
@@ -55,14 +41,8 @@ def test_parse_is_total_over_malformed_input() -> None:
     assert parse_cyclonedx("not json") == []
     assert parse_cyclonedx("[1, 2]") == []
     assert parse_cyclonedx(json.dumps({"components": "nope"})) == []
-    # A malformed component is skipped, the rest still parse.
     packages = parse_cyclonedx(_doc([42, {"purl": "pkg:pypi"}, {"name": "ok", "purl": "pkg:pypi/ok@1.0"}]))
     assert packages == [ObservedPackage(ecosystem="pypi", name="ok", version="1.0")]
-
-
-# ================================================
-# Merge
-# ================================================
 
 
 def _dep(
@@ -118,7 +98,6 @@ def test_exact_pin_is_compared_with_light_normalization() -> None:
     assert (
         cross_check(deps, [_obs("requests", "v2.31.0")]).dependencies[0].experiment_environment_presence == "observed"
     )
-    # deb/conda epochs are packaging metadata, not identity.
     assert (
         cross_check(deps, [_obs("requests", "1:2.31.0")]).dependencies[0].experiment_environment_presence == "observed"
     )
@@ -133,7 +112,6 @@ def test_absent_dependency_is_not_observed_not_a_defect_bucket() -> None:
     (row,) = result.dependencies
     assert row.experiment_environment_presence == "not-observed"
     assert row.observed_version is None
-    # Not observed does not count as matched, but is not a mismatch either.
     assert result.summary.version_mismatches == 0
 
 
@@ -153,8 +131,6 @@ def test_undeclared_same_ecosystem_becomes_a_row_and_is_listed() -> None:
 
 
 def test_other_ecosystem_packages_are_counted_but_never_listed() -> None:
-    # The declared inventory is pypi-only: apt/other packages from the base
-    # image are noise, not undeclared findings.
     result = cross_check(
         [_dep("requests", locked="2.31.0", status="locked")],
         [

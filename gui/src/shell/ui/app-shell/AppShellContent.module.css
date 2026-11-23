@@ -1,6 +1,3 @@
-/* The workspace behind the canvas: a soft gradient with three drifting colour
- * pools, purely atmospheric and never interactive. */
-
 .main {
   position: relative;
   display: flex;

@@ -1,5 +1,3 @@
-"""Local end-to-end coverage for the author experiment environment build operation."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,9 +33,6 @@ def test_build_experiment_environment_script_runs_and_commits_the_produced_exper
         subject=ReeSubject(
             definition=started.model_copy(
                 update={
-                    # Declared alongside the receipt committed below: acquisition
-                    # writes both, and a receipt without its declaration is the
-                    # orphan case the audit reports as stale.
                     "source": SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
                     "experiment_environment": ExperimentEnvironmentDefinition(
                         build_experiment_environment_script_digest=digest_bytes(script),

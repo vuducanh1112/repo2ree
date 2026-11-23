@@ -96,27 +96,11 @@ def run_command(
     context: ExecutionContext | None = None,
     records_edit: str | None = None,
 ) -> ActionResult:
-    """Dispatch a typed Command to its handler, against the REE at ``layout``, and return an ActionResult.
-
-    ``run_id`` is the caller's name for this unit of work; the control plane
-    mints one per background run. A hand-run command (``ree`` with no
-    ``--run-id``) has none, so one is minted *here* rather than downstream in
-    the receipt: the span and the evidence then name the same run, which is what
-    makes a trace joinable to what it produced. Minting it later meant a manual
-    run's span said ``manual`` while its receipt said ``manual-<uuid>``.
-    """
     context = context or ExecutionContext.new()
     resolved_run_id = run_id or f"manual-{uuid4().hex[:12]}"
     cancel: CancelCheck = is_canceled if is_canceled is not None else lambda: False
     with tracer.start_as_current_span(f"command.{cmd.operation}") as span:
         CommandSpanAttrs(operation=str(cmd.operation), run_id=resolved_run_id, execution=context).apply(span)
-        # The command span is the wide event for this unit of work: args go on
-        # before dispatch so a failed or killed command still carries its
-        # inputs; outputs (receipts, verdicts, digests) and the failure, when
-        # there is one, go on after. A refused precondition produces no outputs
-        # at all, so without the failure the span would report that the command
-        # failed and nothing about why. Accessed defensively — observability
-        # must not be able to fail a command.
         args = getattr(cmd, "args", None)
         if isinstance(args, BaseModel):
             record_span_facts(span, args.model_dump(), namespace="arg")
@@ -154,14 +138,6 @@ def _run_unless_canceled(
     run_id: str,
     cancel: CancelCheck,
 ) -> ActionResult:
-    """Honour a cancel that arrived before the command started, then dispatch.
-
-    A cancel requested while the command was still queued means the same thing
-    for every operation — nothing has happened yet, so nothing has to be undone
-    — which makes this the one place it belongs. Handlers keep only the cancel
-    checks that are theirs: the ones *inside* a run, where what has already
-    happened decides what the check must do about it.
-    """
     if cancel():
         log("system", "warn", f"{cmd.operation} canceled before start")
         return ActionResult(status="canceled")
@@ -232,18 +208,4 @@ def _dispatch(
 
 
 def _unhandled_command(cmd: Never) -> NoReturn:
-    """The dispatch fallthrough, reachable only for a non-``Command`` value.
-
-    Typed to accept ``Never`` so it doubles as the exhaustiveness check: every
-    member of the union must be dispatched above, or the call below fails to
-    type-check naming the command nobody handled. A command added to ``Command``
-    without a branch therefore fails the build rather than reaching a workbench
-    and failing as an unhandled operation the type system had already promised
-    was handleable.
-
-    Preferred over a bare :func:`typing.assert_never`, which would raise
-    ``AssertionError`` carrying only a repr. Commands arrive deserialized from
-    the wire, so the fallthrough is worth keeping legible for whoever reads the
-    run log when something malformed slips past validation.
-    """
     raise ValueError(f"Unhandled command operation: {getattr(cmd, 'operation', cmd)!r}")

@@ -1,17 +1,3 @@
-"""The consuming half of the two-phase upload: staged bytes become REE work.
-
-Where :mod:`repo2ree_api.workbench.uploads` leaves an archive on control-plane disk,
-this module hands it to the workbench: claim the token for this REE and purpose,
-copy the bytes in, run one command over them, and reclaim the host copy. It runs
-in the background — the client polls the returned run — so the only HTTP here is
-the up-front rejection of a token that was never valid to begin with.
-
-Both staged-upload routes (a source archive, a whole REE bundle) are this one
-sequence with a different command and different words in the log; the sequence
-itself lives here once, because a change to how ownership of the bytes transfers
-must not be able to apply to one of them and not the other.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -48,13 +34,6 @@ from repo2ree_telemetry.behaviour.events import AuthorApiActionName
 
 @dataclass(frozen=True)
 class StagedUploadLog:
-    """How one staged-upload run narrates itself in its log stream.
-
-    Spelled per run rather than derived from the operation: these lines are read
-    by a human watching a transfer, and "restoring it into the REE" and
-    "extracting into the workspace" describe genuinely different things.
-    """
-
     starting: str
     canceled: str
     copied: str
@@ -73,19 +52,6 @@ def start_staged_upload_run(
     messages: StagedUploadLog,
     idempotency_key: str | None = None,
 ) -> dict[str, Any]:
-    """Start the background run that hands a staged upload to the workbench.
-
-    The token is claimed on the request thread, so a token that never belonged
-    to this REE and purpose fails the caller's own POST instead of a run they
-    then have to poll to discover was doomed.
-
-    Run outputs are what the caller asked for, overlaid with whatever the command
-    reported — so a run always echoes its own request even when the command said
-    nothing, and never hides what the command found.
-
-    The run continues the ``action`` its upload slot opened; a slot this process did
-    not open (it was minted before a restart) gets an action of its own here.
-    """
     opened = upload_action_id(upload_token)
     action_id = (
         opened if opened is not None and author_actions.is_open(opened) else author_actions.start(action, ree_id)
@@ -155,7 +121,6 @@ def _start(
             if result.outputs:
                 update_run_outputs(ws_id, run_id, result.outputs)
         finally:
-            # Ownership transferred to the workbench; always reclaim the host copy.
             discard_staged_upload(upload_token)
 
         outputs = {**request_payload, **(result.outputs or {})}
@@ -184,13 +149,6 @@ def _copy_into_workbench(
     log_run: LogSink,
     outputs: dict[str, Any],
 ) -> ActionResult | None:
-    """Copy the staged archive into the workbench, or report why it could not be.
-
-    Returns the terminal ActionResult on failure and None on success, so the
-    caller's happy path stays linear. Expired staging is swept first: a token
-    that outlived its window is indistinguishable here from one that was never
-    written, and both are the caller's problem rather than the workbench's.
-    """
     discard_expired_uploads()
     if not staged_host.exists() or staged_host.stat().st_size == 0:
         log_run("system", "error", "Staged upload not found, empty, or expired")
@@ -204,7 +162,7 @@ def _copy_into_workbench(
     log_run("system", "info", f"Copying staged archive into the workbench ({size} bytes)")
     try:
         command_dispatcher.copy_to_workbench(handle, str(staged_host), f"upload-staging/{upload_token}.bin")
-    except Exception as exc:  # noqa: BLE001 — the transfer is the workbench's, so any failure is reported as an unavailable run
+    except Exception as exc:  # noqa: BLE001
         log_run("system", "error", f"Copy to workbench failed: {exc}")
         return ActionResult.failed(
             "unavailable",

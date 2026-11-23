@@ -1,18 +1,3 @@
-"""Property-based checks for ``build_report``.
-
-Two tiers:
-
-- a sweep driving random inventories and file signals through the report's
-  own design-by-contract assertions (bucket partition, one blocking threat
-  per axis, catalog-only ids), plus the external invariants the assertions
-  don't cover;
-- metamorphic *improvement monotonicity*: applying a remediation the report
-  itself recommends — pinning a dep, locking it, adding a container/nix/VM —
-  must never lower the corresponding axis level. This is the score's honesty
-  guarantee; note it deliberately does NOT hold for the threat *set* (pinning
-  a first dep newly surfaces ``no-lockfile``), only for the level.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -74,8 +59,6 @@ _SIGNALS = st.builds(
 class TestReportSweep:
     @given(_INVENTORY, _SIGNALS)
     def test_contracts_and_external_invariants(self, inventory: DependencyInventory, signals: FileSignals) -> None:
-        # dockerfile_texts without has_dockerfile is not a state the profiler
-        # can produce; keep the generated signals coherent.
         if signals.dockerfile_texts:
             signals.has_dockerfile = True
 
@@ -84,10 +67,8 @@ class TestReportSweep:
         direct_libraries = [d for d in inventory.dependencies if d.ecosystem != "oci" and d.direct]
         assert report.dependency_summary.total == len(direct_libraries)
         assert all(threat.id in _CATALOG for threat in report.threats)
-        # Ranking: every blocking threat precedes every non-blocking one.
         flags = [threat.blocking for threat in report.threats]
         assert flags == sorted(flags, reverse=True)
-        # Levels label round-trip.
         assert report.dependency_level_label
         assert report.environment_level_label
         assert report.machine_level_label
@@ -113,7 +94,7 @@ class TestImprovementMonotonicity:
         remediate = data.draw(st.sampled_from([_pin, _lock]))
         improved = list(inventory.dependencies)
         if improved[index].ecosystem == "oci":
-            return  # oci rows belong to the environment axis
+            return
         improved[index] = remediate(improved[index])
 
         after = build_report(DependencyInventory(dependencies=improved), signals).dependency_level

@@ -1,5 +1,3 @@
-"""A CLI test's session video is rendered once per recording and renderer, beside its run, and goes with its test."""
-
 from __future__ import annotations
 
 import subprocess
@@ -14,7 +12,6 @@ from repo2ree_testbed.runs.session_videos import Session, drop_gone, render, ses
 
 @pytest.fixture
 def tools(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """agg and ffmpeg, as each writes its output: the last argument."""
     ran: list[str] = []
 
     def run(command: list[str], **_: Any) -> subprocess.CompletedProcess[str]:

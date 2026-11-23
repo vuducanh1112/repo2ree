@@ -3,10 +3,6 @@ import type { DecisionDag, DecisionTrace, InferenceReport } from "@shell/infra/a
 import type { ScriptGeneration } from "./generation";
 import { dagForTrace, findResult, type InferenceResult, traceForResult } from "./reportSelectors";
 
-// Every target a page can generate a script for. They differ only in how the
-// engine infers them — the reduction from report to loadable script is
-// identical, so it lives here once. Build used to have its own copy of this
-// file and fell behind when the build DAG started emitting blocking warnings.
 const SCRIPT_TARGET_KINDS = [
   "build_experiment_environment",
   "activate_experiment_environment",
@@ -23,16 +19,6 @@ function matches(kind: ScriptTargetKind, experimentName?: string) {
   };
 }
 
-/**
- * Reduce an inference report to what a script page needs: the target's first
- * viable candidate as a single self-contained script to load into the editor,
- * or a not-inferred outcome. Pure so the choice is unit-testable without the API.
- *
- * When a target is a decision (several viable strategies), the first candidate
- * is chosen as the one to load; the caller surfaces the alternative count so the
- * author knows others exist. Blocking warnings ride along either way — they are
- * how the engine explains what the author must fix.
- */
 export function selectCandidate(
   report: InferenceReport,
   kind: ScriptTargetKind,
@@ -47,10 +33,6 @@ export function selectCandidate(
   if (!result || !candidate || typeof candidate.body !== "string") {
     return { status: "not_inferred", blockingMessages };
   }
-  // Where these bytes leave the runtime. The backend records it whether the REE
-  // declared the path or the renderer fell back to its default, so this says
-  // nothing about which — deciding that is the caller's, since only it knows
-  // what is currently declared.
   const experimentEnvironmentPath = candidate.dependencies?.find(
     (dep) => dep.kind === "experiment_environment_declaration",
   )?.path;
@@ -67,11 +49,6 @@ export function selectCandidate(
   };
 }
 
-/**
- * The target's decision trace — the executed DAG walk that explains why
- * inference did (or did not) produce a candidate. `null` only if the report has
- * no such target.
- */
 export function selectTrace(
   report: InferenceReport,
   kind: ScriptTargetKind,
@@ -80,7 +57,6 @@ export function selectTrace(
   return traceForResult(report, matches(kind, experimentName));
 }
 
-/** The static DAG (the full graph) the trace overlays onto, matched by key. */
 export function selectDag(
   report: InferenceReport,
   kind: ScriptTargetKind,

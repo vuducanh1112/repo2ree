@@ -31,7 +31,6 @@ export function ApiServicesProvider({
 }: {
   children: ReactNode;
   baseUrl?: string;
-  /** Test/composition seam; production creates the services from `baseUrl`. */
   services?: ApiServicesValue;
 }) {
   const created = useMemo(() => createApiServices({ baseUrl }), [baseUrl]);
@@ -52,7 +51,6 @@ export function useApiServices(): ApiServicesValue {
   return value;
 }
 
-/** Optional read for chrome that must also render in isolated previews/tests. */
 export function useOptionalApiServices(): ApiServicesValue | null {
   return useContext(ApiServicesContext);
 }
@@ -71,7 +69,6 @@ export function useOptionalReeRuntime(): ReeRuntimeValue | null {
   return useMemo(() => (services && reeId ? { ...services, reeId } : null), [services, reeId]);
 }
 
-/** Convenience adapter for code that needs both independent contexts. */
 export function useReeRuntime(): ReeRuntimeValue {
   const services = useApiServices();
   const reeId = useReeId();

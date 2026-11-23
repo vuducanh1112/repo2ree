@@ -1,10 +1,3 @@
-"""A TCP relay between a store's workbench and the API, so a fault can cut the network between them.
-
-A partition here behaves as a network that stops delivering, not one that refuses: sockets stay
-open, bytes in flight are held, and new connections wait, until the partition heals. That is what a
-workbench's pings must notice on their own, and what TCP would deliver late once the network is back.
-"""
-
 from __future__ import annotations
 
 import socket
@@ -55,7 +48,7 @@ class Relay:
             threading.Thread(target=self._connect, args=(client,), daemon=True).start()
 
     def _connect(self, client: socket.socket) -> None:
-        self._held()  # A connection made while partitioned waits, as its SYN would be retried.
+        self._held()
         try:
             upstream = socket.create_connection(self._upstream)
         except OSError:

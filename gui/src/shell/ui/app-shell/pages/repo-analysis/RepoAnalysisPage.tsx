@@ -42,17 +42,11 @@ export function PageRepoAnalysis({
   const files = workspaceFiles;
   const { containerCount, nixCount } = countEnvironmentFiles(files || []);
   const reeId = useReeId();
-  // The report is a persisted artifact, so fetch it whenever we have an REE — this
-  // keeps the page populated across reloads/navigation (runDone is transient).
   const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });
   const { refetch: refetchReport } = reportQuery;
   const report = reportQuery.data ?? null;
-  // The closure can be large (full lockfile contents); group once per report.
   const depGroups = useMemo(() => groupEvaluatedDependencies(report?.dependencies ?? []), [report]);
   const threats = report?.threats ?? [];
-  // Refresh on each terminal transition. `runDone` stays true after the first
-  // successful run, so watching it alone leaves a re-run showing the old
-  // persisted report.
   useEffect(() => {
     if (!running && runDone) void refetchReport();
   }, [running, runDone, refetchReport]);
@@ -65,8 +59,6 @@ export function PageRepoAnalysis({
   const statusReady = hasReport && !hasMissing;
 
   return (
-    // Single column sitting directly on the focus dock — no right rail. The Run
-    // action lives in the header; the evaluation result folds into the column.
     <GlassPageShell variant="docked">
       <GlassPageHeader
         icon={IC(24)}

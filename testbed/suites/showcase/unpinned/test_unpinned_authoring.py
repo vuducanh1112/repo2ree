@@ -1,5 +1,3 @@
-"""A build that fetches whatever release of its upstream is latest: the author's result passes all the same."""
-
 from __future__ import annotations
 
 import zipfile

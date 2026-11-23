@@ -1,11 +1,3 @@
-"""The project-root prefix check.
-
-``resolve_logical_root`` has already run inside the scan; this check reads its
-result off ``RepositoryFacts`` and turns it into a typed ``project_root``
-binding plus a safe-to-display observation. It is the shared prefix every
-experiment environment strategy branch depends on.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar

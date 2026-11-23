@@ -1,8 +1,4 @@
-/* Invariant design primitives. Components consume the semantic roles in
- * light.css and tones.css; these raw scales are private theme ingredients. */
-
 :root {
-  /* Typography */
   --font-sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono:
     "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", "Menlo", monospace;
@@ -32,7 +28,6 @@
   --tracking-label: 0.03em;
   --tracking-caps: 0.08em;
 
-  /* Spacing: a 4px base with half steps for dense operational controls. */
   --space-0-5: 2px;
   --space-1: 4px;
   --space-1-5: 6px;
@@ -67,7 +62,6 @@
   --opacity-muted: 0.7;
   --opacity-strong: 0.85;
 
-  /* Neutral ramp. The former grey and slate inventories are one scale. */
   --palette-white: #ffffff;
   --palette-neutral-025: #fafbfd;
   --palette-neutral-050: #f8fafc;
@@ -81,7 +75,6 @@
   --palette-neutral-800: #1e293b;
   --palette-neutral-950: #0f172a;
 
-  /* Information and product accents. */
   --palette-blue-050: #eff6ff;
   --palette-blue-100: #dbeafe;
   --palette-blue-200: #bfdbfe;
@@ -114,7 +107,6 @@
   --palette-violet-600: #7c3aed;
   --palette-violet-950: #3b0764;
 
-  /* Status ramps. */
   --palette-green-050: #f0fdf4;
   --palette-green-100: #dcfce7;
   --palette-green-300: #86efac;

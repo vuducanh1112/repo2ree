@@ -1,5 +1,3 @@
-"""Build identity shared by every repo2ree component."""
-
 from __future__ import annotations
 
 import os
@@ -11,12 +9,6 @@ BUILD_REVISION_ENV = "REPO2REE_BUILD_REVISION"
 
 
 class BuildInfo(BaseModel):
-    """A component's package version and exact source revision.
-
-    Both fields are optional on the wire so independently deployed workbenches
-    remain compatible.
-    """
-
     model_config = ConfigDict(extra="ignore", frozen=True)
 
     version: str = ""
@@ -24,8 +16,6 @@ class BuildInfo(BaseModel):
 
 
 def current_build(distribution: str) -> BuildInfo:
-    """Return build identity without consulting git at experiment environment."""
-
     try:
         version = metadata.version(distribution)
     except metadata.PackageNotFoundError:

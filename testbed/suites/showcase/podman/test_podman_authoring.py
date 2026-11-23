@@ -1,5 +1,3 @@
-"""An REE whose Containerfile is built and run with rootless Podman, on a machine whose scripts can use only Podman."""
-
 from __future__ import annotations
 
 import zipfile
@@ -29,5 +27,4 @@ def test_a_containerfile_built_with_podman_is_run_sealed_and_downloaded(client: 
     assert client.sign(ree_id).status == "succeeded"
     entries = zipfile.ZipFile(client.archive(ree_id, "sealed")).namelist()
     assert f"ree/results/{F.experiment}/{RESULT}" in entries
-    # The image Podman saved is sealed with it, so a reviewer can run it without rebuilding.
     assert "ree/artifacts/runtime.tar" in entries

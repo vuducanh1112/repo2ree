@@ -14,8 +14,6 @@ interface DependencySummaryFiltersProps {
   onFilter: (next: string) => void;
 }
 
-/** One pinning-status chip: the tone comes from the status, the wording from
- * core's label map, and the count from the tally. */
 function statusFilter(status: DependencyStatus, count: number) {
   return {
     key: status,

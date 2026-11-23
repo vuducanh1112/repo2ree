@@ -1,5 +1,3 @@
-"""Where an REE stands on each authoring step, judged from its own records."""
-
 from __future__ import annotations
 
 from ree_definitions import PLACEHOLDER, bare_ree, ree_definition

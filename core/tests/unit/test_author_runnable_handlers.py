@@ -273,7 +273,6 @@ def test_experiment_success_captures_outputs_and_commits_named_receipt(
         layout.results_dir(_EXPERIMENT_NAME),
         ["outputs/result.txt"],
     )
-    # It ran in a workspace of its own, which went once the run succeeded.
     assert ran_in[0] != layout.workspace
     assert not ran_in[0].exists()
 

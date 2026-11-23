@@ -1,17 +1,3 @@
-"""Property-based checks for the first-party manifest parsers.
-
-The example tests in ``test_manifest_sources.py`` pin each format's mapping;
-this file defends what must hold for *every* input:
-
-- totality: no parser raises on arbitrary text (repo content is untrusted);
-- the row invariants and the ``merge_locked`` contract, which live as
-  postconditions inside the implementation — the properties here mostly
-  generate inputs and let those assertions fire;
-- generator/parser round-trips for the line-oriented formats, where
-  adversarial formatting (whitespace, comments, continuations, extras,
-  markers) is exactly what hypothesis is good at.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -33,8 +19,6 @@ from repo2ree_ree.dependency import Dependency, normalize_package_name
 
 pytestmark = pytest.mark.property
 
-# Sweep the actual scan registry so a newly added ecosystem module is covered
-# without touching this file.
 _PARSER_IDS = [parser.format_id for parser in _REGISTRY]
 
 
@@ -47,13 +31,6 @@ def _assert_row_invariants(deps: list[Dependency]) -> None:
             assert dep.locked_version is None
 
 
-# --------------------------------------------------------------------------- #
-# totality: hostile input never raises
-# --------------------------------------------------------------------------- #
-
-# Arbitrary JSON documents: raw text almost never parses as JSON, so the
-# structured strategy is what actually exercises the JSON parsers' interior
-# (wrong-typed values, blank keys, deep nesting).
 _JSON = st.recursive(
     st.none() | st.booleans() | st.integers() | st.text(max_size=8),
     lambda children: st.lists(children, max_size=3) | st.dictionaries(st.text(max_size=8), children, max_size=3),
@@ -67,7 +44,6 @@ class TestTotality:
     def test_arbitrary_text_never_raises(self, parser, text: str) -> None:
         rows = parser.parse(text, "some/path")
         _assert_row_invariants(rows)
-        # The side obligation from base.py, checked per parser.
         for row in rows:
             if parser.side == "declared":
                 assert row.direct
@@ -86,11 +62,7 @@ class TestTotality:
             _assert_row_invariants(parse_package_lock(text, "package-lock.json"))
 
 
-# --------------------------------------------------------------------------- #
-# merge_locked contract
-# --------------------------------------------------------------------------- #
-
-_NAMES = st.sampled_from(["alpha", "beta", "gamma", "delta"])  # small pool forces collisions
+_NAMES = st.sampled_from(["alpha", "beta", "gamma", "delta"])
 _ECOSYSTEMS = st.sampled_from(["pypi", "conda", "npm"])
 
 
@@ -119,10 +91,6 @@ def _locked_row(draw) -> Dependency:
 class TestMergeLocked:
     @given(st.lists(_declared_row(), max_size=6), st.lists(_locked_row(), max_size=6))
     def test_contract_holds_for_every_input(self, declared: list[Dependency], locked: list[Dependency]) -> None:
-        # The merge contract is asserted inside merge_locked itself; this test
-        # supplies the adversarial inputs and checks what the postconditions
-        # leave open: declared rows keep their declared fields, and matched
-        # rows gain exactly their lock's resolution.
         merged = merge_locked(declared, locked)
         forks_by_identity: dict[tuple[str, str], list[Dependency]] = {}
         for lock in locked:
@@ -133,8 +101,6 @@ class TestMergeLocked:
             assert row.direct is True
             forks = forks_by_identity.get((row.ecosystem, row.name))
             if forks:
-                # Duplicate lock entries (marker/platform forks) merge as: first
-                # fork's version as representative, union of every fork's hashes.
                 assert row.locked_version == forks[0].locked_version
                 assert set(row.locked_hashes) == {h for fork in forks for h in fork.locked_hashes}
             else:
@@ -145,12 +111,7 @@ class TestMergeLocked:
         assert merge_locked(declared, []) == declared
 
 
-# --------------------------------------------------------------------------- #
-# generator/parser round-trips
-# --------------------------------------------------------------------------- #
-
 _PKG_NAME = st.from_regex(r"[A-Za-z0-9][A-Za-z0-9._-]{0,12}", fullmatch=True)
-# npm names include the scoped form; the scan must round-trip both.
 _NPM_NAME = st.one_of(_PKG_NAME, st.builds(lambda scope, name: f"@{scope}/{name}", _PKG_NAME, _PKG_NAME))
 _CONSTRAINT = st.sampled_from(["==1.2.0", ">=1.0", "~=2.1", "<3", ""])
 _PAD = st.sampled_from(["", " ", "  ", "\t"])
@@ -158,7 +119,6 @@ _PAD = st.sampled_from(["", " ", "  ", "\t"])
 
 @st.composite
 def _requirement_line(draw) -> tuple[str, str, str]:
-    """(rendered line, expected normalized name, expected constraint)."""
     name = draw(_PKG_NAME)
     constraint = draw(_CONSTRAINT)
     extras = draw(st.sampled_from(["", "[extra]", "[a,b]"]))
@@ -244,8 +204,6 @@ class TestRoundTrips:
 
     @given(st.dictionaries(_NPM_NAME, st.sampled_from(["1.2.3", "2.0.0"]), min_size=1, max_size=4))
     def test_package_lock_v1_repeats_collapse(self, entries: dict[str, str]) -> None:
-        """v1 locks list the same resolution once per parent; the parser must
-        emit each (name, version) resolution exactly once."""
         import json
 
         dep_map = {name: {"version": version} for name, version in entries.items()}
@@ -286,16 +244,11 @@ class TestRoundTrips:
         ]
 
 
-# --------------------------------------------------------------------------- #
-# metamorphic relations
-# --------------------------------------------------------------------------- #
-
 _SEGMENTS = st.lists(st.sampled_from(["foo", "bar", "baz2"]), min_size=1, max_size=3)
 
 
 @st.composite
 def _respelling(draw, segments: list[str]) -> str:
-    """One spelling of an identity: same segments, random separators and case."""
     separators = [draw(st.sampled_from(["-", "_", "."])) for _ in segments[1:]]
     word = segments[0] + "".join(s + seg for s, seg in zip(separators, segments[1:], strict=True))
     return "".join(ch.upper() if draw(st.booleans()) else ch for ch in word)
@@ -304,10 +257,6 @@ def _respelling(draw, segments: list[str]) -> str:
 class TestMetamorphic:
     @given(_SEGMENTS, st.data())
     def test_respelling_never_breaks_the_lock_join(self, segments: list[str], data: st.DataObject) -> None:
-        """The manifest and the lockfile may spell the same identity
-        differently (Foo_Bar vs foo-bar); the merge must join regardless, and
-        the result must not depend on which spelling either side used —
-        except for the cosmetic name_as_written."""
         spelling_a = data.draw(_respelling(segments))
         spelling_b = data.draw(_respelling(segments))
 
@@ -322,7 +271,7 @@ class TestMetamorphic:
 
         first = scan(spelling_a, spelling_b)
         (row,) = first
-        assert row.locked_version == "1.0.0"  # the join fired across spellings
+        assert row.locked_version == "1.0.0"
         assert row.locked_hashes == ["sha256:x"]
         assert first == scan(spelling_b, spelling_a)
 
@@ -330,9 +279,6 @@ class TestMetamorphic:
     def test_requirements_parsing_is_line_local(
         self, a: list[tuple[str, str, str]], b: list[tuple[str, str, str]]
     ) -> None:
-        """parse(A + B) == parse(A) + parse(B): requirements.txt lines carry no
-        state across lines. (Dockerfiles deliberately violate this — stage
-        aliases — see the example suite.)"""
         text_a = "\n".join(line for line, _, _ in a) + "\n"
         text_b = "\n".join(line for line, _, _ in b) + "\n"
         combined = parse_requirements_txt(text_a + text_b, "requirements.txt")
@@ -344,8 +290,6 @@ class TestMetamorphic:
     def test_lock_order_moves_only_the_representative(
         self, declared: list[Dependency], locked: list[Dependency], data: st.DataObject
     ) -> None:
-        """Permuting the lock side may change which fork is the representative
-        version, but never the joined hash set, lockedness, or identities."""
         shuffled = list(data.draw(st.permutations(locked)))
         first, second = merge_locked(declared, locked), merge_locked(declared, shuffled)
         for row_a, row_b in zip(first[: len(declared)], second[: len(declared)], strict=True):
@@ -355,8 +299,6 @@ class TestMetamorphic:
 
     @given(st.dictionaries(_PKG_NAME, st.sampled_from(["1.2.3", "^2.0.0"]), max_size=6))
     def test_npm_declaration_section_changes_only_the_scope(self, entries: dict[str, str]) -> None:
-        """Which package.json section records a dependency determines its
-        scope and nothing else — identity and constraint are section-blind."""
         import json
 
         first = parse_package_json(json.dumps({"dependencies": entries}), "package.json")
@@ -370,8 +312,6 @@ class TestMetamorphic:
         st.sampled_from(["devDependencies", "optionalDependencies", "peerDependencies"]),
     )
     def test_npm_duplicate_sections_collapse_to_the_first(self, entries: dict[str, str], other_section: str) -> None:
-        """A package named in several sections is one dependency; the most
-        runtime-relevant section provides the row."""
         import json
 
         text = json.dumps({"dependencies": entries, other_section: dict.fromkeys(entries, "*")})

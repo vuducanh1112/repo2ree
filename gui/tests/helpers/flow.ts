@@ -6,82 +6,34 @@ import { FIXTURES_DIR } from "../artifacts";
 import { NETWORK_RUN, quiet, runToEnd, type SettleOptions, StartedRuns, settleRun } from "../runs";
 import { stepShot } from "../screenshot";
 
-/**
- * Lean, reusable steps for driving the REE creation pipeline against a real
- * backend (no mocks). Each helper performs an action and waits on the
- * resulting UI state so callers can compose a precondition for the page they
- * actually want to test, e.g.:
- *
- *   await startReeCreation(page);
- *   await provisionWorkbench(page);
- *   await uploadSource(page, pythonHelloWorld());
- *   await runEvaluate(page);   // <- page under test
- *
- * Unlike the demo spec these add no narration, focus boxes, or artificial
- * waits — they exist for fast regression coverage, not recording.
- */
-
-// Example inputs are shared across suites (and the API walkthrough), so they
-// live at the repository root rather than under this suite.
 const EXAMPLES_DIR = path.resolve(__dirname, "../../../examples");
 
-/** Absolute path to the bundled Python hello-world source archive. */
 export function pythonHelloWorld(): string {
   return packedProject("python_docker");
 }
 
-/**
- * Absolute path to a complete, already-authored REE, packaged the way
- * `ree-archive` downloads one.
- *
- * The reviewer suite's baseline: it carries real author evidence — the frozen
- * snapshot, the overlay scripts, the SBOM, and the author receipts for build,
- * SBOM, activation and the experiment — so a review has something to reproduce
- * *against* without the suite authoring it first. See `examples/README.md` for
- * what it deliberately omits (the seal stamps, and the 327 MB runtime tarball).
- */
 export function authoredRee(): string {
   return path.join(EXAMPLES_DIR, "rees/ree-hello-world.zip");
 }
 
-/**
- * Absolute path to the pip-based Python hello-world source archive (no
- * Dockerfile — the workbench itself is the Python runtime). Packed on demand
- * from the checked-in sources into the gitignored artifact root, so no binary
- * blob lives in the repo — and repacked on every call, which is what keeps
- * test-artifacts/ safe to delete even though a test reads this back.
- */
 export function pythonPipHelloWorld(): string {
   return packedProject("python_venv");
 }
 
-/** Where the instant project's runtime lands: a packed venv inside the project root. */
 export const INSTANT_EXPERIMENT_ENVIRONMENT_PATH = "source/runtime-venv.tar.gz";
 
-/**
- * Absolute path to the instant hello-world source archive: standard library
- * only, nothing to download, so every stage runs in seconds on a bench without
- * a Docker daemon. Packed on demand like {@link pythonPipHelloWorld}.
- */
 export function instantHelloWorld(): string {
   return packedProject("instant");
 }
 
 export const INSTANT_DOCKER_EXPERIMENT_ENVIRONMENT_PATH = "source/runtime-image.tar";
 
-/**
- * Absolute path to the instant Docker project's source archive: a Dockerfile the
- * bench's own daemon builds FROM scratch, so a dind bench builds and runs it with
- * nothing pulled or downloaded.
- */
 export function instantDockerHelloWorld(): string {
   return packedProject("instant_docker");
 }
 
-/** The example projects: each `examples/projects/<name>/` holds `source/` and `recipe/`. */
 type ExampleProject = "instant" | "instant_docker" | "java_maven" | "python_docker" | "python_venv";
 
-/** An example project's source packed as an upload, `source/…` inside. */
 export function packedProject(project: ExampleProject): string {
   mkdirSync(FIXTURES_DIR, { recursive: true });
   const archive = path.join(FIXTURES_DIR, `${project.replaceAll("_", "-")}.tar.gz`);
@@ -96,7 +48,6 @@ export function packedProject(project: ExampleProject): string {
   return archive;
 }
 
-/** One of the scripts that run an instant project (`examples/projects/<project>/recipe/`). */
 export function instantRecipe(
   name: "build_experiment_environment.sh" | "activate_experiment_environment.sh" | "experiment.sh",
   project: "instant" | "instant_docker" = "instant",
@@ -104,11 +55,6 @@ export function instantRecipe(
   return readFileSync(path.join(EXAMPLES_DIR, "projects", project, "recipe", name), "utf8");
 }
 
-/**
- * The activate experiment environment script for a Docker experiment environment: load the
- * saved image unless the daemon has it, and run the given command in a container from it with
- * the workspace mounted at its own path.
- */
 export function dockerActivateScript(
   experimentEnvironmentPath: string,
   imageName = "pandas-hello",
@@ -124,11 +70,6 @@ exec docker run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE" "$@"
 `;
 }
 
-/**
- * A run script for a runnable (test activation or experiment): the command alone, run inside the
- * activated experiment environment. With `outputFile`, stdout is kept in that workspace file so a
- * verify script can read it back.
- */
 export function commandScript(command: string, outputFile?: string): string {
   const capture = outputFile ? ` > ${JSON.stringify(outputFile)}` : "";
   const replay = outputFile ? `\ncat ${JSON.stringify(outputFile)}` : "";
@@ -139,10 +80,6 @@ ${command}${capture}${replay}
 `;
 }
 
-/**
- * Save the activate experiment environment script on the Build page, where it sits beside the
- * build script it belongs with.
- */
 export async function saveActivateScript(page: Page, script: string) {
   await openPort(page, "Build Experiment Environment");
   await page.getByLabel("Activate experiment environment script").fill(script);
@@ -151,34 +88,14 @@ export async function saveActivateScript(page: Page, script: string) {
   await saved;
 }
 
-/**
- * Workspace file the experiment run script materializes its stdout to. Declared
- * as the experiment's output (see `runExperiment`) so a successful run captures
- * it into the produced-results store, and sealed into the bundle as the author
- * baseline a reviewer diffs against.
- */
 export const EXPERIMENT_OUTPUT_FILE = "result.txt";
 
 export function main(page: Page) {
   return page.getByRole("main");
 }
 
-/**
- * The three outcomes the "Generate from repository" control reports. Matching
- * any of them is how a spec knows the inference round-trip settled — the status
- * line renders only once the mutation resolves.
- */
 const GENERATE_STATUS = /Loaded a generated|could be inferred yet|Generation failed/;
 
-/**
- * Run read-only script inference from the generate control in its workspace drawer,
- * then expand the decision graph it renders.
- *
- * Inference never writes: it loads a candidate into the editor (leaving it
- * dirty) and explains itself with the executed decision DAG. The graph is
- * rendered whether or not a candidate was produced, so callers can assert on it
- * either way. Returns the status message and the graph text.
- */
 export async function generateScript(
   page: Page,
   button: RegExp = /Generate from repository/,
@@ -186,14 +103,7 @@ export async function generateScript(
   await stepShot(page, "generate-script", "before");
   const content = main(page);
   const trigger = content.getByRole("button", { name: button }).first();
-  // Status and decision graph belong to the control whose button was pressed: a page can hold
-  // several (the build page generates its build and its activate script).
   const control = trigger.locator("xpath=../..");
-  // The generated body is read from the response rather than the editor. The
-  // editor is a fixed-height CodeMirror viewport that virtualizes past what it
-  // can show, so the tail of a scaffold — the `exit 64` that makes it
-  // fail-closed — is legitimately absent from the DOM, and what these callers
-  // are asserting about is the generator's output anyway.
   const [response] = await Promise.all([
     page.waitForResponse(
       (candidate) =>
@@ -208,12 +118,9 @@ export async function generateScript(
   const script = report.results?.[0]?.candidates?.[0]?.body ?? "";
 
   const status = control.getByText(GENERATE_STATUS).first();
-  // A real backend round-trip: rescan + DAG walk (and, before the artifact
-  // exists, a build-script regeneration), so allow well past the default.
   await expect(status).toBeVisible({ timeout: 30000 });
   const message = (await status.textContent()) ?? "";
 
-  // The decision graph is collapsed by default — open it and read it back.
   const summary = control.getByText("Decision graph", { exact: true }).first();
   await expect(summary).toBeVisible();
   await summary.click();
@@ -229,19 +136,10 @@ export async function generateScript(
   return { message, graph, script };
 }
 
-/**
- * Await the definition patch a declaration settles through — and fail here if
- * the backend rejected it. A rejected patch leaves the declaration unmade, so a
- * helper that merely waited for *a* response would hand the spec a REE missing
- * what it just declared, and the failure would surface pages later as something
- * else entirely (inference reporting an experiment it cannot resolve).
- */
 async function waitForDefinitionPatch(
   page: Page,
   { expectOk = true, carrying }: { expectOk?: boolean; carrying?: string } = {},
 ) {
-  // With `carrying`, only the patch whose body holds that value: another, earlier
-  // patch (a debounced save from the step before) must not stand in for it.
   const response = await page.waitForResponse(
     (res) =>
       res.url().includes("/patch-ree-definition") &&
@@ -257,40 +155,20 @@ async function waitForDefinitionPatch(
   return response;
 }
 
-/**
- * Await the workspace-file write a script save always performs.
- *
- * Prefer this over {@link waitForDefinitionPatch} for a save whose definition patch
- * is *conditional* — the experiment page only re-declares a script path when it
- * differs from the one already on the definition, so once the backend has settled
- * that path (naming an experiment does exactly that) a save writes the file and
- * patches nothing. The PUT is the signal that always fires.
- */
 function waitForFileWrite(page: Page) {
   return page.waitForResponse(
     (res) => res.url().includes("/write-script") && res.request().method() === "POST",
   );
 }
 
-/**
- * The canvas hub. Navigation lives here as pod "nodes" (Source, Metadata,
- * Reproducibility Readiness, Build, Hardware, Experiments, Archive, Seal) floating around
- * the specimen pod — scope clicks here so short node labels don't collide with
- * same-named main buttons.
- */
 function nav(page: Page) {
   return page.getByRole("navigation", { name: "Workspace pages" });
 }
 
-/**
- * Open a canvas node by its exact label. The selected page replaces the current
- * drawer contents while the canvas remains mounted beside it.
- */
 export async function openPort(page: Page, label: string) {
   await nav(page).getByRole("button", { name: label, exact: true }).click();
 }
 
-/** Open the file console from the persistent workspace status bar. */
 export async function openFilesConsole(page: Page) {
   const status = page.getByRole("region", { name: "Workspace status" });
   const trigger = status.getByRole("button", { name: /^Files/ });
@@ -298,40 +176,17 @@ export async function openFilesConsole(page: Page) {
   await expect(page.getByRole("button", { name: "Collapse files" })).toBeVisible();
 }
 
-/**
- * Matches an available lab bay by its accessible name. Anchored on purpose: an
- * unavailable bay is named "… — unavailable" and is a disabled button, so a
- * loose /available/ would select one and then wait forever for a click.
- */
 const AVAILABLE_LAB = /— available$/;
 
-/**
- * How many available labs the lab-location picker offers. Specs that need
- * more than one lab (multi-lab, stress) call this first and skip when the
- * stack is smaller — the count is a property of whatever stack the suite runs
- * against (source, image, or published), not something the tests control.
- */
 export async function connectedLabCount(page: Page): Promise<number> {
   await page.goto("/");
   await page.getByRole("button", { name: "Create a new REE" }).click();
   await expect(page.getByRole("heading", { name: "Where should this REE run?" })).toBeVisible();
   const cards = page.getByRole("button", { name: AVAILABLE_LAB });
-  // The lab list loads async; a suite-worthy stack always has at least one
-  // lab, so waiting for the first card is enough for a settled count.
   await cards.first().waitFor({ state: "visible" });
   return cards.count();
 }
 
-/**
- * Land on the workbench lab from the landing view. REE creation opens with
- * the lab-location step: pick the (available) lab that will host the
- * workbench, which carries its id into the bench setup drawer.
- *
- * `labIndex` picks the nth available lab (default: the first) — the
- * multi-lab spec uses it to pin each session to a different lab. Returns
- * the chosen lab's id, read back from the workspace URL the picker
- * navigates to.
- */
 export async function startReeCreation(page: Page, options?: { labIndex?: number }) {
   await page.goto("/");
   await stepShot(page, "start-ree-creation", "before");
@@ -341,25 +196,14 @@ export async function startReeCreation(page: Page, options?: { labIndex?: number
     .getByRole("button", { name: AVAILABLE_LAB })
     .nth(options?.labIndex ?? 0)
     .click();
-  // Choosing a bay opens workbench setup over the picker: one screen, not two.
   await expect(page.getByRole("region", { name: "Set up the workbench" })).toBeVisible();
   await stepShot(page, "start-ree-creation", "after");
-  // The URL no longer carries the lab — nothing navigates until the bench is
-  // provisioned — so the armed bay is what records which lab was chosen.
   return (await page.locator("[data-lab][aria-pressed='true']").getAttribute("data-lab")) ?? "";
 }
 
-/**
- * Provision the workbench container. Provisioning lands on the hub canvas
- * (the live lab), so this resolves there and then dives into the Source node so
- * the rest of the walkthrough continues from the docked authoring drawer.
- */
 export async function provisionWorkbench(page: Page) {
   await stepShot(page, "provision-workbench", "before");
-  // Setup is the drawer the lab picker opens, so scope to it rather than to a
-  // page that no longer exists on its own.
   const setup = page.getByRole("region", { name: "Set up the workbench" });
-  // A network run in every project: the host pulls the bench image the first time it sees it.
   await runToEnd(page, () => setup.getByRole("button", { name: /Provision workbench/i }).click(), {
     watch: NETWORK_RUN,
     succeed: true,
@@ -374,23 +218,10 @@ export async function provisionWorkbench(page: Page) {
   await stepShot(page, "provision-workbench", "after");
 }
 
-/**
- * Provision a workbench with an already-authored REE loaded onto it.
- *
- * The bundle is chosen during provisioning rather than after it, because the
- * load runs on the workbench this step creates — so this replaces
- * {@link provisionWorkbench} rather than following it. What comes back is a lab
- * holding another author's evidence and nothing of this suite's own, which is
- * exactly the position a reviewer is in.
- */
 export async function provisionFromBundle(page: Page, bundlePath: string) {
   await stepShot(page, "provision-from-bundle", "before");
   await page.getByLabel("REE bundle").setInputFiles(bundlePath);
   await expect(page.getByText(/This workbench will be loaded with the uploaded REE/)).toBeVisible();
-  // The control renames itself once a bundle is chosen — provisioning and
-  // loading are one action here, so waiting for "Provision workbench" would
-  // wait for a button this screen no longer has.
-  // Two runs: provisioning, then, once it succeeds, the load of the bundle onto the bench.
   const runs = new StartedRuns(page);
   try {
     await page.getByRole("button", { name: /Provision and load REE/i }).click();
@@ -403,7 +234,6 @@ export async function provisionFromBundle(page: Page, bundlePath: string) {
   await stepShot(page, "provision-from-bundle", "after");
 }
 
-/** Upload a tarball into the workspace and wait for the snapshot to settle. */
 export async function uploadSource(page: Page, archivePath: string) {
   await stepShot(page, "upload-source", "before");
   await page.getByRole("button", { name: "Upload tarball" }).click();
@@ -414,7 +244,6 @@ export async function uploadSource(page: Page, archivePath: string) {
     succeed: true,
   });
 
-  // The clear-source action lives in the source hub panel header (top-right).
   const clearSource = page
     .getByRole("region", { name: "Source Acquisition" })
     .getByRole("button", { name: /Clear source/i });
@@ -423,11 +252,6 @@ export async function uploadSource(page: Page, archivePath: string) {
   return clearSource;
 }
 
-/**
- * Fetch a source from an origin URL (the "Use origin URL" path) and wait for the
- * snapshot to settle. Selects the source type first so the git-only revision
- * field renders before it is filled; leave `revision` blank to fetch HEAD.
- */
 export async function downloadSource(
   page: Page,
   origin: { url: string; sourceType?: "git" | "tarball" | "zip"; revision?: string },
@@ -451,7 +275,6 @@ export async function downloadSource(
   return clearSource;
 }
 
-/** Fill in project identity metadata. */
 export async function provideMetadata(
   page: Page,
   meta: { name: string; version: string; description: string },
@@ -465,7 +288,6 @@ export async function provideMetadata(
   await stepShot(page, "provide-metadata", "after");
 }
 
-/** Run the source-repository assessment and wait for its findings. */
 export async function runEvaluate(page: Page) {
   await stepShot(page, "run-evaluate", "before");
   await openPort(page, "Reproducibility Readiness");
@@ -484,12 +306,6 @@ export async function runEvaluate(page: Page) {
   await stepShot(page, "run-evaluate", "after");
 }
 
-/**
- * Build the runtime artifact. Declaring where the build writes it and running
- * the build both live on the single Build Runtime page — see
- * {@link declareExperimentEnvironmentArtifact}, which must happen first: the build refuses to
- * run until the produced path is declared.
- */
 export function dockerBuildExperimentEnvironmentScript(
   projectDir: string,
   producedExperimentEnvironmentPath: string,
@@ -515,7 +331,6 @@ export async function buildExperimentEnvironment(
   options: { rebuild?: boolean } = {},
 ) {
   await stepShot(page, "build-experiment-environment", "before");
-  // A failed build fails here, with its failure and the end of its log.
   await runBuild(page, buildExperimentEnvironmentScript, producedExperimentEnvironmentPath, {
     ...options,
     succeed: true,
@@ -524,10 +339,6 @@ export async function buildExperimentEnvironment(
   await stepShot(page, "build-experiment-environment", "after");
 }
 
-/**
- * Author, declare and run a build, and wait for the run to settle whatever its
- * outcome — the half of {@link buildExperimentEnvironment} a spec about a failing build needs.
- */
 export async function runBuild(
   page: Page,
   buildExperimentEnvironmentScript: string,
@@ -538,21 +349,15 @@ export async function runBuild(
   await expect(
     main(page).getByRole("heading", { name: "Build Experiment Environment", exact: true }),
   ).toBeVisible();
-  // REE owns one reserved build script — author the whole build in it directly
-  // (produce the runtime artifact and land it in the workspace).
   await page
     .getByLabel("Build experiment environment script")
     .fill(buildExperimentEnvironmentScript);
-  // The build runs whatever script is saved when it starts: wait for the save to land.
   const scriptSaved = waitForFileWrite(page);
   await main(page).getByRole("button", { name: "Save build script" }).click();
   await scriptSaved;
 
-  // A rebuild keeps the declaration the first build made: re-entering the same
-  // path changes nothing, so no patch would fire to wait on.
   if (!rebuild) await declareExperimentEnvironmentArtifact(page, producedExperimentEnvironmentPath);
 
-  // Settled whatever its outcome unless asked: a caller may be building to watch it fail.
   const run = await runToEnd(
     page,
     () =>
@@ -565,17 +370,11 @@ export async function runBuild(
   return run;
 }
 
-/**
- * Author a runnable's run script: fill the RunScriptCard editor, then click
- * its "Save run script" button (shared by the activation and experiment
- * editors).
- */
 async function saveRunScript(page: Page, editor: Locator, content: string) {
   await editor.fill(content);
   await main(page).getByRole("button", { name: "Save run script", exact: true }).first().click();
 }
 
-/** Author and declare a runnable's verify script. */
 async function saveVerifyScript(page: Page, editor: Locator, content: string) {
   await editor.fill(content);
   await main(page).getByRole("button", { name: "Save verify script", exact: true }).first().click();
@@ -591,20 +390,10 @@ grep -Fq "$EXPECTED" ${JSON.stringify(EXPERIMENT_OUTPUT_FILE)}
 `;
 }
 
-/**
- * Declare where the build will write its runtime. The runtime artifact card
- * lives on the Build Runtime page itself (section "1. Declare the runtime the
- * build produces"), and the declaration is authored before the build runs — the
- * path names a file that does not exist yet.
- */
 async function declareExperimentEnvironmentArtifact(
   page: Page,
   producedExperimentEnvironmentPath: string,
 ) {
-  // Declaring the runtime is a debounced intent patch. The build reads the
-  // declaration server-side, and anything else that asks the backend about the
-  // runtime next (script inference, most obviously) must not race it, so settle
-  // the declaration here rather than in each caller.
   const experimentEnvironmentDeclared = waitForDefinitionPatch(page, {
     carrying: producedExperimentEnvironmentPath,
   });
@@ -615,7 +404,6 @@ async function declareExperimentEnvironmentArtifact(
   await experimentEnvironmentDeclared;
 }
 
-/** Add a hardware BOM entry (a CPU component with a device model). */
 export async function provideHbom(page: Page, cpuModel: string) {
   await stepShot(page, "provide-hbom", "before");
   await openPort(page, "Hardware");
@@ -629,16 +417,8 @@ export async function provideHbom(page: Page, cpuModel: string) {
   await stepShot(page, "provide-hbom", "after");
 }
 
-/**
- * Where the REE keeps its SBOM. Not a workspace file: the scan writes straight
- * into the REE's own `artifacts/`, and the page reads it from there.
- */
 export const SBOM_ARTIFACT_PATH = "artifacts/sbom.json";
 
-/**
- * Generate the SBOM. Navigates to the SBOM canvas node (a drawer page, like
- * Build Runtime).
- */
 export async function generateSbom(page: Page) {
   await stepShot(page, "generate-sbom", "before");
   await openPort(page, "SBOM");
@@ -650,17 +430,10 @@ export async function generateSbom(page: Page) {
   });
   await expect(content.getByRole("button", { name: /^Regenerate$/ })).toBeVisible();
   await expect(content.getByText("SBOM ready", { exact: true }).first()).toBeVisible();
-  // "Ready" means the declared path resolved to a real file. Asserting the path
-  // pins where that file is: the REE's artifacts, not the materialized tree.
   await expect(content.getByText(SBOM_ARTIFACT_PATH, { exact: true }).first()).toBeVisible();
   await stepShot(page, "generate-sbom", "after");
 }
 
-/**
- * Cross-check the generated SBOM against the scanned dependency inventory,
- * from the same docked SBOM page. Requires evaluate and generate-sbom to have
- * run first — the cross-check joins the report with the SBOM.
- */
 export async function crossCheckSbom(page: Page) {
   await stepShot(page, "cross-check-sbom", "before");
   await openPort(page, "SBOM");
@@ -671,18 +444,12 @@ export async function crossCheckSbom(page: Page) {
   await runToEnd(page, () => content.getByRole("button", { name: /^Cross-check$/ }).click(), {
     succeed: true,
   });
-  // The card flips to Re-check once the report refreshes.
   await expect(content.getByRole("button", { name: /^Re-check$/ })).toBeVisible();
   await expect(content.getByText("Cross-checked", { exact: true })).toBeVisible();
   await expect(content.getByText(/declared deps in experiment environment/)).toBeVisible();
   await stepShot(page, "cross-check-sbom", "after");
 }
 
-/**
- * Run the activation. Navigates to the Activation canvas node (a standalone page) and runs
- * the activate experiment environment script the build step wrote, alone, around a command
- * that does nothing: it enters the experiment environment and hands over.
- */
 export async function activateExperimentEnvironment(page: Page) {
   await stepShot(page, "activate-experiment-environment", "before");
   await openPort(page, "Activation");
@@ -694,31 +461,16 @@ export async function activateExperimentEnvironment(page: Page) {
       .click(),
   );
   await expect(main(page).getByRole("button", { name: /Re-run/ })).toBeVisible();
-  // Re-run appears for failed runs too; the earned-outcome badge is
-  // success-only.
   await expect(main(page).getByRole("status", { name: "Activation passed" })).toBeVisible();
   await stepShot(page, "activate-experiment-environment", "after");
 }
 
-/**
- * Define a single experiment, author its run and verify scripts, run it, and
- * wait for it to pass. The run script runs inside the activated experiment environment
- * and must keep its stdout in {@link EXPERIMENT_OUTPUT_FILE}
- * (e.g. `commandScript(cmd, EXPERIMENT_OUTPUT_FILE)`). The verify
- * script owns the claim, reading that file back — its exit code is the verdict.
- */
 export async function runExperiment(
   page: Page,
   experiment: {
     name: string;
     runScript: string;
     expectedStdout: string;
-    /**
-     * Run script inference for this experiment once it is named (the gate the
-     * backend needs to resolve it) and assert it produced a scaffold, before
-     * authoring the real run script over it. Returns nothing — the assertions
-     * live here so the caller keeps one step.
-     */
     generateFirst?: boolean;
   },
 ) {
@@ -728,9 +480,6 @@ export async function runExperiment(
   await expect(
     experimentsPanel.getByRole("heading", { name: "Experiments", exact: true }),
   ).toBeVisible();
-  // Adding the row autosaves an experiment that has no name yet, which the
-  // backend cannot declare — settle that round-trip without demanding it
-  // succeed, so the naming patch below is the one held to the standard.
   const experimentAdded = waitForDefinitionPatch(page, { expectOk: false });
   await experimentsPanel
     .getByRole("button", { name: /Add experiment/i })
@@ -743,18 +492,12 @@ export async function runExperiment(
   await nameSaved;
 
   if (experiment.generateFirst) {
-    // The experiment is declared now, so inference can resolve it and the
-    // already-built runtime. Phase 1 never picks the scientific command, so the
-    // scaffold arrives fail-closed — the author writes the command below.
     const { message, graph, script } = await generateScript(page);
     expect(message).toMatch(/Loaded a generated experiment run script/);
     expect(graph).toContain("experiment-run-inference");
     expect(script).toMatch(/exit 64/);
   }
 
-  // Naming the experiment already settled its reserved run-script path on the
-  // intent, so this save writes the file and re-declares nothing — wait on the
-  // write itself rather than an intent patch that legitimately never fires.
   const runScriptWritten = waitForFileWrite(page);
   await saveRunScript(
     page,
@@ -763,11 +506,6 @@ export async function runExperiment(
   );
   await runScriptWritten;
 
-  // Same as the run script: a definition patch carries an experiment's name and
-  // output paths, and nothing else — the backend reads its scripts' identities
-  // off the authored files, and sees the verify script by its presence at the
-  // reserved path. So this save writes a file and patches nothing; the PUT is
-  // the only signal that fires.
   const verifyScriptDeclared = waitForFileWrite(page);
   await saveVerifyScript(
     page,
@@ -776,9 +514,6 @@ export async function runExperiment(
   );
   await verifyScriptDeclared;
 
-  // Declare the produced result file so a successful run captures it. Including
-  // it in the bundle is a seal-time choice made on the Seal page (defaults on
-  // once an output is declared), so there is nothing to opt into here.
   const outputDeclared = waitForDefinitionPatch(page);
   await main(page).getByRole("textbox", { name: "Output files" }).fill(EXPERIMENT_OUTPUT_FILE);
   await outputDeclared;
@@ -792,28 +527,12 @@ export async function runExperiment(
   await stepShot(page, "run-experiment", "after");
 }
 
-/**
- * The review console: the graph strip in the status bar, plus the evidence
- * drawer that strip opens beside the canvas.
- *
- * Two regions rather than one because the console is two surfaces now — the
- * strip carries the steps and their verdicts, the drawer carries what each
- * verdict rests on — and a reviewer's assertions should not have to know which
- * half a given line lives in.
- */
 function reviewConsole(page: Page) {
   return page
     .getByRole("region", { name: "Workspace status" })
     .or(page.getByRole("region", { name: "Review evidence" }));
 }
 
-/**
- * Switch the persistent workflow bar to Review and open the evidence drawer.
- *
- * The drawer is opened here, once, because every lifecycle step below reads the
- * detail behind its verdict from it — and it holds the whole attempt, so it
- * fills in as the steps settle rather than needing to be reopened per step.
- */
 export async function openReviewConsole(page: Page) {
   await stepShot(page, "open-review-console", "before");
   const console = reviewConsole(page);
@@ -825,13 +544,6 @@ export async function openReviewConsole(page: Page) {
   return console;
 }
 
-/**
- * Choose what the next review step reproduces from.
- *
- * "Strongest" is the default and needs no selection; "From bundle" is the
- * deliberate choice to verify the artifacts the REE already carries, which is
- * the only path open for an REE with no reachable origin.
- */
 export async function selectReviewBasis(
   page: Page,
   label: "Strongest" | "Independent" | "From bundle",
@@ -839,56 +551,18 @@ export async function selectReviewBasis(
   await reviewConsole(page).getByRole("radio", { name: label, exact: true }).check();
 }
 
-/**
- * Run the source step of the review lifecycle and wait for its verdict.
- *
- * A review acquires the author-pinned source into its own namespace — a real
- * fetch from the recorded origin, then a SWHID over the acquired tree — so this
- * takes about as long as the author's own acquisition, plus hashing. Returns the
- * verdict the comparison settled on, as shown on the step.
- */
 export async function reproduceSource(page: Page) {
   return reproduceReviewStep(page, "Source");
 }
 
-/**
- * Run the build step of the review lifecycle and wait for its verdict.
- *
- * The reviewer rebuilds the runtime from the source their own attempt fetched,
- * then scans it — a full container build plus an SBOM scan, so it is the
- * slowest step in the lifecycle. Returns the verdict the comparison settled on.
- * ``EQUIVALENT`` is the expected pass: image builds are rarely bit-identical,
- * so matching dependency closures is what a faithful rebuild earns.
- */
 export async function reproduceBuild(page: Page) {
-  // A rebuild, then an SBOM scan that prints nothing while it works.
   return reproduceReviewStep(page, "Build Experiment Environment", { watch: quiet() });
 }
 
-/**
- * Run the activation step of the review lifecycle and wait for its verdict.
- *
- * Unlike source and build this settles a boolean, not a comparison: there is no
- * author artifact to diff against, so whether the author's activation, run alone, hands over is the
- * claim. ``COMPLETE`` means it did; ``DID NOT ACTIVATE`` means it did not,
- * which is a finding the step completed with rather than a step that broke.
- */
 export async function reproduceActivation(page: Page) {
   return reproduceReviewStep(page, "Test Activation");
 }
 
-/**
- * Reproduce one named experiment and wait for the verdict its own row settles.
- *
- * Addressed by name rather than by clicking the graph node, because the
- * experiments step has one row per experiment: the node sweeps the whole set,
- * while a reviewer reproducing a single claim uses its row.
- *
- * `REPRODUCED` is the ordinary pass — the author's verify script accepted the
- * reviewer's results. `IDENTICAL` additionally means the declared outputs came
- * out byte for byte the same, which most experiments will not manage and none
- * are required to.
- */
 export async function reproduceExperiment(page: Page, experimentName: string): Promise<string> {
   const console = reviewConsole(page);
   const slug = `reproduce-experiment-${experimentName.toLowerCase().replace(/\s+/g, "-")}`;
@@ -906,24 +580,17 @@ export async function reproduceExperiment(page: Page, experimentName: string): P
   return (await verdict.textContent()) ?? "";
 }
 
-/** Click one review step and read back the verdict it settles on. */
 async function reproduceReviewStep(page: Page, label: string, options: SettleOptions = {}) {
   const console = reviewConsole(page);
   const slug = `reproduce-${label.toLowerCase().replace(/\s+/g, "-")}`;
   await stepShot(page, slug, "before");
   const step = console.getByRole("button", { name: `Reproduce ${label}` });
   await expect(step).toBeEnabled();
-  // The run key and the verdict are separate controls on one card — reading a
-  // verdict and dispatching a rebuild do not share a hitbox — so the verdict is
-  // read from the card the run key sits on.
   const verdict = step
     .locator("xpath=..")
     .getByText(
       /^(IDENTICAL|EQUIVALENT|REPRODUCED|DIFFERENT|INCONCLUSIVE|COMPLETE|DID NOT ACTIVATE|FAILED)$/,
     );
-  // A re-run starts from the badge the previous attempt left on the step.
-  // Clicking clears it client-side in the same render, so a badge seen after the
-  // run settles is this run's, never the one before.
   await runToEnd(
     page,
     async () => {
@@ -937,12 +604,6 @@ async function reproduceReviewStep(page: Page, label: string, options: SettleOpt
   return (await verdict.textContent()) ?? "";
 }
 
-/**
- * Seal the REE. Uses the "Seal anyway" path so it works regardless of how
- * complete the REE is — sealing is what makes the workbench release control
- * appear.
- */
-/** The Seal page drawer opened from its constellation node. */
 function sealPanel(page: Page) {
   return page.getByRole("region", { name: "Seal" });
 }
@@ -955,29 +616,16 @@ export async function sealRee(page: Page) {
     .first();
   await expect(sealButton).toBeVisible();
   await runToEnd(page, () => sealButton.click(), { succeed: true });
-  // By role rather than by text: the badge carries an icon, whose <title>
-  // counts as text even though `aria-hidden` keeps it out of the name.
   await expect(sealPanel(page).getByRole("status", { name: "REE sealed" })).toBeVisible();
   await stepShot(page, "seal-ree", "after");
 }
 
-/** Release (tear down) the workbench container; returns to the landing view. */
-/** Pages whose REE this test already kept, so a release does not download it twice. */
 const keptPages = new WeakSet<Page>();
 
-/**
- * Download the REE as its author would and keep it in this test's output
- * directory. The stack's collector finds kept archives there and records each
- * REE's Git history as behaviour evidence: without it the checker cannot see a
- * single attempt captured, and every rule about attempts is inconclusive. A
- * release keeps the archive itself when the spec did not (see
- * {@link releaseWorkbench}); a spec calls this to read the archive.
- */
 export async function keepReeArchive(page: Page, name = "ree.zip") {
   await stepShot(page, "download-ree", "before");
   const download = page.getByRole("banner").getByRole("button", { name: /Download REE/ });
   await expect(download).toBeEnabled();
-  // A download that never starts (the API refused it) fails here, not at the test's backstop.
   const [file] = await Promise.all([
     page.waitForEvent("download", { timeout: 120_000 }),
     download.click(),
@@ -994,7 +642,6 @@ export async function keepReeArchive(page: Page, name = "ree.zip") {
 
 export async function releaseWorkbench(page: Page) {
   if (!keptPages.has(page)) {
-    // Best effort: a release after a failed step must still happen, archive or not.
     await keepReeArchive(page).catch((error: unknown) => {
       test.info().annotations.push({
         type: "warning",
@@ -1004,7 +651,6 @@ export async function releaseWorkbench(page: Page) {
   }
   await stepShot(page, "release-workbench", "before");
   await openWorkbenchConsole(page);
-  // A store keeps its REEs: ending one deletes it from the store, and asks first.
   const deleteButton = page.getByRole("button", { name: /Delete REE$/ });
   await expect(deleteButton).toBeVisible();
   await deleteButton.click();
@@ -1014,7 +660,6 @@ export async function releaseWorkbench(page: Page) {
   await stepShot(page, "release-workbench", "after");
 }
 
-/** Open the workbench console from the persistent footer status bar. */
 async function openWorkbenchConsole(page: Page) {
   const footer = page.getByRole("region", { name: "Workbench status" });
   const trigger = footer.getByRole("button", { name: /^Workbench/ });
@@ -1022,20 +667,11 @@ async function openWorkbenchConsole(page: Page) {
   await expect(page.getByRole("button", { name: "Collapse workbench console" })).toBeVisible();
 }
 
-/**
- * Best-effort teardown for the workbench container a test provisioned. Releases
- * it via the bench console. Safe to call after any test — it no-ops when no
- * provisioned session is present.
- */
 export async function cleanupWorkbench(page: Page) {
-  // Only meaningful inside a provisioned editor session. A test that ended back
-  // on the landing view (e.g. already released) has nothing to clean up.
   if (!page.url().includes("/workspace")) {
     return;
   }
 
-  // The Seal node is locked (disabled) until the workbench is provisioned; if it
-  // isn't enabled the test never provisioned — no container to release.
   const sealNav = nav(page).getByRole("button", { name: "Seal", exact: true });
   if (!(await sealNav.isEnabled().catch(() => false))) {
     return;

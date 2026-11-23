@@ -1,5 +1,3 @@
-"""Several REEs at once, and a reviewer reproducing and signing a review of an REE someone else sealed and signed."""
-
 from __future__ import annotations
 
 from collections.abc import Callable

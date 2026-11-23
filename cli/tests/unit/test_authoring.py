@@ -1,5 +1,3 @@
-"""Authoring an REE as a person and an agent do: where it stands, its definition, its scripts, and its reviews."""
-
 from __future__ import annotations
 
 import json
@@ -25,7 +23,7 @@ PROJECT = Path(__file__).resolve().parents[3] / "examples/projects/instant/sourc
 runner = CliRunner()
 
 
-def ree(root: Path, *words: str, input: str | None = None) -> Result:  # noqa: A002 — CliRunner's name
+def ree(root: Path, *words: str, input: str | None = None) -> Result:  # noqa: A002
     return runner.invoke(cli, ["-C", str(root), *words], input=input)
 
 
@@ -55,11 +53,6 @@ def acquired(root: Path, tmp_path: Path) -> Path:
 
 def status(root: Path) -> ReeStatusReport:
     return ReeStatusReport.model_validate(outputs(ree(root, "--json", "status")))
-
-
-# ================================================
-# status
-# ================================================
 
 
 def test_status_tells_a_person_what_to_run_next(root: Path) -> None:
@@ -120,11 +113,6 @@ def test_a_refused_command_tells_a_person_what_to_run_next(root: Path) -> None:
     assert "next: Source Acquisition: ree acquire-source" in result.stderr
 
 
-# ================================================
-# define
-# ================================================
-
-
 def test_define_changes_the_fields_it_is_given_and_keeps_the_rest(root: Path) -> None:
     assert ree(root, "patch-ree-definition", "--version", "1.0", "--description", "A hello world.").exit_code == 0
 
@@ -182,11 +170,6 @@ def test_an_output_names_the_experiment_it_follows(root: Path) -> None:
     assert "--output names a path of the --experiment it follows" in result.stderr
 
 
-# ================================================
-# infer --write
-# ================================================
-
-
 def test_infer_shows_each_proposal_against_the_script_as_written(acquired: Path) -> None:
     result = ree(acquired, "suggest-scripts", "--target", "build_experiment_environment")
 
@@ -231,11 +214,6 @@ def test_infer_writes_one_script_at_a_time(root: Path) -> None:
     assert "--write writes one script" in result.stderr
 
 
-# ================================================
-# edit
-# ================================================
-
-
 def test_edit_writes_what_the_editor_saved(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli_module, "_at_terminal", lambda: True)
     opened: list[str | None] = []
@@ -274,13 +252,7 @@ def test_edit_needs_a_terminal(root: Path) -> None:
     assert "edit needs a terminal" in failure.message
 
 
-# ================================================
-# review
-# ================================================
-
-
 def _ran(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
-    """Record each command a session runs instead of running it."""
     ran: list[Any] = []
 
     def run_command(cmd: Any, **_kwargs: Any) -> ActionResult:
@@ -347,11 +319,6 @@ def test_review_all_stops_at_the_first_step_that_fails(root: Path, monkeypatch: 
     assert answered.failure is not None
     assert answered.failure.message == "the build failed"
     assert [step["status"] for step in answered.outputs["steps"]] == ["succeeded", "failed"]
-
-
-# ================================================
-# schema and completion
-# ================================================
 
 
 def test_schema_describes_every_command_a_person_sees(root: Path) -> None:

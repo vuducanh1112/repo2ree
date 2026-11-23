@@ -1,5 +1,3 @@
-"""Cross-check selected SBOM evidence against the reproducibility analysis."""
-
 from __future__ import annotations
 
 import json

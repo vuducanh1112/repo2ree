@@ -140,8 +140,6 @@ describe("executeStepRun", () => {
       refreshWorkspace: vi.fn(),
     });
 
-    // The identifier a deposit yields belongs to an archive-binding attestation
-    // held server-side, not to the REE spec — so the step touches no spec field.
     expect(executedCommands(executeCommands)).not.toContainEqual(
       expect.objectContaining({ type: "setReeSpec" }),
     );

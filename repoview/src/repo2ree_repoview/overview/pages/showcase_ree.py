@@ -1,6 +1,3 @@
-"""One showcase's final REE and its review: what its authoring test sealed, how inference stands in it, and what
-its review test's reviewer found."""
-
 from __future__ import annotations
 
 from collections import Counter
@@ -51,12 +48,10 @@ def _api_test(showcase: Showcase, workflow: str) -> ShowcaseTest | None:
 
 
 def authoring_test(showcase: Showcase) -> ShowcaseTest | None:
-    """The API authoring test whose REE the page shows."""
     return _api_test(showcase, "authoring")
 
 
 def review_test(showcase: Showcase) -> ShowcaseTest | None:
-    """The API review test whose review the page shows."""
     return _api_test(showcase, "review")
 
 
@@ -102,7 +97,6 @@ def script_rows(ree: SealedRee) -> list[list[str]]:
 
 
 def decision_block(script: Script) -> str:
-    """How inference reached its last answer for the script: the graph it walked, and what each step observed."""
     decision = script.decision
     if decision is None:
         return ""
@@ -212,7 +206,6 @@ def folder_items(folder: _Folder) -> str:
 
 
 def file_tree(entries: tuple[Entry, ...]) -> str:
-    """The REE's files as a tree, folders open, each text file opening to its contents."""
     return f'<div class="filetree"><ul>{folder_items(_folder(entries))}</ul></div>'
 
 

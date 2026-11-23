@@ -16,12 +16,8 @@ import styles from "./WorkspaceDrawer.module.css";
 
 interface WorkspaceDrawerProps {
   node: CanvasNode | undefined;
-  /** Optional longer page title when the canvas node uses a compact label. */
   title?: string;
-  /** What kind of surface this is. Authoring pages are the common case; the
-   * pre-workspace setup drawer is not one. */
   subtitle?: string;
-  /** Glyph for a drawer with no canvas node behind it. */
   icon?: ReactNode;
   onClose: () => void;
   children: ReactNode;
@@ -40,7 +36,6 @@ function clampWidth(width: number) {
   return Math.min(maximumWidth(), Math.max(MIN_WIDTH, width));
 }
 
-/** A persistent, non-modal authoring surface over the right side of the live canvas. */
 export function WorkspaceDrawer({
   node,
   title,

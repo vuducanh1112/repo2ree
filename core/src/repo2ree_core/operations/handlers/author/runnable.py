@@ -1,9 +1,3 @@
-"""Shared direct workflow for successful activation and experiment evidence.
-
-The activation runs alone, around a command that does nothing; an experiment runs inside it, and
-only while the activation's evidence is current.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -156,7 +150,6 @@ def handle_runnable_operation(
 def _current_receipt(
     ree: Ree, definition: RunnableDefinition
 ) -> ActivateExperimentEnvironmentReceipt | RunExperimentReceipt | None:
-    """The step's receipt, when its evidence is current: running it again would change nothing ree records."""
     audited = audit(ree)
     if isinstance(definition, ExperimentDefinition):
         step = next((item.run for item in audited.experiments if item.name == definition.name), None)
@@ -173,7 +166,6 @@ def _already_current(
     receipt: ActivateExperimentEnvironmentReceipt | RunExperimentReceipt,
     log: LogSink,
 ) -> ActionResult:
-    """Answer a step whose evidence is current with the receipt that is, running nothing."""
     experiment = isinstance(definition, ExperimentDefinition)
     label = definition.name if isinstance(definition, ExperimentDefinition) else "activation"
     log("system", "info", f"{label} is current: nothing to do (--again runs it anyway)")
@@ -202,9 +194,6 @@ def _select_definition(ree: Ree, kind: RunnableKind, experiment_name: str) -> Ru
 def _check_preconditions(
     ree: Ree, definition: RunnableDefinition
 ) -> tuple[ExperimentEnvironmentPath | None, Digest | None]:
-    """What the step needs recorded before it runs: the source, the activation's evidence for an experiment, and a
-    current build of a declared experiment environment, whose digest it runs against. The artifact itself is checked
-    against that digest as it is laid out in the attempt's workspace."""
     if ree.subject.receipts.acquire_source is None:
         raise ReePreconditionError("source has not been acquired")
     if isinstance(definition, ExperimentDefinition):
@@ -238,7 +227,6 @@ def _check_experiment_scripts(definition: ExperimentDefinition, workspace: Path)
 
 
 def _check_activation_evidence(ree: Ree) -> None:
-    """An experiment runs inside the activation, so only once the activation has run and still speaks for the REE."""
     activation_audit = audit(ree).activate_experiment_environment
     if activation_audit.evidence != "current":
         raise ReePreconditionError("; ".join(activation_audit.reasons) or "the activation has not been tested")

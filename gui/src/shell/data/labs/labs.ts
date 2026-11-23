@@ -5,8 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useApiServices } from "../apiRuntime";
 import { queryKeys } from "../queryKeys";
 
-// Pure wire shape → domain map. A store is listed whether or not a workbench serves it; it is
-// available for a new REE only while one does.
 function mapLab(wire: StoreSummary): Lab {
   return {
     id: wire.store_id,
@@ -24,12 +22,8 @@ function mapLab(wire: StoreSummary): Lab {
   };
 }
 
-// The fleet drifts as labs dial in and drop, so poll rather than cache: a
-// connect/disconnect should surface within a few seconds without a reload.
 const LABS_REFETCH_MS = 5000;
 
-// The stores registered here, kept fresh by polling. Backs the fleet-management pane. Each
-// carries how its machine runs scripts, so this is one call.
 export function useLabs() {
   const { reeApi } = useApiServices();
   return useQuery({

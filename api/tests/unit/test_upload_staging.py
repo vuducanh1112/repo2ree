@@ -1,10 +1,3 @@
-"""Host-side upload staging: the init → PUT bytes leg of the upload flow.
-
-Staging is the only host persistence in the REE flow, and everything up to
-``docker cp`` is host-only — so this whole leg is real here: real routes,
-real token allocation, real bytes on the real (per-test) staging dir.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -28,16 +21,10 @@ from repo2ree_supervisor import ReeRoute
 
 
 def _mint(staging_dir: Path, token: str) -> Path:
-    """Stand in for upload-init: the empty marker that entitles a PUT."""
     staging_dir.mkdir(parents=True, exist_ok=True)
     path = staged_upload_path(token)
     path.touch()
     return path
-
-
-# ================================================
-# Routes
-# ================================================
 
 
 def test_upload_init_allocates_token_and_url(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
@@ -53,7 +40,6 @@ def test_upload_init_allocates_token_and_url(client: TestClient, online_ree: Ree
     expires_at = datetime.fromisoformat(upload["expires_at"])
     assert expires_at > datetime.now(UTC) + timedelta(minutes=50)
 
-    # init mints an empty marker (proof the token was issued); bytes land on PUT
     assert staged_upload_path(token).exists()
     assert staged_upload_path(token).stat().st_size == 0
 
@@ -121,16 +107,9 @@ def test_put_bytes_for_unknown_ree_is_404(client: TestClient, staging_dir: Path)
 
 
 def test_put_bytes_with_unminted_token_is_404(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> None:
-    # A request cannot invent its own token: only upload-init mints one, so an
-    # attacker cannot land arbitrary files on the host outside the init flow.
     resp = client.put(f"/api/v1/rees/{online_ree.ree_id}/source:upload/tok-invented", content=b"data")
     assert resp.status_code == 404
     assert not staged_upload_path("tok-invented").exists()
-
-
-# ================================================
-# Helpers
-# ================================================
 
 
 def test_tokens_are_unique(staging_dir: Path) -> None:
@@ -172,8 +151,6 @@ def test_stage_upload_stream_resets_to_marker_on_failure(staging_dir: Path) -> N
     with pytest.raises(RuntimeError, match="client disconnected"):
         asyncio.run(stage_upload_stream("tok-fail", chunks()))
 
-    # The partial bytes must not survive, but the token stays minted (empty
-    # marker) so the client can retry the PUT until the TTL.
     assert staged_upload_path("tok-fail").read_bytes() == b""
 
 
@@ -182,25 +159,16 @@ def test_discard_is_idempotent(staging_dir: Path) -> None:
     staged_upload_path("tok-2").write_bytes(b"data")
     discard_staged_upload("tok-2")
     assert not staged_upload_path("tok-2").exists()
-    discard_staged_upload("tok-2")  # second discard must not raise
-
-
-# ================================================
-# Guardrails
-# ================================================
+    discard_staged_upload("tok-2")
 
 
 @pytest.mark.parametrize("token", ["../escape", "a/b", "", "x" * 129, "tok\x00"])
 def test_traversal_and_malformed_tokens_are_rejected(token: str) -> None:
-    # A request-supplied token must never resolve outside the staging dir.
     with pytest.raises(InvalidUploadTokenError):
         staged_upload_path(token)
 
 
 def test_upload_complete_with_traversal_token_is_400(client: TestClient, online_ree: ReeRoute) -> None:
-    # The PUT route's token rides the URL path, where routing already blocks
-    # slashes — but upload-complete takes the token from the JSON body, so it
-    # must be validated before it touches a path.
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/source:upload-complete",
         json={"upload_token": "../escape", "archive_name": "project.zip"},
@@ -236,8 +204,6 @@ def test_stage_upload_stream_rejects_oversized_body(staging_dir: Path, monkeypat
 
     with pytest.raises(UploadTooLargeError):
         asyncio.run(stage_upload_stream("tok-big", chunks()))
-    # The partial bytes must not survive the rejection, but the minted token
-    # remains retryable until its TTL.
     assert staged_upload_path("tok-big").read_bytes() == b""
 
 

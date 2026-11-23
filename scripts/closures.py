@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Resolve each shipped Python closure from uv.lock into nix/closures.json, which nix builds from.
-
-- ``generate`` writes the file; ``check`` exits 1 when it is stale.
-- ``stage-paths`` prints the workspace package directories the closures build from.
-- ``bench-drift DIR`` compares the bench interpreters' distributions (``nix build .#bench-distributions``)
-  with uv.lock, without failing: the bench closures do not come from uv.lock yet.
-
-A closure is a root package declared in ``[tool.repo2ree.closures]``: its workspace packages, and,
-per system, one wheel of every third-party package it reaches, with the URL and hash uv locked.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -168,7 +157,7 @@ def bench_drift(directory: Path, root: Path = ROOT) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("command", choices=("generate", "check", "stage-paths", "bench-drift"))
     parser.add_argument("directory", nargs="?", type=Path)
     args = parser.parse_args(argv)

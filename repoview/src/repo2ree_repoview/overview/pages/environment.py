@@ -1,5 +1,3 @@
-"""The environment-variable contract, a subpage of the contracts page."""
-
 from __future__ import annotations
 
 from collections import Counter

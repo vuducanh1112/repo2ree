@@ -15,7 +15,6 @@ import { authoringWorkflowModel } from "../canvas/AuthoringConsole";
 import { useReviewWorkflowModel } from "../canvas/review/useReviewWorkflowModel";
 import { type WorkflowMode, WorkspaceStatusBar } from "./WorkspaceStatusBar";
 
-/** The shell owns both workflow models and the mode; this stands in for it. */
 function StatusBarHarness({
   ree,
   badges,
@@ -65,7 +64,6 @@ describe("WorkspaceStatusBar", () => {
         ree={{
           ...exampleEditorRee,
           source: { ...exampleEditorRee.source, sourceAvailable: true },
-          // Source acquired and the runtime built; nothing downstream has run.
           audit: { acquire_source: "current", build_experiment_environment: "current" },
           steps: {
             steps: [
@@ -136,8 +134,6 @@ describe("WorkspaceStatusBar", () => {
     expect(onReceiptsOpenChange).toHaveBeenCalledWith(true);
     expect(onNavigate).toHaveBeenCalledWith(PAGE.CANVAS);
 
-    // The graph's own next move: ready, lowest order, and flagged as such in
-    // the strip so the bar answers "what now" without being read end to end.
     const crossCheck = await screen.findByRole("button", {
       name: /^Open Cross-check SBOM authoring step, ready, next up/,
     });
@@ -156,7 +152,6 @@ describe("WorkspaceStatusBar", () => {
     const modeToggle = screen.getByRole("button", { name: "Switch to review workflow" });
     expect(modeToggle).toHaveAttribute("aria-pressed", "false");
     await user.click(modeToggle);
-    // Review's own graph now stands on the same strip, basis first.
     expect(await screen.findByRole("radio", { name: "Strongest" })).toBeChecked();
     expect(screen.getByRole("navigation", { name: "Review workflow" })).toBeVisible();
     const reviewToggle = screen.getByRole("button", { name: "Switch to authoring workflow" });

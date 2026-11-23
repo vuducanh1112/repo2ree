@@ -1,16 +1,3 @@
-"""The REE an attempt runs on: a private copy of what its histories record, never the REE's files as they stand.
-
-An attempt's handler runs on a stage under ``.stage/<attempt>/``: what each history (the REE's and each review's)
-holds at its head, checked out from that head, and every other file of the REE linked in, as the REE has it. Nothing
-changed in the REE's files while the attempt runs reaches the handler, and nothing the handler does reaches them
-until the attempt is committed: its commit is the head plus what the handler changed on the stage, never the REE's
-files as they then are. What it changed goes back to the REE's files where they are still as the attempt found them;
-where something else changed one meanwhile, that change stays, and the integrity check after the attempt finds it.
-
-An attempt changes the history it is recorded in alone: one that changed another's files is a fault of the product,
-and its capture fails.
-"""
-
 from __future__ import annotations
 
 import contextlib
@@ -25,7 +12,6 @@ from repo2ree_core.workspace.integrity import reviews_of
 from repo2ree_protocol.tools import find_tool
 
 _HISTORY = ".git"
-# A file linked in from the REE, by the device and inode it had: the same file still, unless something replaced it.
 type _Identity = tuple[int, int]
 
 
@@ -49,9 +35,6 @@ def _scope_layout(root: Path, relative: str) -> ReeLayout:
 
 @dataclass(frozen=True)
 class Stage:
-    """The stage of one attempt: where it is, the head each history had when it was laid out, what of the REE's own
-    files was linked in, and which directories the REE had."""
-
     live: ReeLayout
     root: Path
     heads: dict[str, str | None]
@@ -62,20 +45,16 @@ class Stage:
 
     @property
     def layout(self) -> ReeLayout:
-        """The REE as the handler sees it."""
         return ReeLayout(root=self.root)
 
     def scope(self, relative: str) -> ReeLayout:
         return _scope_layout(self.root, relative)
 
     def history(self, relative: str) -> GitHistory:
-        """The history recorded at ``relative``, its files read from the stage."""
         return GitHistory(self.scope(relative), _git())
 
 
 def lay_out(live: ReeLayout, attempt_id: str) -> Stage:
-    """Lay out the stage of attempt ``attempt_id`` on ``live``, whose histories are locked and whose files were found
-    as their heads hold them."""
     root = live.stages / attempt_id
     shutil.rmtree(root, ignore_errors=True)
     root.mkdir(parents=True)
@@ -131,23 +110,18 @@ def lay_out(live: ReeLayout, attempt_id: str) -> Stage:
 
 
 def changed_beyond(stage: Stage, recorded_in: str) -> list[str]:
-    """Each history but ``recorded_in`` whose files the handler changed on the stage."""
     changed = []
     for relative, head in stage.heads.items():
         if relative == recorded_in or head is None:
             continue
         history = stage.history(relative)
         tree = history.git("rev-parse", f"{head}^{{tree}}").stdout.decode().strip()
-        if history._tree(store=False) != tree:  # noqa: SLF001 — the same selection a capture commits
+        if history._tree(store=False) != tree:  # noqa: SLF001
             changed.append(relative)
     return changed
 
 
 def put_back(stage: Stage, recorded_in: str, before: str, after: str) -> None:
-    """Make the REE's files what the attempt committed: each file of history ``recorded_in`` it changed, where the REE
-    still has it as ``before`` held it, and every file of the REE no history holds, as the handler left it on the
-    stage where the REE still has it as the stage was laid out. A file changed meanwhile beside the attempt is left as
-    it is."""
     live = _scope_layout(stage.live.root, recorded_in)
     history = GitHistory(live, _git())
     was, now = history.entries(before), history.entries(after)
@@ -172,7 +146,6 @@ def put_back(stage: Stage, recorded_in: str, before: str, after: str) -> None:
 
 
 def _replace(source: Path, target: Path) -> None:
-    """``target`` as ``source`` is, put in place in one step."""
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.is_dir() and not target.is_symlink():
         shutil.rmtree(target)
@@ -242,7 +215,6 @@ def _put_back_unheld(stage: Stage, held: set[str]) -> None:
 
 
 def discard(stage: Stage) -> None:
-    """Remove the stage, and the directory of stages once it holds none."""
     shutil.rmtree(stage.root, ignore_errors=True)
     with_stages = stage.root.parent
     with contextlib.suppress(OSError):
@@ -250,7 +222,6 @@ def discard(stage: Stage) -> None:
 
 
 def discard_left(live: ReeLayout, attempt_id: str) -> None:
-    """Remove the stage an attempt left when its executor was lost, and the directory of stages once it holds none."""
     root = live.stages / attempt_id
     shutil.rmtree(root, ignore_errors=True)
     with contextlib.suppress(OSError):

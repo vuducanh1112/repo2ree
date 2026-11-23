@@ -123,7 +123,6 @@ def test_start_build_review_targets_the_named_attempt(
     assert captured["command"].operation == "review_build_experiment_environment"
     command = captured["command"]
     assert isinstance(command, ReviewBuildExperimentEnvironmentCommand)
-    # The build joins the attempt named in the path rather than opening a new one.
     assert command.args.review_id == "review-one"
     assert command.args.basis == "auto"
 
@@ -168,8 +167,6 @@ def test_activation_takes_no_basis_at_the_edge(
     online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Activation inherits what the attempt's evidence is worth rather than
-    choosing, so offering the knob here would be offering a lie."""
     monkeypatch.setattr(review_routes, "start_single_command_run", lambda *a, **k: {})
 
     response = client.post(
@@ -213,7 +210,6 @@ def test_start_experiment_review_names_both_the_attempt_and_the_experiment(
     command = captured["command"]
     assert isinstance(command, ReviewRunExperimentCommand)
     assert command.args.review_id == "review-one"
-    # Names may carry spaces, so the route has to survive a percent-encoded one.
     assert command.args.experiment_name == "headline result"
 
 
@@ -222,8 +218,6 @@ def test_experiment_review_takes_no_basis_at_the_edge(
     online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Like activation, the run inherits what the workspace it happens in is
-    worth rather than choosing a basis of its own."""
     monkeypatch.setattr(review_routes, "start_single_command_run", lambda *a, **k: {})
 
     response = client.post(
@@ -280,8 +274,6 @@ def test_a_requested_basis_reaches_the_workbench_command(
     online_ree: ReeRoute,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Reproducing from the REE's own artifacts is a per-run choice, so it has
-    to survive the trip from the request body into the dispatched command."""
     captured: dict[str, Any] = {}
 
     def start(ree_id: str, **kwargs: Any) -> dict[str, Any]:
@@ -331,13 +323,6 @@ def test_starting_a_source_review_names_the_attempt_it_opened(
     client: TestClient,
     online_ree: ReeRoute,
 ) -> None:
-    """The POST answers "which attempt did I just open?" on its own.
-
-    Not deferred to the run's completion, and not inferrable from the reviews
-    list: the workbench writes the attempt's record a moment after this returns,
-    so a client that reached for the newest listed attempt in between would
-    address the *previous* one and silently certify the wrong evidence.
-    """
     response = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/reviews/acquire-source",
         json={},
@@ -345,7 +330,4 @@ def test_starting_a_source_review_names_the_attempt_it_opened(
 
     assert response.status_code == 200
     body = response.json()
-    # Asserted without pinning the status: the run may already have started by
-    # the time this is serialized, and the point is that the id does not wait on
-    # it either way.
     assert body["outputs"]["review_id"].startswith("review-")

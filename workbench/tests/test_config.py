@@ -59,11 +59,6 @@ def test_a_workbench_serves_a_store(monkeypatch: pytest.MonkeyPatch) -> None:
         config_module.load_config(["--store", "no-path"])
 
 
-# ================================================
-# Telemetry destination
-# ================================================
-
-
 def _clear_telemetry_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in ("WORKBENCH_TELEMETRY", "OTLP_ENDPOINT", "TRACE_FILE", "WORKBENCH_ID"):
         monkeypatch.delenv(name, raising=False)
@@ -87,8 +82,6 @@ def test_a_trace_file_keeps_spans_on_the_machine(monkeypatch: pytest.MonkeyPatch
 def test_a_store_workbench_stays_silent_rather_than_relaying(monkeypatch: pytest.MonkeyPatch) -> None:
     _clear_telemetry_env(monkeypatch)
 
-    # Possibly someone else's machine. It does not start shipping its own telemetry
-    # across that boundary merely because nobody configured a collector.
     assert config_module.load_config(STORE).telemetry == "off"
 
 
@@ -97,7 +90,6 @@ def test_an_explicit_setting_overrides_every_inference(monkeypatch: pytest.Monke
     monkeypatch.setenv("OTLP_ENDPOINT", "http://collector:4318")
     monkeypatch.setenv("WORKBENCH_TELEMETRY", "relay")
 
-    # The operator's escape hatch, either way: relay over the socket, or emit nothing.
     assert config_module.load_config(STORE).telemetry == "relay"
 
 
@@ -115,4 +107,4 @@ def test_the_store_token_may_come_from_a_file(monkeypatch: pytest.MonkeyPatch, t
 
     config = config_module.load_config([*STORE, "--token-file", str(tmp_path / "token")])
 
-    assert config.enrollment_token == "from-a-file"  # noqa: S105 — a test value read back
+    assert config.enrollment_token == "from-a-file"  # noqa: S105

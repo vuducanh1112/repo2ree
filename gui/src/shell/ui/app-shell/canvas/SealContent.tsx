@@ -29,13 +29,6 @@ interface SealContentProps {
   onSeal: (inclusionOpts: InclusionOpts) => void;
 }
 
-/**
- * The sealing step, built from the same page anatomy as every other authoring
- * step: an identity header carrying the status and the verb, then the page's
- * own sections. It used to be a centred confirmation card — a popup that had
- * been docked — with a bespoke progress bar, warning block, and footer button
- * standing in for the shared header, Notice, and run button.
- */
 export function SealContent({
   ree,
   badges,
@@ -48,8 +41,6 @@ export function SealContent({
   const experimentEnvironmentAvailable =
     !!ree.spec.experimentEnvironmentPath?.trim() &&
     ree.spec.experimentEnvironmentPath !== "__skipped__";
-  // Results are available to seal once any experiment declares an output — those
-  // are what a successful run captures into the produced-results store.
   const resultsAvailable = (ree.spec.experiments ?? []).some((e) => e.outputPaths.length > 0);
   const [includeSource, setIncludeSource] = React.useState(sourceAvailable);
   const [includeExperimentEnvironment, setIncludeExperimentEnvironment] = React.useState(
@@ -57,9 +48,6 @@ export function SealContent({
   );
   const [includeResults, setIncludeResults] = React.useState(resultsAvailable);
 
-  // Default the seal-time choices to whatever is available; the user can opt out
-  // inline before sealing. Availability can change while authoring, so keep the
-  // defaults in step with what the workspace actually has.
   React.useEffect(() => {
     setIncludeSource(sourceAvailable);
     setIncludeExperimentEnvironment(experimentEnvironmentAvailable);

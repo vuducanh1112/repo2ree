@@ -1,14 +1,8 @@
-/* The Seal step: what the REE will be frozen with, and what the archive
- * carries alongside it. The page frame, header, notice, and run button are the
- * shared ones — only the two seal-specific bodies live here. */
-
 .stack {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
-
-/* --- Steps that are not done -------------------------------------------- */
 
 .notDone {
   display: flex;
@@ -34,8 +28,6 @@
   font-size: var(--text-caption);
   color: var(--ink-subtle);
 }
-
-/* --- Bundle contents ----------------------------------------------------- */
 
 .inclusion {
   display: flex;
@@ -88,8 +80,6 @@
 .inclusionVerb[data-on] {
   color: var(--seal-ink);
 }
-
-/* --- Sealed record ------------------------------------------------------- */
 
 .sealedMeta {
   display: flex;

@@ -1,28 +1,7 @@
-"""The shared runtime-contract + command-fork subgraph.
-
-Activation-run and experiment-run inference are identical below their target
-gate: resolve the declared experiment environment into a typed contract (inspecting the built
-artifact, or matching an unchanged generated build), then fork into one command
-strategy per experiment environment kind (docker / venv), join through the score-free resolver,
-and land on a result. Only the leaf rules/renderers differ (activation vs
-experiment), so both DAGs embed the identical versioned nodes built here — the
-published graph stays the exact executable control flow.
-
-Node ids are fixed but validation is per-DAG, so activation and experiment can
-reuse the same ids without collision.
-
-Activation also forks by container engine: an image archive is loaded and run by
-Docker or by Podman, each its own strategy, viable where its engine is usable and
-not applicable where a generated build says the other engine holds the image. The
-experiment runs inside the activated environment, so it has no engine of its own
-and keeps the single container branch.
-"""
-
 from __future__ import annotations
 
 from repo2ree_protocol.inference import CheckNode, DecisionNode, ForkNode, ResolveNode, ResultNode, StrategyLeafNode
 
-# Shared node ids.
 ENTRY = "declared-runtime"
 FORK = "runtime-command"
 RESOLVE = "resolve-runtime-command"
@@ -39,18 +18,11 @@ def experiment_environment_contract_and_command_nodes(
     venv_render: str,
     podman: tuple[str, str] | None = None,
 ) -> list[DecisionNode]:
-    """Nodes from the runtime-contract prefix (entry ``ENTRY``) through results.
-
-    The caller wires its target gate to ``ENTRY`` and reuses ``NOT_INFERRED`` as
-    the short-circuit target for any of its own blocked prefix branches. ``podman``,
-    a (rule, renderer) pair, adds the engine strategies.
-    """
     container = (
         _engine_strategies(docker_rule, docker_render, podman) if podman else _docker_only(docker_rule, docker_render)
     )
     strategies = {"docker": "docker-kind", "venv": "venv-kind"} | ({"podman": "podman-kind"} if podman else {})
     return [
-        # --- runtime-contract prefix ---
         CheckNode(
             id=ENTRY,
             check="declared_experiment_environment_path",
@@ -77,10 +49,8 @@ def experiment_environment_contract_and_command_nodes(
             check="unchanged_generated_build",
             branches={"matched": FORK, "unmatched": NOT_INFERRED},
         ),
-        # --- command fork: one strategy per experiment environment kind (and, for activation, engine) ---
         ForkNode(id=FORK, branches=strategies, join=RESOLVE),
         *container,
-        # venv strategy branch
         CheckNode(
             id="venv-kind",
             check="experiment_environment_contract_kind",
@@ -96,7 +66,6 @@ def experiment_environment_contract_and_command_nodes(
             next=RESOLVE,
         ),
         StrategyLeafNode(id="venv-not-applicable", strategy="venv", outcome="not_applicable", next=RESOLVE),
-        # --- join + results ---
         ResolveNode(
             id=RESOLVE,
             fork=FORK,
@@ -124,9 +93,6 @@ def _docker_only(rule: str, render: str) -> list[DecisionNode]:
         StrategyLeafNode(
             id="docker-command",
             strategy="docker",
-            # No explicit activation/experiment command source exists in Phase 1,
-            # so a resolved docker experiment environment is always a confirmation-required
-            # candidate, never an automatic complete.
             outcome="candidate",
             rule=rule,
             inference_version=1,
@@ -138,7 +104,6 @@ def _docker_only(rule: str, render: str) -> list[DecisionNode]:
 
 
 def _engine_strategies(docker_rule: str, docker_render: str, podman: tuple[str, str]) -> list[DecisionNode]:
-    """A Docker and a Podman branch over an image archive: each runs where its engine is usable."""
     nodes: list[DecisionNode] = []
     for engine, other, rule, render in (
         ("docker", "podman", docker_rule, docker_render),

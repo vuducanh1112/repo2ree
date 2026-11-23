@@ -1,6 +1,3 @@
-/* A small on/off switch. The state is `aria-pressed` on a real button, which is
- * what both the styling and assistive tech read. */
-
 .toggle {
   position: relative;
   flex-shrink: 0;

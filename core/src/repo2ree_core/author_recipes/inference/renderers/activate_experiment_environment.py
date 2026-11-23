@@ -1,10 +1,3 @@
-"""The activate experiment environment script, inferred whole from the experiment environment contract.
-
-Entering an experiment environment is mechanical once its kind is known, so these
-render a complete script: no command to fill, no guard. It runs the command it is
-given inside the experiment environment, from the workspace root.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
@@ -88,9 +81,6 @@ exec docker run --rm -v "$PWD:$PWD" -w "$PWD" --entrypoint "" "$IMAGE_TAG" "$@"
 
 
 class PodmanActivateExperimentEnvironmentRenderer:
-    """Loads the image archive into Podman unless the image its tag names is the one the archive holds, and runs the
-    command in it."""
-
     code = "podman_activate_experiment_environment"
     requires: frozenset[BindingKind] = frozenset({"experiment_environment_contract"})
 

@@ -18,13 +18,11 @@ export interface AuthoringWorkflowModel {
   steps: readonly AuthoringStep[];
   statuses: Readonly<Partial<Record<AuthoringStepKey, AuthoringStepStatus>>>;
   complete: number;
-  /** The step the REE says to do next, highlighted wherever the DAG shows. */
   nextKey: AuthoringStepKey | undefined;
   nextPage: AppShellPage | undefined;
   active: boolean;
 }
 
-/** The authoring graph as the REE stands on it. */
 export function authoringWorkflowModel(ree: ReeEditorViewModel): AuthoringWorkflowModel {
   const { steps, next } = ree.steps;
   const statuses = Object.fromEntries(steps.map((step) => [step.key, step.status]));
@@ -40,7 +38,6 @@ export function authoringWorkflowModel(ree: ReeEditorViewModel): AuthoringWorkfl
   };
 }
 
-/** Navigation panel rendered inside the shared workflow HUD. */
 export function AuthoringWorkflowPanel({ page, model, onNavigate }: AuthoringWorkflowPanelProps) {
   return (
     <AuthoringDag
@@ -90,8 +87,6 @@ function AuthoringDag({
                 onClick={() => onNavigate(target)}
               >
                 <span className={styles.number}>{String(step.order).padStart(2, "0")}</span>
-                {/* Floated, so the label's own block box shrinks beside it
-                 * rather than running underneath. */}
                 {next ? <span className={styles.nextTag}>next</span> : null}
                 <span className={styles.label}>{step.label}</span>
               </button>

@@ -14,7 +14,6 @@ const auditStep = {
   reasons: [],
 };
 
-// What the REE says of its steps: every receipt current, the definition whole, not yet sealed.
 const visualSteps = {
   steps: [
     {
@@ -309,7 +308,6 @@ const visualRee = {
   ],
 };
 
-// The stores REEs are kept in, and how each one's machine runs an REE's scripts.
 const stores = {
   stores: [
     {

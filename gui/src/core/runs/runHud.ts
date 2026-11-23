@@ -1,23 +1,15 @@
-// View model for the logs HUD: one tab per pipeline step, each tab holding
-// that step's run history. Tab order is pipeline order (not recency) so tab
-// positions stay stable across sessions.
 import type { ReeRunOperation } from "@core/generated/vocabulary";
 import type { ReeRunSummary } from "./ReeRun";
 import { isTerminalReeRunStatus } from "./ReeRunStatus";
 
 interface RunHudTab {
   key: string;
-  /** Short label shown in the resting tab strip. */
   abbrev: string;
-  /** Full name the tab expands to on hover. */
   label: string;
-  /** Run operations collected under this tab. */
   operations: readonly ReeRunOperation[];
 }
 
 export const RUN_HUD_TABS = [
-  // Loading an existing REE is part of setting the workbench up, so it shares
-  // the provisioning tab rather than opening one of its own.
   {
     key: "provision",
     abbrev: "PROV",
@@ -78,7 +70,6 @@ export const RUN_HUD_TABS = [
 
 export type RunHudTabKey = (typeof RUN_HUD_TABS)[number]["key"];
 
-/** A tab's full name, for headings and the footer ticker. */
 export function runHudTabLabel(key: RunHudTabKey): string {
   return RUN_HUD_TABS.find((tab) => tab.key === key)?.label ?? key;
 }
@@ -95,7 +86,6 @@ function newestFirst(runs: readonly ReeRunSummary[]): ReeRunSummary[] {
   return [...runs].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Runs belonging to a tab, newest first. */
 export function runsForHudTab(
   runs: readonly ReeRunSummary[],
   tabKey: RunHudTabKey,
@@ -115,20 +105,16 @@ export function activeRunCount(runs: readonly ReeRunSummary[]): number {
   return runs.filter(isActiveReeRun).length;
 }
 
-/** The most recently started run that is still active, if any. */
 export function newestActiveRun(runs: readonly ReeRunSummary[]): ReeRunSummary | undefined {
   return newestFirst(runs).find(isActiveReeRun);
 }
 
-/** The most recent run overall — what the collapsed ticker shows. */
 export function newestRun(runs: readonly ReeRunSummary[]): ReeRunSummary | undefined {
   return newestFirst(runs)[0];
 }
 
 interface RunHudTabActivity {
-  /** A run under this tab is currently active. */
   active: boolean;
-  /** The tab's newest run finished without succeeding (and none is active). */
   failed: boolean;
 }
 
@@ -143,7 +129,6 @@ export function hudTabActivity(
   return { active, failed };
 }
 
-/** "4m 02s" run duration, or undefined while the run has no usable window yet. */
 export function formatRunDuration(run: ReeRunSummary): string | undefined {
   const start = run.startedAt ?? run.createdAt;
   const end = run.finishedAt;
@@ -157,28 +142,18 @@ export function formatRunDuration(run: ReeRunSummary): string | undefined {
   return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
 }
 
-/** How the ticker reads a run's state. A colour identity, not a colour. */
 export type RunTickerTone = "idle" | "active" | "succeeded" | "failed";
 
 interface RunTicker {
-  /** The one line the footer's logs cell shows, e.g. "Build · succeeded". */
   detail: string;
   tone: RunTickerTone;
 }
 
-/**
- * The resting summary of every run of this REE, for the footer bar's logs cell.
- * An active run is what the user wants to see even when a later one has already
- * finished, so it wins the line; otherwise the newest run overall reports.
- */
 export function runTicker(runs: readonly ReeRunSummary[]): RunTicker {
   const active = activeRunCount(runs);
   const featured = newestActiveRun(runs) ?? newestRun(runs);
   if (!featured) return { detail: "No runs yet", tone: "idle" };
 
-  // One run can be named by its step. Several cannot — naming one of them while
-  // counting all of them reads as though that step ran twice — so the count
-  // stands alone.
   if (active > 1) return { detail: `${active} runs active`, tone: "active" };
 
   const label = runHudTabLabel(runHudTabForOperation(featured.operation));

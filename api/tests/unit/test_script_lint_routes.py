@@ -1,10 +1,3 @@
-"""The script-lint endpoints.
-
-``checkScriptDraft`` asks the REE's workbench to run ``ree lint-draft``; what the
-checks find is the CLI's to test (cli/tests/unit/test_authoring_verbs.py). Here:
-what the route sends there, and what it refuses before sending anything.
-"""
-
 from __future__ import annotations
 
 from typing import Any
@@ -62,8 +55,6 @@ def test_a_draft_goes_to_the_rees_workbench(
 def test_a_draft_rejects_declarations_it_does_not_read(
     client: TestClient, online_ree: ReeRoute, sent: list[tuple[Any, ...]]
 ) -> None:
-    # The declaration surface is an explicit part of the contract, so a field
-    # no rule consults is a mistake worth reporting rather than ignoring.
     resp = client.post(
         f"/api/v1/rees/{online_ree.ree_id}/script-lints:draft",
         json=_draft("set -eu\n", declarations={"build_experiment_environment_script_size": 0}),

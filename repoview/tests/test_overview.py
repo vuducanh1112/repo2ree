@@ -1,5 +1,3 @@
-"""The overview reads its owners' exports and builds a whole bundle of this tree."""
-
 from __future__ import annotations
 
 import json
@@ -30,7 +28,6 @@ from repo2ree_repoview.stamp import Stamp, record
 
 @pytest.fixture
 def exports(tmp_path: Path) -> Path:
-    """The owners' exports as the recipes `just repo-overview` depends on write them."""
     directory = tmp_path / "exports"
     directory.mkdir()
     (directory / "spec.json").write_text(exported(SPEC_EXPORT))
@@ -91,7 +88,6 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
             *("ree", "review", "architecture", "interfaces", "interfaces-cli", "interfaces-api", "contracts"),
             "vocabulary-graph",
             *("just-recipes", "contracts-environment"),
-            # The frame its bundled evidence is shown in.
             "evidence",
         )
     } | {
@@ -130,6 +126,5 @@ def test_the_frame_shows_a_bundled_evidence_page_beside_the_sidebar(tmp_path: Pa
     target = build(tmp_path / "overview", exports)
     frame = (target / "evidence.html").read_text()
     assert '<iframe id="shown"' in frame
-    # Every page of the overview, as its sidebar lists them, and none marked: the frame marks the one it came from.
     assert 'href="assurance-gate.html"' in frame
     assert 'class="current"' not in frame

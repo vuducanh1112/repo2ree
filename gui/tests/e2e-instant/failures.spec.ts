@@ -21,12 +21,6 @@ echo 'resolving dependencies'
 exit 3
 `;
 
-/**
- * How the author sees a stage fail, and recovers: the failure and its log are
- * on screen, no success badge is earned, and fixing the script builds the same
- * REE. The fault matrix itself lives in the system suite (testbed/suites/system);
- * this spec covers what the GUI shows.
- */
 test.describe("Instant failures", () => {
   test("a failing build is shown with its log, and a fixed script builds", async ({ page }) => {
     await test.step("provision and upload", async () => {

@@ -19,8 +19,6 @@ const runQueries = vi.hoisted(() => ({
   logs: vi.fn(() => ({ data: undefined })),
 }));
 
-// Coverage instrumentation can make the first lazy page chunk take longer
-// than Testing Library's one-second default on a cold dependency cache.
 const LAZY_PAGE_TIMEOUT_MS = 5000;
 
 vi.mock("@shell/data/runs/queries", async (importOriginal) => {

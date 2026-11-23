@@ -4,11 +4,6 @@ import { useReeRuntime } from "../apiRuntime";
 import { requireReeId, resolveReeId } from "../client";
 import { queryKeys } from "../queryKeys";
 
-/**
- * Fetch the reproducibility threat report for an REE. The report is a standalone
- * artifact written by the evaluate run; it 404s until the first run completes, so
- * gate `enabled` on a completed run.
- */
 export function useEvaluateReportQuery({
   reeId,
   enabled = true,
@@ -17,8 +12,6 @@ export function useEvaluateReportQuery({
   enabled?: boolean;
 }) {
   const runtime = useReeRuntime();
-  // Key on the (possibly sentinel) requested id, like useReeQuery; resolve the real
-  // workspace id inside the queryFn so we don't hit the literal "active" alias.
   const resolvedReeId = resolveReeId(runtime, reeId);
   return useQuery<ReproducibilityReport | null>({
     queryKey: queryKeys.evaluateReport(resolvedReeId),

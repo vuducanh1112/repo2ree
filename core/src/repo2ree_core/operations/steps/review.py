@@ -1,15 +1,3 @@
-"""Machinery shared by the reviewer-side step handlers.
-
-A review step writes into a parallel REE tree, and every way it can stop has to
-leave that tree's record consistent with what happened. This module owns the
-step preamble, both of a step's exits (:class:`ReviewStep`), and the guards that
-run before a step is marked running.
-
-The ``require_*`` / ``open_*`` helpers return either their value or the
-``ActionResult`` the caller returns unchanged; guard-only helpers return
-``ActionResult | None``. Design rationale: ``docs/engineering/explanation/step-lifecycle.md``.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -49,23 +37,12 @@ from repo2ree_ree.review import (
 from repo2ree_ree.signature import review_signature_path
 from repo2ree_telemetry.spans import ReviewStepAttrs
 
-# Signature of the per-handler early exit: a terminal status and why.
 ReviewHalt = Callable[[ReviewStatus, str], ActionResult]
 
-# What a completed step settled. The four vocabularies are disjoint apart from
-# ``identical``; the union is what the shared exit accepts, so a step cannot
-# report a verdict from a lifecycle it does not belong to.
 ReviewVerdict = ComparisonVerdict | ExperimentEnvironmentVerdict | ActivationVerdict | ExperimentVerdict
 
 
 class ReviewSettle(Protocol):
-    """Signature of the per-handler success exit.
-
-    A protocol rather than a ``Callable[...]`` alias so the optional keyword
-    arguments stay checked — a typo in one would otherwise be silently dropped
-    from the span.
-    """
-
     def __call__(
         self,
         record: ReviewRecord,
@@ -79,28 +56,12 @@ class ReviewSettle(Protocol):
 
 @dataclass(frozen=True)
 class ReviewStep:
-    """A started review step: the record it began from, and the two ways it ends.
-
-    ``record`` is the *started* record, which every later write must build on —
-    a handler that kept the pre-start record would persist a step whose status
-    contradicts what the exit already wrote.
-
-    ``stop`` and ``settle`` are closures over this step's identity held as
-    fields rather than methods, so they cannot be called with a different one.
-    """
-
     record: ReviewRecord
     stop: ReviewHalt
     settle: ReviewSettle
 
 
 def require_ree_baseline(ree_layout: ReeLayout, *, log: LogSink) -> Ree | ActionResult:
-    """The author baseline this attempt reviews, or the failure to return.
-
-    Read *before* the step is marked running: a baseline nobody can read is a
-    precondition nobody can meet, so there is nothing to mark running and
-    nothing to settle a halt on.
-    """
     store = ReeDirectory(ree_layout)
     if not store.manifest_exists():
         message = "This workbench holds no REE to review"
@@ -109,21 +70,12 @@ def require_ree_baseline(ree_layout: ReeLayout, *, log: LogSink) -> Ree | Action
     try:
         return store.read_ree()
     except UNREADABLE_DOCUMENT as exc:
-        # A precondition rather than an `internal` fault: the document is the
-        # REE's, not this code's, so the reviewer's next action is to fix the
-        # baseline rather than to report a bug.
         message = f"The REE under review has unreadable metadata: {exc}"
         log("system", "error", message)
         return ActionResult.failed("precondition", message)
 
 
 def require_review_record(review_layout: ReviewLayout, review_id: str, log: LogSink) -> ReviewRecord | ActionResult:
-    """The attempt this step joins, or the failure to return when there is none.
-
-    Only the source step opens an attempt; every later step joins one, so "no
-    such attempt" is the same precondition failure for all of them. Halts
-    *before* :func:`begin_review_step`, for the reason given there.
-    """
     record = read_review_record(review_layout)
     if record is None:
         message = f"No review attempt named {review_id}"
@@ -135,7 +87,6 @@ def require_review_record(review_layout: ReviewLayout, review_id: str, log: LogS
 
 
 def refuse_signed_review(review_layout: ReviewLayout, review_id: str, log: LogSink) -> ActionResult | None:
-    """The failure to return for a signed review: it changes no more, so no step runs in it, nor reopens it."""
     if not (review_layout.root / review_signature_path()).is_file():
         return None
     message = f"Review {review_id} is signed, and a signed review changes no more: open a new review"
@@ -153,12 +104,6 @@ def begin_review_step(
     log: LogSink,
     noun: str,
 ) -> ReviewStep:
-    """Mark a step running on the persisted record and arm both of its exits.
-
-    The record is written *before* any work, so an attempt killed mid-step reads
-    as a step that started rather than one that never ran. The step's identity
-    goes on the span here rather than at either exit, for the same reason.
-    """
     started = with_step(record, step, status="running", at=timer.started_at)
     write_review_record(review_layout, started)
     ReviewStepAttrs(review_id=review_id, step=step).apply_current()
@@ -192,14 +137,6 @@ def _review_step_halt(
     log: LogSink,
     noun: str,
 ) -> ReviewHalt:
-    """Build the "this step could not run" exit: canceled, precondition, nonzero.
-
-    Settles the step on the persisted record, logs it, and returns a result that
-    agrees with both. *Not* for a step that ran to completion and found
-    something unwelcome — those settle with a verdict through
-    :func:`_review_step_settle`.
-    """
-
     def halt(status: ReviewStatus, message: str) -> ActionResult:
         timing = timer.finish()
         write_review_record(
@@ -222,16 +159,6 @@ def _review_step_settle(
     log: LogSink,
     noun: str,
 ) -> ReviewSettle:
-    """Build the "this step ran to completion" exit for one review step.
-
-    Settles ``completed`` whatever the verdict — the verdict is the handler's
-    business, not this one's.
-
-    The handler passes the record already carrying this step's evidence together
-    with the ``timing`` that evidence was stamped with, so the record can never
-    claim a duration its own receipt contradicts.
-    """
-
     def settle(
         record: ReviewRecord,
         timing: OperationTiming,
@@ -267,12 +194,6 @@ def require_completed_step(
     stop: ReviewHalt,
     message: str,
 ) -> ActionResult | None:
-    """Halt unless the step this one builds on has completed.
-
-    The review lifecycle is a chain: source, build, activation, experiments.
-    ``message`` should say what to do about it rather than restate the graph — a
-    client that called out of order needs the next action, not the topology.
-    """
     state = step_state(record, step)
     if state is None or state.status != "completed":
         return stop("failed", message)
@@ -281,11 +202,6 @@ def require_completed_step(
 
 @dataclass(frozen=True)
 class CertifiedExperimentEnvironment:
-    """The experiment environment a review attempt certified, as its build receipt records it.
-
-    That the file kept beside the review is still this one is checked where a step lays out its workspace.
-    """
-
     basis: EvidenceBasis
     experiment_environment_receipt: ReviewBuildExperimentEnvironmentReceipt
     experiment_environment_path: str
@@ -298,11 +214,6 @@ def require_certified_experiment_environment(
     stop: ReviewHalt,
     purpose: str,
 ) -> CertifiedExperimentEnvironment | ActionResult:
-    """The apparatus every post-build review step runs against, or the halt.
-
-    ``purpose`` completes "This attempt has recorded no experiment environment …", so each step says what *it* was
-    trying to do.
-    """
     basis = attempt_basis(record)
     receipt = record.receipts.build_experiment_environment
     if basis is None or receipt is None:
@@ -313,11 +224,6 @@ def require_certified_experiment_environment(
         experiment_environment_path=str(receipt.artifact_path),
         experiment_environment_digest=receipt.produced_artifact_digest,
     )
-
-
-# ================================================
-# The workspace a review step runs in
-# ================================================
 
 
 def _review_source(review: ReviewLayout, record: ReviewRecord, workspace: Path) -> None:
@@ -353,10 +259,6 @@ def _review_environment(review: ReviewLayout, record: ReviewRecord, workspace: P
 
 
 def lay_out_review(review: ReviewLayout, record: ReviewRecord, run_id: str, *, after_build: bool) -> Path:
-    """A fresh workspace for the review attempt ``run_id``: the source as the review's acquisition observed it and the
-    overlay the review holds over it; ``after_build``, that overlay as the review's build copied it and the experiment
-    environment the build certified, where the author's scripts look for it. Raises ReePreconditionError when what
-    the review records is not there as it records it."""
     workspace = fresh(review, run_id)
     _review_source(review, record, workspace)
     if after_build:
@@ -367,73 +269,37 @@ def lay_out_review(review: ReviewLayout, record: ReviewRecord, run_id: str, *, a
     return workspace
 
 
-# ================================================
-# Running one of the author's runnables
-# ================================================
-
-
-#: An extra precondition a step has that the others do not, checked once the
-#: certified experiment environment is in hand. Returns the refusal message, or None to admit.
 ReviewAdmission = Callable[[ReviewRecord, CertifiedExperimentEnvironment], str | None]
 
 
 def review_launch(record: ReviewRecord, ree: Ree, workspace: Path) -> Launch | None:
-    """How this attempt launches the author's scripts in ``workspace``: as the reviewer chose, and only through the
-    launch script the author declares. Raises ``ReePreconditionError`` when the author's copy is not that script."""
     if record.launch.mode == "native":
         return None
     return declared_launch(ree.subject.definition.launch, workspace, record.launch.options)
 
 
 def launch_digest(ree: Ree, launch: Launch | None) -> Digest | None:
-    """The digest of the author's launch script a step ran under; None when it ran natively."""
     return ree.subject.definition.launch.launch_script_digest if launch is not None else None
 
 
 @dataclass(frozen=True)
 class ReviewRunnableStep:
-    """What distinguishes the two review steps that run one of the author's runnables.
-
-    Covers how a step *gets to* its run and stops there; what each handler does
-    with the outcome stays in the handler. See
-    ``docs/engineering/explanation/step-lifecycle.md``.
-
-    ``admit`` is the one genuinely per-step precondition — activation needs an
-    experiment environment artifact to enter, an experiment needs an activation that passed. It
-    runs after certification, so both steps report the apparatus being absent
-    before reporting what they wanted it for.
-    """
-
     step: ReviewStepKey
-    #: Completes the log line: "<noun> completed in …", "<noun> failed: …".
     noun: str
-    #: Names the step in cancellation messages: "canceled before <subject>".
     subject: str
     requires: ReviewStepKey
     requires_message: str
     experiment_environment_purpose: str
     admit: ReviewAdmission
-    #: Resolve the runnable this step runs, and the label it runs under. Raises
-    #: ``ValueError`` when the baseline cannot produce it.
     select: Callable[[ReeDefinition], tuple[RunnableSpec, str]]
-    #: Completes "<unresolvable>: <why>" when ``select`` refuses.
     unresolvable: str
-    #: Completes "the author baseline declares <script_noun> that is not there".
     script_noun: str
 
 
 @dataclass(frozen=True)
 class ReviewRun:
-    """One of the author's runnables, resolved and run inside a review attempt.
-
-    Everything a handler needs to judge what just happened and settle it: the
-    trees to read and write, the step's two exits, the experiment environment the run is bound
-    to, and the run's own outcome. The handler owns everything from here on.
-    """
-
     ree_layout: ReeLayout
     review_layout: ReviewLayout
-    # Where the run ran, laid out for it alone; discarded once the handler has settled the step.
     workspace: Path
     step: ReviewStep
     timer: OperationTimer
@@ -441,7 +307,6 @@ class ReviewRun:
     runnable: RunnableSpec
     label: str
     outcome: ExperimentRunOutcome
-    # The author's launch script the run went through; None when it ran directly.
     launch_script_digest: Digest | None
 
 
@@ -454,12 +319,6 @@ def open_review_run(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ReviewRun | ActionResult:
-    """Take a review step from its command up to the end of its run.
-
-    Returns the run for the handler to judge, or the ``ActionResult`` to return
-    unchanged — every refusal below has already settled the attempt's record and
-    said why.
-    """
     review_layout = layout.review(review_id)
     timer = OperationTimer.start()
 
@@ -510,8 +369,6 @@ def open_review_run(
     except ReePreconditionError as exc:
         return started.stop("failed", f"cannot lay out a workspace {step.experiment_environment_purpose}: {exc}")
 
-    # Absent apparatus is a fact about the baseline, not a verdict about it:
-    # fail the step rather than settle a verdict nothing ever exercised.
     script = runnable.run_script or runnable.activate_script
     if not (workspace / script).is_file():
         return started.stop(

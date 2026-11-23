@@ -8,11 +8,6 @@ interface LabCellProps {
   onSelect: () => void;
 }
 
-/**
- * One lab, as a bay on the deck. Everything inside is `aria-hidden` and the
- * control is named by `aria-label` instead: the state is shown by a lamp that
- * carries no text, so the accessible name has to say it.
- */
 export function LabCell({ lab, selected, onSelect }: LabCellProps) {
   const name = lab.label;
   const available = lab.available;

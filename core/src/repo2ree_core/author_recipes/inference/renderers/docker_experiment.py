@@ -1,9 +1,3 @@
-"""Fail-closed experiment run scaffold for a Docker experiment environment.
-
-The command runs inside the activated experiment environment and is never selected
-automatically: the author fills the ``set --`` line, and its stdout goes to the run log.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript

@@ -1,11 +1,3 @@
-"""Client-facing file inventories: the materialized workspace, and the REE tree.
-
-Two inventories because the client has two surfaces for them — the workspace is
-the tree an author edits and runs execute against, while the REE tree is browsed
-read-only. They are named for the trees they project (``workspace_files``,
-``ree_files``) rather than one of them being "the" files, since neither is.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +18,6 @@ _REE_SUBTREE_TAGS: dict[str, str] = {
 
 
 def should_inline_file_content(relative_path: str, size: int) -> bool:
-    """Whether a file's text content is small enough for a read-model response."""
     lower_path = relative_path.lower()
     if lower_path.endswith("sbom.json") and size > MAX_INLINE_SBOM_BYTES:
         return False
@@ -34,7 +25,6 @@ def should_inline_file_content(relative_path: str, size: int) -> bool:
 
 
 def classify_workspace_file_kind(relative_path: str) -> WorkspaceFileKind:
-    """Classify a workspace inventory entry by its origin."""
     _ = relative_path
     return "source"
 
@@ -54,7 +44,6 @@ def _read_text_if_possible(path: Path) -> str | None:
 
 
 def read_ree_file_bytes(layout: ReeLayout, path: str) -> bytes:
-    """Read one regular file addressed relative to the REE root."""
     target = resolve_within(layout.root, path)
     if target is None or _is_history_storage(layout, target):
         raise ValueError("Invalid REE file path")
@@ -78,7 +67,6 @@ def list_workspace_files(
     *,
     include_content: bool = True,
 ) -> list[WorkspaceFile]:
-    """Project the materialized workspace as a client-facing inventory."""
     if not layout.workspace.exists():
         raise FileNotFoundError(f"REE not found at {layout.root}")
     directory = ReeDirectory(layout)
@@ -107,26 +95,14 @@ def list_ree_files(
     *,
     include_content: bool = True,
 ) -> list[ReeFile]:
-    """Enumerate client-visible files under the REE root, excluding the workspace.
-
-    ``workspace/`` is left out because :func:`list_workspace_files` already
-    projects it, workspace-root-relative and with its own ``kind`` — including it
-    here too would put every file of the materialized tree (the whole upstream
-    checkout) in one response twice, contents and all.
-    """
     if not layout.root.exists():
         raise FileNotFoundError(f"REE not found at {layout.root}")
     entries: list[ReeFile] = []
-    # Prune Git storage before traversal: it can dwarf the visible REE tree.
     visible_paths: list[Path] = []
     for directory, directories, files in layout.root.walk():
         directories[:] = [name for name in directories if not _is_history_storage(layout, directory / name)]
         visible_paths.extend(directory / name for name in files)
     for path in sorted(visible_paths):
-        # The REE document itself is listed: it is the REE's own published
-        # description, the same file a bundle carries, and a client auditing an
-        # REE has every reason to read it. Writes never reach it — they are
-        # confined to the overlay and workspace subtrees.
         if (
             not path.is_file()
             or _is_history_storage(layout, path)

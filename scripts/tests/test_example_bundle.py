@@ -1,5 +1,3 @@
-"""The example REE is staged from the newest showcase run that sealed it, and adopted only if it holds the spec."""
-
 from __future__ import annotations
 
 import json

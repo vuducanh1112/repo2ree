@@ -1,13 +1,3 @@
-"""The read-only script-inference route.
-
-Binds the single synchronous ``suggestScripts`` operation to the
-workbench command of the same name. Inference scans the immutable upstream tree,
-runs the versioned decision DAGs, and returns the full ``InferenceReport`` — it
-persists nothing and writes no files. Turning a returned candidate into an
-actual script stays on the existing ``writeScript`` (PUT .../write-script)
-path; there is no apply or resolve endpoint here.
-"""
-
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -24,43 +14,17 @@ from repo2ree_protocol.command import (
 )
 from repo2ree_protocol.inference import InferenceReport
 
-# ================================================
-# Router
-# ================================================
-
-
 inference_router = APIRouter(tags=["files"])
 
 
-# ================================================
-# Data Models
-# ================================================
-
-
-# A subclass of the command's ``ScriptTargetSelectorArg`` rather than the arg itself,
-# because the class name and docstring are the schema name and description in the
-# published contract; its fields and its rule for experiment names are the arg's,
-# so what a client may ask for and what the workbench accepts cannot drift apart.
-# Keep maintenance notes like this one *out* of the docstring: it is published to
-# every API consumer.
 class ScriptTargetSelectorPayload(ScriptTargetSelectorArg):
-    """One target a caller asks inference about: a kind, never a path.
-
-    The workbench resolves the reserved path from the kind (and, for
-    experiments, the reserved slug convention); a caller cannot redirect
-    inference at an arbitrary workspace file.
-    """
+    pass
 
 
 class SuggestScriptsPayload(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     targets: list[ScriptTargetSelectorPayload]
-
-
-# ================================================
-# Route Handlers
-# ================================================
 
 
 @inference_router.post(
@@ -71,16 +35,6 @@ class SuggestScriptsPayload(BaseModel):
     responses=ERROR_RESPONSES,
 )
 def suggest_scripts_route(ree_id: str, payload: SuggestScriptsPayload) -> InferenceReport:
-    """Synchronously generate candidate scripts for the requested targets, from the REE's own project.
-
-    This proposes the build script (from a Dockerfile or a requirements.txt, say)
-    and scaffolds the activation and experiment scripts. Nothing is written:
-    ``writeScript`` is how a candidate is adopted.
-
-    Read-only and always recomputed: every call rescans and re-runs the DAGs
-    against current inputs, so it needs no idempotency key and returns the report
-    directly rather than a background run.
-    """
     with author_api_action("suggest_scripts", ree_id):
         return _suggest(ree_id, payload)
 

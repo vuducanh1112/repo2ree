@@ -58,7 +58,6 @@ export function buildBuildStepRunRequest(
   _params: ReeStepRunParamsByKey["build_experiment_environment"],
   _ree: StepRee,
 ): ReeStepRunRequestByKey["build_experiment_environment"] {
-  // The build always runs the reserved build script; there is nothing to send.
   return {
     scriptKey: "build_experiment_environment",
     params: {},
@@ -78,8 +77,6 @@ export function buildSbomStepRunRequest(
   _params: ReeStepRunParamsByKey["generate_sbom"],
   _ree: StepRee,
 ): ReeStepRunRequestByKey["generate_sbom"] {
-  // The scan targets the runtime the build recipe declares; there is nothing
-  // to send that the REE does not already hold.
   return {
     scriptKey: "generate_sbom",
     params: {},
@@ -133,8 +130,6 @@ export function buildStepRunParams(
   params: GenericReeStepParams,
   ree: StepRee,
 ): Record<string, StepRequestParamValue> {
-  // Delegate to the single typed dispatcher so the per-key request shapes are
-  // defined in exactly one place; keys outside the known set pass through.
   if (!isReeStepKey(key)) {
     return params;
   }

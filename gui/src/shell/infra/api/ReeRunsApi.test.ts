@@ -90,7 +90,6 @@ describe("mapRunLogsToLines", () => {
     expect(
       mapRunLogsToLines([
         stderr("info", "#5 [1/5] FROM docker.io/library/python:3.11-slim"),
-        // Runs recorded before stderr stopped being called a warning read the same.
         stderr("warn", "89.12 WARNING: Retrying (Retry(total=0))"),
         stderr("info", "#8 105.1 ERROR: No matching distribution found for pandas==2.2.1"),
         stderr("info", "fatal: not a git repository"),

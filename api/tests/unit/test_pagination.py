@@ -1,5 +1,3 @@
-"""Pure request-plumbing helpers shared across the routers."""
-
 from __future__ import annotations
 
 from typing import Any, cast
@@ -9,12 +7,6 @@ from fastapi import HTTPException
 
 from repo2ree_api.pagination import keyset_paginate
 
-# ================================================
-# keyset_paginate
-# ================================================
-
-
-# Sorted descending by (created_at, id), the order the routes hand in.
 ITEMS = [
     {"created_at": "t5", "id": "e"},
     {"created_at": "t4", "id": "d"},
@@ -57,8 +49,6 @@ def test_keyset_last_page_has_no_next_cursor():
 
 
 def test_keyset_items_created_between_pages_do_not_shift_the_boundary():
-    # A new item at the head (newest) must not push earlier items into the
-    # next page — the failure mode of offset cursors.
     grown = [{"created_at": "t6", "id": "f"}, *ITEMS]
     page, _, _ = keyset_paginate(grown, cursor="t4~d", limit=2, key=_key)
     assert page == ITEMS[2:4]
@@ -68,7 +58,5 @@ def test_keyset_malformed_cursor_is_a_400_invalid_cursor():
     with pytest.raises(HTTPException) as excinfo:
         keyset_paginate(ITEMS, cursor="no-separator", limit=2, key=_key)
     assert excinfo.value.status_code == 400
-    # Starlette declares ``detail`` as a string; this API raises the structured
-    # error envelope through it, which is what the handler in main.py renders.
     detail = cast(dict[str, Any], excinfo.value.detail)
     assert detail["code"] == "invalid_cursor"

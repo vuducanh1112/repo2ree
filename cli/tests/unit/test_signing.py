@@ -1,6 +1,3 @@
-"""`ree sign-ree` signs the sealed REE with Sigstore and keeps the bundle beside the seal, and `ree sign-review`
-signs a review of it with the review's record as the statement's predicate; the network is faked."""
-
 from __future__ import annotations
 
 import base64
@@ -39,7 +36,7 @@ from repo2ree_ree.signature import (
 
 runner = CliRunner()
 SIGNATURE = signature_path("author_approval")
-TOKEN = "an-oidc-token-that-never-reaches-the-ree"  # noqa: S105 — a stand-in, never a credential
+TOKEN = "an-oidc-token-that-never-reaches-the-ree"  # noqa: S105
 
 
 def ree(root: Path, *words: str, env: dict[str, str] | None = None) -> Result:
@@ -50,7 +47,6 @@ def answered(result: Result) -> ActionResult:
     return ActionResult.model_validate_json(result.stdout)
 
 
-# Ed25519 signs deterministically, so the bundle a request makes is the same bytes every time.
 SIGNER = ed25519.Ed25519PrivateKey.from_private_bytes(bytes(32))
 
 
@@ -71,7 +67,6 @@ def certificate(key: ed25519.Ed25519PrivateKey) -> bytes:
 
 
 def bundle(request: signing.SigningRequest, *, holder: ed25519.Ed25519PrivateKey = SIGNER) -> bytes:
-    """What Sigstore makes of ``request``: signed by SIGNER, in a bundle whose certificate holds ``holder``'s key."""
     algorithm, _, value = str(request.ree_digest).partition(":")
     statement = {
         "_type": "https://in-toto.io/Statement/v1",
@@ -210,7 +205,6 @@ def test_a_ree_without_a_sigstore_client_says_so(monkeypatch: pytest.MonkeyPatch
 
 
 def reviewed(root: Path, review_id: str, seal: str | None) -> Path:
-    """A settled review of the REE at ``root``, of its seal or of a draft: where its record is."""
     review = ReeLayout(root=root).review(review_id)
     at = parse_utc_instant("2026-11-19T00:00:00Z")
     record = with_step(

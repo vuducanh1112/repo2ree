@@ -65,7 +65,6 @@ describe("WorkspaceFooterBar", () => {
     expect(await screen.findByText("lab-1")).toBeVisible();
     expect(await screen.findByText("Build Experiment Environment · succeeded")).toBeVisible();
 
-    // Each cell shows whether the console it owns is open.
     expect(screen.getByRole("button", { name: /Workbench/ })).toHaveAttribute(
       "aria-pressed",
       "false",

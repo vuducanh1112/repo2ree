@@ -10,13 +10,6 @@ import { Surface } from "@shell/ui/shared/components/Surface";
 import { RunActionButton } from "../../../components/RunActionButton";
 import styles from "../GenerateSbomPage.module.css";
 
-/**
- * Cross-check the runtime SBOM against the scanned dependency inventory.
- * A lightweight run (no step-catalog node): results land in the evaluate
- * report and aggregate audit. The
- * per-dependency presence badges render in the readiness page's inventory
- * table; this card owns the trigger and the aggregates.
- */
 export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color: string }) {
   const reeId = useReeId();
   const reportQuery = useEvaluateReportQuery({ reeId, enabled: !!reeId });
@@ -27,11 +20,6 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
     startRun.isPending ||
     runs.some((run) => run.operation === "cross_check_sbom" && !isTerminalReeRunStatus(run.status));
   const hasReport = !!reportQuery.data;
-  // The cross-check does not land in the evaluate report: that artifact is the
-  // evaluate run's own evidence, digest-pinned by its receipt, so a later run
-  // may not rewrite it. The result rides on the cross-check run instead —
-  // aggregates and the undeclared packages both — and the run list is already
-  // in hand here, so read the newest succeeded one.
   const summary = latestCrossCheckSummary(runs);
   const disabled = checking || !sbomReady || !hasReport;
 
@@ -74,11 +62,6 @@ export function CrossCheckCard({ sbomReady, color }: { sbomReady: boolean; color
   );
 }
 
-/**
- * Aggregates of the cross-check. "Not in experiment environment" is evidence, not a defect —
- * dev/build-only deps legitimately never reach the runtime — so only the
- * undeclared packages get an itemized list.
- */
 function CrossCheckResults({ summary }: { summary: SbomCrossCheckSummary }) {
   return (
     <div className={styles.results}>

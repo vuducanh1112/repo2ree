@@ -5,7 +5,6 @@ describe("experimentIndexFromField", () => {
   it("extracts the index from an experiment field deep-link", () => {
     expect(experimentIndexFromField("experiments[0].name")).toBe(0);
     expect(experimentIndexFromField("experiments[12].command")).toBe(12);
-    // The index alone (no trailing field) is enough to target an experiment.
     expect(experimentIndexFromField("experiments[3]")).toBe(3);
   });
 

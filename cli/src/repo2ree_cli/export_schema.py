@@ -1,6 +1,3 @@
-"""The command line's contract, as ``contracts/cli/cli.schema.json`` publishes it (``scripts/contracts.py``): what
-``ree schema`` prints."""
-
 from __future__ import annotations
 
 import json

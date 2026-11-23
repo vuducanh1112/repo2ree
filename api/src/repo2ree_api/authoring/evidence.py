@@ -1,5 +1,3 @@
-"""What the authoring steps left behind, read back."""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -20,7 +18,6 @@ receipts_router = APIRouter(tags=["receipts"])
     responses=ERROR_RESPONSES,
 )
 def list_author_receipts(ree_id: str) -> ReeReceipts:
-    """Successful receipts carried by the portable aggregate."""
     with author_api_action("list_receipts", ree_id):
         handle = require_handle(ree_id)
         try:

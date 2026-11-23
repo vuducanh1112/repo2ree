@@ -1,5 +1,3 @@
-"""Report unedited template placeholders and command scaffolds."""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -25,7 +23,6 @@ class UneditedPlaceholderRule:
     )
 
     def check(self, context: ScriptContext) -> tuple[Finding, ...]:
-        # Placeholders are meaningful inside quoted values, so inspect source rather than tokens.
         return tuple(
             make_finding(self.code, path=context.path, line=number, detail=line.strip())
             for number, line in enumerate(context.source.splitlines(), start=1)
@@ -39,7 +36,6 @@ class EmptyCommandScaffoldRule:
     applies_to: ClassVar[frozenset[TargetKind]] = frozenset({"experiment_run"})
 
     def check(self, context: ScriptContext) -> tuple[Finding, ...]:
-        # Tokenization excludes the commented examples rendered above the live scaffold.
         words = context.words.words
         findings = []
         for index, word in enumerate(words):

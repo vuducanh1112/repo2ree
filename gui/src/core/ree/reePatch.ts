@@ -4,8 +4,6 @@ import { bytesFromGib, mbpsFromGbps } from "../hbom/hbomUnits";
 import type { WorkspaceSourceState } from "../workspace/WorkspaceSourceState";
 import type { Hbom, ReeCatalogMetadata, ReeExperiment, ReeSpec } from "./ReeSpec";
 
-// The editor still uses its UI-oriented ReeSpec, while this serializer owns
-// the conversion to the portable definition's wire shape.
 export interface ReeIntentPatch extends Record<string, unknown> {
   name: string;
   catalog: Record<string, unknown>;
@@ -37,7 +35,6 @@ function serializeCatalogMetadata(metadata: ReeCatalogMetadata): Record<string, 
   };
 }
 
-// The run script it was declared with names the experiment a rename came from, so its scripts move with it.
 function serializeExperiment(experiment: ReeExperiment): Record<string, unknown> {
   return {
     name: experiment.name,
@@ -92,20 +89,10 @@ function serializeHbom(hbom: Hbom): Record<string, unknown> {
   };
 }
 
-// The source never rides on autosave: it changes only by acquiring or removing it,
-// and the backend refuses a definition patch that would change it.
 export function toReePatchFromSlices({ reeSpec }: ReePatchSlices): ReeIntentPatch {
   return {
     name: reeSpec.name || "",
     catalog: serializeCatalogMetadata(reeSpec.catalogMetadata),
-    // The runtime destination rides on the build recipe, not beside it: the
-    // script and what it produces are one declaration (as with an experiment's
-    // output_paths). Sending only this key is safe — the backend rehydrates the
-    // script's identity from the reserved overlay file, which every REE is
-    // seeded with, and carries the declared path through. An undeclared path is
-    // sent as null so clearing the field clears the declaration; the recipe
-    // itself is never nulled, since dropping it would discard the build script
-    // the REE already owns.
     experiment_environment: { artifact_path: reeSpec.experimentEnvironmentPath || null },
     experiments: (reeSpec.experiments || []).map(serializeExperiment),
     hbom: serializeHbom(reeSpec.hbom),

@@ -1,5 +1,3 @@
-"""Many traces fold into one catalogue: each operation once, its lines counted across the instances that ran it."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -42,7 +40,6 @@ def test_a_failure_path_is_drawn_apart_from_the_success_it_diverges_from() -> No
 def test_each_line_counts_the_instances_that_show_it() -> None:
     build = build_catalogue([("a", trace_of(recorded(), build_spans())), ("b", trace_of(recorded()))]).operations[1]
     everything = {(line.provenance, line.label): line.seen for line in (*build.lines, *build.elsewhere)}
-    # Both instances journal the dispatch and capture it in Git; only one recorded spans.
     assert everything[("journal", "start_run · build_experiment_environment")] == 2
     assert everything[("git", "commit …")] == 2
     assert everything[("span", "POST /rees/{id}/build-experiment-environment")] == 1
@@ -62,13 +59,12 @@ def test_requests_matched_only_by_time_are_not_part_of_the_operation() -> None:
     padded = trace.model_copy(update={"entries": tuple(with_earlier(entry) for entry in trace.entries)})
     build = build_catalogue([("a", padded)]).operations[1]
     assert build.lines == build_catalogue([("a", trace)]).operations[1].lines
-    assert build.lines[0].t == 0.0  # Time runs from the operation's own first line.
+    assert build.lines[0].t == 0.0
 
 
 def test_a_lane_is_reached_only_as_far_as_every_instance_reaches_it() -> None:
     with_spans = build_catalogue([("a", trace_of(recorded(), build_spans()))]).operations[1].reach
     assert (with_spans["api"], with_spans["core"]) == ("checked", "checked")
-    # The supervisor's journal holds what it sent and was answered, nothing the workbench recorded itself.
     assert with_spans["workbench"] == "exchanged"
     assert with_spans["cli"] == "span"
 

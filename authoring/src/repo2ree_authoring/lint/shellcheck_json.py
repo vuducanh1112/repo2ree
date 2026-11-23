@@ -1,5 +1,3 @@
-"""Map ShellCheck ``json1`` output to advisory findings."""
-
 from __future__ import annotations
 
 import json
@@ -15,7 +13,6 @@ _LEVELS: dict[str, FindingSeverity] = {
 
 
 def parse_json1(payload: str, *, path: str) -> tuple[Finding, ...]:
-    """Read findings from one ``shellcheck --format=json1`` document."""
     try:
         document = json.loads(payload)
     except json.JSONDecodeError:

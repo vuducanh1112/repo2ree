@@ -1,5 +1,3 @@
-"""Run the E2E API on a reserved host port: a fresh one, or the one it served before a crash."""
-
 from __future__ import annotations
 
 import socket
@@ -16,7 +14,7 @@ def main() -> None:
     wanted = int(sys.argv[2]) if len(sys.argv) == 3 else 0
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listener.bind(("0.0.0.0", wanted))  # noqa: S104 - test stack; reachable from workbench containers by design
+        listener.bind(("0.0.0.0", wanted))  # noqa: S104
         listener.listen()
         listener.set_inheritable(True)
         port_file.write_text(f"{listener.getsockname()[1]}\n", encoding="ascii")

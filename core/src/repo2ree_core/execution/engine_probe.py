@@ -1,13 +1,3 @@
-"""Which container engines a script run for an REE can use, probed where its scripts run.
-
-The probe is a small POSIX shell script run in the REE's working environment, so it sees what a build script
-would: the same PATH, user and engine socket. For each engine it asks the engine itself, not
-the client's presence: ``docker version`` names the server that answers, which may be Podman behind a socket,
-and ``podman info`` exercises its storage and rootless setup. It writes nothing.
-
-A probe that cannot run says so (``failed``), which inference reads as unknown, never as absence.
-"""
-
 from __future__ import annotations
 
 import subprocess
@@ -43,7 +33,6 @@ ENGINES: tuple[ContainerEngine, ...] = get_args(ContainerEngine)
 
 
 def parse(stdout: str) -> dict[ContainerEngine, EngineObservation]:
-    """The engines a probe reported, by name; lines it does not recognise are ignored."""
     seen: dict[ContainerEngine, EngineObservation] = {}
     for line in stdout.splitlines():
         engine, _, rest = line.partition("\t")
@@ -71,12 +60,6 @@ def parse(stdout: str) -> dict[ContainerEngine, EngineObservation]:
 
 
 def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> ContainerEnginesProbe:
-    """What a finished probe says about the engines.
-
-    An engine it reported keeps its state. When it ran out of time partway, the engines it did not reach
-    are the ones that did not answer, so they are unreachable; when it printed nothing at all, nothing is
-    known.
-    """
     seen = parse(result.stdout)
     if not seen:
         why = f"no answer within {seconds:.0f}s" if result.returncode is None else f"exit {result.returncode}"
@@ -92,8 +75,6 @@ def observed(result: ProbeResult, seconds: float = PROBE_SECONDS) -> ContainerEn
 
 
 class RunnerEngineProbe:
-    """Probes where ree runs the first time it is asked, and answers the same after."""
-
     def __init__(
         self,
         workspace: Path,
@@ -119,6 +100,5 @@ class RunnerEngineProbe:
             ValueError,
             subprocess.SubprocessError,
         ) as error:
-            # The probe could not start: where the scripts would run is unknown, so are its engines.
             return ContainerEnginesProbe(status="failed", detail=str(error))
         return observed(result, self._seconds)

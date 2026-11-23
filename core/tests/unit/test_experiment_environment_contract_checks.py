@@ -1,11 +1,3 @@
-"""Focused runtime-contract tests: provenance and command extraction.
-
-End-to-end coverage of the blocked/resolved branches lives in the activation and
-experiment suites; this pins the two subtler behaviours — the pre-build
-``unchanged_generated_build`` provenance and Docker config command parsing — through an
-experiment's run target, which shares the contract subgraph.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -65,8 +57,6 @@ def _expected_builds(root: Path, experiment_environment: str) -> list[ExpectedBu
         facts=scan_repository(root),
         policy=default_policy(),
         ree_name="Demo",
-        # The renderers write to the declared path, so regeneration only matches
-        # the author's script when it regenerates against the same declaration.
         experiment_environment=ExperimentEnvironmentInputs(declared_experiment_environment_path=experiment_environment),
         machine=machine("docker"),
     )
@@ -85,7 +75,6 @@ def _provenances(result) -> set[str]:
 def test_unchanged_generated_docker_build_resolves_before_the_artifact_exists(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM python:3.11-slim\n", "main.py": "y"})
     body = _generated_build_body(tmp_path, _DOCKER_EXPERIMENT_ENVIRONMENT)
-    # The artifact itself is absent; only the written build script is present.
     inputs = ExperimentEnvironmentInputs(
         declared_experiment_environment_path=_DOCKER_EXPERIMENT_ENVIRONMENT,
         experiments=[_EXPERIMENT],
@@ -161,11 +150,6 @@ def test_docker_entrypoint_and_cmd_combine_into_one_argv_example(tmp_path: Path)
 
 
 def test_two_viable_strategies_resolve_by_the_written_script_not_by_path(tmp_path: Path) -> None:
-    # A Dockerfile beside a requirements.txt makes the experiment environment kind a real
-    # decision, and both strategies now write to the same declared path — so the
-    # artifact path can no longer separate them. The venv build script the author
-    # saved must resolve a venv contract, never the alphabetically first docker
-    # one.
     _tree(tmp_path, {"Dockerfile": "FROM python:3.11-slim\n", "requirements.txt": "flask\n", "main.py": "y"})
     declared = "build/runtime-venv.tar.gz"
     builds = _expected_builds(tmp_path, declared)

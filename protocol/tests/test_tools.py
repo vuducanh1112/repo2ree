@@ -1,5 +1,3 @@
-"""Tool resolution: injected REPO2REE_TOOL_* paths win, PATH is the fallback."""
-
 from __future__ import annotations
 
 import os
@@ -32,8 +30,6 @@ def test_find_tool_verifies_advertised_path(monkeypatch: pytest.MonkeyPatch, tmp
     monkeypatch.setenv("REPO2REE_TOOL_SYFT", str(tool))
     assert find_tool("syft") == str(tool)
 
-    # An advertised path that doesn't exist is unavailable, not a PATH retry:
-    # the workbench said where the tool lives, and it lied.
     monkeypatch.setenv("REPO2REE_TOOL_SYFT", str(tmp_path / "missing"))
     assert find_tool("syft") is None
 

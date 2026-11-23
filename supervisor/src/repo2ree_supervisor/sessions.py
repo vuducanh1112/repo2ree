@@ -1,10 +1,3 @@
-"""A workbench's connection as the behaviour journal records it: one WorkbenchSession per socket.
-
-The session is opened when the workbench says hello, then connected or refused, and lost when
-its socket ends, by whichever way ends it first. It is partitioned by the store it claims only
-when that store is registered: a hello names its store before any token is checked.
-"""
-
 from __future__ import annotations
 
 import threading
@@ -15,8 +8,6 @@ from repo2ree_telemetry.behaviour import events
 
 
 class Session:
-    """One socket's WorkbenchSession; each transition is journaled once, in order, and never after it settled."""
-
     def __init__(self, hello: WorkbenchHello, *, registered: bool) -> None:
         self.session_id = uuid4().hex
         self._hello = hello
@@ -41,7 +32,6 @@ class Session:
         )
 
     def lose(self, reason: events.WorkbenchSessionReason, close_code: int | None = None) -> None:
-        """The socket ended; only the first way it ended is recorded, and only for a connected session."""
         self._move("connected", "lost", {"reason": reason, "close_code": close_code})
 
     def _move(

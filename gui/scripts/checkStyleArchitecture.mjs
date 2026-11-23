@@ -1,18 +1,3 @@
-/* Style-architecture guard.
- *
- * The boundary is that CSS owns visual values, core owns identities, and a
- * `style` prop carries calculated custom properties or nothing. Biome and tsc
- * see none of that, so this is the only thing that does.
- *
- * The rules are absolute. There is no baseline file and no exceptions list:
- * during the migration this ran as a ratchet over a recorded inventory, and
- * that inventory reached zero and was deleted. A violation here is a violation,
- * wherever it is.
- *
- * TS/TSX rules run over the TypeScript AST rather than the file text, so
- * reformatting, nesting, or splitting an expression cannot hide a violation.
- */
-
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, extname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,16 +6,9 @@ import ts from "typescript";
 const guiRoot = fileURLToPath(new URL("..", import.meta.url));
 const sourceRoot = join(guiRoot, "src");
 
-// ================================================
-// What counts as production source
-// ================================================
-
 const TEST_FILE = /[.](?:test|spec)[.]tsx?$/;
 const GENERATED = "src/shell/infra/api/generated/";
 
-/** Raw colors belong to the primitive/theme layers, or to a module that draws
- * an instrument: the milled metal, optical glass and readout inks a bay is
- * built from are artwork values, not semantic roles anything else consumes. */
 const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/theme/tokens.css",
   "src/shell/ui/theme/light.css",
@@ -41,14 +19,11 @@ const COLOR_VALUE_STYLESHEETS = new Set([
   "src/shell/ui/app-shell/canvas/CanvasHub.module.css",
 ]);
 
-/** Files that map low-level palette and material values to semantic roles. */
 const LOW_LEVEL_THEME_STYLESHEETS = new Set([
   ...COLOR_VALUE_STYLESHEETS,
   "src/shell/ui/theme/tones.css",
 ]);
 
-/** The modules the migration deleted. Naming them keeps the deletion from
- * being quietly undone by a re-introduced file of the same name. */
 const LEGACY_THEME_MODULES = new Set(
   [
     "globalCss",
@@ -62,10 +37,6 @@ const LEGACY_THEME_MODULES = new Set(
     "legacyGlobals",
   ].map((name) => `src/shell/ui/theme/${name}`),
 );
-
-// ================================================
-// Rules
-// ================================================
 
 const RULES = {
   "raw-color": "raw color literal — move the value into a theme-owned stylesheet",
@@ -102,12 +73,10 @@ const RULES = {
 const HEX_COLOR = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})(?![0-9a-fA-F])/;
 const FUNCTIONAL_COLOR = /\b(?:rgb|rgba|hsl|hsla)\(/;
 const LOW_LEVEL_THEME_REFERENCE = /var\(--palette-/;
-/** `${token}88` — an alpha suffix glued onto an interpolated value. */
 const ALPHA_SUFFIX = /^[0-9a-fA-F]{2}(?![0-9a-zA-Z])/;
 
 const hasRawColor = (text) => HEX_COLOR.test(text) || FUNCTIONAL_COLOR.test(text);
 
-/** Property names that describe skin rather than domain or geometry. */
 const VISUAL_FIELDS = new Set([
   "background",
   "backgroundColor",
@@ -127,7 +96,6 @@ const VISUAL_FIELDS = new Set([
   "tint",
 ]);
 
-/** Enough CSS property names to recognise a style object without guessing. */
 const CSS_PROPERTIES = new Set([
   "alignItems",
   "background",
@@ -160,10 +128,6 @@ const CSS_PROPERTIES = new Set([
   "zIndex",
 ]);
 
-// ================================================
-// Collection
-// ================================================
-
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
@@ -179,7 +143,6 @@ function report(path, line, character, rule, detail) {
   violations.push({ file: path, line: line + 1, column: character + 1, rule, detail });
 }
 
-/** Resolve an import specifier to a repo-relative, extensionless module path. */
 function resolveSpecifier(fromFile, specifier) {
   if (specifier.startsWith("@shell/")) return `src/shell/${specifier.slice(7)}`;
   if (specifier.startsWith("@core/")) return `src/core/${specifier.slice(6)}`;
@@ -206,7 +169,6 @@ function checkTypeScript(path) {
     report(file, line, character, rule, detail);
   };
 
-  /** Every property name written anywhere inside a node. */
   function propertyNames(node, names = []) {
     if (
       (ts.isPropertyAssignment(node) ||
@@ -252,7 +214,6 @@ function checkTypeScript(path) {
         ? node.initializer.expression
         : undefined;
       if (expression === undefined) {
-        // `style="…"` — a string, never valid here.
         at(node, "style-not-css-vars", "string literal");
       } else if (ts.isObjectLiteralExpression(expression)) {
         at(node, "style-object-literal", "inline declarations");
@@ -314,13 +275,6 @@ function checkTypeScript(path) {
   visit(source);
 }
 
-// ================================================
-// CSS
-// ================================================
-
-/** Selectors that reach every button or link in the app rather than one
- * component's. Scrollbar pseudo-elements are the documented exception: the
- * scrollbar has no component to own it. */
 const INTERACTION_PSEUDO = /:(?:hover|active)\b/;
 const SCROLLBAR = /::-webkit-scrollbar/;
 const REDUCED_MOTION = /@media[^{]*prefers-reduced-motion[^{]*\{/g;
@@ -352,8 +306,6 @@ function positionOf(text, index) {
   return { line, character: index - (before.lastIndexOf("\n") + 1) };
 }
 
-/** Brace-matched ranges of every reduced-motion block, where !important is the
- * whole point rather than a smell. */
 function reducedMotionRanges(text) {
   const ranges = [];
   for (const match of text.matchAll(REDUCED_MOTION)) {
@@ -375,7 +327,6 @@ function reducedMotionRanges(text) {
 function checkCss(path) {
   const file = relativePath(path);
   const raw = readFileSync(path, "utf8");
-  // Blank comments rather than drop them, so offsets stay true to the file.
   const text = raw.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " "));
   const isModule = file.endsWith(".module.css");
 
@@ -397,9 +348,6 @@ function checkCss(path) {
     }
   }
 
-  // Typography is a deliberately small, role-based scale. Calculated canvas
-  // labels remain geometry, but every ordinary component must choose a text
-  // role instead of introducing another optical near-duplicate.
   if (file === TYPE_TOKENS) {
     for (const match of text.matchAll(/(--text-[a-z-]+)\s*:/g)) {
       if (!TYPE_ROLES.has(match[1])) {
@@ -446,8 +394,6 @@ function checkCss(path) {
     }
   }
 
-  // Neutral glass has five perceptible opacity stops. Tinted films have their
-  // own palettes; this guard addresses only white films in the light theme.
   if (file === LIGHT_THEME) {
     for (const match of text.matchAll(/rgb\(255 255 255 \/ ([0-9.]+)%\)/g)) {
       const lineStart = text.lastIndexOf("\n", match.index) + 1;
@@ -475,21 +421,12 @@ function checkCss(path) {
   }
 }
 
-// ================================================
-// Theme custom-property reachability
-// ================================================
-
 const THEME_ROOT = "src/shell/ui/theme/";
 const CUSTOM_PROPERTY_DEFINITION = /^\s*(--[a-zA-Z0-9_-]+)\s*:\s*([\s\S]*?);/gm;
 const CUSTOM_PROPERTY_REFERENCE = /var\((--[a-zA-Z0-9_-]+)/g;
 const DYNAMIC_TONE_REFERENCE =
   /^(?:--stage-.+-(?:line|ink|wash)|--axis-.+-(?:line|ink)|--eco-.+-(?:line|wash)|--dependency-.+-(?:line|wash|edge)|--archive-.+-(?:line|ink)|--failure-.+-line)$/;
 
-/**
- * A theme property is live when production CSS/TS references it, or when a
- * live property references it. Dynamic tone helpers build a small, typed set
- * of names in appearance.ts, so those declared families are explicit roots.
- */
 function checkThemePropertyReachability(paths) {
   const definitions = new Map();
   const dependencies = new Map();
@@ -566,10 +503,6 @@ function checkThemePropertyReachability(paths) {
     report(definition.file, line, character, "theme-alias-depth", `${name}: ${depth}`);
   }
 }
-
-// ================================================
-// Run
-// ================================================
 
 const productionPaths = walk(sourceRoot);
 for (const path of productionPaths) {

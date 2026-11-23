@@ -1,15 +1,3 @@
-"""The stable warning catalog.
-
-Warning *meaning* must not live only in prose or shell comments: the API
-returns stable codes with a severity and a ``blocking`` flag so a machine can
-enforce automation policy without parsing text. This module is the single
-mapping from code to its fixed severity/blocking/message, so a leaf that names a
-code cannot invent a new meaning for it.
-
-Only the codes Phase 1 (build) can actually emit are defined here; the rest of
-the design's reserved vocabulary is added as the strategy that raises it lands.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -108,7 +96,6 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
         False,
         "requirements.txt is not a lockfile; a future install may resolve different transitive versions.",
     ),
-    # --- experiment environment contract (activation / experiment) ---
     "experiment_environment_not_resolved": (
         "error",
         True,
@@ -155,7 +142,6 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
             "generated script points at the path the venv was built at before running."
         ),
     ),
-    # --- experiment command ---
     "experiment_command_missing": (
         "warning",
         True,
@@ -199,11 +185,6 @@ _CATALOG: dict[str, tuple[WarningSeverity, bool, str]] = {
 
 
 def make_warning(code: str, *, affected_paths: Sequence[str] = ()) -> InferenceWarning:
-    """Build a structured warning from a catalog code.
-
-    Raises ``KeyError`` for an unknown code so a leaf can never emit an
-    uncatalogued warning — the registry's DAG validation relies on this.
-    """
     severity, blocking, message = _CATALOG[code]
     return InferenceWarning(
         code=code,

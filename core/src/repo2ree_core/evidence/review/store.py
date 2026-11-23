@@ -1,12 +1,3 @@
-"""Where a review attempt's record and per-step evidence live on disk.
-
-Every attempt owns a namespace under the REE's ``reviews/`` directory, which is
-what keeps a reviewer's evidence from ever landing in the author's: the two sets
-are never written by the same paths.
-
-Imperative shell: every function here touches the filesystem.
-"""
-
 from __future__ import annotations
 
 from contextlib import suppress
@@ -34,7 +25,6 @@ def write_review_record(layout: ReviewLayout, record: ReviewRecord) -> None:
 
 
 def read_review_record(layout: ReviewLayout) -> ReviewRecord | None:
-    """The persisted attempt, or None when this namespace holds no review."""
     with suppress(Exception):
         return ReviewRecord.model_validate_json(layout.metadata.read_text(encoding="utf-8"))
     return None
@@ -61,13 +51,6 @@ def write_review_activate_experiment_environment_evidence(
     receipt: ReviewActivateExperimentEnvironmentReceipt,
     outcome: ActivationOutcome,
 ) -> None:
-    """Persist the activation beside the other steps' evidence.
-
-    Filed under ``comparisons/activate_experiment_environment.json`` despite not being a comparison:
-    the directory is the attempt's per-step verdict store, and giving activation
-    its own would split one lookup into two for a distinction the reader already
-    gets from the document's ``policy``.
-    """
     _write_review_evidence(layout, receipt, "activate_experiment_environment", outcome.model_dump(mode="json"))
 
 
@@ -76,12 +59,6 @@ def write_review_experiment_evidence(
     receipt: ReviewRunExperimentReceipt,
     comparison: ExperimentComparison,
 ) -> None:
-    """Persist one experiment's evidence under its own slug.
-
-    Unlike the other three review steps, the per-operation slot cannot be
-    ``receipts/run_experiment.json``: every experiment shares that operation,
-    so review evidence is keyed under a slug directory.
-    """
     slug = experiment_slug(receipt.experiment_name)
     payload = json_document_bytes(receipt.model_dump(mode="json"))
     write_atomic(layout.run_receipt(receipt.run_id), payload)
@@ -97,11 +74,6 @@ def _write_review_evidence(
     step: ReviewStepKey,
     comparison: dict[str, object],
 ) -> None:
-    """Persist one step's receipt twice (by run, by operation) and its comparison.
-
-    The same selection rule the author side uses: ``runs/`` keeps the immutable
-    history, ``receipts/<operation>.json`` keeps the latest per operation.
-    """
     payload = json_document_bytes(receipt.model_dump(mode="json"))
     write_atomic(layout.run_receipt(receipt.run_id), payload)
     write_atomic(layout.operation_receipt(receipt.operation), payload)

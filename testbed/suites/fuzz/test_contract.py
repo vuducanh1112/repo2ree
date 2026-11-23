@@ -1,10 +1,3 @@
-"""Every operation of the API contract, fuzzed against a running stack.
-
-Generated requests go to one real REE wherever an operation takes an REE, so they
-reach past the lookup into the code behind it. The API must never answer with a
-server error, and every answer must be one the contract declares.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -23,8 +16,6 @@ SCHEMA = (
     .exclude(path="/api/v1/rees", method="POST")
     .exclude(path="/api/v1/rees/{ree_id}", method="DELETE")
 )
-# Schemathesis 4.32 rewrites a tuple's `prefixItems` into draft-4 `items: [...]` and then validates
-# that as 2020-12, which refuses it: the committed schema is valid, the check cannot be built.
 UNCHECKABLE_RESPONSES = {("GET", "/api/v1/behaviour/state")}
 
 

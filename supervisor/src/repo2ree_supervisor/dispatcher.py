@@ -1,11 +1,3 @@
-"""Typed commands and queries sent to the workbench an REE is served by.
-
-The dispatcher consumes the workbench's ``Frame`` stream, forwards log and span frames as they
-arrive, journals each dispatch exchange, and returns the terminal result frame's ``ActionResult``.
-It never sets up or tears down a workbench; it is told, through ``on_unavailable``, to let whoever
-does know that one stopped answering.
-"""
-
 from __future__ import annotations
 
 import json
@@ -68,18 +60,14 @@ from repo2ree_telemetry.spans import (
 
 __all__ = ["CommandDispatcher", "FollowStoppedError"]
 
-# How long a command waits for another in its REE to end before it is refused as busy: the commands an
-# author's editor sends one after another overlap, and wait for each other.
 BUSY_WAIT = 60.0
-# How long a command waits for its store's workbench to be back by default, and how often it looks.
 RECONNECT_TIMEOUT = 120.0
 RECONNECT_POLL = 1.0
-# How often, in log lines, the caller hears how far it has read.
 PROGRESS_LINES = 50
 
 
 class FollowStoppedError(RuntimeError):
-    """The caller stopped following a command, which runs on."""
+    pass
 
 
 def _settled_facts(result: ActionResult) -> events.SettledFacts:
@@ -95,9 +83,6 @@ def _settled_facts(result: ActionResult) -> events.SettledFacts:
 tracer = get_tracer(__name__)
 _meter = get_meter(__name__)
 
-# ================================================
-# Metrics
-# ================================================
 
 _container_gone_counter = _meter.create_counter(
     "workbench.container_gone",
@@ -128,16 +113,10 @@ class CommandDispatcher:
         self._locks = locks
         self._span_sink = span_sink
         self._on_unavailable = on_unavailable or (lambda handle: None)
-        # Where the REE's commands go now: a command is followed on whichever workbench serves its store.
         self._reroute = reroute or (lambda handle: handle)
-        # The attempt each followed run is, so a cancel of it is journaled against that attempt, once.
         self._followed: dict[tuple[str, str], str] = {}
         self._canceled: set[str] = set()
         self._followed_lock = threading.Lock()
-
-    # ------------------------------------------------
-    # Action dispatch
-    # ------------------------------------------------
 
     def dispatch_action(
         self,
@@ -153,13 +132,6 @@ class CommandDispatcher:
         stop: threading.Event | None = None,
         reconnect_timeout: float | None = RECONNECT_TIMEOUT,
     ) -> ActionResult:
-        """Start a typed Command in the workbench and follow it to its end, streaming its log to ``log``.
-
-        It is followed across sessions, waiting up to ``reconnect_timeout`` (None: for as long as it
-        takes) for its store's workbench to be back. ``on_started`` learns the context it was started
-        with, and ``on_progress`` how many of its log lines were delivered. A set ``stop`` ends the
-        follow with ``FollowStoppedError``; the command runs on.
-        """
         context = context or ExecutionContext.new(ree_id=handle.ree_id)
         if context.ree_id not in {None, handle.ree_id}:
             raise ValueError("Execution context belongs to another REE")
@@ -169,8 +141,6 @@ class CommandDispatcher:
                 operation=str(cmd.operation), run_id=run_id, ree_id=handle.ree_id, execution=context
             ).apply(span)
             WorkbenchSpanAttrs(workbench_id=handle.workbench_id).apply(span)
-            # The whole command as dispatched, recorded before it runs: a command that is killed
-            # still carries what it was asked to do.
             record_span_facts(span, cmd.model_dump(), namespace="cmd")
             _lock_t0 = time.monotonic()
             with self._locks(handle.ree_id):
@@ -206,11 +176,6 @@ class CommandDispatcher:
             return result
 
     def _start(self, handle: ReeRoute, cmd: Command, run_id: str, context: ExecutionContext) -> ExecutionContext:
-        """One ``start_run`` exchange, journaled before it leaves and with its one answer; the context sent.
-
-        The request names the session it is sent on, and is sent on no other. The attempt and the
-        executor cite the request's journal record, which the context carries to them.
-        """
         session = self._workbench.session_of(handle.workbench_id)
         if session is None:
             raise WorkbenchUnavailableError(f"workbench {handle.workbench_id!r} is not connected")
@@ -273,7 +238,6 @@ class CommandDispatcher:
         stop: threading.Event | None = None,
         reconnect_timeout: float | None = None,
     ) -> ActionResult:
-        """Follow a started command until it ends, one ``follow_run`` round per session, from log line ``after``."""
         attempt = context.attempt_id
         key = (handle.ree_id, run_id)
         with self._followed_lock:
@@ -322,11 +286,6 @@ class CommandDispatcher:
         session: str,
         progress: Callable[[int], object],
     ) -> tuple[ActionResult | None, int]:
-        """One ``follow_run`` exchange: how the command ended (None if its session ended first), and lines delivered.
-
-        Log and span frames are forwarded as they arrive, so a command that hangs still shows what
-        it said before it stopped.
-        """
         attempt = context.attempt_id
         events.follow_run_sent(attempt, partition=handle.ree_id, facts={"run_id": run_id, "session": session})
         answered = False
@@ -371,11 +330,6 @@ class CommandDispatcher:
         return None, after
 
     def cancel_run(self, handle: ReeRoute, run_id: str) -> None:
-        """Ask the workbench executor to stop a running action.
-
-        This deliberately does not take the per-REE lock. A cancel of a command being followed is
-        journaled against its attempt, once; any other is only sent.
-        """
         with self._followed_lock:
             attempt = self._followed.get((handle.ree_id, run_id))
             first = attempt is not None and attempt not in self._canceled
@@ -399,20 +353,10 @@ class CommandDispatcher:
             raise
         events.cancel_run_received(attempt, "done", partition=handle.ree_id)
 
-    # ------------------------------------------------
-    # Query / mutation dispatch
-    # ------------------------------------------------
-
     def dispatch_query(self, handle: ReeRoute, query: Query, *, timeout: int = 30) -> bytes:
-        """The answer to a read of the REE, as the ``ree`` read wrote it on stdout.
-
-        Reads run unsynchronised with commands. ``timeout`` bounds the read itself;
-        raise it for reads whose output scales with the REE (large artifacts).
-        """
         return self._workbench.exec_query(handle.workbench_id, query, timeout=timeout, ree_id=handle.ree_id)
 
     def _query_json(self, handle: ReeRoute, query: Query) -> dict[str, Any]:
-        """The answer to a read as a JSON object, narrowed once from ``json.loads``'s ``Any``."""
         parsed: dict[str, Any] = json.loads(self.dispatch_query(handle, query))
         return parsed
 
@@ -423,7 +367,6 @@ class CommandDispatcher:
         return WorkbenchReeDocument.model_validate(self._query_json(handle, ShowQuery()))
 
     def get_ree_state(self, handle: ReeRoute) -> WorkbenchReeDocument:
-        """Return composed REE state without embedding text file contents."""
         return WorkbenchReeDocument.model_validate(self._query_json(handle, ShowQuery(summary=True)))
 
     def get_history(self, handle: ReeRoute) -> OperationHistory:
@@ -439,28 +382,16 @@ class CommandDispatcher:
         return LintReport.model_validate(self._query_json(handle, query))
 
     def read_ree_file_bytes(self, handle: ReeRoute, path: str) -> bytes:
-        # REE files can include large experiment environment and result artifacts.
         return self.dispatch_query(handle, CatQuery(path=path), timeout=120)
 
     def build_archive(self, handle: ReeRoute) -> ReceivedFile:
-        """The REE's archive as a file on the control plane; the caller removes it.
-
-        Built and uploaded beside the control socket (``exec_upload``), under the
-        per-REE lock, which is released once the file has arrived — never held for
-        as long as a client takes to download it. Zipping and sending scale with
-        the REE's size, hence the generous timeout."""
         with self._locks(handle.ree_id):
             return self._workbench.exec_upload(handle.workbench_id, BundleQuery(), timeout=600, ree_id=handle.ree_id)
 
     def copy_to_workbench(self, handle: ReeRoute, host_path: str, workbench_path: str) -> None:
-        """Copy a control-plane-local file into the workbench.
-
-        ``host_path`` need only exist here; the workbench may share no filesystem
-        with us (see ``WorkbenchClient.copy_in``)."""
         self._workbench.copy_in(handle.workbench_id, host_path, workbench_path, ree_id=handle.ree_id)
 
     def init_ree(self, handle: ReeRoute, name: str) -> None:
-        """Create the REE in the store its workbench serves; refused where one is already."""
         with self._locks(handle.ree_id):
             self._workbench.init_ree(
                 handle.workbench_id,
@@ -469,6 +400,5 @@ class CommandDispatcher:
             )
 
     def delete_ree(self, handle: ReeRoute) -> None:
-        """Delete the REE from the store its workbench serves; refused while one of its runs is active."""
         with self._locks(handle.ree_id):
             self._workbench.delete_ree(handle.workbench_id, handle.ree_id)

@@ -3,8 +3,6 @@ import { useState } from "react";
 import { Ic } from "../../shared/components/Icon";
 import styles from "./ReceiptCard.module.css";
 
-// One materialised receipt: the operation it attests, when it ran and how
-// long it took, and — on expand — its typed payload plus the raw JSON.
 export function ReceiptCard({ receipt }: { receipt: ReceiptView }) {
   const [open, setOpen] = useState(false);
   const [rawOpen, setRawOpen] = useState(false);

@@ -15,11 +15,8 @@ export function SpecimenPod({
 }: {
   evaluation: EvaluationState;
   svgRef: React.RefObject<SVGSVGElement>;
-  /** The shells with work running inside them, so the pod shows it working. */
   activity?: CanvasActivity;
 }) {
-  // PodWidget's visible sphere has radius 118 inside its 580-unit viewBox.
-  // Add the plinth height so the sphere is raised above the bench surface.
   const floorLift = (POD_SIZE * 118) / 580 + POD_BASE_HEIGHT;
 
   return (

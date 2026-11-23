@@ -1,5 +1,3 @@
-"""The REE page: its evidence graph, every part, what moved each, and what the spec allows but nothing took."""
-
 from __future__ import annotations
 
 import json
@@ -96,10 +94,8 @@ def test_the_page_shows_each_part_as_drawn_and_lists_what_nothing_took(
     page = page_aggregate(spec().aggregates["Ree"], tally, bundle, REGISTRY).body
     assert '<svg viewBox="0 0 1 1"><g id="runtime-part"/></svg>' in page
     assert (bundle.root / "diagrams" / part_drawing("Ree", "build_experiment_environment")).is_file()
-    # A part not drawn yet says how to draw it.
     assert "Missing: run <code>just generate-spec-diagrams</code>" in page
     assert "Ree r definition.hbom: x" in page
-    # Never taken, and listed; what only whole-document loading allows is not, unless named outright.
     assert "missing → current by build_experiment_environment" not in page
     assert "stale → current by build_experiment_environment" in page
     assert "missing → stale by load_ree_bundle" not in page

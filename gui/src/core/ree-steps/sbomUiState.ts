@@ -1,20 +1,9 @@
-// Pure derivations for the Generate SBOM page. Belongs in core (functional)
-// so the shell does not parse domain artifacts itself.
-
 import type { ReeFile } from "../ree/ReeTypes";
 
 const SBOM_PARSE_CHAR_LIMIT = 300_000;
 
 const SKIPPED_SENTINEL = "__skipped__";
 
-/**
- * Where the REE keeps its SBOM, REE-root-relative.
- *
- * Backend-owned (``repo2ree_core.storage.layout.SBOM_ARTIFACT_PATH``): the
- * generate-sbom step writes there and publishes this exact path on the intent,
- * and a bundle carries it at the same path. It is REE evidence, not an authored
- * workspace file, so it is looked up among the REE's artifact files.
- */
 export const SBOM_ARTIFACT_PATH = "artifacts/sbom.json";
 
 export function resolvedSbomPath(raw: string | null | undefined): string {
@@ -26,7 +15,6 @@ interface SbomFileLike {
   size?: number;
 }
 
-/** The SBOM among the REE's own artifacts, or null when the scan has not run. */
 export function findSbomArtifact(reeFiles: ReeFile[], path: string): ReeFile | null {
   if (!path) return null;
   return reeFiles.find((file) => file.name === path) ?? null;

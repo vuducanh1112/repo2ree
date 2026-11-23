@@ -1,23 +1,3 @@
-"""Build the repository overview: one static page over what the repository already knows.
-
-It runs nothing. It reads what the recipes `just repo-overview` depends on wrote: the
-zones, the contract registry, the behaviour specification, the operations traceview folds from the
-assurance-gate receipt's verifications, which showcase runs to read, and the Just recipes
-(reports/exports/), and the
-generated architecture, domain, specification, and recipe diagrams (reports/diagrams/), and
-the assurance-gate receipt's tests assessed and drawn again (reports/behaviour/). Beside them
-it reads the gates' receipts, the coverage and excuses of the last
-assurance-gate receipt, how long the recipes took (logs/just/), and the contracts the registry names
-(contracts/), and lays them out page by page.
-
-The overview is a bundle bound to one commit: whatever it shows from outside the tree
-(test evidence, diagrams) is copied into it, and what is too large to copy (REE Git
-archives, spans) is listed by sha256. manifest.json records the commit, whether the
-working tree was dirty, and every input. `just repo-overview` regenerates the exports and
-diagrams and writes reports/overview/<revision>/, with reports/overview/latest pointing at it, and keeps
-the newest few (overview/prune.py).
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -78,14 +58,12 @@ from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
 from repo2ree_repoview.repository import ROOT, Head
 from repo2ree_repoview.stamp import read_recorded_stamp
 
-# The page's look and its filter boxes, inlined so the page is one file.
 STYLE = (Path(__file__).with_name("overview.css")).read_text()
 SCRIPT = (Path(__file__).with_name("overview.js")).read_text()
 SHELL_SCRIPT = (Path(__file__).with_name("shell.js")).read_text()
 
 
 def sidebar(pages: list[Page], now: Head, current: str | None) -> str:
-    """The sidebar that links every page of the overview, ``current`` marked."""
     links = "".join(
         f'<a href="{p.slug}.html"{' class="current"' if p.slug == current else ""}>{p.title}</a>' for p in pages
     )
@@ -104,7 +82,6 @@ def head(title: str) -> str:
 
 
 def frame(page: Page, pages: list[Page], now: Head, current: str | None = None) -> str:
-    """One page of the overview, with the sidebar that links them all; a subpage marks the page it belongs to."""
     return (
         f'{head(page.title)}<body><div class="layout">{sidebar(pages, now, current or page.slug)}'
         f"<main>{page.body}</main></div><script>{SCRIPT}</script></body></html>"
@@ -112,11 +89,6 @@ def frame(page: Page, pages: list[Page], now: Head, current: str | None = None) 
 
 
 def shell(pages: list[Page], now: Head) -> str:
-    """The frame the overview shows its bundled evidence in: the sidebar, and the page beside it.
-
-    The page is the address after ``#`` (``evidence.html?from=coverage#evidence/…/traces/dossier.html#rule=…``),
-    the overview's page it was opened from is ``from``, marked in the sidebar.
-    """
     return (
         f'{head("Evidence")}<body><div class="layout shell">{sidebar(pages, now, None)}'
         '<main><p class="missing" id="missing" hidden>Nothing to show: an evidence page is opened '
@@ -126,12 +98,10 @@ def shell(pages: list[Page], now: Head) -> str:
 
 
 def bundle_name(now: Head) -> str:
-    """The folder an overview of this tree goes to: its commit, marked when the tree differs from it."""
     return now.revision[:12] + ("-dirty" if now.dirty else "")
 
 
 def kept(bundle: Bundle, exports: Path, kind: str) -> str:
-    """An owner's export as a recipe wrote it, kept in the bundle with the commit its stamp records."""
     source = exports / f"{kind}.json"
     stamp = read_recorded_stamp(source) if source.is_file() else None
     if bundle.copy(source, f"inputs/{kind}.json", Origin(kind=kind, revision=stamp.revision if stamp else "")) is None:
@@ -140,7 +110,6 @@ def kept(bundle: Bundle, exports: Path, kind: str) -> str:
 
 
 def _preserved(test: ShowcaseTest | None, records: dict[str, RunRecord]) -> tuple[Path, tuple[str, ...]] | None:
-    """Where a test's dossier is kept, and the REEs it preserved; None when this clone has no run of it."""
     record = records.get(test.run) if test and test.run else None
     found = next((t for t in record.tests if test and t.name == test.test), None) if record else None
     if test is None or test.run is None or found is None:
@@ -149,8 +118,6 @@ def _preserved(test: ShowcaseTest | None, records: dict[str, RunRecord]) -> tupl
 
 
 def showcase_ree_pages(showcases: ShowcaseRuns, records: dict[str, RunRecord]) -> list[Page]:
-    """A page for each showcase's final REE and its review, read from the copies its authoring and review tests
-    preserved."""
     pages = []
     for showcase in showcases.showcases:
         if showcase.kind != "showcase":
@@ -185,7 +152,6 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     }
     showcase_evidence = bundle_runs(bundle, showcase_runs)
     verdicts = judged_now()
-    # What logs/just/ held when the overview was built, kept as the overview read it.
     timings = summarize(read_invocations())
     bundle.write(
         "inputs/timings.json", timings.model_dump_json(indent=2), str(LOGS.relative_to(ROOT)), Origin(kind="timings")
@@ -233,7 +199,6 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]
     for page in everything:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")
-    # Each subpage, with the page it belongs to marked in the sidebar.
     subpages = [
         *((page, SHOWCASES) for page in showcase_ree_pages(showcases, showcase_records)),
         (page_cli(cli), INTERFACES),
@@ -259,7 +224,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("-o", "--output", type=Path, help="write here instead of reports/overview/<revision>/")
     try:
         target = build(parser.parse_args().output)

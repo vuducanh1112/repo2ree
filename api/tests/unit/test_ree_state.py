@@ -1,5 +1,3 @@
-"""Compact REE state for low-noise automation observation."""
-
 from __future__ import annotations
 
 import pytest
@@ -42,12 +40,9 @@ def test_ree_state_omits_inline_content_and_exposes_placement(
     assert state["workbench"]["status"] == "available"
     assert "build" in state["workbench"]
     assert "executor_build" in state["workbench"]
-    # Typed file entries serialize every field; content stays null — never inlined.
     assert state["workspace_files"] == [
         {"path": "ree-scripts/build_experiment_environment.sh", "kind": "generated", "size": 12, "content": None}
     ]
-    # REE-owned evidence is part of the observation: produced files like the SBOM
-    # live only under the REE root, never in the materialized workspace tree.
     assert state["ree_files"] == [
         {"path": "artifacts/sbom.json", "kind": "ree", "tag": "Artifact", "size": 34, "content": None}
     ]

@@ -1,10 +1,3 @@
-"""Check-level fixtures: each input shape returns the exact branch, observation,
-and produced bindings expected.
-
-The check code is the shared vocabulary of the rule, the UI edge, and the test,
-so decline tests are assertions about which branch a fixture takes.
-"""
-
 from __future__ import annotations
 
 from typing import Literal

@@ -52,8 +52,6 @@ describe("Toast", () => {
       rerender(<Toast message="Saved" type="info" onClose={second} />);
       vi.advanceTimersByTime(3000);
 
-      // The effect depends on `onClose`, so a parent that passes an inline
-      // arrow re-arms the timer on every render and the toast never leaves.
       expect(first).not.toHaveBeenCalled();
       expect(second).not.toHaveBeenCalled();
       vi.advanceTimersByTime(1000);

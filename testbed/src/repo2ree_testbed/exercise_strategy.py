@@ -1,14 +1,3 @@
-"""Exercises drawn at random, for Hypothesis to search and shrink.
-
-An exercise drawn uniformly dies at its first step: an REE no step made, a seal before a source. So each REE follows
-a pipeline as an author or a reviewer would, one stage at a time, and some steps leave it: any operation, with any of
-a few inputs, wherever the REE stands. A stage is taken whether or not its step would succeed, which is the
-specification's to judge from the trace, never the generator's to know.
-
-Inputs come from small fixed pools (the instant project, its recipe, one experiment), so a failing exercise shrinks
-to steps that differ in what matters. Drifts name a part of an REE and a change, and replay picks the file.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -76,14 +65,12 @@ EXPERIMENT: Final = INSTANT.experiment
 UNDECLARED: Final = "undeclared"
 TEXTS: Final = ("exit 0\n", "exit 1\n")
 PER_EXPERIMENT: Final = frozenset({"experiment_run", "experiment_verify"})
-# Of every ten steps, how many follow the pipeline.
 FOLLOWED: Final = 8
 
 type Stage = Callable[[Label], Step]
 
 
 def recipe_file(script: ScriptKind) -> RecipeScript | None:
-    """The file of a project's recipe that writes ``script``; None for one no recipe writes."""
     match script:
         case "check_working_environment":
             return "check_working_environment.sh"
@@ -142,7 +129,6 @@ AUTHORING: Final[tuple[Stage, ...]] = (
     lambda ree: SealRee(ree=ree),
     lambda ree: SignRee(ree=ree),
 )
-# A lone REE reviews its own seal; a reviewer loads the author's.
 ALONE: Final = (*AUTHORING, *REVIEW)
 REVIEWING: Final[tuple[Stage, ...]] = (
     lambda ree: InitializeRee(ree=ree),
@@ -189,7 +175,6 @@ def _patch(ree: Label) -> st.SearchStrategy[Step]:
 
 
 def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]:
-    """Any operation in ``ree``, with any of a few inputs, wherever it stands."""
     reviews = st.sampled_from(REVIEWS)
     bases = st.sampled_from(get_args(ReviewBasis))
     experiments = st.sampled_from((EXPERIMENT, UNDECLARED))
@@ -237,9 +222,6 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
 
 
 def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
-    """Drifts in REEs the steps initialize, each after the step that does: of any part, by any change, kept or put back
-    by hand, a history changed by git, or git's reflog lost, in the REE or in a review the steps
-    name."""
     initialized = {
         step.ree: index for index, step in reversed(list(enumerate(steps))) if isinstance(step, InitializeRee)
     }
@@ -260,7 +242,6 @@ def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
                     ree=st.just(ree),
                     review=reviews,
                     part=st.just(part),
-                    # Only a file added to the overlay is the REE's.
                     change=st.sampled_from(
                         [change for change in get_args(FileChange) if part == "overlay" or change != "add"]
                     ),
@@ -289,7 +270,6 @@ def _drifts(steps: tuple[Step, ...]) -> st.SearchStrategy[tuple[Drift, ...]]:
 
 @st.composite
 def exercises(draw: st.DrawFn, max_steps: int = 30) -> Exercise:
-    """An exercise of one REE that authors and reviews itself, or of an author and a reviewer of its seal."""
     rees: tuple[Label, ...] = draw(st.sampled_from(((AUTHOR,), (AUTHOR, REVIEWER))))
     pipelines = {AUTHOR: ALONE if len(rees) == 1 else AUTHORING, REVIEWER: REVIEWING}
     stage = dict.fromkeys(rees, 0)

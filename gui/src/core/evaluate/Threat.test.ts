@@ -6,7 +6,6 @@ describe("parseReproducibilityReport", () => {
     expect(parseReproducibilityReport(null)).toBeNull();
     expect(parseReproducibilityReport({})).toBeNull();
     expect(parseReproducibilityReport({ dependency_level: "x" })).toBeNull();
-    // all three axes are required
     expect(parseReproducibilityReport({ dependency_level: 2, environment_level: 0 })).toBeNull();
   });
 
@@ -34,7 +33,6 @@ describe("parseReproducibilityReport", () => {
           status: "locked",
         },
         { ecosystem: "invalid", name: "ignored", status: "locked" },
-        // A row without a valid backend-computed status is unusable.
         { ecosystem: "npm", name: "no-status", direct: true },
         { ecosystem: "npm", name: "bad-status", direct: true, status: "shiny" },
       ],
@@ -103,7 +101,6 @@ describe("parseReproducibilityReport", () => {
           direct: false,
           observed_version: "2024.2.2",
           status: "undeclared",
-          // An unknown presence value degrades to null, not a dropped row.
           experiment_environment_presence: "shiny",
         },
       ],

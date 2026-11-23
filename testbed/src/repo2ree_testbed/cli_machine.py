@@ -1,9 +1,3 @@
-"""``ree`` on a test's machine, and the histories it leaves, kept for the behaviour check.
-
-A suite that runs ``ree`` itself (no control plane) runs it in the test's machine container, against an REE in a
-directory the machine and the test share; the REE's histories, its own and each review's, are what the check reads.
-"""
-
 from __future__ import annotations
 
 import fcntl
@@ -28,14 +22,11 @@ from repo2ree_testbed.stack.environments import (
     machine_exec,
 )
 
-# Long enough for a build that pulls and compiles: the command line waits for its step, as a person does.
 STEP_SECONDS: Final = 3600
 
 
 @dataclass(frozen=True)
 class Done:
-    """What one ``ree`` command left: its exit status, what it wrote, and each chunk as it arrived."""
-
     status: int
     stdout: bytes
     stderr: str
@@ -44,15 +35,12 @@ class Done:
 
 @dataclass
 class Machine:
-    """The test's machine, and the directory it shares with this process."""
-
     environment: EnvironmentName
     container: str
     workdir: Path
 
     @classmethod
     def of_this_test(cls) -> Machine | None:
-        """The machine the stack started for this test, when it started one."""
         if not os.environ.get(MACHINE_VARIABLE):
             return None
         return cls(
@@ -69,8 +57,6 @@ class Machine:
         variables: dict[str, str] | None = None,
         inside: bool = True,
     ) -> Done:
-        """Run ``ree`` in the REE's directory ``root``, as a person in it types it; not ``inside``, as ``ree -C root``
-        from anywhere, which runs where no directory is made yet."""
         if inside:
             command = machine_exec(ENVIRONMENTS[self.environment], self.container, ["ree", *words], variables, root)
         else:
@@ -119,11 +105,6 @@ class Machine:
 
 
 def keep_histories(root: Path, kept: Path) -> None:
-    """Copy the REE's histories at ``root``, its own and each review's, into ``kept``, each under its history lock.
-
-    LFS payloads stay out: the history commits their pointers, which is all the check reads. A copy that fails
-    leaves the folder empty, so the REE is listed as unkept rather than as a history cut short.
-    """
     kept.mkdir(parents=True, exist_ok=True)
     scopes = [root, *sorted(path for path in (root / "reviews").glob("*") if (path / ".git").is_dir())]
     try:
@@ -141,5 +122,4 @@ def keep_histories(root: Path, kept: Path) -> None:
 
 
 def _without_lfs(directory: str, names: list[str]) -> list[str]:
-    """What a copy of a history leaves out: the LFS payload store beside the history."""
     return ["lfs"] if Path(directory).name == ".git" and "lfs" in names else []

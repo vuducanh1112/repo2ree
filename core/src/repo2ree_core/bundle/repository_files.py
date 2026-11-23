@@ -1,5 +1,3 @@
-"""Materialize reproduction entry points before repository capture."""
-
 from __future__ import annotations
 
 from pathlib import PurePosixPath

@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""The showcases through the command line, as a stack's client (``python -m repo2ree_testbed cli-showcase run``):
-each test runs ``ree`` on the machine its showcase names."""
-
 import os
 import sys
 

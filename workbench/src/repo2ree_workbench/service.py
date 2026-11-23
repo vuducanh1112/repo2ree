@@ -1,8 +1,3 @@
-"""Execution service for the store this workbench serves.
-
-Every request names its REE, and the REE's directory in the store is where its commands run.
-"""
-
 from __future__ import annotations
 
 import json
@@ -22,13 +17,10 @@ JOURNAL_CHUNK = 256 * 1024
 
 
 class WorkbenchService:
-    """The backend-neutral execution service of a store's workbench."""
-
     def __init__(self, executor: LocalCli, *, store_id: str, slots: int = 1, executions: Executions | None = None):
         self._executor = executor
         self.store_id = store_id
         self.slots = slots
-        # Commands wait for one of the slots; queries do not.
         self.executions = executions or Executions(executor, slots=slots)
 
     async def start_run(
@@ -47,7 +39,6 @@ class WorkbenchService:
         return self.executions.follow(ree_id, attempt_id, after)
 
     def init_ree(self, init: InitRee, timeout: int = 60, *, ree_id: str) -> None:
-        """Create the REE in the store; refused where one is already."""
         root = self._executor.ree_root(ree_id)
         if root.exists() and any(root.iterdir()):
             raise RuntimeError(f"REE {ree_id!r} already exists in store {self.store_id!r}")
@@ -55,7 +46,6 @@ class WorkbenchService:
         self._executor.run(root, argv, timeout)
 
     def exec_query_stream(self, query: Query, timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
-        """The answer to ``query``: the bytes ``ree`` writes for it, or the outputs of its one result line."""
         argv, stdin = query_argv(query)
         if REPLIES[type(query)] is None:
             return self._executor.exec_query_stream(argv, timeout, ree_id=ree_id, stdin=stdin)
@@ -91,7 +81,6 @@ class WorkbenchService:
         self._executor.copy_in(source_path, workbench_path, ree_id=ree_id)
 
     def delete_ree(self, ree_id: str) -> None:
-        """Remove an REE's directory from the store; refused while one of its runs is active."""
         if self.executions.holds(ree_id):
             raise RuntimeError(f"REE {ree_id!r} has a run in progress")
         self._executor.delete_ree(ree_id)

@@ -1,11 +1,3 @@
-"""``ree``: every command on an REE, for a person at a terminal, an agent, and a workbench alike.
-
-Each command runs against the REE at ``-C`` or, without it, the nearest one at or above the current directory, and
-ends in one result (``ActionResult``): a person reads it as plain lines, and ``--json`` prints it as one JSON line on
-stdout, with the run's log events as NDJSON on stderr. ``cat``, ``bundle`` and ``completion`` print what they are
-asked for instead. The exit status says how it ended (``EXIT_CODES``).
-"""
-
 from __future__ import annotations
 
 import json
@@ -131,9 +123,7 @@ from repo2ree_telemetry.command_line import (
 
 SUCCEEDED = 0
 FAILED = 1
-# A command refused for what was asked, as for a command line that spells none.
 REFUSED = 2
-# A run that was canceled, as a shell reports one stopped by SIGINT.
 CANCELED = 130
 _REFUSALS: tuple[FailureCategory, ...] = ("validation", "precondition", "conflict")
 EXIT_CODES = {
@@ -142,26 +132,17 @@ EXIT_CODES = {
     REFUSED: "refused for what was asked: a usage error, or validation, precondition or conflict",
     CANCELED: "canceled",
 }
-# Where a staged archive comes from on the command line; the commands themselves name it by its upload token.
 ARCHIVE_OPTION = "--archive"
 BUNDLE_OPTION = "--bundle"
-# What a bundle signed by `ree sign-ree` itself is called while it is staged.
 SIGNED_HERE = "signed.sigstore.json"
 
 
-# ================================================
-# The invocation, and how a result ends it
-# ================================================
-
-
 class NoReeError(Exception):
-    """The command needs an REE, and there is none where it looked."""
+    pass
 
 
 @dataclass(frozen=True)
 class Invocation:
-    """What the options before the command say: the REE, the output form, and the run's identity."""
-
     ree: Path | None
     machine: bool
     run_id: str | None
@@ -169,7 +150,6 @@ class Invocation:
     result_file: Path | None = None
 
     def layout(self) -> ReeLayout:
-        """The REE at ``-C`` or, without it, the nearest one at or above the current directory."""
         if self.ree is not None:
             if not (self.ree / REE_MANIFEST).is_file():
                 raise NoReeError(f"no REE at {self.ree}: create one with `ree -C {self.ree} initialize-ree`")
@@ -188,7 +168,6 @@ class Invocation:
         return lambda stream, level, message: _plain_sink(stream, level, message, root)
 
     def identity(self, step: int | None = None) -> tuple[ExecutionContext, str]:
-        """The context and run id of a run; ``step`` numbers it among the commands one invocation runs."""
         if step is None:
             context = self.context or ExecutionContext.new()
             return context, self.run_id or f"manual-{context.attempt_id}"
@@ -198,7 +177,6 @@ class Invocation:
     def run(
         self, cmd: Command, layout: ReeLayout, *, identity: tuple[ExecutionContext, str] | None = None
     ) -> ActionResult:
-        """Run ``cmd`` in its own session, as the run ``identity`` names, by default the invocation's."""
         context, run_id = identity or self.identity()
         if self.machine:
             started = {"type": "started", "run_id": run_id, "operation": str(cmd.operation)}
@@ -213,7 +191,6 @@ class Invocation:
 
 
 def nearest_ree(start: Path) -> Path | None:
-    """The nearest directory at or above ``start`` that holds an REE."""
     return next((path for path in (start, *start.parents) if (path / REE_MANIFEST).is_file()), None)
 
 
@@ -222,7 +199,6 @@ def _ndjson_sink(stream: str, level: str, message: str) -> None:
 
 
 def _plain_sink(stream: str, level: str, message: str, root: Path | None = None) -> None:
-    """A log line as a person reads it: what ree itself says names the REE's files from the REE."""
     if stream == "system":
         if root is not None:
             message = _from_ree(message, root)
@@ -232,7 +208,6 @@ def _plain_sink(stream: str, level: str, message: str, root: Path | None = None)
 
 
 def _from_ree(message: str, root: Path) -> str:
-    """``message`` with the REE's own paths written from the REE: ``workspace``, not ``/…/ree/workspace``."""
     at = re.escape(str(root))
     message = re.sub(rf"(?<![\w./-]){at}/", "", message)
     return re.sub(rf"(?<![\w./-]){at}(?![\w./-])", ".", message)
@@ -250,10 +225,6 @@ def finish(
     render_with: Callable[[dict[str, Any]], str] | None = None,
     ran: bool = False,
 ) -> NoReturn:
-    """Print ``result`` as the invocation asks and exit with the status it calls for.
-
-    ``ran`` says a command ran, whose outcome a person is told on stderr beside its outputs.
-    """
     record_invocation_result(result)
     if invocation.result_file is not None:
         invocation.result_file.write_text(result.model_dump_json() + "\n", encoding="utf-8")
@@ -287,7 +258,6 @@ def refuse(invocation: Invocation, words: str, category: FailureCategory, messag
 
 
 def answer(invocation: Invocation, words: str, outputs: BaseModel | dict[str, Any], **kwargs: Any) -> NoReturn:
-    """End a command that ran nothing in the REE with what it found."""
     data = outputs.model_dump(mode="json") if isinstance(outputs, BaseModel) else outputs
     finish(invocation, words, ActionResult(status="succeeded", outputs=data), **kwargs)
 
@@ -306,17 +276,7 @@ def _layout_or_refuse(invocation: Invocation, words: str) -> ReeLayout:
         refuse(invocation, words, "precondition", str(exc))
 
 
-# ================================================
-# The command line
-# ================================================
-
-
 class ReeGroup(click.Group):
-    """A command group: under ``--json`` a usage error is a refused result too, so an agent reads one shape.
-
-    The invocation's span is named after the command it resolves to.
-    """
-
     def resolve_command(
         self, ctx: click.Context, args: list[str]
     ) -> tuple[str | None, click.Command | None, list[str]]:
@@ -344,7 +304,15 @@ def _lineage(ctx: click.Context) -> list[click.Context]:
 _EPILOG = "\b\nExit status:\n" + "\n".join(f"  {code:>3}  {meaning}" for code, meaning in EXIT_CODES.items())
 
 
-@click.group(cls=ReeGroup, context_settings={"help_option_names": ["-h", "--help"]}, epilog=_EPILOG)
+@click.group(
+    cls=ReeGroup,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    epilog=_EPILOG,
+    help=(
+        "repo2ree: author, run, seal and review reproducible execution environments (REEs).\n\nStart with `ree "
+        "initialize-ree`, then `ree status` says where the REE stands and what to run next."
+    ),
+)
 @click.option(
     "-C",
     "ree",
@@ -376,10 +344,6 @@ def cli(
     context: str | None,
     result_file: Path | None,
 ) -> None:
-    """repo2ree: author, run, seal and review reproducible execution environments (REEs).
-
-    Start with `ree initialize-ree`, then `ree status` says where the REE stands and what to run next.
-    """
     ctx.obj = Invocation(
         ree=ree.resolve() if ree else None,
         machine=machine,
@@ -391,8 +355,6 @@ def cli(
 
 def main() -> None:
     shutdown = setup_command_line_telemetry("repo2ree-cli", sys.stderr)
-    # Where the workbench gives the command line its pinned tools (git, curl, tar, …): first on PATH for it and the
-    # processes it starts, while anything else keeps the PATH it had.
     if tools_bin := os.environ.get("REPO2REE_TOOLS_BIN"):
         os.environ["PATH"] = f"{tools_bin}{os.pathsep}{os.environ.get('PATH', '')}"
     try:
@@ -402,18 +364,17 @@ def main() -> None:
         shutdown()
 
 
-@cli.group(REVIEW, cls=ReeGroup)
-def review() -> None:
-    """Review a sealed REE: reproduce its steps in a review of their own and compare them with the author's.
+@cli.group(
+    REVIEW,
+    cls=ReeGroup,
+    help=(
+        "Review a sealed REE: reproduce its steps in a review of their own and compare them with the "
+        "author's.\n\n`ree review all` runs every step. A step names its review with --review-id; without it, "
+        "`acquire-source` opens a\nnew review and the other steps continue the newest one."
+    ),
+)
+def review() -> None: ...
 
-    `ree review all` runs every step. A step names its review with --review-id; without it, `acquire-source` opens a
-    new review and the other steps continue the newest one.
-    """
-
-
-# ================================================
-# Commands that run in the REE
-# ================================================
 
 Params = dict[str, Any]
 Handler = Callable[[Invocation, tuple[str, ...], type[BaseModel], Spelling, Params], None]
@@ -456,7 +417,6 @@ type _ReviewStepOutputs = (
 
 
 def _shown(outputs: BaseModel, layout: ReeLayout) -> str:
-    """What a person is shown of a command's outputs: what it found, not every receipt and digest it recorded."""
     match outputs:
         case (
             ReviewAcquireSourceOutputs()
@@ -491,7 +451,6 @@ def _shown(outputs: BaseModel, layout: ReeLayout) -> str:
 
 
 def _review_shown(outputs: _ReviewStepOutputs, layout: ReeLayout) -> str:
-    """The review as the step left it: each comparison so far."""
     record = next((item for item in load_reviews(layout).reviews if item.review_id == outputs.review_id), None)
     return render.review(record) if record is not None else outputs.review_id
 
@@ -525,7 +484,6 @@ def _load_bundle(
 def _sign(
     invocation: Invocation, words: tuple[str, ...], command: type[BaseModel], spelling: Spelling, params: Params
 ) -> None:
-    """Sign the seal, or a review of it, with Sigstore here, or add a bundle signed elsewhere (``--bundle``)."""
     layout = _layout_or_refuse(invocation, " ".join(words))
     if params["bundle"] is not None:
         filled = _staged(layout, params["bundle"])
@@ -544,8 +502,6 @@ def _sign(
 
 
 class _Statement(BaseModel):
-    """What a signature made here says: about which seal, under which predicate type, with which predicate."""
-
     ree_name: str
     ree_digest: Digest
     predicate_type: str
@@ -580,7 +536,6 @@ def _review_statement(invocation: Invocation, words: str, layout: ReeLayout, rev
 
 
 def _signed_here(invocation: Invocation, words: str, statement: _Statement, params: Params) -> bytes:
-    """A Sigstore bundle of ``statement``, signed under the identity the signer proves now."""
     click.echo(signing.PUBLIC_LOG_NOTICE, err=True)
     request = signing.SigningRequest(
         ree_name=statement.ree_name,
@@ -599,7 +554,6 @@ def _signed_here(invocation: Invocation, words: str, statement: _Statement, para
 
 
 def _staged_bytes(layout: ReeLayout, content: bytes, name: str) -> dict[str, str]:
-    """Content staged in the REE as a file called ``name``, as the command names it."""
     token = uuid4().hex
     staged = layout.upload_staging_file(token)
     staged.parent.mkdir(parents=True, exist_ok=True)
@@ -608,7 +562,6 @@ def _staged_bytes(layout: ReeLayout, content: bytes, name: str) -> dict[str, str
 
 
 def _staged(layout: ReeLayout, archive: Path) -> dict[str, str]:
-    """The archive staged in the REE, as the command names it: its upload token and file name."""
     token = uuid4().hex
     staged = layout.upload_staging_file(token)
     staged.parent.mkdir(parents=True, exist_ok=True)
@@ -617,7 +570,6 @@ def _staged(layout: ReeLayout, archive: Path) -> dict[str, str]:
 
 
 def _script_path(word: str) -> str:
-    """A script named by its path in the REE, or by its ``KIND[:EXPERIMENT]``."""
     try:
         return resolve_target(TARGET.convert(word, None, None)).path
     except click.BadParameter:
@@ -672,7 +624,6 @@ _DEFINE_FIELDS = (
 
 
 def _definition_patch(layout: ReeLayout, params: Params) -> dict[str, Any] | None:
-    """The patch the definition options spell, over the definition as it is; None when none is given."""
     if all(params[name] in (None, ()) for name in _DEFINE_FIELDS):
         return None
     if params["outputs"] and not params["experiment"]:
@@ -758,7 +709,6 @@ def _infer(
 
 
 def _every_target(layout: ReeLayout) -> tuple[ScriptTargetSelectorArg, ...]:
-    """Every script of the REE: each kind, and each declared experiment's run and verify scripts."""
     experiments = [item.name for item in ReeDirectory(layout).read_ree().subject.definition.experiments]
     return tuple(
         ScriptTargetSelectorArg.model_validate({"kind": kind, "experiment_name": name})
@@ -789,7 +739,6 @@ def _at_terminal() -> bool:
 
 
 def _sealing_confirmed(invocation: Invocation, layout: ReeLayout) -> bool:
-    """A person at a terminal confirms a seal, which no command undoes, seeing which steps are not complete."""
     if invocation.machine or not _at_terminal():
         return True
     steps = get_ree_steps(layout).steps
@@ -838,7 +787,6 @@ _HANDLERS: dict[type[BaseModel], Handler] = {
     ReviewRunExperimentCommand: _review_step,
 }
 _REVIEW_ID = ("review_id",)
-# Required fields the command line fills when they are not given.
 _OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
     AcquireSourceCommand: ("mode",),
     LoadReeBundleCommand: ("upload_token", "archive_name"),
@@ -849,7 +797,6 @@ _OPTIONAL: dict[type[BaseModel], tuple[str, ...]] = {
     ReviewActivateExperimentEnvironmentCommand: _REVIEW_ID,
     ReviewRunExperimentCommand: _REVIEW_ID,
 }
-# Fields a workbench passes and a person does not.
 _STAGED = ("upload_token", "archive_name")
 _HIDDEN: dict[type[BaseModel], tuple[str, ...]] = {
     AcquireSourceCommand: _STAGED,
@@ -862,7 +809,6 @@ _ARCHIVE = click.Option(
     type=click.Path(dir_okay=False, exists=True, path_type=Path),
     help="The archive to take, staged in the REE.",
 )
-# How a signature is made here, for the seal and for a review of it alike.
 _SIGNING: list[click.Parameter] = [
     click.Option(
         [BUNDLE_OPTION, "bundle"],
@@ -899,7 +845,6 @@ _EXTRA: dict[type[BaseModel], list[click.Parameter]] = {
         click.Option(["--rule"], default=None, help="With --write, the rule whose proposal to write."),
     ],
 }
-# What a command's help adds to its summary.
 _MORE: dict[type[BaseModel], str] = {
     WriteScriptCommand: "The script is read on stdin: `ree write-script build_experiment_environment < build.sh`.",
     PatchReeDefinitionCommand: (
@@ -962,12 +907,12 @@ for _command, _words in VERBS.items():
         "review_run_experiment",
     ),
     params=Spelling(ReviewAcquireSourceArgs, optional=_REVIEW_ID).params,
+    help=(
+        "Review every step: the source, the experiment environment, the activation and each experiment.\n\nStops at "
+        "the first step that does not succeed. --basis applies to the source and the build."
+    ),
 )
 def review_all(**params: Any) -> None:
-    """Review every step: the source, the experiment environment, the activation and each experiment.
-
-    Stops at the first step that does not succeed. --basis applies to the source and the build.
-    """
     invocation = _invocation()
     words = "review all"
     layout = _layout_or_refuse(invocation, words)
@@ -1019,9 +964,17 @@ def review_all(**params: Any) -> None:
     )
 
 
-# ================================================
-# Reads, and init
-# ================================================
+READ_HELP: dict[type[BaseModel], str] = {
+    InitRee: "Create an REE here (or at -C) and capture its first version; again, it keeps what is there.",
+    ManifestQuery: "Print the REE's record (ree.json).",
+    ShowQuery: "Print the REE as a document: its definition, evidence, audit, steps and files.",
+    ReviewsQuery: "Print the REE's reviews, newest first.",
+    LogQuery: "Print every attempt recorded in the REE's history and its reviews'.",
+    CatQuery: "Write the bytes of PATH, a file anywhere in the REE, to stdout.",
+    BundleQuery: "Write the REE's portable bundle, with its histories, to stdout.",
+    TemplatesQuery: "Print the starter templates for the REE's scripts and where each script belongs.",
+    LintDraftQuery: "Check the unsaved script on stdin as the REE's KIND script, by the checks that run no process.",
+}
 
 
 def _read_command(
@@ -1038,7 +991,7 @@ def _read_command(
         stdin = read_stdin(model)
         answer_read(invocation, spelling.build(params, stdin, **_filled(model, invocation)))
 
-    summary = (model.__doc__ or "").strip()
+    summary = READ_HELP[model]
     return ReeCommand(
         verb_of(model),
         callback=callback,
@@ -1080,8 +1033,6 @@ def _reading(
     read: Callable[[ReeLayout, BaseModel], BaseModel | dict[str, Any]],
     render_with: Callable[[dict[str, Any]], str] | None = None,
 ) -> Callable[[Invocation, BaseModel], None]:
-    """Answer a read of the REE with what ``read`` finds, rendered for a person by ``render_with``."""
-
     def answer_read(invocation: Invocation, query: BaseModel) -> None:
         layout = _layout_or_refuse(invocation, words)
         try:
@@ -1094,8 +1045,6 @@ def _reading(
 
 
 def _bytes(words: str, write: Callable[[ReeLayout, BaseModel], None]) -> Callable[[Invocation, BaseModel], None]:
-    """Answer a read whose answer is bytes on stdout; a refusal is a result, as any other."""
-
     def answer_read(invocation: Invocation, query: BaseModel) -> None:
         layout = _layout_or_refuse(invocation, words)
         try:
@@ -1183,14 +1132,14 @@ for _read in _READS:
     cli.add_command(_read)
 
 
-# ================================================
-# Authoring
-# ================================================
-
-
-@cli.command("status", cls=ReeCommand, words=("status",), outputs=ReeStatusReport)
+@cli.command(
+    "status",
+    cls=ReeCommand,
+    words=("status",),
+    outputs=ReeStatusReport,
+    help="Show where the REE stands: each step, its evidence, and what to run next.",
+)
 def status_cmd() -> None:
-    """Show where the REE stands: each step, its evidence, and what to run next."""
     invocation = _invocation()
     layout = _layout_or_refuse(invocation, "status")
     report = get_ree_status(layout)
@@ -1199,7 +1148,19 @@ def status_cmd() -> None:
     )
 
 
-@cli.command("verify-signatures", cls=ReeCommand, words=("verify-signatures",), outputs=SignatureVerifications)
+@cli.command(
+    "verify-signatures",
+    cls=ReeCommand,
+    words=("verify-signatures",),
+    outputs=SignatureVerifications,
+    help=(
+        "Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature "
+        "counts.\n\nEach signature is held to what the REE says of it (the seal it names, its claim, a review's "
+        "record), then to\nSigstore (the chain to the trust root, the transparency log, the key that signed), then to "
+        "the policy. Nothing is\nwritten. Every signature is reported; the command fails unless there is one and each "
+        "is verified."
+    ),
+)
 @click.option("--review-id", default=None, help="Verify this review's signature, not the REE's own.")
 @click.option(
     "--policy",
@@ -1226,12 +1187,6 @@ def verify_signatures_cmd(
     staging: bool,
     trust_config: Path | None,
 ) -> None:
-    """Verify the sealed REE's signatures, or a review's, with Sigstore, under a policy of whose signature counts.
-
-    Each signature is held to what the REE says of it (the seal it names, its claim, a review's record), then to
-    Sigstore (the chain to the trust root, the transparency log, the key that signed), then to the policy. Nothing is
-    written. Every signature is reported; the command fails unless there is one and each is verified.
-    """
     invocation = _invocation()
     words = "verify-signatures"
     layout = _layout_or_refuse(invocation, words)
@@ -1299,19 +1254,25 @@ def verify_signatures_cmd(
 
 
 def _claim_named(name: str) -> VerifiedClaim | None:
-    """The claim a signature of the REE is named for; None for a file named for none."""
     claim = name.removesuffix(SIGNATURE_SUFFIX)
     return "author_approval" if claim == "author_approval" else None
 
 
-@cli.command("edit", cls=ReeCommand, words=("edit",), outputs=ScriptEdited, runs=True, operations=("write_script",))
+@cli.command(
+    "edit",
+    cls=ReeCommand,
+    words=("edit",),
+    outputs=ScriptEdited,
+    runs=True,
+    operations=("write_script",),
+    help=(
+        "Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.\n\nA script "
+        "not written yet starts from its default template. The edit is written only if the script did not "
+        "change\nmeanwhile."
+    ),
+)
 @click.argument("script", type=TARGET)
 def edit_cmd(script: ScriptTargetSelectorArg) -> None:
-    """Edit one of the REE's scripts, SCRIPT as KIND[:EXPERIMENT], in $VISUAL or $EDITOR, and write it.
-
-    A script not written yet starts from its default template. The edit is written only if the script did not change
-    meanwhile.
-    """
     invocation = _invocation()
     layout = _layout_or_refuse(invocation, "edit")
     if invocation.machine or not _at_terminal():
@@ -1344,15 +1305,9 @@ def _template(kind: TargetKind) -> str:
     return next((entry.body for entry in entries if entry.is_default), entries[0].body if entries else "")
 
 
-# ================================================
-# Runs
-# ================================================
-
-
-@cli.command("wait", cls=ReeCommand, words=("wait",), outputs=Waited)
+@cli.command("wait", cls=ReeCommand, words=("wait",), outputs=Waited, help="Wait until no command runs in the REE.")
 @click.option("--timeout", type=float, default=None, help="Give up after this many seconds.")
 def wait_cmd(timeout: float | None) -> None:
-    """Wait until no command runs in the REE."""
     invocation = _invocation()
     layout = _layout_or_refuse(invocation, "wait")
     try:
@@ -1367,10 +1322,15 @@ def wait_cmd(timeout: float | None) -> None:
     )
 
 
-@cli.command("cancel", cls=ReeCommand, words=("cancel",), outputs=CancelRequested)
+@cli.command(
+    "cancel",
+    cls=ReeCommand,
+    words=("cancel",),
+    outputs=CancelRequested,
+    help="Ask the run RUN_ID, by default the one running, to stop: it rolls the REE back and is captured as canceled.",
+)
 @click.argument("run_id", required=False)
 def cancel_cmd(run_id: str | None) -> None:
-    """Ask the run RUN_ID, by default the one running, to stop: it rolls the REE back and is captured as canceled."""
     invocation = _invocation()
     layout = _layout_or_refuse(invocation, "cancel")
     run_id = run_id or running_run(layout)
@@ -1382,15 +1342,18 @@ def cancel_cmd(run_id: str | None) -> None:
     )
 
 
-@cli.command("settle", hidden=True)
+@cli.command(
+    "settle",
+    hidden=True,
+    help=(
+        "Settle ATTEMPT_ID, whose process ended without reporting, and print how it ended.\n\nWith its command, an "
+        "attempt never recorded is recorded as having begun nothing. Prints nothing when the REE\nholds no such "
+        "attempt and no command is given."
+    ),
+)
 @click.argument("attempt_id")
 @click.option("--command", "command_file", type=Path, default=None, help="The command it was started with, as JSON.")
 def settle_cmd(attempt_id: str, command_file: Path | None) -> None:
-    """Settle ATTEMPT_ID, whose process ended without reporting, and print how it ended.
-
-    With its command, an attempt never recorded is recorded as having begun nothing. Prints nothing when the REE
-    holds no such attempt and no command is given.
-    """
     invocation = _invocation()
     try:
         layout = invocation.layout()
@@ -1410,30 +1373,34 @@ def settle_cmd(attempt_id: str, command_file: Path | None) -> None:
         click.echo(result.model_dump_json())
 
 
-# ================================================
-# This machine, and ree itself
-# ================================================
-
-
-@cli.command("build-info", hidden=True)
+@cli.command("build-info", hidden=True, help="Print this command line's build identity.")
 def build_info_cmd() -> None:
-    """Print this command line's build identity."""
     answer(_invocation(), "build-info", current_build("repo2ree-cli"))
 
 
-@cli.command("machine", cls=ReeCommand, words=("machine",), outputs=MachineFacts)
+@cli.command(
+    "machine",
+    cls=ReeCommand,
+    words=("machine",),
+    outputs=MachineFacts,
+    help="Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container.",
+)
 def machine_cmd() -> None:
-    """Print the machine ree runs an REE's scripts on: its architecture and GPUs, and whether it is a container."""
     answer(_invocation(), "machine", machine_facts())
 
 
-@cli.command("schema", cls=ReeCommand, words=("schema",), stdout="schema")
+@cli.command(
+    "schema",
+    cls=ReeCommand,
+    words=("schema",),
+    stdout="schema",
+    help=(
+        "Describe every command, or the one WORDS names, as data: its arguments, its stdin and its outputs.\n\nWhat "
+        "an agent reads to learn ree; the exit statuses and failure categories come with it."
+    ),
+)
 @click.argument("words", nargs=-1)
 def schema_cmd(words: tuple[str, ...]) -> None:
-    """Describe every command, or the one WORDS names, as data: its arguments, its stdin and its outputs.
-
-    What an agent reads to learn ree; the exit statuses and failure categories come with it.
-    """
     invocation = _invocation()
     try:
         described = describe(cli, words, EXIT_CODES, REE_STEPS)
@@ -1442,10 +1409,15 @@ def schema_cmd(words: tuple[str, ...]) -> None:
     click.echo(json.dumps(described, indent=None if invocation.machine else 2))
 
 
-@cli.command("completion", cls=ReeCommand, words=("completion",), stdout="script")
+@cli.command(
+    "completion",
+    cls=ReeCommand,
+    words=("completion",),
+    stdout="script",
+    help='Print the completion script for SHELL: `eval "$(ree completion bash)"`.',
+)
 @click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
 def completion_cmd(shell: str) -> None:
-    """Print the completion script for SHELL: `eval "$(ree completion bash)"`."""
     completion = get_completion_class(shell)
     if completion is None:
         raise click.UsageError(f"no completion for {shell}")
@@ -1453,7 +1425,6 @@ def completion_cmd(shell: str) -> None:
 
 
 def read_back(argv: list[str], stdin: bytes | None = None) -> BaseModel:
-    """The command or read an argv after ``ree`` spells, as ``ree`` parses it: the inverse of ``to_argv``."""
     context = click.Context(cli)
     command: click.Command = cli
     rest = list(argv)

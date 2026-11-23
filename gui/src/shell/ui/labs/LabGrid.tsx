@@ -5,18 +5,12 @@ import { LabCell } from "./LabCell";
 import styles from "./LabGrid.module.css";
 
 interface LabGridProps {
-  /** The labs on the current page, already sliced. */
   labs: Lab[];
   columns: number;
   selectedId: string | null;
   onSelect: (labId: string) => void;
 }
 
-/**
- * The page of bays. Owns arrow-key movement across the grid; selection follows
- * focus, which is the expected behaviour for a single-choice group and saves
- * the user a second keystroke on every bay they look at.
- */
 export function LabGrid({ labs, columns, selectedId, onSelect }: LabGridProps) {
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const step: Record<string, number> = {

@@ -1,9 +1,3 @@
-"""A command's arguments as Click parameters, generated from its model, and the model read back from them.
-
-The spelling is the one ``repo2ree_protocol.argv`` writes, so what a workbench runs (``to_argv``) is what a person
-types, and a person gets help, choices, ``--opt=value`` and completion for it.
-"""
-
 from __future__ import annotations
 
 import json
@@ -32,13 +26,10 @@ from repo2ree_protocol.command import ScriptTargetSelectorArg, TargetKind
 
 KINDS: tuple[str, ...] = get_args(TargetKind)
 EXPERIMENT_KINDS = ("experiment_run", "experiment_verify")
-# Nested options join their model's field and their own with this, where Click wants an identifier.
 _NESTED = "__"
 
 
 class TargetType(click.ParamType):
-    """A script target, ``KIND`` or ``KIND:EXPERIMENT``."""
-
     name = "KIND[:EXPERIMENT]"
 
     def convert(self, value: Any, param: click.Parameter | None, ctx: click.Context | None) -> ScriptTargetSelectorArg:
@@ -64,12 +55,6 @@ TARGET = TargetType()
 
 @dataclass(frozen=True)
 class Spelling:
-    """How a model's fields are spelled as Click parameters.
-
-    ``optional`` names required fields the command line fills itself when they are not given; ``hidden`` names
-    fields a workbench passes and a person does not.
-    """
-
     model: type[BaseModel]
     optional: Collection[str] = ()
     hidden: Collection[str] = ()
@@ -83,7 +68,6 @@ class Spelling:
         return next(((name, info) for name, info in self.model.model_fields.items() if marked(info, Stdin)), None)
 
     def build(self, params: dict[str, Any], stdin: bytes | None, **filled: Any) -> BaseModel:
-        """The model the parsed ``params`` and ``stdin`` spell, with ``filled`` for fields not given."""
         values: dict[str, Any] = {}
         for name, info in self.model.model_fields.items():
             if marked(info, Verb):
@@ -157,12 +141,10 @@ class Spelling:
 
 
 def reads_stdin(model: type[BaseModel]) -> bool:
-    """Whether a command of these arguments reads one of them on stdin."""
     return any(marked(info, Stdin) for info in model.model_fields.values())
 
 
 def read_stdin(model: type[BaseModel]) -> bytes | None:
-    """What the command reads on stdin; refused at a terminal, where it would wait on what the person types."""
     if not reads_stdin(model):
         return None
     if sys.stdin.isatty():

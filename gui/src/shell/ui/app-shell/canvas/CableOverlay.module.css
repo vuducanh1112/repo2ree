@@ -1,6 +1,3 @@
-/* The cables between the panels and the pod. A cable that is connected carries
- * its stage's tone; one that is not reads as drawn-but-inert. */
-
 .overlay {
   --cable-dim: var(--ink-inverse-subtle);
   --cable-dim-ink: var(--ink-muted);
@@ -25,10 +22,6 @@
   opacity: 1;
 }
 
-/* A cable feeding a step that is running. The strand is drawn a second time as
- * a short bright dash travelling from the panel's connector to the pod, so the
- * direction of the work is legible: the hub is being fed, not tapped.
- * `pathLength="100"` normalises the dash pattern across cables of any length. */
 .cable[data-energized] {
   opacity: 1;
 }

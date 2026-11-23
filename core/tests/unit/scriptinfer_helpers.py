@@ -1,10 +1,3 @@
-"""Shared fixtures for activation/experiment script-inference tests.
-
-An in-memory ``ArtifactAccessor`` plus builders for the two experiment environment archive
-shapes inference inspects: a Docker ``docker save`` tar (manifest.json +
-config) and a packed-venv gzip tarball (pyvenv.cfg).
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -42,13 +35,6 @@ def oci_archive(
     cmd: object = None,
     multi_arch: bool = False,
 ) -> bytes:
-    """An OCI-layout ``docker save`` tar: root ``index.json`` + ``blobs/sha256/``.
-
-    Mirrors what a containerd-image-store daemon (or ``buildx --output type=oci``)
-    exports — no legacy ``manifest.json``. ``image_ref`` is recorded on the index
-    descriptor's ``io.containerd.image.name`` annotation (omit for an untagged
-    export); ``multi_arch`` wraps the image manifest in a nested platform index.
-    """
     config: dict[str, object] = {}
     if entrypoint is not None:
         config["Entrypoint"] = entrypoint
@@ -107,11 +93,6 @@ def oci_archive(
 
 
 def venv_archive(*, top_dir: str = "ree-venv", command: str | None = None) -> bytes:
-    """A gzipped packed-venv tarball with a ``<top_dir>/pyvenv.cfg`` member.
-
-    ``command`` populates the ``command = ...`` line Python records the venv's
-    build directory in; omit it to mimic an older venv that lacks one.
-    """
     lines = ["home = /usr", "version = 3.11"]
     if command is not None:
         lines.append(f"command = {command}")
@@ -129,8 +110,6 @@ def not_an_archive() -> bytes:
 
 
 class MemoryAccessor:
-    """An ``ArtifactAccessor`` backed by an in-memory ``{path: bytes}`` map."""
-
     def __init__(self, files: dict[str, bytes] | None = None) -> None:
         self.files = dict(files or {})
 
@@ -155,8 +134,6 @@ class MemoryAccessor:
 
 
 class FixedEngines:
-    """A machine whose container engines are what a test says: these usable, the others absent."""
-
     def __init__(self, *usable: ContainerEngine) -> None:
         self.usable = usable
         self.asked = 0

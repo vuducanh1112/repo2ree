@@ -1,5 +1,3 @@
-"""The command-line contract is what ``ree schema`` says, and what ``ree`` prints conforms to it."""
-
 from __future__ import annotations
 
 import json

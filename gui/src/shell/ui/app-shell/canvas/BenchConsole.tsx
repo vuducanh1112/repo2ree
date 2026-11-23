@@ -18,15 +18,9 @@ interface BenchConsoleProps {
   reeName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The persistent footer bar owns the closed-state trigger. */
   externallyTriggered?: boolean;
 }
 
-// The workbench is the lab this whole hub lives in, so it reads as an ambient
-// console pinned to the bench corner rather than a node on the ring. The footer
-// bar carries its resting state and opens it here — no separate panel — to
-// surface where the REE is kept and the one action that matters here: deleting
-// it from its lab's store, confirmed first, with a terminal-style readout.
 export function BenchConsole({
   provisioned,
   reeName,
@@ -52,8 +46,6 @@ export function BenchConsole({
     try {
       await reeClient.deleteRee(reeId);
     } catch (err) {
-      // The REE is still there, so stay on it with the reason in the console
-      // rather than spinning on "Deleting…" forever.
       setLog(
         appendLine(
           null,

@@ -1,5 +1,3 @@
-"""Local script-process coverage for author activation and experiments."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -41,7 +39,6 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     store = ReeDirectory(layout)
     initialize_ree(layout, name="local")
     started = store.read_ree().subject.definition
-    # The activation enters an "environment" (a variable) and hands over to whatever it is given.
     activate = (
         b'#!/bin/sh\nset -eu\nprintf entered >> activation.out\nprintf "%s\\n" "$*" >> handed.out\n'
         b'ACTIVE=yes\nexport ACTIVE\nexec "$@"\n'
@@ -109,9 +106,7 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
     persisted = store.read_ree().subject.receipts
     assert persisted.activate_experiment_environment is not None
     assert persisted.activate_experiment_environment.run_id == "activation-local"
-    # The activation ran twice: alone, and around the experiment.
     assert (layout.workspace / "activation.out").read_text() == "enteredentered"
-    # Alone, it hands over a command with no options: a tool it wraps (srun) would parse them as its own.
     assert (layout.workspace / "handed.out").read_text().splitlines()[0] == "true"
     experiment = persisted.experiments[name]
     assert experiment.run_id == "experiment-local"

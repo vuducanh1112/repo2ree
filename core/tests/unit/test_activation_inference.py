@@ -1,8 +1,3 @@
-"""End-to-end inference of what runs in the experiment environment: its contract, activate script, and run scaffold.
-
-The run scaffold is an experiment's: it shares the contract subgraph with the activate script.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -98,9 +93,6 @@ def test_docker_experiment_environment_yields_confirmation_required_scaffold(tmp
 
 
 def test_oci_experiment_environment_resolves_like_a_legacy_docker_archive(tmp_path: Path) -> None:
-    # A containerd-image-store ``docker save`` writes an OCI archive (no
-    # manifest.json); it must resolve the same docker experiment environment contract so
-    # what runs in it is inferred rather than falling to not_inferred.
     _tree(tmp_path, {"Dockerfile": "FROM x\n", "main.py": "y"})
     result = _activation(
         tmp_path,
@@ -136,17 +128,12 @@ def test_venv_experiment_environment_yields_venv_scaffold(tmp_path: Path) -> Non
     assert 'exec "$@"' in body
     assert "tar -xzf" in body
     assert 'PATH="$VENV_DIR/bin:$PATH"' in body
-    # No ``command`` in the archive -> restore to the repo2ree default location,
-    # and warn that the location was assumed rather than recovered.
     assert "VENV_DIR=/tmp/ree-venv" in body
     assert "venv_restore_dir_assumed" in _codes(result)
 
 
 def test_venv_scaffold_restores_to_the_recovered_build_dir(tmp_path: Path) -> None:
     _tree(tmp_path, {"requirements.txt": "flask\n", "main.py": "y"})
-    # A venv built somewhere other than the default must be restored there, since
-    # a venv bakes absolute paths. The recovered path flows into the scaffold and
-    # no "assumed" warning is raised because the location came from the metadata.
     archive = venv_archive(top_dir="ree-venv", command="/usr/bin/python3 -m venv /opt/envs/ree-venv")
     result = _activation(
         tmp_path,
@@ -176,7 +163,6 @@ def test_missing_artifact_blocks(tmp_path: Path) -> None:
 
 def test_experiment_environment_outside_project_root_blocks(tmp_path: Path) -> None:
     _tree(tmp_path, {"proj-main/Dockerfile": "FROM x\n", "proj-main/main.py": "y"})
-    # Logical root peels to proj-main/; an experiment environment above it escapes.
     result = _activation(tmp_path, experiment_environment="elsewhere/runtime.tar", files={})
     assert result.status == "not_inferred"
     assert "experiment_environment_outside_project_root" in _codes(result)

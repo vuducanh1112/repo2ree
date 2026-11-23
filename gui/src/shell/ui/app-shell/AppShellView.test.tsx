@@ -13,8 +13,6 @@ vi.mock("./providers/AppShellProvider", () => ({
   AppShellProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 vi.mock("./AppShellContent", () => ({ AppShellContent: () => <div>Dock content</div> }));
-// The shell derives the authoring graph for the status bar and the canvas
-// alike; both consumers are mocked out here, so it is too.
 vi.mock("./canvas/AuthoringConsole", () => ({
   authoringWorkflowModel: () => ({
     steps: [],
@@ -25,8 +23,6 @@ vi.mock("./canvas/AuthoringConsole", () => ({
     active: false,
   }),
 }));
-// The review attempt is derived here too, and shared by the strip in the bar
-// and the evidence drawer; the query behind it is mocked out with it.
 vi.mock("./canvas/review/useReviewWorkflowModel", () => ({
   useReviewWorkflowModel: () => ({
     attempt: undefined,
@@ -258,7 +254,6 @@ describe("AppShellView", () => {
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.BUILD_EXPERIMENT_ENVIRONMENT);
     expect(commands.setFilesConsoleOpen).toHaveBeenCalledWith(true);
     expect(commands.setReceiptsConsoleOpen).toHaveBeenCalledWith(true);
-    // The bar above opens the canvas's top consoles, the bar below its bottom ones.
     expect(commands.setBenchConsoleOpen).toHaveBeenCalledWith(true);
     expect(commands.setLogsConsoleOpen).toHaveBeenCalledWith(true);
   });
@@ -275,8 +270,6 @@ describe("AppShellView", () => {
     expect(commands.setPage).toHaveBeenCalledWith(PAGE.CANVAS);
   });
 
-  // One drawer at a time: an authoring page and a review attempt want the same
-  // strip of screen, so opening review evidence returns the canvas to the hub.
   it("opens review evidence in place of the authoring drawer", () => {
     const commands = controller(PAGE.METADATA);
     render(<AppShellView onBack={vi.fn()} />);

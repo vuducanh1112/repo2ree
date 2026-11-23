@@ -1,5 +1,3 @@
-"""One run directory shared by pytest, task recipes, and report consumers."""
-
 from __future__ import annotations
 
 import hashlib
@@ -9,7 +7,6 @@ from pathlib import Path
 from urllib.parse import quote
 from uuid import uuid4
 
-# The package is installed editable from testbed/src, so the repository is three levels up.
 ROOT = Path(__file__).resolve().parents[3]
 ARTIFACTS = ROOT / "test-artifacts"
 
@@ -56,7 +53,7 @@ def case_dir(nodeid: str) -> Path:
     domain = artifact_domain(nodeid)
     parts = [part for part in path.with_suffix("").parts if part != "tests"]
     if domain == "assurance":
-        parts = parts[1:]  # The domain's root already says assurance.
+        parts = parts[1:]
     return domain_dir(domain) / "tests" / Path(*(case_key(part) for part in [*parts, *test]))
 
 

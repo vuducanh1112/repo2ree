@@ -1,6 +1,3 @@
-/* The "generate from repository" affordance: a button, the outcome it reports,
- * and the decision graph behind it. */
-
 .control {
   display: flex;
   flex-direction: column;
@@ -15,9 +12,6 @@
   flex-wrap: wrap;
 }
 
-/* The outcome's tone is the reading, not a colour the caller picks: `ok` means
- * the script was applied outright, `info` that it wants confirmation, `warn`
- * that nothing could be inferred, `error` that generation failed. */
 .status {
   font-size: var(--text-label);
 }

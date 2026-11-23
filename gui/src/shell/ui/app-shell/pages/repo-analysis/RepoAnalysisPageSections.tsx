@@ -18,12 +18,8 @@ import { CardHeader } from "./RepoAnalysisCardHeader";
 import styles from "./RepoAnalysisPage.module.css";
 import { EXPECTED_DEP_FILES } from "./RepoAnalysisPageHelpers";
 
-// RepoAnalysisThreatsCard lives in its own module; re-exported so the page keeps a
-// single import surface.
 export { RepoAnalysisThreatsCard } from "./RepoAnalysisThreatsCard";
 
-// Run / Re-run (+ Cancel while running) — lives in the page header's action
-// slot, mirroring the other pages.
 export function RepoAnalysisRunControls({
   running,
   runDone,
@@ -48,8 +44,6 @@ export function RepoAnalysisRunControls({
   );
 }
 
-// Surfaced inline in the column (the rail that used to host it is gone) so a
-// missing prerequisite still blocks the run with a clear way back.
 export function RepoAnalysisMissingInputs({
   missing,
   onGoFields,

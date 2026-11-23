@@ -1,5 +1,3 @@
-"""LFS pointers stay small while offline payloads retain their exact identity."""
-
 import hashlib
 import subprocess
 

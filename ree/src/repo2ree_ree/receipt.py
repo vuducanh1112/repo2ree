@@ -73,8 +73,6 @@ class ReceiptEnvelope(_ReceiptModel):
 
 
 class Launched(_ReceiptModel):
-    """Where a launched script ran, as it saw from inside the launch."""
-
     node: str = Field(min_length=1)
     slurm_job_id: str | None = None
     slurm_step_id: str | None = None
@@ -124,8 +122,6 @@ class BuildExperimentEnvironmentReceipt(ReceiptEnvelope):
 
 
 class CheckWorkingEnvironmentReceipt(ReceiptEnvelope):
-    """The author's check of the working environment ran there, launched as every script is, and exited 0."""
-
     operation: Literal["check_working_environment"] = "check_working_environment"
     check_working_environment_script_digest: CheckScriptDigest
     exit_code: Literal[0] = 0
@@ -156,8 +152,6 @@ class CrossCheckSbomReceipt(ReceiptEnvelope):
 
 
 class ActivateExperimentEnvironmentReceipt(ReceiptEnvelope):
-    """The activate experiment environment script ran a command that does nothing, which exited 0."""
-
     operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
     snapshot_digest: SnapshotDigest
     experiment_environment_path: ExperimentEnvironmentPath | None = None

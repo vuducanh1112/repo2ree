@@ -48,7 +48,6 @@ describe("runSourceWorkspaceAction", () => {
       onUpdateLogs,
     });
 
-    // The run is started by the operation that acquires the source, the name the run client dispatches on.
     expect(startReeRun).toHaveBeenCalledWith("active", "acquire_source", expect.anything());
     expect(onRunStarted).toHaveBeenCalledWith("acquire_source", "run-1");
     expect(onUpdateLogs).toHaveBeenCalled();

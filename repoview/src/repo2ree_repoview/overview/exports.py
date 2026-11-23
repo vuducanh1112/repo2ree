@@ -1,13 +1,3 @@
-"""The overview's reading of the documents it draws from: the specification, the zones, the contracts, and the
-operations.
-
-Each comes from its owner as JSON, written to reports/exports/ by a recipe `just repo-overview`
-depends on (``python -m repo2ree_assurance_checker export``, ``python scripts/zones.py export``,
-``python -m scripts.contracts export``, ``python -m repo2ree_assurance_traceview operations``), so the views
-never import the checker, the guard, the contract registry, or traceview. These models are this package's own
-typed view of those documents, and a document in a format they do not know is refused rather than half read.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -22,7 +12,6 @@ from pydantic import ConfigDict, Field, model_validator
 from repo2ree_repoview.documents import Document
 from repo2ree_repoview.repository import ROOT
 
-# Where the recipes write the owners' exports, and the commands they run.
 EXPORTS = ROOT / "reports/exports"
 SPEC_EXPORT = (sys.executable, "-m", "repo2ree_assurance_checker", "export")
 ZONES_EXPORT = (sys.executable, "scripts/zones.py", "export")
@@ -31,7 +20,6 @@ VOCABULARY_EXPORT = (sys.executable, "-m", "scripts.vocabulary", "export")
 
 
 def operations_export(verifications: Iterable[str]) -> tuple[str, ...]:
-    """The catalogue of operations traceview folds from these verifications (paths from the repository root)."""
     return (sys.executable, "-m", "repo2ree_assurance_traceview", "operations", *verifications)
 
 
@@ -53,8 +41,6 @@ class Export(Document):
         return data
 
 
-# ---------------------------------------------------------------------------- conditions
-
 type Scalar = str | bool | int | float | None
 
 
@@ -63,35 +49,24 @@ class _Condition(Document):
 
 
 class OneOf(_Condition):
-    """``{"in": [...]}``: the fact is one of the values."""
-
     values: tuple[Scalar, ...] = Field(alias="in")
 
 
 class NotEqual(_Condition):
-    """``{"not": value}``: the fact is present and is not the value."""
-
     value: Scalar = Field(alias="not")
 
 
 class PerFact(_Condition):
-    """``{"per": fact, "in": {...}}``: the values allowed depend on the trigger's ``fact``."""
-
     fact: str = Field(alias="per")
     cases: dict[str, tuple[Scalar, ...]] = Field(alias="in")
 
 
 class Holds(_Condition):
-    """``{"has": fact}``: the fact, a list, holds the trigger's ``fact``."""
-
     fact: str = Field(alias="has")
 
 
 type Condition = PerFact | OneOf | NotEqual | Holds | Scalar
 type Conditions = dict[str, Condition]
-
-
-# ---------------------------------------------------------------------------- specification
 
 
 class Component(Document):
@@ -124,13 +99,10 @@ class Entity(Document):
     groups: dict[str, dict[str, tuple[str, ...]]]
     transitions: tuple[Transition, ...]
     edges: dict[str, tuple[str, ...]]
-    # False for an entity without a machine: any move between its states, and no edges to draw.
     constrained: bool = True
 
 
 class EntitySide(Document):
-    """An entity's record on reaching a state, naming (or named by) the other side in ``fact``."""
-
     kind: Literal["entity"]
     entity: str
     reached: str
@@ -167,8 +139,6 @@ class Boundary(Document):
 
 
 class EntityTrigger(Document):
-    """An entity reaching one of ``to``, optionally from one of ``source``."""
-
     kind: Literal["entity"]
     entity: str
     source: tuple[str, ...] = Field(default=(), alias="from")
@@ -204,8 +174,6 @@ class MessageRequirement(Document):
 
 
 class GuardRequirement(Document):
-    """A condition on the trigger itself."""
-
     kind: Literal["guard"]
     where: Conditions
 
@@ -217,15 +185,11 @@ class ExclusionRequirement(Document):
 
 
 class Beside(Document):
-    """A condition an instance under way as the trigger happened may meet in place of the first one after it."""
-
     reached: tuple[str, ...]
     where: Conditions
 
 
 class NextRequirement(Document):
-    """A condition on the first instance of an entity after the trigger."""
-
     kind: Literal["next"]
     entity: str
     reached: tuple[str, ...]
@@ -234,8 +198,6 @@ class NextRequirement(Document):
 
 
 class EachRequirement(Document):
-    """Each value of a list fact of the trigger is a fact of an entity that reached a state before it."""
-
     kind: Literal["each"]
     entity: str
     reached: tuple[str, ...]
@@ -264,20 +226,12 @@ class Invariant(Document):
 
 
 class MachineEdge(Document):
-    """One edge of an aggregate's part, and the operations allowed to take it."""
-
     source: str = Field(alias="from")
     target: str = Field(alias="to")
     by: tuple[str, ...]
 
 
 class SubMachine(Document):
-    """One part of an aggregate, spelled out by the checker.
-
-    ``bulk`` operations may take many edges at once; an edge only they allow is drawn
-    only where one was taken.
-    """
-
     kind: Literal["lifecycle", "field", "receipt"]
     name: str
     group: str
@@ -297,10 +251,7 @@ class AggregateReceipt(Document):
 
 
 class Aggregate(Document):
-    """A document an entity commits, with a machine for every part; a move no edge allows violates its rule."""
-
     name: str
-    # None for a document with no receipts of its own, such as a review's.
     receipt_entity: str | None = None
     receipts: dict[str, AggregateReceipt] = Field(default_factory=dict)
     machines: tuple[SubMachine, ...]
@@ -315,11 +266,7 @@ class Spec(Export):
     entities: dict[str, Entity]
     boundaries: dict[str, Boundary]
     invariants: tuple[Invariant, ...]
-    # Absent from exports of a specification older than aggregates.
     aggregates: dict[str, Aggregate] = Field(default_factory=dict)
-
-
-# ---------------------------------------------------------------------------- zones
 
 
 class Entry(Document):
@@ -345,8 +292,6 @@ class Zone(Document):
 
 
 class Placed(Document):
-    """A tracked file and the zone it belongs to; None when no entry claims it."""
-
     path: str
     zone: str | None
 
@@ -357,9 +302,6 @@ class Zones(Export):
     zones: tuple[Zone, ...]
     files: tuple[Placed, ...]
     problems: tuple[str, ...]
-
-
-# ---------------------------------------------------------------------------- vocabulary
 
 
 class GraphVocabulary(Document):
@@ -385,8 +327,6 @@ class GraphClaim(Document):
 
 
 class VocabularyGraph(Export):
-    """Every set of names held to the catalogue, and what the check found (``python -m scripts.vocabulary``)."""
-
     FORMAT = "repo2ree-vocabulary/1"
 
     roots: tuple[str, ...]
@@ -396,12 +336,7 @@ class VocabularyGraph(Export):
     problems: tuple[str, ...]
 
 
-# ---------------------------------------------------------------------------- contracts
-
-
 class GeneratedContract(Document):
-    """A committed contract: what it binds, between whom, the function that renders it, and how to rewrite it."""
-
     name: str
     path: str
     summary: str
@@ -418,7 +353,6 @@ class GeneratedContract(Document):
         return hashlib.sha256(self.file.read_bytes()).hexdigest()
 
 
-# The contracts the views read, by the names the registry gives them.
 type ContractName = Literal[
     "cli-schema", "protocol-schema", "openapi", "behaviour-schema", "ree-schema", "ree-layout", "environment"
 ]
@@ -428,7 +362,6 @@ class Contracts(Export):
     FORMAT = "repo2ree-contracts/1"
 
     contracts: tuple[GeneratedContract, ...]
-    # The hand-written files under contracts/: every one under a fixtures/ directory.
     fixtures: tuple[str, ...]
 
     @classmethod
@@ -442,11 +375,7 @@ class Contracts(Export):
         return found
 
 
-# ---------------------------------------------------------------------------- operations
-
-# Where a line comes from, from strongest to weakest, as traceview names it.
 type Provenance = Literal["journal", "git", "inferred", "span", "time", "gap"]
-# What an operation's evidence shows of one lane in every instance, strongest first.
 type Reach = Literal["checked", "exchanged", "span", "none"]
 
 
@@ -508,9 +437,6 @@ class Operations(Export):
     undrawn: tuple[Undrawn, ...] = ()
 
 
-# ---------------------------------------------------------------------------- showcase runs
-
-
 class ShowcaseTier(Document):
     tier: str
     surface: Literal["api", "cli", "browser"]
@@ -536,9 +462,6 @@ class Showcase(Document):
 
 
 class ShowcaseRuns(Export):
-    """Which run of each showcase tier to read, and each showcase's tests in them
-    (``python -m repo2ree_testbed showcase-runs``)."""
-
     FORMAT = "repo2ree-showcase-runs/2"
 
     tiers: tuple[ShowcaseTier, ...]

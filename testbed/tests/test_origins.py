@@ -29,7 +29,6 @@ def test_a_stack_serves_the_fixture_by_git_and_over_http(tmp_path: Path) -> None
         clone = tmp_path / "clone"
         subprocess.run(["git", "clone", "-q", "--depth", "1", served.git_url, str(clone)], check=True)
         assert (clone / "hello.py").is_file()
-        # A review fetches the recorded commit by its id, shallow, as the product's acquire script does.
         commit = head(tmp_path / "served" / origins.REPOSITORY)
         pinned = tmp_path / "pinned"
         subprocess.run(["git", "init", "-q", str(pinned)], check=True)

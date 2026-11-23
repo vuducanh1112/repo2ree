@@ -18,11 +18,6 @@ interface ReceiptsConsoleProps {
   externallyTriggered?: boolean;
 }
 
-// The receipts console — the upper-right HUD, and the one place the REE's
-// materialised evidence lives. Today it holds the author receipts carried by
-// the portable REE document; review receipts (and the diffs they carry)
-// become a second section of the same console, which is why the body is built
-// from titled sections rather than a single flat list.
 export function ReceiptsConsole({
   provisioned,
   receipts,

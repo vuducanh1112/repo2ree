@@ -1,13 +1,3 @@
-"""The experiment-declaration gate for experiment-run inference.
-
-Experiment inference proceeds for a named experiment, declared or not: declaring
-one needs its run script, so inference has to come first. The requested name
-(carried on the decision context because it lives on the target, not the scan)
-matches a ``ReeDefinition.experiments`` entry or the reserved slug convention; its
-run/verify paths and declared output paths become an ``ExperimentBinding`` the
-downstream renderer consumes. A request with no name blocks to ``not_inferred``.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar

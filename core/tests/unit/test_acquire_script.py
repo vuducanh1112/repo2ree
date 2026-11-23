@@ -1,5 +1,3 @@
-"""Tests for the generated ``acquire_source.sh`` (``acquire_script``)."""
-
 import shutil
 import subprocess
 import zipfile
@@ -12,7 +10,6 @@ from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 
 
 def _sh_n(script: bytes) -> subprocess.CompletedProcess[bytes]:
-    """Syntax-check a generated script with ``sh -n`` (no execution)."""
     return subprocess.run(["sh", "-n", "/dev/stdin"], input=script, capture_output=True)
 
 
@@ -25,7 +22,7 @@ def _run(script: bytes, tmp: Path, *args: str) -> subprocess.CompletedProcess[st
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {},  # upload: no origin/type/swhid
+        {},
         {"origin_url": "https://example.com/r.git", "source_type": "git"},
         {"origin_url": "https://example.com/s.tgz", "source_type": "tarball", "swhid": "swh:1:dir:abc"},
     ],
@@ -55,7 +52,6 @@ def test_bakes_origin_swhid_and_only_the_relevant_fetch_command():
 def test_bakes_git_revision_and_pins_the_fetch():
     script = build_acquire_sh(origin_url="https://e/r.git", source_type="git", revision="deadbeef").decode()
     assert "rev='deadbeef'" in script
-    # The pinned variant fetches the specific commit instead of cloning HEAD.
     assert "fetch -q --depth 1 origin" in script
     assert "git clone --depth 1" not in script
 
@@ -72,7 +68,6 @@ def test_fetches_recorded_git_revision_when_snapshot_missing(tmp_path):
     subprocess.run([*git, "add", "."], check=True)
     subprocess.run([*git, "commit", "-q", "-m", "first"], check=True)
     pinned = subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-    # Advance the branch so an unpinned clone of HEAD would get the wrong tree.
     (origin / "v.txt").write_text("second\n")
     subprocess.run([*git, "commit", "-qa", "-m", "second"], check=True)
 
@@ -83,7 +78,6 @@ def test_fetches_recorded_git_revision_when_snapshot_missing(tmp_path):
 
 
 def test_extracts_snapshot_when_present(tmp_path):
-    # Build a snapshot tar.gz with one file, then acquire from it (no origin).
     src = tmp_path / "src"
     src.mkdir()
     (src / "hello.txt").write_text("hi\n")
@@ -99,7 +93,6 @@ def test_idempotent_skip_when_upstream_populated(tmp_path):
     upstream = tmp_path / UPSTREAM_DIRNAME
     upstream.mkdir()
     (upstream / "keep.txt").write_text("kept\n")
-    # No snapshot, no origin: would normally die — but populated upstream skips.
     result = _run(build_acquire_sh(), tmp_path)
     assert result.returncode == 0, result.stderr
     assert "already populated" in result.stdout
@@ -107,8 +100,6 @@ def test_idempotent_skip_when_upstream_populated(tmp_path):
 
 
 def test_overlay_only_when_no_snapshot_or_origin(tmp_path):
-    # No snapshot and no origin: not an error — upstream is left empty so an
-    # overlay-only bundle still reproduces.
     upstream = tmp_path / UPSTREAM_DIRNAME
     result = _run(build_acquire_sh(), tmp_path)
     assert result.returncode == 0, result.stderr

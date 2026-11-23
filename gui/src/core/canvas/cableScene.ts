@@ -7,11 +7,6 @@ import {
 } from "@core/canvas/cableGeometry";
 import { CANVAS_NODES } from "@core/canvas/canvasNodes";
 
-/**
- * Which cables exist and where their ends land, given geometry measured from
- * the assembled 2.5D hub. Keeping this arithmetic outside React makes the
- * layout rules testable without a browser.
- */
 export interface CableScene {
   stage: { width: number; height: number };
   mainPod: PodGeom;

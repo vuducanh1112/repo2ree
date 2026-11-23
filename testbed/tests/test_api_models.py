@@ -1,5 +1,3 @@
-"""The tiers' typed view of the API says only what the contract says."""
-
 import json
 from types import UnionType
 from typing import Any, Literal, Union, get_args, get_origin

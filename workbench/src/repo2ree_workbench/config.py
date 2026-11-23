@@ -1,5 +1,3 @@
-"""Environment-backed process configuration for the workbench service."""
-
 from __future__ import annotations
 
 import argparse
@@ -13,9 +11,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from repo2ree_workbench.identity import load_or_create_workbench_id
 
-# Where this workbench's *own* spans go. ``direct`` posts to a collector it can
-# reach; ``relay`` ships them over the control-plane socket it already holds;
-# ``local`` writes the TRACE_FILE path or stdout; ``off`` makes tracing a no-op.
 TelemetryMode = Literal["direct", "relay", "local", "off"]
 _TELEMETRY_MODES = ("direct", "relay", "local", "off")
 
@@ -24,22 +19,17 @@ _TELEMETRY_MODES = ("direct", "relay", "local", "off")
 class WorkbenchConfig:
     api_ws_url: str
     workbench_id: str
-    # The store's token, which admits this workbench for that store alone.
     enrollment_token: str
     cli_path: str
-    # The store this workbench serves, and the directory of REEs it is on this machine.
     store_id: str
     store_root: Path
     otlp_endpoint: str | None = None
     telemetry: TelemetryMode = "off"
     slots: int = 1
-    # The tools bundle the executor takes git, curl, syft and the rest from, when not the host's.
     tools_bundle: Path | None = None
 
 
 class WorkbenchEnvironment(BaseSettings):
-    """Validated environment accepted by a resident workbench process."""
-
     model_config = SettingsConfigDict(env_file=None, extra="ignore", case_sensitive=True, validate_default=True)
 
     WORKBENCH_API_WS_URL: str = "ws://localhost:8000/workbench/connect"
@@ -50,7 +40,6 @@ class WorkbenchEnvironment(BaseSettings):
     REPO2REE_CLI_PATH: str = "ree"
     OTLP_ENDPOINT: str | None = None
     TRACE_FILE: str | None = None
-    # "ID=PATH": serve the store ID, a directory of REEs at PATH.
     WORKBENCH_STORE: str = ""
     WORKBENCH_SLOTS: int = 1
     WORKBENCH_TOOLS_BUNDLE: Path | None = None
@@ -77,16 +66,6 @@ def _resolve_telemetry(
     explicit: TelemetryMode | None,
     trace_file: str | None,
 ) -> TelemetryMode:
-    """Decide where this workbench's own spans go.
-
-    An explicit ``WORKBENCH_TELEMETRY`` always wins — that is the operator's
-    escape hatch, and the way to keep telemetry off the control plane or off the
-    machine entirely. Otherwise a configured collector means direct export, a
-    configured TRACE_FILE means local, and the fallback is off: a store's
-    workbench may be someone else's machine, and it does not start shipping
-    telemetry across that boundary merely because nobody configured a collector
-    for it.
-    """
     if explicit:
         return explicit
     if otlp_endpoint:

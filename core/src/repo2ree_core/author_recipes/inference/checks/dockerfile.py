@@ -1,13 +1,3 @@
-"""Dockerfile-location checks for the build DAG's dockerfile strategy branch.
-
-These checks are *purely locational*. ``docker build`` resolves ``FROM``,
-``ARG``, and multi-stage itself, so the build command is mechanically
-determined by a Dockerfile's path and the logical-root build context alone.
-The only blocking conditions are structural — more than one project-root
-Dockerfile (can't pick which), or a nested Dockerfile whose build context is
-ambiguous. There is no ``FROM`` parsing here.
-"""
-
 from __future__ import annotations
 
 from typing import ClassVar
@@ -18,7 +8,6 @@ from repo2ree_protocol.inference import DockerfileBinding, PathMatchesObservatio
 
 def _project_root(context: DecisionContext) -> str:
     binding = context.binding("project_root")
-    # Guaranteed present by the DAG's binding-dataflow validation.
     if not isinstance(binding, ProjectRootBinding):
         raise ValueError("dockerfile check reached without a project_root binding")
     return binding.path

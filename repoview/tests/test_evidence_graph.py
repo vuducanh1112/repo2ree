@@ -1,5 +1,3 @@
-"""The evidence graph is the specification's receipts, drawn: every dependency they state, and no other."""
-
 from __future__ import annotations
 
 import re

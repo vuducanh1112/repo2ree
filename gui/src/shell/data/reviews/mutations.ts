@@ -11,34 +11,17 @@ export function useStartSourceReviewMutation() {
   const invalidate = useReviewInvalidation(reeId);
 
   return useMutation({
-    // Resolves to the id of the attempt this opened, not to the run envelope:
-    // the console has to drive *that* attempt from the moment the POST returns,
-    // and the reviews list does not carry it yet (see `selectReviewAttempt`).
     mutationFn: async (basis: ReviewBasisRequest = "auto") =>
       openedReviewId(await runtime.reeApi.reviewAcquireSource(reeId, { basis })),
     onSuccess: invalidate,
   });
 }
 
-/**
- * The attempt a review run opened.
- *
- * The route mints the id and seeds it onto the run at creation, so it is on the
- * response to this very POST — before the run executes and long before the
- * attempt appears in the reviews list. That timing is the whole point: it is
- * what lets the console address the attempt it just opened instead of guessing
- * at the newest one it can see.
- */
 function openedReviewId(run: RunSummary): string | undefined {
   const reviewId = run.outputs?.review_id;
   return typeof reviewId === "string" && reviewId ? reviewId : undefined;
 }
 
-/**
- * Certify the runtime inside an existing attempt. Takes the review id at call
- * time rather than at hook time: the attempt to build in is whichever one the
- * source step opened, which is not known when the console mounts.
- */
 export function useStartBuildExperimentEnvironmentReviewMutation() {
   const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
@@ -53,11 +36,6 @@ export function useStartBuildExperimentEnvironmentReviewMutation() {
   });
 }
 
-/**
- * Probe the runtime the attempt certified. Deliberately has no basis parameter:
- * activation runs in the workspace the build left behind and inherits what that
- * evidence is worth, so offering the choice here would be offering a fiction.
- */
 export function useStartActivationReviewMutation() {
   const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
@@ -70,13 +48,6 @@ export function useStartActivationReviewMutation() {
   });
 }
 
-/**
- * Reproduce one experiment's result inside the attempt. Named per call rather
- * than per hook: the console runs one experiment at a time, and "run all" is
- * this awaited in sequence — which keeps each experiment's own run, log, and
- * verdict separate, and lets a reviewer stop a slow one without discarding what
- * already settled.
- */
 export function useStartExperimentReviewMutation() {
   const runtime = useReeRuntime();
   const reeId = resolveReeId(runtime);
@@ -89,7 +60,6 @@ export function useStartExperimentReviewMutation() {
   });
 }
 
-/** Every review mutation moves the same two lists: the attempts and the runs. */
 function useReviewInvalidation(reeId: string) {
   const queryClient = useQueryClient();
   return async () => {

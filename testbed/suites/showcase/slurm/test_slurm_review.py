@@ -1,5 +1,3 @@
-"""A reviewer on the cluster reproduces the experiment through the author's launch, as a Slurm job step."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

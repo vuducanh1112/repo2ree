@@ -1,5 +1,3 @@
-"""The run store moves the author action a run carries: every status change it persists is journaled."""
-
 from __future__ import annotations
 
 import json
@@ -30,7 +28,6 @@ def _run(
             "created_at": "2026-01-01T00:00:00Z",
             "request": {},
             "action": action,
-            # Fresh per run: the recorder holds the actions this process has open.
             "action_id": f"act-{uuid4().hex}" if action else None,
         }
     )
@@ -67,7 +64,7 @@ def test_each_persisted_status_change_moves_the_action_once(tmp_path: Path, tran
     store.create_idempotent(_run())
     store.begin("ree-1", "build-1")
     store.request_cancel("ree-1", "build-1")
-    store.request_cancel("ree-1", "build-1")  # Already canceling: no change, no record.
+    store.request_cancel("ree-1", "build-1")
     store.finalize("ree-1", "build-1", status="canceled", outputs={}, failure=None)
 
     named = {"action": "build_experiment_environment", "run_id": "build-1"}
@@ -138,7 +135,7 @@ def test_a_run_whose_command_runs_on_is_resumed_by_the_next_process(tmp_path: Pa
     assert run.action_id is not None
     author_actions.detach(run.action_id)
     author_actions.settle_open("abandoned")
-    author_actions._open.pop(run.action_id)  # The process ends; the next one knows nothing it held.
+    author_actions._open.pop(run.action_id)
 
     restarted = JsonRunStore(tmp_path / "runs")
     assert restarted.interrupt_incomplete() == []

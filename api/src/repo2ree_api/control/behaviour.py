@@ -1,11 +1,3 @@
-"""Behaviour evidence for collectors: the owners' journals and persisted state, read only.
-
-A deployment is distributed, so the control plane is the one place a collector
-can rely on reaching. It serves what the API process's owners wrote; nothing
-here interprets it. The state snapshot carries the journal positions read around
-it, its cut, so the checker knows which journal records it must agree with.
-"""
-
 from __future__ import annotations
 
 import json
@@ -32,8 +24,6 @@ from repo2ree_telemetry.behaviour import journal_file, journal_files, positions,
 
 behaviour_router = APIRouter(tags=["behaviour"])
 
-# The REE archives this control plane served, beside the journals. Not a journal:
-# what a collector needs to place a client's downloaded copy, not owner behaviour.
 ARCHIVES = "ree-archives.ndjson"
 _archives_lock = threading.Lock()
 
@@ -43,7 +33,6 @@ def journal_positions() -> dict[str, int]:
 
 
 def record_archive(ree_id: str, sha256: str, size: int, before: dict[str, int]) -> None:
-    """Note an archive as served, with the journal positions read before building it and now: its cut."""
     directory = service_settings.BEHAVIOUR_JOURNAL_DIR
     after = positions(directory)
     cut = {journal_id: [before.get(journal_id, 0), position] for journal_id, position in after.items()}
@@ -122,7 +111,6 @@ def get_behaviour_positions() -> BehaviourPositions:
     operation_id="getBehaviourState",
 )
 def get_behaviour_state() -> BehaviourState:
-    """Owners write their store and then journal the change, so the stores are read inside the cut."""
     directory = service_settings.BEHAVIOUR_JOURNAL_DIR
     before = positions(directory)
     runs: dict[str, dict[str, Any]] = {}
@@ -130,7 +118,7 @@ def get_behaviour_state() -> BehaviourState:
         try:
             runs[path.parent.name] = json.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
-            continue  # Removed with its REE while listing.
+            continue
     after = positions(directory)
     cut = {journal_id: (before.get(journal_id, 0), position) for journal_id, position in after.items()}
     return BehaviourState(cut=cut, runs=runs)
@@ -160,7 +148,6 @@ def _store_workbench(store_id: str) -> str:
     operation_id="listStoreBehaviourJournals",
 )
 def list_store_behaviour_journals(store_id: str) -> BehaviourJournalList:
-    """The journals the workbench serving the store keeps in it, read through that workbench."""
     workbench_id = _store_workbench(store_id)
     try:
         listed = workbench_client.list_journals(workbench_id)

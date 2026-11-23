@@ -46,9 +46,6 @@ def _parse_lsblk_devices(stdout: str) -> dict[str, StorageDefinition]:
     except json.JSONDecodeError:
         return result
 
-    # lsblk always emits a JSON object with a ``blockdevices`` array, but a
-    # truncated or wrong-tool output can be any JSON value; treat anything that
-    # is not the expected shape as "no devices" rather than raising.
     if not isinstance(payload, dict):
         return result
 

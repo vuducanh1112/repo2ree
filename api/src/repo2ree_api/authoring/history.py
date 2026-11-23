@@ -1,5 +1,3 @@
-"""Read captured operation attempts without exposing Git storage as raw files."""
-
 from fastapi import APIRouter, HTTPException
 
 from repo2ree_api.contracts import ERROR_RESPONSES

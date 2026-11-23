@@ -2,10 +2,6 @@ import { useEffect, useState } from "react";
 
 const UPTIME_TICK_MS = 1000;
 
-/**
- * Supplies one shared wall-clock reading for every lab rendered by a view.
- * It stays dormant until there is an uptime label to update.
- */
 export function useLabUptimeClock(enabled: boolean): number {
   const [nowMs, setNowMs] = useState(() => Date.now());
 

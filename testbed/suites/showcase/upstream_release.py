@@ -1,5 +1,3 @@
-"""An upstream the stack serves, whose latest release a test publishes between an author's build and a reviewer's."""
-
 from __future__ import annotations
 
 import os
@@ -24,7 +22,6 @@ def publish(project: Project, release: Release) -> None:
 
 
 def author(client: Client, ree_id: str, project: Project) -> None:
-    """Every authoring stage, with the build fetching from this stack's upstream."""
     client.upload_source(ree_id, project)
     script = project.recipe("build_experiment_environment.sh").replace(PLACEHOLDER, URL)
     build = client.build_experiment_environment(ree_id, project, script)

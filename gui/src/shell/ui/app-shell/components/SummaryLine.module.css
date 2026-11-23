@@ -1,5 +1,3 @@
-/* A label stacked over its readout. Used down the side of every step page. */
-
 .line {
   display: flex;
   flex-direction: column;

@@ -1,10 +1,3 @@
-"""``ree`` as its callers use it: a person at a terminal, and a workbench reading ``--json``.
-
-The workbench runs ``ree -C <root> --json …`` and depends on that contract: the ActionResult as one JSON line on
-stdout, NDJSON log events on stderr, and the exit status. A person runs the same verbs and reads plain lines.
-These tests drive the real command line, real handlers and a real REE tree in a temp directory.
-"""
-
 from __future__ import annotations
 
 import fcntl
@@ -44,7 +37,7 @@ BUILD_SCRIPT = RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
 runner = CliRunner()
 
 
-def ree(root: Path, *words: str, input: str | bytes | None = None) -> Result:  # noqa: A002 — CliRunner's name
+def ree(root: Path, *words: str, input: str | bytes | None = None) -> Result:  # noqa: A002
     return runner.invoke(cli, ["-C", str(root), *words], input=input)
 
 
@@ -57,7 +50,6 @@ def _stderr_events(result: Result) -> list[dict]:  # type: ignore[type-arg]
 
 
 def outputs(result: Result) -> dict:  # type: ignore[type-arg]
-    """The outputs of the one result line ``--json`` prints, which must have succeeded."""
     answered = ActionResult.model_validate_json(result.stdout)
     assert answered.status == "succeeded", result.output
     return answered.outputs
@@ -73,11 +65,6 @@ def initialized(root: Path) -> Path:
     result = ree(root, "initialize-ree", "--name", "demo")
     assert result.exit_code == 0, result.output
     return root
-
-
-# ================================================
-# init / manifest / build-info
-# ================================================
 
 
 def test_build_info_reports_injected_revision(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -200,11 +187,6 @@ def test_without_c_the_nearest_ree_above_the_current_directory_is_the_one(
     assert outputs(result)["subject"]["definition"]["name"] == "demo"
 
 
-# ================================================
-# Commands, as the workbench runs them (--json)
-# ================================================
-
-
 def test_a_command_writes_its_result_to_stdout_and_its_logs_to_stderr(initialized: Path) -> None:
     result = machine(initialized, "--run-id", "run-1", "write-script", BUILD_SCRIPT, input="echo build\n")
     assert result.exit_code == 0, result.output
@@ -213,7 +195,6 @@ def test_a_command_writes_its_result_to_stdout_and_its_logs_to_stderr(initialize
     layout = ReeLayout(root=initialized)
     assert layout.overlay_file(BUILD_SCRIPT).read_text() == "echo build\n"
     assert layout.workspace_file(BUILD_SCRIPT).read_text() == "echo build\n"
-    # stderr is NDJSON events only, the run's id first: the workbench parses every line.
     events = _stderr_events(result)
     assert events[0] == {"type": "started", "run_id": "run-1", "operation": "write_script"}
     assert all(event["type"] == "log" for event in events[1:])
@@ -353,7 +334,6 @@ def test_a_canceled_run_exits_canceled_and_clears_its_marker(initialized: Path) 
 
     assert result.exit_code == CANCELED
     assert ActionResult.model_validate_json(result.stdout.strip()).status == "canceled"
-    # The marker is the run's own: a later run reusing the id is not canceled by its leftover.
     assert not layout.run_cancel_marker("run-1").exists()
 
 
@@ -363,7 +343,7 @@ def test_a_stop_signal_cancels_the_run_cooperatively_and_the_handler_is_restored
 ) -> None:
     def interrupted(cmd, *, layout, log, run_id, is_canceled, context):
         assert not is_canceled()
-        os.kill(os.getpid(), stop)  # As the workbench escalates a cancel, or a person presses Ctrl-C.
+        os.kill(os.getpid(), stop)
         return ActionResult(status="canceled" if is_canceled() else "succeeded")
 
     monkeypatch.setattr(session_module, "run_command", interrupted)
@@ -373,11 +353,6 @@ def test_a_stop_signal_cancels_the_run_cooperatively_and_the_handler_is_restored
 
     assert ActionResult.model_validate_json(result.stdout.strip()).status == "canceled"
     assert signal.getsignal(stop) is before
-
-
-# ================================================
-# Commands, as a person runs them
-# ================================================
 
 
 def test_a_person_reads_plain_lines_and_the_outcome(initialized: Path) -> None:
@@ -466,11 +441,6 @@ def test_the_steps_shared_with_run_sh_have_its_names_and_its_summaries() -> None
         assert SUMMARIES[command] == shared[verb]
 
 
-# ================================================
-# Reading an REE
-# ================================================
-
-
 def test_cat_round_trips_workspace_bytes(initialized: Path) -> None:
     assert machine(initialized, "write-script", BUILD_SCRIPT, input="payload\n").exit_code == 0
 
@@ -512,7 +482,6 @@ def test_show_reflects_workspace_files(initialized: Path) -> None:
     result = machine(initialized, "show")
     assert result.exit_code == 0
     document = outputs(result)
-    # The command line knows only its REE's directory, not where a control plane keeps it.
     assert "ree_id" not in document
     assert any(f.get("path") == "ree-scripts/experiments/hello.sh" for f in document["workspace_files"])
 
@@ -597,11 +566,6 @@ def test_an_ree_no_command_worked_on_has_nothing_to_bundle(initialized: Path) ->
 
 def test_every_read_a_workbench_can_be_sent_is_a_command() -> None:
     assert {*(verb_of(read) for read in query_types()), verb_of(InitRee)} <= set(cli.commands)
-
-
-# ================================================
-# seal
-# ================================================
 
 
 def test_a_person_at_a_terminal_confirms_a_seal_seeing_what_is_not_complete(

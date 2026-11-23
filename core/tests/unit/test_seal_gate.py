@@ -1,5 +1,3 @@
-"""Sealing is refused when the REE's own receipts contradict what it holds."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -138,7 +136,6 @@ def test_sealing_is_refused_while_a_receipt_is_stale(tmp_path: Path) -> None:
 
 
 def test_missing_evidence_still_seals(tmp_path: Path) -> None:
-    """Incomplete is not self-contradictory: an REE may be sealed with gaps."""
     bare = Ree(subject=ReeSubject(definition=ree_definition(name="demo")))
     store = _store(tmp_path, bare)
 
@@ -206,7 +203,6 @@ def test_canceling_a_streamed_seal_does_not_publish_partial_state(tmp_path: Path
 
 
 def test_sealing_is_refused_while_a_receipt_outlives_its_declaration(tmp_path: Path) -> None:
-    """Dropping where the build leaves its artifact must not launder the receipt that attested it."""
     definition = _ree().subject.definition
     unplaced = definition.experiment_environment.model_copy(update={"artifact_path": None})
     orphaned = replace_definition(_ree(), definition.model_copy(update={"experiment_environment": unplaced}))
@@ -240,7 +236,6 @@ def test_download_refuses_seal_without_published_operation(tmp_path):
         results_included=False,
         sealed_at=_NOW,
     )
-    # Recorded by ree, as no attempt: a seal nothing published.
     as_recorded(store.layout)
     with (
         pytest.raises(HistoryCaptureError, match="no published successful seal"),

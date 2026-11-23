@@ -40,7 +40,6 @@ interface ListReesQuery {
 interface ListReeIndexQuery {
   cursor?: string;
   limit?: number;
-  /** Narrow to entries some archive has issued an identifier for. */
   depositedOnly?: boolean;
 }
 
@@ -73,12 +72,10 @@ export class ReeApi {
     return this.client.request<BuildInfo>(endpoints.buildInfo(), { method: "GET" });
   }
 
-  /** The stores REEs are created and kept in, each with the images it offers. */
   async listStores(): Promise<StoreList> {
     return this.client.request<StoreList>(endpoints.stores(), { method: "GET" });
   }
 
-  /** Starter templates for the REE-owned scripts, as the REE's workbench knows them. */
   async listScriptTemplates(reeId: ReeId | string): Promise<ScriptTemplateCatalog> {
     return this.client.request<ScriptTemplateCatalog>(endpoints.reeScriptTemplates(reeId), {
       method: "GET",
@@ -89,12 +86,6 @@ export class ReeApi {
     return this.client.request<WorkbenchList>(endpoints.workbenches(), { method: "GET" });
   }
 
-  /**
-   * REEs sealed on this control plane, newest first.
-   *
-   * Not REE-scoped and not tied to a live workbench: entries outlive the
-   * benches they were authored in, which is the point of the index.
-   */
   async listReeIndex(query: ListReeIndexQuery = {}): Promise<ReeIndexList> {
     const search = new URLSearchParams();
     if (query.cursor) {
@@ -122,12 +113,6 @@ export class ReeApi {
     });
   }
 
-  /**
-   * Provisioning runs in the background so the workbench image pull streams its
-   * progress live — the response is the provisioning run (carrying reeId +
-   * runId), not the finished workspace. Poll the run / its log feed and fetch
-   * the workspace with {@link getRee} once it reaches "succeeded".
-   */
   async createRee(payload: ReeCreatePayload): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.rees(), {
       method: "POST",
@@ -195,17 +180,6 @@ export class ReeApi {
     );
   }
 
-  /**
-   * Run the author's activation alone in the runtime an attempt certified. Takes no
-   * basis, unlike the two steps before it: activation inherits what the
-   * attempt's evidence is worth rather than choosing.
-   */
-  /**
-   * Reproduce one experiment's result inside an attempt whose runtime came up.
-   * One name per call, like the author's own experiment route: reproducing the
-   * whole set is this called in sequence, so each run keeps its own log,
-   * receipt, and cancel point.
-   */
   async reviewRunExperiment(
     reeId: ReeId | string,
     reviewId: string,
@@ -268,7 +242,6 @@ export class ReeApi {
     });
   }
 
-  /** Open a staging slot for a downloaded REE bundle (the `load-ree-bundle` counterpart of `initUpload`). */
   async initBundleUpload(reeId: ReeId, payload: UploadInitPayload): Promise<UploadInitResponse> {
     return this.client.request<UploadInitResponse>(endpoints.reeBundleUploadInit(reeId), {
       method: "POST",
@@ -276,7 +249,6 @@ export class ReeApi {
     });
   }
 
-  /** Make the REE be the staged bundle: intent, source, and author evidence. */
   async loadReeBundle(reeId: ReeId, uploadToken: string, archiveName: string): Promise<RunSummary> {
     return this.client.request<RunSummary>(endpoints.loadReeBundle(reeId), {
       method: "POST",
@@ -337,12 +309,6 @@ export class ReeApi {
     });
   }
 
-  /**
-   * Read-only inference of the REE-owned scripts for the requested targets.
-   * Recomputed on every call and persists nothing; the returned candidate
-   * bytes become a script only when the caller writes them via
-   * {@link writeScript}.
-   */
   async suggestScripts(
     reeId: ReeId | string,
     targets: ScriptTargetSelector[],
@@ -353,11 +319,6 @@ export class ReeApi {
     });
   }
 
-  /**
-   * Static checks over the REE's written scripts, on every tier the bench can
-   * run. Read-only and always recomputed; a target with no script yet comes
-   * back under `missing_scripts` rather than as an empty report.
-   */
   async lintScripts(
     reeId: ReeId | string,
     targets: ScriptTargetSelector[],
@@ -368,12 +329,6 @@ export class ReeApi {
     });
   }
 
-  /**
-   * Static checks over a script that has not been saved — the bytes in an
-   * editor, with the declarations to grade them against. It reads and writes
-   * nothing of the REE; the REE's workbench runs the checks. Contract tier only;
-   * the syntax and shell tiers live on {@link lintScripts}.
-   */
   async checkScriptDraft(
     reeId: ReeId | string,
     target: ScriptTargetSelector,

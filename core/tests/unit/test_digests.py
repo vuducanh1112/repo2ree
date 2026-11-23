@@ -60,9 +60,7 @@ def test_digest_output_paths_tracks_files_and_dirs(tmp_path):
 
     before = digest_output_paths(tmp_path, ["results/out.txt", "figures"])
     assert before is not None
-    # Order-independent over the declared set.
     assert digest_output_paths(tmp_path, ["figures", "results/out.txt"]) == before
-    # A change to any declared path moves the digest.
     (tmp_path / "figures" / "plot.png").write_bytes(b"img2")
     assert digest_output_paths(tmp_path, ["results/out.txt", "figures"]) != before
 

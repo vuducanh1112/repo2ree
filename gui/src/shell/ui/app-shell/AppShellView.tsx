@@ -28,8 +28,6 @@ interface AppShellViewProps {
   onBack: () => void;
 }
 
-// Pages whose canvas node carries a compact label; the window says the longer
-// name. Everything else takes its node's own label.
 const WINDOW_TITLE: Partial<Record<AppShellPage, string>> = {
   [PAGE.ACQUIRE_SOURCE]: "Source Acquisition",
 };
@@ -70,22 +68,13 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   const { badges } = stepRuns;
   const { toast } = uiChrome;
   const page = uiChrome.page;
-  // Derived once here so the status-bar DAG and the canvas panels name the
-  // same next step; deriving it twice lets the two drift apart.
   const authoring = authoringWorkflowModel(ree);
-  // Which workflow the bar is showing, and the review step whose evidence the
-  // drawer is on. Both live here because the review strip and the evidence
-  // drawer are two views of one attempt, and the attempt cannot belong to
-  // either of them.
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("authoring");
   const [reviewStep, setReviewStep] = useState<ReviewStepKey | null>(null);
   const review = useReviewWorkflowModel({
     experiments: ree.spec.experiments ?? [],
     active: provisioned && workflowMode === "review",
   });
-  // Nodes the REE's own audit reports as stale: the receipt is still on the
-  // aggregate, but what it rests on has moved since. They read as not-done (see
-  // `hasProcessStepCompleted`); the marker says why.
   const staleNodeKeys = useMemo(
     () => new Set(CANVAS_NODES.filter((node) => isNodeStale(node, ree)).map((node) => node.key)),
     [ree],
@@ -96,15 +85,10 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
     onFlushFailed: () =>
       commands.showToast("Left with unsaved changes — the last save did not go through", "error"),
   });
-  // The constellation (pod hub) is the home view and stays live: pages open as
-  // windows standing on it beside their own node, several at once, so moving
-  // between steps is panning rather than replacing what is on screen.
   const openPage = useCallback(
     (next: typeof page) => {
       commands.setPage(next);
       if (next !== PAGE.CANVAS) commands.setReceiptsConsoleOpen(false);
-      // One drawer at a time: an authoring page and a review attempt want the
-      // same strip of screen, and neither is readable stacked on the other.
       setReviewStep(null);
     },
     [commands],
@@ -124,8 +108,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
   }, []);
 
   const drawerOpen = provisioned && page !== PAGE.CANVAS;
-  // The selected workflow page is the one authoring surface. Keeping it beside
-  // the canvas preserves the overview without asking authors to arrange windows.
   const drawerBody = useMemo(() => {
     if (!drawerOpen) return null;
     if (page === PAGE.ACQUIRE_SOURCE) {
@@ -280,7 +262,6 @@ function AppShellViewInner({ onBack }: AppShellViewProps) {
                 onBenchConsoleOpenChange={commands.setBenchConsoleOpen}
               />
 
-              {/* Cross-page logs console: every run of this REE, split by step. */}
               <RunHud
                 open={uiChrome.logsConsoleOpen}
                 onOpenChange={commands.setLogsConsoleOpen}

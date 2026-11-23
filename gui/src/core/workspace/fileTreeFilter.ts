@@ -1,13 +1,5 @@
 import type { FileTreeNode } from "./FileTree";
 
-/**
- * Prune a file tree to the nodes relevant to `query` (case-insensitive
- * substring match on the node name). Files are kept when their name matches; a
- * folder is kept when its own name matches (in which case its whole subtree is
- * preserved so you can browse into it) or when any descendant matches (so the
- * path to every match stays visible). An empty/whitespace query returns the
- * original nodes unchanged.
- */
 export function filterFileTree(nodes: FileTreeNode[], query: string): FileTreeNode[] {
   const needle = query.trim().toLowerCase();
   if (!needle) return nodes;

@@ -51,9 +51,6 @@ export function PageGenerateSbom({
   const experimentEnvironmentIsTarball =
     !!experimentEnvironmentPath && isExperimentEnvironmentTarballPath(experimentEnvironmentPath);
 
-  // The runtime is scanned where the build left it, in the workspace; the SBOM
-  // that comes back is REE evidence and lives in artifacts/, so it is found
-  // among the REE's own files rather than in the materialized tree.
   const sbomPath = resolvedSbomPath(ree.spec.sbom);
   const sbomNode = findSbomArtifact(reeFiles, sbomPath);
   const sbomSummary = useMemo(() => summarizeSbom(sbomNode), [sbomNode]);

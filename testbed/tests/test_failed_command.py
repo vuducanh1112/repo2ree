@@ -3,7 +3,6 @@ from pathlib import Path
 
 from repo2ree_testbed.runs.failed_command import FailedCommand, last_failed_command
 
-# The tail the VM's e2e-gui run recorded, trimmed: a build whose RUN step could not resolve names.
 PIP_TAIL = """\
 ror('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x7f>: Failed to establish a new connection: \
 [Errno -3] Temporary failure in name resolution')': /simple/pandas/

@@ -1,18 +1,3 @@
-"""Manifest scan orchestration — the declared-dependency inventory source.
-
-The format knowledge lives in the ecosystem modules (``pypi``, ``conda``,
-``oci``), each contributing ``SourceParser`` entries to the registry below;
-this module only walks the workspace, dispatches files to the first matching
-parser, and merges the two sides.
-
-Lockfiles are merged into the declared rows: a declared dependency whose
-identity appears in a lockfile gains ``locked_version`` / ``locked_hashes``;
-lock-only entries become ``direct=False`` rows (a lockfile states the full
-transitive closure, so an unmatched entry is presumed transitive).
-
-No I/O happens outside ``scan_manifest_files``.
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,27 +9,15 @@ from repo2ree_ree.dependency import Dependency, DependencyInventory, normalize_p
 from . import conda, npm, oci, pypi
 from .base import SourceParser
 
-# ================================================
-# Registry
-# ================================================
-
 _REGISTRY: tuple[SourceParser, ...] = (*pypi.PARSERS, *conda.PARSERS, *npm.PARSERS, *oci.PARSERS)
 
 if len({parser.format_id for parser in _REGISTRY}) != len(_REGISTRY):
     raise AssertionError("registry format_ids must be unique")
 
-# Directories whose contents are never the repo's own manifests.
 _SKIPPED_DIRS = frozenset({".git", ".venv", "venv", "node_modules", "__pycache__"})
 
 
-# ================================================
-# Entry point
-# ================================================
-
-
 def scan_manifest_files(repo_path: Path) -> DependencyInventory:
-    """Walk the repo, parse every recognized manifest/lockfile/Dockerfile, and
-    return the merged inventory."""
     if not repo_path.is_dir():
         raise ValueError(f"repo_path must be an existing directory: {repo_path}")
 
@@ -58,9 +31,6 @@ def scan_manifest_files(repo_path: Path) -> DependencyInventory:
         if text is None:
             continue
         rows = parser.parse(text, relative)
-        # The side obligation from base.py, enforced per parse: declared-side
-        # rows are direct declarations citing the parsed file; locked-side
-        # rows are closure facts.
         for row in rows:
             if parser.side == "declared" and (not row.direct or row.declared_in != relative):
                 raise AssertionError(f"{parser.format_id}: declared rows must be direct and cite {relative!r}")
@@ -81,16 +51,6 @@ def scan_manifest_files(repo_path: Path) -> DependencyInventory:
 
 
 def merge_locked(declared: list[Dependency], locked: list[Dependency]) -> list[Dependency]:
-    """Fold lock rows into the declared rows they resolve; unmatched lock rows
-    stay as ``direct=False`` closure entries.
-
-    An identity is a join key, not a uniqueness constraint: universal locks
-    (uv.lock, poetry.lock) list the same package several times when resolution
-    forks on markers or platforms. A declared row matched by several forks
-    keeps the first fork's version as the representative and the union of all
-    forks' hashes — the hash set is what archival verification checks against,
-    so no fork's artifacts may be dropped.
-    """
     if any(lock.direct for lock in locked):
         raise AssertionError("lock rows are closure facts and must arrive with direct=False")
 
@@ -123,19 +83,7 @@ def merge_locked(declared: list[Dependency], locked: list[Dependency]) -> list[D
     return merged
 
 
-# ================================================
-# Workspace walk
-# ================================================
-
-
 def iter_workspace_files(repo_path: Path) -> Iterator[tuple[Path, str]]:
-    """Yield ``(absolute path, repo-relative posix path)`` for every workspace
-    file, in deterministic (per-directory sorted) order.
-
-    Skipped directories are pruned — never descended into — which is both the
-    performance win over ``rglob`` and a correctness rule: a manifest inside
-    ``node_modules`` or a committed ``.venv`` is not the repo's own.
-    """
     root = str(repo_path)
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(d for d in dirnames if d not in _SKIPPED_DIRS)
@@ -143,11 +91,6 @@ def iter_workspace_files(repo_path: Path) -> Iterator[tuple[Path, str]]:
         prefix = "" if rel_dir == "." else rel_dir.replace(os.sep, "/") + "/"
         for name in sorted(filenames):
             yield Path(dirpath) / name, prefix + name
-
-
-# ================================================
-# Internals
-# ================================================
 
 
 def _read_text(file_path: Path) -> str | None:

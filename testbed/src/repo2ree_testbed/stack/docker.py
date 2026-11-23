@@ -1,5 +1,3 @@
-"""What Docker says about the container this process runs in, and the networks containers share."""
-
 from __future__ import annotations
 
 import os
@@ -25,10 +23,6 @@ def own_container() -> str | None:
 
 
 def engine_path(path: Path) -> str:
-    """``LOCAL=ENGINE``: where the engine finds ``path``, when this process runs in a container beside it.
-
-    Blank when the engine sees this process's files where it does (no container, or no mount holds it).
-    """
     container = own_container()
     if container is None:
         return ""
@@ -41,7 +35,6 @@ def engine_path(path: Path) -> str:
 
 
 def engine_side(path: Path) -> str:
-    """``path`` as the engine sees it."""
     local, _, engine = engine_path(path).partition("=")
     return engine + str(path.resolve()).removeprefix(local) if engine else str(path.resolve())
 

@@ -20,7 +20,6 @@ interface ErrorBoundaryProps {
   scope: ErrorBoundaryScope;
   reportError: UiErrorReporter;
   fallback: (controls: ErrorFallbackControls) => ReactNode;
-  /** A change identifies a new recovery context and clears a previous failure. */
   resetKey?: string;
 }
 
@@ -28,11 +27,6 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-/**
- * Catches unexpected React render and lifecycle failures. Expected operational
- * failures (queries, mutations, and event handlers) stay in their owning UI so
- * users receive a specific, recoverable state instead of a fatal fallback.
- */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
 

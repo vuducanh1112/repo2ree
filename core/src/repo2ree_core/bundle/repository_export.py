@@ -1,5 +1,3 @@
-"""Mechanical Git transfer and offline LFS checkout at pinned commits."""
-
 from __future__ import annotations
 
 import json
@@ -37,7 +35,6 @@ def new_history(root: Path) -> GitHistory:
 
 
 def materialize(history: GitHistory, head: str, source_git: Path) -> tuple[LfsPointer, ...]:
-    """Read only the pinned tree; never select files from an author's working tree."""
     objects: dict[str, LfsPointer] = {}
     manifest = history.git("show", f"{head}:ree.json", check=False)
     ree = parse_ree_manifest(json.loads(manifest.stdout)) if manifest.returncode == 0 else None
@@ -84,7 +81,6 @@ def materialize(history: GitHistory, head: str, source_git: Path) -> tuple[LfsPo
     history.git("symbolic-ref", "HEAD", HISTORY_REF)
     history.git("update-ref", "-m", f"{REFLOG_MARK} materialize", HISTORY_REF, head)
     history.git("read-tree", head)
-    # Standard LFS commands are enabled locally, without embedding executable paths.
     history.git("config", "filter.lfs.clean", "git-lfs clean -- %f")
     history.git("config", "filter.lfs.smudge", "git-lfs smudge -- %f")
     history.git("config", "filter.lfs.process", "git-lfs filter-process")
@@ -96,7 +92,6 @@ def transfer_scope(source: GitHistory, root: Path, *, head: str, scope: str, bun
     source.git("bundle", "create", str(bundle), "--all")
     target = new_history(root)
     target.git("fetch", "--update-head-ok", "--no-write-fetch-head", str(bundle), "+refs/*:refs/*")
-    # Checkout may select an older seal. Retain later journal entries as evidence.
     journal_head = source.head_snapshot()
     if journal_head is not None:
         target.git("update-ref", f"refs/repo2ree/imports/{journal_head}/journal", journal_head)
@@ -116,12 +111,11 @@ def transfer_scope(source: GitHistory, root: Path, *, head: str, scope: str, bun
 def verify_inventory(root: Path) -> None:
     manifest = root / "ree.json"
     if not manifest.is_file():
-        return  # An uninitialized review may contain evidence but no subject yet.
+        return
     ree = parse_ree_manifest(json.loads(manifest.read_text()))
     if ree.seal is None:
         return
     actual: set[str] = set()
-    # Signatures are about the seal, beside what it covers.
     for directory, dirs, files in root.walk():
         dirs[:] = [
             name

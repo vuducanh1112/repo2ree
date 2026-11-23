@@ -1,11 +1,6 @@
 import { isOneOf, requireKnownNames } from "@core/contract/unknownNames";
 import { STEP_KEYS, type StepKey } from "@core/generated/vocabulary";
 
-// Where the REE stands on each authoring step, as its own records say. The REE
-// document carries it (`steps`); the shell reads it rather than deriving it, so
-// the GUI says what `ree status` says.
-
-// Every step but the working environment check, which has no page of its own.
 export const AUTHORING_STEP_KEYS = STEP_KEYS.filter(
   (key): key is Exclude<StepKey, "check_working_environment"> =>
     key !== "check_working_environment",
@@ -25,7 +20,6 @@ export interface AuthoringStep {
 
 export interface AuthoringProgress {
   steps: readonly AuthoringStep[];
-  /** The step to do next: the first ready one. */
   next: AuthoringStepKey | undefined;
 }
 
@@ -60,8 +54,6 @@ export function mapRawAuthoringProgress(raw: unknown): AuthoringProgress {
       },
     ];
   });
-  // The working environment check has no page, so it is not offered as the next step: the first ready step the
-  // GUI can show is.
   const fallback = known
     .filter((step) => step.status === "ready")
     .sort((a, b) => a.order - b.order)[0]?.key;

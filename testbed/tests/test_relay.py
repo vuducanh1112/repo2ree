@@ -1,5 +1,3 @@
-"""A relay between a store's workbench and the API: it carries bytes until a fault cuts it."""
-
 from __future__ import annotations
 
 import socket
@@ -48,7 +46,7 @@ def test_a_partition_holds_what_is_in_flight_without_closing_and_healing_deliver
         client.sendall(b"during")
         client.settimeout(0.3)
         with pytest.raises(TimeoutError):
-            client.recv(6)  # Nothing arrives, and nothing closes: a network that stopped delivering.
+            client.recv(6)
 
         relay.heal()
         client.settimeout(5)

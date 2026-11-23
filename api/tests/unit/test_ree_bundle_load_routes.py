@@ -1,10 +1,3 @@
-"""The control-plane leg of loading a downloaded REE bundle into a fresh REE.
-
-The upload legs are real (real routes, real staging dir); the workbench side —
-copying the staged bundle in and dispatching ``load_ree_bundle`` — is stubbed,
-since restoring the bundle is covered against a real tree in the core suite.
-"""
-
 from __future__ import annotations
 
 import time
@@ -40,7 +33,6 @@ def _stage_bundle(client: TestClient, ree_id: str, content: bytes = b"pretend-zi
 
 
 def _await_run(client: TestClient, ree_id: str, run_id: str) -> dict[str, Any]:
-    """Poll until the background run settles — the runner owns its own thread."""
     deadline = time.monotonic() + RUN_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         response = client.get(f"/api/v1/rees/{ree_id}/runs/{run_id}")
@@ -89,7 +81,6 @@ def test_load_dispatches_the_bundle_command_to_the_workbench(
     command = dispatched["command"]
     assert isinstance(command, LoadReeBundleCommand)
     assert command.args.upload_token == token
-    # The transient host landing file is cleaned up once the workbench has it.
     assert not staged_upload_path(token).exists()
 
 

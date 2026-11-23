@@ -7,10 +7,6 @@ from repo2ree_core.analysis.repository.reproducibility_report import (
 from repo2ree_ree.dependency import Dependency, DependencyInventory
 from repo2ree_ree.reproducibility import Severity, ThreatCategory
 
-# --------------------------------------------------------------------------- #
-# inventory builders
-# --------------------------------------------------------------------------- #
-
 
 def _dep(
     name: str,
@@ -40,8 +36,6 @@ def _image(name: str, tag: str | None, digest: str | None = None) -> Dependency:
 
 
 def _mixed_inventory() -> DependencyInventory:
-    """One unpinned, two pinned, two ranged deps across two manifests, plus a
-    floating base image."""
     return DependencyInventory(
         dependencies=[
             _dep("flask"),
@@ -80,11 +74,6 @@ def _blocking_ids(report) -> set[str]:
     return {threat.id for threat in report.threats if threat.blocking}
 
 
-# --------------------------------------------------------------------------- #
-# helpers
-# --------------------------------------------------------------------------- #
-
-
 def test_classify_buckets():
     assert _classify("==2.1.0") == "pinned"
     assert _classify("2.1.0") == "pinned"
@@ -92,9 +81,7 @@ def test_classify_buckets():
     assert _classify("^1.2") == "ranged"
     assert _classify(None) == "unpinned"
     assert _classify("") == "unpinned"
-    # conda (`=1.21.0`) and npm (`=1.2.3`) spell exact pins with one `=`.
     assert _classify("=1.21.0") == "pinned"
-    # Wildcard components float, however pin-shaped the rest looks.
     assert _classify("1.x") == "ranged"
     assert _classify("2.7.X") == "ranged"
     assert _classify("==1.*") == "ranged"
@@ -107,11 +94,6 @@ def test_apt_heuristic():
     assert _apt_install_is_unpinned("RUN echo hello") is False
 
 
-# --------------------------------------------------------------------------- #
-# build_report
-# --------------------------------------------------------------------------- #
-
-
 def test_mixed_sample_threats_and_summary():
     report = build_report(_mixed_inventory(), FileSignals(has_dockerfile=True))
     summary = report.dependency_summary
@@ -122,11 +104,10 @@ def test_mixed_sample_threats_and_summary():
         1,
     )
     assert summary.locked == 0
-    assert summary.manifests == 2  # requirements.txt + pyproject.toml, not Dockerfile
+    assert summary.manifests == 2
 
     ids = _threat_ids(report)
     assert {"unpinned-deps", "range-pins", "no-lockfile", "floating-base-image"} <= ids
-    # container present (dockerfile, no nix) -> no-nix; not no-container
     assert "no-nix" in ids
     assert "no-container" not in ids
 
@@ -137,8 +118,6 @@ def test_mixed_sample_threats_and_summary():
 
 
 def test_report_rows_carry_the_summary_classification():
-    """Every dependency row ships the same status the summary bucketed it
-    into — one classifier, observable per row on the wire."""
     from collections import Counter
 
     report = build_report(_mixed_inventory(), FileSignals(has_dockerfile=True))
@@ -155,27 +134,21 @@ def test_report_rows_carry_the_summary_classification():
 
 def test_mixed_sample_axes_are_independent():
     report = build_report(_mixed_inventory(), FileSignals(has_dockerfile=True))
-    # Dependency axis: exact pins but no lockfile -> Pinned (2).
     assert report.dependency_level == 2
-    # Environment axis: a container, but not declarative -> Container (1).
     assert report.environment_level == 1
-    # Machine axis: no VM image -> None (0).
     assert report.machine_level == 0
 
-    # Each axis gates one blocking threat, independently.
     assert _blocking_ids(report) == {"no-lockfile", "no-nix", "no-vm"}
     assert report.threats[0].blocking is True
-    # the floating base image is still reported, just not the gate
     assert "floating-base-image" in _threat_ids(report)
 
 
 def test_pinned_no_lock_pins_deps_but_has_no_environment():
     report = build_report(_pinned_no_lock_inventory(), FileSignals())
-    assert report.dependency_level == 2  # Pinned
-    assert report.environment_level == 0  # None
-    assert report.machine_level == 0  # None
+    assert report.dependency_level == 2
+    assert report.environment_level == 0
+    assert report.machine_level == 0
     assert _threat_ids(report) == {"no-lockfile", "no-container", "no-vm"}
-    # one blocking threat per axis
     assert _blocking_ids(report) == {"no-lockfile", "no-container", "no-vm"}
 
 
@@ -183,9 +156,8 @@ def test_locked_deps_reach_locked_axis_but_no_environment():
     report = build_report(_locked_inventory(), FileSignals())
     s = report.dependency_summary
     assert (s.total, s.locked) == (2, 2)
-    assert report.dependency_level == 3  # Locked
-    assert report.environment_level == 0  # None
-    # A locked dependency axis raises no dependency threats; only env + machine do.
+    assert report.dependency_level == 3
+    assert report.environment_level == 0
     assert _threat_ids(report) == {"no-container", "no-vm"}
 
 
@@ -205,8 +177,6 @@ def test_partially_locked_deps_do_not_reach_locked_axis():
 
 
 def test_transitive_closure_rows_do_not_count():
-    """direct=False lock rows (the lockfile's transitive closure) stay out of
-    the summary and the threat lists."""
     inventory = DependencyInventory(
         dependencies=[
             _dep("requests", ">=2", locked="2.31.0"),
@@ -221,7 +191,7 @@ def test_transitive_closure_rows_do_not_count():
     )
     report = build_report(inventory, FileSignals())
     assert report.dependency_summary.total == 1
-    assert report.dependency_level == 3  # Locked — the closure row is not a gap
+    assert report.dependency_level == 3
 
 
 def test_manifest_signal_without_parsed_deps_scores_declared():
@@ -237,10 +207,9 @@ def test_vm_present_satisfies_machine_axis():
         _locked_inventory(),
         FileSignals(has_nix_file=True, has_vm=True),
     )
-    # Locked deps, declarative env, and a VM -> the ideal, no threats at all.
     assert report.dependency_level == 3
-    assert report.environment_level == 2  # Declarative
-    assert report.machine_level == 1  # VM
+    assert report.environment_level == 2
+    assert report.machine_level == 1
     assert _threat_ids(report) == set()
 
 

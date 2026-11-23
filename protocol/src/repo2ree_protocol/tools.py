@@ -1,16 +1,3 @@
-"""Resolving the external tools core handlers shell out to.
-
-On a machine that carries the tools itself (e.g. a nix-built workbench image) they
-live on PATH. Where a workbench runs from a tools bundle, PATH knows nothing — the
-workbench advertises each tool's absolute path through a ``REPO2REE_TOOL_<NAME>``
-environment variable set for its executors (see the tools manifest in nix/tools.nix).
-Handlers resolve through here so both worlds work without the handler knowing which
-one it is in.
-
-This dependency-free module is shared by the workbench that advertises the tools and the
-handlers that invoke them.
-"""
-
 from __future__ import annotations
 
 import os
@@ -22,14 +9,10 @@ def tool_env_var(name: str) -> str:
 
 
 def resolve_tool(name: str) -> str:
-    """The argv[0] to invoke ``name`` with: the advertised absolute path if the
-    workbench injected one, otherwise the bare name for PATH lookup."""
     return os.environ.get(tool_env_var(name)) or name
 
 
 def find_tool(name: str) -> str | None:
-    """Like ``resolve_tool`` but verified: the executable's path, or None when
-    the tool is genuinely unavailable on this bench."""
     advertised = os.environ.get(tool_env_var(name))
     if advertised:
         return advertised if os.access(advertised, os.X_OK) else None

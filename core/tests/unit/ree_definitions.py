@@ -1,5 +1,3 @@
-"""Definitions for tests: every REE declares its four fixed scripts, so a test names only what it is about."""
-
 from __future__ import annotations
 
 import gzip
@@ -31,20 +29,17 @@ PLACEHOLDER = Digest("sha256:" + "0" * 64)
 
 
 def _empty_snapshot() -> bytes:
-    """A source snapshot archive holding nothing, the same bytes every time."""
     packed = io.BytesIO()
     with gzip.GzipFile(fileobj=packed, mode="wb", mtime=0) as zipped, tarfile.open(fileobj=zipped, mode="w"):
         pass
     return packed.getvalue()
 
 
-# The source snapshot a test's REE acquired: a step lays its workspace out from it, checked against its digest.
 SNAPSHOT_ARCHIVE = _empty_snapshot()
 SNAPSHOT_DIGEST = digest_bytes(SNAPSHOT_ARCHIVE)
 
 
 def write_snapshot(layout: ReeLayout) -> None:
-    """Keep the snapshot archive a test's source receipt names, as acquiring the source keeps it."""
     layout.snapshot_archive.parent.mkdir(parents=True, exist_ok=True)
     layout.snapshot_archive.write_bytes(SNAPSHOT_ARCHIVE)
 
@@ -61,7 +56,6 @@ CHECK, _CHECK_SIZE = _default(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
 
 
 def fixed_declarations() -> dict[str, Any]:
-    """The four declarations every REE has, each its script as every REE starts with it."""
     return {
         "experiment_environment": ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=BUILD, build_experiment_environment_script_size=_BUILD_SIZE
@@ -78,20 +72,14 @@ def fixed_declarations() -> dict[str, Any]:
 
 
 def ree_definition(**fields: Any) -> ReeDefinition:
-    """A definition with the fixed declarations filled in where ``fields`` does not give them."""
     return ReeDefinition(**(fixed_declarations() | fields))
 
 
 def bare_ree(**fields: Any) -> Ree:
-    """An REE that declares nothing beyond what every REE does."""
     return Ree(subject=ReeSubject(definition=ree_definition(**fields)))
 
 
 def with_fixed_scripts(layout: ReeLayout, ree: Ree) -> Ree:
-    """The REE, with each fixed script it declares as every REE starts with it written where it is not yet.
-
-    A fixed script the test declared otherwise, or wrote itself, is left as the test has it.
-    """
     store = ReeDirectory(layout)
     definition = ree.subject.definition
     declared = {

@@ -1,10 +1,3 @@
-"""Shell renderer for the Podman build strategy: the project's one container file built with Podman.
-
-The sibling of the Docker build renderer: the same container file, build context and declared artifact, built
-with ``podman build`` and saved with ``podman save`` as a docker-archive, the format the activation's archive
-inspection reads and either engine loads.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript

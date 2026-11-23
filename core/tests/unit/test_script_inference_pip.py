@@ -1,13 +1,3 @@
-"""The pip-requirements build strategy (root-pip-requirements-v1).
-
-The experiment environment for a plain requirements.txt repository is a Python virtual
-environment, not a container: the generated build script creates a venv,
-installs requirements.txt with pip, and packs the venv as the experiment environment artifact —
-one self-contained shell script that introduces no Docker. A lone pip strategy
-is confirmation-required (needs_input); a Dockerfile alongside it makes the two
-strategies an explicit decision.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -54,7 +44,6 @@ def test_pip_build_experiment_environment_script_is_a_venv_build_with_no_docker(
     candidate = _pip_candidate(_build(tmp_path))
     body = candidate.body
     assert body is not None
-    # It is the pip/venv technology, never Docker.
     assert "docker" not in body.lower()
     assert "python -m venv" in body
     assert 'pip" install --no-cache-dir --requirement "$REQUIREMENTS"' in body
@@ -64,8 +53,6 @@ def test_pip_build_experiment_environment_script_is_a_venv_build_with_no_docker(
 def test_pip_candidate_is_a_single_script_with_no_supporting_files(tmp_path: Path) -> None:
     _tree(tmp_path, {"requirements.txt": "flask\n"})
     candidate = _pip_candidate(_build(tmp_path))
-    # Inference produces only the shell script; the candidate model has no
-    # supporting-files field at all.
     assert "supporting_files" not in candidate.model_dump()
 
 
@@ -99,8 +86,6 @@ def test_wrapper_archive_uses_wrapper_paths(tmp_path: Path) -> None:
 
 
 def test_pip_candidate_records_the_experiment_environment_path_it_writes_to(tmp_path: Path) -> None:
-    # The venv strategy reports its own default, not docker's — a client filling
-    # an empty declaration from this would otherwise declare the wrong extension.
     _tree(tmp_path, {"proj-main/requirements.txt": "flask\n", "proj-main/main.py": "x"})
     candidate = _pip_candidate(_build(tmp_path))
     declaration = [dep for dep in candidate.dependencies if dep.kind == "experiment_environment_declaration"]
@@ -118,7 +103,6 @@ def test_dockerfile_and_requirements_is_a_decision(tmp_path: Path) -> None:
 
 
 def test_nested_requirements_does_not_fire(tmp_path: Path) -> None:
-    # A requirements.txt below the project root is not the root-pip shape.
     _tree(tmp_path, {"subpkg/requirements.txt": "flask\n", "README.md": "hi", "main.py": "x"})
     result = _build(tmp_path)
     assert result.status == "not_inferred"

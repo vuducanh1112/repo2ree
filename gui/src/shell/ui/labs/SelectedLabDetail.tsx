@@ -6,11 +6,6 @@ interface SelectedLabDetailProps {
   lab: Lab | null;
 }
 
-/**
- * What the specimen is about to be committed to. The grid is where you choose;
- * this is where you confirm — it carries the operator facts a cell has no room
- * for, so picking and reading them don't compete for the same space.
- */
 export function SelectedLabDetail({ lab }: SelectedLabDetailProps) {
   if (!lab) {
     return (

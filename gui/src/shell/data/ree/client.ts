@@ -33,7 +33,6 @@ export interface ReeClient<TFile = unknown, TRee = unknown> {
   ): Promise<RunSummary>;
   getReeArchive(id: ReeId | string): Promise<WorkspaceBinaryDownload>;
   resetWorkspaceRequest(id: ReeId | string, request: WorkspaceResetPayload): Promise<void>;
-  /** Delete the REE and its files from its store. Succeeds if it is already gone. */
   deleteRee(id: ReeId | string): Promise<void>;
 }
 
@@ -50,8 +49,6 @@ export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode,
     },
     async updateReeIntent(id, intentPatch) {
       const reeId = requireReeId(runtime, id);
-      // The domain serializers emit loosely-typed records in the wire's shape;
-      // the backend validates the patch strictly (unknown keys are rejected).
       await runtime.reeApi.patchReeDefinition(reeId, {
         definition_patch: intentPatch as PatchReeDefinitionPayload["definition_patch"],
       });
@@ -73,9 +70,6 @@ export function createReeClient(runtime: ReeApiRuntime): ReeClient<FileTreeNode,
       try {
         await runtime.reeApi.deleteRee(reeId);
       } catch (err) {
-        // A 404 means the backend already has no such REE, which is the outcome
-        // deleting it was asking for. Reporting it as a failure would strand the
-        // caller on an REE that no longer exists.
         if (!(err instanceof ApiRequestError) || err.status !== 404) throw err;
       }
     },

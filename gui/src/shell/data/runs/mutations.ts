@@ -31,11 +31,6 @@ export function useStartReeRunMutation(reeId?: string) {
   });
 }
 
-/**
- * Start one named experiment's run. Seeds the run cache with what the POST
- * already returned, so the surface observing it renders from that answer
- * instead of spending another round-trip re-fetching it.
- */
 export function useStartExperimentRunMutation(reeId?: string) {
   const runtime = useReeRuntime();
   const executionRunsClient = useReeRunsClient();

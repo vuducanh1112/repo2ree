@@ -1,5 +1,3 @@
-"""Helpers shared across ecosystem parser modules."""
-
 from __future__ import annotations
 
 import re
@@ -8,7 +6,6 @@ from typing import Any
 
 from repo2ree_ree.dependency import Dependency, Ecosystem, normalize_package_name
 
-# PEP 508-ish: name, optional extras, then whatever constraint text follows.
 _PEP508_RE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)\s*(?:\[[^\]]*\])?\s*(.*)$")
 
 
@@ -39,7 +36,6 @@ def make_locked_dependency(
     locked_hashes: list[str],
     locked_in: str,
 ) -> Dependency:
-    """A ``direct=False`` closure row from a lockfile entry."""
     name = normalize_package_name(ecosystem, raw_name)
     return Dependency(
         ecosystem=ecosystem,
@@ -53,7 +49,6 @@ def make_locked_dependency(
 
 
 def dependency_from_pep508(spec: str, path: str) -> Dependency | None:
-    """A pypi row from a PEP 508 requirement string (markers already stripped)."""
     match = _PEP508_RE.match(spec)
     if not match or not match.group(1):
         return None

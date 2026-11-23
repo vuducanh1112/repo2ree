@@ -3,14 +3,9 @@ import type { HardwareColumn } from "./hardwareBomColumns.types";
 
 interface CellRenderContext {
   locked: boolean;
-  /** Invoked on focus of fields declared with `focusOnEdit`. */
   onFocus?: () => void;
 }
 
-/**
- * Declarative description of one hardware-table column. `key` is the column id
- * (layout/React); `field` is the row property the cell reads and patches.
- */
 export type FieldSpec<RowT> = {
   key: string;
   label: string;
@@ -22,7 +17,6 @@ export type FieldSpec<RowT> = {
   | { kind: "select"; options: readonly string[] }
 );
 
-/** Turns declarative field specs into the `HardwareColumn` renderers the table consumes. */
 export function buildColumns<RowT>(
   specs: FieldSpec<RowT>[],
   patch: (index: number, patch: Partial<RowT>) => void,

@@ -4,8 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { MissingInputsBanner } from "./MissingInputsBanner";
 
-// `field` is keyed to the spec/source state, so these are the real requirements
-// stepPolicies declares for the build and SBOM steps, not invented names.
 const missing: ReeStepRequirement[] = [
   { field: "sourceAvailable", label: "Source available" },
   { field: "experimentEnvironmentPath", label: "Experiment environment" },

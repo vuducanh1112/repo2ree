@@ -1,5 +1,3 @@
-"""A reviewer reproduces a pip venv experiment environment's experiment."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

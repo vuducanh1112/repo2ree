@@ -1,5 +1,3 @@
-"""The layout joins the REE tree's names: every path it makes is an entry the tree names, captured as the tree says."""
-
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
@@ -14,7 +12,6 @@ ROOT = Path("/r/ree1")
 
 
 def made_by(layout: ReeLayout) -> dict[str, Path]:
-    """Every path the layout spells: its properties, and each resolver with a sample key."""
     paths = {
         name: getattr(layout, name)
         for name in dir(type(layout))

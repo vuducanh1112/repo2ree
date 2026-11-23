@@ -1,5 +1,3 @@
-"""Persisted invocation records and read access, independent of command dispatch."""
-
 from __future__ import annotations
 
 import json
@@ -39,7 +37,6 @@ def read_operation_history(layout: ReeLayout) -> OperationHistory:
                 record = OperationRecord.model_validate(completed.model_dump())
                 record.after_snapshot_id = commit
                 record.capture_status = "captured"
-                # Newest published entry wins over stale pending/legacy files.
                 if record.attempt_id in published:
                     previous = scoped[record.attempt_id]
                     if previous.model_dump(exclude={"after_snapshot_id"}) != record.model_dump(
@@ -49,8 +46,6 @@ def read_operation_history(layout: ReeLayout) -> OperationHistory:
                 if record.attempt_id not in published:
                     scoped[record.attempt_id] = record
                     published.add(record.attempt_id)
-        # This REE's own unpublished records, then those a bundle brought from the REE it was exported from, which
-        # keep apart as its imported history does.
         imported = sorted((scope.git_dir / "repo2ree" / "imports").glob("*/operations/*.json"))
         for path in [*sorted(directory.glob("*.json")), *imported]:
             if path.stem in scoped:
@@ -58,17 +53,13 @@ def read_operation_history(layout: ReeLayout) -> OperationHistory:
             try:
                 document_text = path.read_text()
             except FileNotFoundError:
-                # Concurrent publication may have reclaimed this pending file.
                 continue
             record = OperationRecord.model_validate_json(document_text)
             if record.attempt_id not in scoped:
                 scoped[record.attempt_id] = record
         for record in scoped.values():
-            # Scope comes from storage, never from an imported record's claim.
             record.scope = scope.root.relative_to(layout.root).as_posix()
             records.append(record)
-    # Legacy records have no known attempt order; retain them after sequenced
-    # records without fabricating chronology from their UUIDs or file mtimes.
     records.sort(
         key=lambda record: (record.sequence is not None, record.sequence or 0, record.attempt_id), reverse=True
     )
@@ -76,7 +67,6 @@ def read_operation_history(layout: ReeLayout) -> OperationHistory:
 
 
 def next_operation_sequence(layout: ReeLayout) -> int:
-    """Allocate under the author history lock, shared across review scopes."""
     path = layout.git_dir / "repo2ree" / "sequence.json"
     if path.exists():
         previous = int(json.loads(path.read_text())["sequence"])

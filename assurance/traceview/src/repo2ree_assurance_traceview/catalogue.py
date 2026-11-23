@@ -1,10 +1,3 @@
-"""Many behaviour traces folded into one entry per operation and outcome.
-
-Each entry has its instances, rule tallies, a representative sequence with how many instances show each
-line, and per lane the weakest reach any instance has. Lines match once ids, durations, and counts are
-masked; lines placed by time alone are requests before the operation and are left out.
-"""
-
 from __future__ import annotations
 
 import re
@@ -22,7 +15,7 @@ FORMAT: Final = "repo2ree-operations/1"
 type Reach = Literal["checked", "exchanged", "span", "none"]
 _WEAKEST_FIRST: tuple[Reach, ...] = ("none", "span", "exchanged", "checked")
 _STRENGTH: dict[Reach, int] = {reach: strength for strength, reach in enumerate(_WEAKEST_FIRST)}
-_CHECKED: frozenset[Provenance] = frozenset({"journal", "git", "inferred"})  # Inferred are Git records too.
+_CHECKED: frozenset[Provenance] = frozenset({"journal", "git", "inferred"})
 _MASKS = (
     re.compile(r"\b[0-9a-f]{7,}\b"),
     re.compile(r"\b\d+(?:\.\d+)?\s?(?:ms|s)\b"),
@@ -33,19 +26,19 @@ _MASKS = (
 class Line(ViewModel):
     lane: str
     to: str | None = None
-    label: str  # Masked.
+    label: str
     provenance: Provenance
-    t: float  # Seconds from the operation's first line.
-    seen: int  # Instances that show the line.
+    t: float
+    seen: int
 
 
 class Instance(ViewModel):
-    source: str  # The verification as given.
+    source: str
     test: str | None
     ree: str
     outcome: str | None
     duration: float | None
-    verdict: str  # The whole dossier's.
+    verdict: str
 
 
 class Tally(ViewModel):
@@ -60,9 +53,9 @@ class Operation(ViewModel):
     outcome: str | None
     kind: Literal["setup", "operation"]
     instances: tuple[Instance, ...]
-    representative: int  # Index of the instance of median duration.
+    representative: int
     lines: tuple[Line, ...]
-    elsewhere: tuple[Line, ...]  # Lines only other instances show.
+    elsewhere: tuple[Line, ...]
     reach: dict[str, Reach]
     rules: tuple[Tally, ...]
 
@@ -106,7 +99,7 @@ def _keyed(rows: Iterable[Row]) -> list[tuple[_Key, Row]]:
 class _Seen:
     instance: Instance
     entry: Entry
-    position: float  # In its trace, from 0 (first) to 1 (last).
+    position: float
     rows: list[tuple[_Key, Row]]
 
     @classmethod
@@ -125,7 +118,6 @@ def _representative(seen: list[_Seen]) -> int:
 
 
 def _reached(row: Row) -> Reach:
-    """What a line shows of the lanes it touches: a note its own, a message both ends."""
     if row.to is None:
         return "checked" if row.provenance in _CHECKED else "span" if row.provenance == "span" else "none"
     return "exchanged" if row.provenance in _CHECKED else "span"
@@ -187,7 +179,6 @@ def _operation(name: str, outcome: str | None, seen: list[_Seen]) -> Operation:
 def build_catalogue(
     traces: Iterable[tuple[str, BehaviourTrace]], undrawn: Iterable[Undrawn] = ()
 ) -> OperationCatalogue:
-    """Operations in their usual order in a trace, each one's outcomes from most to least common."""
     by_name: dict[str, list[_Seen]] = defaultdict(list)
     for source, trace in traces:
         drawn = [entry for entry in trace.entries if entry.kind != "authoring"]

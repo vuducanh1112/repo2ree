@@ -1,5 +1,3 @@
-"""Filesystem-level acquisition tests using only local source fixtures."""
-
 from __future__ import annotations
 
 import shutil

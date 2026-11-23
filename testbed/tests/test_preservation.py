@@ -1,5 +1,3 @@
-"""Preserved artifacts remain useful after source cleanup."""
-
 import fcntl
 import json
 import os

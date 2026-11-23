@@ -1,7 +1,3 @@
-/* The footer status strip. The bar above it navigates and is sized to hold a
- * workflow graph; this one only reports, so it sets at a single line's height
- * and never grows. */
-
 .bar {
   position: relative;
   z-index: 95;
@@ -53,8 +49,6 @@
   font-weight: var(--weight-semibold);
 }
 
-/* The volatile half of the cell: an image ref or a run status, so it is set in
- * mono and is the first thing to be truncated. */
 .detail {
   min-width: 0;
   overflow: hidden;
@@ -87,8 +81,6 @@
   --dot-ink: var(--run-failed);
 }
 
-/* Narrow enough that the labels would crowd out the details they qualify; the
- * icon and the dot still say which cell is which and how it is doing. */
 @media (max-width: 760px) {
   .cell {
     max-width: 50%;

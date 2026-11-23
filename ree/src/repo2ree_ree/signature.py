@@ -1,13 +1,3 @@
-"""Signed claims about a sealed REE.
-
-Each claim is one Sigstore bundle at ``signatures/<claim>.sigstore.json``, beside what the seal covers: its DSSE
-envelope signs an in-toto statement whose subject is the seal's digest, under the claim's predicate type. A review
-of a sealed REE is signed the same way, at its own ``signatures/review.sigstore.json``: the statement names the
-reviewed seal, and its predicate is the review's record. A statement is read only once the key its bundle's
-certificate holds is found to have made every signature of the envelope. Whether the certificate chains to a trust
-root, whose identity it names, and what the transparency log recorded are a verifier's to say.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -22,19 +12,16 @@ SignatureClaim = Literal["author_approval"]
 PREDICATE_TYPES: Final[dict[SignatureClaim, str]] = {
     "author_approval": "https://repo2ree.org/claims/author-approval/v1",
 }
-# A signed review: its statement's predicate is the review's record, so the one file is the review, signed.
 REVIEW_PREDICATE_TYPE: Final = "https://repo2ree.org/claims/review/v1"
 SIGNATURE_SUFFIX: Final = ".sigstore.json"
 IN_TOTO: Final = "application/vnd.in-toto+json"
 
 
 def signature_path(claim: SignatureClaim) -> str:
-    """Where a claim's signature sits, from the REE root."""
     return f"{SIGNATURES}/{claim}{SIGNATURE_SUFFIX}"
 
 
 def review_signature_path() -> str:
-    """Where a review's signature sits, from the review's root."""
     return f"{SIGNATURES}/review{SIGNATURE_SUFFIX}"
 
 
@@ -86,9 +73,6 @@ class _Statement(_Read):
 
 
 class SignedStatement(BaseModel):
-    """What a bundle claims: each subject's digest as ``<algorithm>:<hex>``, the predicate type, and the
-    predicate."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     digests: frozenset[str]
@@ -97,11 +81,11 @@ class SignedStatement(BaseModel):
 
 
 class UnreadableSignatureError(ValueError):
-    """The content is no Sigstore bundle of a DSSE envelope over an in-toto statement, with a certificate."""
+    pass
 
 
 class UnverifiedSignatureError(ValueError):
-    """The envelope has a signature that the key its bundle's certificate holds did not make."""
+    pass
 
 
 def _decoded(value: str, what: str) -> bytes:
@@ -112,7 +96,6 @@ def _decoded(value: str, what: str) -> bytes:
 
 
 def pae(payload_type: str, payload: bytes) -> bytes:
-    """DSSE's pre-authentication encoding: what an envelope's signature is over."""
     kind = payload_type.encode()
     return b"DSSEv1 %d %s %d %s" % (len(kind), kind, len(payload), payload)
 
@@ -141,8 +124,6 @@ def _verify(certificate: bytes, signature: bytes, message: bytes) -> None:
 
 
 def signed_statement(content: bytes) -> SignedStatement:
-    """The statement a Sigstore bundle's DSSE envelope signs, once every signature of it is found to be the
-    certificate key's."""
     try:
         bundle = _Bundle.model_validate_json(content)
     except ValidationError as exc:

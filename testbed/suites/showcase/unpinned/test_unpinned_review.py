@@ -1,5 +1,3 @@
-"""Upstream releases after the seal: a rebuild does not reproduce the result, the sealed experiment environment does."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee
@@ -12,7 +10,6 @@ F = UNPINNED
 
 
 def reviewed(client: Client, reviewer: str, build: ReviewBasis) -> Review:
-    """One review attempt, end to end, with the experiment environment from ``build``."""
     before = {review.review_id for review in client.reviews(reviewer)}
     source = client.review_acquire_source(reviewer, "auto", watch=F.watch)
     assert source.status == "succeeded", client.logs(reviewer, source)

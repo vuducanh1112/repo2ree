@@ -2,8 +2,6 @@ import type { DecisionDag, DecisionStep, DecisionTrace } from "@shell/infra/api/
 
 type DagNode = DecisionDag["nodes"][number];
 
-// Leaf/result outcome glyphs, matching the decision-DAG legend in the design
-// doc: complete / decision-required / blocked / not-applicable.
 const OUTCOME_GLYPH: Record<string, string> = {
   complete: "[*]",
   candidate: "[!]",
@@ -11,16 +9,6 @@ const OUTCOME_GLYPH: Record<string, string> = {
   not_applicable: "[o]",
 };
 
-/**
- * Render a decision trace as a monospace tree for a `<pre>` block. The trace
- * only ever contains the *visited* nodes, so everything shown is the path the
- * engine actually took — the shared project-root prefix, one indented group per
- * forked strategy branch, the resolver join, and the result node.
- *
- * Pure and defensive: it reconstructs the branch grouping from the traversed
- * edges but degrades to a flat listing if a trace does not have the expected
- * single-fork shape.
- */
 export function renderDecisionTrace(trace: DecisionTrace): string {
   if (!trace.steps || trace.steps.length === 0) return "(no decision trace)";
 
@@ -33,20 +21,16 @@ export function renderDecisionTrace(trace: DecisionTrace): string {
     return lines.join("\n");
   }
 
-  // Shared prefix (project-root resolution) before the fork.
   for (const step of trace.steps.slice(0, forkIndex)) lines.push(...renderStep(step, ""));
 
   const fork = trace.steps[forkIndex];
   lines.push(`+ fork: ${fork.node_id}`);
 
-  // Map each branch's first node to its strategy name via the fork's edges.
   const strategyOf = new Map<string, string>();
   for (const edge of trace.edges) {
     if (edge.source === fork.node_id) strategyOf.set(edge.target, edge.branch);
   }
 
-  // Group the between-fork-and-resolve steps into per-strategy branches; each
-  // branch is a contiguous run that ends at its strategy_leaf.
   const branchSteps = trace.steps.slice(forkIndex + 1, resolveIndex);
   for (const group of groupBranches(branchSteps)) {
     const strategy = strategyOf.get(group[0]?.node_id ?? "") ?? "?";
@@ -56,7 +40,6 @@ export function renderDecisionTrace(trace: DecisionTrace): string {
     }
   }
 
-  // Resolver join, then the result node.
   const resolve = trace.steps[resolveIndex];
   lines.push(`\`-- resolve: ${resolve.node_id} -> ${resolve.outcome ?? "?"}`);
   const detail = observedDetail(resolve);
@@ -98,21 +81,6 @@ function renderStep(step: DecisionStep, indent: string): string[] {
   return lines;
 }
 
-// ================================================
-// Static DAG + trace overlay
-// ================================================
-
-/**
- * Render the full static decision DAG with the run's trace overlaid: every
- * branch of every node is shown, nodes the engine visited are marked `[>]` and
- * the rest `[ ]`, and the single branch taken out of each node is flagged
- * `<=`. This is the "why did we (not) infer this" view — the executed graph
- * itself, not just the path through it.
- *
- * Nodes render in DAG-authored order (already topological), so the shared
- * prefix, the strategy branches, the resolver, and the result nodes read top to
- * bottom.
- */
 export function renderDecisionDiagram(dag: DecisionDag, trace: DecisionTrace): string {
   const visited = new Set(trace.steps.map((step) => step.node_id));
   const stepByNode = new Map(trace.steps.map((step) => [step.node_id, step]));

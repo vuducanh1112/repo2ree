@@ -17,9 +17,7 @@ interface PodSphereProps {
   SR: number;
   evaluation: EvaluationState;
   shell?: PodShell;
-  /** The pod shells with work running inside them, from `canvasActivity`. */
   activity?: CanvasActivity;
-  /** Unique suffix for SVG IDs when multiple pods are on the same page. */
   idSuffix?: string;
 }
 
@@ -36,7 +34,6 @@ export function PodSphere({
   const innerActive = activity.zones.has("inner");
   const coreActive = activity.zones.has("core");
 
-  // Standalone inner or core: skip the outer mechanics entirely.
   if (shell === "core") {
     return (
       <PodShellCore
@@ -66,7 +63,6 @@ export function PodSphere({
   const tint = bottleneckAxis(evaluation).axis;
   const standings = axisStandings(evaluation);
 
-  // Porthole radius — the "window" through the outer shell into the interior.
   const PR = SR * 0.46;
 
   const oId = `ov${idSuffix}`;
@@ -88,7 +84,6 @@ export function PodSphere({
         </clipPath>
       </defs>
 
-      {/* ── drop shadow ── */}
       <ellipse
         cx={CX + 5}
         cy={CY + SR * 0.85}
@@ -98,7 +93,6 @@ export function PodSphere({
         opacity="0.08"
       />
 
-      {/* ── outer shell body ── */}
       <circle cx={CX} cy={CY} r={SR + 1} fill={POD_M.deep} opacity="0.4" />
       <circle
         cx={CX}
@@ -109,7 +103,6 @@ export function PodSphere({
         strokeWidth="1.2"
       />
 
-      {/* weld seam lines */}
       <ellipse
         cx={CX}
         cy={CY}
@@ -131,7 +124,6 @@ export function PodSphere({
         opacity="0.5"
       />
 
-      {/* equatorial belt */}
       <ellipse
         cx={CX}
         cy={CY}
@@ -154,7 +146,6 @@ export function PodSphere({
         ) : null;
       })}
 
-      {/* ── top and bottom pole panels ── */}
       <ellipse
         cx={CX}
         cy={CY - SR * 0.72}
@@ -178,7 +169,6 @@ export function PodSphere({
       />
       <PodBoltRing cx={CX} cy={CY + SR * 0.72} r={SR * 0.36} n={6} bR={3.5} />
 
-      {/* ── porthole collar ── */}
       <circle
         cx={CX}
         cy={CY}
@@ -190,7 +180,6 @@ export function PodSphere({
       <PodBoltRing cx={CX} cy={CY} r={SR * 0.53} n={12} bR={3.8} />
       <circle cx={CX} cy={CY} r={SR * 0.48} fill={POD_M.deep} stroke={POD_M.weld} strokeWidth="2" />
 
-      {/* ── porthole interior ── */}
       {shell === "full" ? (
         <g clipPath={`url(#${oId}PortholeClip)`}>
           <PodShellInner
@@ -205,14 +194,11 @@ export function PodSphere({
           />
         </g>
       ) : (
-        /* shell === "outer": sealed porthole, no interior visible */
         <circle cx={CX} cy={CY} r={PR} fill={POD_M.deep} stroke={POD_M.weld} strokeWidth="1" />
       )}
 
-      {/* porthole gloss overlay */}
       <circle cx={CX} cy={CY} r={PR} fill={`url(#${oId}PortholeGloss)`} opacity="0.5" />
 
-      {/* ── outer sphere gloss highlight ── */}
       <ellipse
         cx={CX - SR * 0.14}
         cy={CY - SR * 0.18}
@@ -223,7 +209,6 @@ export function PodSphere({
         transform={`rotate(-22,${CX - SR * 0.14},${CY - SR * 0.18})`}
       />
 
-      {/* ── indicator lights ── one per axis, lit when topped out ── */}
       {standings.map(({ axis, level }, idx) => {
         const angle = -55 + idx * 90;
         const px = CX + SR * 0.82 * Math.cos((angle * Math.PI) / 180);
@@ -252,7 +237,6 @@ export function PodSphere({
         );
       })}
 
-      {/* ── model label plate ── */}
       <rect
         x={CX - 36}
         y={CY + SR - 26}
@@ -275,7 +259,6 @@ export function PodSphere({
         {tint.short}
       </text>
 
-      {/* ── tint accent ring ── */}
       <circle
         cx={CX}
         cy={CY}
@@ -286,8 +269,6 @@ export function PodSphere({
         opacity="0.4"
       />
 
-      {/* The hull's own working light: a bright arc running the rim while a
-       * step on the outer shell — source, archive, seal — is in flight. */}
       {outerActive && (
         <circle
           className={styles.sweep}
@@ -302,7 +283,6 @@ export function PodSphere({
         />
       )}
 
-      {/* outer gloss arc */}
       <path
         d={`M ${CX - SR * 0.68} ${CY - SR * 0.28} A ${SR} ${SR} 0 0 1 ${CX - SR * 0.28} ${CY - SR * 0.68}`}
         fill="none"

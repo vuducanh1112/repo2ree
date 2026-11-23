@@ -1,5 +1,3 @@
-"""Every set of names the repository spells, held to the operation catalogue: the vocabulary graph, drawn."""
-
 from __future__ import annotations
 
 from repo2ree_repoview.graphviz import quote as q
@@ -8,7 +6,6 @@ from repo2ree_repoview.overview.exports import GraphEdge, GraphVocabulary, Vocab
 from repo2ree_repoview.overview.html import Page, esc, filter_box, prose, section, table
 
 VOCABULARY_GRAPH = "vocabulary-graph"
-# Where a vocabulary is written, as a fill: what a reader trusts, and what can drift.
 ORIGIN_FILL = {"spec": "#ede9fe", "contract": "#dbeafe", "source": "#fef3c7"}
 ORIGIN_LINE = {"spec": "#7c3aed", "contract": "#2563eb", "source": "#d97706"}
 FAILING = "#dc2626"
@@ -66,7 +63,6 @@ def _edge(edge: GraphEdge) -> list[str]:
 
 
 def graph_svg(graph: VocabularyGraph) -> str:
-    """The roots at the left; each edge from what holds a vocabulary to it, green when it holds, red when not."""
     lines = [
         "digraph vocabulary {",
         '  rankdir=LR; bgcolor="transparent"; pad=0.2; nodesep=0.12; ranksep=1.1;',

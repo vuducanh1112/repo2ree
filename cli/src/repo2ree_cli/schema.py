@@ -1,13 +1,3 @@
-"""``ree schema``: the command line as data, read off the command line itself, for an agent to learn ``ree`` by.
-
-Each command says the words that run it, its options and arguments, what it reads on stdin, what it prints (one
-result, bytes, or a script), the protocol operations it runs, and the model of its result's outputs.
-The exit statuses, the failure categories, the result and event shapes, and the authoring steps with the commands
-that advance each come with them. Every model is defined once, under ``$defs``.
-
-The same document is committed as ``contracts/cli/cli.schema.json`` (``python -m scripts.contracts write cli-schema``).
-"""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -25,8 +15,6 @@ _RESULT = "result"
 
 
 class ReeCommand(click.Command):
-    """A command and what an agent is told of it: its words, the model of its outputs, and what it prints."""
-
     def __init__(
         self,
         *args: Any,
@@ -57,7 +45,6 @@ _EVENTS = {
 def describe(
     group: click.Group, words: Sequence[str], exit_codes: Mapping[int, str], steps: Sequence[ReeStep]
 ) -> dict[str, Any]:
-    """Every command of ``group``, or the one ``words`` names, with what is common to them all."""
     commands = _commands(group, ())
     if words:
         commands = [command for command in commands if command.words == tuple(words)]

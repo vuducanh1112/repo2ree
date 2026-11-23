@@ -37,16 +37,9 @@ function formatStartTime(run: ReeRunSummary): string {
 interface RunHudProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The persistent footer bar owns the closed-state trigger. */
   externallyTriggered?: boolean;
 }
 
-/**
- * The logs HUD: the console collecting every run of the open REE, split into
- * one tab per pipeline step, opened from the footer bar. Auto-follows new runs
- * (also ones started outside this tab, e.g. by a workbench service) until the user picks a
- * tab, so opening it lands on whatever ran last.
- */
 export const RunHud = memo(function RunHud({
   open,
   onOpenChange,
@@ -55,8 +48,6 @@ export const RunHud = memo(function RunHud({
   const [tab, setTab] = useState<RunHudTabKey>("source");
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [streams, setStreams] = useState<Set<StreamKey>>(() => new Set(STREAMS));
-  // Logs get arbitrarily long; a top-left grip lets the console grow up/left
-  // from its bottom-right anchor.
   const { size, resizing, startResize } = useCornerResize({
     defaultWidth: 480,
     defaultHeight: 460,
@@ -67,8 +58,6 @@ export const RunHud = memo(function RunHud({
   const runsQuery = useReeRunsQuery();
   const runs = runsQuery.data ?? [];
 
-  // Follow each newly observed active run: switch to its tab and expand it.
-  // A manual tab click overrides this until the next run starts.
   const followedRunIdRef = useRef<string | null>(null);
   const active = newestActiveRun(runs);
   useEffect(() => {
@@ -87,7 +76,6 @@ export const RunHud = memo(function RunHud({
       const next = new Set(prev);
       if (next.has(stream)) next.delete(stream);
       else next.add(stream);
-      // An empty filter shows nothing and looks broken; snap back to "all".
       return next.size === 0 ? new Set(STREAMS) : next;
     });
   };
@@ -100,7 +88,6 @@ export const RunHud = memo(function RunHud({
       onToggle={() => onOpenChange(!open)}
       widthOpen={size.width}
       widthCollapsed={264}
-      // Docked bottom-right, beside the zoom controls that own the corner.
       className={hud.logsPlacement}
       resizing={resizing}
       icon={Ic.terminal(16)}
@@ -178,8 +165,6 @@ export const RunHud = memo(function RunHud({
                 run={run}
                 expanded={run.runId === expandedRunId}
                 streams={streams}
-                // Leave headroom for the console header, tab strip, and run
-                // rows so the expanded log scrolls inside the resized body.
                 logMaxHeight={Math.max(260, size.height - 200)}
                 onToggle={() =>
                   setExpandedRunId((current) => (current === run.runId ? null : run.runId))
@@ -206,8 +191,6 @@ function HudTab({
   activity: { active: boolean; failed: boolean };
   onSelect: () => void;
 }) {
-  // The resting strip shows abbreviations so all steps fit; hovering a tab
-  // expands it to its full name in place.
   const [hovered, setHovered] = useState(false);
   return (
     <button
@@ -273,9 +256,6 @@ function RunRow({
   );
 }
 
-// The typed reason a run failed, shown at a glance under its row: a category
-// label, a retryable hint, and the underlying message. Surfaces the failure
-// contract so a client need not open the log stream to learn why a run failed.
 function RunFailureNote({ failure }: { failure: ReeRunFailure }) {
   const view = runFailurePresentation(failure);
   const color = failureTone(view.tone);
@@ -294,8 +274,6 @@ function RunFailureNote({ failure }: { failure: ReeRunFailure }) {
   );
 }
 
-// Mounted only while its run row is expanded, so only one run's log feed is
-// polled at a time. The run query alongside stops the log poll once terminal.
 function RunLogView({
   run,
   streams,

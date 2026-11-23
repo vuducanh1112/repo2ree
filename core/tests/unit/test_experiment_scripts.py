@@ -1,5 +1,3 @@
-"""An experiment's scripts come and go with its declaration, starting as their defaults."""
-
 from __future__ import annotations
 
 from pathlib import Path

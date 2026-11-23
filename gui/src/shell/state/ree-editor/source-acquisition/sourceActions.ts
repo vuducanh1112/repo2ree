@@ -61,10 +61,6 @@ export function createSourceActions({
     resetStepsStateOnSourceChange(dispatch, showToast, options);
   };
 
-  // Source handlers settle backend-owned identity (resolved commit and SWHID)
-  // after acquisition. A file-only refresh leaves those fields stranded in the
-  // workbench document, so every completed source mutation must rehydrate the
-  // editor from that authoritative document as well.
   const refreshSourceWorkspaceFiles = async () => {
     const files = await refreshWorkspaceFiles({ forceReeHydration: true });
     const remote = queryClient.getQueryData<ReeProject<FileTreeNode, RawReeIntentSlices>>(

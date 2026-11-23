@@ -1,16 +1,3 @@
-"""The shared runtime-contract subgraph checks.
-
-Activation and experiment inference both begin from the resolved logical project
-root and the current ``ReeDefinition.runtime`` and resolve it into a typed experiment environment
-contract before any command strategy runs. They never scan for arbitrary tar
-files: the declared path is the only experiment environment, and it is either inspected as a
-built artifact or matched against an unchanged generated build.
-
-Every blocking condition is emitted as a check warning and routed (in the DAG)
-straight to a ``not_inferred`` result, so the target's trace explains exactly
-why no experiment environment contract was established.
-"""
-
 from __future__ import annotations
 
 from pathlib import PurePosixPath
@@ -204,8 +191,6 @@ class ExperimentEnvironmentArtifactInspectionCheck:
                 ),
                 bindings=(
                     ExperimentEnvironmentContractBinding(contract=docker_contract, provenance="inspected_artifact"),
-                    # The image's declared command travels forward so the
-                    # command-candidate check need not re-open this archive.
                     ImageCommandBinding(argv=inspection.argv, shell_command=inspection.shell_command),
                 ),
             )
@@ -229,10 +214,6 @@ class UnchangedGeneratedBuildCheck:
 
     def evaluate(self, context: DecisionContext) -> CheckResult:
         declaration = _require_declaration(context)
-        # Several strategies can be viable at once (a repo carrying both a
-        # Dockerfile and a requirements.txt), and they all write to the declared
-        # path now — so the written script's digest, not its artifact path, is
-        # what says which one the author settled on.
         for expected in expected_builds_for_experiment_environment(context, declaration.path):
             if not _written_build_matches(context, expected.body):
                 continue
@@ -269,13 +250,6 @@ def _written_build_matches(context: DecisionContext, expected_body: str) -> bool
 
 
 class ExperimentEnvironmentContractKindCheck:
-    """Routes a command branch by the resolved contract's experiment environment kind.
-
-    Both the docker and the venv command strategy branch start with this so each
-    proceeds only for its own kind and declines (``not_applicable``) for the
-    other — exactly one kind is ever resolved, so exactly one branch is viable.
-    """
-
     code = "experiment_environment_contract_kind"
     label = "What kind of experiment environment was resolved?"
     branches = frozenset({"docker", "venv"})

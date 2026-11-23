@@ -1,22 +1,3 @@
-/* A panel standing around the pod. The deck plate remains in the floor plane;
- * the terminal counter-tilts so its controls stay readable.
- *
- * The terminal carries no modelled top face. It is a billboard: it counter-
- * rotates to face the camera wherever it stands, so an extruded lid can only
- * contradict the scene — one drawn with a single rotateX shows the same face at
- * the same angle to every panel, including the ones standing above the horizon,
- * whose undersides the camera is actually looking at. Depth here comes from the
- * housing instead: a rounded lip that takes the scene's overhead light along
- * its top and loses it along the bottom, over glass lit from the same
- * direction. Modelling by light rather than by geometry stays true wherever the
- * panel stands, because the light is overhead everywhere on the deck.
- *
- * The housing is drawn as a separate `.shell` layer rather than as the button's
- * own border: it has to carry the rim, the shadow, the state glow and the
- * blurred backdrop at once, and a border carries none of those. Content sits
- * above it in its own padded strips, each taking the corner radius of the
- * housing edge it meets. */
-
 .anchor {
   position: absolute;
   left: 0;
@@ -58,7 +39,6 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* The strut's base collar, where it lands on the deck plate. */
 .post::after {
   content: "";
   position: absolute;
@@ -87,7 +67,6 @@
   display: block;
 }
 
-/* The deck plate the strut is bolted to, lying flat in the floor plane. */
 .floorShadow {
   display: none;
   position: absolute;
@@ -121,11 +100,7 @@
   left: 0;
   bottom: 0;
   transform: translate(-50%, 50%);
-  /* How far the glass lip stands proud of the pane it holds. */
   --rim: 3px;
-  /* The two shadows every housing carries, whatever state it is in: a tight
-   * contact shadow that keeps it from floating, under the wide ambient one that
-   * places it above the floor. */
   --housing-shadow: 0 1px 1px var(--machine-channel), var(--machine-shadow);
   width: 248px;
   padding: 0;
@@ -142,33 +117,12 @@
     opacity var(--duration-slow);
 }
 
-/* Being moved. The eased transform is dropped for the duration so the panel
- * tracks the pointer instead of chasing it, and it lifts over its neighbours
- * so the one being placed is the one on top. */
 .card[data-dragging] {
   z-index: 1;
   cursor: grabbing;
   transition: none;
 }
 
-/* The housing: a rounded glass lip holding the pane, and the shadow that lifts
- * the whole silhouette off the deck. It sits a hair behind the panel's own
- * content plane so the strips always read on top of it.
- *
- * The rim is a band of even width, so its outer radius is the pane's plus the
- * width it stands proud of it. Its gradient is the scene's light falling on a
- * raised edge: white across the top, cool slate along the bottom, which is what
- * gives the panel its thickness.
- *
- * Rounded corners are what make the glass real: with no cut corners to carry,
- * the housing needs no `clip-path`, so it needs no `filter` to cast its shadow
- * either — and without a filter isolating it, `backdrop-filter` finally has a
- * backdrop to work on. The deck grid and the cables genuinely refract through
- * the pane rather than being imitated by a pale fill.
- *
- * A state does not repaint the housing: it lights the rim from within, as a
- * translucent ring laid over the gradient, so a lit panel still reads as the
- * same glass rather than as a coloured card. */
 .shell {
   position: absolute;
   inset: calc(var(--rim) * -1);
@@ -187,10 +141,6 @@
   transition: box-shadow var(--duration-normal);
 }
 
-/* The pane the rim holds: glass the deck shows through, lit from the same
- * overhead source and cooling toward the bottom edge where the housing shades
- * it. The blur is what separates it from the grid it is transparent to —
- * without it the lines behind the panel would compete with the readout. */
 .shell::after {
   content: "";
   position: absolute;
@@ -225,7 +175,6 @@
   transform: translateX(-50%);
 }
 
-/* Where the cable from the pod lands. */
 .port {
   position: absolute;
   left: 50%;
@@ -243,8 +192,6 @@
     var(--housing-shadow);
 }
 
-/* Announced as the panel's description, so a state the panel shows as a lamp or
- * a glow has a spoken counterpart without becoming part of the panel's name. */
 .stateNote {
   position: absolute;
   width: 1px;
@@ -255,8 +202,6 @@
   white-space: nowrap;
 }
 
-/* The one step the authoring graph says to do next: the housing glows along its
- * own edge. */
 .card[data-next] .shell {
   box-shadow:
     inset 0 0 0 var(--rim) color-mix(in srgb, var(--step-next-line) 72%, transparent),
@@ -282,10 +227,6 @@
   }
 }
 
-/* A run for this step is in flight. It outranks every other housing state:
- * "working right now" is the one thing worth interrupting the eye for, so the
- * glow is the run tone rather than a stage tint, and it breathes twice as fast
- * as the `next` hint it overrides. */
 .card[data-running] .shell {
   box-shadow:
     inset 0 0 0 var(--rim) color-mix(in srgb, var(--run-active) 72%, transparent),
@@ -311,8 +252,6 @@
   }
 }
 
-/* The page this panel opens is the one on screen. */
-/* Lifted while it is being placed. */
 .card[data-dragging] .shell {
   box-shadow:
     0 1px 1px var(--machine-channel),
@@ -326,10 +265,6 @@
     var(--housing-shadow);
 }
 
-/* Pointing at a panel lights its housing in the node's own tone — the tone its
- * cable to the pod already carries. The panel itself does not move: the cables
- * are measured geometry, and a card that shifted under the pointer would drag
- * its port away from the cable already drawn to it. */
 .card:hover:not(:disabled) .shell {
   box-shadow:
     inset 0 0 0 var(--rim) color-mix(in srgb, var(--node-tint) 34%, transparent),
@@ -337,7 +272,6 @@
     var(--housing-shadow);
 }
 
-/* Nothing on the ring is reachable until the workbench is provisioned. */
 .card:disabled {
   cursor: default;
   opacity: var(--opacity-subtle);
@@ -347,8 +281,6 @@
   outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
 }
-
-/* ── Bezel: identity and state, on its own machined strip ─────────────────── */
 
 .head {
   position: relative;
@@ -432,7 +364,6 @@
   box-shadow: 0 0 5px var(--status-stale-glow);
 }
 
-/* The lamp blinks while the step runs — a panel with something to say. */
 .state[data-state="running"] .stateLamp {
   background: var(--run-active);
   box-shadow: 0 0 6px var(--run-active);
@@ -460,8 +391,6 @@
   box-shadow: 0 0 5px var(--status-stale-glow);
 }
 
-/* ── Display: the recessed readout, inset from the housing on every side ──── */
-
 .screen {
   position: relative;
   overflow: hidden;
@@ -479,8 +408,6 @@
   color: var(--chrome-text-mid);
 }
 
-/* The readout's own sign of life: a band sweeping the screen, the way an
- * instrument shows it is sampling rather than resting. */
 .scan {
   position: absolute;
   inset: 0 0 auto 0;
@@ -536,7 +463,6 @@
   text-align: right;
 }
 
-/* Nothing known for this fact yet. */
 .rowValue[data-empty] {
   color: var(--chrome-text-muted);
 }
@@ -613,8 +539,6 @@
   text-align: right;
 }
 
-/* ── Ticket strip: what this panel's inputs actually produced ─────────────── */
-
 .evidence {
   position: relative;
   display: flex;
@@ -657,7 +581,6 @@
     transition: none;
   }
 
-  /* The glow stays; it just stops breathing. */
   .card[data-next] .shell,
   .card[data-running] .shell {
     animation: none;
@@ -667,7 +590,6 @@
     animation: none;
   }
 
-  /* A band frozen mid-screen would read as a defect, not a state. */
   .scan {
     display: none;
   }

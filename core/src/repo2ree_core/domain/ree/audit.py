@@ -1,18 +1,3 @@
-"""Audit an REE: check every receipt it carries against what it now declares.
-
-The question this module answers is not "how good is this REE" but "is what it
-records still true of what it holds". An author edits a build script, re-points
-a source, renames an experiment; the receipts from before those edits stay on
-the aggregate, because deleting evidence is not the domain's call to make. What
-*is* the domain's call is saying so — a receipt whose inputs have moved, or
-whose declaration has been removed out from under it, is ``stale``, and every
-operation that would build on it refuses, by name and with reasons.
-
-Nothing here is stored. An audit is a function of one :class:`Ree` and holds
-only for the aggregate it was derived from, which is why callers derive it at
-the moment they need it rather than passing one around.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -22,22 +7,9 @@ from repo2ree_protocol.audit import EvidenceStatus, ExperimentAudit, PayloadStat
 from repo2ree_ree.model import Ree, ReeDefinition, ReeReceipts
 from repo2ree_ree.primitives import Digest, RunId
 
-# ================================================
-# Audit Inputs
-# ================================================
-
 
 @dataclass(frozen=True)
 class _Subject:
-    """Everything auditing one step needs, and nothing a step may reach past.
-
-    The steps are audited independently and in any order — each compares its
-    own receipt against what the REE declares and against the receipts it was
-    derived from, never against another step's *verdict*. Handing every step
-    the same value keeps that honest: there is no partially-built audit here
-    for one step to read a conclusion out of.
-    """
-
     definition: ReeDefinition
     receipts: ReeReceipts
     content_digests: frozenset[Digest]
@@ -51,8 +23,6 @@ class _Subject:
             receipts=ree.subject.receipts,
             content_digests=frozenset(entry.digest for entry in ree.subject.contents.entries),
             content_paths=frozenset(str(entry.path) for entry in ree.subject.contents.entries),
-            # A draft's inventory is empty by construction, so asking whether a
-            # payload travels in the bundle has no answer until the seal.
             bundle_settled=ree.seal is not None,
         )
 
@@ -62,56 +32,15 @@ class _Subject:
         return "present" if digest is not None and digest in self.content_digests else "omitted"
 
     def experiment_payload(self, name: str, *, applicable: bool) -> PayloadStatus:
-        """An experiment's outputs have one digest over them all, so they are found by where they travel."""
         if not (applicable and self.bundle_settled):
             return "not_applicable"
         return "present" if any(path.startswith(f"results/{name}/") for path in self.content_paths) else "omitted"
 
 
-# ================================================
-# Per-Step Audits
-# ================================================
-
-
-# The complaint a receipt earns by outliving what it was about. No per-step
-# comparison produces this one: there is nothing left to compare it against,
-# which is exactly the point. Phrased for the subject rather than the step,
-# because the declaration that went away is often another step's — dropping the
-# experiment environment recipe orphans the SBOM scanned off it, and the SBOM step never had a
-# declaration of its own to lose.
 _ORPHANED_RECEIPT_REASON = "the REE no longer declares what this evidence is about"
 
 
 def _evidence_standing(*, applicable: bool, has_receipt: bool, complaints: bool) -> EvidenceStatus:
-    """Whether a step's receipt still speaks for the REE, as one table.
-
-    ``applicable`` is whether the REE declares anything for this step's evidence
-    to be *about*, which is not always the step's own declaration. Source,
-    hardware, experiment environment and activation each answer for themselves. Evaluation,
-    SBOM and cross-check declare nothing of their own and answer for what they
-    describe: a source to evaluate, an experiment environment to scan, both to reconcile. So a
-    step can stop being applicable without its own definition changing at all.
-
-    ``complaints`` is whether any comparison the step made — against that
-    declaration, or against the receipts upstream of it — came back disagreeing.
-
-    ==========  =======  ==========  ================================================
-    applicable  receipt  complaints  standing
-    ==========  =======  ==========  ================================================
-    no          no       --          ``not_applicable``  nothing to be about
-    yes         no       --          ``missing``         the step has not run
-    yes         yes      no          ``current``         it still speaks for the REE
-    yes         yes      yes         ``stale``           something it rests on moved
-    no          yes      --          ``stale``           its subject is gone
-    ==========  =======  ==========  ================================================
-
-    The last row is the one worth stating separately, because it is the one
-    that used to be silent. A receipt with nothing left to be about has nothing
-    left to be compared against, so every per-step comparison passes and it
-    would read ``current`` on the strength of tests nobody could run. It is
-    inapplicable *and* it is present, and of those two facts only the second can
-    be published — so the presence wins and the step reports ``stale``.
-    """
     if not has_receipt:
         return "missing" if applicable else "not_applicable"
     return "stale" if complaints or not applicable else "current"
@@ -124,10 +53,6 @@ def _step(
     applicable: bool = True,
     payload: PayloadStatus = "not_applicable",
 ) -> StepAudit:
-    # Nothing declared and nothing recorded: there is no evidence question
-    # here, and the caller's "has not run yet" reason would answer one nobody
-    # asked. The only case where reasons and payload are dropped rather than
-    # carried.
     if not applicable and receipt_run_id is None:
         return StepAudit(evidence="not_applicable", payload="not_applicable")
     complaints = tuple(reasons) or (() if applicable else (_ORPHANED_RECEIPT_REASON,))
@@ -175,20 +100,6 @@ def _audit_evaluate_reproducibility(subject: _Subject) -> StepAudit:
 
 
 def _audit_observe_hardware(subject: _Subject) -> StepAudit:
-    """The one step whose receipt needs no declaration to mean something.
-
-    Every other receipt attests that a *declared* thing was done, so it is
-    orphaned once that declaration goes. A hardware observation is not evidence
-    for a declaration at all — it is a record of the machine the work ran on,
-    complete in itself. ``definition.hbom`` is a separate, optional
-    statement about what the REE *requires*, and an author may observe without
-    requiring, or require without having observed yet.
-
-    So the step is applicable when either exists. Tying it to the declaration
-    alone made an observed-but-undeclared REE report ``not_applicable`` while
-    holding a receipt — harmless while that verdict hid the receipt, and a
-    refused seal once it stopped.
-    """
     receipt = subject.receipts.observe_hardware
     hbom = subject.definition.hbom
     declared = hbom is not None and _declares_something(hbom.model_dump(mode="json"))
@@ -200,15 +111,12 @@ def _audit_observe_hardware(subject: _Subject) -> StepAudit:
 
 
 def _declares_something(value: object) -> bool:
-    """Whether a declaration says anything: an object only when something in it does, as the document's parts
-    are set. A hardware declaration that lists nothing requires nothing."""
     if isinstance(value, dict):
         return any(_declares_something(inner) for inner in value.values())
     return value not in (None, "", [])
 
 
 def _audit_check_working_environment(subject: _Subject) -> StepAudit:
-    """The author's check, as it last passed: against the check script and working environment declared now."""
     declared, receipt = subject.definition.check_working_environment, subject.receipts.check_working_environment
     reasons: list[str] = []
     if receipt:
@@ -247,12 +155,10 @@ def _audit_build_experiment_environment(subject: _Subject) -> StepAudit:
 
 
 def _launch_changed(subject: _Subject, ran_under: Digest | None) -> bool:
-    """Whether the step ran under another launch than the one the REE declares, or under none."""
     return ran_under != subject.definition.launch.launch_script_digest
 
 
 def _experiment_environment_is_declared(subject: _Subject) -> bool:
-    """Whether the build has been told where to leave the experiment environment: the build and its SBOM turn on it."""
     return subject.definition.experiment_environment.artifact_path is not None
 
 
@@ -264,22 +170,12 @@ def _audit_generate_sbom(subject: _Subject) -> StepAudit:
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("SBOM has not been generated",)),
-        # An SBOM describes a built experiment environment, so it is applicable on exactly the
-        # terms the experiment environment step is: a declared experiment environment with no recipe to build
-        # it is nothing for a scanner to read.
         applicable=_experiment_environment_is_declared(subject),
         payload=subject.payload(receipt.sbom_digest if receipt else None),
     )
 
 
 def _audit_cross_check_sbom(subject: _Subject) -> StepAudit:
-    """The cross-check rests on two documents, and both can move under it.
-
-    Reconciling an experiment environment SBOM against the source's declared dependencies is a
-    statement about one *pair* of documents. Regenerate either — a rebuilt
-    experiment environment rescanned, a re-run evaluation — and the counts this receipt
-    carries describe a comparison nobody made.
-    """
     receipt = subject.receipts.cross_check_sbom
     sbom, evaluation = subject.receipts.generate_sbom, subject.receipts.evaluate_reproducibility
     reasons: list[str] = []
@@ -291,14 +187,11 @@ def _audit_cross_check_sbom(subject: _Subject) -> StepAudit:
     return _step(
         receipt.run_id if receipt else None,
         reasons or (() if receipt else ("SBOM has not been cross-checked",)),
-        # It needs both sides: a declared-dependency report (which needs a
-        # source) and an experiment environment SBOM to reconcile against.
         applicable=subject.definition.source is not None and _experiment_environment_is_declared(subject),
     )
 
 
 def _audit_activate_experiment_environment(subject: _Subject) -> StepAudit:
-    """The activation, run alone: what it ran with, against what the REE now declares and was built from."""
     receipt = subject.receipts.activate_experiment_environment
     reasons: list[str] = []
     if receipt:
@@ -371,11 +264,6 @@ def _audit_experiments(subject: _Subject) -> tuple[ExperimentAudit, ...]:
             )
         )
     return tuple(audits)
-
-
-# ================================================
-# Entry point
-# ================================================
 
 
 def audit(ree: Ree) -> ReeAudit:

@@ -1,15 +1,3 @@
-"""The contract both staged-upload routes share (see ree/upload_runs.py).
-
-A source archive and a whole REE bundle travel the same path — claim the token,
-copy the bytes in, run one command, reclaim the host copy — so the rule for what
-a run reports back is pinned here once, against both routes, rather than in
-either route's own file.
-
-The staging legs are real (real routes, real staging dir); the workbench side is
-stubbed, since what a command *does* with the archive is covered in the core
-suite. What is under test is the control plane's bookkeeping around it.
-"""
-
 from __future__ import annotations
 
 import time
@@ -27,7 +15,6 @@ from repo2ree_supervisor import ReeRoute
 RUN_TIMEOUT_SECONDS = 10
 TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 
-# (init route, upload route, completing route, route-specific keys the run echoes)
 UploadRoutes = tuple[str, str, str, dict[str, Any]]
 
 _SOURCE: UploadRoutes = ("source:upload-init", "source:upload", "source:upload-complete", {"mode": "upload"})
@@ -73,7 +60,6 @@ def _stage_and_start(
 
 @pytest.fixture
 def stubbed_workbench(monkeypatch: pytest.MonkeyPatch) -> dict[str, ActionResult]:
-    """Accept the copy; let each test choose what the command reports."""
     outcome: dict[str, ActionResult] = {}
 
     def copy_to_workbench(handle: ReeRoute, host_path: str, container_path: str) -> None:
@@ -95,12 +81,6 @@ def test_failed_run_reports_both_the_request_and_what_the_command_found(
     stubbed_workbench: dict[str, ActionResult],
     routes: UploadRoutes,
 ) -> None:
-    """A failing command's outputs are merged over the request echo, not either alone.
-
-    Previously the two routes disagreed: source replaced the command's outputs
-    with the request echo, bundle dropped the echo and kept only the command's.
-    A caller could not read both from either one.
-    """
     stubbed_workbench["result"] = ActionResult.failed(
         "internal",
         "archive rejected",
@@ -114,11 +94,9 @@ def test_failed_run_reports_both_the_request_and_what_the_command_found(
 
     assert run["status"] == "failed"
     outputs = run["outputs"]
-    # What the caller asked for...
     assert outputs["upload_token"] == started["token"]
     assert outputs["archive_name"] == "archive.zip"
     assert all(outputs[key] == value for key, value in _echoed.items())
-    # ...and what the command found.
     assert outputs["rejected_entry"] == "../escape"
 
 
@@ -130,7 +108,6 @@ def test_succeeded_run_reports_both_and_reclaims_the_host_copy(
     stubbed_workbench: dict[str, ActionResult],
     routes: UploadRoutes,
 ) -> None:
-    """The same merge rule on success — and the staged bytes are always reclaimed."""
     stubbed_workbench["result"] = ActionResult(status="succeeded", outputs={"entries": 3})
 
     started = _stage_and_start(client, online_ree.ree_id, routes)
@@ -139,5 +116,4 @@ def test_succeeded_run_reports_both_and_reclaims_the_host_copy(
     assert run["status"] == "succeeded"
     assert run["outputs"]["archive_name"] == "archive.zip"
     assert run["outputs"]["entries"] == 3
-    # Ownership moved to the workbench; the control-plane landing file is gone.
     assert not staged_upload_path(started["token"]).exists()

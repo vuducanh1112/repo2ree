@@ -1,5 +1,3 @@
-"""Initialize an REE and retain its first Git snapshot before reporting success."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -36,14 +34,6 @@ class InitializationResult:
 
 
 def initialize_ree(layout: ReeLayout, *, name: str) -> InitializationResult:
-    """Create the REE with its starter scripts.
-
-    Preserve existing files on retry, including after a failed first capture.
-
-    A pre-existing REE without history gets an explicitly named existing-state
-    baseline: its contents cannot be assumed to be the original initial state.
-    Git failure after writing ree.json leaves that initialized state in place.
-    """
     with open_history(layout) as history:
         store = ReeDirectory(layout)
         existing = store.manifest_exists()

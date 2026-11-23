@@ -132,9 +132,7 @@ export async function executeStepRun({
             evaluationState: workspace.ree?.evaluationState,
           },
         ]);
-      } catch {
-        // Best-effort; UI can still show logs even if refresh fails.
-      }
+      } catch {}
     }
     return { lines, ts };
   }
@@ -153,9 +151,7 @@ export async function executeStepRun({
           evaluationState: workspace.ree?.evaluationState,
         },
       ]);
-    } catch {
-      // Keep run success status; UI can still show logs even if refresh fails.
-    }
+    } catch {}
   }
 
   if (isReeStepKey(key)) {

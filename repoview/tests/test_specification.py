@@ -1,5 +1,3 @@
-"""The specification page states each rule the way the specification writes it."""
-
 from __future__ import annotations
 
 from typing import Any

@@ -1,61 +1,4 @@
 #!/usr/bin/env python3
-"""Author a REE end to end over the HTTP API — a real terminal session, no GUI.
-
-This is the pure-API counterpart of ``gui/tests/e2e``: it drives the public,
-automation-ready API through its whole authoring lifecycle. It is deliberately an
-*honest* recording — a real terminal session, not a staged one:
-
-  * Every API interaction is a genuine ``curl`` subprocess. The command printed to
-    the transcript is the exact one executed (one argv, printed and run), so the
-    recording never shows a command that differs from what actually ran.
-  * There is no fabricated "workbench thinking". The narrative is carried by neutral
-    section banners — the author's chapter headings — not by first-person prose
-    pretending to be a model's inner monologue.
-
-The Python is pure orchestration: control flow, the observeRun poll loop, JSON
-parsing, and assertions. It doubles as a CI check — every response is asserted, so
-a broken contract fails the run (and thus the recording). Run it through the stack
-orchestrator, which brings a live backend + workbench service up, passes its URL
-explicitly, tears it down, and (with ``just demo-api``) records the terminal:
-
-    api/tests/e2e/api_walkthrough.py --base-url http://127.0.0.1:8000
-    just demo-api           # the same, always recorded to a .cast
-
-Needs only ``curl`` (already required by the orchestrator) and the Python stdlib,
-so it runs under a bare ``python3`` shebang regardless of what execs it. It is
-the pure-API mirror of the GUI golden path (``ree-pipeline.spec.ts``): the
-same journey — one workbench, one experiment environment build, every pipeline stage exercised
-in order — driven only through the public surface:
-
-    createRee -> observeRun (provision)
-      -> listReeSteps (discover the authoring steps, prerequisites, and what to do next)
-      -> listScriptTemplates (discover the reserved script paths)
-      -> source:upload-init / uploadSourceBytes / source:upload-complete
-      -> observeRun (extract)
-      -> getReeState -> writeScript / readReeFile
-      -> patchReeDefinition (metadata)
-      -> evaluateReproducibility -> observeRun -> getEvaluateReport
-      -> suggestScripts (build) -> writeScript (build script)
-         -> patchReeDefinition (declare the experiment environment the build recipe produces)
-         -> buildExperimentEnvironment -> observeRun
-      -> patchReeDefinition (hardware BOM)
-      -> generateSbom -> observeRun -> crossCheckSbom -> observeRun
-      -> suggestScripts (activation) -> writeScript (activation script) -> activateExperimentEnvironment -> observeRun
-      -> patchReeDefinition (declare experiment) -> suggestScripts (experiment)
-         -> writeScript (run + verify) -> runExperiment -> observeRun
-      -> getReeState (the aggregate audit) -> the evaluation receipt's axes
-      -> sealRee -> downloadReeArchive -> deleteRee
-
-The build, activation, and experiment recipe scripts are not hardcoded: each is
-inferred from the repository through ``suggestScripts`` and its
-decision graph printed, then authored (the build script is complete; the
-fail-closed run scaffolds get their one ``set --`` command filled in). Those
-stages then drive a real cold Docker-in-Docker experiment environment build (pandas on
-``python:3.11-slim``) inside the workbench — the same work the GUI golden
-path does, so the recording shows the genuine cost of authoring a reproducible
-environment, not a stub.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -74,21 +17,14 @@ from typing import Any
 DEFAULT_BASE_URL = "http://127.0.0.1:8000"
 BASE_URL = DEFAULT_BASE_URL
 
-# Terminal statuses a background run settles into (mirrors run_registry).
 TERMINAL = {"succeeded", "failed", "canceled"}
-
-# ------------------------------------------------------------------
-# Presentation — honest editorial structure, no simulated workbench voice
-# ------------------------------------------------------------------
 
 
 def chapter(title: str) -> None:
-    """A section banner: the author's chapter heading, not workbench narration."""
     print(f"\n\033[1m━━ {title} " + "━" * max(0, 56 - len(title)) + "\033[0m")
 
 
 def note(msg: str) -> None:
-    """A dim author aside explaining a non-obvious step."""
     print(f"\033[2m# {msg}\033[0m")
 
 
@@ -97,7 +33,7 @@ def ok(msg: str) -> None:
 
 
 class WalkthroughError(RuntimeError):
-    """A failed assertion or unexpected response — ends the session non-zero."""
+    pass
 
 
 def check(condition: object, msg: str) -> None:
@@ -105,21 +41,7 @@ def check(condition: object, msg: str) -> None:
         raise WalkthroughError(msg)
 
 
-# ------------------------------------------------------------------
-# HTTP — every call is a single real curl. The command printed IS the command
-# executed: one argv, echoed and run. Python only orchestrates and parses.
-# ------------------------------------------------------------------
-
-
 def _run_curl(argv: list[str], *, cwd: str | None = None, echo: bool = True) -> tuple[int, bytes, bytes]:
-    """Run one curl command and return (returncode, stdout, stderr).
-
-    ``-sS`` silences the progress meter but keeps transport errors; ``--fail-with-body``
-    turns an HTTP >= 400 into a non-zero exit while still emitting the response body,
-    so pass/fail comes from curl's own exit code — no ``-w`` status plumbing to hide —
-    and the error envelope still reaches the transcript. The printed line is exactly
-    what runs; binary file args are relative names resolved against ``cwd`` so the
-    shown command stays clean *and* faithful."""
     argv = ["curl", "-sS", "--fail-with-body", *argv]
     if echo:
         print(f"\033[1;34m$ {shlex.join(argv)}\033[0m")
@@ -132,9 +54,6 @@ def _curl_detail(rc: int, err: bytes) -> str:
 
 
 def call(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-    """A JSON request as a real curl. Prints the exact command and the parsed
-    response (the error envelope too, on failure), then fails the session on any
-    transport error or HTTP >= 400."""
     argv = ["-X", method, f"{BASE_URL}{path}"]
     if payload is not None:
         argv += ["-H", "Content-Type: application/json", "--data", json.dumps(payload)]
@@ -150,15 +69,10 @@ def call(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[
 
 
 def wait_for_run(ree_id: str, run_id: str) -> str:
-    """Tail a background run via the long-polling observeRun endpoint — the
-    automation-idiomatic way to await completion — printing each new log line as
-    it arrives. Returns the terminal status. The poll curl runs quietly; only the
-    streamed log lines reach the transcript."""
     note(f"streaming run {run_id} via observeRun until it settles")
     cursor = 0
     while True:
         url = f"{BASE_URL}/api/v1/rees/{ree_id}/runs/{run_id}/observe?cursor={cursor}&wait_seconds=25"
-        # --max-time gives curl headroom past the server-side long-poll window.
         rc, out, err = _run_curl([url, "--max-time", "40"], echo=False)
         check(rc == 0, f"observing run {run_id} failed: {_curl_detail(rc, err)}")
         obs = json.loads(out)
@@ -171,38 +85,11 @@ def wait_for_run(ree_id: str, run_id: str) -> str:
         time.sleep(0.1)
 
 
-# ------------------------------------------------------------------
-# The project being authored, and the REE recipe scripts that turn it into a
-# reproducible environment. Kept byte-for-byte in step with the GUI golden
-# path's ``python_hello_world`` fixture so both e2e mirrors build the same
-# experiment environment and assert the same "Pandas Hello World" evidence.
-# ------------------------------------------------------------------
-
-# The archive extracts under this top-level directory. Where the *build* writes
-# the experiment environment tarball, and the image tag it produces, are no longer hardcoded:
-# chapter 7 infers the build script and reads those back out of it — inference
-# owns those conventions now, exactly as an author reading the generated script
-# would.
 PROJECT_DIR = "python_hello_world"
 
-# REE-owned recipe scripts live under a reserved overlay: a fresh REE seeds the
-# build and activation slots, and naming an experiment settles its own reserved
-# run-script path. Authoring a stage means writing its script to the reserved
-# path, then declaring it on the definition. The paths are *not* hardcoded here
-# — the session discovers them at experiment environment from listScriptTemplates (see chapter
-# 2), the way a workbench driving cold from the OpenAPI would. The experiment name
-# is kept deliberately slug-safe (no whitespace) so it substitutes directly into
-# the catalog's ``{slug}`` path pattern without needing core's slug rules.
 EXPERIMENT_NAME = "python-hello"
-# The inferred experiment scaffold captures stdout to its own ``results/<slug>.log``
-# convention (its ``RUN_LOG``); the verify script reads that back and its exit code
-# is the verdict. Declared as the experiment's output so the baseline is sealed.
 EXPERIMENT_LOG = f"results/{EXPERIMENT_NAME}.log"
 
-# Where the REE keeps its SBOM. Unlike the experiment environment — which the author's own build
-# script writes into the workspace and packaging then lifts — the scan writes
-# REE-owned evidence, so it lands in ``artifacts/`` from the start and is
-# declared, listed, and bundled at that one path.
 SBOM_ARTIFACT_PATH = "artifacts/sbom.json"
 
 _DOCKERFILE = """\
@@ -229,15 +116,8 @@ if __name__ == "__main__":
     main()
 """
 
-# Phase 1 inference never selects a run command — it emits a fail-closed scaffold
-# with a guarded, empty ``set --``. Authoring an experiment run script is
-# therefore: infer the scaffold, then fill in that one line. This is the command
-# the author supplies: the experiment runs the project.
 EXPERIMENT_COMMAND = f"python {PROJECT_DIR}/main.py"
 
-# The verify script owns the claim: the captured stdout contains the expected
-# line. It reads the scaffold's own RUN_LOG (EXPERIMENT_LOG), declared as the
-# experiment's output.
 EXPERIMENT_VERIFY_SCRIPT = f"""\
 #!/usr/bin/env sh
 set -eu
@@ -246,8 +126,6 @@ grep -Fq "Pandas Hello World" "{EXPERIMENT_LOG}"
 
 
 def make_source_archive() -> bytes:
-    """The ``python_hello_world`` project as an in-memory .tar.gz — a Dockerfile,
-    a pandas requirement, and a script whose output the experiment verifies."""
     files = {
         f"{PROJECT_DIR}/Dockerfile": _DOCKERFILE.encode(),
         f"{PROJECT_DIR}/requirements.txt": b"pandas==2.2.1\n",
@@ -263,17 +141,10 @@ def make_source_archive() -> bytes:
 
 
 def put_file(ree_id: str, path: str, content: str) -> None:
-    """Author a workspace file (writeScript). Used for the REE recipe scripts —
-    the build, activation, and experiment scripts live in the workspace and are
-    referenced by path from the typed definition."""
     call("POST", f"/api/v1/rees/{ree_id}/write-script", {"path": path, "content": content})
 
 
 def run_stage(ree_id: str, method: str, path: str, payload: dict[str, Any], *, what: str) -> dict[str, Any]:
-    """Kick off a background pipeline run and block on observeRun until it settles,
-    asserting success. Returns the run's start response. This is the automation
-    idiom every heavyweight stage (evaluate, build, sbom, activation, experiment)
-    shares: POST to start, long-poll to await."""
     started = call(method, path, payload)
     run_id = started["run_id"]
     status = wait_for_run(ree_id, run_id)
@@ -281,21 +152,11 @@ def run_stage(ree_id: str, method: str, path: str, payload: dict[str, Any], *, w
     return started
 
 
-# ------------------------------------------------------------------
-# Script inference — generate the reserved recipe scripts from the repository
-# rather than hardcoding them. Inference is read-only: it proposes candidate
-# bytes and the decision graph that produced them, and writes nothing. A chosen
-# candidate becomes a script only when the author saves it via writeScript.
-# ------------------------------------------------------------------
-
-
 def generate_scripts(ree_id: str, targets: list[dict[str, Any]]) -> dict[str, Any]:
-    """Run read-only inference for the requested targets and return the report."""
     return call("POST", f"/api/v1/rees/{ree_id}/suggest-scripts", {"targets": targets})
 
 
 def _inference_result(report: dict[str, Any], kind: str, experiment_name: str | None = None) -> dict[str, Any]:
-    """The report's result for one target (empty dict if absent)."""
     for result in report.get("results", []):
         target = result.get("target", {})
         if target.get("kind") != kind:
@@ -307,9 +168,6 @@ def _inference_result(report: dict[str, Any], kind: str, experiment_name: str | 
 
 
 def summarize_decision(report: dict[str, Any], kind: str, experiment_name: str | None = None) -> dict[str, Any]:
-    """Print the target's decision graph — the executed DAG path and outcome —
-    then return its result. This is the same trace the GUI renders; showing
-    it proves inference explains itself, whether or not it produced a script."""
     result = _inference_result(report, kind, experiment_name)
     check(bool(result), f"inference returned no result for {kind}")
     decision = result["decision"]
@@ -327,8 +185,6 @@ def summarize_decision(report: dict[str, Any], kind: str, experiment_name: str |
 def inferred_script(
     report: dict[str, Any], kind: str, *, rule: str | None = None, experiment_name: str | None = None
 ) -> str:
-    """The body of the target's first non-empty candidate (optionally the one a
-    given inference rule produced); empty string when nothing was inferred."""
     result = _inference_result(report, kind, experiment_name)
     for candidate in result.get("candidates", []):
         body = candidate.get("body")
@@ -341,9 +197,6 @@ def inferred_script(
 
 
 def shell_value(body: str, name: str) -> str:
-    """Read a ``NAME=value`` assignment back out of a generated shell script — how
-    an author learns where the inferred build writes its experiment environment, or where the
-    experiment scaffold captures its log."""
     for line in body.splitlines():
         if line.startswith(f"{name}="):
             tokens = shlex.split(line[len(name) + 1 :])
@@ -352,16 +205,9 @@ def shell_value(body: str, name: str) -> str:
 
 
 def author_command(body: str, command: str) -> str:
-    """Fill the scaffold's single guarded, empty ``set --`` line with the run
-    command — the one edit Phase 1 deliberately leaves to the author."""
     anchor = "\nset --\n"
     check(body.count(anchor) == 1, "expected exactly one unconfigured 'set --' line in the scaffold")
     return body.replace(anchor, f"\nset -- {command}\n", 1)
-
-
-# ==================================================================
-# The session
-# ==================================================================
 
 
 def run() -> None:
@@ -372,7 +218,6 @@ def run() -> None:
     health = call("GET", "/")
     check(health.get("status") == "online", "service not online")
 
-    # Creation names a store; the REE's scripts run wherever that store's workbench runs them.
     stores = [store for store in call("GET", "/api/v1/stores")["stores"] if store["connected"]]
     check(stores, "no workbench serves a store")
     store = stores[0]
@@ -392,9 +237,6 @@ def run() -> None:
     steps_catalog = call("GET", f"/api/v1/rees/{ree_id}/ree-steps")
     step_keys = [step["key"] for step in steps_catalog["steps"]]
     check("build_experiment_environment" in step_keys and "seal_ree" in step_keys, "step catalog missing core steps")
-    # The catalog is the DAG as data: `requires` names each step's prerequisites,
-    # `actions` the operationIds that advance it — enough to plan a traversal
-    # without hardcoding the pipeline shape.
     sbom_step = next(step for step in steps_catalog["steps"] if step["key"] == "generate_sbom")
     check(sbom_step["requires"] == ["build_experiment_environment"], "sbom should require build")
     check(steps_catalog["next"] == "acquire_source", "a fresh REE should start with its source")
@@ -485,15 +327,10 @@ def run() -> None:
     note("suggestScripts reads the immutable source and proposes the reserved build script — writing nothing")
     build_report = generate_scripts(ree_id, [{"kind": "build_experiment_environment"}])
     summarize_decision(build_report, "build_experiment_environment")
-    # The repo carries both a Dockerfile and a requirements.txt, so inference
-    # offers two experiment environment strategies (a decision, not a default). This REE is a
-    # container build — take the Dockerfile candidate.
     build_experiment_environment_script = inferred_script(
         build_report, "build_experiment_environment", rule="single-project-root-dockerfile-v1"
     )
     check(build_experiment_environment_script, "docker build strategy was not inferred")
-    # The generated script owns the runtime-artifact convention; read it back out
-    # rather than hardcoding where the build writes.
     experiment_environment_artifact = shell_value(
         build_experiment_environment_script, "EXPERIMENT_ENVIRONMENT_ARTIFACT"
     )
@@ -511,10 +348,6 @@ def run() -> None:
         rc == 0 and out.decode() == build_experiment_environment_script,
         f"build script did not round-trip: {_curl_detail(rc, err)}",
     )
-    # Declared *before* the build, not after it: the build receipt binds this
-    # path to the digest it finds there, so a build with nowhere to look attests
-    # to nothing and the handler refuses it. The path is not invented here — it
-    # is the convention the inferred script already carries, read back out above.
     note("declare where the build will leave its experiment environment — the build refuses without it")
     declared = call(
         "POST",
@@ -567,9 +400,6 @@ def run() -> None:
         {},
         what="SBOM generation",
     )
-    # The scan writes REE evidence, not a workspace file: it lands in artifacts/
-    # and its receipt binds that path, so the SBOM shows up in ree_files
-    # rather than in the materialized tree the next step's drift check watches.
     scanned = call("GET", f"/api/v1/rees/{ree_id}/state")
     check(
         scanned["ree"]["subject"]["receipts"]["generate_sbom"]["sbom_path"] == SBOM_ARTIFACT_PATH,
@@ -633,8 +463,6 @@ def run() -> None:
     summarize_decision(experiment_report, "experiment_run", EXPERIMENT_NAME)
     experiment_scaffold = inferred_script(experiment_report, "experiment_run", experiment_name=EXPERIMENT_NAME)
     check(experiment_scaffold, "experiment inference produced no scaffold")
-    # The scaffold captures to its own RUN_LOG; it must match the output we
-    # declared so the sealed baseline is the file the verify script reads.
     check(
         shell_value(experiment_scaffold, "RUN_LOG") == EXPERIMENT_LOG,
         "experiment scaffold RUN_LOG did not match the declared output",
@@ -693,14 +521,8 @@ def run() -> None:
         data = (Path(work) / "ree.zip").read_bytes()
     entries = zipfile.ZipFile(io.BytesIO(data)).namelist()
     check(len(entries) > 0, "sealed archive is empty")
-    # The experiment declared an output, so its baseline rides along in the bundle
-    # — the store mirrors the workspace layout, so the inferred results/<slug>.log
-    # capture nests under the per-experiment prefix.
     result_entry = f"ree/results/{EXPERIMENT_NAME}/{EXPERIMENT_LOG}"
     check(result_entry in entries, f"experiment baseline {result_entry} missing from the bundle")
-    # The SBOM was authored into artifacts/, so packaging carries it verbatim:
-    # the same path inside the bundle as on disk, and the same one the manifest
-    # declares — nothing to remap, nothing to lift.
     check(f"ree/{SBOM_ARTIFACT_PATH}" in entries, f"ree/{SBOM_ARTIFACT_PATH} missing from the bundle")
     ok(f"downloaded sealed archive: {len(entries)} entries, {len(data)} bytes")
 
@@ -713,7 +535,7 @@ def run() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="repo2ree API base URL")
     args = parser.parse_args(argv)
     global BASE_URL

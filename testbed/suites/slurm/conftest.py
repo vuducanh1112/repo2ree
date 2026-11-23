@@ -1,5 +1,3 @@
-"""The system suite's fixtures and its typed client, on a stack whose workbench is installed on a Slurm node."""
-
 import sys
 from pathlib import Path
 

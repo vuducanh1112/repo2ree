@@ -46,10 +46,6 @@ export const exampleEditorRee = {
   },
   source: { sourceAvailable: true, sourceIncluded: true },
   artifact: { experimentEnvironmentIncluded: true },
-  // A REE that has run its way through the pipeline: every receipt it carries
-  // still speaks for what it declares. The cross-check is deliberately absent —
-  // it is the one step this fixture has not run, so tests have a step that is
-  // ready rather than complete.
   audit: {
     acquire_source: "current" as const,
     evaluate_reproducibility: "current" as const,
@@ -58,7 +54,6 @@ export const exampleEditorRee = {
     generate_sbom: "current" as const,
     activate_experiment_environment: "current" as const,
   },
-  // What the REE says of its steps with these receipts and this definition.
   steps: authoringProgress(
     {
       acquire_source: "complete",

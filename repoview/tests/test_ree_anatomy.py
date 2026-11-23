@@ -1,5 +1,3 @@
-"""The REE anatomy is the contract drawn: every part, the files it is about, and where declarations meet receipts."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -59,10 +57,8 @@ def test_a_declaration_and_the_receipts_that_ran_it_meet_at_the_file_they_are_di
         "receipt:activate_experiment_environment",
         "receipt:experiments",
     }
-    # The seal is the digest of the document's subject; a bundle entry, of the file its path names.
     assert Link("bundle:seal", "ree_digest", "bundle", "ree.json") in links
     assert Link("bundle:contents", "entries[*].digest", "bundle", ".") in links
-    # Meeting in the tree, they need no pairing of their own.
     assert not [pair for pair in drawn().pairs if pair.field and pair.field.endswith(("_digest", "_path"))]
 
 
@@ -80,11 +76,8 @@ def test_a_declared_field_no_file_joins_is_paired_with_the_receipt_field_that_re
     pairs = set(drawn().pairs)
     assert Pair("experiments", "name", "experiments", "experiment_name", "field") in pairs
     assert Pair("source", "origin_url", "acquire_source", "origin_url", "field") in pairs
-    # Where a step ran is observed, not declared: nothing in the definition pairs with it.
     assert not [pair for pair in pairs if pair.receipt_field == "working_environment"]
-    # The hardware observation repeats no field by name, but holds the declaration's very fields.
     assert Pair("hbom", None, "observe_hardware", "observation", "same fields") in pairs
-    # A field every receipt carries joins nothing.
     assert not [pair for pair in pairs if pair.receipt_field in drawn().shared]
 
 

@@ -1,17 +1,3 @@
-"""Real-component integration tests: the API over HTTP against a store's live workbench.
-
-This tier sits between the core flow test (real handlers, no transport) and the
-e2e tiers (whole stacks, real clients): it exercises the HTTP envelope —
-routing, payload validation, the error-shape exception handlers, background
-runs and their log feed — on top of the real workbench transport. Nothing is
-mocked; the module skips (never fakes) when the tools bundle is absent.
-
-Flow exercised over real HTTP and the workbench's socket:
-    create (in the store) -> upload-init -> upload bytes -> upload-complete
-        -> poll the background run + read its log feed
-        -> write/read a file -> seal -> download the sealed archive -> delete
-"""
-
 from __future__ import annotations
 
 import zipfile
@@ -24,28 +10,12 @@ from httpx import Client as TestClient
 
 from repo2ree_testbed.run_watch import NETWORK_RUN, client_getter, settle_run
 
-# ================================================
-# Constants
-# ================================================
-
-
-# ================================================
-# Skip gate
-# ================================================
-
-
 pytestmark = pytest.mark.skipif(
     not tools_present(), reason="api integration tier needs the tools bundle (run: just build-e2e-bundles)"
 )
 
 
-# ================================================
-# Helpers
-# ================================================
-
-
 def _project_zip() -> bytes:
-    """A small in-memory source archive to stand in for an uploaded project."""
     buf = BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         zf.writestr("README.md", "# demo project\n")
@@ -55,12 +25,10 @@ def _project_zip() -> bytes:
 
 
 def _wait_for_run(client: TestClient, ree_id: str, run_id: str) -> str:
-    """Wait for the background run to settle; return its status."""
     return str(settle_run(client_getter(client), ree_id, run_id, NETWORK_RUN).run["status"])
 
 
 def _upload_source(client: TestClient, ree_id: str, data: bytes, archive_name: str) -> dict[str, Any]:
-    """Drive the three-step upload flow; return the background run summary."""
     resp = client.post(
         f"/api/v1/rees/{ree_id}/source:upload-init",
         json={"file_name": archive_name, "size": len(data), "content_type": "application/zip"},
@@ -80,39 +48,29 @@ def _upload_source(client: TestClient, ree_id: str, data: bytes, archive_name: s
     return payload
 
 
-# ================================================
-# Flow
-# ================================================
-
-
 def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     ree_id = ree["ree_id"]
     assert ree["status"] == "draft"
 
-    # the freshly created REE is visible in the listing
     resp = client.get("/api/v1/rees")
     assert resp.status_code == 200
     assert any(item.get("ree_id") == ree_id for item in resp.json()["items"])
 
-    # --- source upload: staging -> copy into the workbench -> extract ---
     run = _upload_source(client, ree_id, _project_zip(), "project.zip")
     assert run["operation"] == "acquire_source"
     assert _wait_for_run(client, ree_id, run["run_id"]) == "succeeded"
 
-    # the run's log feed carried the real pipeline steps back over HTTP
     resp = client.get(f"/api/v1/rees/{ree_id}/runs/{run['run_id']}/logs")
     assert resp.status_code == 200
     logs = resp.json()
     assert logs["run_status"] == "succeeded"
     assert logs["entries"]
 
-    # the extracted source landed in the workspace on the workbench volume
     resp = client.get(f"/api/v1/rees/{ree_id}")
     assert resp.status_code == 200
     workspace = resp.json()
     assert any(f.get("path") == "README.md" for f in workspace["workspace_files"])
 
-    # --- write a file over HTTP, read the raw bytes back ----------------
     resp = client.post(
         f"/api/v1/rees/{ree_id}/write-script",
         json={"path": "ree-scripts/build_experiment_environment.sh", "content": "echo build\n"},
@@ -125,7 +83,6 @@ def test_api_ree_lifecycle(client: TestClient, ree: dict[str, Any]) -> None:
     assert resp.status_code == 200
     assert resp.content == b"echo build\n"
 
-    # --- seal, then download the sealed archive -------------------------
     resp = client.post(f"/api/v1/rees/{ree_id}/seal-ree", json={})
     assert resp.status_code == 200, resp.text
     seal_run = resp.json()
@@ -148,19 +105,12 @@ def test_delete_removes_the_ree_from_its_store(client: TestClient, ree: dict[str
     assert resp.status_code == 200
     assert resp.json()["state"] == "deleted"
 
-    # the REE is gone from the API's view, with the canonical error envelope
     resp = client.get(f"/api/v1/rees/{ree_id}")
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "http_404"
 
 
-# ================================================
-# Error envelope
-# ================================================
-
-
 def test_unknown_ree_yields_error_envelope(client: TestClient) -> None:
-    """The exception handler shapes HTTPException into the error envelope."""
     resp = client.get("/api/v1/rees/does-not-exist")
     assert resp.status_code == 404
     body = resp.json()
@@ -170,12 +120,6 @@ def test_unknown_ree_yields_error_envelope(client: TestClient) -> None:
 
 
 def test_archive_before_seal_returns_a_draft_bundle(client: TestClient, ree: dict[str, Any]) -> None:
-    """An unsealed REE downloads as a draft bundle on demand, not an error.
-
-    Assembling the draft is the handoff path (loadable into another REE); only
-    the sealed archive is the citable, seal-hashed artifact. See the
-    ``ree-archive`` route.
-    """
     resp = client.get(f"/api/v1/rees/{ree['ree_id']}/ree-archive")
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/zip"

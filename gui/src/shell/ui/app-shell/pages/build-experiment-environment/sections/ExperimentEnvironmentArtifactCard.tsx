@@ -17,12 +17,6 @@ interface ExperimentEnvironmentArtifactCardProps {
   onExperimentEnvironmentChange: (path: string) => void;
 }
 
-/**
- * Declare where the build script writes its runtime. This is authored before
- * the build runs — the build refuses to start without it and fails if nothing
- * lands at the declared path — so it is a free-text declaration, not a picker
- * over files that already exist.
- */
 export function ExperimentEnvironmentArtifactCard({
   experimentEnvironmentPath,
   experimentEnvironmentSize,

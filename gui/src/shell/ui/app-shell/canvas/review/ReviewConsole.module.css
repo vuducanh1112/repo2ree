@@ -1,14 +1,5 @@
-/* The reproduce-and-compare console: a step DAG across the top, and the panel
- * for whichever step is being inspected.
- *
- * A step button's tint is the stage's; its *status* is a separate reading —
- * the lifecycle state or verdict the run reached — so the two are different
- * properties rather than one colour computed in TypeScript. */
-
 .step {
   position: relative;
-  /* Wide enough that "Test Activation" is spelled out beside a run key that
-   * meets the 24px minimum touch target. */
   width: 164px;
   height: 54px;
   border-radius: var(--radius-control);
@@ -18,21 +9,18 @@
   transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
-/* Queued or running: the step is the one to watch. */
 .step[data-active] {
   border-color: var(--step-tint);
   background: color-mix(in srgb, var(--step-tint) 5%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--step-tint) 8.6%, transparent);
 }
 
-/* The step whose evidence the drawer is showing. */
 .step[data-open] {
   border-color: var(--chrome-accent);
   background: var(--chrome-accent-bg);
   box-shadow: var(--shadow-focus);
 }
 
-/* The face reads the step; the run key beside it starts the work. */
 .stepFace {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
@@ -53,8 +41,6 @@
   background: var(--chrome-surface-alt);
 }
 
-/* 24px square: the WCAG 2.2 minimum for a touch target, and the reason the
- * card is as wide as it is. */
 .stepRun {
   position: absolute;
   top: 50%;
@@ -104,11 +90,6 @@
   line-height: var(--leading-tight);
 }
 
-/* --- The status line ------------------------------------------------------
- * One reading per lifecycle state and per verdict. "Identical" is a stronger
- * and rarer thing than "reproduced", and "did not activate" is a settled
- * finding rather than a breakdown — but both read as their outcome. */
-
 .stepStatus {
   font-family: var(--font-mono);
   font-size: var(--text-micro);
@@ -139,11 +120,6 @@
 .stepStatus[data-status="failed"] {
   --status-ink: var(--status-fault);
 }
-
-/* --- The strip -------------------------------------------------------------
- * Geometry borrowed from the authoring strip on purpose: the two workflows
- * stand in the same place and scroll the same way, so switching between them
- * changes what the bar is about rather than how it behaves. */
 
 .scroller {
   overflow-x: auto;
@@ -176,8 +152,6 @@
   height: 1px;
   background: var(--chrome-border-strong);
 }
-
-/* --- Per-experiment results ---------------------------------------------- */
 
 .results {
   display: flex;
@@ -221,7 +195,6 @@
   color: var(--chrome-text);
 }
 
-/* What the verdict rests on, in the one line there is room for. */
 .criterion {
   max-width: 190px;
   overflow: hidden;
@@ -253,8 +226,6 @@
 .verdict[data-status="reproduced"] {
   --status-ink: var(--status-ok);
 }
-
-/* --- The run buttons ------------------------------------------------------ */
 
 .runOne,
 .runAll {
@@ -305,13 +276,6 @@
   }
 }
 
-/* --- Evidence basis --------------------------------------------------------
- * Which artifacts a review attempt is allowed to trust as its starting point.
- * It stands ahead of the Source step because that is what it governs, and the
- * hint is spelled out rather than hidden in a tooltip: the difference between
- * these options is the difference between an integrity check and a
- * reproduction. */
-
 .basis {
   display: flex;
   flex-direction: column;
@@ -322,7 +286,6 @@
   border: 0;
 }
 
-/* Names the group for a screen reader; the chips say the rest. */
 .basisLegend {
   position: absolute;
   width: 1px;
@@ -354,8 +317,6 @@
   cursor: pointer;
 }
 
-/* The control is the radio; the chip around it is what anyone can see, so the
- * checked and focused readings are drawn there. */
 .basisInput {
   position: absolute;
   width: 1px;
@@ -387,11 +348,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* --- The evidence drawer ---------------------------------------------------
- * What the attempt has settled, in graph order. The strip decides which
- * section is current; every step keeps its heading either way, because a
- * missing section would read as evidence nobody looked for. */
 
 .evidence {
   display: flex;
@@ -466,8 +422,6 @@
   font-size: var(--text-caption);
 }
 
-/* A qualification of a verdict, or a detail behind one. Same shape; the tone
- * says whether the thing being reported went well. */
 .detail {
   display: flex;
   flex-direction: column;

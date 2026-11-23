@@ -1,10 +1,3 @@
-"""Run the showcases on a surface, the API or the command line, each test on a stack on the machine its showcase
-names.
-
-python -m repo2ree_testbed api-showcase run      # through the API
-python -m repo2ree_testbed cli-showcase run      # the same tests through `ree`, on the machine
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -29,7 +22,6 @@ def e2e_arguments(*, jobs: int, select: Sequence[str] = (), surface: Surface = "
         *("--jobs", str(jobs)),
         *(("--select", " ".join(select)) if select else ()),
         *(("--no-control-plane",) if surface == "cli" else ()),
-        # Each authored REE is signed after its seal, under the run's own Sigstore.
         "--sigstore",
     ]
 

@@ -1,5 +1,3 @@
-"""The fault channel a stack serves to its client: parse a fault, check it targets this stack, apply it."""
-
 from __future__ import annotations
 
 import threading
@@ -12,10 +10,7 @@ from pydantic import ValidationError
 
 from repo2ree_testbed.faults import FAULT, CrashApi, Fault
 
-# What git takes for another process updating the REE's history ref (core's HISTORY_REF), in an
-# REE's directory.
 HISTORY_LOCK_IN_REE = Path(".git/refs/heads/ree-history.lock")
-# What a fault does to the workbench serving an REE's store.
 type WorkbenchFault = Literal[
     "kill",
     "restart",
@@ -81,7 +76,7 @@ class Injector:
                 self.end_headers()
                 self.wfile.write(message.encode())
 
-            def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - the stdlib's name
+            def log_message(self, format: str, *args: object) -> None:  # noqa: A002
                 print(f">> fault channel: {format % args}")
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)

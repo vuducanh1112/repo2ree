@@ -9,11 +9,8 @@ interface PodShellInnerProps {
   CY: number;
   SR: number;
   evaluation: EvaluationState;
-  /** When true (standalone view), renders the core nested inside. */
   showCore?: boolean;
-  /** Work is running on the inner shell — the runtime is being assembled. */
   active?: boolean;
-  /** Work is running in the core, when the core is shown here. */
   coreActive?: boolean;
   idSuffix?: string;
 }
@@ -49,7 +46,6 @@ export function PodShellInner({
         </filter>
       </defs>
 
-      {/* outer ambient glow — breathes while the shell is working */}
       <g className={active ? styles.breathe : undefined}>
         <circle
           cx={CX}
@@ -61,7 +57,6 @@ export function PodShellInner({
         />
       </g>
 
-      {/* the glass sphere body */}
       <circle
         cx={CX}
         cy={CY}
@@ -72,7 +67,6 @@ export function PodShellInner({
         strokeOpacity="0.55"
       />
 
-      {/* inner bloom */}
       <g className={active ? styles.breathe : undefined}>
         <circle
           cx={CX}
@@ -83,7 +77,6 @@ export function PodShellInner({
         />
       </g>
 
-      {/* orbital rings — they turn, counter to each other, while work runs */}
       <ellipse
         className={active ? styles.orbitForward : undefined}
         cx={CX}
@@ -107,7 +100,6 @@ export function PodShellInner({
         opacity="0.22"
       />
 
-      {/* progress arcs orbiting the sphere surface */}
       {standings.map(({ axis, level }, idx) => {
         const frac = axisFraction(axis, level);
         if (frac <= 0) return null;
@@ -142,8 +134,6 @@ export function PodShellInner({
         );
       })}
 
-      {/* the sweep: a bright arc running the sphere's rim while work is in
-       * flight. It is the one cue that still reads at porthole size. */}
       {active && (
         <circle
           className={styles.sweep}
@@ -158,7 +148,6 @@ export function PodShellInner({
         />
       )}
 
-      {/* core visible inside the sphere */}
       {showCore && (
         <PodShellCore
           CX={CX}
@@ -170,7 +159,6 @@ export function PodShellInner({
         />
       )}
 
-      {/* glass sheen highlights */}
       <ellipse
         cx={CX - SR * 0.17}
         cy={CY - SR * 0.23}

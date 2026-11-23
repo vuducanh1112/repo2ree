@@ -3,9 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Button } from "./Button";
 
-// jsdom answers what the DOM says, not what the stylesheet computes. So these
-// cover semantics and emitted attributes; hover, focus-visible, active and
-// reduced motion are in Button.browser.test.tsx, against a real engine.
 describe("Button", () => {
   it("defaults to type=button, so one inside a form does not submit it", () => {
     render(<Button>Run</Button>);
@@ -18,8 +15,6 @@ describe("Button", () => {
   });
 
   it("keeps the icon out of the accessible name", () => {
-    // Every icon here carries a <title> for standalone use. Without aria-hidden
-    // that title concatenates into the name and every by-name query breaks.
     render(<Button icon={<svg role="img" aria-label="Play" />}>Run build</Button>);
     expect(screen.getByRole("button", { name: "Run build" })).toBeInTheDocument();
   });

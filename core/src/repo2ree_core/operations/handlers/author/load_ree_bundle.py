@@ -1,22 +1,3 @@
-"""Load a previously downloaded REE bundle into this (blank) workbench.
-
-Reads /ree/upload-staging/<upload_token>.bin — a downloaded REE ZIP, sealed or
-draft — and makes this REE be what the bundle records: the manifest, the frozen
-snapshot, overlay, artifacts, results, and the author receipts that back them.
-The untrusted upload bytes go through ``safe_extract_zip`` before anything is
-read out of them, exactly as an uploaded source does.
-
-The bundle never carries ``upstream/`` or ``workspace/``, so they are rebuilt
-here: the loader's own ``acquire_source.sh`` extracts the restored snapshot into
-``upstream/``, and its ``materialize_workspace.sh`` merges it with the restored
-overlay. Both are the shared muscles the authoring pipeline uses, driven
-directly so that loading is one atomic command, and never a script from the
-upload. They run at the root paths they resolve the REE from, so the files the
-bundle carried there are put back after them: a sealed REE holds exactly what
-its seal lists, and the restored author receipts are evidence about the
-author's runs that the loader's own must not overwrite.
-"""
-
 from __future__ import annotations
 
 import tempfile
@@ -43,7 +24,6 @@ def handle_load_ree_bundle(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult:
-    # Loading replaces everything the REE holds, so a sealed REE refuses it as it refuses any edit.
     store = ReeDirectory(layout)
     if store.manifest_exists() and store.read_ree().seal is not None:
         log("system", "error", "a sealed REE cannot load a bundle")
@@ -59,8 +39,6 @@ def handle_load_ree_bundle(
             bundle_root = Path(tmp)
             safe_extract_zip(staged, bundle_root)
             portable = staged
-            # Downloads wrap the original portable archive beside Git history.
-            # Import only the portable REE; never activate downloaded Git config.
             if (bundle_root / "export.json").is_file() and (bundle_root / "ree.zip").is_file():
                 portable = bundle_root / "ree.zip"
                 bundle_root = bundle_root / "portable"
@@ -99,12 +77,6 @@ def handle_load_ree_bundle(
 
 
 def _restored_files(layout: ReeLayout, *, sealed: bool) -> dict[Path, bytes | None]:
-    """The files the rebuild writes over, as the bundle restored them: None for one it did not carry.
-
-    The rebuild runs the loader's own helpers, never a script from the upload, at the paths the helpers
-    resolve the REE from, and records its materialization. A draft keeps that record, which later builds
-    measure drift against; a sealed REE keeps the bundle's, as it keeps every file its seal lists.
-    """
     paths = [layout.acquire_script, layout.materialize_script, *([layout.materialize_marker] if sealed else [])]
     return {path: path.read_bytes() if path.is_file() else None for path in paths}
 
@@ -124,11 +96,8 @@ def _rebuild_derived_trees(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ActionResult | None:
-    """Rebuild ``upstream/`` and ``workspace/``. Returns non-None on failure."""
     store = ReeDirectory(layout)
     if restored_source:
-        # Snapshot-only acquisition: the script extracts the restored snapshot
-        # and never reaches for the origin, so loading stays offline.
         write_atomic(layout.acquire_script, build_acquire_sh())
         failure = _run_script(layout.acquire_script, what="acquire", log=log, is_canceled=is_canceled)
         if failure is not None:

@@ -12,7 +12,6 @@ from scripts import just_timing as timing
 
 @pytest.fixture
 def signals() -> Iterator[None]:
-    """The handlers a recording installs in this process, put back afterwards."""
     saved = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
     yield
     for sig, handler in saved.items():
@@ -40,8 +39,6 @@ def test_a_completed_recipe_is_read_from_the_line_just_prints_plain_or_coloured(
 
 
 class Shown(io.BytesIO):
-    """A terminal that goes away after ``lasts`` writes."""
-
     def __init__(self, lasts: int) -> None:
         super().__init__()
         self.lasts = lasts
@@ -143,7 +140,6 @@ def test_an_invocation_is_recorded_from_start_to_end_with_justs_own_exit_code(
     )
     assert [(r["recipe"], r["seconds"]) for r in recipes] == [("build-e2e-bundles", 18.4), ("assurance-gate", 352.7)]
     assert (end["kind"], end["exit"]) == ("end", 3)
-    # just ran as asked, timing on, in this invocation; its output reached the terminal unchanged.
     assert (tmp_path / "seen").read_text() == "true the-invocation assurance-gate 4\n"
     captured = capfd.readouterr()
     assert captured.out == "on stdout\n"

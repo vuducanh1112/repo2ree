@@ -1,5 +1,3 @@
-"""A dossier becomes operations, authoring between them, and each operation's path across components."""
-
 from __future__ import annotations
 
 from traceview_scenario import REE, Scenario, build_spans, recorded, trace_of
@@ -47,7 +45,6 @@ def test_spans_annotate_but_never_change_what_was_checked() -> None:
     assert annotated.verdict == plain.verdict
     for left, right in zip(plain.entries, annotated.entries, strict=True):
         assert (left.name, left.rules, left.changes) == (right.name, right.rules, right.changes)
-    # The longest spans of the operation's traces, in start order; the 60 ms request is not among them.
     assert [s.name for s in annotated.entries[2].spans] == [
         "run.build",
         "workbench.dispatch_action",
@@ -71,7 +68,6 @@ def test_a_sequence_follows_one_operation_across_components() -> None:
 
 
 def invoked_spans() -> list[Span]:
-    """build_spans, with the executor's command line traced as one ``ree`` invocation under the workbench's request."""
     spans = build_spans()
     executor = next(s for s in spans if s.name.startswith("executor."))
     invoked = executor.model_copy(
@@ -121,11 +117,6 @@ def test_without_spans_the_attempt_sits_inside_its_dispatch_bracket() -> None:
 
 
 def two_rees() -> Scenario:
-    """ree-1's dossier, with ree-2 provisioned and built in the same API journal and its own Git history.
-
-    Both histories number capture commits from the same blocks, so their positions collide; only the
-    journal can say what happened in which order.
-    """
     s = recorded()
     s.ree, s.git, s.alloc = "ree-2", "git:ree-2", "alloc-2"
     s.provision("run-provision-2", 70.0)
@@ -174,7 +165,6 @@ def test_setup_is_placed_by_the_journal_between_the_operations_it_came_between()
     s = Scenario()
     s.provision("run-provision", 0.0)
     s.operation("run-build", "build_experiment_environment", "a-build", "build_experiment_environment", 10.0)
-    # Another REE is created before the SBOM run.
     s.provision("run-reprovision", 16.0)
     s.operation("run-sbom", "generate_sbom", "a-sbom", "generate_sbom", 25.0)
     s.commit(1, None, "initialize_ree", "", [], (None, "draft"))
@@ -211,8 +201,6 @@ def test_the_change_history_shows_the_ree_after_each_operation_that_changed_it()
         ("receipt", "activate_experiment_environment"),
     ]
     steps = [(step.operation, step.moved) for step in history.steps]
-    # Creation moves nothing yet; a new experiment environment makes the SBOM made from the old one stale in the same
-    # step.
     assert steps[0] == ("initialize_ree", ())
     assert ("build_experiment_environment", ("build_experiment_environment", "generate_sbom")) in steps
     assert steps[-1] == ("seal_ree", ("lifecycle",))

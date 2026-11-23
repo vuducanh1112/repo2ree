@@ -1,15 +1,3 @@
-"""Reproduce one of the author's experiments inside a review attempt.
-
-The last step of the reviewer lifecycle: source establishes that the code is the
-author's, build that the environment is theirs, activation that it comes up, and
-this asks whether the result holds.
-
-The verdict is what the author's own verify script says, re-run against the
-reviewer's results; matching output digests are a stronger tier where they
-happen, never a requirement. Requires activation to have *passed*, not merely
-completed. See ``docs/engineering/explanation/review-evidence.md``.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.digests import digest_file_if_exists, digest_output_paths
@@ -38,27 +26,12 @@ from repo2ree_ree.review import EvidenceBasis, ExperimentComparison, ReviewRecor
 
 
 def _admit(record: ReviewRecord, _certified: CertifiedExperimentEnvironment) -> str | None:
-    """A completed activation is not enough — it has to have passed.
-
-    Activation completes with a ``failed`` verdict when the experiment environment would not
-    come up, and every experiment run inside such an experiment environment would report a
-    result failure that is really the activation failure wearing a different
-    hat. Recording a wall of ``different`` verdicts would bury the single fact
-    that explains them all.
-    """
     if record.activation_outcome is None or record.activation_outcome.verdict != "passed":
         return "This attempt's experiment environment would not come up; its results cannot be reproduced in it"
     return None
 
 
 def _step(experiment_name: str) -> ReviewRunnableStep:
-    """The descriptor for reproducing one named experiment.
-
-    Built per call rather than shared as a constant, because unlike activation
-    this step's subject is chosen by the reviewer: the name is what ``select``
-    resolves against.
-    """
-
     def select(definition: ReeDefinition) -> tuple[RunnableSpec, str]:
         experiment = next((item for item in definition.experiments if item.name == experiment_name), None)
         if experiment is None:
@@ -122,8 +95,6 @@ def handle_review_run_experiment(
         observed_verify_exit_code=outcome.run_outputs.verify_exit_code,
         observed_output_digest=digest_output_paths(opened.workspace, list(experiment.output_paths)),
         experiment_environment_digest=certified.experiment_environment_digest,
-        # The criterion as it stood in the workspace it ran in. Certification
-        # compares this with the author receipt before granting a verdict.
         verify_script_digest=verify_script_digest,
         activate_experiment_environment_script_digest=activate_script_digest,
         launch_script_digest=opened.launch_script_digest,
@@ -156,10 +127,6 @@ def handle_review_run_experiment(
     )
     write_review_experiment_evidence(review_layout, receipt, comparison)
     _log_verdict(comparison, log=log)
-    # Completed whatever the verdict: an experiment whose results do not
-    # reproduce is this step doing its job, and the finding is the most valuable
-    # thing a review produces. Only the conditions that stop it running at all
-    # are step failures.
     opened.step.settle(
         with_experiment(opened.step.record, receipt, comparison),
         timing,
@@ -192,14 +159,6 @@ def _certify(
     activate_experiment_environment_script_digest: str | None,
     launch_script_digest: str | None,
 ) -> ExperimentComparison:
-    """Compare the reviewer's run with the author's recorded run of the same name.
-
-    The author's baseline is their selected receipt for this experiment, which
-    is keyed by name rather than by operation — an REE has as many of these as
-    it has experiments. A baseline that never ran leaves
-    ``expected_verify_exit_code`` unset, which the comparison reports as
-    inconclusive rather than as agreement.
-    """
     author = ReeDirectory(ree_layout).read_ree().subject.receipts.experiments.get(experiment_name)
     expected_verify_exit_code = None
     expected_verify_script_digest = None
@@ -233,12 +192,10 @@ def _certify(
 
 
 def _author_verify_exit_code(author: RunExperimentReceipt) -> int | None:
-    """The successful author receipt's recorded verification exit code."""
     return author.verify_exit_code
 
 
 def _log_verdict(comparison: ExperimentComparison, *, log: LogSink) -> None:
-    """Say what the run settled, and — always — which criterion settled it."""
     log(
         "system",
         "info" if comparison.verdict in {"identical", "reproduced"} else "warn",

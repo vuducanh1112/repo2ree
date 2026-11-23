@@ -1,8 +1,3 @@
-"""Command line: ``trace`` draws one verified dossier per REE; ``operations`` folds many into one catalogue.
-
-Both read ``verification.json`` (from ``repo2ree_assurance_checker check -o``) and never verify again.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -25,7 +20,7 @@ from repo2ree_assurance_traceview.render import render_html
 
 
 def parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="repo2ree_assurance_traceview", description=__doc__)
+    parser = argparse.ArgumentParser(prog="repo2ree_assurance_traceview")
     parser.add_argument("--git-executable", default="git")
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -52,7 +47,7 @@ def parser() -> argparse.ArgumentParser:
 
 
 class _UnreadableError(ValueError):
-    """A verification, or the dossier it names, that cannot be read."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -84,7 +79,6 @@ class _Verified:
     def pages(
         self, git: str, ree: str | None = None, *, count_files: bool = True
     ) -> tuple[list[BehaviourTrace], BehaviourTrace]:
-        """Each REE's trace, and the whole dossier's, every page offering every other as a tab."""
         model = VerifiedModel.of(self.verification)
         spans = read_spans(self.located, self.dossier)
         info = describe(self.located, self.dossier)
@@ -107,7 +101,6 @@ class _Verified:
 
 
 def drawing(git: str) -> Drawn | None:
-    """The commit drawing pages now, from the checkout this runs in; None outside one."""
     try:
         revision = subprocess.run([git, "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout
         status = subprocess.run([git, "status", "--porcelain"], capture_output=True, text=True, check=True).stdout
@@ -117,7 +110,6 @@ def drawing(git: str) -> Drawn | None:
     return Drawn(revision=revision.strip(), dirty=bool(status.strip()), at=at)
 
 
-# The page of the whole dossier, beside the one of each REE.
 DOSSIER_PAGE = "dossier.html"
 
 
@@ -166,7 +158,6 @@ def trace(args: argparse.Namespace) -> int:
         sys.stdout.write(
             f"{args.output / f'{one.ree}.html'}: {len(one.entries)} entries, assurance {one.verdict}{reviews}\n"
         )
-    # The whole dossier, unless the pages were asked for one REE.
     if args.output is not None and args.ree is None:
         (args.output / DOSSIER_PAGE).write_text(render_html(whole, page))
         if args.json:
@@ -176,7 +167,6 @@ def trace(args: argparse.Namespace) -> int:
 
 
 def operations(args: argparse.Namespace) -> int:
-    """A verification that cannot be drawn is listed as undrawn, never fatal."""
     drawn: list[tuple[str, BehaviourTrace]] = []
     undrawn: list[Undrawn] = []
     for given in args.verifications:
@@ -186,7 +176,7 @@ def operations(args: argparse.Namespace) -> int:
         except _UnreadableError as exc:
             undrawn.append(Undrawn(source=source, reason=str(exc)))
             continue
-        traces = verified.traces(args.git_executable, count_files=False)  # The catalogue masks counts away.
+        traces = verified.traces(args.git_executable, count_files=False)
         if not traces:
             context = verified.dossier.context
             verdict = verified.verification.result.verdict

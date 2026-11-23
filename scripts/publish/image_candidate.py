@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-"""Push, validate, and promote a protocol-compatible image set, for every published platform at once.
-
-One host holds the registry credentials and pushes. Each platform's images are built and
-gated on a machine of that platform: this host's own come from its daemon, by the image IDs
-its publish-gate receipt certifies; the others arrive as archive sets
-(``scripts/publish/image_archive_set.py``). ``push`` refuses unless every platform in
-``--platforms`` is there, all for the same revision and tree.
-
-- ``push``: each platform's images go up as ``<image>:<revision>-<os>-<arch>``, then
-  ``<image>:<revision>`` becomes one index over them, in every registry. ``edge`` never moves here.
-- ``validate``: on a machine of one platform, resolve the candidate's index digests (every
-  registry must agree), run the showcase suite against exactly them, and record the
-  platform's validation receipt under ``<state-dir>/<revision>/<os>-<arch>.json``.
-- ``promote``: once every platform in the index has a validation receipt naming the same,
-  still-current digests, ``edge`` becomes that index.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -46,8 +29,6 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @dataclass(frozen=True)
 class CandidateReceipt:
-    """A candidate's index digest per (registry, image); ``platform`` is the one a validation ran on."""
-
     revision: str
     images: dict[tuple[str, str], str]
     platform: str = ""
@@ -59,8 +40,6 @@ class CandidateReceipt:
 
 @dataclass(frozen=True)
 class PlatformSet:
-    """One platform's certified images, ready to push: local image IDs, from the daemon or loaded archives."""
-
     platform: str
     images: dict[str, str]
 
@@ -87,7 +66,6 @@ def resolve_digest(reference: str) -> str:
 
 
 def index_platforms(reference: str) -> set[str]:
-    """The platforms an index names; attestation entries (``unknown/unknown``) are not platforms."""
     document = json.loads(capture("docker", "buildx", "imagetools", "inspect", "--raw", reference))
     found = {
         f"{entry['platform']['os']}/{entry['platform']['architecture']}"
@@ -181,7 +159,6 @@ def validation_path(state_dir: Path, revision: str, platform: str) -> Path:
 
 
 def verify_candidate(revision: str, state_dir: Path) -> CandidateReceipt:
-    """The candidate's digests, if every platform in its index was validated against them and they still hold."""
     paths = sorted((state_dir / revision).glob("*.json"))
     if not paths:
         raise RuntimeError(f"no validation receipt for image candidate {revision} under {state_dir / revision}")
@@ -226,7 +203,6 @@ def promote_candidate(revision: str, state_dir: Path) -> None:
             digest = receipt.images[(registry, image)]
             target = f"{registry}/{image}:edge"
             print(f">> {target}: {digest}")
-            # The index itself, every platform in it: edge names the same digest the candidate does.
             run("docker", "buildx", "imagetools", "create", "-t", target, f"{registry}/{image}@{digest}")
             if resolve_digest(target) != digest:
                 raise RuntimeError(f"promotion verification failed for {target}")
@@ -235,7 +211,6 @@ def promote_candidate(revision: str, state_dir: Path) -> None:
 def platform_sets(
     revision: str, receipts: Path, archives: Path, required: list[str], *, load: bool = True
 ) -> list[PlatformSet]:
-    """This host's certified images and every archived platform's, all for ``revision`` and this tree."""
     local_platform = publish_gate.platform()
     receipt_path = publish_gate.receipt_path(receipts, local_platform)
     publish_gate.verify_receipt(receipt_path, revision)
@@ -243,7 +218,7 @@ def platform_sets(
     found = [PlatformSet(local_platform, dict(local.images))]
     for archived in image_archive_set.sets(archives) if archives.is_dir() else []:
         if archived.platform == local_platform:
-            continue  # This host's own platform goes up from its daemon, as its receipt certifies.
+            continue
         if archived.revision != revision or archived.tree != local.tree:
             raise RuntimeError(
                 f"the {archived.platform} archives are for {archived.revision} (tree {archived.tree[:12]}),"
@@ -286,7 +261,6 @@ def push_candidate(
         for image in IMAGES:
             sources = []
             for platform_set in sets:
-                # By certified ID, never by a mutable local tag.
                 target = f"{registry}/{image}:{platform_tag(revision, platform_set.platform)}"
                 run("docker", "tag", platform_set.images[image], target)
                 run("docker", "push", target)
@@ -302,7 +276,6 @@ def validate_candidate(revision: str, state_dir: Path, validation_registry: str,
     try:
         resolved = resolve_candidate(revision, registry_names)
         write_receipt(pending, CandidateReceipt(revision, resolved.images, platform))
-        # The index digests: this machine's daemon pulls its own platform's images from them.
         environment = {**os.environ, **image_environment(parse_receipt(pending), validation_registry)}
         subprocess.run(
             [
@@ -344,7 +317,7 @@ def registries(value: str) -> list[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("resolve", "verify", "promote", "environment", "push", "validate"):
         command = commands.add_parser(name)

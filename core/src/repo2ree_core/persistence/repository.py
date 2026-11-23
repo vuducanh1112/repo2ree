@@ -1,5 +1,3 @@
-"""Persistence boundary for the portable :class:`Ree` aggregate."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,7 +10,7 @@ from repo2ree_ree.primitives import Digest
 
 
 class ReeRevisionConflictError(RuntimeError):
-    """The REE subject moved after an operation was planned."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -44,7 +42,6 @@ def save_ree(
     *,
     expected_revision: Digest,
 ) -> None:
-    """Compare and atomically replace the serialized aggregate."""
     persisted = load_ree(layout, store)
     current = revision_of(persisted)
     if current != expected_revision:

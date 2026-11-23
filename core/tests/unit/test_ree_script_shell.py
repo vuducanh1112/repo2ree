@@ -1,5 +1,3 @@
-"""Tests for shared generated-shell formatting helpers."""
-
 import re
 
 import pytest

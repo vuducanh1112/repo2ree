@@ -21,7 +21,6 @@ def _git(root: Path, *words: str) -> str:
 
 
 def _bundle(tmp_path: Path) -> tuple[bytes, str]:
-    """A bundle as ``ree bundle`` lays one out: export.json naming the REE's head, its history and its files."""
     root = tmp_path / "ree"
     root.mkdir()
     _git(root, "init", "-q")

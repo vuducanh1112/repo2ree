@@ -1,5 +1,3 @@
-"""What owners record, drawn as declarations."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -21,8 +19,6 @@ TYPES = {
 
 @dataclass
 class Line:
-    """One line of a rendered declaration: its plain text (to align comments), its markup, and a comment."""
-
     text: str
     markup: str = ""
     note: str = ""
@@ -88,7 +84,6 @@ def entity_code(spec: Spec, name: str) -> str:
 
 
 def value_lines(meanings: dict[str, str], groups: dict[str, tuple[str, ...]]) -> list[Line]:
-    """A fact's listed values with what each means, under a comment naming each group."""
     sections = list(groups.items()) or [("", tuple(meanings))]
     lines: list[Line] = []
     for group, values in sections:

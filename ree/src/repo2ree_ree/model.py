@@ -112,8 +112,6 @@ class ActivateExperimentEnvironmentDefinition(_DomainModel):
 
 
 class LaunchDefinition(_DomainModel):
-    """The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``."""
-
     launch_script_path: OverlayPath = OverlayPath(RESERVED_LAUNCH_SCRIPT)
     launch_script_digest: LaunchScriptDigest
     launch_script_size: int = Field(ge=0)
@@ -127,8 +125,6 @@ class LaunchDefinition(_DomainModel):
 
 
 class CheckWorkingEnvironmentDefinition(_DomainModel):
-    """The script that checks the working environment offers what the REE's scripts need, run there before them."""
-
     check_working_environment_script_path: OverlayPath = OverlayPath(RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT)
     check_working_environment_script_digest: CheckScriptDigest
     check_working_environment_script_size: int = Field(ge=0)
@@ -207,7 +203,6 @@ class ReeReceipts(_DomainModel):
         return self
 
 
-# Where a bundle's entries hold the REE's overlay.
 OVERLAY_ENTRY = "overlay/"
 
 

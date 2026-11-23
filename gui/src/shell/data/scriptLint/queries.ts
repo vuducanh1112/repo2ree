@@ -16,7 +16,6 @@ function selector(target: LintTarget): ScriptTargetSelector {
     : { kind: target.kind };
 }
 
-/** The report for one target, or undefined when that script is not written yet. */
 export function selectReport(
   response: LintScriptsResponse | undefined,
   target: LintTarget,
@@ -28,7 +27,6 @@ export function selectReport(
   );
 }
 
-/** Contract-tier checks over unsaved source. */
 export function useScriptDraftLint(
   target: LintTarget,
   source: string,
@@ -45,13 +43,11 @@ export function useScriptDraftLint(
       }),
     enabled: options.enabled && reeId !== DEFAULT_REE_ID && source.trim() !== "",
     staleTime: Number.POSITIVE_INFINITY,
-    // Avoid flicker while a newer draft is checked.
     placeholderData: (previous) => previous,
     retry: false,
   });
 }
 
-/** Every available tier over one saved script. */
 export function useSavedScriptLint(
   target: LintTarget,
   savedSource: string,

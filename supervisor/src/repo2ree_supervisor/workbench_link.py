@@ -1,23 +1,3 @@
-"""Control-plane side of the workbench-dialed WebSocket transport.
-
-Each workbench dials the API and holds one connection; the API pushes commands down
-it. This module is the control-plane half (the workbench half is
-``repo2ree_workbench.connection``):
-
-* ``WorkbenchConnection`` bridges the async socket to the *synchronous* manager. It
-  is transport-agnostic — the API's WebSocket route feeds it inbound frames via
-  ``on_message`` and gives it a ``send_text`` that schedules a send on the event
-  loop. A synchronous caller (the manager, running in a worker thread) blocks on
-  a per-request queue while the loop pumps frames into it. One socket multiplexes
-  many concurrent requests via correlation ids.
-* ``WorkbenchConnectionRegistry`` holds the connected workbenches and resolves placement:
-  a request may name the specific workbench an REE is pinned to, or fall back to any
-  connected workbench.
-* ``WsWorkbenchClient`` implements the ``WorkbenchClient`` seam over the picked
-  connection, returning frame streams for the streaming verbs and materialised
-  values for the request/response ones.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -69,55 +49,26 @@ from repo2ree_telemetry.spans import current_traceparent
 
 logger = logging.getLogger(__name__)
 
-# ================================================
-# Tuning constants
-# ================================================
 
-# Bound on the silence *between* response frames before a request gives up on
-# the workbench (see WorkbenchConnection.request). Streaming verbs use this generous
-# default — a provision or command can legitimately be quiet for a while between
-# progress lines. Request/response verbs pass something much tighter. An action
-# passes none: its script may be silent for as long as it runs.
 DEFAULT_FRAME_GAP_TIMEOUT = 900.0
 
-# For quick request/response ops (is-running, copy bookkeeping, remove): the
-# workbench answers these in milliseconds when healthy, so a short bound turns a
-# wedged workbench into a fast, visible failure instead of a blocked worker thread.
 QUICK_OP_TIMEOUT = 30.0
 
-# A file fetched into the bench, landed there with `docker cp`: no frame until done.
 COPY_IN_TIMEOUT = 600.0
-
-
-# ================================================
-# Fleet view
-# ================================================
 
 
 @dataclass(frozen=True)
 class WorkbenchInfo:
-    """A connected workbench as the control plane sees it: what the workbench reported
-    about itself (``hello``) plus when it dialed in. This is what the fleet view
-    lists."""
-
     workbench_id: str
     hostname: str
     version: str
-    # The store it serves.
     store_id: str
-    connected_at: float  # epoch seconds (UTC)
+    connected_at: float
     build: BuildInfo = field(default_factory=BuildInfo)
     executor_build: BuildInfo = field(default_factory=BuildInfo)
 
 
-# ================================================
-# Connection bridge (async socket ↔ sync callers)
-# ================================================
-
-
 class WorkbenchConnection:
-    """One workbench's socket, bridged from async I/O to synchronous callers."""
-
     def __init__(
         self,
         send_text: Callable[[str], None],
@@ -126,11 +77,6 @@ class WorkbenchConnection:
         span_sink: SpanSink | None = None,
         session: Session | None = None,
     ):
-        # ``send_text`` schedules a send on the event loop and returns at once.
-        # ``hello`` is the workbench's self-description, surfaced by the fleet view.
-        # ``span_sink`` receives the workbench's *own* spans, which arrive
-        # uncorrelated because they answer no request; None discards them.
-        # ``session`` is the journal's record of this socket; closing the connection ends it.
         self._send_text = send_text
         self.hello = hello
         self._span_sink = span_sink
@@ -140,12 +86,8 @@ class WorkbenchConnection:
         self._closed = False
 
     def on_message(self, text: str) -> None:
-        """Route an inbound frame to its waiting caller, or to the span sink."""
         message = workbench_ws_message_adapter.validate_json(text)
         if message.id is None:
-            # Unsolicited: the workbench relaying its own telemetry, which
-            # correlates to no in-flight request. Checked before the pending
-            # lookup, which would otherwise drop it as an unknown id.
             if isinstance(message.frame, SpanFrame) and self._span_sink is not None:
                 self._span_sink([message.frame.payload])
             return
@@ -157,27 +99,9 @@ class WorkbenchConnection:
     def request(
         self, request: WorkbenchRequest, *, frame_gap_timeout: float | None = DEFAULT_FRAME_GAP_TIMEOUT
     ) -> Iterator[Frame]:
-        """Issue a request and yield its response frames until a terminal one.
-
-        Synchronous and blocking: intended to be called from a worker thread
-        while the event loop feeds ``on_message``.
-
-        ``frame_gap_timeout`` bounds the wait *between* frames, not the whole
-        call — a long provision that streams progress can run indefinitely, but
-        a workbench that goes silent (suspended process, hung docker call, dead
-        network with the TCP socket still up) raises ``WorkbenchUnavailableError``
-        instead of blocking the caller's thread forever. ``None`` waits for as long
-        as the connection lives: its pings notice a workbench that stopped answering,
-        and closing the connection ends every wait with an unavailable frame.
-        """
         yield from self.start(request).frames(frame_gap_timeout=frame_gap_timeout)
 
     def start(self, request: WorkbenchRequest) -> PendingReply:
-        """Send ``request`` without waiting for its reply.
-
-        The reply arrives on the returned handle; issuing several requests
-        before draining the first lets a caller pipeline them.
-        """
         req_id = uuid4().hex
         q: queue.Queue[Frame] = queue.Queue()
         with self._lock:
@@ -185,8 +109,6 @@ class WorkbenchConnection:
                 raise WorkbenchUnavailableError("workbench connection closed")
             self._pending[req_id] = q
         try:
-            # exclude_none keeps the wire identical to the pre-traceparent
-            # protocol when tracing is off (see WsRequest).
             self._send_text(
                 WorkbenchWsRequest(id=req_id, request=request, traceparent=current_traceparent()).model_dump_json(
                     exclude_none=True
@@ -202,8 +124,6 @@ class WorkbenchConnection:
             self._pending.pop(req_id, None)
 
     def _cancel(self, req_id: str) -> None:
-        """Fire-and-forget: tell the workbench the caller for ``req_id`` is gone,
-        so it can stop the work instead of streaming frames to no one."""
         with self._lock:
             if self._closed:
                 return
@@ -217,7 +137,6 @@ class WorkbenchConnection:
         return self.session.session_id if self.session is not None else None
 
     def close(self, reason: WorkbenchSessionReason = "closed", close_code: int | None = None) -> None:
-        """Mark the connection dead, end its session the first way it ended, and unblock every waiting caller."""
         if self.session is not None:
             self.session.lose(reason, close_code)
         with self._lock:
@@ -229,8 +148,6 @@ class WorkbenchConnection:
 
 
 class PendingReply:
-    """An issued request whose response frames have not been consumed yet."""
-
     def __init__(self, connection: WorkbenchConnection, req_id: str, q: queue.Queue[Frame], op: str):
         self._connection = connection
         self._req_id = req_id
@@ -238,11 +155,6 @@ class PendingReply:
         self._op = op
 
     def frames(self, *, frame_gap_timeout: float | None = DEFAULT_FRAME_GAP_TIMEOUT) -> Iterator[Frame]:
-        """Yield the response frames until a terminal one (see ``request``).
-
-        Leaving before the terminal frame — an abandoned stream, or the
-        frame-gap timeout firing — sends the workbench a best-effort cancel so it
-        stops working for a caller that is gone."""
         terminated = False
         try:
             while True:
@@ -258,28 +170,19 @@ class PendingReply:
                 if terminated:
                     return
         finally:
-            self._connection._discard(self._req_id)  # noqa: SLF001 — the reply and its connection are one mechanism split across two classes in this module
+            self._connection._discard(self._req_id)  # noqa: SLF001
             if not terminated:
-                self._connection._cancel(self._req_id)  # noqa: SLF001 — same-module collaborator; see above
+                self._connection._cancel(self._req_id)  # noqa: SLF001
 
     def discard(self) -> None:
-        """Stop waiting for this reply without consuming it (error-path cleanup
-        for pipelined requests that will never be drained)."""
-        self._connection._discard(self._req_id)  # noqa: SLF001 — same-module collaborator; see above
-
-
-# ================================================
-# Workbench registry
-# ================================================
+        self._connection._discard(self._req_id)  # noqa: SLF001
 
 
 class StoreClaimedError(RuntimeError):
-    """Another workbench already serves the store a workbench claimed."""
+    pass
 
 
 class WorkbenchConnectionRegistry:
-    """Tracks connected workbenches and resolves placement requests to one of them."""
-
     def __init__(self) -> None:
         self._workbenches: dict[str, WorkbenchConnection] = {}
         self._connected_at: dict[str, float] = {}
@@ -287,15 +190,6 @@ class WorkbenchConnectionRegistry:
         self._changed = threading.Condition(self._lock)
 
     def register(self, workbench_id: str, connection: WorkbenchConnection) -> None:
-        """Register a connection under ``workbench_id`` (last-writer-wins).
-
-        If the id is already held by a different connection — a reconnecting
-        workbench whose old socket still lingers — the old one is displaced and
-        closed so its waiters unblock and it can't later evict its successor.
-
-        A store is served by one workbench at a time: another workbench claiming a
-        store one already serves is refused (``StoreClaimedError``), never displacing it.
-        """
         store_id = connection.hello.store_id if connection.hello else ""
         with self._lock:
             if store_id and (holder := self._store_holder_locked(store_id)) not in {None, workbench_id}:
@@ -310,10 +204,6 @@ class WorkbenchConnectionRegistry:
 
     @staticmethod
     def _log_displacement(workbench_id: str, displaced: WorkbenchConnection, connection: WorkbenchConnection) -> None:
-        # The hello nonce is minted per workbench *process*: matching nonces mean the
-        # same instance reconnected (routine); differing ones mean a second
-        # instance claimed the id — the canary for two workbenches misconfigured with
-        # one identity, which last-writer-wins would otherwise hide.
         old_nonce = displaced.hello.nonce if displaced.hello else ""
         new_nonce = connection.hello.nonce if connection.hello else ""
         if old_nonce and old_nonce == new_nonce:
@@ -328,7 +218,6 @@ class WorkbenchConnectionRegistry:
             )
 
     def store_workbench(self, store_id: str) -> str | None:
-        """The connected workbench serving ``store_id``, if one is."""
         with self._lock:
             return self._store_holder_locked(store_id)
 
@@ -343,10 +232,6 @@ class WorkbenchConnectionRegistry:
         )
 
     def unregister(self, workbench_id: str, connection: WorkbenchConnection) -> None:
-        """Drop ``workbench_id`` only if ``connection`` still owns it.
-
-        A displaced old socket tearing down must not evict the connection that
-        replaced it, so removal is guarded on connection identity."""
         with self._lock:
             if self._workbenches.get(workbench_id) is connection:
                 self._workbenches.pop(workbench_id, None)
@@ -354,7 +239,6 @@ class WorkbenchConnectionRegistry:
                 self._changed.notify_all()
 
     def close_all(self, reason: WorkbenchSessionReason) -> None:
-        """Close every connection, for a control plane on its way down: their sessions end with ``reason``."""
         with self._lock:
             connections = list(self._workbenches.values())
         for connection in connections:
@@ -366,20 +250,14 @@ class WorkbenchConnectionRegistry:
                 raise WorkbenchUnavailableError(f"workbench {workbench_id!r} did not connect within {timeout:g}s")
 
     def pick(self, workbench_id: str | None = None) -> WorkbenchConnection:
-        """Resolve a connection. With ``workbench_id`` set, return that specific workbench
-        (placement affinity) or raise if it is not connected. Without it, return
-        any connected workbench — the unpinned provision-time path."""
         with self._lock:
             return self._workbenches[self._resolve_locked(workbench_id)]
 
     def resolve(self, workbench_id: str | None = None) -> str:
-        """The id twin of ``pick``: resolve a placement request to a concrete
-        workbench id."""
         with self._lock:
             return self._resolve_locked(workbench_id)
 
     def _resolve_locked(self, workbench_id: str | None) -> str:
-        """Shared resolution for ``pick``/``resolve``; caller holds ``_lock``."""
         if workbench_id:
             if workbench_id not in self._workbenches:
                 raise WorkbenchUnavailableError(f"workbench {workbench_id!r} not connected")
@@ -389,7 +267,6 @@ class WorkbenchConnectionRegistry:
         raise WorkbenchUnavailableError("no workbench service connected")
 
     def list_workbenches(self) -> list[WorkbenchInfo]:
-        """Snapshot of every connected workbench, for the control plane's fleet view."""
         with self._lock:
             infos = [
                 WorkbenchInfo(
@@ -407,14 +284,7 @@ class WorkbenchConnectionRegistry:
         return infos
 
 
-# ================================================
-# WebSocket client (both seams)
-# ================================================
-
-
 class WsWorkbenchClient:
-    """Execution client backed by a resident workbench connection."""
-
     def __init__(self, registry: WorkbenchConnectionRegistry, transfers: Transfers | None = None):
         self._registry = registry
         self._transfers = transfers if transfers is not None else Transfers()
@@ -433,19 +303,13 @@ class WsWorkbenchClient:
         return True
 
     def is_running(self, workbench_id: str) -> bool:
-        """Backward-compatible name for connection liveness."""
         return self.is_connected(workbench_id)
 
     def session_of(self, workbench_id: str) -> str | None:
-        """The session a command for ``workbench_id`` would be sent on now; None while it is not connected."""
         try:
             return self._registry.pick(workbench_id).session_id
         except WorkbenchUnavailableError:
             return None
-
-    # ------------------------------------------------
-    # Streaming — hand the frame stream straight to the manager.
-    # ------------------------------------------------
 
     def start_run(
         self,
@@ -459,8 +323,6 @@ class WsWorkbenchClient:
         session: str | None = None,
         wait: float = 0.0,
     ) -> Iterator[Frame]:
-        # A command journaled as sent on ``session`` goes on that session or not at all. No frame
-        # gap: it is answered once it starts, which waits for one of the workbench's slots.
         connection = self._on_session(workbench_id, session)
         return connection.request(
             StartRunRequest(cmd_json=cmd_json, run_id=run_id, env=env, context=context, ree_id=ree_id, wait=wait),
@@ -470,8 +332,6 @@ class WsWorkbenchClient:
     def follow_run(
         self, workbench_id: str, attempt_id: str, after: int, *, ree_id: str, session: str | None = None
     ) -> Iterator[Frame]:
-        # No frame gap: a script may run quietly for days. The connection's pings decide whether the
-        # workbench is still there, and closing the connection ends the follow, not the command.
         connection = self._on_session(workbench_id, session)
         return connection.request(
             FollowRunRequest(ree_id=ree_id, attempt_id=attempt_id, after=after), frame_gap_timeout=None
@@ -499,16 +359,12 @@ class WsWorkbenchClient:
     def init_ree(self, workbench_id: str, init: InitRee, timeout: int = 60, *, ree_id: str) -> None:
         conn = self._registry.pick(workbench_id)
         req = InitReeRequest(init=init, timeout=timeout, ree_id=ree_id)
-        # The workbench enforces ``timeout`` on the exec itself; the frame gap only
-        # needs to cover it plus transport slack.
         self._drain_void(conn.request(req, frame_gap_timeout=timeout + QUICK_OP_TIMEOUT))
 
     def exec_query(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> bytes:
         return b"".join(self.exec_query_stream(workbench_id, query, timeout, ree_id=ree_id))
 
     def exec_query_stream(self, workbench_id: str, query: Query, timeout: int = 30, *, ree_id: str) -> Iterator[bytes]:
-        # The result arrives as bounded chunks ending in ``done``; yield each
-        # decoded chunk so large archives do not materialise in control-plane RAM.
         conn = self._registry.pick(workbench_id)
         for frame in conn.request(
             ExecQueryRequest(query=query, timeout=timeout, ree_id=ree_id),
@@ -523,8 +379,6 @@ class WsWorkbenchClient:
         raise RuntimeError("workbench exec_query ended without a result")
 
     def exec_upload(self, workbench_id: str, query: BundleQuery, timeout: int = 600, *, ree_id: str) -> ReceivedFile:
-        # The socket carries the request and its one ``done``; the bytes arrive
-        # over HTTP into the transfer, so no frame waits on them.
         conn = self._registry.pick(workbench_id)
         transfer_path = self._transfers.open_upload()
         try:
@@ -540,8 +394,6 @@ class WsWorkbenchClient:
             self._transfers.discard(transfer_path)
 
     def copy_in(self, workbench_id: str, source_path: str, workbench_path: str, *, ree_id: str) -> None:
-        # The bench fetches the file over HTTP beside its control socket; the socket
-        # carries only the request and its ``done``. The file stays the caller's.
         conn = self._registry.pick(workbench_id)
         transfer_path = self._transfers.offer(Path(source_path))
         try:
@@ -576,6 +428,5 @@ class WsWorkbenchClient:
         raise RuntimeError("workbench stream ended without a result")
 
     def _drain_void(self, frames: Iterator[Frame]) -> None:
-        """Consume a stream whose only meaningful outcome is success or error."""
         for frame in frames:
             raise_for_terminal_error(frame)

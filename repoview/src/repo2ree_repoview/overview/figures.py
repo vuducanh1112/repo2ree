@@ -1,5 +1,3 @@
-"""Generated diagrams, copied into the bundle with the commit each was drawn from."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,7 +11,6 @@ DIAGRAMS = ROOT / "reports/diagrams"
 
 
 def diagram_origin(bundle: Bundle, stamp: Stamp | None) -> str:
-    """Which commit a diagram was generated from, as it records itself, against the overview's commit."""
     if stamp is None:
         return '<span class="state-stale">Records no commit; regenerate it.</span>'
     revision = f"<code>{esc(stamp.revision[:10])}</code>" + (" with uncommitted changes" if stamp.dirty else "")
@@ -24,7 +21,6 @@ def diagram_origin(bundle: Bundle, stamp: Stamp | None) -> str:
 
 
 def diagram(bundle: Bundle, path: Path, title: str, note: str = "") -> str:
-    """A generated diagram, copied into the bundle so the page keeps it."""
     stamp = read_svg_stamp(path) if path.is_file() and path.suffix == ".svg" else None
     origin = Origin(kind="diagram", revision=stamp.revision if stamp else "")
     relative = bundle.copy(path, f"diagrams/{path.relative_to(DIAGRAMS)}", origin)
@@ -38,7 +34,6 @@ def diagram(bundle: Bundle, path: Path, title: str, note: str = "") -> str:
 
 
 def inlined(bundle: Bundle, relative: str, recipe: str = "generate-spec-diagrams") -> str:
-    """A drawing ``recipe`` wrote, copied into the bundle and drawn in the page, unstamped."""
     path = DIAGRAMS / relative
     stamp = read_svg_stamp(path) if path.is_file() else None
     if (

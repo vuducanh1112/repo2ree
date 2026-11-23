@@ -1,21 +1,4 @@
 #!/usr/bin/env python3
-"""A platform's certified image set as archives: how a machine without registry credentials hands over its images.
-
-Images are pushed from one host, the one holding registry credentials. Another
-platform's images are built and gated on a machine of that platform, then travel
-here as archives:
-
-- ``export`` (``just archive-images``), on the machine that passed the publish gate:
-  saves exactly the images its receipt certifies, by image ID, into
-  ``<archive-dir>/<os>-<arch>/``, with a manifest binding the revision, tree,
-  platform, image IDs, and each archive's digest;
-- ``just machine fetch-archives <machine>`` brings the set to the pushing host;
-- ``just publish-candidate`` there verifies the set, loads it, checks every loaded
-  image is the certified one, and pushes it beside the host's own platform.
-
-A set is only ever what a publish gate certified: nothing here builds an image.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -41,13 +24,11 @@ LOADED = re.compile(r"Loaded image ID: (sha256:[0-9a-f]{64})")
 
 @dataclass(frozen=True)
 class ArchiveSet:
-    """A verified set: one platform's certified images, as archives in ``directory``."""
-
     directory: Path
     revision: str
     tree: str
     platform: str
-    images: dict[str, str]  # Each image's certified ID.
+    images: dict[str, str]
 
 
 def capture(*args: str) -> str:
@@ -71,7 +52,6 @@ def archive_name(image: str) -> str:
 
 
 def seal(directory: Path, *, revision: str, tree: str, platform: str, images: dict[str, str]) -> None:
-    """Write the manifest binding the archives in ``directory`` to what the publish gate certified."""
     if not REVISION.fullmatch(revision) or not PLATFORM.fullmatch(platform):
         raise RuntimeError(f"invalid image archive set: revision {revision!r}, platform {platform!r}")
     if set(images) != set(IMAGES) or not all(DIGEST.fullmatch(image_id) for image_id in images.values()):
@@ -91,7 +71,6 @@ def seal(directory: Path, *, revision: str, tree: str, platform: str, images: di
 
 
 def verify(directory: Path) -> ArchiveSet:
-    """The set in ``directory``, if its manifest is whole and every archive is the one it names."""
     path = directory / MANIFEST
     try:
         document = json.loads(path.read_text())
@@ -124,12 +103,10 @@ def verify(directory: Path) -> ArchiveSet:
 
 
 def sets(root: Path) -> list[ArchiveSet]:
-    """Every set under ``root``, verified; a set that does not verify is an error, not a skip."""
     return [verify(manifest.parent) for manifest in sorted(root.glob(f"*/{MANIFEST}"))]
 
 
 def export(receipts: Path, root: Path) -> ArchiveSet:
-    """Save the images this machine's current publish-gate receipt certifies as a set under ``root``."""
     receipt_path = publish_gate.receipt_path(receipts, publish_gate.platform())
     revision = capture("git", "describe", "--always")
     publish_gate.verify_receipt(receipt_path, revision)
@@ -138,7 +115,6 @@ def export(receipts: Path, root: Path) -> ArchiveSet:
     pending = Path(tempfile.mkdtemp(prefix=".pending-", dir=root))
     try:
         for image in IMAGES:
-            # By ID, never by tag: the certified image, not whatever `:local` names now.
             subprocess.run(
                 ["docker", "save", "-o", str(pending / archive_name(image)), receipt.images[image]], check=True
             )
@@ -152,7 +128,6 @@ def export(receipts: Path, root: Path) -> ArchiveSet:
 
 
 def load(archive_set: ArchiveSet) -> None:
-    """Load a verified set into the local daemon, refusing any image that is not the certified one."""
     for image in IMAGES:
         output = capture("docker", "load", "-i", str(archive_set.directory / archive_name(image)))
         loaded = LOADED.findall(output)
@@ -163,7 +138,7 @@ def load(archive_set: ArchiveSet) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     export_parser = commands.add_parser("export")
     export_parser.add_argument("--receipts", type=Path, required=True)

@@ -11,8 +11,6 @@ SELECTION_VERSION = 2
 
 
 class OperationRecord(BaseModel):
-    """One invocation, including no-ops and attempts left pending by process death."""
-
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal[1] = 1
@@ -32,21 +30,11 @@ class OperationRecord(BaseModel):
     capture_error: str | None = None
     result: ActionResult | None = None
     changed: bool | None = None
-    # Evidence standing of every author step (``audit``) around the handler, so
-    # the history shows which attempt made which receipt current or stale.
-    # None for review scopes, legacy records, and REEs that could not be audited.
     step_evidence_before: dict[str, str] | None = None
-    # What had drifted when the attempt began: every file not as the last attempt left it. An attempt that found
-    # drift records the one script edit it names in ``drift_recorded``, or is refused.
     drift_found: list[DriftedFile] = Field(default_factory=list)
     drift_recorded: str | None = None
-    # What had changed beside the attempt once its handler returned: every file of the REE no longer as the attempt
-    # found it. The handler ran on a stage, so none of it reached the attempt or its commit; the next command finds it.
     drift_after: list[DriftedFile] = Field(default_factory=list)
     step_evidence_after: dict[str, str] | None = None
-    # Each phase the attempt entered, appended and written before the next begins:
-    # pending, executing, completed, then captured or capture_failed. The record of
-    # what happened in order, rather than a final state to infer it from.
     phases: list[Literal["pending", "executing", "completed", "captured", "capture_failed"]] = Field(
         default_factory=list
     )
@@ -59,8 +47,6 @@ class OperationHistory(BaseModel):
 
 
 class CompletedOperation(OperationRecord):
-    """The record bound to an operation commit; its own ID is derived on read."""
-
     context: ExecutionContext
     result: ActionResult
     before_snapshot_id: str

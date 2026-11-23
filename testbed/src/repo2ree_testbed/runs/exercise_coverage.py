@@ -1,9 +1,3 @@
-"""Measure the code the exercise cases cover: each case whose coverage is stale, or not measured yet, replayed through
-``ree`` under coverage.py, its coverage written to ``exercises/coverage/<digest>.json``; with ``--all``, every case.
-
-A case whose replay differs from what it expects is still measured, and named: its coverage is of the run it had.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -15,7 +9,7 @@ from repo2ree_testbed.exercise_case import CASES, cases, measure, unmeasured
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument("--all", action="store_true", help="measure every case, not only the stale and unmeasured")
     args = parser.parse_args()
     unmatched = 0

@@ -55,8 +55,6 @@ function WorkspaceRoute({
   const reeId = searchParams.get("reeId") || undefined;
   const workspaceKey = reeId ?? "new";
 
-  // A workspace without an REE has nothing to show: provisioning happens on the
-  // lab picker now, so this route is only ever reached with a provisioned REE.
   if (!reeId) return <Navigate to={APP_ROUTE.LAB_LOCATION} replace />;
 
   return (

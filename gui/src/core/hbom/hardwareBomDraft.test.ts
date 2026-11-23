@@ -56,10 +56,8 @@ describe("hardwareBomDraft", () => {
       extraInfo: {},
     };
     const previous = draftFromHBOM(hbom);
-    // The author clicks "Add CPU" and has not typed a model yet.
     previous.cpus.push(newCpuRow(() => "cpu-fresh"));
 
-    // Any document refetch re-projects the (unchanged) HBOM onto the draft.
     const synced = draftFromHBOM(hbom, previous);
 
     expect(synced.cpus.map((row) => row.id)).toEqual([previous.cpus[0].id, "cpu-fresh"]);
@@ -80,8 +78,6 @@ describe("hardwareBomDraft", () => {
 
     const synced = draftFromHBOM(hbom, previous);
 
-    // The named row keeps its id even though an unnamed row sits before it, so
-    // React does not remount the input the author is typing into.
     expect(synced.gpus.map((row) => row.id)).toEqual(["gpu-0", "gpu-fresh"]);
   });
 

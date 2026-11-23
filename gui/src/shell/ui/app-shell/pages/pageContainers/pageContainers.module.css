@@ -1,5 +1,3 @@
-/* The slot a docked page's content fills. */
-
 .contentSection {
   display: flex;
   flex-direction: column;

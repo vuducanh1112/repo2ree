@@ -14,13 +14,6 @@ interface WorkspaceFooterBarProps {
   onLogsOpenChange: (open: boolean) => void;
 }
 
-/**
- * The ambient state strip under the canvas: the placement this REE runs on, and what
- * its runs are doing. Deliberately thinner and quieter than the WorkspaceStatusBar
- * above — that bar navigates, this one only reports. Each cell owns the resting
- * state of a console that opens at the canvas edge just above it, so the corners
- * stay clear until asked for.
- */
 export function WorkspaceFooterBar({
   provisioned,
   benchOpen,

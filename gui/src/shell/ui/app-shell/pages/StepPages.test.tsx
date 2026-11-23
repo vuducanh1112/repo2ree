@@ -63,11 +63,6 @@ describe("major step page workflows", () => {
     );
   });
 
-  // The generated build script writes to the path the REE declares, and falls
-  // back to its own default when there is none — so a generated candidate always
-  // reports where it writes. Filling an empty declaration from that is the rest
-  // of the one-click flow; overwriting a declared one would be the drift the
-  // whole arrangement exists to prevent.
   it.each([
     ["fills an empty experiment environment declaration from the generated script", "", 1],
     ["never overwrites an experiment environment path the author declared", "runtime.tar", 0],
@@ -164,7 +159,6 @@ describe("major step page workflows", () => {
     expect(screen.getByLabelText("Activate experiment environment script")).toHaveTextContent(
       'exec "$@"',
     );
-    // The activation has no script of its own to write.
     expect(screen.queryByRole("button", { name: /Save/ })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Run activation" }));
     expect(onRun).toHaveBeenCalledWith("activate_experiment_environment", {});

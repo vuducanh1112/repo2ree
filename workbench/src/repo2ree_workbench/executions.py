@@ -1,11 +1,3 @@
-"""The executors a store's workbench starts apart from itself, so that they outlive it, and how each ended.
-
-Each execution keeps a directory in the store: the command, who runs it, the executor's log, and
-once it ended, how. The executor writes its own exit status there, so a workbench process that did
-not start it can still tell how it ended. A workbench process starting on the store adopts the
-executors the last one left running, and settles the ones it finds gone.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -33,18 +25,10 @@ from repo2ree_workbench import cli_events
 from repo2ree_workbench.cli_process import LocalCli
 from repo2ree_workbench.journal import STATE
 
-# How long a canceled executor gets to stop by itself — stop its script, roll the REE back,
-# capture the attempt, report — before it is signalled.
 CANCEL_GRACE_SECONDS = 10.0
-# How long a signalled executor gets after SIGTERM (which it also treats as a cancel) before SIGKILL.
 CANCEL_KILL_SECONDS = 5.0
-# How often an executor this process did not start is looked for, and a follow looks for new lines.
 POLL_SECONDS = 0.5
-# Endings kept for a follow that comes late, before their directories go.
 KEPT_SECONDS = 7 * 24 * 3600
-# Runs the executor with its command on stdin, its result and log in files, and its exit status
-# written once it ends. It outlives the SIGTERM a cancel sends the executor's process group, so it
-# lives to write it, without passing the executor a signal it ignores.
 _WRAPPER = (
     "sh",
     "-c",
@@ -59,11 +43,11 @@ _FOLLOW_LINES = 500
 
 
 class ReeBusyError(RuntimeError):
-    """Another execution holds the REE."""
+    pass
 
 
 class UnknownExecutionError(LookupError):
-    """The store holds no execution of the attempt."""
+    pass
 
 
 class Identity(BaseModel):
@@ -75,7 +59,6 @@ class Identity(BaseModel):
     operation: str
     dispatched_by: str | None = None
     pid: int
-    # When the process started, as the kernel counts it: a pid reused by another process is not it.
     birth: str | None = None
     state: Literal["started", "adopted"] = "started"
 
@@ -103,8 +86,6 @@ class _Live:
 
 
 class Executions:
-    """The store's executions: started, adopted, followed, stopped, and settled."""
-
     def __init__(
         self,
         executor: LocalCli,
@@ -128,7 +109,6 @@ class Executions:
             return any(live.identity.ree_id == ree_id for live in self._live.values())
 
     def wait(self, attempt_id: str, timeout: float | None = None) -> bool:
-        """Whether the execution of ``attempt_id`` is over, waiting up to ``timeout`` for it."""
         with self._lock:
             live = self._live.get(attempt_id)
         return live is None or live.ended.wait(timeout)
@@ -143,7 +123,6 @@ class Executions:
         ree_id: str,
         wait: float = 0.0,
     ) -> None:
-        """Start the command once a slot is free; refused while another execution holds the REE past ``wait``."""
         deadline = time.monotonic() + wait
         while True:
             with self._lock:
@@ -251,7 +230,6 @@ class Executions:
         return Ending(state="lost" if exit_code is None else "exited", result=result)
 
     def _settle(self, identity: Identity) -> ActionResult | None:
-        """Have core settle the attempt of an executor that ended without reporting."""
         directory = self.directory / identity.attempt_id
         argv = ["--json", "--run-id", identity.run_id]
         with suppress(OSError):
@@ -269,10 +247,6 @@ class Executions:
             return None
 
     def reconcile(self) -> set[str]:
-        """Adopt the executors a previous process of this store left running, and settle the rest.
-
-        Returns the attempts of the adopted ones.
-        """
         adopted: set[str] = set()
         if not self.directory.is_dir():
             return adopted
@@ -308,13 +282,6 @@ class Executions:
         return LogFollower(directory, after)
 
     def cancel(self, run_id: str, *, ree_id: str, record: str | None = None) -> None:
-        """Ask the run's executor to stop, and only force it if it does not.
-
-        The cancel marker is cooperative: the executor stops its script, rolls the REE back,
-        captures the attempt, and reports it canceled. An executor still running after the grace
-        period is signalled (SIGTERM, which it treats as a cancel too), then killed. A run not
-        started yet finds the marker when it starts.
-        """
         root = self._executor.ree_root(ree_id)
         self._executor.run(root, ["cancel", run_id], 10)
         with self._lock:
@@ -339,8 +306,6 @@ class Executions:
 
 
 class LogFollower:
-    """A started command's log from one line on, and how the command ended once it has."""
-
     def __init__(self, directory: Path, after: int) -> None:
         self._directory = directory
         self._skip = after
@@ -348,7 +313,6 @@ class LogFollower:
         self._partial = b""
 
     def read(self) -> tuple[list[Frame], ActionResult | None]:
-        """The log's new complete lines as frames, and once they are all read, how the command ended."""
         ending = _read(self._directory / "ending.json", Ending)
         frames: list[Frame] = []
         log = self._directory / "log"
@@ -379,7 +343,6 @@ def _operation(cmd_json: str) -> str:
 
 
 def _birth(pid: int) -> str | None:
-    """When the process started, in clock ticks since boot; None where the kernel does not say."""
     try:
         stat = Path(f"/proc/{pid}/stat").read_text()
     except OSError:
@@ -412,7 +375,6 @@ def _exit_code(directory: Path) -> int | None:
 
 
 def _exit_status(directory: Path) -> int:
-    """The executor's exit status; a stop that killed it with its wrapper left none, as a kill does."""
     code = _exit_code(directory)
     return -signal.SIGKILL if code is None else code
 

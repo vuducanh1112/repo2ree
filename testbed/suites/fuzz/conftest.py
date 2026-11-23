@@ -1,5 +1,3 @@
-"""The system suite's fixtures, on a stack that injects the faults its tests ask for."""
-
 import sys
 from pathlib import Path
 

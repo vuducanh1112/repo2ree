@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""The API showcases, as a stack's client (``python -m repo2ree_testbed e2e --script``): each test on its machine."""
-
 import sys
 
 from repo2ree_testbed.pytest_suite import run

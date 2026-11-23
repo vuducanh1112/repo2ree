@@ -1,5 +1,3 @@
-"""Stores, the tokens that admit their workbenches, and the REEs they serve."""
-
 from __future__ import annotations
 
 import stat
@@ -47,7 +45,6 @@ def test_only_digests_are_kept_and_only_by_their_owner(tmp_path: Path) -> None:
 
     assert token not in path.read_text()
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
-    # Another process reads what this one wrote.
     assert StoreRegistry(path).authenticate(token, "lab-a")
 
 
@@ -87,7 +84,6 @@ def test_a_store_is_served_by_one_workbench_at_a_time() -> None:
 
     with pytest.raises(StoreClaimedError, match="wb-1"):
         connections.register("wb-2", _connection("wb-2", "lab-a"))
-    # The same workbench reconnecting takes its place again.
     connections.register("wb-1", _connection("wb-1", "lab-a"))
     assert connections.store_workbench("lab-a") == "wb-1"
     assert connections.store_workbench("lab-b") is None

@@ -1,9 +1,3 @@
-"""One source stack: the API under coverage, its compute locations, one client run, and what it leaves.
-
-A deployment with no control plane is the test's machine alone, with no service on it: its client runs ``ree`` there
-itself, and the dossier holds the REEs the client kept and ``ree``'s spans.
-"""
-
 from __future__ import annotations
 
 import os
@@ -81,12 +75,10 @@ class Layout:
 
     @property
     def kept_rees(self) -> Path:
-        """Where a client that runs ``ree`` itself keeps each REE's histories, one folder per REE it created."""
         return self.directory / "artifacts/kept-rees"
 
     @property
     def kept_journals(self) -> Path:
-        """Where a client that runs ``ree`` itself keeps the journals it wrote as the REEs' environment."""
         return self.directory / "artifacts/kept-journals"
 
     @property
@@ -99,7 +91,6 @@ class Layout:
 
 
 def remove_state(directory: Path) -> bool:
-    """Whether the state a run left is gone: what it cannot remove says something changed its owner."""
     shutil.rmtree(directory, ignore_errors=True)
     if not directory.exists():
         return True
@@ -159,14 +150,10 @@ class E2EStack:
         self.port: int | None = None
         self.backend: subprocess.Popen[bytes] | None = None
         self.locations: list[subprocess.Popen[bytes]] = []
-        # The machine with no service on it, where the client runs ree itself when there is no control plane.
         self.machine: subprocess.Popen[bytes] | None = None
         self.machine_state = self.control_state / ("workbench-1" if deployment.control_plane else "machine")
-        # How each location was started, so one can be started again on its own (a killed workbench).
         self.launches: list[tuple[list[str], dict[str, str], Path]] = []
-        # In store mode, the relay each store's workbench reaches the API through.
         self.relays: dict[int, Relay] = {}
-        # A second workbench claiming a location's store, while a fault keeps it running.
         self.rivals: dict[int, subprocess.Popen[bytes]] = {}
         self.restarting = threading.RLock()
         self.injector = Injector(self)
@@ -262,7 +249,6 @@ class E2EStack:
         self.launches = []
         for index, service in enumerate(services, start=1):
             environment = dict(service.environment)
-            # Through a relay of its own, so a partition fault can cut it off the API.
             machine = self.deployment.environment
             relay = self.relays.get(index) or Relay(
                 "127.0.0.1",
@@ -310,7 +296,6 @@ class E2EStack:
         wait_until(f"{len(services)} store workbench(es)", ready)
 
     def start_machine(self) -> None:
-        """The test's machine with no service on it: an idle process keeps it up while the client runs ree there."""
         machine = self.deployment.environment
         if machine is None:
             raise RuntimeError("with no control plane the client runs ree on the test's machine, and it names none")
@@ -343,13 +328,11 @@ class E2EStack:
         wait_until(f"the {machine.name} machine", started)
 
     def launch(self, command: list[str], environment: dict[str, str], log: Path) -> subprocess.Popen[bytes]:
-        # A process group of its own, so a fault reaches the workbench and whatever it runs.
         return subprocess.Popen(
             command, cwd=ROOT, env=environment, stdout=self.log(log), stderr=subprocess.STDOUT, start_new_session=True
         )
 
     def store_location(self, ree_id: str) -> int:
-        """The compute location serving ``ree_id``'s store, as the API lists the REE."""
         listed = fetch_as(f"{self.api_url}/api/v1/rees", _REES, timeout=30)
         store = next((item.location_id for item in listed.items if item.ree_id == ree_id), None) if listed else None
         for index in range(1, self.deployment.compute_locations + 1):
@@ -358,19 +341,14 @@ class E2EStack:
         raise FaultUnavailableError(f"{ree_id} is not an REE in a store of this stack")
 
     def workbench_fault(self, ree_id: str, action: WorkbenchFault) -> None:
-        """Inject ``action`` on the workbench serving ``ree_id``'s store."""
         index = self.store_location(ree_id)
         with self.restarting:
             process = self.locations[index - 1]
             match action:
                 case "kill":
-                    # As a crash its service manager notices: the workbench is killed with the executors it
-                    # started, as a crash of its container would take them, and started again.
                     kill_tree(process)
                     self.locations[index - 1] = self.launch(*self.launches[index - 1])
                 case "restart":
-                    # As a service manager restarts it: the workbench alone is stopped, and the executors
-                    # it started, each in a session of its own, run on for the next one to take over.
                     with suppress(ProcessLookupError):
                         os.killpg(process.pid, signal.SIGTERM)
                     try:
@@ -400,12 +378,6 @@ class E2EStack:
                         lock.unlink(missing_ok=True)
 
     def start_rival(self, index: int) -> None:
-        """Start a second workbench for location ``index``'s store, and wait until the API has turned it away.
-
-        It presents the store's own token under an identity of its own, from a directory of its own:
-        a workbench clears the job containers its store directory left, and the rival must not
-        clear the ones the store's workbench is running.
-        """
         if index in self.rivals:
             raise FaultUnavailableError(f"a rival already claims location {index}'s store")
         command, environment, _ = self.launches[index - 1]
@@ -427,11 +399,6 @@ class E2EStack:
         wait_until("the rival workbench to be refused", refused)
 
     def store_tokens(self) -> dict[int, str]:
-        """Register each location's store, once, and mint a token for its workbench, each start.
-
-        As an operator would, with the API's own command on the API's state: the stack drives
-        the product from outside, never by importing it.
-        """
         environment = {**self.environment, "CONTROL_STATE_DIR": str(self.control_state)}
 
         def admin(*args: str) -> subprocess.CompletedProcess[str]:
@@ -447,7 +414,7 @@ class E2EStack:
         tokens: dict[int, str] = {}
         for index in range(1, self.deployment.compute_locations + 1):
             added = admin("add", store_id(index), "--label", f"Lab {index}")
-            if added.returncode not in {0, 2}:  # 2: registered by an earlier start already
+            if added.returncode not in {0, 2}:
                 raise RuntimeError(f"could not register store {store_id(index)}: {added.stderr.strip()}")
             minted = admin("token", store_id(index))
             if minted.returncode != 0:
@@ -475,7 +442,6 @@ class E2EStack:
             FAULTS_URL: self.injector.url,
         }
         if (machine := self.deployment.environment) is not None:
-            # The first store's machine, for a client that works on it as its user does: the CLI showcases.
             workdir = self.machine_state / "cli"
             workdir.mkdir(parents=True, exist_ok=True)
             environment |= {
@@ -514,7 +480,7 @@ class E2EStack:
         with self.phase("shutdown"):
             for process in self.locations:
                 with suppress(ProcessLookupError):
-                    os.killpg(process.pid, signal.SIGCONT)  # A paused workbench cannot stop.
+                    os.killpg(process.pid, signal.SIGCONT)
                 terminate(process)
             for rival in self.rivals.values():
                 terminate(rival)
@@ -573,7 +539,6 @@ class E2EStack:
         return collected.returncode == 0
 
     def collect_kept(self) -> bool:
-        """With no control plane: the REEs the client kept, and the spans ree wrote on the machine."""
         command = [*self.collect(), "--kept-rees", str(self.layout.kept_rees)]
         command += ["--environment-journal-dir", str(self.layout.kept_journals)]
         telemetry = self.layout.telemetry
@@ -586,7 +551,7 @@ class E2EStack:
 
     def coverage_report(self) -> None:
         if not self.deployment.control_plane:
-            return  # No API or workbench ran under coverage.
+            return
         environment = {**self.environment, "COVERAGE_FILE": str(self.coverage_file)}
         deployment = self.deployment
         print(

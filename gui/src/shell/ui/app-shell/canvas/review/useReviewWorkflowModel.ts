@@ -18,11 +18,9 @@ import { useReviewsQuery } from "@shell/data/reviews/queries";
 import { useEffect, useState } from "react";
 
 export interface ReviewWorkflowModel {
-  /** The attempt this console opened, or the newest one on record. */
   attempt: ReviewAttempt | undefined;
   statuses: ReturnType<typeof reviewStepStatuses>;
   enabledSteps: ReadonlySet<ReviewStepKey>;
-  /** Steps that have settled, for the workflow toggle's counter. */
   complete: number;
   running: boolean;
   basis: ReviewBasisRequest;
@@ -35,14 +33,6 @@ export interface ReviewWorkflowModel {
   error: unknown;
 }
 
-/**
- * The reviewer's whole workflow state, owned above the surfaces that show it.
- *
- * The strip in the status bar and the evidence drawer are two views of one
- * attempt, so the attempt cannot live in either of them. `active` gates the
- * listing poll: reviews are polled every 5s (1.5s while a step runs), and a
- * workspace nobody is reviewing should not pay for that.
- */
 export function useReviewWorkflowModel({
   experiments,
   active,
@@ -50,26 +40,14 @@ export function useReviewWorkflowModel({
   experiments: readonly ReeExperiment[];
   active: boolean;
 }): ReviewWorkflowModel {
-  // What the next step reproduces from. "auto" takes the strongest basis the
-  // baseline supports; "bundled" is the deliberate choice to certify what the
-  // REE already carries, which is the only path open for a bundle with no
-  // reachable origin — and the weaker verdict, so it is never the default.
   const [basis, setBasis] = useState<ReviewBasisRequest>("auto");
   const reviews = useReviewsQuery({ enabled: active });
   const reviewAcquireSource = useStartSourceReviewMutation();
   const reviewBuildExperimentEnvironment = useStartBuildExperimentEnvironmentReviewMutation();
   const reviewActivateExperimentEnvironment = useStartActivationReviewMutation();
   const reviewRunExperiment = useStartExperimentReviewMutation();
-  // The names a "run all" sweep still has to get through, and the one it has
-  // already dispatched. Experiments share a workspace, so they must run one at
-  // a time; the sweep advances on evidence (a verdict appearing) rather than on
-  // the POST resolving, which only means the run was accepted.
   const [sweep, setSweep] = useState<readonly string[] | undefined>();
   const [dispatched, setDispatched] = useState<string | undefined>();
-  // The attempt this console opened, named by the run that opened it. Preferred
-  // over the newest listed attempt because the list lags: the workbench writes
-  // the record a moment after the POST returns, and every step dispatched in
-  // that gap would join the *previous* attempt instead.
   const openedReviewId = reviewAcquireSource.data;
   const { attempt, pending } = selectReviewAttempt(reviews.data, openedReviewId);
 
@@ -81,9 +59,7 @@ export function useReviewWorkflowModel({
         ? "activate_experiment_environment"
         : reviewRunExperiment.isPending
           ? "experiments"
-          : // An attempt opened but not yet readable is the source step still
-            // going, which also keeps every later step disabled until it lands.
-            pending
+          : pending
             ? "acquire_source"
             : undefined;
   const statuses = reviewStepStatuses(attempt, { pendingStep });
@@ -100,19 +76,12 @@ export function useReviewWorkflowModel({
     reviewRunExperiment.mutate({ reviewId: attempt.reviewId, experimentName });
   };
 
-  // A sweep covers what has no verdict yet rather than everything declared:
-  // re-running a settled experiment is a deliberate act, and the per-experiment
-  // "Re-run" is where it belongs.
   const remaining = unreproducedExperiments(attempt, experimentNames);
   const runAllExperiments = () => {
     if (!attempt || !enabledSteps.has("experiments") || remaining.length === 0) return;
     setSweep(remaining);
   };
 
-  // Drive a sweep one experiment at a time. The next one goes out only once the
-  // previous has a verdict on the record, because the POST resolving means the
-  // run was accepted rather than finished — and two experiments running at once
-  // would write over each other's outputs in the shared workspace.
   useEffect(() => {
     if (!sweep || !attempt) return;
     const next = sweep.find(
@@ -123,8 +92,6 @@ export function useReviewWorkflowModel({
       setDispatched(undefined);
       return;
     }
-    // A step that failed produces no verdict, so waiting for one would stall the
-    // sweep in silence. Stop instead and leave the failure on screen.
     if (attempt.status === "failed") {
       setSweep(undefined);
       setDispatched(undefined);
@@ -138,16 +105,10 @@ export function useReviewWorkflowModel({
   const invokeStep = (step: ReviewStepKey) => {
     if (!enabledSteps.has(step)) return;
     if (step === "acquire_source") reviewAcquireSource.mutate(basis);
-    // Build joins the attempt source opened; without one there is nothing to
-    // build against, which is also why the DAG leaves it disabled until then.
     if (step === "build_experiment_environment" && attempt)
       reviewBuildExperimentEnvironment.mutate({ reviewId: attempt.reviewId, basis });
-    // Activation takes no basis: it probes whatever runtime the build left in
-    // the attempt's workspace and inherits what that evidence is worth.
     if (step === "activate_experiment_environment" && attempt)
       reviewActivateExperimentEnvironment.mutate({ reviewId: attempt.reviewId });
-    // The graph node stands for the whole set, so it sweeps; one experiment at
-    // a time is the panel's job.
     if (step === "experiments") runAllExperiments();
   };
 

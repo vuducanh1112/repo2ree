@@ -1,20 +1,3 @@
-"""The run-starting authoring steps, in step order.
-
-One route per step ``ree steps`` lists that advances by
-*running something in the workbench*: hbom, the working environment check, evaluate, build, sbom,
-crosscheck, activation, experiments. They are one family and differ only in the command they
-dispatch and the words their run logs carry, so they live together — the shape
-they share is visible here, and the reviewer's mirror of these same steps sits
-in :mod:`repo2ree_api.review.stages`.
-
-Each keeps its own payload model even where it has no fields: the class name and
-docstring are the schema name and description in the published contract, so a
-shared model would flatten seven distinct operations into one anonymous body.
-
-Steps that advance by *declaring* rather than running (source, metadata, seal)
-are in the sibling modules named for them.
-"""
-
 from __future__ import annotations
 
 import json
@@ -48,13 +31,8 @@ from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SC
 stages_router = APIRouter(tags=["runs"])
 
 
-# ================================================
-# Hardware BOM
-# ================================================
-
-
 class ObserveHardwarePayload(CreateRunPayload):
-    """Profile the workbench host's hardware. Takes no parameters of its own."""
+    pass
 
 
 @stages_router.post(
@@ -77,11 +55,6 @@ def observe_hardware_route(ree_id: str, payload: ObserveHardwarePayload) -> RunS
             )
         )
     )
-
-
-# ================================================
-# Reproducibility readiness
-# ================================================
 
 
 class EvaluateReproducibilityPayload(CreateRunPayload):
@@ -120,19 +93,11 @@ _REPORT_FILENAME = "reproducibility-report.json"
     responses=ERROR_RESPONSES,
 )
 def get_reproducibility_report_route(ree_id: str) -> dict[str, Any]:
-    """The persisted evaluate-run report artifact.
-
-    A threat's ``blocking`` means it holds its axis at its current level. Nothing
-    refuses to run or seal because of one.
-    """
     with author_api_action("view_reproducibility_report", ree_id):
         return _reproducibility_report(ree_id)
 
 
 def _reproducibility_report(ree_id: str) -> dict[str, Any]:
-    # An unknown or unreachable REE is resolved first, so "no report yet" is
-    # never how a caller learns their REE is gone (404) or its workbench is
-    # down (503).
     handle = require_handle(ree_id)
     try:
         data = command_dispatcher.read_ree_file_bytes(handle, f"artifacts/{_REPORT_FILENAME}")
@@ -145,13 +110,8 @@ def _reproducibility_report(ree_id: str) -> dict[str, Any]:
         ) from exc
 
 
-# ================================================
-# Build experiment environment
-# ================================================
-
-
 class BuildExperimentEnvironmentPayload(CreateRunPayload):
-    """Run the reserved build script. Takes no parameters of its own."""
+    pass
 
 
 @stages_router.post(
@@ -181,18 +141,8 @@ def build_experiment_environment_route(ree_id: str, payload: BuildExperimentEnvi
     )
 
 
-# ================================================
-# Software BOM
-# ================================================
-
-
 class GenerateSbomPayload(CreateRunPayload):
-    """Scan the declared experiment environment artifact. Takes no parameters of its own.
-
-    Which artifact gets scanned is the build recipe's ``experiment_environment_path``, which
-    the author declared before the build ran and the build receipt binds. The
-    handler reads it there; a client cannot name a different one.
-    """
+    pass
 
 
 @stages_router.post(
@@ -217,13 +167,8 @@ def generate_sbom_route(ree_id: str, payload: GenerateSbomPayload) -> RunSummary
     )
 
 
-# ================================================
-# SBOM cross-check
-# ================================================
-
-
 class CrossCheckSbomPayload(CreateRunPayload):
-    """Cross-check the recorded SBOM against the built experiment environment. No parameters."""
+    pass
 
 
 @stages_router.post(
@@ -248,13 +193,8 @@ def cross_check_sbom_route(ree_id: str, payload: CrossCheckSbomPayload) -> RunSu
     )
 
 
-# ================================================
-# Activation test
-# ================================================
-
-
 class ActivateExperimentEnvironmentPayload(CreateRunPayload):
-    """Run the activate experiment environment script alone. Takes no parameters of its own."""
+    pass
 
 
 @stages_router.post(
@@ -280,13 +220,8 @@ def activate_experiment_environment_route(ree_id: str, payload: ActivateExperime
     )
 
 
-# ================================================
-# Check working environment
-# ================================================
-
-
 class CheckWorkingEnvironmentPayload(CreateRunPayload):
-    """Run the REE's check script in its working environment. Takes no parameters of its own."""
+    pass
 
 
 @stages_router.post(
@@ -312,13 +247,8 @@ def check_working_environment_route(ree_id: str, payload: CheckWorkingEnvironmen
     )
 
 
-# ================================================
-# Experiments
-# ================================================
-
-
 class RunExperimentPayload(CreateRunPayload):
-    """No fields of its own yet — the extension point for future run options."""
+    pass
 
 
 @stages_router.post(
@@ -333,12 +263,6 @@ def run_experiment_route(
     experiment_name: str,
     payload: RunExperimentPayload,
 ) -> RunSummary:
-    # No host-side resolution preflight: reading the intent costs a synchronous
-    # round-trip into the workbench (~600ms on the click path) to re-check rules
-    # the in-workbench handler applies authoritatively anyway — the intent can
-    # change between the two, so only the workbench's verdict ever counted. An
-    # unresolvable experiment surfaces as a failed run carrying the same
-    # message, exactly as the activation route already behaved.
     return RunSummary.model_validate(
         run_summary(
             start_single_command_run(

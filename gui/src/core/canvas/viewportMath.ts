@@ -1,20 +1,15 @@
 import type { Point } from "./cableGeometry";
 
-/** Pan (x, y) and zoom (z) of the world layer. */
 export interface Transform {
   x: number;
   y: number;
   z: number;
 }
 
-// Small screens need to frame the complete 2.5D constellation.
 export const ZOOM_MIN = 0.28;
 export const ZOOM_MAX = 1.7;
-// One wheel notch. Zooming out is the exact inverse, so a notch each way
-// returns to where it started.
 const WHEEL_ZOOM_STEP = 1.1;
 
-/** The stage box a pointer position is interpreted against. `DOMRect` satisfies this. */
 export interface StageBox {
   left: number;
   top: number;
@@ -22,7 +17,6 @@ export interface StageBox {
   height: number;
 }
 
-/** Axis-aligned bounds in world coordinates. */
 export interface WorldBounds {
   left: number;
   top: number;
@@ -34,16 +28,6 @@ export function clampZoom(z: number): number {
   return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
 }
 
-/**
- * Frame world-space bounds inside a viewport with an even screen-space inset.
- *
- * The fit is allowed to enlarge as well as shrink, up to {@link ZOOM_MAX}. It
- * used to stop at 100%, which only made sense while the bounds were a hand-kept
- * constant declaring far more room than the scene occupied — framing that box
- * was already zooming out, so the cap never bound. Now that the bounds come
- * from the nodes themselves, "fit" means fit: a scene smaller than its viewport
- * should use the space rather than sit in the middle of it at 1:1.
- */
 export function fitBounds(
   viewport: Pick<StageBox, "width" | "height">,
   bounds: WorldBounds,
@@ -57,16 +41,6 @@ export function fitBounds(
   return { x: -centreX * z, y: -centreY * z, z };
 }
 
-/**
- * Zoom one wheel notch about the pointer, keeping whatever is under the cursor
- * under the cursor. `offset` is the pointer's position relative to the world's
- * current centre; scaling by `z/prev.z - 1` moves the world by exactly the
- * amount the zoom would otherwise have shifted that point.
- *
- * At a zoom limit the clamp makes the ratio 0, so a further notch is a no-op
- * rather than a pan — which is also why the measure loop needs its own timeout:
- * a no-op transform fires no `transitionend`.
- */
 export function zoomToward(
   prev: Transform,
   pointer: Point,

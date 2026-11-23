@@ -1,5 +1,3 @@
-"""A launch is proposed where Slurm answers, for confirmation, and nothing is inferred where it does not."""
-
 from __future__ import annotations
 
 from pathlib import Path

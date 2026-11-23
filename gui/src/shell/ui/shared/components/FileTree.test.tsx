@@ -28,10 +28,8 @@ function renderTree(props: Partial<Parameters<typeof FileNode>[0]> = {}) {
 describe("FileNode", () => {
   it("opens the root but leaves deeper folders closed", () => {
     renderTree();
-    // depth 0 is open, so its direct children are visible...
     expect(screen.getByRole("button", { name: /\bmain\.py/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /tests/ })).toBeInTheDocument();
-    // ...but tests/ is depth 1 and starts closed, so its child is not rendered.
     expect(screen.queryByRole("button", { name: /test_main\.py/ })).not.toBeInTheDocument();
   });
 
@@ -70,8 +68,6 @@ describe("FileNode", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /tests/ }));
 
-    // The click flips the folder's own `open`, but `forceOpen` wins — a filtered
-    // tree must not be collapsible out from under the filter.
     expect(screen.getByRole("button", { name: /test_main\.py/ })).toBeInTheDocument();
   });
 

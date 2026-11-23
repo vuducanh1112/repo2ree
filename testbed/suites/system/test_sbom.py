@@ -1,5 +1,3 @@
-"""The SBOM is observed in whatever tarball the build packed, and follows what it was made from."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -8,7 +6,6 @@ from system_client import BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, EXPERIMENT_ENVIRO
 
 
 def standing(api: Api, ree_id: str) -> tuple[str, str, str]:
-    """The experiment environment, its SBOM, and the cross-check of that SBOM against the evaluation."""
     audit = api.audit(ree_id)
     experiment_environment, sbom, cross_check = (
         str(audit[step]["evidence"]) for step in ("build_experiment_environment", "generate_sbom", "cross_check_sbom")
@@ -21,18 +18,15 @@ def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Call
     api.author(ree_id)
     assert standing(api, ree_id) == ("current", "missing", "missing")
 
-    # The instant project's experiment environment is a packed venv, not an image.
     api.succeed(ree_id, "generate-sbom")
     api.succeed(ree_id, "cross-check-sbom")
     assert standing(api, ree_id) == ("current", "current", "current")
 
-    # A changed build script outdates the experiment environment; the SBOM still describes the tarball that exists.
     build_experiment_environment_script = str(
         api.infer(ree_id, "build_experiment_environment")["candidates"][0]["body"]
     )
     api.write(ree_id, BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT, build_experiment_environment_script + "# touched\n")
     assert standing(api, ree_id) == ("stale", "current", "current")
-    # A new tarball outdates the SBOM; the cross-check still describes the SBOM that exists.
     api.succeed(ree_id, "build-experiment-environment")
     assert standing(api, ree_id) == ("current", "stale", "current")
     api.succeed(ree_id, "generate-sbom")
@@ -40,10 +34,8 @@ def test_each_receipt_follows_only_what_it_was_made_from(api: Api, new_ree: Call
     api.succeed(ree_id, "cross-check-sbom")
     assert standing(api, ree_id) == ("current", "current", "current")
 
-    # Every REE has its build script: it is never undeclared.
     api.patch(ree_id, {"experiment_environment": None}, expect=400)
     assert standing(api, ree_id) == ("current", "current", "current")
-    # Undeclaring the experiment environment orphans all three.
     api.patch(ree_id, {"experiment_environment": {"artifact_path": None}})
     assert standing(api, ree_id) == ("stale", "stale", "stale")
 

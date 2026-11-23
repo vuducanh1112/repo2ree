@@ -1,5 +1,3 @@
-"""Spans are read as the e2e stack writes them, and a trace renders into one self-contained page."""
-
 from __future__ import annotations
 
 import json
@@ -38,7 +36,6 @@ def exported(span_id: str, parent: str | None, start: str, end: str, **extra: ob
 
 
 def test_console_exporter_output_is_read_as_spans() -> None:
-    # The exporter writes indented objects back to back, not one per line.
     text = "\n".join(
         json.dumps(document, indent=4)
         for document in (
@@ -58,7 +55,6 @@ def test_span_records_that_cannot_be_read_are_counted_and_passed_over() -> None:
     unfinished = exported("02", None, "2026-10-18T10:00:00Z", "2026-10-18T10:00:01Z")
     del unfinished["end_time"]
     cut = json.dumps(exported("03", None, "2026-10-18T10:00:00Z", "2026-10-18T10:00:01Z"), indent=4)[:-40]
-    # A record without its end, one cut short by a killed process, and readable ones around them.
     text = "\n".join([whole, json.dumps(unfinished, indent=4), cut, whole.replace("0x01", "0x04")])
     spans, unreadable = parse_spans(text)
     assert [span.id for span in spans] == ["01", "04"]
@@ -91,13 +87,10 @@ def test_a_template_without_a_place_for_the_trace_is_refused() -> None:
         render_html(BehaviourTrace.model_construct(), "<html></html>")
 
 
-# Tiers whose every test authors an REE once it passes; a fault test may end before any exists.
 GATED_TIERS = ("e2e-system-*", "e2e-gui-instant-*")
 
 
 def passed(dossier: Path) -> bool:
-    """Whether the test that left ``dossier`` passed, as its run records it: one that failed may have stopped before
-    its REE took a step, leaving a history that names no REE."""
     test = dossier.parent
     try:
         run = json.loads((test.parent.parent / "run.json").read_text())
@@ -109,7 +102,6 @@ def passed(dossier: Path) -> bool:
 
 
 def current_commits(dossier: Path) -> bool:
-    """Whether the REE histories the dossier keeps are in the current format: each head commit names its own tree."""
     heads = [git_dir for git_dir in dossier.glob("rees/*/ree/.git") if git_dir.is_dir()]
     for git_dir in heads:
         body = subprocess.run(
@@ -127,7 +119,6 @@ def current_commits(dossier: Path) -> bool:
 
 
 def dossiers() -> list[Path]:
-    """Dossiers of the gated tiers' passed tests holding journals and an REE's history, in the current format."""
     found: list[Path] = []
     for path in sorted(path for tier in GATED_TIERS for path in E2E_RUNS.glob(f"{tier}/tests/*/dossier")):
         try:
@@ -135,13 +126,12 @@ def dossiers() -> list[Path]:
             if dossier.recorded("journal") and dossier.recorded("git") and passed(path) and current_commits(path):
                 found.append(path)
         except (OSError, ValueError):
-            continue  # Not a dossier in the current format.
+            continue
     return found
 
 
 @pytest.mark.skipif(not dossiers(), reason="needs an e2e run's dossier with an REE under test-artifacts/e2e")
 def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
-    # Verification is its own step; the views read only what it wrote.
     verified = tmp_path / "verified"
     subprocess.run(
         [
@@ -169,7 +159,6 @@ def test_a_real_recording_draws_one_page_per_ree(tmp_path: Path) -> None:
     for page in pages:
         trace = BehaviourTrace.model_validate_json(page.with_suffix(".json").read_text())
         assert page.stem == trace.ree
-        # Each page offers the whole dossier and every REE of it, itself among them, by the page drawn for it.
         assert {sibling.page for sibling in trace.siblings} == {other.name for other in (whole, *pages)}
         assert all(entry.sequence and entry.sequence.rows for entry in trace.entries if entry.kind == "operation")
         assert PLACEHOLDER not in page.read_text()
@@ -187,4 +176,4 @@ def test_the_command_line_says_what_it_cannot_draw(tmp_path: Path, capsys: pytes
     assert main(["trace", str(tmp_path / "absent"), "--json", "--provenance"]) == 2
     assert "--json needs --output" in capsys.readouterr().err
     with pytest.raises(SystemExit):
-        main([str(tmp_path / "absent")])  # No command.
+        main([str(tmp_path / "absent")])

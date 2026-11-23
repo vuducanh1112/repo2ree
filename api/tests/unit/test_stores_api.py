@@ -1,5 +1,3 @@
-"""REEs served by stores: the stores, their workbenches' admission, and REEs while a store is offline."""
-
 from __future__ import annotations
 
 import json
@@ -31,7 +29,6 @@ def lab() -> str:
 
 
 def _served(store_id: str) -> str | None:
-    """The workbench serving ``store_id`` once its hello is handled (admission runs after it arrives)."""
     deadline = time.monotonic() + 5
     while (served := workbench_connections.store_workbench(store_id)) is None and time.monotonic() < deadline:
         time.sleep(0.01)
@@ -186,7 +183,6 @@ def test_a_served_store_says_how_its_machine_runs_scripts(client: TestClient, la
 
 @pytest.fixture
 def journal_path(tmp_path: Path) -> Iterator[Path]:
-    """A journal of the test's own, as the process's, for as long as the test runs."""
     opened = open_journal(tmp_path / "journal", "api", hosts=("api", "supervisor"))
     yield opened.path
     close_journal()
@@ -195,7 +191,6 @@ def journal_path(tmp_path: Path) -> Iterator[Path]:
 def _sessions(
     path: Path, store_id: str, settled: int, timeout: float = 5.0
 ) -> list[tuple[str | None, str, dict[str, Any]]]:
-    """The store's WorkbenchSession transitions in the journal at ``path``, once ``settled`` of them have settled."""
     deadline = time.monotonic() + timeout
     while True:
         rows = [json.loads(line) for line in path.read_text().splitlines()]

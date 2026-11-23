@@ -5,14 +5,6 @@ import { userEvent } from "vitest/browser";
 import "../../theme/index.css";
 import { CodeEditor, type CodeEditorMark } from "./CodeEditor";
 
-/**
- * What only a real browser can answer about the editor: that typing into
- * CodeMirror's contenteditable produces the document the card will save, that
- * the syntax and mark colors resolve to the theme's own custom properties, and
- * that the frame rings like the other form controls. The jsdom project asserts
- * the prop-driven behaviour; it has no layout and no stylesheet to consult.
- */
-
 function Harness({ initial = "", marks }: { initial?: string; marks?: CodeEditorMark[] }) {
   const [value, setValue] = useState(initial);
   return (
@@ -23,9 +15,6 @@ function Harness({ initial = "", marks }: { initial?: string; marks?: CodeEditor
   );
 }
 
-/** Resolve a theme custom property the way the browser reports it back —
- * `getComputedStyle` normalises every colour to `rgb()`, so the raw token value
- * never compares equal on its own. */
 function themeColor(name: string): string {
   const probe = document.createElement("span");
   probe.style.color = `var(${name})`;
@@ -76,7 +65,6 @@ describe("CodeEditor in a browser", () => {
     expect(getComputedStyle(frame).borderTopColor).toBe("rgba(148, 163, 184, 0.35)");
 
     await userEvent.click(getByLabelText("Run script"));
-    // The same accent stop a focused input promotes its border to.
     await expect
       .poll(() => getComputedStyle(frame).borderTopColor)
       .toBe("rgba(14, 165, 233, 0.58)");
@@ -92,7 +80,6 @@ describe("CodeEditor in a browser", () => {
 
     const range = container.querySelector(".cm-lintRange-error");
     expect(range).not.toBeNull();
-    // Not CodeMirror's baked-in squiggle image: a wavy underline the theme owns.
     expect(getComputedStyle(range as Element).textDecorationColor).toBe(
       themeColor("--tone-danger-line"),
     );

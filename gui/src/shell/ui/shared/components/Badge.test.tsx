@@ -24,8 +24,6 @@ describe("Badge", () => {
   });
 
   it("takes a domain tone as custom properties and drops the semantic one", () => {
-    // A stage-tinted badge has no fixed mood to fall back on: leaving data-tone
-    // set would layer the neutral tone under the tint.
     render(
       <Badge
         tint={{
@@ -39,8 +37,6 @@ describe("Badge", () => {
     );
     const badge = screen.getByText("Built");
     expect(badge).not.toHaveAttribute("data-tone");
-    // Ink and line are published separately: the words take the deep shade, the
-    // edge is derived from the mid one.
     expect(badge.style.getPropertyValue("--badge-ink")).toBe(
       "var(--stage-build_experiment_environment-ink)",
     );

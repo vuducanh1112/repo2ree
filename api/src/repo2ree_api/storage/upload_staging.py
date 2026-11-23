@@ -1,21 +1,3 @@
-"""Transient host-side staging for HTTP uploads.
-
-Uploaded bytes must land on control-plane disk before they are streamed to the
-selected workbench. The workbench assembles the transfer and copies it into the
-workbench, where ``extract_upload`` consumes it. This is the only host
-persistence in the REE flow; it is keyed solely by upload token and holds no
-per-REE durable state.
-
-Guardrails: tokens are validated before they touch a path (a request-supplied
-token must never escape the staging dir), and only *minted* tokens can land
-bytes — ``new_upload_token`` creates an empty staged marker that the PUT
-requires, so a request cannot invent tokens and write files. A single upload is
-capped at ``UPLOAD_MAX_BYTES``, the staging dir as a whole at
-``UPLOAD_STAGING_MAX_BYTES``, and files older than ``UPLOAD_TTL_SECONDS`` —
-abandoned uploads that never reached upload-complete — are swept
-opportunistically.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -31,29 +13,27 @@ from pathlib import Path
 from repo2ree_api.settings import service_settings
 from repo2ree_ree.instant import format_utc_instant
 
-# Minted tokens are uuid hex; accept a slightly wider single-path-component
-# charset so the format is not load-bearing, but nothing that can traverse.
 _TOKEN_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
 
 
 class InvalidUploadTokenError(ValueError):
-    """The upload token is not a safe single path component."""
+    pass
 
 
 class UnknownUploadTokenError(RuntimeError):
-    """The upload token was never minted, or its staged file expired."""
+    pass
 
 
 class UploadTooLargeError(RuntimeError):
-    """The upload body exceeded ``UPLOAD_MAX_BYTES``."""
+    pass
 
 
 class UploadStagingFullError(RuntimeError):
-    """The staging dir has no room left under ``UPLOAD_STAGING_MAX_BYTES``."""
+    pass
 
 
 class UploadSizeMismatchError(RuntimeError):
-    """The received byte count differs from the positive declared size."""
+    pass
 
 
 def _staging_root() -> Path:
@@ -71,7 +51,7 @@ def staged_upload_path(token: str) -> Path:
 
 
 def _upload_metadata_path(token: str) -> Path:
-    staged_upload_path(token)  # validates the token
+    staged_upload_path(token)
     return _staging_root() / f"{token}.json"
 
 
@@ -84,15 +64,6 @@ def new_upload_token(
     purpose: str = "",
     action_id: str | None = None,
 ) -> dict[str, str]:
-    """Allocate an upload token and its expiry, minting its (empty) staged file.
-
-    ``action_id`` is the author action the upload belongs to, continued when it completes.
-
-    The empty file is the token's proof of mint: the PUT refuses tokens without
-    one, and the TTL sweep reclaims it like any other staged file if the bytes
-    never arrive."""
-    # Each mint sweeps expired leftovers, so abandoned uploads cannot
-    # accumulate on the host past their TTL.
     discard_expired_uploads()
     ensure_staging_root()
     token = uuid.uuid4().hex
@@ -116,7 +87,6 @@ def new_upload_token(
 
 
 def upload_action_id(token: str) -> str | None:
-    """The author action an upload token was minted for, if it is still staged and names one."""
     try:
         metadata = _read_upload_metadata(token)
     except (InvalidUploadTokenError, UnknownUploadTokenError, OSError, ValueError):
@@ -126,7 +96,6 @@ def upload_action_id(token: str) -> str | None:
 
 
 def validate_upload_owner(token: str, *, ree_id: str, purpose: str, file_name: str | None = None) -> None:
-    """Require a token to belong to the addressed REE and upload workflow."""
     path = staged_upload_path(token)
     if not path.exists():
         raise UnknownUploadTokenError(f"unknown or expired upload token {token!r}")
@@ -145,9 +114,6 @@ async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:
     if not path.exists():
         raise UnknownUploadTokenError(f"unknown or expired upload token {token!r}")
     max_bytes = service_settings.UPLOAD_MAX_BYTES
-    # What the rest of the staging dir leaves this upload under the global
-    # budget, snapshotted once — concurrent uploads may overshoot by at most
-    # one upload cap each, which is the accuracy this guardrail needs.
     allowance = min(max_bytes, _staging_allowance(path))
     total = 0
     try:
@@ -168,8 +134,6 @@ async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:
         if isinstance(expected_size, int) and expected_size > 0 and total != expected_size:
             raise UploadSizeMismatchError(f"upload size {total} does not match declared size {expected_size}")
     except BaseException:
-        # Reset to the minted marker rather than deleting: the token stays
-        # valid for a retry PUT until its TTL.
         with suppress(OSError):
             path.write_bytes(b"")
         raise
@@ -177,7 +141,6 @@ async def stage_upload_stream(token: str, chunks: AsyncIterable[bytes]) -> Path:
 
 
 def _staging_allowance(current: Path) -> int:
-    """Bytes ``current`` may grow to before the staging dir exceeds its budget."""
     used = 0
     for staged in _staging_root().glob("*.bin"):
         if staged != current:
@@ -203,13 +166,11 @@ def _read_upload_metadata(token: str) -> dict[str, object]:
 
 
 def discard_expired_uploads() -> None:
-    """Delete staged files older than the TTL (abandoned uploads)."""
     root = _staging_root()
     if not root.is_dir():
         return
     cutoff = time.time() - service_settings.UPLOAD_TTL_SECONDS
     for staged in root.glob("*.bin"):
-        # A concurrent upload-complete may legitimately race the sweep.
         with suppress(OSError):
             if staged.stat().st_mtime < cutoff:
                 token = staged.name.removesuffix(".bin")

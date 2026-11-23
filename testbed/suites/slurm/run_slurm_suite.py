@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""The Slurm suite as a stack's client (``python -m repo2ree_testbed e2e --script``)."""
-
 import sys
 from pathlib import Path
 

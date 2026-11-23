@@ -1,5 +1,3 @@
-"""Optimistic concurrency at the HTTP authoring boundary."""
-
 from __future__ import annotations
 
 import hashlib
@@ -48,7 +46,6 @@ def test_definition_version_conflict_reports_expected_and_actual_versions(
 
 
 def _conflict_result(path: str, expected: str, actual: str | None) -> ActionResult:
-    """The shape the write/delete handlers report on an etag mismatch."""
     return ActionResult.failed(
         "conflict",
         f"etag mismatch for {path}",
@@ -86,7 +83,6 @@ def test_file_write_conflict_from_the_workbench_maps_to_409(
     assert error["code"] == "version_conflict"
     assert error["retryable"] is True
     assert error["details"]["actual_version"] == _etag(b"current")
-    # The guard rides inside the command so the workbench checks it atomically.
     assert dispatched[0].args.expected_etag == stale
 
 

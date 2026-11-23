@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Install a fully generated directory while preserving the previous result on failure."""
-
 from __future__ import annotations
 
 import argparse

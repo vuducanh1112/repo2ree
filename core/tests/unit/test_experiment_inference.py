@@ -1,5 +1,3 @@
-"""End-to-end experiment-run inference: declaration gate + capture scaffold."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -71,13 +69,12 @@ def test_declared_experiment_with_docker_experiment_environment_captures_log(tmp
     assert "RUN_LOG=results/exp-one.log" in body
     assert '>"$RUN_LOG"' in body
     assert "experiment_command_missing" in _codes(result)
-    # The log is a declared output, so no output-declaration warning.
     assert "experiment_output_declaration_missing" not in _codes(result)
 
 
 def test_undeclared_output_path_warns(tmp_path: Path) -> None:
     _tree(tmp_path, {"Dockerfile": "FROM x\n"})
-    exp = _definition("exp one", [])  # no output_paths declared
+    exp = _definition("exp one", [])
     result = _experiment(
         tmp_path,
         name="exp one",

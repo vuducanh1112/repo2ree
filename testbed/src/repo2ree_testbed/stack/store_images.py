@@ -1,6 +1,3 @@
-"""Images the testbed pins: Python on its own, as every machine is built from (testbed/environments/machine.nix),
-and Docker with a daemon of its own, a reviewer's offline machine."""
-
 from __future__ import annotations
 
 PYTHON_SLIM_IMAGE = (

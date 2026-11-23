@@ -1,6 +1,3 @@
-"""The interfaces and contracts pages say what the committed contracts say: every command, every operation, the
-steps both advance, and a graph for each entry point a contract names."""
-
 from __future__ import annotations
 
 import html

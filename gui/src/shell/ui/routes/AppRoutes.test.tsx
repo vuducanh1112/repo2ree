@@ -67,8 +67,6 @@ function renderRoute(route: string) {
 
 describe("AppRoutes", () => {
   it.each([
-    // /explorer is a legacy alias for the workspace, and a workspace with no
-    // REE now bounces on to the picker — so the alias resolves in two hops.
     ["/explorer", "/lab-location"],
     ["/not-a-route", "/"],
   ])("redirects %s to %s", async (route, expected) => {

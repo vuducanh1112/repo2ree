@@ -1,6 +1,3 @@
-/* A compact page surface pinned over the right side of the live canvas. The
- * rail extends a few pixels past the frame so it remains easy to acquire. */
-
 .host {
   position: absolute;
   z-index: 90;

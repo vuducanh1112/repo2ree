@@ -1,5 +1,3 @@
-"""A figure and the table behind it are results: the author's criterion checks what the figure is, not its bytes."""
-
 from __future__ import annotations
 
 import zipfile

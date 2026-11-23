@@ -18,8 +18,6 @@ function isShellLike(fileName: string): boolean {
   );
 }
 
-/** Which of the four kinds a line is, or undefined for ordinary content. The
- * classifier names the kind; FileViewer.module.css decides how it reads. */
 function classifyLine(line: string): string | undefined {
   if (line.startsWith("#")) return "comment";
   if (/^(FROM|RUN|COPY|CMD|WORKDIR|ARG|ENV)\b/.test(line)) return "keyword";

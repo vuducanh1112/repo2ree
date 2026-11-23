@@ -1,5 +1,3 @@
-"""``python -m repo2ree_testbed environment <name>``: a machine starts, runs what it offers, and leaves nothing."""
-
 from __future__ import annotations
 
 import argparse
@@ -18,7 +16,6 @@ SETUP_SECONDS = 1200
 
 
 def probe(environment: Environment) -> str:
-    """What must work on the machine: the workbench it is installed with, and a container where it has an engine."""
     steps = ["repo2ree-workbench --help >/dev/null"]
     if environment.engine:
         steps.append(shlex.join([environment.engine, "run", "--rm", PYTHON_SLIM_IMAGE, "python", "--version"]))

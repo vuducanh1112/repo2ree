@@ -1,9 +1,6 @@
 import type { ReeEditorViewModel } from "@core/ree-editor/reeEditorViewModel";
 import styles from "../SealContent.module.css";
 
-/** What the seal produced: the content identity the REE is now addressed by,
- *  and when it was frozen. Shown in place of the bundle choices, which the
- *  seal has already consumed. */
 export function SealedSummary({ ree }: { ree: ReeEditorViewModel }) {
   const sealDate = new Date(ree.artifact.sealedAt ?? new Date().toISOString()).toLocaleString([], {
     year: "numeric",

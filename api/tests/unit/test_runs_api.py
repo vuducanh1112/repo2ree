@@ -1,11 +1,3 @@
-"""The runs endpoints over real HTTP, driven by a genuinely failing run.
-
-``source:upload-complete`` with no staged bytes fails inside the real runner
-before anything crosses the workbench boundary — which makes it the one
-background run the API can execute end-to-end (start → log feed → terminal
-status) with no container. The Docker-gated tier covers the succeeding twin.
-"""
-
 from __future__ import annotations
 
 import time
@@ -20,11 +12,6 @@ from repo2ree_api.control.run_orchestration import start_background_run
 from repo2ree_api.deps import command_dispatcher, ree_router
 from repo2ree_protocol.result import ActionResult
 from repo2ree_supervisor import ReeRoute
-
-# ================================================
-# Helpers
-# ================================================
-
 
 RUN_TIMEOUT_SECONDS = 10
 TERMINAL_RUN_STATUSES = frozenset({"succeeded", "failed", "canceled"})
@@ -43,7 +30,6 @@ def _wait_for_run(client: TestClient, ree_id: str, run_id: str) -> str:
 
 
 def _start_failing_upload_run(client: TestClient, ree_id: str) -> dict[str, Any]:
-    """Complete an upload whose staged bytes were never PUT: the run fails for real."""
     initialized = client.post(
         f"/api/v1/rees/{ree_id}/source:upload-init",
         json={"file_name": "project.zip", "size": 1, "content_type": "application/zip"},
@@ -66,11 +52,6 @@ def failed_run(client: TestClient, online_ree: ReeRoute, staging_dir: Path) -> d
     return run
 
 
-# ================================================
-# Run summary
-# ================================================
-
-
 def test_failed_run_summary_shape(client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]) -> None:
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{failed_run['run_id']}")
     assert resp.status_code == 200
@@ -79,13 +60,10 @@ def test_failed_run_summary_shape(client: TestClient, online_ree: ReeRoute, fail
     assert summary["operation"] == "acquire_source"
     assert summary["ree_id"] == online_ree.ree_id
     assert summary["finished_at"] is not None
-    # A failed run carries its typed failure, so a client need not read the logs
-    # to learn why. This upload failed its staging precondition inside the API.
     assert summary["failure"] is not None
     assert summary["failure"]["category"] == "precondition"
     assert summary["failure"]["origin"] == "api"
     assert summary["failure"]["retryable"] is False
-    # internal bookkeeping never leaks into the API shape
     assert "_next_seq" not in summary
     assert "logs" not in summary
 
@@ -112,14 +90,8 @@ def test_historical_runs_do_not_authorize_new_work_after_ree_removal(
     response = client.post(f"/api/v1/rees/{online_ree.ree_id}/build-experiment-environment", json={})
 
     assert response.status_code == 404
-    # Historical state remains readable without a live workbench.
     assert client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run['run_id']}").status_code == 200
     assert client.get("/api/v1/rees/nope/runs/run-1/logs").status_code == 404
-
-
-# ================================================
-# Run listing
-# ================================================
 
 
 def test_list_runs_is_empty_for_ree_without_runs(client: TestClient, online_ree: ReeRoute) -> None:
@@ -141,7 +113,6 @@ def test_list_runs_returns_summaries_newest_first(
     for summary in runs:
         assert summary["operation"] == "acquire_source"
         assert summary["status"] == "failed"
-        # summaries carry no log feed or internal bookkeeping
         assert "logs" not in summary
         assert "_next_seq" not in summary
 
@@ -174,11 +145,6 @@ def test_unknown_run_for_known_ree_is_404(client: TestClient, online_ree: ReeRou
     resp = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/no-such-run")
     assert resp.status_code == 404
     assert resp.json()["error"]["message"] == "Run not found"
-
-
-# ================================================
-# Log feed + pagination
-# ================================================
 
 
 def test_failed_run_log_feed_carries_the_failure(
@@ -239,11 +205,6 @@ def test_observe_terminal_run_returns_status_and_logs_after_cursor(
     assert observation["changed"] is True
 
 
-# ================================================
-# Cancel
-# ================================================
-
-
 def test_cancel_of_terminal_run_returns_status_unchanged(
     client: TestClient, online_ree: ReeRoute, failed_run: dict[str, Any]
 ) -> None:
@@ -254,7 +215,6 @@ def test_cancel_of_terminal_run_returns_status_unchanged(
     assert resp.status_code == 200
     assert resp.json() == {"status": "failed"}
 
-    # a no-op cancel appends no "Cancel requested" log entry
     logs_after = client.get(f"/api/v1/rees/{online_ree.ree_id}/runs/{run_id}/logs").json()
     assert len(logs_after["entries"]) == len(logs_before["entries"])
 

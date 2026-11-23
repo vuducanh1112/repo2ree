@@ -1,27 +1,3 @@
-"""SBOM closure equivalence: does a reproduced experiment environment carry the same packages?
-
-The observed-vs-observed counterpart of :mod:`repo2ree_core.analysis.sbom.crosscheck`.
-The cross-check asks whether the experiment environment honours what the author *declared*;
-this module asks whether a reviewer's freshly built experiment environment carries the same
-dependency closure as the author's — the certifiable property when a container
-build is not bit-reproducible, which is the ordinary case.
-
-Why the closure and not the bytes: image builds embed timestamps, layer
-ordering, and base-image tags that move, so identical inputs routinely produce
-different digests while installing exactly the same software. A digest match is
-therefore the *stronger* verdict, not the only acceptable one, and a closure
-match is what a reviewer can realistically certify.
-
-The ``other`` ecosystem is advisory, never decisive. ``parse_cyclonedx`` maps
-every unlisted purl type (apk, rpm, golang, ...) onto that single bucket keyed
-by name alone, so two genuinely different packages can collide there. Letting a
-bucket that cannot distinguish its members decide a verdict would manufacture
-both false differences and false equivalences; its deltas are counted and
-reported so a reviewer still sees them.
-
-Pure module: values in, values out, no I/O.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -33,14 +9,11 @@ from repo2ree_ree.dependency import Ecosystem
 
 ClosureVerdict = Literal["equivalent", "different", "inconclusive"]
 
-# The bucket that cannot distinguish its own members (see the module docstring).
 _ADVISORY_ECOSYSTEM: Ecosystem = "other"
 
 
 @dataclass(frozen=True)
 class PackageDelta:
-    """One package the two closures disagree about."""
-
     ecosystem: Ecosystem
     name: str
     expected_version: str | None = None
@@ -49,14 +22,6 @@ class PackageDelta:
 
 @dataclass(frozen=True)
 class ClosureDelta:
-    """The full disagreement between two dependency closures.
-
-    ``missing`` is present for the author and absent for the reviewer;
-    ``extra`` is the reverse. Deltas are split into the decisive rows (which
-    settle the verdict) and the advisory ``other``-ecosystem rows. The ``*_count``
-    fields count the lists beside them, which hold every delta.
-    """
-
     expected_total: int = 0
     observed_total: int = 0
     matched: int = 0
@@ -71,7 +36,6 @@ class ClosureDelta:
 
     @property
     def decisive_count(self) -> int:
-        """How many deltas actually bear on the verdict."""
         return self.missing_count + self.extra_count + self.version_mismatch_count
 
 
@@ -79,13 +43,6 @@ def compare_sbom_closures(
     expected: list[ObservedPackage],
     observed: list[ObservedPackage],
 ) -> ClosureDelta:
-    """Diff the author's experiment environment closure against a reviewer's rebuilt one.
-
-    Packages are joined on ``(ecosystem, name)`` — the identity the CycloneDX
-    adapter already normalizes both sides to — and versions are compared with
-    the shared normalization, so an epoch or a ``v`` prefix is never mistaken
-    for a rebuild difference.
-    """
     expected_by_key = _by_key(expected)
     observed_by_key = _by_key(observed)
 
@@ -150,19 +107,12 @@ def compare_sbom_closures(
 
 
 def closure_verdict(delta: ClosureDelta) -> ClosureVerdict:
-    """The verdict a closure delta settles on.
-
-    ``inconclusive`` when either side produced no packages at all: an empty
-    closure means the scan or the author baseline is absent, and "nothing
-    differs from nothing" is not evidence of a faithful rebuild.
-    """
     if delta.expected_total == 0 or delta.observed_total == 0:
         return "inconclusive"
     return "equivalent" if delta.decisive_count == 0 else "different"
 
 
 def _by_key(packages: list[ObservedPackage]) -> dict[tuple[Ecosystem, str], ObservedPackage]:
-    """First occurrence per identity — an SBOM may list a package more than once."""
     table: dict[tuple[Ecosystem, str], ObservedPackage] = {}
     for package in packages:
         table.setdefault((package.ecosystem, package.name), package)
@@ -170,18 +120,12 @@ def _by_key(packages: list[ObservedPackage]) -> dict[tuple[Ecosystem, str], Obse
 
 
 def _same_version(expected: str | None, observed: str | None) -> bool:
-    """Whether two recorded versions agree, treating an unrecorded one as agreeing.
-
-    Only a version *both* sides state can disagree: a component the scanner
-    could not version on one side is missing metadata, not a rebuild difference.
-    """
     if not expected or not observed:
         return True
     return versions_match(expected, observed)
 
 
 def _route(advisory: list[PackageDelta], decisive: list[PackageDelta], delta: PackageDelta) -> None:
-    """File a delta as advisory or decisive, by the ecosystem that produced it."""
     (advisory if delta.ecosystem == _ADVISORY_ECOSYSTEM else decisive).append(delta)
 
 

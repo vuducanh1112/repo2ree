@@ -75,8 +75,6 @@ function createReeRunLogsQueryOptions(
         if (!chunk.hasMore) {
           break;
         }
-        // A backend that reports more data without advancing its cursor would
-        // otherwise make every poll repeat the same page until the safety cap.
         if (!cursor || cursor === previousCursor) {
           hasMore = false;
           break;
@@ -112,13 +110,7 @@ async function fetchReeRunLogs(
   );
 }
 
-// How briskly anything in flight is polled — the run listing that drives the
-// always-mounted logs HUD, a single run and its logs, and the imperative
-// observer below. One constant so the app's responsiveness is retuned in one
-// place instead of five.
 const RUNS_ACTIVE_POLL_MS = 1500;
-// Nothing in flight: still often enough to notice runs started outside this tab,
-// e.g. by a workbench service.
 const RUNS_IDLE_POLL_MS = 5000;
 
 export function useReeRunsQuery(reeId?: string) {
@@ -129,15 +121,12 @@ export function useReeRunsQuery(reeId?: string) {
   const query = useQuery({
     queryKey: queryKeys.reeRuns(resolvedReeId),
     queryFn: (): Promise<ReeRunSummary[]> => executionRunsClient.listReeRuns(resolvedReeId),
-    // The sentinel id means "no REE yet"; passive listings stay disabled until
-    // the provisioning flow navigates to a concrete REE scope.
     enabled: !!resolvedReeId && resolvedReeId !== DEFAULT_REE_ID,
     refetchInterval: (query) => {
       const anyActive = query.state.data?.some((run) => !isTerminalReeRunStatus(run.status));
       return anyActive ? RUNS_ACTIVE_POLL_MS : RUNS_IDLE_POLL_MS;
     },
   });
-  // The REE document follows settled runs in one place: useReeDocumentFollowsRuns.
   return query;
 }
 
@@ -182,8 +171,6 @@ export function useReeRunLogsQuery(reeId: string | undefined, runId: string | un
       if (!runId) {
         return false;
       }
-      // A single fetch deliberately has a page ceiling. Keep draining from the
-      // cached cursor even if the associated run has already become terminal.
       if (query.state.data?.hasMore) {
         return RUNS_ACTIVE_POLL_MS;
       }
@@ -222,8 +209,6 @@ export async function observeReeRun(
 
     args.onUpdate?.(snapshot);
 
-    // Catch up immediately when one fetch reached its page ceiling. The query
-    // cache retains the cursor, so the next pass starts where this one stopped.
     if (logs.hasMore) {
       continue;
     }

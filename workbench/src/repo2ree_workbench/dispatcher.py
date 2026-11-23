@@ -1,10 +1,3 @@
-"""Translate validated execution requests into workbench-service operations.
-
-``CancelRequest`` is deliberately absent: it is a transport concern (stop the
-in-flight request with that id), so the connection loop that owns the in-flight
-table handles it before dispatch ever sees the message.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -33,7 +26,7 @@ from repo2ree_workbench.uploads import download_file, transfer_url, upload_file
 
 
 class CallerGoneError(ConnectionError):
-    """A frame could not be sent: the connection the request came on is gone."""
+    pass
 
 
 SendFrame = Callable[[Frame], Awaitable[None]]
@@ -49,11 +42,7 @@ async def dispatch_workbench_request(
     record_received: Callable[[int], None],
     api_ws_url: str = "",
 ) -> None:
-    """Run one execution request after transport parsing and correlation.
-
-    ``api_ws_url`` is the address this workbench dialed; an upload goes to the same place."""
     if isinstance(req, StartRunRequest):
-        # It waits for one of the workbench's slots; a cancel while it waits ends the wait, and nothing starts.
         try:
             await service.start_run(req.cmd_json, req.run_id, req.env, req.context, ree_id=req.ree_id, wait=req.wait)
         except ReeBusyError as exc:
@@ -90,7 +79,6 @@ async def dispatch_workbench_request(
 
 
 async def _follow(service: WorkbenchService, req: FollowRunRequest, send: SendFrame) -> None:
-    """Stream the command's log until it ended, then how; its caller leaving ends only the follow."""
     try:
         follower = await asyncio.to_thread(service.follow_run, req.ree_id, req.attempt_id, req.after)
     except UnknownExecutionError as exc:
@@ -108,7 +96,6 @@ async def _follow(service: WorkbenchService, req: FollowRunRequest, send: SendFr
 
 
 def _upload_query(service: WorkbenchService, req: ExecUploadRequest, url: str) -> None:
-    """Write the query's output to a file in the bench, send it, and leave nothing behind."""
     handle, name = tempfile.mkstemp(prefix="repo2ree-upload-")
     os.close(handle)
     path = Path(name)
@@ -120,7 +107,6 @@ def _upload_query(service: WorkbenchService, req: ExecUploadRequest, url: str) -
 
 
 def _fetch_into_bench(service: WorkbenchService, req: FetchFileRequest, url: str) -> int:
-    """Fetch the offered file to the serving host, land it in the bench, leave nothing behind; its size."""
     handle, name = tempfile.mkstemp(prefix="repo2ree-fetch-")
     os.close(handle)
     path = Path(name)

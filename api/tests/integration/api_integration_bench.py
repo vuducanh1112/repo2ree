@@ -1,19 +1,3 @@
-"""What the api-integration tier runs against, and what it records.
-
-Everything here is imported *by name* from the tier's test modules, which is
-why it is not in ``conftest.py``: pytest imports every suite's ``conftest.py``
-under the bare module name ``conftest``, so a ``from conftest import ...``
-finds whichever one was imported last when tiers run together. A uniquely
-named module cannot collide, the same reason
-``core/tests/unit/scriptinfer_helpers.py`` is its own file.
-
-The stack is the production one, as processes: uvicorn serving the API on a
-real TCP port with its one event loop, a store registered and its token minted
-with the API's own ``store_admin``, and a store workbench that dials
-``/workbench/connect`` and runs the REEs' scripts on this host. Nothing is
-mocked; a byte the workbench uploads beside its socket crosses real HTTP.
-"""
-
 from __future__ import annotations
 
 import json
@@ -37,12 +21,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 
 TEST_RESULTS_DIR = service_dir("api-integration")
 TOOLS_BUNDLE = _REPO_ROOT / "dist" / "bundles" / "tools"
-# The store every REE of this tier is created in.
 STORE_ID = "itest-lab"
 
 STARTUP_TIMEOUT_SECONDS = 60
-# Hard per-request deadline. Every route the tier touches answers in well under
-# a second when healthy; a stalled event loop blows this bound fast.
 REQUEST_TIMEOUT = httpx.Timeout(30.0)
 
 
@@ -64,7 +45,6 @@ class Stack:
 
 @contextmanager
 def running_stack(state: Path, logs: Path) -> Iterator[Stack]:
-    """The API and a store's workbench as real subprocesses, on throwaway state; stopped on exit."""
     logs.mkdir(parents=True, exist_ok=True)
     port = _free_port()
     base_url = f"http://127.0.0.1:{port}"
@@ -105,8 +85,6 @@ def running_stack(state: Path, logs: Path) -> Iterator[Stack]:
 
 
 def _store_token(environment: dict[str, str]) -> str:
-    """Register the store and mint its workbench's token, as an operator does on the service host."""
-
     def admin(*args: str) -> str:
         done = subprocess.run(
             [sys.executable, "-m", "repo2ree_api.store_admin", *args],
@@ -122,7 +100,6 @@ def _store_token(environment: dict[str, str]) -> str:
 
 
 def _served(base_url: str, processes: tuple[subprocess.Popen[bytes], ...]) -> str:
-    """Block until the API answers and lists the store as served; the serving workbench's id."""
     deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         if any(process.poll() is not None for process in processes):
@@ -155,19 +132,6 @@ def _free_port() -> int:
 
 
 class ReeFilmstrip:
-    """Records what the REE looked like after each authoring step.
-
-    The trace tier answers what a run *did*; this answers what it left behind.
-    Frames come from ``GET /rees/{id}/state``, which already carries the whole
-    aggregate plus the audit derived from it — the audit being the point, since
-    it is computed rather than stored and so exists nowhere a later reader could
-    recover it. Never contents: a frame is a shape, and inlining every file
-    would make the capture larger than the thing it describes.
-
-    Labels are the caller's, because the interesting frames are named by intent
-    ("build_experiment_environment", "declare experiment") rather than by endpoint.
-    """
-
     def __init__(self, client: httpx.Client, path: Path) -> None:
         self._client = client
         self._path = path

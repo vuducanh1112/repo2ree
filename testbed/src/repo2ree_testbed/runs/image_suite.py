@@ -1,5 +1,3 @@
-"""Run one browser suite or the API walkthrough against an image stack."""
-
 from __future__ import annotations
 
 import argparse

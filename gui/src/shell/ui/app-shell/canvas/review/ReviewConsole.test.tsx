@@ -11,11 +11,6 @@ import { ReviewEvidence } from "./ReviewEvidence";
 import { ReviewStrip } from "./ReviewStrip";
 import { useReviewWorkflowModel } from "./useReviewWorkflowModel";
 
-/**
- * The strip and the evidence drawer are two views of one attempt, so they are
- * exercised together: the shell that owns the model renders both, and a test
- * that saw only one of them would not be testing the console a reviewer uses.
- */
 function ReviewWorkflowPanel({ experiments }: { experiments: readonly ReeExperiment[] }) {
   const model = useReviewWorkflowModel({ experiments, active: true });
   return (

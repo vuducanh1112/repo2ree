@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""Keep every generated tree bounded: run each owner's prune, and find what no one owns.
-
-``scripts/generated.toml`` names the trees a checkout generates, who writes each, and the
-command that keeps it bounded when it accumulates. This runs those commands, each once, then
-walks the roots for whatever no entry claims: the output of something that no longer writes it.
-A claimed report folder's stamp files (``stamps/<recipe>.json``) are each a recipe's own, so one
-whose recipe the justfile no longer has is no one's either: a renamed recipe's old stamps would
-record its files twice. Unclaimed paths are listed with their size and removed only with
-``--remove-unclaimed``.
-
-    python scripts/prune.py [--dry-run] [--remove-unclaimed]
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -25,7 +12,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "scripts" / "generated.toml"
-# The folder of a report folder's stamp files, one per recipe (repo2ree_repoview.stamp).
 STAMPS = "stamps"
 
 
@@ -44,7 +30,6 @@ class Registry:
 
     @property
     def claims(self) -> dict[str, str]:
-        """Each claimed path and its owner."""
         return {claim: owner.name for owner in self.owners for claim in owner.claims}
 
 
@@ -80,7 +65,6 @@ def registry_problems(registry: Registry) -> list[str]:
 
 
 def tracked(root: Path) -> set[Path]:
-    """The files git tracks under ``root``: a directory's own .gitignore is no one's output."""
     listing = subprocess.run(
         ["git", "ls-files", "-z", "--", str(root)], cwd=ROOT, capture_output=True, check=False
     ).stdout
@@ -88,10 +72,6 @@ def tracked(root: Path) -> set[Path]:
 
 
 def unclaimed(registry: Registry, base: Path = ROOT, kept: set[Path] | None = None) -> list[Path]:
-    """What lies under a root that no claim covers, as high up as it can be named.
-
-    ``kept`` are files that are no one's output (by default the ones git tracks), never unclaimed.
-    """
     claims = {base / claim for claim in registry.claims}
     found: list[Path] = []
 
@@ -113,7 +93,6 @@ def unclaimed(registry: Registry, base: Path = ROOT, kept: set[Path] | None = No
 
 
 def recipes() -> frozenset[str] | None:
-    """The justfile's recipes, private ones too; None where there is no just to ask."""
     just = shutil.which("just")
     if just is None:
         return None
@@ -127,7 +106,6 @@ def recipes() -> frozenset[str] | None:
 
 
 def stale_stamps(registry: Registry, known: frozenset[str], base: Path = ROOT) -> list[Path]:
-    """The stamp files in claimed folders whose recipe the justfile no longer has."""
     return [
         stamps
         for claim in registry.claims
@@ -162,7 +140,7 @@ def run_owners(registry: Registry, *, dry_run: bool) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dry-run", action="store_true", help="say what each owner would remove; remove nothing")
     parser.add_argument("--remove-unclaimed", action="store_true", help="also remove what no entry claims")
     args = parser.parse_args()

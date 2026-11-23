@@ -1,16 +1,3 @@
-"""Assess the behaviour of e2e runs' tests, or of one dossier: check each dossier against the
-behaviour specification and record the verdict, beside what it assesses. A run only collects and
-is never written: its assessment is a report of it, laid out like it, under reports/behaviour/:
-<run>/run.json with each test's verdict, its last failed command, and the clean tree and commit
-that assessed them, and <run>/<test>/verification/. ``repo2ree_testbed visualize`` draws them.
-
-What to assess: runs, by path or by name; a dossier one of their tests left, which is assessed as
-that test; a dossier collected from a live deployment (``collect-dossier``), reported under
-collected/<name>/; every run of an invocation (``--invocation``, as the assurance gate assesses
-its tiers); and, by default, the runs the assurance-gate receipt names. Reports whose run is gone
-go too.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -41,7 +28,6 @@ def tool(log: Path, *args: str) -> int:
 
 
 def judge(dossier: Path, verification: Path, logs: Path) -> Behaviour:
-    """Check a dossier into ``verification``."""
     if not (dossier / "manifest.json").is_file():
         return "missing"
     check = ("repo2ree_assurance_checker", "check", "--dossier", str(dossier), "-o", str(verification))
@@ -49,12 +35,10 @@ def judge(dossier: Path, verification: Path, logs: Path) -> Behaviour:
 
 
 def failed_command(directory: Path, test: RunTest) -> FailedCommand | None:
-    """The last workbench command a failed test's dossier records as failing."""
     return last_failed_command(directory / "dossier" / "telemetry") if test.outcome == "failed" else None
 
 
 def assess_test(evidence: Path, test: RunTest, report: Path) -> RunTest:
-    """Assess the test whose evidence is in ``evidence``, its verification and logs going into ``report``."""
     assessed = test.judged(judge(evidence / "dossier", report / "verification", report / "logs"))
     failed = failed_command(evidence, test)
     return assessed if failed is None else assessed.but(last_failed_command=failed.summary())
@@ -86,7 +70,6 @@ def assess_run(run: Path, reports: Path = REPORTS) -> RunRecord:
 
 
 def run_of(dossier: Path) -> tuple[Path, RunRecord] | None:
-    """The run a dossier's test left it in, with its record; None for one collected elsewhere."""
     directory = dossier.parent
     root = directory.parent.parent
     run = read(RunRecord, root / "run.json") if (directory / "test.json").is_file() else None
@@ -94,7 +77,6 @@ def run_of(dossier: Path) -> tuple[Path, RunRecord] | None:
 
 
 def assess_dossier(dossier: Path, reports: Path = REPORTS) -> Behaviour:
-    """Assess one dossier: as its test in its run's report, or under collected/ when no run left it."""
     found = run_of(dossier)
     if found is None:
         report = reports / COLLECTED / dossier.name
@@ -104,13 +86,11 @@ def assess_dossier(dossier: Path, reports: Path = REPORTS) -> Behaviour:
     run, record = found
     name = str(dossier.parent.relative_to(run))
     report = reports / run.name
-    # The run's report as it stands, or the run itself when it has none yet: only this test is assessed.
     current = read(RunRecord, report / "run.json") or record.but(assessed_tree="", assessed_revision="")
     tests = tuple(
         assess_test(dossier.parent, test, report / test.directory) if test.directory == name else test
         for test in current.tests
     )
-    # One test assessed again keeps the report's tree only if it was assessed by that same tree.
     same = current.assessed_tree and current.assessed_tree == provenance.clean_tree()
     report.mkdir(parents=True, exist_ok=True)
     write(
@@ -123,7 +103,6 @@ def assess_dossier(dossier: Path, reports: Path = REPORTS) -> Behaviour:
 
 
 def drop_gone(reports: Path = REPORTS, keep: frozenset[str] = frozenset()) -> None:
-    """Remove the reports of runs no longer on disk, but those of ``keep``, just assessed."""
     for report in sorted(reports.iterdir()) if reports.is_dir() else ():
         gone = not is_run(run_dir() / "e2e" / report.name)
         if report.name not in {COLLECTED, *keep} and report.is_dir() and gone:
@@ -131,7 +110,6 @@ def drop_gone(reports: Path = REPORTS, keep: frozenset[str] = frozenset()) -> No
 
 
 def runs_of(invocation: str) -> list[Path]:
-    """The runs whose run.json names this invocation."""
     found = [
         record.parent
         for record in sorted((run_dir() / "e2e").glob("*/run.json"))
@@ -143,7 +121,6 @@ def runs_of(invocation: str) -> list[Path]:
 
 
 def gate_runs() -> list[Path]:
-    """The runs the assurance-gate receipt names that are still on disk."""
     return sorted(run for run in receipt_runs() if is_run(run))
 
 
@@ -152,7 +129,6 @@ def is_run(path: Path) -> bool:
 
 
 def target(given: str) -> Path:
-    """A run or a dossier, by path; a run also by its name, without a slash, under the e2e run directory."""
     chosen = (Path(given) if "/" in given else run_dir() / "e2e" / given).resolve()
     if is_run(chosen) or (chosen / "manifest.json").is_file():
         return chosen
@@ -160,7 +136,6 @@ def target(given: str) -> Path:
 
 
 def choosing(parser: argparse.ArgumentParser, verb: str) -> None:
-    """What a command works on: runs or dossiers, an invocation's runs, or the receipt's runs by default."""
     parser.add_argument("targets", nargs="*", help="runs, by path or name, or dossiers (default: the receipt's runs)")
     parser.add_argument("--invocation", help=f"{verb} every run that names this invocation (REPO2REE_TEST_RUN_ID)")
     parser.add_argument(
@@ -170,7 +145,6 @@ def choosing(parser: argparse.ArgumentParser, verb: str) -> None:
 
 
 def chosen(args: argparse.Namespace) -> list[Path]:
-    """The runs and dossiers asked for, each once: with ``--showcases``, the newest showcase runs beside them."""
     if args.invocation:
         found = [*runs_of(args.invocation), *(target(given) for given in args.targets)]
     else:
@@ -181,7 +155,7 @@ def chosen(args: argparse.Namespace) -> list[Path]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser()
     choosing(parser, "assess")
     args = parser.parse_args()
     try:

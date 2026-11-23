@@ -17,14 +17,6 @@ interface UseReeSealArgs {
   flushReeIntent: () => Promise<void>;
 }
 
-/**
- * Owns the seal operation: flush pending intent edits, ask the backend to
- * build the sealed bundle, then re-hydrate the workspace from the returned
- * session. The session's seal stamps drive the read-only lock (see `isSealed`),
- * so the caller does not need to toggle lock state optimistically. Both success
- * and error feedback live here so every caller gets consistent toasts.
- * sealRunning is set before the flush so the UI disables for the full operation.
- */
 export function useReeSeal({ reeId, showToast, hydrateWorkspace, flushReeIntent }: UseReeSealArgs) {
   const reeClient = useReeClient();
   const reeRunsClient = useReeRunsClient();

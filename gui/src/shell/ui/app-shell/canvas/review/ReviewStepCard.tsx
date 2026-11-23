@@ -5,8 +5,6 @@ import { Ic } from "../../../shared/components/Icon";
 import { cssVars } from "../../../theme/styleVars";
 import styles from "./ReviewConsole.module.css";
 
-// What each state is called, for every surface that names one. How it reads is
-// in ReviewConsole.module.css, keyed off the same status value.
 export const STATUS_LABEL: Record<ReviewStepStatus, string> = {
   unavailable: "Coming next",
   ready: "Ready",
@@ -15,29 +13,13 @@ export const STATUS_LABEL: Record<ReviewStepStatus, string> = {
   succeeded: "Complete",
   identical: "Identical",
   equivalent: "Equivalent",
-  // The ordinary pass for a result: the author's own verify script accepted it.
-  // Distinct from "identical" because matching output bytes are a stronger and
-  // rarer thing, and from "complete" because this is a verdict, not a lifecycle
-  // state.
   reproduced: "Reproduced",
   different: "Different",
   inconclusive: "Inconclusive",
-  // A settled finding, not a breakdown — hence its own label. Coloured like a
-  // failure because that is what it means for the reviewer, but the step ran.
   uninhabitable: "Did not activate",
   failed: "Failed",
 };
 
-/**
- * One step of the review graph, at strip size.
- *
- * Two controls rather than one. Reading a verdict and dispatching a ten-minute
- * rebuild are different acts and should not share a hitbox: the face opens the
- * step's evidence, and the run key beside it starts the work. What the step
- * reproduces from — "SWHID", "experiment environment · SBOM diff" — rides on the face's
- * accessible name, because the strip has room for the verdict or the subject
- * and the verdict is the reason to look.
- */
 export function ReviewStepCard({
   stepKey,
   label,
@@ -56,7 +38,6 @@ export function ReviewStepCard({
   icon: ReactNode;
   color: string;
   status: ReviewStepStatus;
-  /** This step's evidence is the section the drawer is showing. */
   open: boolean;
   disabled?: boolean;
   onOpen: (step: ReviewStepKey) => void;

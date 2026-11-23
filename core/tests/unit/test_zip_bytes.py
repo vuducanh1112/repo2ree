@@ -30,8 +30,6 @@ def test_entries_written_at_their_paths():
 
 
 def test_preserves_input_order_for_duplicates():
-    # Duplicates are caller's responsibility; consumer keeps the last
-    # write when reading by name, but the zip records both entries.
     with pytest.warns(UserWarning, match="Duplicate name"):
         data = build_zip_bytes([("dup", b"first"), ("dup", b"second")])
     with zipfile.ZipFile(io.BytesIO(data)) as zf:
@@ -40,9 +38,8 @@ def test_preserves_input_order_for_duplicates():
 
 
 def test_uses_deflate_compression():
-    payload = b"a" * 10_000  # highly compressible
+    payload = b"a" * 10_000
     data = build_zip_bytes([("payload", payload)])
-    # The compressed archive should be much smaller than the raw payload
     assert len(data) < len(payload) // 2
     assert _unzip(data) == {"payload": payload}
 

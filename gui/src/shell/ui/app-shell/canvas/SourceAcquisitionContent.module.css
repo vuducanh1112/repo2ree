@@ -1,5 +1,3 @@
-/* Source acquisition's scrollable body inside the shared workspace drawer. */
-
 .page {
   display: flex;
   flex-direction: column;

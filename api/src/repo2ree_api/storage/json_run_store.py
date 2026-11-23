@@ -1,11 +1,3 @@
-"""Single-process JSON persistence for background runs.
-
-Each generated run id owns a directory containing an atomically replaced
-``state.json`` and an append-only ``logs.jsonl``. Complete read-modify-write
-transactions are serialized across threads. This backend deliberately does not
-coordinate multiple API processes.
-"""
-
 from __future__ import annotations
 
 import os
@@ -28,7 +20,6 @@ _TERMINAL_STATUSES = frozenset({"succeeded", "failed", "canceled"})
 
 
 def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
-    """Move the author action the run carries with its status; called under the store lock after the write."""
     if previous is not None and previous.status == updated.status:
         return
     if updated.action is not None and updated.action_id is not None:
@@ -46,17 +37,10 @@ def _journal_transition(previous: StoredRun | None, updated: StoredRun) -> None:
 
 
 def _resumable(run: StoredRun) -> bool:
-    """A run whose command was started and is followed by nothing but its run: a later process can follow it."""
     return run.resumable and run.context is not None and run.status in {"running", "canceling"}
 
 
 class JsonRunStore:
-    """Thread-safe JSON run store for one API process.
-
-    It reads the runs an earlier process left when it is first used, not when it is built, so building it
-    (at import, as the API does) reads nothing.
-    """
-
     def __init__(self, root: Path) -> None:
         self._root = root
         self._lock = RLock()
@@ -209,9 +193,6 @@ class JsonRunStore:
             if current is None:
                 return None
             if current.status in _TERMINAL_STATUSES:
-                # Settled is final (the Run machine has no edge out of a terminal
-                # state): a late finalize, such as a worker that outlived an
-                # interrupted-run sweep, must not rewrite the recorded outcome.
                 return current
             if current.cancel_requested_at is not None and status not in {"failed", "succeeded"}:
                 status = "canceled"
@@ -281,7 +262,6 @@ class JsonRunStore:
 
     @contextmanager
     def _open(self) -> Iterator[None]:
-        """Hold the store, having read the runs already on disk the first time."""
         with self._lock:
             if not self._loaded:
                 self._load_indexes()
@@ -346,9 +326,6 @@ class JsonRunStore:
             except ValueError:
                 if index != len(lines) - 1:
                     raise
-                # A process can stop after writing only part of its final JSON
-                # object. Remove that fragment so the next append starts on a
-                # clean line and sequence recovery remains durable.
                 path.write_bytes(b"".join(lines[:index]))
         return entries
 

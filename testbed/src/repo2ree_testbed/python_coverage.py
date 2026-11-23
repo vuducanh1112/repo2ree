@@ -1,5 +1,3 @@
-"""Combine and render the backend's Python coverage tiers."""
-
 from __future__ import annotations
 
 import argparse

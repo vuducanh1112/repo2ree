@@ -1,9 +1,3 @@
-/* Decorative, non-interactive lab atmosphere behind the pod. Everything here
- * is CSS and pointer-events: none — nothing in this file is addressable.
- *
- * The drift and scan keyframes live here now rather than in the global sheet:
- * this component is their only owner. */
-
 .backdrop {
   position: absolute;
   inset: 0;
@@ -11,7 +5,6 @@
   pointer-events: none;
 }
 
-/* Drifting ambient light pools. */
 .pool {
   position: absolute;
   border-radius: 50%;
@@ -36,7 +29,6 @@
   animation: lab-drift-b 20s ease-in-out infinite;
 }
 
-/* Overhead glass light bar, and the beam it casts onto the bench. */
 .bar {
   position: absolute;
   left: 50%;
@@ -62,7 +54,6 @@
   clip-path: polygon(38% 0, 62% 0, 100% 100%, 0 100%);
 }
 
-/* Slow scanning sheen, for the sense of a live instrument. */
 .scan {
   position: absolute;
   inset: 0 0 auto 0;

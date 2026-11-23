@@ -5,9 +5,6 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { FileTreeConsole } from "./FileTreeConsole";
 
-// The workspace is materialized from upstream + overlay, so an authored script
-// is genuinely present in both inventories under the same path. That collision
-// is the reason node ids are namespaced by inventory.
 const workspaceFiles: FileTreeNode[] = [
   { id: "ws:build.sh", name: "build.sh", type: "file", content: "workspace copy" },
   {
@@ -43,8 +40,6 @@ describe("FileTreeConsole", () => {
 
     expect(screen.getByText("Workspace")).toBeInTheDocument();
     expect(screen.getByText("REE")).toBeInTheDocument();
-    // The workspace root's files show; its folders start shut, because a source
-    // checkout's first level would bury the REE section below it.
     expect(screen.getByRole("button", { name: /src/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /main\.py/ })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /artifacts/ })).toBeInTheDocument();
@@ -59,8 +54,6 @@ describe("FileTreeConsole", () => {
     const user = userEvent.setup();
     renderConsole();
 
-    // Both trees hold a `build.sh`; the ids namespace them, so opening one does
-    // not resolve to the other's content and the tabs do not collapse into one.
     const [workspaceBuild, reeBuild] = screen.getAllByRole("button", { name: /build\.sh/ });
     await user.click(workspaceBuild);
     expect(screen.getByText("workspace copy")).toBeInTheDocument();
@@ -83,9 +76,6 @@ describe("FileTreeConsole", () => {
     expect(screen.getByText("No matching REE files")).toBeInTheDocument();
   });
 
-  // The two trees scroll on their own, so a whole source checkout cannot push
-  // the REE section off the bottom. Height is what they divide, and only while
-  // both have files to put in it.
   it("divides the console between the inventories once both have files", () => {
     const { container } = renderConsole();
     expect(container.querySelectorAll("[data-share]")).toHaveLength(2);

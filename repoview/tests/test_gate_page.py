@@ -1,5 +1,3 @@
-"""The gate page saying where this tree's assessment of the gated runs differs from the receipt."""
-
 from __future__ import annotations
 
 import json

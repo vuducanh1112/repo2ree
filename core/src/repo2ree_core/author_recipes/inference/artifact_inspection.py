@@ -1,22 +1,3 @@
-"""Read-only inspection of a built experiment environment artifact.
-
-Turns an experiment environment archive's bytes into a small typed fact: is it a Docker archive
-(and what image references / config commands does it declare), a packed Python
-venv, or unrecognized. It reads only the manifest and config *members* — never
-loading the whole (possibly multi-hundred-MB) image into memory and never
-extracting to disk — and applies the same bounded-size and safe-name spirit as
-``storage/extract.py``.
-
-Both ``docker save`` shapes are recognized: the legacy layout (a root
-``manifest.json``, the default with dockerd's own image store) and the OCI layout
-(a root ``index.json`` + ``blobs/``, what a containerd-image-store daemon or
-``buildx --output type=oci`` emits). Both classify as a Docker archive; only the
-member layout differs, so the runtime-command fork downstream is unchanged.
-
-This is pure evidence extraction. Selecting a command is a downstream decision;
-inspection only reports what the archive declares.
-"""
-
 from __future__ import annotations
 
 import json
@@ -27,9 +8,7 @@ from typing import BinaryIO, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# A single archive member we are willing to read fully (manifest.json / config).
 _MAX_MEMBER_BYTES = 8 * 1024 * 1024
-# ``pyvenv.cfg`` is a handful of lines; cap it far tighter than a docker config.
 _MAX_PYVENV_CFG_BYTES = 64 * 1024
 
 
@@ -37,11 +16,8 @@ class DockerArchiveInspection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["docker_archive"] = "docker_archive"
-    # De-duplicated, order-preserving usable image references from RepoTags.
     repo_tags: list[str] = Field(default_factory=list)
-    # Combined exec-form argv (Entrypoint + Cmd), when both are JSON/exec form.
     argv: list[str] | None = None
-    # A shell-form Entrypoint/Cmd string, returned verbatim (never rewritten).
     shell_command: str | None = None
 
 
@@ -49,10 +25,6 @@ class VenvArchiveInspection(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["venv_archive"] = "venv_archive"
-    # The absolute directory the venv was built at, recovered from its own
-    # ``pyvenv.cfg`` ``command`` line, when the archive packs it under a matching
-    # top-level directory. ``None`` when it cannot be established safely, and the
-    # caller falls back to the repo2ree default build location.
     restore_dir: str | None = None
 
 
@@ -67,15 +39,7 @@ ArtifactInspection = DockerArchiveInspection | VenvArchiveInspection | Unrecogni
 
 
 def inspect_experiment_environment_artifact(stream: BinaryIO) -> ArtifactInspection:
-    """Classify an experiment environment archive from a seekable binary stream.
-
-    Recognizes both ``docker save`` layouts — legacy (root ``manifest.json``) and
-    OCI (root ``index.json`` + ``blobs/``) — and a gzipped venv tarball (contains a
-    ``pyvenv.cfg``). Anything else — not a tar, unreadable, or an unrecognized
-    shape — is ``unrecognized`` and never raises.
-    """
     try:
-        # "r:*" transparently handles the venv's gzip and the image's plain tar.
         with tarfile.open(fileobj=stream, mode="r:*") as tar:
             names = tar.getnames()
             if "manifest.json" in names:
@@ -91,21 +55,10 @@ def inspect_experiment_environment_artifact(stream: BinaryIO) -> ArtifactInspect
 
 
 def _is_pyvenv_cfg(name: str) -> bool:
-    # ``pyvenv.cfg`` sits at the venv root, i.e. ``<venv>/pyvenv.cfg``.
     return name == "pyvenv.cfg" or name.endswith("/pyvenv.cfg")
 
 
 def _venv_restore_dir(tar: tarfile.TarFile, cfg_name: str) -> str | None:
-    """The absolute path the venv must be restored to, from its ``pyvenv.cfg``.
-
-    A venv bakes absolute paths, so it must be restored exactly where it was
-    built. Python records that path in the ``command`` line
-    (``... -m venv <dir>``). We trust it only when it is absolute *and* its
-    basename matches the archive's own top-level directory — because the restore
-    unpacks with ``tar -C <parent>`` and so lands at ``<parent>/<top-dir>``. When
-    they disagree (or no ``command`` is present) we return ``None`` rather than
-    guess, and the caller uses the repo2ree default location.
-    """
     top_dir = PurePosixPath(cfg_name).parent.name
     if not top_dir:
         return None
@@ -129,13 +82,11 @@ def _pyvenv_command(cfg_text: str) -> str | None:
 
 
 def _venv_target_from_command(command: str | None) -> str | None:
-    """The venv directory argument of a ``python -m venv <dir>`` command line."""
     if not command:
         return None
     tokens = command.split()
     if "venv" not in tokens:
         return None
-    # The first non-flag token after ``venv`` is the target directory.
     for token in tokens[tokens.index("venv") + 1 :]:
         if not token.startswith("-"):
             return token
@@ -160,23 +111,11 @@ def _inspect_docker(tar: tarfile.TarFile) -> ArtifactInspection:
     return DockerArchiveInspection(repo_tags=repo_tags, argv=argv, shell_command=shell_command)
 
 
-# Annotation keys an OCI ``index.json`` carries an image's reference under, most
-# specific first: containerd (dockerd's OCI export) records the full ``name:tag``;
-# the OCI standard key often holds just the tag. One name per manifest descriptor,
-# so a single-image export yields a single ref (not a false "multiple images").
 _OCI_IMAGE_NAME_ANNOTATIONS = ("io.containerd.image.name", "org.opencontainers.image.ref.name")
-# Bound on how deep a nested OCI index (multi-arch) is followed to an image
-# manifest — a self-referential index cannot spin this into an unbounded walk.
 _MAX_OCI_INDEX_DEPTH = 4
 
 
 def _inspect_oci(tar: tarfile.TarFile) -> ArtifactInspection:
-    """Classify an OCI-layout ``docker save`` tar (root ``index.json`` + blobs).
-
-    Reads the image references off the index's manifest annotations and follows
-    one manifest (descending through a multi-arch sub-index if present) to its
-    config blob for the declared Entrypoint/Cmd. Never reads a layer blob.
-    """
     index = _read_json_member(tar, "index.json")
     if not isinstance(index, dict):
         return UnrecognizedArtifact(reason="OCI index.json is malformed")
@@ -214,8 +153,6 @@ def _oci_ref_name(descriptor: object) -> str | None:
 def _resolve_oci_image_manifest(
     tar: tarfile.TarFile, descriptors: list[object], _depth: int = 0
 ) -> dict[str, object] | None:
-    """The first image manifest (a blob with a ``config``) reachable from these
-    descriptors, descending through nested indexes up to a bounded depth."""
     if _depth > _MAX_OCI_INDEX_DEPTH:
         return None
     for descriptor in descriptors:
@@ -235,11 +172,6 @@ def _resolve_oci_image_manifest(
 
 
 def _read_blob_json(tar: tarfile.TarFile, digest: object) -> object:
-    """Read and parse an OCI blob addressed by its ``<algo>:<hex>`` digest.
-
-    The digest names the member ``blobs/<algo>/<hex>``; reject anything that is
-    not a plain algo/hex pair so a crafted digest cannot escape ``blobs/``.
-    """
     if not isinstance(digest, str) or ":" not in digest:
         return None
     algo, _, hexdigest = digest.partition(":")
@@ -249,11 +181,6 @@ def _read_blob_json(tar: tarfile.TarFile, digest: object) -> object:
 
 
 def _config_command(config: object) -> tuple[list[str] | None, str | None]:
-    """Combine an image config's Entrypoint/Cmd into a suggested command.
-
-    Exec (JSON list) forms concatenate as ``Entrypoint + Cmd``. A shell-form
-    (string) Entrypoint/Cmd is returned verbatim and never rewritten into argv.
-    """
     if not isinstance(config, dict):
         return None, None
     image_config = config.get("config") or config.get("Config")

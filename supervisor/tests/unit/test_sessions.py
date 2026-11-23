@@ -1,5 +1,3 @@
-"""A workbench's connection as the journal records it: one WorkbenchSession per socket."""
-
 from __future__ import annotations
 
 import json
@@ -49,7 +47,6 @@ def journal_dir(tmp_path: Path) -> Iterator[Path]:
 
 
 def sessions(directory: Path) -> list[tuple[str, str | None, str, dict[str, Any], str | None]]:
-    """Every WorkbenchSession transition written so far: key, from, to, facts, partition."""
     rows = [json.loads(line) for path in sorted(directory.glob("*.ndjson")) for line in path.read_text().splitlines()]
     return [
         (row["key"], row["from"], row["to"], row["facts"], row["partition"])
@@ -63,7 +60,6 @@ def hello(workbench_id: str = "wb-1", nonce: str = "n-1", store_id: str = "lab-1
 
 
 def admitted(registry: WorkbenchConnectionRegistry, said: WorkbenchHello) -> WorkbenchConnection:
-    """A connection admitted the way the connect route admits one."""
     session = Session(said, registered=True)
     connection = WorkbenchConnection(send_text=lambda _text: None, hello=said, session=session)
     registry.register(said.workbench_id, connection)
@@ -110,7 +106,6 @@ def test_a_reconnecting_workbench_supersedes_its_old_session(journal_dir: Path) 
     new = admitted(registry, hello())
     lost = [(key, facts["reason"]) for key, _, target, facts, _ in sessions(journal_dir) if target == "lost"]
     assert lost == [(old.session_id, "superseded")]
-    # The old socket ending afterwards records nothing more, and does not evict its successor.
     old.close("closed", 1000)
     registry.unregister("wb-1", old)
     assert len([row for row in sessions(journal_dir) if row[2] == "lost"]) == 1
@@ -163,8 +158,6 @@ def test_a_command_for_a_workbench_with_no_session_is_neither_journaled_nor_sent
 
 
 class _Bench:
-    """A workbench whose command runs until it is canceled, or ``ends``; its sessions end when ``drop`` says."""
-
     def __init__(self, answer: Frame | None = None) -> None:
         self.answer = answer or AcceptedFrame()
         self.ends = threading.Event()

@@ -1,11 +1,3 @@
-"""Seeded random author sessions, with faults between the steps.
-
-Each seed is one session on a fresh stack, and the same seed replays the same
-steps. The API must answer every request without a server error and settle every
-run it starts; the behaviour check judges what the owners recorded meanwhile.
-The steps a session took are kept in its test directory as chaos.json.
-"""
-
 from __future__ import annotations
 
 import json
@@ -47,7 +39,6 @@ SEEDS = int(os.environ.get("CHAOS_SEEDS", "4"))
 STEPS = int(os.environ.get("CHAOS_STEPS", "12"))
 FAILING_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'resolving dependencies'\nexit 3\n"
 SLOW_BUILD = "#!/usr/bin/env sh\nset -eu\necho 'building slowly'\nsleep 60\n"
-# The order an author works in; a session favours the next stage, so faults land in deep authoring too.
 PIPELINE = ("source", "evaluate", "hbom", "build_experiment_environment", "activate", "experiment", "seal")
 
 
@@ -94,10 +85,7 @@ class Session:
         self.call("POST", self.ree("patch-ree-definition"), json={"definition_patch": patch})
 
     def bench(self) -> str | None:
-        """The REE whose workbench a fault can hit now: its store answers."""
         return self.ree_id if self.call("GET", f"/api/v1/rees/{self.ree_id}").status_code == 200 else None
-
-    # ---- authoring --------------------------------------------------------------
 
     def source(self) -> str:
         data = project_archive()
@@ -146,8 +134,6 @@ class Session:
     def download(self) -> str:
         return "kept" if self.api.keep_archive(self.ree_id, f"chaos-{len(self.steps)}") else "refused"
 
-    # ---- faults -----------------------------------------------------------------
-
     def interrupt(self, start: Callable[[str], Any], end: Callable[[str], Any]) -> str:
         bench = self.bench()
         if bench is None:
@@ -178,8 +164,6 @@ class Session:
         self.dead = False
         self.progress = 0
         return "replaced"
-
-    # ---- the session ------------------------------------------------------------
 
     def choices(self) -> dict[str, tuple[int, Callable[[], str]]]:
         return {
@@ -225,7 +209,7 @@ class Session:
 
 @pytest.mark.parametrize("seed", range(SEEDS), ids=lambda seed: f"seed-{seed}")
 def test_a_random_session_keeps_the_api_answering(api: Api, new_ree: Callable[..., str], seed: int) -> None:
-    session = Session(api, new_ree, random.Random(seed))  # noqa: S311 - a replayable session, not a secret
+    session = Session(api, new_ree, random.Random(seed))  # noqa: S311
     try:
         session.run(STEPS)
     finally:

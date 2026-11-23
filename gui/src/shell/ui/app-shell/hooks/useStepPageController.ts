@@ -121,8 +121,6 @@ export function useStepPageController({
   }
 
   const runFailed = latestRun?.status === "failed" || latestRun?.status === "canceled";
-  // A run that succeeded before the REE document shows its receipt is not done yet: the page
-  // would otherwise call the step done beside a document that still says it is not.
   const settling = !!latestRun && awaitingDocument.has(latestRun.runId);
   return {
     step,
@@ -130,8 +128,6 @@ export function useStepPageController({
     running: !!activeRun || settling,
     runDone: (current || !!latestRun) && !settling,
     runFailed,
-    // The catalog badge is an earned marker — a failed run completes the step
-    // (Re-run appears) but earns nothing.
     badge: current ? { step: step.key, label: step.outcomeLabel } : null,
     ts: timestamp,
     missing,

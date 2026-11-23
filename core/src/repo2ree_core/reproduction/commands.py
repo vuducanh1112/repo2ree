@@ -1,11 +1,3 @@
-"""The reproduction commands the executor CLI shares with a bundle's run.sh, their words and one-line summaries.
-
-Each is an operation of the catalogue, spelled as the CLI spells it: its name in kebab case. run.sh adds only
-helpers that run no operation of their own (``all``, ``list``, ``verify``).
-
-Leaf module: it imports nothing from ``repo2ree_core``, so the run.sh generator and the CLI can both depend on it.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

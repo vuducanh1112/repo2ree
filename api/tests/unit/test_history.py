@@ -1,5 +1,3 @@
-"""Operation records are exposed through the live workbench query."""
-
 from typing import Any
 
 from repo2ree_api.deps import command_dispatcher

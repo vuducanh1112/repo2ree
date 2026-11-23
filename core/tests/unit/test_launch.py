@@ -1,5 +1,3 @@
-"""Every script runs through the REE's launch script when it declares one, and the step learns where it ran."""
-
 from __future__ import annotations
 
 import platform
@@ -16,7 +14,6 @@ from repo2ree_ree.model import LaunchDefinition
 from repo2ree_ree.primitives import LaunchOption
 from repo2ree_ree.reserved_paths import RESERVED_LAUNCH_SCRIPT
 
-# Stands in for srun: puts the command in a "job step", records the options it was given, and runs it.
 FAKE_SRUN = """#!/usr/bin/env sh
 set -eu
 SLURM_JOB_ID=4711
@@ -55,7 +52,6 @@ def test_a_launched_script_runs_inside_the_launch_and_the_step_learns_where(tmp_
         "4711",
         "0",
     )
-    # The record it was read from is a control file, gone once read.
     assert not list(workspace.glob(f"{RECORD_PREFIX}*"))
 
 

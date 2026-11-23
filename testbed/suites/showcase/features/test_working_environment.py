@@ -1,12 +1,9 @@
-"""An REE's check of its working environment, on a machine that lacks what the check asks for."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee
 
 from repo2ree_testbed.showcases import PYTHON_DOCKER
 
-# The feature tests' machine has Python and no container engine; the Docker project's check asks for a daemon.
 MISSING = "no Docker daemon is reachable"
 
 

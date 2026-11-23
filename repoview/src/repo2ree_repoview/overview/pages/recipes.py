@@ -1,5 +1,3 @@
-"""The Just recipes, their dependency graph, and how long they took when they ran."""
-
 from __future__ import annotations
 
 from repo2ree_repoview.diagrams.recipes import Recipe
@@ -8,7 +6,6 @@ from repo2ree_repoview.overview.figures import DIAGRAMS, diagram
 from repo2ree_repoview.overview.html import Page, esc, filter_box, section, table
 from repo2ree_repoview.overview.timings import Timing, Timings
 
-# Top-level commands shown, slowest first.
 COMMANDS_SHOWN = 30
 
 
@@ -21,7 +18,6 @@ def seconds(value: float) -> str:
 
 
 def took(machines: dict[str, Timing]) -> str:
-    """Each machine's median, with how many runs it is of and the last one on hover."""
     cells = []
     for machine, timing in machines.items():
         last = f"last {seconds(timing.last)}"

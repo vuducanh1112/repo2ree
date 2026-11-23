@@ -1,6 +1,3 @@
-/* The list of names the step is still waiting on. They are readouts, not
- * statuses, so they are plain chips rather than Badges. */
-
 .fields {
   display: flex;
   flex-wrap: wrap;

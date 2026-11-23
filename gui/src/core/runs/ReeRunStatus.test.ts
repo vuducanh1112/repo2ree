@@ -13,7 +13,6 @@ describe("isTerminalReeRunStatus", () => {
     expect(isTerminalReeRunStatus("queued")).toBe(false);
     expect(isTerminalReeRunStatus("provisioning")).toBe(false);
     expect(isTerminalReeRunStatus("running")).toBe(false);
-    // Cancellation has been requested but the run has not stopped yet.
     expect(isTerminalReeRunStatus("canceling")).toBe(false);
     expect(isTerminalReeRunStatus(undefined)).toBe(false);
   });

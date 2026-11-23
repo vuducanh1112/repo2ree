@@ -201,12 +201,6 @@ describe("useReeIntentSync", () => {
     expect(mocks.updateReeIntent).not.toHaveBeenCalled();
   });
 
-  // The regression that made a sealed workspace impossible to leave: sealing
-  // hydrates the store with the backend's copy of the REE, whose spec need not
-  // round-trip to the patch the local draft produced. Read as an unsaved edit,
-  // that difference autosaved against a document the backend refuses to author
-  // ("a sealed REE cannot be authored"), so the draft stayed dirty forever and
-  // the navigation guard cancelled every attempt to navigate away.
   it("never authors a sealed REE, however far its spec has drifted from the draft", async () => {
     const hydrateWorkspace = vi.fn();
     const initial = createEmptyReeEditorViewModel();
@@ -229,8 +223,6 @@ describe("useReeIntentSync", () => {
       }),
     });
 
-    // Not merely un-PATCHed: reported clean, because the flag the navigation
-    // guard blocks on is this one.
     await act(() => result.current.flush());
     expect(mocks.updateReeIntent).not.toHaveBeenCalled();
     expect(result.current.isDirty).toBe(false);

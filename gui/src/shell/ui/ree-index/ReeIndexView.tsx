@@ -135,8 +135,6 @@ function EntryRow({ entry }: { entry: ReeIndexEntry }) {
         </div>
       </div>
 
-      {/* Date only; the full instant is a tooltip, since the column is scanned
-          for "when roughly" rather than read to the second. */}
       <div className={styles.cell} title={entry.sealedAt}>
         {entry.sealedAt.slice(0, 10) || "—"}
       </div>
@@ -172,9 +170,6 @@ function Identifier({ binding }: { binding: ArchiveBinding }) {
       {binding.identifier}
     </span>
   );
-  // Only linkable when the archive told us where the record lives; an
-  // identifier is not a URL, and guessing a resolver would invent a location
-  // the deposit never claimed.
   if (!binding.recordUrl) {
     return text;
   }

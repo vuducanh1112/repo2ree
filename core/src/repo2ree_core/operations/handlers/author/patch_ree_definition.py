@@ -1,5 +1,3 @@
-"""Apply a top-level definition patch directly to the portable REE, with the scripts its experiments bring and take."""
-
 from __future__ import annotations
 
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, replace_definition, revision_of

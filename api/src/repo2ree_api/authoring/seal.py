@@ -1,12 +1,3 @@
-"""The seal step, and the bundle that carries a sealed REE somewhere else.
-
-Sealing freezes the manifest; the archive is how it travels, and ``load-ree-bundle`` is
-the other end of that journey — the upload sequence that makes a fresh REE *be*
-a bundle someone else downloaded. Load is grouped with seal rather than with
-source acquisition because it restores a whole REE (intent, source, evidence),
-not an upstream snapshot.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -59,7 +50,6 @@ seal_router = APIRouter(tags=["rees"])
     responses=ERROR_RESPONSES,
 )
 def bundle_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
-    """Open a staging slot for a downloaded REE bundle (see ``load-ree-bundle``)."""
     return UploadInitResponse.model_validate(
         mint_upload_token(ree_id, payload, upload_route="ree:upload", purpose="bundle", action="load_ree_bundle")
     )
@@ -85,12 +75,6 @@ async def store_bundle_bytes_route(ree_id: str, upload_token: str, request: Requ
     responses=ERROR_RESPONSES,
 )
 def load_ree_bundle_route(ree_id: str, payload: LoadReeBundlePayload) -> RunSummary:
-    """Make this REE be the uploaded bundle: intent, source, evidence, and all.
-
-    The counterpart of ``ree-archive``. Intended right after ``createRee`` —
-    loading replaces whatever the REE holds, so a fresh workbench is the only
-    place it is non-destructive.
-    """
     run_state = start_staged_upload_run(
         ree_id,
         upload_token=payload.upload_token,
@@ -123,8 +107,6 @@ def load_ree_bundle_route(ree_id: str, payload: LoadReeBundlePayload) -> RunSumm
     responses=ERROR_RESPONSES,
 )
 def seal_ree_route(ree_id: str, payload: SealReePayload) -> RunSummary:
-    """Freeze the REE in a background run; once it succeeds, ``getRee`` carries the seal."""
-
     def record_sealed_ree(handle: ReeRoute, result: ActionResult) -> ActionResult:
         document = command_dispatcher.get_ree_document(handle)
         _record_in_ree_index(ree_id, document)
@@ -154,7 +136,6 @@ def seal_ree_route(ree_id: str, payload: SealReePayload) -> RunSummary:
     responses=ERROR_RESPONSES,
 )
 def signature_upload_init_route(ree_id: str, payload: UploadInitPayload) -> UploadInitResponse:
-    """Open a staging slot for a Sigstore bundle over the sealed REE's digest (see ``sign-ree``)."""
     return UploadInitResponse.model_validate(
         mint_upload_token(ree_id, payload, upload_route="signature:upload", purpose="signature", action="sign_ree")
     )
@@ -180,7 +161,6 @@ async def store_signature_bytes_route(ree_id: str, upload_token: str, request: R
     responses=ERROR_RESPONSES,
 )
 def sign_ree_route(ree_id: str, payload: SignReePayload) -> RunSummary:
-    """Add the staged bundle as the sealed REE's signature, beside what the seal covers."""
     run_state = start_staged_upload_run(
         ree_id,
         upload_token=payload.upload_token,
@@ -207,22 +187,9 @@ def sign_ree_route(ree_id: str, payload: SignReePayload) -> RunSummary:
 
 
 def _record_in_ree_index(ree_id: str, document: WorkbenchReeDocument) -> None:
-    """File the freshly sealed REE in the index, host-side.
-
-    This is the write that makes a seal outlive its workbench: ``deleteRee``
-    removes the container *and its backing storage*, so without an entry here a
-    deposited REE becomes unciteable the moment its bench is reclaimed.
-
-    A failure is logged rather than raised. By this point the seal has already
-    happened and is durable in the workbench volume, so answering 500 would
-    report a failure that did not occur. Re-sealing repairs it: unchanged
-    content reproduces the same digest and ``record_seal`` is an upsert. The
-    cost of that choice is that the miss is quiet, and an REE could be torn down
-    before anyone notices — hence the error-level log.
-    """
     try:
         ree_index.record_seal(entry_from_ree(document.ree))
-    except Exception:  # noqa: BLE001 — the seal itself succeeded; indexing must not undo that
+    except Exception:  # noqa: BLE001
         _log.exception("REE %s sealed but could not be recorded in the index; re-seal to repair", ree_id)
 
 
@@ -239,11 +206,6 @@ def _record_in_ree_index(ree_id: str, document: WorkbenchReeDocument) -> None:
     },
 )
 def download_ree_archive_route(ree_id: str) -> StreamingResponse:
-    """Download a captured REE repository with selected offline LFS payloads.
-
-    The extracted directory contains both the working files and Git storage.
-    Selected LFS payloads are included locally for offline use.
-    """
     with author_api_action("download_ree", ree_id):
         return _download_ree_archive(ree_id)
 
@@ -251,26 +213,19 @@ def download_ree_archive_route(ree_id: str) -> StreamingResponse:
 def _download_ree_archive(ree_id: str) -> StreamingResponse:
     handle = require_handle(ree_id)
     archive_filename = archive_download_filename(handle)
-    # The workbench uploads the archive beside its control socket into a file on
-    # this host (``build_archive``); the per-REE lock is held only until it has
-    # arrived, never for as long as the client takes to download it.
     before = journal_positions()
     try:
         with ree_command_span("ree-archive", ree_id):
             received = command_dispatcher.build_archive(handle)
     except (HTTPException, WorkbenchUnavailableError):
-        # A workbench that went away mid-transfer is the retryable 503 every route
-        # answers for it (main.workbench_unavailable_handler), not the author's 400.
         raise
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if received.size == 0:
         received.path.unlink(missing_ok=True)
         raise HTTPException(status_code=502, detail="workbench returned an empty archive")
-    # Lets a collector place the copy the client keeps against the behaviour journals.
     record_archive(ree_id, received.sha256, received.size, before)
     spool = received.path.open("rb")
-    # Unlinked while open: the response streams the file, and nothing is left behind.
     received.path.unlink()
     size = received.size
     return StreamingResponse(

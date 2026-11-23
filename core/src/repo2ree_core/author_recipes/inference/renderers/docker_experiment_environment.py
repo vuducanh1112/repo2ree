@@ -1,16 +1,3 @@
-"""Shell renderer for the Docker build strategy.
-
-Detection/planning (checks) and rendering are separate so ecosystem branches do
-not each duplicate the shell wrapper. This renderer turns the resolved
-``project_root`` + ``dockerfile`` bindings into the complete Docker build
-script, copying every experiment environment constant it derives as an explicit literal — no
-downstream consumer greps this shell for values.
-
-The image reference is ``ree-runtime:<ree-name>`` — readable and stable for a
-given REE — and the script carries no timestamp, so identical inputs render
-byte-identical bytes.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.models import BindingKind, DecisionContext, RenderedScript
@@ -29,8 +16,6 @@ from repo2ree_protocol.inference import CandidateDependency, DockerfileBinding, 
 def _bindings(context: DecisionContext) -> tuple[ProjectRootBinding, DockerfileBinding]:
     root = context.binding("project_root")
     dockerfile = context.binding("dockerfile")
-    # Guaranteed present by the DAG's binding-dataflow validation; this guard
-    # turns a wiring bug into a clear error rather than an AttributeError.
     if not isinstance(root, ProjectRootBinding) or not isinstance(dockerfile, DockerfileBinding):
         raise ValueError("docker_build_v1 renderer reached without project_root and dockerfile bindings")
     return root, dockerfile
@@ -69,9 +54,6 @@ class DockerBuildRenderer:
                 kind="experiment_environment_declaration",
                 path=experiment_environment_artifact,
                 digest="",
-                # The path these bytes write to, declared or defaulted. It is part
-                # of what justifies them either way: move the declaration and
-                # regeneration produces different bytes, so the candidate is stale.
                 role="experiment_environment",
             )
         )

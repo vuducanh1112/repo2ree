@@ -2,8 +2,6 @@ import type { InferenceReport } from "@shell/infra/api/apiTypes";
 import { describe, expect, it } from "vitest";
 import { selectCandidate, selectDag, selectTrace } from "./candidate";
 
-// A minimally-shaped report: only the fields the selectors read. Cast through
-// unknown so the test isn't coupled to the full generated wire type.
 function report(results: unknown[], dags: unknown[] = []): InferenceReport {
   return { results, dags } as unknown as InferenceReport;
 }
@@ -78,10 +76,6 @@ describe("selectCandidate — build", () => {
     expect(result.status).toBe("not_inferred");
   });
 
-  // The build DAG blocks on ambiguous evidence (two Dockerfiles at the project
-  // root, an undeterminable build context, an undeclared runtime path) and says
-  // so in a blocking warning. That message is the whole explanation, so it must
-  // reach the author rather than being dropped on the way out of the report.
   it("surfaces the build target's blocking warnings", () => {
     const result = selectCandidate(
       report([
@@ -143,7 +137,6 @@ describe("selectCandidate — build", () => {
     );
     expect(result.status).toBe("generated");
     if (result.status !== "generated") return;
-    // The first candidate is loaded; the count tells the author others exist.
     expect(result.script.ruleId).toBe("single-project-root-dockerfile-v1");
     expect(result.script.alternativeCount).toBe(2);
   });

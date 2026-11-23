@@ -1,6 +1,3 @@
-"""A CLI session is drawn as each command with the REE as it left it, from the client's session and the REE's
-history."""
-
 from __future__ import annotations
 
 import shutil
@@ -17,7 +14,6 @@ pytestmark = pytest.mark.skipif(shutil.which("ree") is None, reason="needs the r
 
 
 def run(test: Path, root: Path, run_id: str, *words: str, stdin: bytes | None = None) -> None:
-    """Run ``ree`` as the CLI showcase client does, and write it down in the test's session."""
     started = time.time()
     done = subprocess.run(
         ["ree", "-C", str(root), "--json", "--run-id", run_id, *words], input=stdin, capture_output=True, check=False

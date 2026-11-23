@@ -1,10 +1,3 @@
-"""The control connection's request-serving loop, driven by a fake socket.
-
-Exercises ``_serve`` directly: the fake yields inbound messages like a real
-``async for ws`` would and captures outbound sends, so dispatch and its
-failure modes are tested without a network or a Docker daemon.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -37,12 +30,6 @@ from repo2ree_workbench.service import WorkbenchService
 
 
 class FakeSocket:
-    """Yields queued inbound messages; captures what the workbench sends back.
-
-    Like a control plane, it hangs up only once every request it sent is answered (a request it
-    canceled never is): a socket that ends takes the requests still in flight with it.
-    """
-
     def __init__(self, messages: list[str]) -> None:
         self._messages = messages
         self.sent: list[str] = []
@@ -78,7 +65,7 @@ class FakeSocket:
             try:
                 message = workbench_ws_message_adapter.validate_json(text)
             except ValidationError:
-                continue  # the hello, not a reply
+                continue
             if message.id is not None and message.frame.type in TERMINAL_FRAME_TYPES:
                 answered.add(message.id)
         return answered
@@ -92,7 +79,6 @@ class FakeExec:
     canceled_runs: ClassVar[list[str]] = []
 
     def __init__(self) -> None:
-        # Every fake backend gets its own empty store.
         self._root = tempfile.TemporaryDirectory()
         self.root = Path(self._root.name)
 
@@ -110,7 +96,6 @@ class FakeExec:
 
 
 def _service(exec_backend: object | None = None) -> WorkbenchService:
-    """A workbench serving a store, as the control plane finds it."""
     return WorkbenchService(exec_backend or FakeExec(), store_id="lab-1")  # type: ignore[arg-type]
 
 
@@ -137,9 +122,6 @@ def test_malformed_request_is_dropped_and_serving_continues() -> None:
 
 
 def test_unknown_op_answers_error_frame() -> None:
-    # An op this workbench does not know (a version-skewed control plane) fails the
-    # envelope's discriminated union; the id is still recoverable, so the caller
-    # gets an error frame instead of hanging until its frame-gap timeout.
     ws = FakeSocket(['{"id": "r1", "request": {"op": "frobnicate"}}'])
     asyncio.run(_serve_and_settle(ws))
 
@@ -163,9 +145,7 @@ def test_invalid_args_answer_error_frame_without_killing_connection() -> None:
 
 
 def test_exec_query_result_is_chunked_under_the_frame_cap() -> None:
-    # A large query result (a sealed archive) must never ride one frame: the
-    # backend stream is forwarded as bounded frames and ends with ``done``.
-    payload = bytes(range(256)) * 4 * 1024  # 1 MiB, above one chunk
+    payload = bytes(range(256)) * 4 * 1024
     FakeExec.query_result = payload
     try:
         req = WorkbenchWsRequest(id="r1", request=ExecQueryRequest(ree_id="ree-1", query=BundleQuery()))
@@ -178,13 +158,10 @@ def test_exec_query_result_is_chunked_under_the_frame_cap() -> None:
     assert [m.frame.type for m in messages] == ["bytes_chunk"] * 4 + ["done"]
     reassembled = b"".join(base64.b64decode(m.frame.data_b64) for m in messages[:-1])
     assert reassembled == payload
-    # No single serialized frame approaches the transport's 1 MiB receive cap.
     assert all(len(text) < 512 * 1024 for text in ws.sent)
 
 
 def test_cancel_for_unknown_request_still_answers_done() -> None:
-    # Cancel is idempotent: the target may have finished (or never existed) by
-    # the time it arrives, and the canceller still deserves an answer.
     ws = FakeSocket([WorkbenchWsRequest(id="c1", request=CancelRequest(request_id="nope")).model_dump_json()])
     asyncio.run(_serve_and_settle(ws))
 
@@ -206,9 +183,6 @@ def test_cancel_run_marks_run_in_workbench() -> None:
 
 
 def test_cancel_stops_an_inflight_request() -> None:
-    # A cancelled request stops working and ships no frames; only the cancel
-    # itself is answered. The backend call blocks so the request is still
-    # in flight when the cancel lands.
     release = threading.Event()
 
     class BlockingExec(FakeExec):
@@ -235,8 +209,6 @@ def test_cancel_stops_an_inflight_request() -> None:
 
 
 class _Follower:
-    """A follow whose command logs ``lines``, then runs on, or ends with ``result``."""
-
     def __init__(self, lines: list[Frame], result: ActionResult | None) -> None:
         self.lines = lines
         self.result = result
@@ -268,7 +240,6 @@ def _following(follower: _Follower) -> tuple[WorkbenchService, _Executions]:
 def test_a_lost_connection_ends_its_follows_and_leaves_the_runs_running() -> None:
     service, executions = _following(_Follower([], None))
     request = FollowRunRequest(ree_id="ree-1", attempt_id="a1")
-    # The command never ends, so the socket hangs up with its follow in flight.
     ws = FakeSocket([WorkbenchWsRequest(id="f1", request=request).model_dump_json()])
 
     asyncio.run(asyncio.wait_for(_serve(ws, service), timeout=2.0))  # type: ignore[arg-type]
@@ -369,11 +340,6 @@ def test_connection_hello_and_connected_gauge_are_balanced(monkeypatch: pytest.M
     assert connected_values == [1, -1]
 
 
-# ================================================
-# Relaying the workbench's own spans
-# ================================================
-
-
 def test_the_span_relay_binds_only_after_the_hello(monkeypatch: pytest.MonkeyPatch) -> None:
     ws = FakeSocket([])
     relay = connection.SpanRelay()
@@ -413,9 +379,6 @@ def test_the_span_relay_binds_only_after_the_hello(monkeypatch: pytest.MonkeyPat
             )
         )
 
-    # The control plane parses the first message on the socket as the hello, so
-    # a span winning that race would be read as a malformed one and the
-    # connection refused. Exactly one message — the hello — precedes the bind.
     assert bound_when == [1]
     assert workbench_hello_adapter.validate_json(ws.sent[0]).workbench_id == "workbench-1"
 
@@ -445,8 +408,6 @@ def test_the_span_relay_unbinds_when_the_connection_drops(monkeypatch: pytest.Mo
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(run_workbench("ws://control/workbench/connect", _service(), "workbench-1", span_relay=relay))
 
-    # Unbound, so the exporter buffers for the next connection instead of
-    # scheduling writes onto a dead socket.
     assert relay.send("c3Bhbg==") is False
 
 
@@ -457,7 +418,6 @@ def test_a_relayed_span_is_sent_uncorrelated() -> None:
     async def relay_one() -> None:
         relay.bind(asyncio.get_running_loop(), ws)  # type: ignore[arg-type]
         assert relay.send("c3Bhbg==") is True
-        # Fire-and-forget onto the loop: yield so the scheduled send runs.
         await asyncio.sleep(0)
 
     asyncio.run(relay_one())

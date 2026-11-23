@@ -1,22 +1,14 @@
 import { requireKnownNames } from "@core/contract/unknownNames";
 import { REE_AUDIT_KEYS, type ReeAuditKey } from "@core/generated/vocabulary";
 
-// Whether the receipt this REE carries for one step still speaks for what the
-// REE now declares. This is the backend's verdict — the `ReeAudit` shipped with
-// every REE document — not a record that a run happened in this browser tab:
-// editing a build script leaves the build receipt in place but makes it
-// `stale`. The vocabulary mirrors `StepAudit.evidence` in
-// core/domain/ree/audit.py; keep the two spellings identical.
 export type EvidenceStatus = "missing" | "current" | "stale" | "not_applicable";
 
-/** The audit's own step names. The domain names its steps; pages are the shell's word. */
 export type EvidenceStep = Exclude<ReeAuditKey, "experiments">;
 
 const EVIDENCE_STEPS = REE_AUDIT_KEYS.filter((key): key is EvidenceStep => key !== "experiments");
 
 export type StepEvidence = Partial<Record<EvidenceStep, EvidenceStatus>>;
 
-/** Full backend verdict for one authoring operation. */
 export interface StepAudit {
   evidence: EvidenceStatus;
   payload: "missing" | "present" | "stale" | "not_applicable";
@@ -29,10 +21,6 @@ export interface ExperimentAudit {
   run: StepAudit;
 }
 
-/**
- * The complete audit returned with an REE. Unlike the legacy StepEvidence
- * projection this retains the receipt/run binding and the backend's reasons.
- */
 export type ReeAudit = Partial<Record<EvidenceStep, StepAudit | EvidenceStatus>> & {
   experiments?: ExperimentAudit[];
 };
@@ -52,11 +40,6 @@ function evidenceOf(evidence: StepEvidence, step: EvidenceStep): EvidenceStatus 
   return evidence[step] ?? "missing";
 }
 
-/**
- * A step counts as done only while its receipt still holds. `stale` is
- * deliberately not done: the receipt describes inputs that have since moved, so
- * the step has to run again before anything may build on it.
- */
 export function isEvidenceCurrent(evidence: StepEvidence, step: EvidenceStep): boolean {
   return evidenceOf(evidence, step) === "current";
 }
@@ -65,10 +48,6 @@ export function isEvidenceStale(evidence: StepEvidence, step: EvidenceStep): boo
   return evidenceOf(evidence, step) === "stale";
 }
 
-/**
- * Project the wire `ReeAudit` (a `StepAudit` per step) down to the standing we
- * read. Payload and reasons stay on the wire: nothing here reports on a bundle.
- */
 function auditRecord(raw: unknown): Record<string, unknown> {
   const audit = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   requireKnownNames("audit", REE_AUDIT_KEYS, Object.keys(audit));
@@ -132,7 +111,6 @@ export function auditReceiptRunId(audit: ReeAudit, step: EvidenceStep): string |
   return typeof entry === "string" ? undefined : entry?.receiptRunId;
 }
 
-/** Every run the audit names as a receipt's producer, experiments included. */
 export function auditReceiptRunIds(audit: ReeAudit): Set<string> {
   const runIds = [
     ...EVIDENCE_STEPS.map((step) => auditReceiptRunId(audit, step)),

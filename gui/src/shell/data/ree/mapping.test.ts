@@ -77,9 +77,6 @@ describe("shell/data/ree/mapping", () => {
     expect(mapped.steps.steps.map((step) => step.status)).toEqual(["ready"]);
   });
 
-  // A draft's payload is always not_applicable — it describes a sealed bundle's
-  // inventory. Reading availability off it left every draft looking sourceless,
-  // which disables the steps that need a source (evaluate, build).
   it("reads source availability from evidence standing, not sealed payload", () => {
     const ree: ReeDocument = {
       ree_id: "ree-1",
@@ -136,8 +133,6 @@ describe("shell/data/ree/mapping", () => {
 
     expect(mapped.workspaceSourceState.sourceAvailable).toBe(true);
     expect(mapped.workspaceSourceState.sourceIncluded).toBe(false);
-    // Every audited step's standing travels into the editor state, so step
-    // doneness survives a reload without being remembered per session.
     expect(mapped.stepEvidence).toEqual({
       acquire_source: "current",
       evaluate_reproducibility: "missing",

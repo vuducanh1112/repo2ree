@@ -33,7 +33,6 @@ function nodeFor(page: (typeof CANVAS_NODES)[number]["key"]) {
   return node;
 }
 
-/** The summary rows a node shows, as a label -> value map. */
 function summaryOf(
   page: (typeof CANVAS_NODES)[number]["key"],
   ree: ReeEditorViewModelPatch = {},
@@ -49,7 +48,6 @@ function summaryOf(
 
 describe("CANVAS_NODES", () => {
   it("carries one node per pipeline page, and no workbench node", () => {
-    // The workbench is the lab the pod sits in, not a node orbiting it.
     expect(CANVAS_NODES.map((node) => node.key)).toEqual([
       PAGE.ACQUIRE_SOURCE,
       PAGE.METADATA,
@@ -71,9 +69,6 @@ describe("CANVAS_NODES", () => {
 
 describe("ring placement", () => {
   it("walks the authoring pipeline clockwise around the bench", () => {
-    // The ring reads as the sequence: every step stands further round than the
-    // one before it, so the canvas and the status bar cannot disagree about
-    // what follows what.
     const authoring = CANVAS_NODES.filter((node) => node.key !== PAGE.ARCHIVE);
     const angles = authoring.map((node) => node.angle);
     const unwrapped = angles.map((angle) => (angle < angles[0] ? angle + 360 : angle));
@@ -84,8 +79,6 @@ describe("ring placement", () => {
     const seal = nodeFor(PAGE.SEAL_REE);
     expect(seal.angle).toBe(180);
     expect(seal.x).toBe(0);
-    // Positive y is the near side of the bench: closest to the viewer, and the
-    // largest a panel renders before the billboard correction evens it out.
     expect(seal.y).toBe(RING.ry);
   });
 
@@ -94,8 +87,6 @@ describe("ring placement", () => {
   });
 
   it("leaves a sector of the ring open", () => {
-    // The gap between the last node and the first is the canvas's breathing
-    // room — a horseshoe, not a closed ring.
     const last = nodeFor(PAGE.ARCHIVE).angle;
     const first = nodeFor(PAGE.ACQUIRE_SOURCE).angle;
     expect(first - last).toBeGreaterThan(40);
@@ -109,9 +100,6 @@ describe("ring placement", () => {
   });
 
   it("stands no two panels on top of each other", () => {
-    // Card faces only: a strut crossing a neighbour's deck plate is fine, two
-    // readable faces overlapping is not. The conservative card box makes this a
-    // real guarantee rather than a near-miss.
     for (const a of CANVAS_NODES) {
       for (const b of CANVAS_NODES) {
         if (a.key === b.key) continue;
@@ -130,8 +118,6 @@ describe("ring placement", () => {
 
 describe("billboard correction", () => {
   it("cancels perspective so every panel renders the same size", () => {
-    // Each node's own perspective factor times its correction must come to 1,
-    // whichever side of the bench it stands on.
     for (const node of CANVAS_NODES) {
       const perspective = SCENE_DEPTH / (SCENE_DEPTH - node.y * Math.sin((54 * Math.PI) / 180));
       expect(perspective * nodeScale(node)).toBeCloseTo(1, 6);
@@ -147,9 +133,6 @@ describe("billboard correction", () => {
 describe("canvasWorldBounds", () => {
   it("frames the scene the nodes actually occupy", () => {
     const bounds = canvasWorldBounds();
-    // `left + width` reconstructs the right edge through one more float op than
-    // the box came from, so compare with a sub-pixel tolerance rather than
-    // asserting on the last bit.
     const within = (value: number, limit: number) =>
       expect(value).toBeLessThanOrEqual(limit + 1e-6);
     for (const node of CANVAS_NODES) {
@@ -162,9 +145,6 @@ describe("canvasWorldBounds", () => {
   });
 
   it("frames a panel's foot, not just its face", () => {
-    // The bug this guards: bounds measured to the bottom of the card cut the
-    // strut and deck plate off the front-most panels, because their feet
-    // project *below* their anchors.
     const bounds = canvasWorldBounds();
     const frontmost = CANVAS_NODES.reduce((lowest, node) =>
       nodeScreenBox(node).bottom > nodeScreenBox(lowest).bottom ? node : lowest,
@@ -175,10 +155,6 @@ describe("canvasWorldBounds", () => {
   });
 
   it("still fills most of a desktop stage", () => {
-    // The other regression: bounds that declare more room than the scene
-    // occupies make `fitView` zoom out, which is what shrank an 11px label to
-    // 7px. Framing the feet costs some of that back, so this is a floor rather
-    // than a target — it is the tall struts on the far arc that set it.
     const bounds = canvasWorldBounds();
     expect(fitBounds({ width: 1920, height: 938 }, bounds, 32).z).toBeGreaterThan(0.85);
   });
@@ -201,8 +177,6 @@ describe("node state", () => {
     expect(activeNode(PAGE.CANVAS)).toBeUndefined();
   });
 
-  // Doneness travels with the REE, not with the session that produced it: no
-  // badge is set here, which is exactly the state a reloaded tab starts in.
   it("reads a node as done when the REE says its step is complete", () => {
     const ree = {
       ...patchReeEditorViewModel(createEmptyReeEditorViewModel(), {
@@ -231,8 +205,6 @@ describe("node state", () => {
 
 describe("nodeSummary", () => {
   it("shows nothing but empty rows for a fresh REE", () => {
-    // Two nodes report a standing rather than an absence, and always have a
-    // value: Evaluate scores every axis from zero, and Seal reads "draft".
     const alwaysPopulated: string[] = [PAGE.EVALUATE_REPRODUCIBILITY, PAGE.SEAL_REE];
     for (const node of CANVAS_NODES) {
       if (alwaysPopulated.includes(node.key)) continue;
@@ -262,7 +234,6 @@ describe("nodeSummary", () => {
     });
 
     it("ignores backend metadata until the source is actually available", () => {
-      // `sourceAvailable` is the gate: stale repo stats must not show through.
       expect(
         summaryOf(PAGE.ACQUIRE_SOURCE, { source: { sourceAvailable: false } }, repo).SWHID,
       ).toBeNull();
@@ -295,7 +266,6 @@ describe("nodeSummary", () => {
   });
 
   it("treats a skipped experiment environment as no experiment environment", () => {
-    // "__skipped__" is a real recorded choice, not a built image.
     expect(
       summaryOf(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, {
         spec: { experimentEnvironmentPath: "__skipped__" },

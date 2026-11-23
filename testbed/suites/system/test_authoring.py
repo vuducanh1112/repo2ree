@@ -1,5 +1,3 @@
-"""Authoring an REE end to end, on a bench with no Docker daemon and nothing to download."""
-
 from __future__ import annotations
 
 import io
@@ -77,7 +75,6 @@ def test_a_bundle_never_loads_into_a_sealed_ree(api: Api, new_ree: Callable[...,
     assert api.seal(ree_id)["status"] == "succeeded"
     digest = api.ree(ree_id)["seal"]["ree_digest"]
 
-    # The REE's own draft, loaded back over its seal: either step may refuse it.
     data = draft.read_bytes()
     upload = api.request(
         "POST",
@@ -109,7 +106,6 @@ def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..
     ree_id = new_ree()
     api.author(ree_id)
 
-    # Editing the build after its receipt exists makes that receipt stop speaking for the REE.
     body = api.request(
         "GET", f"/api/v1/rees/{ree_id}/files/raw", params={"path": f"workspace/{BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}"}
     ).text
@@ -130,8 +126,6 @@ def test_stale_evidence_blocks_seal_until_rebuilt(api: Api, new_ree: Callable[..
         assert sealing.status_code >= 400
     assert api.ree(ree_id).get("seal") is None
 
-    # Rebuilding returns the experiment environment to current; whatever ran on the old experiment environment runs
-    # again.
     assert api.stage(ree_id, "build-experiment-environment")["status"] == "succeeded"
     assert api.audit(ree_id)["build_experiment_environment"]["evidence"] == "current"
     assert api.activate(ree_id)["status"] == "succeeded"

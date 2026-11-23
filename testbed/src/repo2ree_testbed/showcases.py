@@ -1,9 +1,3 @@
-"""The example projects the suites author REEs from, and the showcases: each project and the machine it needs.
-
-A project is a folder of ``examples/projects``: ``source/`` is the tree that gets uploaded, unpacking to
-``source/`` in the workspace, and ``recipe/`` holds the scripts that run it which inference does not propose.
-"""
-
 from __future__ import annotations
 
 import io
@@ -70,16 +64,13 @@ CHECK: RecipeScript = "check_working_environment.sh"
 BUILD: RecipeScript = "build_experiment_environment.sh"
 ACTIVATE: RecipeScript = "activate_experiment_environment.sh"
 LAUNCH: RecipeScript = "launch.sh"
-# The scripts every project has, from its recipe or from inference; a launch is optional, and absent runs directly.
 REQUIRED_SCRIPTS: tuple[RecipeScript, ...] = tuple(script for script in get_args(RecipeScript) if script != LAUNCH)
 SLURM_LAUNCH = ((LAUNCH, InferenceRule.SLURM_LAUNCH),)
 PIP_BUILD = ((BUILD, InferenceRule.PIP_REQUIREMENTS),)
 VENV = (*PIP_BUILD, (ACTIVATE, InferenceRule.VENV_ACTIVATE))
 DOCKER = ((BUILD, InferenceRule.DOCKERFILE), (ACTIVATE, InferenceRule.DOCKER_ACTIVATE))
 PODMAN_SCRIPTS = ((BUILD, InferenceRule.PODMAN_BUILD), (ACTIVATE, InferenceRule.PODMAN_ACTIVATE))
-# The API showcases' tier: every test of API_SUITE, each on a stack on the machine its showcase names.
 API_TIER = "showcase-api"
-# The same tests through the command line: each runs `ree` on the machine its showcase names.
 CLI_TIER = "showcase-cli"
 
 
@@ -89,19 +80,15 @@ class Project:
     experiment_environment_path: str
     experiment: str
     verdict: ExpectedVerdict = "identical"
-    # Whether its stages pull, fetch, or build over the network, and so may go quiet for long.
     network: bool = False
     outputs: tuple[str, ...] = (RESULT,)
-    # The scripts written as inference proposes them, each by the rule that proposes it; the others are the recipe's.
     inferred: tuple[tuple[RecipeScript, InferenceRule], ...] = ()
 
     def rule(self, script: RecipeScript) -> InferenceRule | None:
-        """The rule whose proposal is ``script``, or None when it is the recipe's."""
         return dict(self.inferred).get(script)
 
     @property
     def launches(self) -> bool:
-        """Whether its scripts run through a launch script, as inference proposes it or as the recipe writes it."""
         return self.rule(LAUNCH) is not None or (self.directory / "recipe" / LAUNCH).is_file()
 
     @property
@@ -136,7 +123,6 @@ class Project:
         return (self.directory / "recipe" / script).read_text()
 
     def archive(self) -> bytes:
-        """The source tree packed as an upload, without interpreter caches."""
         buffer = io.BytesIO()
         with tarfile.open(fileobj=buffer, mode="w:gz") as archive:
             archive.add(self.source, arcname=SOURCE, filter=lambda info: None if "__pycache__" in info.name else info)
@@ -153,8 +139,6 @@ INSTANT_DOCKER = Project(
     name=ProjectName.INSTANT_DOCKER,
     experiment_environment_path=f"{SOURCE}/runtime-image.tar",
     experiment="instant-docker-hello",
-    # Inference proposes `docker build` of the project as it stands; the recipe also
-    # brings the bench's busybox into the build context, which a FROM scratch image needs.
 )
 APPTAINER = Project(
     name=ProjectName.APPTAINER,
@@ -213,7 +197,6 @@ NOTEBOOK = Project(
     name=ProjectName.NOTEBOOK,
     experiment_environment_path=f"{SOURCE}/runtime-venv.tar.gz",
     experiment="notebook-decay-rate",
-    # The executed notebook records when each of its cells ran, so no rerun repeats its bytes.
     verdict="reproduced",
     network=True,
     outputs=(RESULT, "curve.csv", "figure.json", "figure.png", "executed.ipynb"),
@@ -269,10 +252,8 @@ SHOWCASES: dict[ShowcaseName, ShowcaseConfig] = {
     ShowcaseName.STOCHASTIC: ShowcaseConfig(STOCHASTIC, EnvironmentName.BARE),
     ShowcaseName.UNPINNED: ShowcaseConfig(UNPINNED, EnvironmentName.BARE),
 }
-# The API tests of one feature rather than one project, and the machine they run on.
 FEATURES_ENVIRONMENT = EnvironmentName.BARE
 
-# The browser showcases each showcase has so far, by workflow: spec files of GUI_SUITE.
 GUI_SHOWCASES: dict[ShowcaseName, dict[Workflow, str]] = {
     ShowcaseName.JAVA_MAVEN: {"authoring": "java-maven.spec.ts"},
     ShowcaseName.PYTHON_DOCKER: {"authoring": "python-docker.spec.ts", "review": "review.spec.ts"},
@@ -281,8 +262,6 @@ GUI_SHOWCASES: dict[ShowcaseName, dict[Workflow, str]] = {
 
 
 def gui_machines() -> dict[Path, EnvironmentName]:
-    """The machine each browser spec runs on that names one: a showcase's on its showcase's, and the instant Docker
-    project's on one whose Docker daemon sees the paths its scripts do."""
     placed = {
         GUI_SUITE / spec: SHOWCASES[name].environment
         for name, specs in GUI_SHOWCASES.items()
@@ -299,8 +278,6 @@ class FeatureName(StrEnum):
 
 @dataclass(frozen=True)
 class FeatureTests:
-    """The tests of one feature rather than one project: an API test file, a browser spec file, or both."""
-
     api: Path | None
     gui: str | None
 
@@ -313,7 +290,6 @@ FEATURES: dict[FeatureName, FeatureTests] = {
 
 
 def _refusals() -> list[str]:
-    """What is wrong with the showcases as declared."""
     refusals = [f"{name} has no config" for name in ShowcaseName if name not in SHOWCASES]
     for name, config in SHOWCASES.items():
         if config.project.name.value != name.value:
@@ -343,7 +319,6 @@ def api_suites() -> tuple[Path, ...]:
 
 
 def machine_of(node: str) -> EnvironmentName:
-    """The machine an API test runs on, by the showcase, or the features, whose folder holds it."""
     parts = Path(node.split("::", 1)[0]).parts
     suite = API_SUITE.relative_to(ROOT).parts
     if parts[: len(suite)] != suite or len(parts) <= len(suite) + 1:

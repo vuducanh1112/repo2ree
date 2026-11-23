@@ -137,7 +137,6 @@ describe("createReeRunsClient", () => {
 
   it("rejects unsupported operations", async () => {
     const { client } = harness();
-    // An operation the client does not dispatch on, as one from an older contract would arrive.
     await expect(client.startReeRun("ree-1", "unknown" as ReeRunOperation)).rejects.toThrow(
       "Unsupported execution run operation",
     );

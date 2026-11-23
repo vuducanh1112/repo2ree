@@ -20,16 +20,10 @@ import {
   type StepEvidence,
 } from "./StepEvidence";
 
-// ================================================
-// Types
-// ================================================
-
 interface MapRawReeIntentToReeOptions {
   reeIntent: Record<string, unknown> | null | undefined;
   reeSession?: Record<string, unknown> | null | undefined;
-  /** The REE document's audit, as shipped: `StepAudit` per step. */
   audit?: unknown;
-  /** The REE document's steps, as shipped: where the REE stands on each. */
   steps?: unknown;
   fallbackName: string;
   fallbackOriginUrl?: string;
@@ -44,10 +38,6 @@ export interface RawReeIntentSlices {
   audit: ReeAudit;
   steps: AuthoringProgress;
 }
-
-// ================================================
-// Helpers
-// ================================================
 
 function mapRawCatalogMetadata(value: unknown): ReeCatalogMetadata {
   const metadata = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -91,8 +81,6 @@ function mapRawResourceEstimates(value: unknown): ReeExperiment["resourceEstimat
   };
 }
 
-// Map an experiment's Runnable fields (description / runScript / verifyScript /
-// outputPaths / estimates).
 function mapRawRunnable(raw: Record<string, unknown>): ReeRunnable {
   return {
     description: String(raw.description ?? ""),
@@ -105,10 +93,6 @@ function mapRawRunnable(raw: Record<string, unknown>): ReeRunnable {
     resourceEstimates: mapRawResourceEstimates(raw.resource_estimates),
   };
 }
-
-// ================================================
-// Mapper
-// ================================================
 
 export function mapRawReeIntentToSlices({
   reeIntent,

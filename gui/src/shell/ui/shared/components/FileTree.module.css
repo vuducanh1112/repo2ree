@@ -1,13 +1,8 @@
-/* The workspace file tree. Every reading a row can have — selected, marked as
- * referenced, a folder, a file of some category — is a data attribute the
- * selectors below drive, rather than a colour the component computes. */
-
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-1-5);
   width: 100%;
-  /* Indent by depth: a measurement, so it rides a custom property. */
   padding: var(--space-1) var(--space-2);
   padding-left: calc(var(--space-2) + var(--tree-depth, 0) * var(--space-3));
   border: 1px solid transparent;
@@ -26,7 +21,6 @@
   color: var(--ink-default);
 }
 
-/* Referenced by the thing being viewed — worth finding, not yet chosen. */
 .row[data-marked] {
   background: var(--tone-warning-surface);
   border-color: var(--tone-warning-border);
@@ -54,7 +48,6 @@
   color: var(--chrome-text-muted);
 }
 
-/* Files sit where a folder's chevron would be. */
 .fileIcon {
   display: flex;
   margin-left: var(--space-3);

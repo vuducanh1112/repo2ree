@@ -1,5 +1,3 @@
-"""An attempt runs on a stage: the integrity check holds before it and after it."""
-
 import json
 import subprocess
 

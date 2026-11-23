@@ -1,18 +1,3 @@
-"""Acquire and verify source identity inside an isolated review attempt.
-
-Two ways to get a tree to verify, and the choice is the reviewer's:
-
-* ``independent`` — fetch the recorded origin, exactly as the author first did.
-  The strong form: agreement means the origin still serves the authored source.
-* ``bundled`` — extract the REE's own ``snapshot.tar.gz``. No network, no live
-  origin, and the only path open for an REE whose source was uploaded rather
-  than fetched. Agreement means the bundle is intact — an integrity check, not
-  an independent reproduction, and recorded as such on the comparison.
-
-Either way the same generated ``acquire_source.sh`` does the work, and the same
-SWHID comparison judges it; only what lands next to the script differs.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -58,8 +43,6 @@ def handle_review_acquire_source(
     if (refused := refuse_signed_review(review_layout, args.review_id, log)) is not None:
         return refused
 
-    # The one step that opens an attempt rather than joining one: there is no
-    # record to require, so it starts from a freshly minted one.
     step = begin_review_step(
         review_layout,
         new_review_record(args.review_id, subject=review_subject(ree), at=timer.started_at, launch=args.launch),
@@ -98,8 +81,6 @@ def handle_review_acquire_source(
     timing = timer.finish()
     receipt = ReviewAcquireSourceReceipt(
         **review_receipt_envelope(run_id, timing, "succeeded"),
-        # Origin facts describe a fetch. A bundled acquisition performed none,
-        # so the receipt records none rather than implying the origin was reached.
         origin_url=source.origin_url if basis == "independent" and source else None,
         source_type=source.source_type if basis == "independent" and source else "",
         requested_ref=source.requested_ref if basis == "independent" and source else None,
@@ -140,16 +121,10 @@ def handle_review_acquire_source(
 
 
 def _has_acquirable_origin(source: SourceDefinition | None) -> bool:
-    """Whether the baseline names an origin a reviewer could fetch for themselves.
-
-    The version-control types the generated script cannot drive (hg, svn, ...)
-    are as good as originless here, so they fall back like an upload does.
-    """
     return source is not None and bool(source.origin_url) and source.source_type in {"git", "tarball", "zip"}
 
 
 def _available_bases(ree: Ree, ree_layout: ReeLayout) -> set[EvidenceBasis]:
-    """Which bases this baseline can actually offer a source acquisition."""
     available: set[EvidenceBasis] = set()
     if _has_acquirable_origin(ree.subject.definition.source):
         available.add("independent")
@@ -163,7 +138,6 @@ def _basis_refusal(requested: ReviewBasis) -> str:
         return "The author baseline has no independently acquirable source origin"
     if requested == "bundled":
         return "This REE carries no source snapshot to reproduce from"
-    # auto only refuses when it had nothing at all to choose between.
     return "The author baseline has neither an acquirable source origin nor a bundled snapshot"
 
 
@@ -175,22 +149,6 @@ def _stage_acquisition(
     basis: EvidenceBasis,
     log: LogSink,
 ) -> None:
-    """Put the acquire script — and, for a bundled basis, its input — in place.
-
-    ``acquire_source.sh`` derives every path from its own directory and prefers
-    a snapshot sitting beside it to any origin, which is exactly the switch the
-    two bases need: generate it with the origin baked in and the attempt fetches;
-    copy the snapshot in and generate it bare, and the attempt extracts.
-
-    The snapshot is *copied* rather than read across from the author's tree, for
-    the same reason the overlay is: the attempt is a parallel REE, and a script
-    that reaches into author evidence to work is one edit away from writing
-    there. The copy also stays as the attempt's own record of what it verified.
-
-    Any previously acquired tree is cleared first. The script deliberately
-    leaves a populated upstream alone, which would otherwise make re-running the
-    step on a different basis a no-op that reports the old tree's verdict.
-    """
     shutil.rmtree(review_layout.upstream, ignore_errors=True)
     if basis == "bundled":
         shutil.copyfile(ree_layout.snapshot_archive, review_layout.snapshot_archive)

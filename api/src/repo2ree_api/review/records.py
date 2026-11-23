@@ -1,5 +1,3 @@
-"""Reading review attempts back: every attempt for an REE, or one by id."""
-
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -13,7 +11,6 @@ review_records_router = APIRouter(tags=["reviews"])
 
 
 def reviews_for(ree_id: str) -> ReviewSet:
-    """Every persisted attempt for an REE, or the workbench failure to report."""
     handle = require_handle(ree_id)
     try:
         return command_dispatcher.get_reviews(handle)

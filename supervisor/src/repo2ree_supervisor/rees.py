@@ -1,10 +1,3 @@
-"""The REEs this control plane serves from stores, and what was last seen of each.
-
-An REE in a store outlives any workbench: it is listed, and its name and status read,
-whether or not the workbench serving its store is connected. The summary is refreshed
-whenever its REE is read; it is what a listing shows of an REE it cannot reach.
-"""
-
 from __future__ import annotations
 
 import json
@@ -51,7 +44,6 @@ class ReeRegistry:
             return list(self._read().values())
 
     def update_summary(self, ree_id: str, *, name: str, status: str) -> None:
-        """Remember what the REE was last seen as; nothing when it is not (or no longer) registered."""
         with self._lock:
             rees = self._read()
             record = rees.get(ree_id)

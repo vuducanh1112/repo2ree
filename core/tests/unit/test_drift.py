@@ -1,5 +1,3 @@
-"""Drift: an REE's files changed outside ree are found before the next attempt, refused, and never absorbed."""
-
 import json
 import subprocess
 import zipfile
@@ -73,7 +71,6 @@ def test_a_record_changed_outside_ree_is_refused_and_never_absorbed(ree):
     assert result.failure.category == "precondition"
     assert result.failure.details == {"code": "drift"}
     assert "ree.json" in result.failure.message
-    # Nothing is committed for the refusal: it is kept beside the history, which stays where ree left it.
     assert (result.history.after_snapshot_id, result.history.capture_status) == (None, "failed")
     assert result.history.record_digest is not None
     assert git(ree, "rev-parse", "HEAD") == head
@@ -219,7 +216,6 @@ def test_a_file_changed_in_a_review_is_drift_of_the_ree(ree):
 
 
 def committed_by_hand(layout: ReeLayout) -> str:
-    """A commit on the REE's history made with git, as a person would, of the REE's files as they are."""
     head = git(layout, "rev-parse", "refs/heads/ree-history")
     identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
     by_hand = git(layout, *identity, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", "my fix")
@@ -291,7 +287,6 @@ def test_a_history_reset_is_found_by_the_reflog(ree):
     left = git(ree, "rev-parse", "refs/heads/ree-history")
     git(ree, "update-ref", "refs/heads/ree-history", first)
 
-    # The ref went back; the files stay as the later attempt left them, so they differ from it too.
     assert DriftedFile(path=".git/refs/heads/ree-history", part="history") in find_drift(ree)
     refused = patch(ree, "third")
     assert refused.failure is not None
@@ -299,8 +294,6 @@ def test_a_history_reset_is_found_by_the_reflog(ree):
 
 
 def test_a_history_reset_to_a_commit_of_ree_s_while_the_reflog_is_lost_is_found_only_by_its_files(ree):
-    # Every commit is still ree's, and nothing says where ree left the history: only the files, which stay as the
-    # later attempt left them, are found. The refusal is kept beside the history, so nothing moves its ref.
     first = git(ree, "rev-parse", "refs/heads/ree-history")
     assert patch(ree, "second").status == "succeeded"
     git(ree, "reflog", "expire", "--expire=now", "--all")
@@ -333,7 +326,6 @@ def test_a_commit_copied_onto_another_parent_names_another_parent_than_its_own(r
     head = git(ree, "rev-parse", "refs/heads/ree-history")
     message = git(ree, "log", "-1", "--format=%B", head)
     identity = ("-c", "user.name=someone", "-c", "user.email=someone@example.invalid")
-    # Copied onto the commit it followed, as a cherry-pick onto the history's head copies it.
     copied = git(ree, *identity, "commit-tree", f"{head}^{{tree}}", "-p", head, "-m", message)
 
     with open_history(ree) as history:

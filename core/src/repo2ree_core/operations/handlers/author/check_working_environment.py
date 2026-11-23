@@ -1,5 +1,3 @@
-"""Run the author's check of the working environment there, launched as every script is, and record that it passed."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,7 +27,6 @@ _LABEL = "check_working_environment"
 
 
 def declared_check(ree: Ree, workspace: Path) -> CheckWorkingEnvironmentDefinition:
-    """The check the REE declares, once its script in the attempt's workspace is the one it declares."""
     declared = ree.subject.definition.check_working_environment
     path = workspace / str(declared.check_working_environment_script_path)
     if not path.is_file():
@@ -40,8 +37,6 @@ def declared_check(ree: Ree, workspace: Path) -> CheckWorkingEnvironmentDefiniti
 
 
 def _current_receipt(ree: Ree) -> CheckWorkingEnvironmentReceipt | None:
-    """The check's receipt, when its evidence is current and it was observed on the host ree runs on now: the check
-    is of this working environment, so a new host is checked again."""
     receipt = ree.subject.receipts.check_working_environment
     if receipt is None or audit(ree).check_working_environment.evidence != "current":
         return None
@@ -49,7 +44,7 @@ def _current_receipt(ree: Ree) -> CheckWorkingEnvironmentReceipt | None:
 
 
 def handle_check_working_environment(
-    args: CheckWorkingEnvironmentArgs = CheckWorkingEnvironmentArgs(),  # noqa: B008 — frozen by use: no handler changes its args
+    args: CheckWorkingEnvironmentArgs = CheckWorkingEnvironmentArgs(),  # noqa: B008
     *,
     layout: ReeLayout,
     run_id: str,

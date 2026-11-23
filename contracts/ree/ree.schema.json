@@ -162,7 +162,6 @@
     },
     "ActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
-      "description": "The activate experiment environment script ran a command that does nothing, which exited 0.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -582,7 +581,6 @@
     },
     "CheckWorkingEnvironmentDefinition": {
       "additionalProperties": false,
-      "description": "The script that checks the working environment offers what the REE's scripts need, run there before them.",
       "properties": {
         "check_working_environment_script_path": {
           "default": "ree-scripts/check_working_environment.sh",
@@ -617,7 +615,6 @@
     },
     "CheckWorkingEnvironmentReceipt": {
       "additionalProperties": false,
-      "description": "The author's check of the working environment ran there, launched as every script is, and exited 0.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -1453,7 +1450,6 @@
     },
     "LaunchDefinition": {
       "additionalProperties": false,
-      "description": "The script every other one of the REE's scripts is launched through, ``sh launch.sh <command>``.",
       "properties": {
         "launch_script_path": {
           "default": "ree-scripts/launch.sh",
@@ -1488,7 +1484,6 @@
     },
     "Launched": {
       "additionalProperties": false,
-      "description": "Where a launched script ran, as it saw from inside the launch.",
       "properties": {
         "node": {
           "minLength": 1,
@@ -2290,7 +2285,6 @@
     },
     "WorkingEnvironmentObservation": {
       "additionalProperties": false,
-      "description": "Where a step's scripts ran: the host as the step saw it, and whether that was a container.",
       "properties": {
         "host": {
           "$ref": "#/$defs/HostFingerprint"

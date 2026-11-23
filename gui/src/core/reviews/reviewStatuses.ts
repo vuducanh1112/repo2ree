@@ -2,15 +2,6 @@ import type { ReviewStepKey } from "@core/generated/vocabulary";
 import type { ReviewAttempt, ReviewStepState } from "./Review";
 import { REVIEW_STEPS, type ReviewStepStatus, reviewStep } from "./reviewDag";
 
-/**
- * The per-step display state of a review attempt.
- *
- * A step's status is its lifecycle state until it settles, at which point the
- * *comparison verdict* takes over — "completed" says the reviewer's machine
- * finished, which is not what a reviewer wants to read. A step whose
- * dependencies have not settled is "unavailable": it has nothing to reproduce
- * against yet.
- */
 export function reviewStepStatuses(
   attempt: ReviewAttempt | undefined,
   options: { pendingStep?: ReviewStepKey } = {},
@@ -23,20 +14,6 @@ export function reviewStepStatuses(
   return statuses;
 }
 
-/**
- * The attempt the console is driving, and whether the list has caught up to it.
- *
- * Starting a review returns the id of the attempt it opened before the workbench
- * has written that attempt's record, so the list lags the truth by one poll.
- * Taking the newest *listed* attempt during that gap hands back the previous
- * one — which reads as settled, because its steps are — and any step dispatched
- * against it silently certifies the wrong attempt.
- *
- * So an opened id always wins, and until it appears the answer is "not yet"
- * rather than the closest thing to hand. `pending` is what that gap is: the
- * attempt exists, this console opened it, and nothing about it can be shown or
- * acted on until it is readable.
- */
 export function selectReviewAttempt(
   attempts: readonly ReviewAttempt[] | undefined,
   openedReviewId: string | undefined,
@@ -47,7 +24,6 @@ export function selectReviewAttempt(
   return { attempt: opened, pending: opened == null };
 }
 
-/** Which steps a reviewer may start right now. */
 export function runnableReviewSteps(
   statuses: Readonly<Record<ReviewStepKey, ReviewStepStatus>>,
 ): Set<ReviewStepKey> {
@@ -55,20 +31,11 @@ export function runnableReviewSteps(
     (step) => statuses[step.key] === "queued" || statuses[step.key] === "running",
   );
   if (busy) return new Set();
-  // Source opens an attempt, so it is always available; every other step needs
-  // its dependencies settled.
   return new Set(
     REVIEW_STEPS.filter((step) => statuses[step.key] !== "unavailable").map((step) => step.key),
   );
 }
 
-/**
- * The status of one experiment within an attempt.
- *
- * Separate from the step rollup because the console runs experiments
- * individually: each needs its own button state, and "the experiments step is
- * running" says nothing about which experiment the reviewer may start next.
- */
 export function experimentReviewStatus(
   attempt: ReviewAttempt | undefined,
   experimentName: string,
@@ -80,26 +47,15 @@ export function experimentReviewStatus(
     (entry) => entry.experimentName === experimentName,
   );
   if (comparison) return comparison.verdict;
-  // No verdict yet: runnable exactly when the step as a whole is, so a
-  // reproduction already in flight does not offer a second start elsewhere.
   return step === "queued" || step === "running" ? step : "ready";
 }
 
-/**
- * How many of an attempt's experiments actually reproduced.
- *
- * Deliberately not "how many have a verdict": an experiment that came back
- * `different` or `inconclusive` has settled without reproducing anything, and
- * counting it toward a reproduced tally would report the review's own findings
- * as successes.
- */
 export function reproducedExperimentCount(attempt: ReviewAttempt | undefined): number {
   return (attempt?.experimentComparisons ?? []).filter(
     (entry) => entry.verdict === "identical" || entry.verdict === "reproduced",
   ).length;
 }
 
-/** Experiments with no verdict in this attempt yet, in declared order. */
 export function unreproducedExperiments(
   attempt: ReviewAttempt | undefined,
   experimentNames: readonly string[],
@@ -110,13 +66,6 @@ export function unreproducedExperiments(
   return experimentNames.filter((name) => !settled.has(name));
 }
 
-/**
- * The experiments step's single status, rolled up from its per-experiment
- * verdicts — worst first, because a reviewer scanning the graph needs to see
- * that *something* did not reproduce without opening the list. Ties to the
- * weakest claim: `inconclusive` outranks `reproduced` so an experiment with no
- * criterion cannot hide behind its siblings' passes.
- */
 const EXPERIMENT_ROLLUP: readonly ReviewStepStatus[] = [
   "different",
   "inconclusive",
@@ -131,15 +80,6 @@ function experimentsRollup(attempt: ReviewAttempt): ReviewStepStatus | undefined
   return EXPERIMENT_ROLLUP.find((verdict) => verdicts.has(verdict));
 }
 
-/**
- * Statuses a dependent step may build on.
- *
- * `different` and `inconclusive` are here because a divergent runtime is still
- * worth probing — "does the thing we got actually run?" is a fair question
- * about a build that did not match. `uninhabitable` is deliberately absent:
- * running experiments inside a runtime that would not come up produces failures
- * that say nothing about the experiments.
- */
 const SETTLED: readonly ReviewStepStatus[] = [
   "succeeded",
   "identical",

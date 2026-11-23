@@ -1,11 +1,3 @@
-"""Sign a sealed REE, or a review of one, with Sigstore: an in-toto statement over the seal's digest, as a DSSE
-envelope in a bundle. A review's statement carries the review's record as its predicate.
-
-The signer proves who they are to an OIDC issuer: in a browser, by a code pasted from one, or by a token the
-environment already holds, as a CI job does. Fulcio certifies a key for that identity for a few minutes, and Rekor
-logs the signature publicly. The bundle carries all three, and core keeps it beside the seal.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -42,8 +34,6 @@ PUBLIC_LOG_NOTICE = (
 
 
 class SigningRequest(BaseModel):
-    """What to sign, and where the signer's identity and Sigstore's services come from."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     ree_name: str
@@ -51,14 +41,11 @@ class SigningRequest(BaseModel):
     predicate_type: str
     predicate: dict[str, JsonValue] = Field(default_factory=dict)
     instance: SigstoreInstance = "production"
-    # A Sigstore client trust configuration naming other services, such as a local stack; it wins over instance.
     trust_config: Path | None = None
     identity_token: str | None = None
-    # Paste a code from the browser instead of letting the issuer redirect to this machine.
     out_of_band: bool = False
 
 
-# Why nothing was signed: this ree has no Sigstore client, a service was out of reach, or Sigstore refused.
 SigningFailure = Literal["precondition", "unavailable", "execution"]
 
 
@@ -69,7 +56,6 @@ class SigningError(Exception):
 
 
 def sign_seal(request: SigningRequest) -> bytes:
-    """The Sigstore bundle of the request's statement, signed under the identity the signer proves."""
     try:
         from sigstore.errors import Error, NetworkError
         from sigstore.oidc import ExpiredIdentity, IssuerError
@@ -112,20 +98,11 @@ def _signed(request: SigningRequest) -> bytes:
         .predicate(request.predicate)
         .build()
     )
-    # One key for the certificate and the signature: without its cache, sigstore makes a new key each time it
-    # is asked for one, and the signature is not the certificate's.
     with SigningContext.from_trust_config(trust).signer(identity) as signer:
         return signer.sign_dsse(signed).to_json().encode()
 
 
-# ================================================
-# Verifying
-# ================================================
-
-
 class _Held(BaseModel):
-    """What Sigstore holds of a bundle it accepted: the signer its certificate names, and when the log recorded it."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     signer: Signer
@@ -133,7 +110,7 @@ class _Held(BaseModel):
 
 
 class _UntrustedError(Exception):
-    """Sigstore did not accept the bundle."""
+    pass
 
 
 def _trusted_root(trust: TrustRoot, trust_config: Path | None) -> Any:
@@ -145,7 +122,6 @@ def _trusted_root(trust: TrustRoot, trust_config: Path | None) -> Any:
 
 
 def _signer_of(certificate: Any) -> Signer:
-    """The identity a Fulcio certificate certifies, and the OIDC issuer that proved it."""
     from cryptography import x509
 
     names = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
@@ -159,7 +135,6 @@ def _signer_of(certificate: Any) -> Signer:
             raw = certificate.extensions.get_extension_for_oid(x509.ObjectIdentifier(oid)).value.value
         except x509.ExtensionNotFound:
             continue
-        # The second issuer extension is a DER UTF8String: a tag, a length, then the value.
         issuer = raw[2:].decode() if encoded else raw.decode()
         break
     return Signer(identity=identities[0] if identities else "(none)", issuer=issuer or "(none)")
@@ -170,8 +145,6 @@ _ISSUER_V2 = "1.3.6.1.4.1.57264.1.8"
 
 
 def sigstore_holds(content: bytes, trust: TrustRoot, trust_config: Path | None) -> _Held:
-    """What Sigstore holds of a bundle under the trust root: the chain, the log, and the key that signed. Whose
-    identity it names is not judged here."""
     import json
 
     from sigstore.errors import Error
@@ -201,10 +174,6 @@ def verify_signature(
     policy: VerificationPolicy,
     trust_config: Path | None = None,
 ) -> SignatureVerification:
-    """One signature, as a verifier finds it under ``policy``: the REE's own checks first, then Sigstore's, then whose.
-
-    ``record`` is the review's record a review's signature must carry; None for a signature of the seal.
-    """
     try:
         statement = signed_statement(content)
     except UnreadableSignatureError as exc:

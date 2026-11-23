@@ -1,5 +1,3 @@
-"""The gates' receipts, the last assurance-gate receipt, and the test evidence it names."""
-
 from __future__ import annotations
 
 import os
@@ -19,21 +17,15 @@ from repo2ree_repoview.repository import ROOT, Head
 RECEIPTS = ROOT / ".receipts"
 RECEIPT = RECEIPTS / "assurance-gate.json"
 POLICY = ROOT / "scripts/gates/policy.toml"
-# The platforms a published image set carries, as the justfile defaults them.
 PUBLISH_PLATFORMS = tuple(os.environ.get("PUBLISH_PLATFORMS", "linux/amd64 linux/arm64").split())
 EXPECTATIONS = ROOT / "assurance/checker/expected-verdicts.toml"
-# A report of each run, assessed and drawn beside it (`just visualize-behaviour`), laid out like the
-# run: <run>/run.json with the verdicts and the commit that assessed them, <run>/<test>/{verification,traces}.
 REPORTS = ROOT / "reports/behaviour"
 
 
 class GateReceipt(Document):
-    """The header every gate's receipt shares (scripts/gates/receipts.py)."""
-
     gate: str
     revision: str | None = None
     tree: str
-    # A publish-gate receipt's: the platform of the images it certifies.
     platform: str = ""
 
 
@@ -51,8 +43,6 @@ class ReceiptCoverage(Document):
 
 
 class Receipt(GateReceipt):
-    """The assurance gate's receipt: the runs and verdicts it certified HEAD's tree by."""
-
     revision: str
     runs: tuple[str, ...]
     tests: tuple[ReceiptTest, ...]
@@ -69,15 +59,12 @@ def read_receipt() -> Receipt | None:
 
 
 def reached(receipt: Receipt | None) -> str:
-    """How much of the specification the receipt's tests reached, as the pages say it."""
     coverage = receipt.coverage if receipt else None
     return f"{coverage.reached} of {coverage.declared}" if coverage else "? of ?"
 
 
 @dataclass(frozen=True)
 class ReceiptState:
-    """Whether one gate's receipt covers what is checked out now."""
-
     name: str
     recipe: str
     state: Literal["current", "stale", "missing"]
@@ -85,8 +72,6 @@ class ReceiptState:
 
 
 class TierReceipt(GateReceipt):
-    """A tier receipt (scripts/gates/tiers.py): one tier's run, certified on a tree and platform."""
-
     tier: str
     machine: str = ""
     run: str = ""
@@ -97,14 +82,11 @@ class TierReceipt(GateReceipt):
 
 
 def tier_receipts() -> list[TierReceipt]:
-    """Every tier receipt in this clone, for any tree."""
     return [TierReceipt.model_validate_json(path.read_bytes()) for path in sorted(RECEIPTS.glob("tiers/*/*.json"))]
 
 
 @dataclass(frozen=True)
 class TierNeed:
-    """One tier receipt a gate needs, where (a platform, ``any``, or ``here``), and what meets it for HEAD."""
-
     tier: str
     place: str
     recipe: str
@@ -113,7 +95,6 @@ class TierNeed:
 
 
 def gate_needs(head: Head, found: list[TierReceipt]) -> dict[str, list[TierNeed]]:
-    """For each gate the policy names, the tier receipts it needs and the ones that meet them."""
     policy = tomllib.loads(POLICY.read_text()) if POLICY.is_file() else {}
     recipes = {name: str(entry.get("recipe", "")) for name, entry in policy.get("tiers", {}).items()}
     needs: dict[str, list[TierNeed]] = {}
@@ -164,7 +145,6 @@ def receipt_states(head: Head, receipt: Receipt | None) -> list[ReceiptState]:
             f"{place} {'ok' if ok else 'needed'}" for place, ok in done.items()
         )
         found.append(ReceiptState("Showcase gate", "just showcase-gate", showcase_state, detail))
-    # One per platform, each from a machine of that platform (scripts/gates/publish_gate.py).
     published = [
         GateReceipt.model_validate_json(path.read_bytes()) for path in sorted(RECEIPTS.glob("publish-gate-*.json"))
     ]
@@ -188,13 +168,10 @@ class RunTest(Document):
 class RunRecord(Document):
     build_revision: str = ""
     platform: str = ""
-    # In a report of the run: the commit whose checker assessed it, "" from a dirty tree.
     assessed_revision: str = ""
     tests: tuple[RunTest, ...] = ()
 
 
-# What a test's evidence holds, by whether the overview copies it or only names it by hash; and what this
-# tree's report on it holds, copied in its place beside it.
 COPIED = (
     "test.json",
     "junit.xml",
@@ -205,36 +182,28 @@ COPIED = (
 )
 REFERENCED = ("dossier/rees", "dossier/telemetry", "artifacts")
 REPORTED = ("verification", "traces", "session")
-# A CLI test's terminal session as a video, where `just render-cli-sessions` rendered one: bundled where the
-# session page links it, which reports/ lays out the same, sessions/<run>/<test>.mp4 beside evidence/<run>/.
 SESSIONS = ROOT / "reports" / "sessions"
 
 
 @dataclass(frozen=True)
 class Evidence:
-    """The receipt's runs as bundled, and each test's bundled folder by (run, test) and by verification path."""
-
     runs: tuple[Path, ...] = ()
     tests: dict[tuple[str, str], str] = field(default_factory=dict)
     verifications: dict[str, str] = field(default_factory=dict)
 
 
 def runs_on_disk(names: Iterable[str]) -> Iterator[tuple[Path, RunRecord]]:
-    """The runs named, from the repository root, that are still on disk, with their records."""
     for run in (ROOT / name for name in names):
         if (run / "run.json").is_file():
             yield run, RunRecord.model_validate_json((run / "run.json").read_bytes())
 
 
 def gate_runs(receipt: Receipt | None) -> Iterator[tuple[Path, RunRecord]]:
-    """The receipt's runs that are still on disk, with their records."""
     return runs_on_disk(receipt.runs if receipt else ())
 
 
 @dataclass(frozen=True)
 class TestRef:
-    """One test whose verdicts a coverage page sums: its run's name, its own, and the excuse it was judged with."""
-
     run: str
     test: str
     excused: str | None = None
@@ -249,18 +218,15 @@ def run_tests(runs: Iterable[tuple[Path, RunRecord]]) -> tuple[TestRef, ...]:
 
 
 def reported(run: Path, test: RunTest, reports: Path = REPORTS) -> Path:
-    """Where this tree's report on a gated test goes: its verification and its traces."""
     return reports / run.name / test.directory
 
 
 def verification_of(run: Path, test: RunTest) -> str | None:
-    """Where this tree's verification of a test is, from the repository root; None when its dossier was not checked."""
     verification = reported(run, test) / "verification"
     return source_name(verification) if (verification / "verification.json").is_file() else None
 
 
 def judged_now(reports: Path = REPORTS) -> dict[tuple[str, str], str] | None:
-    """This tree's verdict on each gated test, by (run, test) as the receipt names them; None before any report."""
     if not reports.is_dir():
         return None
     verdicts: dict[tuple[str, str], str] = {}
@@ -271,14 +237,12 @@ def judged_now(reports: Path = REPORTS) -> dict[tuple[str, str], str] | None:
 
 
 def gate_verifications(receipt: Receipt | None) -> list[str]:
-    """Every verification of the receipt's runs, as the catalogue of operations is folded from them."""
     return [
         found for run, record in gate_runs(receipt) for test in record.tests if (found := verification_of(run, test))
     ]
 
 
 def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
-    """Copy the receipt and its runs' evidence into the bundle."""
     if receipt is None:
         return Evidence()
     bundle.copy(RECEIPT, "evidence/assurance-gate.json", Origin(kind="receipt"))
@@ -286,7 +250,6 @@ def bundle_evidence(bundle: Bundle, receipt: Receipt | None) -> Evidence:
 
 
 def bundle_runs(bundle: Bundle, chosen: Iterable[tuple[Path, RunRecord]]) -> Evidence:
-    """Copy these runs' evidence into the bundle."""
     runs: list[Path] = []
     tests: dict[tuple[str, str], str] = {}
     verifications: dict[str, str] = {}
@@ -365,12 +328,10 @@ class AssuranceReport(Document):
     coverage: _Exercised = _Exercised()
     rules: tuple[_RuleCount, ...] = ()
     extras: tuple[_Extra, ...] = ()
-    # None in a report from a checker that did not report aggregates yet.
     aggregates: tuple[_AggregateResult, ...] | None = None
 
 
 def assurance_reports(evidence: Evidence) -> Iterator[AssuranceReport]:
-    """Every test's report in the receipt's runs, as the bundle holds them."""
     for run in evidence.runs:
         for path in sorted(run.glob("tests/*/verification/assurance.json")):
             yield AssuranceReport.model_validate_json(path.read_bytes())
@@ -378,9 +339,6 @@ def assurance_reports(evidence: Evidence) -> Iterator[AssuranceReport]:
 
 @dataclass(frozen=True)
 class Exercised:
-    """Summed over the receipt's tests: how often each edge and message was recorded, each rule triggered,
-    and each record beyond the vocabulary seen."""
-
     edges: Counter[str]
     rules: Counter[str]
     extras: Counter[tuple[str, str]]
@@ -403,8 +361,6 @@ class Exercised:
 
 @dataclass(frozen=True)
 class Move:
-    """One part of an aggregate moving along one edge by one operation; ``machine`` is the part's name."""
-
     machine: str
     source: str
     target: str
@@ -413,12 +369,6 @@ class Move:
 
 @dataclass(frozen=True)
 class AggregateMoves:
-    """Summed over the receipt's tests: how often each operation moved each part of one aggregate.
-
-    ``recorded`` is False when no report carried aggregates (a checker from before they were
-    reported), so an empty tally is never mistaken for nothing having moved.
-    """
-
     aggregate: str
     recorded: bool
     instances: int
@@ -447,8 +397,6 @@ class AggregateMoves:
 
 @dataclass(frozen=True)
 class Decision:
-    """One test's verdict on one rule; paths are relative to the bundle."""
-
     test: str
     kind: str
     verdict: str
@@ -460,7 +408,6 @@ class Decision:
 
 
 def decisions(bundle: Bundle, tests: Iterable[TestRef], evidence: Evidence) -> dict[str, list[Decision]]:
-    """Each triggered rule with the tests that decided it, in the order given."""
     decided: dict[str, list[Decision]] = {}
     for test in tests:
         directory = evidence.tests.get((test.run, test.test))
@@ -499,13 +446,11 @@ class _Expectations(Document):
 
 
 def unreached() -> dict[str, str]:
-    """Each item no gated test reaches, with the reason the expectations give."""
     declared = _Expectations.model_validate(tomllib.loads(EXPECTATIONS.read_text()))
     return {item: entry.reason for entry in declared.unreached for item in entry.items}
 
 
 def main() -> int:
-    """Print every verification of the assurance-gate receipt's runs, one a line, from the repository root."""
     for found in gate_verifications(read_receipt()):
         print(found)
     return 0

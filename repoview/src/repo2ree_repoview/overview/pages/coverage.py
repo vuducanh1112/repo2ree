@@ -1,9 +1,3 @@
-"""How the tests behind the last receipt, and the showcases' newest runs, exercised the specification.
-
-Both pages say the same things of their own tests: each machine's edges and each boundary's messages
-with how often they were recorded, and each rule with the tests that decided it.
-"""
-
 from __future__ import annotations
 
 from collections import Counter
@@ -54,7 +48,6 @@ def decision_item(rule: str, decision: Decision, origin: str = "coverage") -> st
 
 
 def decided_in(rule: str, decided: list[Decision], origin: str = "coverage") -> str:
-    """Tests that did not pass the rule in full view; those that did, folded."""
     if not decided:
         return '<span class="muted">no test</span>'
     failing = [d for d in decided if d.verdict != "passed"]
@@ -69,7 +62,6 @@ def decided_in(rule: str, decided: list[Decision], origin: str = "coverage") -> 
     return shown + folded
 
 
-# Rules not tied to drawn operations, and what they judge.
 WHOLE = {
     "machine": "every transition of its subject; traces show only violations",
     "boundary": "every exchange; traces show only violations",
@@ -104,10 +96,6 @@ def coverage_body(
     drawing: Callable[[str], str],
     origin: str,
 ) -> str:
-    """The machines, boundaries, rules, and stray records, as one page's tests exercised them.
-
-    ``catalogue`` is the operations those tests were folded into; None leaves out where each rule was triggered.
-    """
     edges, rules, extras = exercised.edges, exercised.rules, exercised.extras
     legend = (
         '<p class="legend"><span class="ok">— reached (count)</span><span class="ex">- - excused</span>'
@@ -228,7 +216,6 @@ def showcase_rows(
 
 
 def test_title(test: ShowcaseTest) -> str:
-    """A test as its file and its own name, without repeating where it is."""
     if test.test is None:
         return f"<code>{esc(Path(test.file).name)}</code>"
     own = test.test.split("::", 1)[-1] if test.surface != "browser" else test.test.split(" > ", 1)[-1]

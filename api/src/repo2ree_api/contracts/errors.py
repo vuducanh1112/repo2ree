@@ -1,11 +1,3 @@
-"""The error envelope every operation shares.
-
-Strict: the envelope is the control-plane contract, so an unknown field on it is
-a bug rather than a passthrough. ``ERROR_RESPONSES`` is the response table each
-route spreads into its ``responses=``, so the documented failure modes cannot
-drift route by route.
-"""
-
 from __future__ import annotations
 
 from typing import Any

@@ -1,5 +1,3 @@
-"""API post-processing must not discard the executor's published evidence."""
-
 import pytest
 
 from repo2ree_api.control import run_orchestration as orchestration

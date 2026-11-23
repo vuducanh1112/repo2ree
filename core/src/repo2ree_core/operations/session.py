@@ -1,12 +1,3 @@
-"""One command run against an REE, as every caller runs it: a person at a terminal, or a workbench.
-
-The session keeps the command's run log (``runs/<run_id>.ndjson``: the command, every log line, the result) and
-stops it cooperatively on SIGTERM, SIGINT or the run's cancel marker. One command runs in an REE at a time: a
-second one, from any caller, is refused while the first runs. Before the command starts, it settles any attempt a
-process that ended without reporting left behind, and records the scripts the author edited in place.
-What the caller sees of the run is its own ``emit``; the run log is the record.
-"""
-
 from __future__ import annotations
 
 import json
@@ -51,11 +42,8 @@ def run_session(
     run_id: str | None = None,
     context: ExecutionContext | None = None,
 ) -> ActionResult:
-    """Run ``cmd`` against the REE at ``layout``, logging to ``emit`` and to the run log, and return its result."""
     context = context or ExecutionContext.new()
     run_id = run_id or f"manual-{context.attempt_id}"
-    # Review commands keep their logs in their own attempt namespace, so reviewer evidence never lands in the
-    # author's runs/. Recognised by the arg they all carry, so a new review step needs no branch here.
     review_id = getattr(cmd.args, "review_id", None)
     evidence: ReeLayout | ReviewLayout = layout.review(review_id) if review_id else layout
     evidence.runs.mkdir(parents=True, exist_ok=True)
@@ -70,8 +58,6 @@ def run_session(
                 emit(stream, level, message)
                 _frame(run_log, run_id, {"type": "log", "stream": stream, "level": level, "message": message}, context)
 
-            # The command as it arrived, whole; with the result frame below, the complete contract of one
-            # operation, joined to its span and to the receipt it files by run_id.
             _frame(
                 run_log,
                 run_id,
@@ -97,7 +83,6 @@ def run_session(
             )
             return result
     finally:
-        # Each run clears its own marker, so a stale one never cancels a later run that reuses the id.
         cancel_marker.unlink(missing_ok=True)
 
 
@@ -109,10 +94,8 @@ def _run_held(
     is_canceled: Callable[[], bool],
     context: ExecutionContext,
 ) -> ActionResult:
-    """The command, run while this process alone runs one in the REE."""
     settle_leftover_attempts(layout, log=log)
     pick_up_authored_edits(layout, log=log, invocation=context)
-    # The session, as one span: the run held in the REE, around core's command span.
     with tracer.start_as_current_span(f"session.{cmd.operation}") as span:
         CommandSpanAttrs(operation=str(cmd.operation), run_id=run_id, execution=context).apply(span)
         result = run_command(
@@ -132,17 +115,11 @@ def _run_held(
 
 
 def request_cancel(layout: ReeLayout, run_id: str) -> None:
-    """Ask the run ``run_id`` in this REE to stop: it rolls the REE back and captures its attempt as canceled."""
     layout.runs.mkdir(parents=True, exist_ok=True)
     layout.run_cancel_marker(run_id).touch()
 
 
 def settle_leftover_attempts(layout: ReeLayout, *, log: LogSink) -> list[ActionResult]:
-    """Settle every attempt a process began in this REE and never reported on, before anything else runs.
-
-    Called under the run lock, so no other process is running a command here, and an attempt still pending is one
-    whose process is gone: it is rolled back.
-    """
     if not layout.manifest.is_file():
         return []
     leftovers = [record for record in read_operation_history(layout).operations if record.capture_status == "pending"]
@@ -158,14 +135,6 @@ def settle_leftover_attempts(layout: ReeLayout, *, log: LogSink) -> list[ActionR
 def pick_up_authored_edits(
     layout: ReeLayout, *, log: LogSink, invocation: ExecutionContext | None = None
 ) -> list[ActionResult]:
-    """Record every script the author edited in ``overlay/`` directly, before anything else runs.
-
-    The overlay is where an REE's scripts live, and a person edits them there with their own editor. Each edited
-    script is written as it is, an attempt of its own that records it, so its history is that of an edit made
-    through any other caller; the attempts name the REE and the dispatch of the ``invocation`` they run before.
-    Only when every file that drifted is such an edit: any other drift is the command's to be refused for, so none
-    is recorded.
-    """
     store = ReeDirectory(layout)
     if not store.manifest_exists():
         return []
@@ -198,8 +167,6 @@ def pick_up_authored_edits(
 
 @contextmanager
 def _stopped_by_signals() -> Iterator[threading.Event]:
-    """SIGTERM and SIGINT ask for the same cooperative stop as the cancel marker: the script is stopped, the REE
-    rolled back, and the attempt captured, not abandoned. Only the main thread can take signals."""
     stopped = threading.Event()
     if threading.current_thread() is not threading.main_thread():
         yield stopped
@@ -215,8 +182,6 @@ def _stopped_by_signals() -> Iterator[threading.Event]:
 
 
 def _frame(run_log: TextIO, run_id: str, frame: dict[str, Any], context: ExecutionContext | None = None) -> None:
-    """Append one self-describing NDJSON frame: it names its ``type`` and its run, so a reader filters lines
-    without tracking position or file names."""
     run_log.write(
         json.dumps({"run_id": run_id, "context": context.model_dump(mode="json") if context else None, **frame}) + "\n"
     )

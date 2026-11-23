@@ -28,7 +28,6 @@ import {
 } from "./ExperimentsPageSections";
 import { useExperimentRun } from "./useExperimentRun";
 
-// A starter run script seeded from a quick-add suggestion's sample command.
 function suggestionTemplate(command: string): string {
   return `#!/usr/bin/env sh
 set -eu
@@ -37,10 +36,6 @@ set -eu
 ${command}
 `;
 }
-
-// ================================================
-// Page component
-// ================================================
 
 export function PageExperiments({
   reeId,
@@ -54,22 +49,14 @@ export function PageExperiments({
   onPersistWorkspaceFile,
 }: PageExperimentsProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  // Backend-owned path conventions, needed to seed a suggestion's run script.
   const { data: templates } = useScriptTemplates();
 
-  // External navigation can deep-link into a specific experiment by setting
-  // focusedField. Apply it only when it changes, so manual card selection on
-  // this page isn't clobbered.
   const appliedField = useRef<string | null>(null);
   useEffect(() => {
     if (focusedField === appliedField.current) return;
     appliedField.current = focusedField;
     setSelectedIndex(experimentIndexFromField(focusedField));
   }, [focusedField]);
-
-  // ================================================
-  // Derived state
-  // ================================================
 
   const experiments: ReeExperiment[] = reeSpec.experiments || [];
 
@@ -87,8 +74,6 @@ export function PageExperiments({
   };
 
   const addFromSuggestion = (suggestion: ExperimentSuggestion) => {
-    // The catalog is fetched once per session; a click before it lands would
-    // have no path to seed the script at, so treat it like locked.
     if (locked || !templates) return;
     const newIndex = experiments.length;
     const scriptPath = experimentRunScriptPath(templates, suggestion.name);
@@ -99,8 +84,6 @@ export function PageExperiments({
         runScript: scriptPath,
       }),
     );
-    // The suggested command is the script's starting point; the author adapts it
-    // to enter their runtime (e.g. wrapping it in `docker run …`).
     setSuggestedScripts((pending) => ({
       ...pending,
       [scriptPath]: suggestionTemplate(suggestion.command),
@@ -128,8 +111,6 @@ export function PageExperiments({
           .map((e) => e.name.trim())
           .filter(Boolean);
 
-  // Declaring an experiment gives it its scripts, so a suggestion's command is
-  // written once the declaration has brought the run script into the workspace.
   const [suggestedScripts, setSuggestedScripts] = useState<Record<string, string>>({});
   const persistRef = useRef(onPersistWorkspaceFile);
   persistRef.current = onPersistWorkspaceFile;
@@ -145,8 +126,6 @@ export function PageExperiments({
     );
   }, [suggestedScripts, workspaceFiles]);
 
-  // Run lives here (not in the detail body) so its controls can sit in the
-  // page header's top-right, while the detail body still shows the result.
   const run = useExperimentRun({
     reeId,
     experimentName: selectedExperiment?.name ?? null,
@@ -156,21 +135,10 @@ export function PageExperiments({
     ? experimentValidation(selectedExperiment, otherNames).canRun
     : false;
 
-  // ================================================
-  // Coverage stats
-  // ================================================
-
-  // The three fields an experiment needs to be runnable and checkable. The
-  // rest — description, runtime and resource estimates — are per-experiment
-  // detail, reported on the experiment's own card rather than tallied here.
   const total = experiments.length;
   const withName = experiments.filter((e) => e.name.trim() !== "").length;
   const withCommand = experiments.filter((e) => e.runScript.trim() !== "").length;
   const withVerify = experiments.filter((e) => e.verifyScript.trim() !== "").length;
-
-  // ================================================
-  // Render
-  // ================================================
 
   const headerBadges = (
     <>

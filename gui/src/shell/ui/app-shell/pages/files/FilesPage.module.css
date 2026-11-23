@@ -1,5 +1,3 @@
-/* The workspace file pane's controls. */
-
 .filter {
   display: flex;
   align-items: center;
@@ -17,7 +15,6 @@
   color: var(--ink-subtle);
 }
 
-/* Deliberately chromeless: the row around it is the control's frame. */
 .filterInput {
   flex: 1;
   min-width: 0;

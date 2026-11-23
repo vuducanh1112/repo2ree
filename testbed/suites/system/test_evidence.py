@@ -1,5 +1,3 @@
-"""Evidence follows what it was made from: it goes stale when that moves, and current again when made anew."""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -31,7 +29,6 @@ def test_rewriting_or_deleting_a_script_makes_what_it_ran_stale(api: Api, new_re
     ree_id = new_ree()
     api.author(ree_id)
 
-    # Every experiment runs inside the activation: rewriting it stales the activation and them.
     api.write(
         ree_id, ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT, recipe("activate_experiment_environment.sh") + "# touched\n"
     )
@@ -60,7 +57,6 @@ def test_removing_the_source_clears_the_evidence_made_from_it(api: Api, new_ree:
     api.request("POST", f"/api/v1/rees/{ree_id}/remove-source")
     removed = standing(api, ree_id)
     assert (removed["acquire_source"], removed["evaluate_reproducibility"]) == ("not_applicable", "not_applicable")
-    # What is still declared waits to run again; the hardware observation stands on its own.
     assert (
         removed["build_experiment_environment"],
         removed["activate_experiment_environment"],

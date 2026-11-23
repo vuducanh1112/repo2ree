@@ -1,37 +1,8 @@
-"""The generated ``acquire_source.sh`` — the single, shared acquire muscle.
-
-Acquiring a source means *populating an upstream directory with the canonical
-source*. The canonical source is the frozen snapshot when one exists, otherwise
-the recorded origin (fetched and verified against the SWHID). This one decision
-tree serves every phase:
-
-* authoring, first download  → no snapshot yet → **fetch** the origin;
-* authoring, upload          → the upload ingest built a snapshot → **extract** it;
-* reproduction, bundled      → snapshot shipped → **extract** it;
-* reproduction, sourceless   → no snapshot → **fetch + verify** the origin;
-* ``--refetch``              → force a fresh pull from origin (origin sources only).
-
-The origin URL, source fetch command, and SWHID are baked in at generation time.
-The upstream dir and snapshot path are fixed by REE layout, derived from the
-script's own directory, so the same script runs unchanged in the workbench
-(authoring) and inside a sealed bundle (reproduction, called by ``run.sh``).
-
-Pure fetch/extract muscle: source *identity* is the caller's job — authoring
-records the commit/SWHID it got, reproduction verifies against the recorded one
-(``SWHID`` empty → verification skipped).
-
-Pure module: it builds bytes from values and performs no I/O. The generated
-bytes are deterministic given their inputs.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.persistence.layout import SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
 
-# The ``@@...@@`` tokens are the interpolation points. Using explicit
-# placeholders avoids escaping all of the literal braces in shell functions and
-# keeps generated string values single-quoted.
 _TEMPLATE = shell_text("""
     #!/bin/sh
     # repo2ree acquire-source — generated. Populates an upstream directory from the
@@ -103,21 +74,8 @@ _TEMPLATE = shell_text("""
 
 
 def _fetch_source_function(source_type: str, revision: str) -> str:
-    """Render the one fetch implementation needed for this source type.
-
-    For git, the pinned-vs-HEAD choice is settled here at generation time rather
-    than branched at experiment environment. ``revision`` is whatever ref is known at generation:
-    a user-supplied commit/branch/tag when authoring pins one, empty when it does
-    not (then just clone HEAD and let Python record the commit it resolved to). At
-    seal the recorded concrete commit is baked in so the bundled script re-fetches
-    exactly it.
-    """
     if source_type == "git":
         if revision:
-            # Pin to the recorded commit so a re-fetch reproduces the authored
-            # tree, not whatever the default branch points at now. Prefer a
-            # shallow fetch of just that commit; fall back to a full clone for
-            # servers that disallow fetching an arbitrary SHA.
             return shell_text("""
                 fetch_source() {
                   dest=$1
@@ -200,13 +158,6 @@ def _fetch_source_function(source_type: str, revision: str) -> str:
 
 
 def build_acquire_sh(*, origin_url: str = "", source_type: str = "", revision: str = "", swhid: str = "") -> bytes:
-    """Render the self-contained ``acquire_source.sh`` for a source.
-
-    All inputs are optional: an upload-acquired source has no origin or type and
-    relies entirely on the snapshot-extract arm. ``revision`` pins a git fetch to
-    the recorded commit (known only after acquisition, so baked in at seal). Paths
-    are fixed by REE layout; the script accepts only optional ``--refetch``.
-    """
     script = (
         _TEMPLATE.replace("@@ORIGIN_URL@@", shell_single_quote(origin_url))
         .replace("@@SWHID@@", shell_single_quote(swhid))

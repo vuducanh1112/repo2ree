@@ -1,5 +1,3 @@
-"""Where the repository is, how the views ask Git about it, and the commit a view is drawn from."""
-
 from __future__ import annotations
 
 import datetime
@@ -10,7 +8,6 @@ from pathlib import Path
 
 from repo2ree_repoview.documents import Record
 
-# The package is installed editable from repoview/src, so the repository is three levels up.
 ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -19,8 +16,6 @@ def git(*args: str) -> str:
 
 
 class Provenance(Record):
-    """The commit a view was made from, whether the working tree differed (and a hash of how), and when."""
-
     revision: str
     tree: str
     dirty: bool
@@ -42,8 +37,6 @@ class Provenance(Record):
 
 @dataclass(frozen=True)
 class Head:
-    """The checked-out commit as the overview shows it."""
-
     provenance: Provenance
     index_tree: str
     subject: str

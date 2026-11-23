@@ -1,5 +1,3 @@
-"""The last workbench command that failed in a run, read off its dossier's spans: an execution fact."""
-
 from __future__ import annotations
 
 import json
@@ -9,7 +7,6 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-# A line that reports a failure, whatever tool printed it (pip, BuildKit, apt, a shell).
 _FAILURE = re.compile(r"error|fail|denied|not found|no such|timed? ?out", re.IGNORECASE)
 _LINE_LIMIT = 240
 
@@ -36,7 +33,6 @@ class FailedCommand:
     stderr_tail: str
 
     def failure_lines(self) -> list[str]:
-        """The first and the last failure line of the tail: commonly what went wrong first, then how it ended."""
         found = [line.strip() for line in self.stderr_tail.splitlines() if _FAILURE.search(line)]
         picked = found[:1] + found[-1:] if len(found) > 1 else found
         return [_shortened(line) for line in picked]
@@ -52,7 +48,6 @@ def _shortened(line: str) -> str:
 
 
 def last_failed_command(telemetry: Path) -> FailedCommand | None:
-    """The latest-ending ``process.exec`` span that failed and was not canceled, if the run recorded one."""
     latest: _Span | None = None
     for path in sorted(telemetry.glob("*.ndjson")) if telemetry.is_dir() else []:
         for line in path.read_text(errors="replace").splitlines():

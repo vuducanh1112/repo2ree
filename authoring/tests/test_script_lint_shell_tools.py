@@ -1,10 +1,3 @@
-"""The shell tier: what happens when the analyzers are there, and when they are not.
-
-The tools are optional by design, so the absence cases matter as much as the
-present ones — a bench without ShellCheck must lint on the other tiers and say
-that it did, never fail or silently report nothing found.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -34,7 +27,6 @@ def test_an_unparseable_script_is_the_one_blocking_finding() -> None:
     assert status.status == "ran"
     assert finding.code == "shell_syntax_error"
     assert finding.blocking is True
-    # The shell's own message is the only place a reader learns where it gave up.
     assert finding.detail
 
 
@@ -59,8 +51,6 @@ def test_a_tool_that_cannot_be_executed_is_unavailable_rather_than_an_error(
 
 
 def test_asking_for_no_tool_tiers_runs_neither(monkeypatch: pytest.MonkeyPatch) -> None:
-    # The contract tier is pure Python; the other two spawn a process. A caller
-    # that cannot spawn one asks for the contract tier alone and still gets a report.
     def _fail(*_: object, **__: object) -> None:
         raise AssertionError("no process may be spawned for the contract tier")
 
@@ -76,5 +66,4 @@ def test_asking_for_no_tool_tiers_runs_neither(monkeypatch: pytest.MonkeyPatch) 
 def test_a_full_run_records_every_tier_it_attempted() -> None:
     report = lint_script(ScriptTarget(kind="build_experiment_environment", path="b.sh"), "set -eu\necho hi\n")
     assert {status.tier for status in report.tiers} == {"syntax", "shell", "contract"}
-    # The contract rules need no tool, so that tier can never be unavailable.
     assert _tier(report, "contract").status == "ran"

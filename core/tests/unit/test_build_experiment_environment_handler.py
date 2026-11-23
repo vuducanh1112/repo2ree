@@ -39,9 +39,6 @@ def _source_receipt() -> AcquireSourceReceipt:
 
 
 def _ree(*, with_source: bool = True, with_experiment_environment: bool = True, origin_url: str = _ORIGIN_URL) -> Ree:
-    # Declaration and receipt move together, as ``acquire_source`` commits them:
-    # a source receipt with no declaration behind it is an orphan the audit
-    # reports as stale, not the ordinary acquired state this fixture stands for.
     definition = ree_definition(
         source=SourceDefinition(origin_url=origin_url, source_type="git") if with_source else None,
         experiment_environment=ExperimentEnvironmentDefinition(
@@ -96,11 +93,8 @@ def test_successful_build_commits_one_inline_receipt(
     assert receipt.build_experiment_environment_script_digest == digest_bytes(_SCRIPT)
     assert receipt.artifact_path == "runtime.tar"
     assert receipt.produced_artifact_digest == digest_bytes(b"experiment_environment")
-    # It ran in a workspace laid out fresh from what the REE records, and the environment it made is kept beside it.
     assert layout.kept_environment("runtime.tar").read_bytes() == b"experiment_environment"
-    # The workspace/ view shows it where a step after the build sees it.
     assert (layout.workspace / "runtime.tar").read_bytes() == b"experiment_environment"
-    # What the build ran in: the host ree runs on.
     assert receipt.working_environment is not None
     assert receipt.working_environment.host.arch
 
@@ -250,12 +244,6 @@ def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A re-pointed source that was never re-acquired must not reach the build.
-
-    The workspace still holds the previous tree, so building would spend the
-    whole run producing an experiment environment the seal gate refuses anyway — for staleness
-    already visible before the first byte of work.
-    """
     repointed = _ree(origin_url="https://example.test/other.git")
     _layout, store = _workbench(tmp_path, monkeypatch, repointed)
     monkeypatch.setattr(build_experiment_environment, "run_workspace_script", _successful_build(_layout))
@@ -303,7 +291,6 @@ def test_a_build_whose_evidence_is_current_runs_nothing_unless_asked_again(
     receipt = store.read_ree().subject.receipts.build_experiment_environment
     assert receipt is not None
     assert receipt.run_id == "build-1"
-    # The environment it made is gone, so the build is no longer current.
     layout.kept_environment("runtime.tar").unlink()
     assert build("build-3") == "succeeded"
     assert build("build-4", again=True) == "succeeded"

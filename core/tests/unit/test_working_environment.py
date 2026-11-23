@@ -1,5 +1,3 @@
-"""Where a step's scripts ran, as ``ree`` observes it: the host, and whether it is a container."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,7 +34,6 @@ def test_a_probe_reports_what_it_printed_and_none_when_it_ran_out_of_time(tmp_pa
 
 def test_the_launch_wraps_the_script_and_the_recorder_runs_first(tmp_path: Path) -> None:
     (tmp_path / "ree-scripts").mkdir()
-    # Stands in for srun: writes down the command it was handed instead of running it.
     (tmp_path / RESERVED_LAUNCH_SCRIPT).write_text('printf "%s\\n" "$@" > launched.txt\n')
     (tmp_path / "ree-scripts" / "step.sh").write_text("true\n")
     run_workspace_script(

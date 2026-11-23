@@ -1,5 +1,3 @@
-"""Which workbench a fault reaches: in store mode, the one serving the REE's store."""
-
 from __future__ import annotations
 
 import pytest

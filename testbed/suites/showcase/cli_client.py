@@ -1,12 +1,3 @@
-"""The showcases' steps through ``ree``, run on the test's machine as the user who logs in to it.
-
-The stack under a CLI showcase starts its store's machine as for any showcase; this client works beside the
-workbench there, never through it: each step is a ``ree`` command on that machine, typed in the REE's directory,
-which the machine and this process share. A step prints what a person reads, which the recording keeps; its result,
-as ``--json`` would print it, goes to a file beside, where this client reads it. ``ree`` runs an REE's scripts on the
-machine it runs on.
-"""
-
 from __future__ import annotations
 
 import json
@@ -59,8 +50,6 @@ class CliError(AssertionError):
 
 
 class Result(BaseModel):
-    """What ``ree --result-file`` writes: how the command ended and what it found."""
-
     model_config = ConfigDict(extra="ignore")
 
     status: RunStatus
@@ -69,16 +58,10 @@ class Result(BaseModel):
 
 @dataclass
 class CliClient:
-    """The showcases' steps as ``ree`` commands; an REE is its directory, named by its id."""
-
     machine: Machine
     archive_dir: Path
-    # Where each REE's histories are kept before the REE is removed: the evidence the behaviour check reads, as
-    # no control plane serves an REE this client runs ree in.
     kept_dir: Path
-    # Where every command the test runs is written down, as it typed it and as ree answered (cli_session).
     session: Path | None = None
-    # The same commands as a terminal recording (cli_cast).
     cast: Path | None = None
     _logs: dict[str, str] = field(default_factory=dict)
 
@@ -86,15 +69,11 @@ class CliClient:
         return self.machine.workdir / ree_id
 
     def _here(self, ree_id: str, path: Path) -> str:
-        """``path`` as typed in the REE's directory."""
         return os.path.relpath(path, self.root(ree_id))
-
-    # ---- running ree ----------------------------------------------------------
 
     def _result(
         self, ree_id: str, *words: str, stdin: bytes | None = None, variables: dict[str, str] | None = None
     ) -> tuple[str, Result]:
-        """Run one command of the REE's and keep what it logged; its run and the result it wrote."""
         run_id = f"cli-{uuid4().hex[:12]}"
         written = self.machine.workdir / "results" / f"{run_id}.json"
         written.parent.mkdir(parents=True, exist_ok=True)
@@ -129,8 +108,6 @@ class CliClient:
         plumbing: tuple[str, ...] = (),
         result: Path | None = None,
     ) -> Done:
-        """Run one ``ree`` command in the REE's directory, and add it to the test's session and recording as a person
-        types it: ``plumbing``, the options that name its run and its result file, is left out of both."""
         started = time.time()
         done = self.machine.ree(self.root(ree_id), *plumbing, *words, stdin=stdin, variables=variables)
         if self.session is not None:
@@ -180,14 +157,12 @@ class CliClient:
         self._outputs(ree_id, "suggest-scripts", "--target", target, "--write", "--rule", rule)
 
     def _staged(self, ree_id: str, data: bytes, name: str) -> str:
-        """Put ``data`` where the machine reads it, and name it as typed in the REE's directory."""
         staged = self.machine.workdir / "uploads" / uuid4().hex[:8] / name
         staged.parent.mkdir(parents=True)
         staged.write_bytes(data)
         return self._here(ree_id, staged)
 
     def create(self, name: str) -> str:
-        """Create an REE, and its kept folder: one with no history in it is an REE whose history went unkept."""
         ree_id = f"{name[:40]}-{uuid4().hex[:8]}"
         (self.kept_dir / ree_id).mkdir(parents=True, exist_ok=True)
         self.root(ree_id).mkdir(parents=True)
@@ -196,8 +171,6 @@ class CliClient:
 
     def _keep(self, ree_id: str) -> None:
         keep_histories(self.root(ree_id), self.kept_dir / ree_id)
-
-    # ---- the Client the showcases use -------------------------------------------
 
     def logs(self, ree_id: str, run: Run) -> str:
         return self._logs.get(run.run_id, "")
@@ -247,7 +220,6 @@ class CliClient:
         return result
 
     def check_working_environment(self, ree_id: str, fixture: Project) -> Run:
-        """Write the project's check of what its scripts need, and run it through the launch the project declares."""
         if fixture.launches:
             rule = fixture.rule("launch.sh")
             if rule:
@@ -259,9 +231,6 @@ class CliClient:
         return self._step(ree_id, "check-working-environment")
 
     def build_experiment_environment(self, ree_id: str, fixture: Project, script: str | None = None) -> Run:
-        """Check the working environment as the project does, declare the experiment environment, ask inference for
-        its build, and build with ``script``, else as the project writes it; a project that launches its scripts
-        declares its launch before the check. A check that fails is the step's result, and nothing is built."""
         checked = self.check_working_environment(ree_id, fixture)
         if checked.status != "succeeded":
             return checked
@@ -311,8 +280,6 @@ class CliClient:
         return self._step(ree_id, "seal-ree", *left_out)
 
     def sign(self, ree_id: str) -> Run:
-        """Sign the sealed REE with the run's Sigstore as its author: signed in by a token in the environment, never
-        among the words typed. Its author's signature verifies, and no reviewer's would."""
         local = local_sigstore()
         signed = self._signed_as(ree_id, local.author, "sign-ree")
         if signed.status == "succeeded":
@@ -320,8 +287,6 @@ class CliClient:
         return signed
 
     def sign_review(self, ree_id: str, review_id: str) -> Run:
-        """Sign the review with the run's Sigstore as its reviewer: the record is the statement's predicate. Its
-        reviewer's signature verifies, and no author's would."""
         local = local_sigstore()
         signed = self._signed_as(ree_id, local.reviewer, "sign-review", "--review-id", review_id)
         if signed.status == "succeeded":
@@ -334,7 +299,6 @@ class CliClient:
         return self._step(ree_id, *words, "--trust-config", trust, variables=token)
 
     def _verification(self, ree_id: str, *words: str, signer: str) -> list[str]:
-        """What ``ree verify-signatures`` finds of each signature against the run's Sigstore, naming ``signer``."""
         local = local_sigstore()
         trust = self._staged(ree_id, local.trust_config.read_bytes(), "trust_config.json")
         policy = ("--identity", signer, "--issuer", local.issuer, "--trust-config", trust)
@@ -342,8 +306,6 @@ class CliClient:
         return [str(item["outcome"]) for item in result.outputs["signatures"]]
 
     def _verified(self, ree_id: str, *words: str, signer: str, other: str) -> None:
-        """Each signature verifies under a policy naming its signer, and is the other signer's under one naming the
-        other."""
         verified = self._verification(ree_id, *words, signer=signer)
         assert verified, f"nothing signed in {ree_id} {' '.join(words)}"
         assert set(verified) == {"verified"}, verified
@@ -383,8 +345,6 @@ class CliClient:
         return self._step(ree_id, "review", "run-experiment", "--review-id", review_id, experiment)
 
     def reproduced(self, new_ree: NewRee, fixture: Project) -> Reproduction:
-        """Author, seal and sign ``fixture``, reproduce it in a second REE, which loads it signed, and sign the
-        review."""
         author = new_ree("review-author")
         self.author(author, fixture)
         sealed = self.seal(author, watch=fixture.watch)
@@ -413,7 +373,6 @@ class CliClient:
 
 
 def _lines(stderr: str) -> str:
-    """The log a command wrote, its last 30 lines as the API keeps them."""
     return "\n".join(stderr.splitlines()[-30:])
 
 
@@ -439,8 +398,6 @@ def client() -> Client:
 
 @pytest.fixture
 def new_ree(client: CliClient, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
-    """Create REEs on demand on the test's machine; each is bundled, its histories kept, then removed, when the test
-    ends."""
     created: list[str] = []
     label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
 

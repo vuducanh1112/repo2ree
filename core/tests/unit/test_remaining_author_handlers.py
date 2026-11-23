@@ -175,7 +175,6 @@ def test_a_definition_patch_never_changes_the_source(
 
     assert patch({"source": source}) == "failed"
     assert store.read_ree().subject.definition.source == acquired
-    # A whole definition may carry the source unchanged.
     assert patch({"name": "renamed", "source": acquired.model_dump(mode="json")}) == "succeeded"
 
 
@@ -267,7 +266,6 @@ def test_cross_check_commits_inline_receipt_and_preserves_evaluation_report(
     assert receipt is not None
     assert receipt.run_id == "cross-check-1"
     assert receipt.observed_matched == 1
-    # Both sides of the reconciliation are named, so either moving is detectable.
     assert receipt.sbom_digest == digest_bytes(sbom_bytes)
     assert receipt.report_digest == digest_bytes(report_bytes)
     assert layout.reproducibility_report.read_bytes() == report_bytes

@@ -1,5 +1,3 @@
-"""Hydrate authored definition identities from authoritative overlay bytes, and keep each declaration's scripts."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -33,11 +31,6 @@ FIXED_SCRIPTS = {
 
 @dataclass(frozen=True)
 class ExperimentScripts:
-    """The scripts a definition patch brings into being for the experiments it declares, and those it takes away.
-
-    An experiment that names the run script of one the patch removes is that one renamed: it takes its scripts along.
-    """
-
     moved: dict[str, str]
     seeded: dict[str, str]
     removed: tuple[str, ...]
@@ -48,7 +41,6 @@ def experiment_script_paths(name: str) -> tuple[str, str]:
 
 
 def experiment_scripts(current: ReeDefinition, patch: dict[str, Any], layout: ReeLayout) -> ExperimentScripts:
-    """Each declared experiment has its run and verify scripts, starting as their defaults; a removed one has none."""
     if "experiments" not in patch:
         return ExperimentScripts({}, {}, ())
     entries = [dict(raw) for raw in patch["experiments"] or []]
@@ -89,7 +81,6 @@ def experiment_scripts(current: ReeDefinition, patch: dict[str, Any], layout: Re
 
 
 def is_script_of(definition: ReeDefinition, path: str) -> bool:
-    """Whether the REE has the script at ``path``: a fixed one, or one of a declared experiment's."""
     return path in RESERVED_OVERLAY_SCRIPTS or any(
         path in experiment_script_paths(experiment.name) for experiment in definition.experiments
     )
@@ -99,7 +90,6 @@ def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: Re
     unknown = sorted(set(patch) - set(ReeDefinition.model_fields))
     if unknown:
         raise ValueError(f"definition patch contains unknown fields: {unknown}")
-    # The source changes only by acquiring or removing it; a whole definition may repeat it unchanged.
     if "source" in patch and _source(patch["source"]) != current.source:
         raise ValueError("the source changes only by acquiring or removing it, not by a definition patch")
     if undeclared := sorted(field for field in FIXED_SCRIPTS if field in patch and patch[field] is None):
@@ -107,7 +97,6 @@ def patched_definition(current: ReeDefinition, patch: dict[str, Any], layout: Re
     payload = current.model_dump(mode="json")
     payload.update(patch)
     definition = hydrate_definition_payload(payload, layout)
-    # An REE is created with a name (its id's prefix if none is given); an edit renames it, never unnames it.
     if not definition.name.strip():
         raise ValueError("an REE's name cannot be empty")
     return definition
@@ -122,7 +111,6 @@ def rehydrate_after_file_mutation(definition: ReeDefinition, layout: ReeLayout) 
 
 
 def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> ReeDefinition:
-    """The definition with each script's identity read off its authored bytes, never taken from the payload."""
     hydrated = dict(payload)
     for field, (prefix, path) in FIXED_SCRIPTS.items():
         script = _required_overlay_file(layout, path, f"{prefix.replace('_', ' ')} script")
@@ -131,7 +119,6 @@ def hydrate_definition_payload(payload: dict[str, Any], layout: ReeLayout) -> Re
             f"{prefix}_script_digest": digest_file(script),
             f"{prefix}_script_size": script.stat().st_size,
         }
-    # Where the build leaves the experiment environment is the author's own declaration, carried through.
     build = payload.get("experiment_environment")
     hydrated["experiment_environment"]["artifact_path"] = (
         build.get("artifact_path") if isinstance(build, dict) else None

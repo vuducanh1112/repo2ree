@@ -20,8 +20,6 @@ describe("Surface", () => {
   });
 
   it("takes measured geometry as custom properties", () => {
-    // The only thing a caller may pass through: a number it computed. Not a
-    // colour, not a border — those are the variant's business.
     const { container } = render(<Surface vars={{ "--log-max-height": "240px" }}>log</Surface>);
     const surface = container.firstChild as HTMLElement;
     expect(surface.style.getPropertyValue("--log-max-height")).toBe("240px");

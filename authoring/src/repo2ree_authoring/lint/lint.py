@@ -1,5 +1,3 @@
-"""Compose syntax, ShellCheck, and repo2ree contract checks for one script."""
-
 from __future__ import annotations
 
 from repo2ree_authoring.lint.models import ScriptContext
@@ -22,7 +20,6 @@ def lint_script(
     declarations: ScriptDeclarations | None = None,
     tiers: frozenset[FindingTier] = ALL_TIERS,
 ) -> LintReport:
-    """Everything the requested tiers observe about one script."""
     findings: list[Finding] = []
     statuses: list[TierStatus] = []
 

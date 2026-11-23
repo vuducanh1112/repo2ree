@@ -11,11 +11,6 @@ interface ManualArtifactCompletionArgs {
   key: string;
 }
 
-// Deposit steps (Software Heritage, Zenodo, Dataverse) patch nothing here. A
-// deposit identifier names a *deposit of* a sealed REE, not the REE itself, so
-// it is recorded as an archive-binding attestation server-side rather than
-// written onto the spec. These branches used to synthesize identifiers locally,
-// which made the UI claim an archival relationship that never existed.
 export function planManualArtifactCompletion({
   key,
 }: ManualArtifactCompletionArgs): ManualArtifactCompletionPlan {

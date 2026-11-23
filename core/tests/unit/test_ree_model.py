@@ -58,14 +58,11 @@ def test_bundle_inventory_requires_sorted_unique_paths() -> None:
 
 
 def test_the_ree_document_round_trips_through_disk_under_one_name(tmp_path: Path) -> None:
-    """One document, one spelling — the same file a bundle carries."""
     store = ReeDirectory(ReeLayout(tmp_path / "ree"))
     store.ensure_dirs()
     draft = Ree(
         subject=ReeSubject(
             definition=ree_definition(name="demo"),
-            # A restored draft keeps the inventory it arrived with; nothing
-            # reads it as a claim until a seal binds it.
             contents=BundleContents(
                 entries=(BundleEntry(path=ReePath("ree/overlay/build.sh"), digest=_DIGEST, size=1),)
             ),
@@ -116,9 +113,6 @@ def test_committed_receipt_is_audited_and_contributes_to_subject_identity() -> N
 
     assert updated.subject.receipts.build_experiment_environment == receipt
     assert canonical_subject_digest(updated.subject) != before
-    # The build definition is intentionally absent, so this receipt attests a
-    # recipe the REE does not declare. Present and unbacked is stale, not
-    # not_applicable — the latter would keep it out of the seal gate's reach.
     assert audit(updated).build_experiment_environment.evidence == "stale"
 
 

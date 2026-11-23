@@ -1,12 +1,3 @@
-"""What the environment did to an REE, as its journal records it: each command it ran, each bundle it took, and each
-file that drifted between them.
-
-The exercise replay writes it, standing in for a person at the REE's files: it runs ree's commands and changes the
-files outside ree. The checker reads it beside the REEs' histories, in the journal format ``contracts/behaviour``
-publishes. A command's record is what the attempts it runs cite (``--context``), so the order of every drift
-against every attempt is evidenced, not assumed.
-"""
-
 from __future__ import annotations
 
 import json
@@ -80,9 +71,7 @@ class _BundleMessage(_Record):
 
 
 def part_of(path: str) -> Part:
-    """Where in an REE a file is, by its path from the REE."""
     parts = PurePosixPath(path).parts
-    # A review's file is named from the REE, under reviews/<id>/.
     top = parts[2] if parts[0] == "reviews" and len(parts) > 2 else parts[0]
     if top == ".git":
         return "history"
@@ -90,8 +79,6 @@ def part_of(path: str) -> Part:
 
 
 class EnvironmentJournal:
-    """One journal, one epoch: the environment of one exercise's replay."""
-
     def __init__(self, directory: Path) -> None:
         directory.mkdir(parents=True, exist_ok=True)
         self.id = f"{PROCESS}-000001"
@@ -101,7 +88,6 @@ class EnvironmentJournal:
         self._append(_Opened())
 
     def _append(self, record: _Record) -> str:
-        """Write one record; its reference, ``<journal>#<seq>``."""
         self._sequence += 1
         dumped = record.model_dump(mode="json", by_alias=True)
         fields = {"v": 1, "seq": self._sequence, **dumped, "at": datetime.now(UTC).isoformat()}
@@ -116,7 +102,6 @@ class EnvironmentJournal:
         self._append(_Undone(key=key, partition=ree))
 
     def command(self, attempt_id: str, ree: str, run_id: str) -> str:
-        """A command about to run as the attempt ``attempt_id``; its reference, for the attempts it runs to cite."""
         facts: dict[str, str | int] = {"run_id": run_id}
         return self._append(_Message(kind="send", message="run_command", key=attempt_id, partition=ree, facts=facts))
 
@@ -127,11 +112,9 @@ class EnvironmentJournal:
         self._append(_Message(kind="receive", message="exited", key=attempt_id, partition=ree, facts=facts))
 
     def bundle(self, bundle_id: str, ree: str) -> None:
-        """A bundle of ``ree`` about to be asked for."""
         self._append(_BundleMessage(kind="send", message="export_bundle", key=bundle_id, partition=ree, facts={}))
 
     def exported(self, bundle_id: str, ree: str, heads: list[str] | None) -> None:
-        """The bundle given, with the commit each history in it names as its head, when the bundle names them."""
         facts: dict[str, int | list[str]] = {"heads": heads} if heads is not None else {}
         self._append(_BundleMessage(kind="receive", message="exported", key=bundle_id, partition=ree, facts=facts))
 

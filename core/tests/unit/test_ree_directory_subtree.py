@@ -99,7 +99,6 @@ def test_iter_files_returns_posix_relative_paths(tmp_path):
 
 def test_iter_files_on_missing_root_is_empty(tmp_path):
     store = _store(tmp_path)
-    # do not ensure_dirs — overlay root does not exist
     assert list(store.overlay.iter_files()) == []
 
 

@@ -1,12 +1,3 @@
-"""The Phase 1 experiment-run decision DAG.
-
-Gate on the requested experiment being declared on the REE, then resolve the
-project root and the shared runtime-contract + command subgraph. Phase 1 does
-not yet recognize a machine-readable reproduction-command format, so a resolved
-experiment environment yields a confirmation-required scaffold candidate, never an automatic
-complete. An undeclared experiment short-circuits straight to not_inferred.
-"""
-
 from __future__ import annotations
 
 from repo2ree_core.author_recipes.inference.decision_graphs._experiment_environment_contract import (

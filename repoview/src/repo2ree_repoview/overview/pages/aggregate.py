@@ -1,5 +1,3 @@
-"""An aggregate: its evidence graph, and every part of its committed document with the operations that moved it."""
-
 from __future__ import annotations
 
 from collections import Counter
@@ -17,9 +15,7 @@ from repo2ree_repoview.overview.spec_diagrams import evidence_drawing, part_draw
 from repo2ree_repoview.stamp import read_svg_stamp
 
 DISALLOWED_SHOWN = 20
-# How a page names an aggregate whose name is an acronym.
 TITLES = {"Ree": "REE"}
-# The drawing of an aggregate's document as its contracts state it, the recipe that draws it, and those contracts.
 ANATOMIES: dict[str, tuple[str, str, tuple[ContractName, ...]]] = {
     "Ree": ("ree/anatomy.svg", "generate-ree-anatomy", ("ree-schema", "ree-layout"))
 }
@@ -38,7 +34,6 @@ def codes(names: Iterable[str]) -> str:
 
 
 def without_machine(spec: Spec) -> str:
-    """The entities that have no machine to draw, and the page that draws their parts, where one does."""
     names = sorted(name for name, entity in spec.entities.items() if not entity.constrained)
     if not names:
         return ""
@@ -79,10 +74,6 @@ def receipt_note(aggregate: Aggregate, name: str) -> str:
 
 
 def summary(aggregate: Aggregate, moves: AggregateMoves) -> str:
-    """How much of what the machines allow the tests took, and every move no edge allows.
-
-    Counted without bulk operations, which may take nearly any edge and are drawn only where taken.
-    """
     if not moves.recorded:
         return (
             '<p class="state-stale">The receipt\'s reports predate aggregate reporting: run '
@@ -123,7 +114,6 @@ def _arrow(color: str, dashed: bool = False, width: float = 1.5) -> str:
     )
 
 
-# What the evidence graph's shapes mean, drawn in the graph's own colours (overview/drawing.py).
 EVIDENCE_LEGEND = (
     '<p class="legend symbols">'
     "<span>"
@@ -152,7 +142,6 @@ def _box(role: Role | None) -> str:
     )
 
 
-# What the anatomy's shapes mean, drawn in its own colours (diagrams/ree.py).
 ANATOMY_LEGEND = (
     '<p class="legend symbols">'
     f"<span>{_box('definition')}section of the definition: what the author declares</span>"
@@ -187,7 +176,6 @@ def anatomy(aggregate: Aggregate, bundle: Bundle, registry: Contracts) -> str:
 
 
 def page_aggregate(aggregate: Aggregate, moves: AggregateMoves, bundle: Bundle, registry: Contracts) -> Page:
-    """Every part in the checker's order, one row of cards per group."""
     groups: dict[str, list[str]] = {}
     for machine in aggregate.machines:
         note = receipt_note(aggregate, machine.name) if machine.kind == "receipt" else ""

@@ -1,11 +1,6 @@
-/* The workbench console: what the lab is, its provisioning terminal, and the
- * two actions that replace or end it. */
-
 .spacer {
   height: 6px;
 }
-
-/* --- Facts about the bench ------------------------------------------------ */
 
 .stat {
   display: flex;
@@ -39,9 +34,6 @@
 .statValue[data-flavor="code"] {
   font-family: var(--font-mono);
 }
-
-/* --- Provisioning terminal ------------------------------------------------
- * The one dark surface in the app: this is a console, and reads as one. */
 
 .terminal {
   max-height: 150px;
@@ -85,8 +77,6 @@
   color: var(--terminal-success);
 }
 
-/* --- Actions -------------------------------------------------------------- */
-
 .action {
   display: flex;
   align-items: center;
@@ -105,8 +95,6 @@
   margin-top: var(--space-0-5);
 }
 
-/* Ending the session is not destructive enough to be danger, but it is not
- * routine either — ochre says "this one you do not take back". */
 .action[data-kind="release"] {
   border-color: var(--tone-warning-border);
   background: var(--tone-warning-surface-strong);

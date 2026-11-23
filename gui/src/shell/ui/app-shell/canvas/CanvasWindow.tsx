@@ -9,43 +9,22 @@ import { type CssVarValues, cssVars, cx } from "../../theme/styleVars";
 import styles from "./CanvasWindow.module.css";
 
 interface CanvasWindowProps {
-  /** Accessible region name; tests select the window by this (role=region). */
   ariaLabel: string;
   onClose: () => void;
-  /** Hide the X and ignore Escape while the window must stay open. */
   closable?: boolean;
-  /** Close on Escape. Off for windows whose parent owns the Escape key. */
   escapeToClose?: boolean;
-  /** Present the window as a modal dialog rather than an ambient canvas region. */
   modal?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLElement>;
-  /** Makes the title bar a drag handle, for windows the user can move. */
   onBarPointerDown?: PointerEventHandler<HTMLDivElement>;
-  /** Left side of the title bar (icon + title, tab strip, …). */
   header: ReactNode;
-  /** Trailing title-bar slot rendered between the header and the X. */
   headerRight?: ReactNode;
-  /**
-   * Placement: the class from the caller's own module that positions, sizes and
-   * animates this window. The frame itself is not the caller's business — the
-   * `outerStyle` prop this replaces let every caller re-decide the border, the
-   * radius and the shadow, and they had drifted.
-   */
   className?: string;
   bodyClassName?: string;
-  /** Measured geometry the placement class reads. */
   vars?: CssVarValues;
-  /** True to let the frame scroll the body; false when children scroll themselves. */
   scrollBody?: boolean;
   children: ReactNode;
 }
 
-/**
- * The one window frame for everything floating over the canvas (docked pages,
- * hub panels, the file viewer): a desktop-style title bar — header content on
- * the left, actions and a pinned X on the right — above a separate content
- * area. The bar never scrolls; the body does, so the X is always reachable.
- */
 export function CanvasWindow({
   ariaLabel,
   onClose,
@@ -104,15 +83,12 @@ export function CanvasWindow({
 }
 
 interface CanvasWindowTitleProps {
-  /** Accent-coloured leading icon, e.g. `Ic.package(16)`. */
   icon?: ReactNode;
-  /** The icon's tone, as a `var(--…)` reference. */
   iconTint?: string;
   title: string;
   subtitle?: string;
 }
 
-/** The standard single-line title-bar content: icon, bold title, mono subtitle. */
 export function CanvasWindowTitle({ icon, iconTint, title, subtitle }: CanvasWindowTitleProps) {
   return (
     <>

@@ -69,7 +69,6 @@ def test_push_candidate_can_require_current_revision(monkeypatch: pytest.MonkeyP
 
 @pytest.fixture
 def host(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> list[tuple[str, ...]]:
-    """An arm64 pushing host whose publish gate certified ARM_IDS for revision-1; the docker calls it makes."""
     calls: list[tuple[str, ...]] = []
     receipt = PublishGateReceipt(
         revision="revision-1",
@@ -105,7 +104,6 @@ def test_each_platform_goes_up_by_its_certified_ids_and_the_candidate_is_one_ind
 
     assert ("load", "linux/amd64") in host
     tags = [call for call in host if call[:2] == ("docker", "tag")]
-    # Never a mutable local tag: the image IDs each platform's publish gate certified.
     assert {call[2] for call in tags} == {ARM_IDS["repo2ree-gui"], AMD_IDS["repo2ree-gui"]}
     assert {call[3] for call in tags if "repo2ree-gui" in call[3]} == {
         "registry/team/repo2ree-gui:revision-1-linux-arm64",
@@ -115,7 +113,7 @@ def test_each_platform_goes_up_by_its_certified_ids_and_the_candidate_is_one_ind
         call for call in host if call[:3] == ("docker", "buildx", "imagetools") and "repo2ree-gui:" in call[5]
     ]
     assert gui_index[4:6] == ("-t", "registry/team/repo2ree-gui:revision-1")
-    assert len(gui_index[6:]) == 2  # one source per platform, each by digest
+    assert len(gui_index[6:]) == 2
     assert all("@sha256:" in source for source in gui_index[6:])
 
 

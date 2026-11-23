@@ -1,5 +1,3 @@
-/* The application shell: a sticky header over the canvas or a docked page. */
-
 .shell {
   display: flex;
   flex-direction: column;
@@ -121,8 +119,6 @@
   flex: 1;
 }
 
-/* Only a sealed REE can be downloaded, so the button is present but plainly
- * inert until then. */
 .download {
   display: flex;
   align-items: center;

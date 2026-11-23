@@ -54,7 +54,6 @@ const authorReceipts = parseAuthorReceipts({
   },
 });
 
-// One run in flight, so the hub can be checked reporting live work.
 const liveBuildRun = {
   run_id: "build-live",
   ree_id: "ree-1",
@@ -162,9 +161,6 @@ describe("CanvasHub", () => {
     await user.click(screen.getByRole("button", { name: "Build Experiment Environment" }));
     expect(onNavigate).toHaveBeenCalledWith(PAGE.BUILD_EXPERIMENT_ENVIRONMENT, expect.anything());
 
-    // The panel the authoring graph is sending you to is flagged, and says so
-    // to a screen reader — but keeps its plain name, which is how the canvas
-    // navigation is addressed everywhere else.
     const nextPanel = screen.getByRole("button", { name: "SBOM" });
     expect(nextPanel).toHaveAttribute("data-next", "true");
     expect(nextPanel).toHaveAccessibleDescription("Next step");
@@ -174,13 +170,10 @@ describe("CanvasHub", () => {
     expect(screen.getAllByText("RECEIPT RECORDED").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("1/1 RECEIPTS")).toBeInTheDocument();
 
-    // A run in flight is reported on its own panel, whoever started it — the
-    // listing is the source, not what this tab happens to have kicked off.
     const buildPanel = screen.getByRole("button", { name: "Build Experiment Environment" });
     await waitFor(() => expect(buildPanel).toHaveAttribute("data-running", "true"));
     expect(within(buildPanel).getByText("RUNNING")).toBeInTheDocument();
     expect(buildPanel).toHaveAccessibleDescription("Running");
-    // Nothing else is running, and a panel with a receipt still reports it.
     expect(screen.getByRole("button", { name: "SBOM" })).not.toHaveAttribute("data-running");
 
     const zoomIn = screen.getByTitle("Zoom in");
@@ -202,21 +195,15 @@ describe("CanvasHub", () => {
     expect(screen.getByRole("region", { name: "Open files" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Close README.md" }));
 
-    // The one console browses both inventories, and a workspace file names
-    // itself with the `workspace/` prefix the wire format strips.
     await user.click(screen.getByRole("button", { name: "main.py" }));
     expect(screen.getByText("workspace/main.py")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Collapse files" }));
     expect(onFilesConsoleOpenChange).toHaveBeenCalledWith(false);
     expect(await screen.findByText("Source acquired")).toBeInTheDocument();
-    // The footer bar owns the bench console's resting state, so it is handed to
-    // the canvas already open rather than expanded from a collapsed card here.
     expect((await screen.findAllByText("lab-1")).length).toBeGreaterThan(0);
   });
 
-  // The reload case: this tab has run nothing, so every badge is empty and the
-  // panels must answer from the REE the backend handed back.
   it("reads panel doneness from the REE rather than from this session's runs", () => {
     renderWithShell(
       <CanvasHub
@@ -256,8 +243,6 @@ describe("CanvasHub", () => {
       "data-done",
       "true",
     );
-    // The SBOM receipt is still on the aggregate but no longer speaks for what
-    // the REE declares, so carrying a receipt is not doneness of its own.
     const sbom = screen.getByRole("button", { name: "SBOM" });
     expect(sbom).not.toHaveAttribute("data-done");
     expect(sbom).toHaveAttribute("data-stale", "true");

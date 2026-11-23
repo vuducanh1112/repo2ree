@@ -78,12 +78,6 @@ _ACTIVATE = b'#!/bin/sh\nexec "$@"\n'
 
 
 def _build_recipe(experiment_environment_path: ExperimentEnvironmentPath) -> ExperimentEnvironmentDefinition:
-    """The author baseline's build recipe, named by where it left its experiment environment.
-
-    A reviewer reproduces from what the author declared, and the experiment environment path is
-    the only part of that these tests turn on — the script digest and size are
-    the recipe's identity, not its subject, so they are fixed placeholders.
-    """
     return ExperimentEnvironmentDefinition(
         build_experiment_environment_script_digest=digest_bytes(b"build_experiment_environment"),
         build_experiment_environment_script_size=5,
@@ -144,7 +138,6 @@ def _author_ree(launch: bytes = _DIRECT) -> Ree:
 def _acquired(
     review: ReviewLayout, *, basis: EvidenceBasis = "independent", launch: ReviewLaunch | None = None
 ) -> ReviewRecord:
-    """A review whose source step acquired a tree, and recorded the SWHID it observed of it."""
     review.upstream.mkdir(parents=True, exist_ok=True)
     (review.upstream / "source.txt").write_text("source\n")
     record = with_step(
@@ -499,8 +492,6 @@ def test_an_experiment_run_through_another_activate_script_is_inconclusive(
 
 
 def _launch(options: Path) -> bytes:
-    """Stands in for srun: puts the command in a "job step", keeps the options it was given at ``options``, and
-    runs it."""
     return (
         b"#!/bin/sh\nSLURM_JOB_ID=4711\nexport SLURM_JOB_ID\n"
         + f'printf "%s" "${{REE_LAUNCH_OPTIONS:-}}" > {options}\n'.encode()
@@ -539,7 +530,6 @@ def test_a_review_launches_the_authors_scripts_through_the_authors_launch_with_i
 
     outputs = _experiment(layout)
     assert outputs["receipt"]["launched"]["slurm_job_id"] == "4711"
-    # The author's receipt ran under another launch than the review's: shown side by side, deciding nothing.
     assert outputs["comparison"]["expected_launch_script_digest"] == LAUNCH
     assert outputs["comparison"]["launch_script_digest"] == digest_bytes(launch)
     assert outputs["comparison"]["verdict"] == "reproduced"
@@ -580,7 +570,6 @@ def _experiment_result(layout: ReeLayout):
 
 
 def test_each_review_step_runs_in_a_workspace_of_its_own(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Fails where something the activation left in its workspace reaches the experiment's.
     layout = _workbench(tmp_path, monkeypatch, activate=b'#!/bin/sh\ntest ! -e left || exit 9\ntouch left\nexec "$@"\n')
     assert _activate(layout).outputs["outcome"]["verdict"] == "passed"
     assert not list(layout.review(_REVIEW_ID).runs.glob("*.workspace"))

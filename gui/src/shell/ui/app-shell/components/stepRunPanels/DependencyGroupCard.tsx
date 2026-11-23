@@ -23,8 +23,6 @@ export function DependencyGroupCard({ group, filter, isOpen, onToggle }: Depende
   if (visiblePkgs.length === 0 && filter !== "all") return null;
   const ecoLine = ecosystemTone(group.ecosystem);
   const tally = tallyByStatus(group.packages);
-  // ✓ = resolved (locked + pinned); ✗ = unpinned — the same buckets the
-  // filter bar shows, so the two readouts always reconcile by addition.
   const groupResolved = tally.locked + tally.pinned;
   const groupUnpinned = tally.unpinned;
 

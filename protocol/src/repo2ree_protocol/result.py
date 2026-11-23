@@ -6,41 +6,23 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_protocol.execution import ExecutionContext
 
-# The terminal status of any executed action, shared by every layer that
-# produces or relays one (executor handlers, workbench, manager, run registry).
 ActionStatus = Literal["succeeded", "failed", "canceled"]
-# How an attempt ended: as its command reported, or interrupted when its executor ended without reporting.
 OperationStatus = ActionStatus | Literal["interrupted"]
 
-# Coarse machine-readable class of a failure, so a client can act on *why*
-# something failed without parsing free-text logs. ``code`` carries the finer
-# operation-specific reason within a category.
 FailureCategory = Literal[
-    "validation",  # the request itself is malformed or references invalid input
-    "precondition",  # required state is missing (no metadata, no intent, ...)
-    "conflict",  # optimistic-concurrency / idempotency clash
-    "execution",  # the author's script or an underlying process failed
-    "timeout",  # an operation exceeded its deadline
-    "unavailable",  # a dependency (workbench, collector) was unreachable
-    "internal",  # an unexpected fault inside repo2ree itself
+    "validation",
+    "precondition",
+    "conflict",
+    "execution",
+    "timeout",
+    "unavailable",
+    "internal",
 ]
 
-# The component that first observed the failure. Later layers relay the same
-# Failure rather than re-minting one, so this stays the true origin.
 FailureOrigin = Literal["api", "supervisor", "workbench", "executor", "core"]
 
 
 class Failure(BaseModel):
-    """Machine-readable description of why an action did not succeed.
-
-    A single shared object carried on every ``failed`` :class:`ActionResult`
-    (and, over time, through error frames, run records, and HTTP envelopes). The
-    contract is that a component *enriches* the same failure as it travels up
-    the layers rather than collapsing it to ``str(exc)`` at each hop, so the
-    ``category``/``origin`` a client sees are the ones the originating component
-    chose.
-    """
-
     model_config = ConfigDict(extra="forbid")
 
     category: FailureCategory
@@ -50,15 +32,10 @@ class Failure(BaseModel):
     details: dict[str, Any] | None = None
 
 
-# Where in an REE, or in a review of it, a change is: a script as written (overlay), the workspace scripts run in,
-# the other records its history holds, or a ref of that history.
 ReePart = Literal["overlay", "workspace", "records", "history"]
 
 
 class DriftedFile(BaseModel):
-    """A file of the REE, or a ref of its history, that is not as the last attempt left it: changed, added or removed
-    outside ree. Its path is from the REE: ``reviews/<id>/...`` for a review's, ``.git/<ref>`` for a ref."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     path: str
@@ -66,8 +43,6 @@ class DriftedFile(BaseModel):
 
 
 class HistoryReference(BaseModel):
-    """Capture evidence, separate from operation-specific outputs."""
-
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     schema_version: Literal[1] = 1
@@ -80,10 +55,7 @@ class HistoryReference(BaseModel):
     operation_status: OperationStatus | Literal["not_started", "unknown"]
     operation_failure: Failure | None = None
     changed: bool | None = None
-    # For a failed capture: the digest of the record core left beside the history, which stands in
-    # for the commit a capture would have made. None when even that record could not be written.
     record_digest: str | None = None
-    # What had changed beside the attempt once its handler returned, as its record names it.
     drift_after: list[DriftedFile] = Field(default_factory=list)
 
 
@@ -93,20 +65,12 @@ class ActionResult(BaseModel):
     status: ActionStatus
     exit_code: int = 0
     outputs: dict[str, Any] = {}
-    # Present iff ``status == "failed"`` (enforced below). Absent for a success
-    # or a cancellation, whose terminal status is itself the whole outcome.
     failure: Failure | None = None
     context: ExecutionContext | None = None
     history: HistoryReference | None = None
 
     @model_validator(mode="after")
     def _enforce_status_invariants(self) -> Self:
-        """Keep status, exit code, and failure mutually consistent.
-
-        * ``succeeded`` implies exit code 0 and no failure.
-        * ``failed`` carries a nonzero exit code and a failure.
-        * ``canceled`` is its own terminal outcome and carries no failure.
-        """
         if self.context is not None and self.history is not None and self.context.attempt_id != self.history.attempt_id:
             raise ValueError("History reference belongs to another execution attempt")
         if self.status == "succeeded":
@@ -119,7 +83,7 @@ class ActionResult(BaseModel):
                 raise ValueError("a failed ActionResult must have a nonzero exit_code")
             if self.failure is None:
                 raise ValueError("a failed ActionResult must carry a failure")
-        else:  # canceled
+        else:
             if self.failure is not None:
                 raise ValueError("a canceled ActionResult must not carry a failure")
         return self
@@ -136,12 +100,6 @@ class ActionResult(BaseModel):
         details: dict[str, Any] | None = None,
         outputs: dict[str, Any] | None = None,
     ) -> ActionResult:
-        """Build a ``failed`` result carrying a typed :class:`Failure`.
-
-        ``exit_code`` falls back to a nonzero sentinel (1) for failures with no
-        underlying process exit code — validation, precondition, conflict — so
-        the invariant that a failure has a nonzero exit code always holds.
-        """
         return cls(
             status="failed",
             exit_code=exit_code or 1,

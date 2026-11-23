@@ -1,5 +1,3 @@
-"""The lifecycle: every entry and every action no entry draws, as one sequence in journal order."""
-
 from __future__ import annotations
 
 from typing import Any
@@ -10,7 +8,6 @@ from repo2ree_assurance_traceview.model import AuthoringFold, JournalMark, Lifec
 
 
 def requested(s: Scenario, t: float, key: str, action: str, state: str, **facts: Any) -> None:
-    """A short author action without a run: requested, then answered ``state``."""
     for previous, target in ((None, "requested"), ("requested", state)):
         s.journal(
             t,
@@ -25,7 +22,6 @@ def requested(s: Scenario, t: float, key: str, action: str, state: str, **facts:
 
 
 def lost(s: Scenario) -> Scenario:
-    """A build whose workbench was lost: its dispatch went unanswered, and the run failed naming no attempt."""
     s.run("run-lost", [(30.0, "requested"), (30.1, "running")], action="build_experiment_environment")
     s.journal(
         30.2,
@@ -53,7 +49,6 @@ def test_the_lifecycle_joins_every_entry_in_journal_order() -> None:
         ("operation", "build_experiment_environment", 2),
         ("operation", "generate_sbom", 3),
     ]
-    # Segments follow one another, and each draws its own entry's lines.
     assert lifecycle.segments[0].first == 0
     for before, after in zip(lifecycle.segments, lifecycle.segments[1:], strict=False):
         assert after.first == before.last + 1
@@ -148,13 +143,11 @@ def test_a_run_whose_attempt_was_never_captured_still_shows_its_dispatch() -> No
 
 
 def served(s: Scenario, t: float, key: str, *, store: str = "lab-1", nonce: str = "n-1") -> None:
-    """A workbench admitted to ``store``."""
     s.session(t, key, None, "opened", store=store, nonce=nonce)
     s.session(t, key, "opened", "connected", store=store, nonce=nonce, backend="host", slots=1)
 
 
 def said(lifecycle: Lifecycle, kind: str) -> list[object]:
-    """What the lines of the lifecycle's ``kind`` stretches carry, for the page to phrase."""
     return [
         row.said
         for segment in lifecycle.segments
@@ -173,7 +166,6 @@ def test_an_rees_lifecycle_draws_its_stores_sessions_while_it_lived() -> None:
     lifecycle = trace_of(s).lifecycle
     assert lifecycle is not None
     assert (lifecycle.segments[0].kind, lifecycle.segments[0].label) == ("session", "lab-1")
-    # The session serving the store when the REE was created; the end of it came after the REE's.
     assert said(lifecycle, "session") == [SessionMove(session="s1", state="connected", workbench="wb-1", nonce="n-1")]
 
 

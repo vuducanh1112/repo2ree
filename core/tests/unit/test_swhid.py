@@ -21,7 +21,6 @@ def _git(repo: Path, *args: str) -> str:
 
 class TestContentSwhid:
     def test_matches_git_blob_hash(self) -> None:
-        # echo -n is awkward across shells; git hash-object of "hello\n".
         assert content_swhid(b"hello\n") == "swh:1:cnt:ce013625030ba8dba906f756967f9e9ca394464a"
 
     def test_empty_content(self) -> None:
@@ -35,7 +34,6 @@ class TestDirectorySwhid:
             directory_swhid(missing)
 
     def test_matches_git_write_tree(self, tmp_path: Path) -> None:
-        """The directory SWHID is git's tree hash of an equivalent checkout."""
         (tmp_path / "sub").mkdir()
         (tmp_path / "a.txt").write_bytes(b"hello\n")
         (tmp_path / "sub" / "b.txt").write_bytes(b"world\n")
@@ -51,11 +49,10 @@ class TestDirectorySwhid:
         assert directory_swhid(tmp_path) == f"swh:1:dir:{expected}"
 
     def test_excludes_git_directory(self, tmp_path: Path) -> None:
-        """A ``.git`` dir must not change the identifier of the source."""
         (tmp_path / "a.txt").write_bytes(b"hello\n")
         before = directory_swhid(tmp_path)
 
-        _git(tmp_path, "init", "-q")  # creates .git/
+        _git(tmp_path, "init", "-q")
         assert directory_swhid(tmp_path) == before
 
     @pytest.mark.skipif(
@@ -63,11 +60,6 @@ class TestDirectorySwhid:
         reason="official Software Heritage CLI (swh.model) not installed",
     )
     def test_matches_official_swh_identify(self, tmp_path: Path) -> None:
-        """Cross-check against ``swh identify`` whenever the official tool is present.
-
-        Validates our reimplementation against Software Heritage's own
-        implementation without taking ``swh.model`` as a hard dependency.
-        """
         (tmp_path / "sub").mkdir()
         (tmp_path / "a.txt").write_bytes(b"hello\n")
         (tmp_path / "sub" / "b.txt").write_bytes(b"world\n")

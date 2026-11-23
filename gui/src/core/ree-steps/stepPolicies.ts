@@ -43,8 +43,6 @@ export function shouldRefreshWorkspaceAfterStep(key: string): boolean {
 
 export interface StepRunCompletionPlan {
   actionState: "done";
-  // The run's terminal outcome, stored on the badge entry — a failed run is
-  // still "done" (Re-run appears, cables stay lit) but must not read as earned.
   badge: StepRunOutcome;
   timestamp: string;
   shouldRefreshWorkspace: boolean;

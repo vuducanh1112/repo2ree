@@ -1,16 +1,3 @@
-"""Local Git snapshots of an REE, independent of its portable seal identity.
-
-The layout selects state files; logs, staging and recorder storage stay outside
-snapshots. Git plumbing records bytes without consulting ignores or filters.
-Empty directories are recreated by ReeDirectory.ensure_dirs(), not Git.
-
-Every commit ree makes says what it is in its message: an attempt's, with the attempt's record, or a snapshot,
-such as the REE's initialization; and names its parent and its tree. A commit that says neither, or names another
-parent or tree than its own, is not ree's: made with git, or copied from elsewhere, as a cherry-pick or an amend
-copies a message. Every move ree makes of the history's ref is in its reflog under REFLOG_MARK, which git keeps for
-good: where ree last left the ref is known without anything ree keeps beside the history.
-"""
-
 from __future__ import annotations
 
 import fcntl
@@ -38,12 +25,9 @@ from repo2ree_protocol.tools import find_tool
 
 INITIAL_REF = "refs/repo2ree/initial"
 HISTORY_REF = "refs/heads/ree-history"
-# What begins the message of each reflog entry ree writes.
 REFLOG_MARK = "repo2ree"
-# What a commit says it is: an attempt's capture, or a snapshot of the REE ree made outside any attempt.
 ATTEMPT = "operation.completed"
 SNAPSHOT = "snapshot"
-# Kept by git for every ref and for good, so ree's own entries outlive any cleanup.
 REPOSITORY_CONFIG = (
     ("core.logAllRefUpdates", "always"),
     ("gc.reflogExpire", "never"),
@@ -52,17 +36,14 @@ REPOSITORY_CONFIG = (
 
 
 class HistoryCaptureError(RuntimeError):
-    """Recording failed; the attempt that hit it rolls the REE files back where it can."""
+    pass
 
 
 def _walk_failed(error: OSError) -> None:
-    # Path.walk otherwise ignores unreadable directories, producing a snapshot
-    # which appears successful while silently omitting part of the REE.
     raise HistoryCaptureError(f"Cannot enumerate REE files: {error}") from error
 
 
 def selected_files(layout: ReeLayout) -> list[Path]:
-    """The REE files its history holds: what each capture commits."""
     ree = ReeDirectory(layout).read_ree() if layout.manifest.is_file() else None
     return [
         layout.root / entry.path
@@ -72,7 +53,6 @@ def selected_files(layout: ReeLayout) -> list[Path]:
 
 
 def _internal_temporary(layout: ReeLayout, path: Path) -> bool:
-    """Recognize our staging names only for REE-owned persistence targets."""
     match = re.fullmatch(r"\.(.+)\.[0-9a-f]{32}\.tmp", path.name)
     if match is None:
         return False
@@ -85,7 +65,6 @@ def _internal_temporary(layout: ReeLayout, path: Path) -> bool:
 
 
 def _metadata(commit: str, body: str) -> dict[str, Any] | None:
-    """What ``commit`` says of itself, from its message; None for a message that says nothing in ree's terms."""
     _subject, separator, metadata = body.partition("\n\n")
     if not separator or not metadata.lstrip().startswith("{"):
         return None
@@ -97,7 +76,6 @@ def _metadata(commit: str, body: str) -> dict[str, Any] | None:
 
 
 def _operation_record(commit: str, body: str) -> dict[str, Any] | None:
-    """The record of the operation an attempt captured as ``commit``, from its message; None for any other commit."""
     document = _metadata(commit, body)
     if document is None or document.get("kind") != ATTEMPT:
         return None
@@ -112,7 +90,6 @@ def _file_mode(info: os.stat_result) -> str:
 
 
 def _pointer_of(path: Path) -> LfsPointer:
-    """The pointer a payload is stored under, hashed without storing it."""
     with path.open("rb") as stream:
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
     return LfsPointer(oid=digest, size=path.stat().st_size)
@@ -137,8 +114,6 @@ class GitHistory:
         check: bool = True,
         output: BinaryIO | None = None,
     ) -> subprocess.CompletedProcess[bytes]:
-        # A caller's repository, index, identity or config must not redirect a
-        # capture. The absolute git-dir also prevents parent-repository discovery.
         env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
         env.update(
             GIT_CONFIG_NOSYSTEM="1",
@@ -196,8 +171,6 @@ class GitHistory:
         return selected_files(self.layout)
 
     def _tree(self, *, store: bool = True) -> str:
-        """The tree of the selected files as they are; ``store``, with their contents kept, as a capture keeps them,
-        or only hashed, to compare."""
         with tempfile.TemporaryDirectory(dir=self.layout.git_dir, prefix="capture-") as temporary:
             index = Path(temporary) / "index"
             self.git("read-tree", "--empty", index=index)
@@ -223,7 +196,6 @@ class GitHistory:
             if any("\n" in relative for _mode, relative in plain):
                 raise HistoryCaptureError("Cannot capture a file whose name holds a line break")
             if plain:
-                # One git for every plain file: a process each is what a capture of many files would spend its time on.
                 listed = "\n".join(relative for _mode, relative in plain) + "\n"
                 hashed = self.git("hash-object", *written, "--no-filters", "--stdin-paths", data=listed.encode())
                 blobs = hashed.stdout.decode().split()
@@ -237,9 +209,6 @@ class GitHistory:
             return self.git("write-tree", *(() if store else ("--missing-ok",)), index=index).stdout.decode().strip()
 
     def drifted_paths(self, base: str | None = None) -> list[tuple[str, str]]:
-        """Each selected file not as ``base``, else the history's head, holds it, by its path from the REE or review,
-        with how (``A``dded, ``M``odified, ``D``eleted, a ``T``ype change): what changed beside ree, found by git.
-        Nothing is written."""
         base = base or self.head_snapshot()
         if base is None:
             return []
@@ -249,13 +218,10 @@ class GitHistory:
         return [(fields[index + 1], fields[index][0]) for index in range(0, len(fields) - 1, 2)]
 
     def holds(self, relative: str) -> bool:
-        """Whether the history's head holds the file at ``relative``."""
         head = self.head_snapshot()
         return head is not None and self.git("cat-file", "-e", f"{head}:{relative}", check=False).returncode == 0
 
     def left_by_ree(self) -> str | None:
-        """The commit ree last moved the history's ref to, as its reflog says; None when the reflog holds no move
-        of ree's, as one lost, or kept from before ree marked its moves."""
         listed = self.git("reflog", "show", "--format=%H%x00%gs", HISTORY_REF, "--", check=False)
         for line in listed.stdout.decode().splitlines():
             commit, _, subject = line.partition("\0")
@@ -264,8 +230,6 @@ class GitHistory:
         return None
 
     def unrecorded(self, commit: str) -> str | None:
-        """Why ``commit`` is not one ree made, or None when it is: it says it is an attempt's capture or a snapshot,
-        and names its own parent and tree."""
         body = self.git("log", "-1", "--format=%B", commit).stdout.decode()
         metadata = _metadata(commit, body)
         if metadata is None or metadata.get("kind") not in {ATTEMPT, SNAPSHOT}:
@@ -282,20 +246,12 @@ class GitHistory:
         return None
 
     def first_unrecorded(self, head: str) -> tuple[str, str] | None:
-        """The newest commit of the history ending in ``head`` that ree did not make, with why; None when ree made
-        them all."""
         for commit in self.git("rev-list", head).stdout.decode().split():
             if (reason := self.unrecorded(commit)) is not None:
                 return commit, reason
         return None
 
     def restore(self, snapshot: str) -> None:
-        """Put the selected REE files back as ``snapshot`` recorded them: a canceled attempt's rollback.
-
-        Selected files the snapshot does not hold are removed. Files outside the selection (logs,
-        upload staging, the recorder's own storage) are never captured, so they are left alone.
-        The manifest is restored first: it says which paths the snapshot holds as LFS pointers.
-        """
         recorded: dict[str, tuple[str, str]] = {}
         for entry in self.git("ls-tree", "-rz", snapshot).stdout.split(b"\0"):
             if not entry:
@@ -333,7 +289,6 @@ class GitHistory:
                 lfs_paths = set(ree.subject.capture.lfs_paths)
 
     def entries(self, snapshot: str) -> dict[str, tuple[str, str]]:
-        """Each file ``snapshot`` holds, by its path, with its mode and blob."""
         recorded: dict[str, tuple[str, str]] = {}
         for entry in self.git("ls-tree", "-rz", snapshot).stdout.split(b"\0"):
             if not entry:
@@ -346,7 +301,6 @@ class GitHistory:
         return recorded
 
     def lfs_paths_at(self, snapshot: str) -> set[str]:
-        """The paths ``snapshot`` holds as LFS pointers, as its manifest names them."""
         manifest = self.layout.manifest.relative_to(self.layout.root).as_posix()
         shown = self.git("show", f"{snapshot}:{manifest}", check=False)
         if shown.returncode != 0:
@@ -354,8 +308,6 @@ class GitHistory:
         return {str(path) for path in parse_ree_manifest(json.loads(shown.stdout)).subject.capture.lfs_paths}
 
     def check_out(self, snapshot: str, root: Path, *, payloads: Path) -> list[str]:
-        """Write each file ``snapshot`` holds under ``root``, which holds none of them yet; the paths written. An LFS
-        payload is linked from ``payloads``, where the REE keeps it, else copied out of the history's storage."""
         recorded = self.entries(snapshot)
         lfs_paths = self.lfs_paths_at(snapshot)
         for relative, (mode, oid) in recorded.items():
@@ -380,7 +332,6 @@ class GitHistory:
         return sorted(recorded)
 
     def holds_as(self, path: Path, entry: tuple[str, str] | None, *, lfs: bool) -> bool:
-        """Whether the file at ``path`` is as ``entry`` records it: absent for None; else its kind, mode and content."""
         if entry is None:
             return not path.exists() and not path.is_symlink()
         mode, oid = entry
@@ -422,17 +373,12 @@ class GitHistory:
         message = f"{operation}\n\n{json.dumps(metadata)}\n"
         parents = ("-p", parent) if parent is not None else ()
         commit = self.git("commit-tree", tree, *parents, data=message.encode()).stdout.decode().strip()
-        # Compare-and-swap also detects a non-cooperating writer moving the ref.
         self.git("update-ref", "-m", f"{REFLOG_MARK} {operation}", HISTORY_REF, commit, parent or "")
-        # update-ref publishes the journal entry. The index is only a cache:
-        # failing to refresh it must not turn a published outcome into failure.
         with suppress(HistoryCaptureError, OSError):
             self.git("read-tree", commit)
         return commit
 
     def commit_operation(self, *, operation: str, record: dict[str, Any], unchanged: bool = False) -> tuple[str, bool]:
-        """Publish a completed attempt, even one whose state tree is unchanged: with the files as they are, or,
-        ``unchanged``, as the attempt found them."""
         before = record["before_snapshot_id"]
         if self.head_snapshot() != before:
             raise HistoryCaptureError("History head changed before operation publication")
@@ -451,7 +397,6 @@ class GitHistory:
         return commit, changed
 
     def completed_operations(self) -> Iterator[tuple[str, dict[str, Any]]]:
-        """Read published journal entries without initializing or locking storage."""
         head = self.head_snapshot()
         imported = (
             self.git("for-each-ref", "--format=%(refname)", "refs/repo2ree/imports/").stdout.decode().splitlines()
@@ -467,7 +412,6 @@ class GitHistory:
                 yield commit, record
 
     def records_operation(self, commit: str) -> bool:
-        """Whether ``commit`` is one an attempt captured: ree's, carrying its operation's record."""
         body = self.git("log", "-1", "--format=%B", commit).stdout.decode()
         return _operation_record(commit, body) is not None and self.unrecorded(commit) is None
 
@@ -480,7 +424,6 @@ class GitHistory:
         attempt_id: str | None = None,
         reuse_unchanged: bool = False,
     ) -> str:
-        """Capture selected state while the caller holds the operation lock."""
         parent = self.git("rev-parse", "--verify", "--quiet", f"{HISTORY_REF}^{{commit}}", check=False)
         if parent.returncode not in {0, 1}:
             raise HistoryCaptureError("Cannot read the REE history head")
@@ -502,7 +445,6 @@ class GitHistory:
 
 @contextmanager
 def open_history(layout: ReeLayout) -> Iterator[GitHistory]:
-    """Serialize cooperating processes before initializing or capturing this REE."""
     executable = find_tool("git")
     if executable is None:
         raise HistoryCaptureError("Git is required to initialize and capture an REE")
@@ -520,7 +462,6 @@ def open_history(layout: ReeLayout) -> Iterator[GitHistory]:
 
 
 def _link_or_copy(source: Path, target: Path) -> None:
-    """``target`` as another name of ``source``; a copy where the filesystem links no files."""
     try:
         os.link(source, target)
     except OSError:

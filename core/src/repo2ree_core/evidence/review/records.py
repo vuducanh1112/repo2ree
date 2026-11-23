@@ -1,21 +1,3 @@
-"""The reviewer's evidence record: what an attempt is and what it holds.
-
-A *review attempt* is one independent reproduction of an author's REE, kept in
-its own namespace so it can never write to author evidence. It advances through
-the reviewer-facing lifecycle — source, build, activation, experiments — one
-step at a time, and each step contributes two things: a receipt (what the
-reviewer's machine did) and a verdict (what that settles). The attempt's own
-``status`` is derived from its steps; it is never set directly, so "the attempt
-failed" can never disagree with "which step failed".
-
-A step that ran to completion and found something unwelcome is ``completed``
-with an unwelcome verdict, never ``failed`` — "the review could not run" and
-"the review has news" must stay distinguishable.
-
-Schemas plus the pure record algebra over them. How a verdict is *reached* is
-``comparison``; where the record lives is ``store``.
-"""
-
 from __future__ import annotations
 
 import platform
@@ -40,8 +22,6 @@ from repo2ree_ree.review import (
     ReviewSubject,
 )
 
-# Attempt status resolution, most urgent first: a running step outranks a
-# failure (the attempt is still moving), and any failure outranks a success.
 _STATUS_PRECEDENCE: tuple[ReviewStatus, ...] = ("running", "failed", "canceled", "completed")
 
 
@@ -69,11 +49,6 @@ def review_receipt_envelope(
     )
 
 
-# ================================================
-# Record Transitions
-# ================================================
-
-
 def new_review_record(
     review_id: str,
     *,
@@ -81,8 +56,6 @@ def new_review_record(
     at: UtcInstant,
     launch: ReviewLaunch | None = None,
 ) -> ReviewRecord:
-    """A fresh attempt of the REE ``subject`` names, with no steps taken yet, launching its scripts as the reviewer
-    chose, on this machine."""
     return ReviewRecord(
         review_id=review_id,
         subject=subject,
@@ -95,7 +68,6 @@ def new_review_record(
 
 
 def review_subject(ree: Ree) -> ReviewSubject:
-    """The REE as a review opened on it finds it."""
     definition = ree.subject.definition
     return ReviewSubject(
         name=definition.name,
@@ -113,12 +85,6 @@ def with_step(
     at: UtcInstant,
     failure: str | None = None,
 ) -> ReviewRecord:
-    """The record with one step's state written and the attempt re-derived.
-
-    Re-running a step replaces its previous state: an attempt records where its
-    lifecycle *stands*, while the per-run history stays in the review's
-    ``runs/`` directory.
-    """
     existing = step_state(record, step)
     state = ReviewStepState(
         step=step,
@@ -144,14 +110,6 @@ def with_experiment(
     receipt: ReviewRunExperimentReceipt,
     comparison: ExperimentComparison,
 ) -> ReviewRecord:
-    """The record with one experiment's evidence written, replacing any prior run.
-
-    Keyed by experiment name for the same reason :func:`with_step` is keyed by
-    step: the attempt records where each part of its lifecycle *stands*, and the
-    per-run history lives in ``runs/``. Re-running one experiment must not
-    disturb the verdicts of its siblings, which is the whole reason this is a
-    keyed replace rather than an append.
-    """
     name = comparison.experiment_name
     receipts = [other for other in record.receipts.experiments if other.experiment_name != name] + [receipt]
     comparisons = [other for other in record.experiment_comparisons if other.experiment_name != name] + [comparison]
@@ -166,7 +124,6 @@ def with_experiment(
 
 
 def experiment_comparison(record: ReviewRecord, experiment_name: str) -> ExperimentComparison | None:
-    """This attempt's verdict for one experiment, or None when it has not run."""
     for comparison in record.experiment_comparisons:
         if comparison.experiment_name == experiment_name:
             return comparison
@@ -174,20 +131,6 @@ def experiment_comparison(record: ReviewRecord, experiment_name: str) -> Experim
 
 
 def resolve_basis(requested: ReviewBasis, *, available: Collection[EvidenceBasis]) -> EvidenceBasis | None:
-    """Settle a reviewer's requested basis against what a step can actually offer.
-
-    Every step that takes a basis asks this same question, and the answer has to
-    be the same one twice over. ``auto`` prefers the independent path and falls
-    back, so a reviewer who states no preference always gets the strongest
-    evidence on offer. An explicit request is never silently downgraded — handing
-    back an integrity check to someone who asked for a reproduction is the one
-    failure a review cannot afford — so it returns ``None`` instead, and the
-    caller says why in the vocabulary of its own step.
-
-    Only *what is on offer* differs between steps (an acquirable origin and a
-    snapshot for source; a runnable recipe and a shipped artifact for the
-    experiment environment), which is why that is the parameter and the rule above is not.
-    """
     if requested != "auto":
         return requested if requested in available else None
     if "independent" in available:
@@ -196,18 +139,6 @@ def resolve_basis(requested: ReviewBasis, *, available: Collection[EvidenceBasis
 
 
 def attempt_basis(record: ReviewRecord) -> EvidenceBasis | None:
-    """What this attempt's evidence as a whole is worth: its weakest link.
-
-    A step that derives nothing from the outside world itself — activation runs
-    the author's script in a workspace it did not assemble — has no basis of its
-    own to report. It inherits this one, and inheriting the *weakest* settled
-    basis is the only safe rule: an attempt that fetched the origin but then
-    certified the experiment environment the bundle ships has not independently reproduced
-    anything downstream of that experiment environment, whatever the source verdict says.
-
-    ``None`` when nothing has settled yet, which is a precondition failure for
-    any step that would have to inherit it rather than a basis to assume.
-    """
     settled = [
         comparison.basis
         for comparison in (record.source_comparison, record.experiment_environment_comparison)
@@ -219,7 +150,6 @@ def attempt_basis(record: ReviewRecord) -> EvidenceBasis | None:
 
 
 def step_state(record: ReviewRecord, step: ReviewStepKey) -> ReviewStepState | None:
-    """The recorded state of one step, or None when it has not been run."""
     for state in record.steps:
         if state.step == step:
             return state
@@ -227,7 +157,6 @@ def step_state(record: ReviewRecord, step: ReviewStepKey) -> ReviewStepState | N
 
 
 def derive_attempt_status(steps: list[ReviewStepState]) -> ReviewStatus:
-    """The attempt's status, as implied by the steps it has taken."""
     present = {state.status for state in steps}
     for status in _STATUS_PRECEDENCE:
         if status in present:
@@ -236,7 +165,6 @@ def derive_attempt_status(steps: list[ReviewStepState]) -> ReviewStatus:
 
 
 def _latest_failure(steps: list[ReviewStepState]) -> str | None:
-    """The message of the most recently updated unsuccessful step."""
     unsuccessful = [state for state in steps if state.failure]
     if not unsuccessful:
         return None
@@ -244,5 +172,4 @@ def _latest_failure(steps: list[ReviewStepState]) -> str | None:
 
 
 def _step_order(state: ReviewStepState) -> int:
-    """Lifecycle order, so a persisted record always reads front to back."""
     return get_args(ReviewStepKey).index(state.step)

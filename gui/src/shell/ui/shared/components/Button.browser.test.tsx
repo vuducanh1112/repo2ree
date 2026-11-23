@@ -4,17 +4,6 @@ import { cdp, userEvent } from "vitest/browser";
 import "../../theme/index.css";
 import { Button } from "./Button";
 
-/**
- * The states jsdom cannot answer for. It has no cascade and no layout, so
- * `:hover`, `:focus-visible`, `:active` and `prefers-reduced-motion` all read
- * as "no rule matched" there — a broken stylesheet and a correct one look
- * identical. These run in Chromium and ask for the computed value.
- *
- * That matters most for the claim the primitive is built on: the button owns
- * its interaction states rather than inheriting them from a blanket
- * `button:hover` rule. Only a real engine can tell those two apart.
- */
-
 const emulate = async (reducedMotion: "reduce" | "no-preference") => {
   await cdp().send("Emulation.setEmulatedMedia", {
     features: [{ name: "prefers-reduced-motion", value: reducedMotion }],
@@ -32,8 +21,6 @@ describe("Button interaction states", () => {
 
     expect(getComputedStyle(button).transform).toBe("none");
     await userEvent.hover(button);
-    // matrix(1, 0, 0, 1, 0, -1) — translateY(-1px). Polled because the lift is
-    // a transition: read it on the first frame and you get the start value.
     await expect.poll(() => getComputedStyle(button).transform).toBe("matrix(1, 0, 0, 1, 0, -1)");
   });
 
@@ -82,12 +69,10 @@ describe("Button interaction states", () => {
     );
     const icon = getByRole("button", { name: "Building…" }).querySelector("span") as HTMLElement;
 
-    // CSS Modules scope keyframe names too, so match the authored stem.
     expect(getComputedStyle(icon).animationName).toContain("button-spin");
     expect(getComputedStyle(icon).animationDuration).toBe("0.9s");
 
     await emulate("reduce");
-    // The policy's 0.01ms, as Chromium serialises it.
     expect(getComputedStyle(icon).animationDuration).toBe("1e-05s");
     expect(getComputedStyle(icon).animationIterationCount).toBe("1");
   });
@@ -95,10 +80,8 @@ describe("Button interaction states", () => {
   it("resolves each variant to a different fill, so the tokens really landed", async () => {
     const { getByRole, rerender } = render(<Button variant="primary">Go</Button>);
     const button = getByRole("button", { name: "Go" });
-    // The primary action is the one gradient in the set.
     expect(getComputedStyle(button).backgroundImage).toContain("linear-gradient");
 
-    // Background is transitioned, so each swap is polled rather than sampled.
     rerender(<Button variant="danger">Go</Button>);
     await expect.poll(() => getComputedStyle(button).backgroundColor).toBe("rgb(254, 242, 242)");
 
@@ -107,7 +90,6 @@ describe("Button interaction states", () => {
         Go
       </Button>,
     );
-    // --stage-build_experiment_environment-line resolves through tones.css to --palette-cyan-600.
     await expect.poll(() => getComputedStyle(button).backgroundColor).toBe("rgb(8, 145, 178)");
   });
 });

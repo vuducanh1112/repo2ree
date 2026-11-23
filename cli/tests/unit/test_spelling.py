@@ -1,5 +1,3 @@
-"""Every command and read a workbench runs is what ``ree`` reads back from its argv: one value, two spellings."""
-
 from __future__ import annotations
 
 import string
@@ -20,7 +18,6 @@ from repo2ree_ree.review import ReviewLaunch
 
 pytestmark = pytest.mark.property
 
-# Anything a process can be handed as an argument: no NUL, no lone surrogate.
 _SURROGATES: tuple[Literal["Cs"]] = ("Cs",)
 _TEXT = st.text(st.characters(exclude_categories=_SURROGATES, exclude_characters="\x00"), max_size=12)
 _LAUNCH_OPTIONS = st.text(string.ascii_letters + string.digits + "-=,.:/", min_size=1, max_size=12)
@@ -43,7 +40,6 @@ def _for(annotation: Any) -> st.SearchStrategy[Any]:
             ),
         )
     if annotation is ScriptTargetSelectorArg:
-        # An experiment's script is named for its experiment; no other script is.
         return st.one_of(
             st.builds(
                 ScriptTargetSelectorArg,
@@ -84,7 +80,6 @@ def _for(annotation: Any) -> st.SearchStrategy[Any]:
 
 def _model(model: type[BaseModel]) -> st.SearchStrategy[BaseModel]:
     fields = {
-        # A field that must not be empty, an image reference say, is never drawn empty.
         name: _for(info.annotation).filter(lambda value: value != "")
         if any(getattr(item, "min_length", 0) for item in info.metadata)
         else _for(info.annotation)
@@ -100,7 +95,6 @@ def _command(command: type[BaseModel]) -> st.SearchStrategy[BaseModel]:
 
 def _read(model: type[BaseModel]) -> st.SearchStrategy[BaseModel]:
     if model is LintDraftQuery:
-        # An experiment's script is named for its experiment; no other script is.
         return st.one_of(
             st.builds(
                 LintDraftQuery,

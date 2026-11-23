@@ -1,12 +1,3 @@
-"""Top-level inference entrypoint.
-
-One scan of the immutable upstream tree feeds every requested target; each
-target is evaluated independently against its registered DAG and returns a
-complete trace even when nothing is inferred. Inference is stateless and always
-recomputes — there is no persisted report — and it never writes: it only
-produces candidate bytes a caller may later write through ``writeScript``.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -59,8 +50,6 @@ def infer_scripts(
     )
 
     results: list[TargetInferenceResult] = []
-    # The static DAGs actually executed, deduplicated by key, so a client can
-    # overlay each target's trace onto the full graph it came from.
     used_dags: dict[str, DecisionDag] = {}
     for selector in selectors:
         target = resolve_target(selector)
@@ -70,8 +59,6 @@ def infer_scripts(
             continue
         dag = DECISION_DAGS[dag_key]
         used_dags[dag.key] = dag
-        # The experiment name lives on the target, so it enters the context here
-        # rather than on the shared scan; build/activation targets carry none.
         context = base_context
         if target.experiment_name:
             context = base_context.model_copy(update={"requested_experiment": target.experiment_name})
@@ -96,9 +83,6 @@ def infer_scripts(
 
 
 def _unsupported_result(target: ScriptTarget) -> TargetInferenceResult:
-    """A requested target with no DAG registered yet — the verify targets in
-    Phase 1 (they await an author verification claim ``ReeDefinition`` cannot yet
-    carry). Still returns a well-formed, empty trace rather than an error."""
     return TargetInferenceResult(
         target=target,
         status="not_inferred",

@@ -1,9 +1,3 @@
-"""Stable metadata for repo2ree-owned finding codes.
-
-Only syntax failures block. ShellCheck findings retain their own namespace and
-remain advisory because their vocabulary and policy are external.
-"""
-
 from __future__ import annotations
 
 from repo2ree_protocol.lint import Finding, FindingSeverity, FindingTier
@@ -83,7 +77,6 @@ def make_finding(
     column: int | None = None,
     detail: str | None = None,
 ) -> Finding:
-    """Build a finding, raising ``KeyError`` for an unknown code."""
     tier, severity, blocking, message = _CATALOG[code]
     return Finding(
         code=code,

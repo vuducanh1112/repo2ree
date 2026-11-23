@@ -1,5 +1,3 @@
-"""Archives a workbench uploads beside its control socket, and the download that serves one."""
-
 from __future__ import annotations
 
 import hashlib
@@ -64,7 +62,6 @@ def test_the_archive_download_serves_the_uploaded_file_and_leaves_nothing_behind
         return ReceivedFile(archive, archive.stat().st_size, hashlib.sha256(archive.read_bytes()).hexdigest())
 
     monkeypatch.setattr(command_dispatcher, "build_archive", build)
-    # The download is named after the REE; this tier has no workbench to read the name from.
     monkeypatch.setattr(seal, "archive_download_filename", lambda handle: "hello.zip")
     response = client.get(f"/api/v1/rees/{online_ree.ree_id}/ree-archive")
 

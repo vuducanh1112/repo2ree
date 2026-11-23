@@ -22,8 +22,6 @@ interface InitialAppShellStateInput {
 const sliceNormalizers: {
   [K in SliceName]?: (patch: Partial<SliceShape[K]>, prev: SliceShape[K]) => Partial<SliceShape[K]>;
 } = {
-  // Keep page navigation normalized at the store boundary so every caller can
-  // open the same right-hand workspace drawer with a plain setPage command.
   uiChrome: (patch, prev) => {
     if (patch.page === undefined) return patch;
     const page = normalizeUiChromePage(patch.page, prev.page);
@@ -71,9 +69,6 @@ function applySourceOutcome(
   outcome: SourceOutcomePayload,
 ): AppShellContextState {
   const { reeIntent } = state;
-  // Keep the active run id after a successful source outcome so the source log
-  // panel keeps rendering this run's logs; it is cleared on cancel and replaced
-  // when the next run starts.
   return {
     ...state,
     reeIntent: {

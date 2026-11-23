@@ -1,5 +1,3 @@
-"""An experiment whose output changes on every run: the author seals one run's digits and the criterion for them."""
-
 from __future__ import annotations
 
 import re

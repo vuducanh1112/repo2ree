@@ -1,16 +1,3 @@
-"""Rebuild and certify an experiment environment inside an isolated review attempt.
-
-The reviewer-side counterpart of the author's ``build_experiment_environment`` step. The
-experiment environment is certified in two tiers — the produced tarball's digest, else the SBOM
-dependency closure — over one of two bases: ``independent`` (rebuilt here) or
-``bundled`` (the artifact the REE ships, an integrity check rather than a
-reproduction).
-
-Both bases keep the experiment environment in the same place, beside the review, from where activation and the
-experiments take it into workspaces of their own and cannot tell the difference. See
-``docs/engineering/explanation/review-evidence.md``.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -111,14 +98,12 @@ def handle_review_build_experiment_environment(
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
 
-    # 1. The author's recipe, copied into the review: every later step of the review runs on this copy.
     try:
         _stage_author_overlay(layout, review_layout)
     except OSError as exc:
         return stop("failed", f"could not stage the author overlay: {exc}")
     overlay_digest = digest_tree(review_layout.overlay)
 
-    # 2. Before anything runs, the author's check of the working environment, in a workspace of its own.
     check = ree.subject.definition.check_working_environment
     try:
         workspace = lay_out_review(review_layout, started, run_id, after_build=False)
@@ -138,7 +123,6 @@ def handle_review_build_experiment_environment(
     if checked.status != "succeeded":
         return stop("failed", f"the working environment does not pass the author's check (exit {checked.exit_code})")
 
-    # 3. Keep an experiment environment beside the review: build one in a fresh workspace, or take the shipped one.
     kept = review_layout.kept_environment(experiment_environment_path)
     kept.unlink(missing_ok=True)
     kept.parent.mkdir(parents=True, exist_ok=True)
@@ -150,8 +134,6 @@ def handle_review_build_experiment_environment(
             f"at {experiment_environment_path}",
         )
         try:
-            # Copied rather than linked: a hard link would let a script the review runs write through to author
-            # evidence.
             shutil.copyfile(bundled_experiment_environment, kept)
         except OSError as exc:
             return stop("failed", f"could not take the bundled experiment environment: {exc}")
@@ -163,7 +145,6 @@ def handle_review_build_experiment_environment(
             launch = review_launch(started, ree, workspace)
         except ReePreconditionError as exc:
             return stop("failed", f"cannot run the author's build: {exc}")
-        # The author's build script, run from that workspace, unmodified.
         log("system", "info", f"Build script: {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}")
         outcome = run_workspace_script(
             workspace.resolve(),
@@ -187,7 +168,6 @@ def handle_review_build_experiment_environment(
         if produced is not None:
             produced.replace(kept)
 
-    # 4. Certify the experiment environment, however it got there.
     observed_artifact_digest = digest_file_if_exists(kept)
     if observed_artifact_digest is None:
         return stop("failed", f"the build produced no experiment environment artifact at {experiment_environment_path}")
@@ -203,16 +183,12 @@ def handle_review_build_experiment_environment(
         log=log,
         is_canceled=is_canceled,
     )
-    # A cancel is not an inconclusive verdict: "nobody asked the question" must
-    # not be recorded as "the evidence could not answer it".
     if comparison is None:
         return stop("canceled", "certification canceled")
 
     timing = timer.finish()
     receipt = ReviewBuildExperimentEnvironmentReceipt(
         **review_receipt_envelope(run_id, timing, "succeeded"),
-        # A bundled certification ran no build script, so it names none: the
-        # input slice of this receipt must describe what actually happened.
         build_experiment_environment_script_path=ReePath(RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT)
         if basis == "independent"
         else None,
@@ -249,12 +225,6 @@ def handle_review_build_experiment_environment(
 
 
 def _stage_author_overlay(ree_layout: ReeLayout, review_layout: ReviewLayout) -> None:
-    """Copy the author's recipe files into the review, replacing any prior copy.
-
-    A copy rather than a reference: the review's steps run on what the review records, and the author's overlay
-    may change after the build certified what it held. Re-copying means a build run again picks up an overlay edited
-    since.
-    """
     if review_layout.overlay.exists():
         shutil.rmtree(review_layout.overlay)
     review_layout.root.mkdir(parents=True, exist_ok=True)
@@ -276,15 +246,6 @@ def _certify(
     log: LogSink,
     is_canceled: CancelCheck,
 ) -> ExperimentEnvironmentComparison | None:
-    """Scan the experiment environment in hand and compare it with the author's recorded build.
-
-    A scan that cannot run — unsupported artifact shape, missing scanner, absent
-    author SBOM — yields an empty closure on one side, which the comparison
-    reports as ``inconclusive``.
-
-    Returns ``None`` when the scan was *canceled*, which is deliberately not one
-    of those cases: the caller halts the step instead of settling a verdict.
-    """
     author_build = ree.subject.receipts.build_experiment_environment
     author_sbom_receipt = ree.subject.receipts.generate_sbom
 
@@ -341,25 +302,12 @@ def _author_experiment_environment_digest(
     author_build: BuildExperimentEnvironmentReceipt | None,
     experiment_environment_path: str,
 ) -> str | None:
-    """The digest the author recorded for the experiment environment this REE declares.
-
-    Current build receipts always bind the declared experiment environment path to the digest
-    they produced. A missing receipt or a changed path leaves no author build
-    baseline to compare against.
-    """
     if author_build is not None and author_build.artifact_path == experiment_environment_path:
         return author_build.produced_artifact_digest
     return None
 
 
 def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPackage]:
-    """The closure the author published, read from the REE's own SBOM slot.
-
-    Read straight off ``artifacts/`` rather than resolved from a declared path:
-    the author's scan writes there and a loaded bundle restores there, so both
-    kinds of baseline are read identically — and a baseline that never ran the
-    step simply has no file, which is inconclusive rather than wrong.
-    """
     document = ree_layout.sbom
     if not document.is_file():
         log("system", "warn", "the author baseline carries no SBOM — the closure comparison is inconclusive")
@@ -368,12 +316,6 @@ def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPac
 
 
 def _has_build_recipe(ree_layout: ReeLayout, review_layout: ReviewLayout) -> bool:
-    """Whether a build script exists to run over the reviewer's own source.
-
-    Checked in both halves the materialized workspace is merged from: the
-    author's overlay (where the reserved script normally lives) and the source
-    tree this attempt acquired for itself.
-    """
     return (ree_layout.overlay / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT).is_file() or (
         review_layout.upstream / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
     ).is_file()
@@ -385,11 +327,6 @@ def _available_bases(
     *,
     has_bundled_experiment_environment: bool,
 ) -> set[EvidenceBasis]:
-    """Which bases this baseline can actually offer an experiment environment certification.
-
-    A build recipe makes ``independent`` possible; the shipped artifact is the
-    fallback ``auto`` reaches for when there is no script to run.
-    """
     available: set[EvidenceBasis] = set()
     if _has_build_recipe(ree_layout, review_layout):
         available.add("independent")
@@ -406,7 +343,6 @@ def _basis_refusal(requested: ReviewBasis) -> str:
         )
     if requested == "bundled":
         return "This REE ships no experiment environment artifact to certify"
-    # auto only refuses when it had nothing at all to choose between.
     return (
         f"The author baseline has neither a {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT} "
         "nor a bundled experiment environment artifact"

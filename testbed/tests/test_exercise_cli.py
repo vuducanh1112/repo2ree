@@ -1,6 +1,3 @@
-"""An exercise turns into ``ree`` commands as ``ree schema`` spells them, its signatures are read as the REE format
-reads them, and its replay keeps what each command answered."""
-
 from __future__ import annotations
 
 import json
@@ -134,8 +131,6 @@ def test_a_drawn_exercise_is_one_and_round_trips(exercise: Exercise) -> None:
 
 
 class FakeRee:
-    """Answers every command succeeded, but ``bundle``, which it refuses."""
-
     def __init__(self) -> None:
         self.calls: list[tuple[str, tuple[str, ...]]] = []
 

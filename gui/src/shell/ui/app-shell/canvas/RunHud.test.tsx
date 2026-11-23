@@ -66,8 +66,6 @@ describe("RunHud", () => {
       services: fakeApiServices({ runs: { listRuns, getRun, listRunLogs } }),
     });
 
-    // Auto-follow lands on the active run's tab once the run list resolves, so
-    // opening the console from the footer shows whatever ran last.
     await waitFor(() =>
       expect(screen.getByRole("tab", { name: "Build Experiment Environment" })).toHaveAttribute(
         "aria-selected",

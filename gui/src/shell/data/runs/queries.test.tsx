@@ -108,9 +108,6 @@ describe("run queries", () => {
       wrapper: Wrapper,
     });
 
-    // Read `data` before refetch so TanStack Query tracks that property for
-    // observer notifications (tracking only `isSuccess` would not rerender,
-    // because it stays true across a successful refetch).
     await waitFor(() =>
       expect(result.current.data?.lines.map((line) => line.msg)).toEqual(["first"]),
     );

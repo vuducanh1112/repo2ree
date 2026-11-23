@@ -1,7 +1,3 @@
-"""`ree verify-signatures` holds each signature to what the REE says of it, then to Sigstore, then to the verifier's
-policy, and fails unless every one is verified; Sigstore's own verification is faked here and run for real in the
-showcases."""
-
 from __future__ import annotations
 
 import json
@@ -18,7 +14,7 @@ from repo2ree_ree.primitives import Digest
 from repo2ree_ree.signature import PREDICATE_TYPES, REVIEW_PREDICATE_TYPE, review_signature_path, signature_path
 from repo2ree_ree.verification import SignatureVerifications, Signer
 
-__all__ = ["draft", "requests", "sealed"]  # The fixtures this module takes from test_signing.
+__all__ = ["draft", "requests", "sealed"]
 
 AUTHOR = Signer(identity="author@example.org", issuer="https://issuer.example.org")
 OTHER = Signer(identity="someone@example.org", issuer="https://issuer.example.org")
@@ -26,7 +22,6 @@ OTHER = Signer(identity="someone@example.org", issuer="https://issuer.example.or
 
 @pytest.fixture
 def sigstore(monkeypatch: pytest.MonkeyPatch) -> dict[str, Signer | str]:
-    """Sigstore as the test says: the signer it finds (``signer``), or why it holds no bundle (``untrusted``)."""
     held: dict[str, Signer | str] = {"signer": AUTHOR}
 
     def holds(content: bytes, trust: str, trust_config: Path | None) -> object:

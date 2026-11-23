@@ -1,5 +1,3 @@
-"""What the last assurance gate accepted, and what its receipt concedes."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -9,14 +7,11 @@ from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.html import Page, esc, in_frame, section, table
 from repo2ree_repoview.overview.receipt import Evidence, Receipt, ReceiptTest, reached
 
-# The behaviour trace of a whole dossier, beside the one of each REE (repo2ree_assurance_traceview's).
 DOSSIER_PAGE = "dossier.html"
 SLUG = "assurance-gate"
 
 
 def evidence_links(bundle: Bundle, directory: str | None, origin: str = SLUG) -> str:
-    """Links to a test's bundled verdict report and its behaviour traces: one link, to the whole dossier's page
-    where there is one, whose tabs lead to each REE's."""
     if directory is None:
         return '<span class="muted">not bundled</span>'
     links = []
@@ -35,7 +30,6 @@ def evidence_links(bundle: Bundle, directory: str | None, origin: str = SLUG) ->
 
 
 def judged_now(test: ReceiptTest, judged: dict[tuple[str, str], str] | None) -> str:
-    """What this tree's checker makes of a certified test's evidence, said only where it differs."""
     found = (judged or {}).get((test.run, test.test))
     if found is None:
         return '<span class="muted">not assessed: run <code>just assess-behaviour</code></span>'

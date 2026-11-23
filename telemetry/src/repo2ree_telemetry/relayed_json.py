@@ -1,5 +1,3 @@
-"""Relayed OTLP protobuf spans, decoded and rendered as the SDK's own JSON."""
-
 from __future__ import annotations
 
 import base64
@@ -17,19 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 def decode_relayed_spans(payloads: list[str]) -> list[tuple[_PbResource, _PbSpan]]:
-    """Decode base64 OTLP payloads into ``(resource, span)`` pairs.
-
-    The relay carries executor spans as base64 OTLP protobuf so the supervisor
-    can forward bytes to a collector without understanding them. With no
-    collector we decode here instead. Host-side only: nothing on the executor
-    or workbench side ever calls it, which is why ``opentelemetry-proto`` is
-    imported here rather than at module scope. Never raises: span egress must
-    not break command flow.
-
-    Spans are paired with their resource because ``service.name`` lives there,
-    one level up from the span, and a span that cannot say which service emitted
-    it is not much use to a reader.
-    """
     from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
     decoded: list[tuple[_PbResource, _PbSpan]] = []
@@ -37,7 +22,7 @@ def decode_relayed_spans(payloads: list[str]) -> list[tuple[_PbResource, _PbSpan
         try:
             request = ExportTraceServiceRequest()
             request.ParseFromString(base64.b64decode(payload))
-        except Exception as exc:  # noqa: BLE001 — a malformed payload must not break dispatch
+        except Exception as exc:  # noqa: BLE001
             logger.warning("failed to decode relayed spans: %s", exc)
             continue
         for resource_spans in request.resource_spans:
@@ -47,7 +32,7 @@ def decode_relayed_spans(payloads: list[str]) -> list[tuple[_PbResource, _PbSpan
 
 
 _SPAN_KIND_NAMES = {
-    0: "SpanKind.INTERNAL",  # UNSPECIFIED — the SDK has no such kind and defaults to INTERNAL
+    0: "SpanKind.INTERNAL",
     1: "SpanKind.INTERNAL",
     2: "SpanKind.SERVER",
     3: "SpanKind.CLIENT",
@@ -60,7 +45,6 @@ _STATUS_CODE_NAMES = {0: "UNSET", 1: "OK", 2: "ERROR"}
 
 
 def relayed_span_json(span: _PbSpan, resource: _PbResource) -> dict[str, object]:
-    """Render a decoded protobuf span exactly as ``ReadableSpan.to_json`` would."""
     from opentelemetry.sdk.util import ns_to_iso_str
 
     status: dict[str, object] = {"status_code": _STATUS_CODE_NAMES.get(span.status.code, "UNSET")}
@@ -103,7 +87,6 @@ def relayed_span_json(span: _PbSpan, resource: _PbResource) -> dict[str, object]
 
 
 def relayed_span_summary(span: _PbSpan) -> dict[str, object]:
-    """The few fields of a relayed span worth a line on a watched console."""
     return {
         "name": span.name,
         "trace_id": span.trace_id.hex(),
@@ -118,7 +101,6 @@ def _attributes(keyvalues: Iterable[Any]) -> dict[str, object]:
 
 
 def _anyvalue(value: _PbAnyValue) -> object:
-    """Unwrap an OTLP protobuf AnyValue to its Python scalar."""
     if value.HasField("string_value"):
         return value.string_value
     if value.HasField("int_value"):

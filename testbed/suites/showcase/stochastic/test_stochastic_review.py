@@ -1,5 +1,3 @@
-"""An experiment whose output changes on every run: the author's criterion decides, not the digits."""
-
 from __future__ import annotations
 
 from typed_client import Client, NewRee

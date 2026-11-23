@@ -1,5 +1,3 @@
-"""The generated OpenAPI document is the automation-client contract."""
-
 from __future__ import annotations
 
 import os
@@ -23,8 +21,6 @@ def _operations(schema: dict[str, Any]):
 
 
 def test_the_contract_is_written_from_the_code_alone(tmp_path: Path) -> None:
-    """Importing the app reads no runtime data and starts nothing: run records it cannot read do not stop the
-    contract being written, and no thread is started."""
     runs = tmp_path / "runs"
     (runs / "old-run").mkdir(parents=True)
     (runs / "old-run" / "state.json").write_text('{"operation": "no-longer-an-operation"}')
@@ -83,8 +79,6 @@ def test_creation_and_source_acquisition_are_separate_contracts() -> None:
     create_ref = create_operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
     create_schema = schema["components"]["schemas"][create_ref.rsplit("/", 1)[-1]]
 
-    # Creation names a place (a store), and nothing else: no image, package, command or resource
-    # request may enter here. What the REE's scripts need is its check, written afterwards.
     assert set(create_schema["properties"]) == {"name", "store_id"}
 
     acquire_operation = schema["paths"]["/api/v1/rees/{ree_id}/acquire-source"]["post"]

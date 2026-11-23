@@ -1,5 +1,3 @@
-"""Tokenize enough POSIX shell to ignore comments and distinguish operators."""
-
 from __future__ import annotations
 
 import shlex
@@ -10,32 +8,25 @@ _OPERATORS = frozenset({"|", "||", "&", "&&", ";", ";;", "<", ">", ">>", "(", ")
 
 @dataclass(frozen=True)
 class Word:
-    """One token and the line it was read on."""
-
     text: str
     line: int
 
 
 @dataclass(frozen=True)
 class ScriptWords:
-    """A script's tokens, split into words and operators, comments dropped."""
-
     words: tuple[Word, ...]
     operators: tuple[Word, ...]
 
     def mentions(self, literal: str) -> Word | None:
-        """Return the first word containing ``literal``."""
         if not literal:
             return None
         return next((word for word in self.words if literal in word.text), None)
 
     def operator(self, symbol: str) -> tuple[Word, ...]:
-        """Every occurrence of one exact operator."""
         return tuple(word for word in self.operators if word.text == symbol)
 
 
 def tokenize(source: str) -> ScriptWords:
-    """Split source into words and operators, tolerating incomplete lines."""
     words: list[Word] = []
     operators: list[Word] = []
     for line_number, logical_line in _logical_lines(source):
@@ -49,7 +40,6 @@ def tokenize(source: str) -> ScriptWords:
 
 
 def _logical_lines(source: str) -> list[tuple[int, str]]:
-    """Join backslash continuations and retain each logical line's start."""
     joined: list[tuple[int, str]] = []
     pending: list[str] = []
     start = 1

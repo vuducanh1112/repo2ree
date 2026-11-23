@@ -3,11 +3,6 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CodeEditor, type CodeEditorHandle, type CodeEditorMark } from "./CodeEditor";
 
-// CodeMirror owns a contenteditable, so keystrokes belong to the Chromium
-// project (CodeEditor.browser.test.tsx). What is assertable here is everything
-// the component drives through props: the document it shows, the label it
-// exposes, and the marks it turns into ranges.
-
 function mark(overrides: Partial<CodeEditorMark> = {}): CodeEditorMark {
   return { line: 2, severity: "error", message: "boom", ...overrides };
 }
@@ -50,8 +45,6 @@ describe("CodeEditor", () => {
   });
 
   it("ignores a mark for a line the document does not have", () => {
-    // The analysis runs against source that may already have moved on, so an
-    // out-of-range line is an ordinary event, not a crash.
     render(
       <CodeEditor
         ariaLabel="Run script"

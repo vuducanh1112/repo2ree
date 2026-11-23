@@ -5,12 +5,6 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PageMetadataEntry } from "./MetadataPage";
 
-/**
- * The page is controlled: it owns no spec of its own, it calls `onReeChange`.
- * Rendering it bare would make every edit a no-op, so this harness supplies the
- * state the app shell normally holds — which also means the assertions below
- * exercise the real `catalogMetadataOps` round-trip, not a stub of it.
- */
 function renderPage({ locked = false, spec }: { locked?: boolean; spec?: Partial<ReeSpec> } = {}) {
   const seen: ReeSpec[] = [];
 
@@ -34,8 +28,6 @@ function renderPage({ locked = false, spec }: { locked?: boolean; spec?: Partial
   return { current: () => seen[seen.length - 1] };
 }
 
-// The placeholders the e2e `provideMetadata` helper fills. Selecting on the same
-// strings keeps this test and the browser suite pointed at one set of fields.
 const NAME = "deepfold-protein-structure-prediction";
 const VERSION = "1.0.0";
 const DESCRIPTION = "REE for reproducible execution of...";
@@ -75,8 +67,6 @@ describe("PageMetadataEntry", () => {
       });
     });
 
-    // Metadata is the one step with no receipt behind it, so this badge is the
-    // whole verdict on its doneness — the canvas node reads the same rule.
     it("reads Draft until every required field is filled, then Ready", async () => {
       renderPage();
       expect(screen.getByText("Draft")).toBeInTheDocument();
@@ -252,8 +242,6 @@ describe("PageMetadataEntry", () => {
     });
 
     it("withdraws the editing controls entirely, rather than disabling them", () => {
-      // A sealed REE's metadata is evidence; the affordances should not be there
-      // to click at all.
       renderPage({ locked: true, spec });
       expect(screen.queryByPlaceholderText("Add custom keyword")).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Remove keyword/ })).not.toBeInTheDocument();

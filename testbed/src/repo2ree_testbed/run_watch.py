@@ -1,8 +1,3 @@
-"""Wait for a run to settle, failing when it goes quiet rather than when it is slow.
-
-The Python twin of gui/tests/runs.ts: the same rules, for the API-driven tiers.
-"""
-
 from __future__ import annotations
 
 import time
@@ -18,15 +13,12 @@ type Getter = Callable[[str, Mapping[str, str]], Mapping[str, Any]]
 
 @dataclass(frozen=True)
 class RunWatch:
-    """How long a run may log nothing before it counts as stalled, and the overall backstop."""
-
     stall: float
     budget: float
     poll: float = 0.2
 
     @classmethod
     def silent(cls, budget: float) -> RunWatch:
-        """For a run expected to go quiet, a frozen or lost workbench above all: only the budget applies."""
         return cls(stall=budget, budget=budget)
 
 
@@ -52,8 +44,6 @@ class _Client(Protocol):
 
 
 def client_getter(client: _Client) -> Getter:
-    """A getter over an ``httpx.Client`` or FastAPI ``TestClient``, failing on any non-200."""
-
     def get(path: str, params: Mapping[str, str]) -> Mapping[str, Any]:
         response = client.get(path, params=params or None)
         if response.status_code != 200:
@@ -64,11 +54,6 @@ def client_getter(client: _Client) -> Getter:
 
 
 def settle_run(get: Getter, ree_id: str, run_id: str, watch: RunWatch = INSTANT_RUN) -> SettledRun:
-    """Poll the run until it settles, whatever its outcome.
-
-    Raises :class:`RunNotSettledError`, with the run's last log lines, when it logs
-    nothing for ``watch.stall`` seconds or is still going after ``watch.budget``.
-    """
     base = f"/api/v1/rees/{ree_id}/runs/{run_id}"
     started = last_progress = time.monotonic()
     longest_silence = 0.0

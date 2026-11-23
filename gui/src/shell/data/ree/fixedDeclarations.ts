@@ -1,6 +1,5 @@
 const DIGEST = `sha256:${"0".repeat(64)}`;
 
-/** The four declarations every REE has, for a test document that is about something else. */
 export const fixedDeclarations = {
   experiment_environment: {
     build_experiment_environment_script_path: "ree-scripts/build_experiment_environment.sh",

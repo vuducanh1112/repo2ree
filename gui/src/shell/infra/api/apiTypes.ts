@@ -21,18 +21,14 @@ export type ReeSummary = Schema<"ReeSummary">;
 
 export type ReviewRecordWire = Schema<"ReviewRecord">;
 
-/** The lifecycle state of one step within a review attempt. */
 export type ReviewStepStateWire = Schema<"ReviewStepState">;
 
-/** SBOM-closure certification of a reviewer's rebuilt runtime. */
 export type ExperimentEnvironmentComparisonWire = Schema<"ExperimentEnvironmentComparison">;
 
 export type PackageDeltaWire = Schema<"PackageDeltaRecord">;
 
-/** Whether the author's activation, run alone, entered the runtime a review attempt certified. */
 export type ActivationOutcomeWire = Schema<"ActivationOutcome">;
 
-/** Whether one experiment's result reproduced, by the author's own verify script. */
 export type ExperimentComparisonWire = Schema<"ExperimentComparison">;
 
 export type ReviewSetWire = Schema<"ReviewSet">;
@@ -53,15 +49,12 @@ export type ReeCreatePayload = Schema<"ReeCreatePayload">;
 export type StoreSummary = Schema<"StoreSummary">;
 export type StoreList = Schema<"StoreList">;
 
-/** One named starter-template variant for an REE-owned script; exactly one entry per list is the default. */
 export type ScriptTemplateEntry = Schema<"ScriptTemplateEntry">;
 
-/** Backend-owned starter templates for the REE-owned scripts (GET /script-templates). */
 export type ScriptTemplateCatalog = Schema<"ScriptTemplateCatalog">;
 
 export type WorkbenchList = Schema<"WorkbenchList">;
 
-/** One sealed REE as the index stores it, with its archive bindings (GET /ree-index). */
 export type ReeIndexEntryWire = Schema<"ReeIndexEntry">;
 
 export type ReeIndexList = Schema<"ReeIndexList">;
@@ -70,13 +63,6 @@ export type PatchReeDefinitionPayload = Schema<"PatchReeDefinitionPayload">;
 
 export type AcquireSourcePayload = Schema<"AcquireSourcePayload">;
 
-/**
- * Shape an {@link AcquireSourcePayload} from loosely-typed download inputs,
- * applying the one normalization rule both acquire call sites (source execution
- * and workspace-reset fallback) must agree on: trim the revision and omit it
- * when blank, so the backend sees no revision rather than an empty string. Kept
- * here, next to the wire type, so the two paths cannot drift.
- */
 export function toSourceAcquireRequest(input: {
   origin_url?: unknown;
   source_type?: unknown;
@@ -120,34 +106,24 @@ export type RunLogPage = Schema<"RunLogPage">;
 
 export type FileMutationResponse = NullableToOptional<Schema<"FileMutationResponse">>;
 
-/** A caller-supplied inference target (kind only; the backend resolves the path). */
 export type ScriptTargetSelector = Schema<"ScriptTargetSelectorPayload">;
 
-/** Read-only script inference over the current source (POST .../suggest-scripts). */
 export type InferenceReport = Schema<"InferenceReport">;
 
-/** Static checks over one script: the findings and which tiers produced them. */
 export type LintReport = Schema<"LintReport">;
 
-/** One observation about a script. `blocking` is set only by a syntax error. */
 export type LintFinding = Schema<"Finding">;
 
-/** Whether a tier ran, so "nothing found" is never read as "nothing looked". */
 export type LintTierStatus = Schema<"TierStatus">;
 
-/** Reports for the REE's written scripts, plus the targets with nothing written yet. */
 export type LintScriptsResponse = Schema<"LintScriptsResponse">;
 
-/** What the REE declares, as lint reads it — not the whole persisted definition. */
 export type ScriptDeclarations = Schema<"ScriptDeclarations">;
 
-/** The executed decision-DAG walk for one target: visited steps, traversed edges, result node. */
 export type DecisionTrace = Schema<"DecisionTrace">;
 
-/** One visited node of a decision trace. */
 export type DecisionStep = Schema<"DecisionStep">;
 
-/** The static, versioned decision DAG: the full graph (all branches) a trace overlays onto. */
 export type DecisionDag = Schema<"DecisionDag">;
 
 export type DeleteReeResponse = Schema<"DeleteReeResponse">;

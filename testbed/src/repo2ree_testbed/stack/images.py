@@ -1,11 +1,3 @@
-"""The persistent image-backed stack: the compose control plane, its store's workbench, and more stores.
-
-The main compose file runs the backend, the GUI, store-init and the first store's workbench. Each further
-compute location is a workbench of its own (docker-compose.workbench.yml) serving a store registered, and
-its token minted, with the backend's store_admin. Every store keeps its REEs in a host directory mounted at
-the same path in its workbench, so the job containers the host engine starts see them where it does.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -24,7 +16,6 @@ from repo2ree_testbed.stack.workbench_cleanup import cleanup
 
 ATTACHMENT_FILE = ROOT / "test-artifacts/state/image-stack-caller-network"
 WORKBENCH_CONTAINER = "repo2ree-workbench"
-# Where each store keeps its REEs on the engine's host, mounted at the same path in its workbench.
 STORE_ROOT = "/var/lib/repo2ree/image-stack"
 
 
@@ -82,7 +73,6 @@ class ImageStack:
                 "REPO2REE_WORKBENCH_IMAGE": self.images.workbench,
                 "REPO2REE_WORKBENCH_CONTAINER": name,
                 "REPO2REE_WORKBENCH_STATE_VOLUME": f"{name}-state",
-                # The file requires a token; one that stops or removes the stack never presents it.
                 "WORKBENCH_AUTH_TOKEN": "unused",
                 **environment,
             },
@@ -91,7 +81,6 @@ class ImageStack:
         )
 
     def mint_token(self, store_id: str) -> str:
-        """Register ``store_id`` with the backend unless it is, and a new token for its workbench."""
         admin = ["docker", "compose", "exec", "-T", "backend", "python", "-m", "repo2ree_api.store_admin"]
         environment = {"REPO2REE_GUI_IMAGE": self.images.gui, "REPO2REE_BACKEND_IMAGE": self.images.backend}
         run([*admin, "add", store_id], env=environment, check=False, quiet=True)
@@ -183,7 +172,6 @@ class ImageStack:
         self.compose(*args)
         if volumes:
             cleanup(None)
-            # The stores' REEs are host directories, not volumes: the engine's host removes them.
             remove = ["docker", "run", "--rm", "-v", f"{STORE_ROOT}:{STORE_ROOT}", self.images.workbench]
             run([*remove, "rm", "-rf", STORE_ROOT], check=False, quiet=True)
 
@@ -200,7 +188,6 @@ class ImageStack:
 
 
 def served_stores(api: str) -> int:
-    """How many stores a workbench serves now."""
     listed = fetch_json(f"{api}/api/v1/stores")
     stores = listed.get("stores") if isinstance(listed, dict) else None
     if not isinstance(stores, list):

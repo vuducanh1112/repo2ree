@@ -1,5 +1,3 @@
-"""The store's behaviour journal, kept in the store and written by the one workbench serving it."""
-
 from __future__ import annotations
 
 import fcntl
@@ -23,7 +21,6 @@ def journal_directory(store_root: Path) -> Path:
 
 @contextmanager
 def store_journal(store_root: Path, store_id: str) -> Iterator[Path]:
-    """Hold the store for this process and journal what it does there; refused while another process holds it."""
     directory = journal_directory(store_root)
     directory.mkdir(parents=True, exist_ok=True)
     lease = os.open(directory.parent / "workbench.lock", os.O_RDWR | os.O_CREAT, 0o644)

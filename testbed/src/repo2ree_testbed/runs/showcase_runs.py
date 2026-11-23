@@ -1,10 +1,3 @@
-"""Which run of each showcase tier the overview reads, the newest finished one that ran every test, and
-each showcase's tests in those runs.
-
-python -m repo2ree_testbed showcase-runs -o reports/exports/showcases.json
-python -m repo2ree_testbed showcase-runs --list    # those runs' paths, one a line
-"""
-
 import argparse
 import sys
 from pathlib import Path
@@ -30,7 +23,6 @@ from repo2ree_testbed.showcases import (
 )
 from repo2ree_testbed.stack.environments import EnvironmentName
 
-# The browser showcases' tier, as its Playwright project names it.
 BROWSER_TIER = "showcase"
 
 Surface = Literal["api", "cli", "browser"]
@@ -41,10 +33,8 @@ class ShowcaseTier(BaseModel):
 
     tier: str
     surface: Surface
-    # The machines its tests run on, each on the one its showcase names; none for the default stack.
     environments: tuple[EnvironmentName, ...]
     recipe: str
-    # From the repository root; None when this clone has no finished run of it that ran every test.
     run: str | None
 
 
@@ -52,12 +42,9 @@ class ShowcaseTest(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     surface: Surface
-    # None for a feature's tests, which are of no one workflow.
     workflow: Workflow | None
-    # The test file, from the repository root.
     file: str
     tier: str
-    # The run it is read from, as its tier names it, and its name there; None when that run has no such test.
     run: str | None
     test: str | None
 
@@ -67,7 +54,6 @@ class Showcase(BaseModel):
 
     name: str
     kind: Literal["showcase", "feature"]
-    # The machine its API tests run on.
     environment: EnvironmentName | None
     tests: tuple[ShowcaseTest, ...]
 
@@ -81,7 +67,6 @@ class ShowcaseRuns(BaseModel):
 
 
 def newest(tier: str, runs: Path) -> Path | None:
-    """The newest run of ``tier`` that finished and ran every test its suite lists."""
     found = [
         record_path.parent
         for record_path in sorted(runs.glob("*/run.json"))
@@ -97,18 +82,14 @@ def named(run: Path | None) -> str | None:
 
 
 def api_file(test: str) -> str:
-    """The file of a pytest node id."""
     return test.split("::", 1)[0]
 
 
 def browser_file(test: str) -> str:
-    """The spec file of a Playwright title path, from the repository root."""
     return str(Path("gui/tests") / test.split(" > ", 1)[0])
 
 
 class _Found:
-    """The tests of each tier's chosen run, by the file they are in."""
-
     def __init__(self, tiers: tuple[ShowcaseTier, ...]) -> None:
         self.runs = {tier.tier: tier.run for tier in tiers}
         self.files: dict[tuple[str, str], list[str]] = {}
@@ -185,7 +166,7 @@ def showcase_runs(runs: Path) -> ShowcaseRuns:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="repo2ree_testbed showcase-runs", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog="repo2ree_testbed showcase-runs")
     output = parser.add_mutually_exclusive_group(required=True)
     output.add_argument("-o", "--output", type=Path, help="write the export here")
     output.add_argument("--list", action="store_true", help="print the runs' paths, one a line")

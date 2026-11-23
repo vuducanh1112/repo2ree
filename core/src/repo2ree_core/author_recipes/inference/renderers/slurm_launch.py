@@ -1,10 +1,3 @@
-"""Shell renderer for the Slurm launch: each of the REE's scripts run as a Slurm job step, waited for.
-
-What each script asks the cluster for is the author's to set; the rendered values are starting points, with
-the time limit kept within the default partition's when the probe reported one. A cluster's own options
-(partition, account) are left to whoever runs the REE, through ``REE_LAUNCH_OPTIONS``.
-"""
-
 from __future__ import annotations
 
 import re
@@ -15,17 +8,11 @@ from repo2ree_protocol.command import ScriptTarget
 from repo2ree_protocol.inference import InferenceEvidence, SlurmPartition
 
 SLURM_LAUNCH_RENDERER = "slurm_launch"
-# The time a script asks for when the default partition allows it.
 DEFAULT_MINUTES = 30
 _LIMIT = re.compile(r"^(?:(\d+)-)?(\d+)(?::(\d+))?(?::(\d+))?$")
 
 
 def limit_minutes(limit: str | None) -> int | None:
-    """A Slurm time limit in whole minutes; None when there is none (``infinite``) or it cannot be read.
-
-    Slurm prints ``minutes``, ``minutes:seconds``, ``hours:minutes:seconds``, ``days-hours``,
-    ``days-hours:minutes`` or ``days-hours:minutes:seconds``.
-    """
     found = _LIMIT.match((limit or "").strip())
     if found is None:
         return None

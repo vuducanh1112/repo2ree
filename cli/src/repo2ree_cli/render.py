@@ -1,8 +1,3 @@
-"""What a person reads: each result ``ree`` prints, as plain lines.
-
-``--json`` prints the same results as data; nothing here is read by a machine.
-"""
-
 from __future__ import annotations
 
 import difflib
@@ -37,7 +32,6 @@ from repo2ree_ree.verification import SignatureVerifications
 _MARKS = {"complete": "✓", "ready": "·", "blocked": "✗"}
 _EVIDENCE = {"current": "current", "stale": "STALE", "missing": "missing", "not_applicable": "n/a"}
 
-# What to run for each step, as a person types it.
 HINTS: dict[ReeStepKey, str] = {
     "acquire_source": "ree acquire-source --archive PATH, or ree acquire-source --origin-url URL",
     "metadata": "ree patch-ree-definition --name NAME --version VERSION --description TEXT",
@@ -62,7 +56,6 @@ HINTS: dict[ReeStepKey, str] = {
 
 
 def next_hint(steps: ReeSteps) -> str | None:
-    """The line that says what to do next, or None when every step is complete."""
     following = next((step for step in steps.steps if step.key == steps.next), None)
     if following is None:
         return None
@@ -105,7 +98,6 @@ def status(report: ReeStatusReport) -> str:
 
 
 def _step_evidence(audit: ReeAudit) -> dict[ReeStepKey, StepAudit]:
-    """Each step's evidence: a step keyed as an audited receipt is that receipt's."""
     return {key: step for key in get_args(ReeStepKey) if isinstance(step := getattr(audit, key, None), StepAudit)}
 
 
@@ -381,7 +373,6 @@ def _took(receipt: ReceiptEnvelope | None) -> str:
 
 
 def outputs(value: Any, indent: int = 0) -> str:
-    """Any result's outputs as indented ``key: value`` lines."""
     return "\n".join(_lines(value, indent))
 
 

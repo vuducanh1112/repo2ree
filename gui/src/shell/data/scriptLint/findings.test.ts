@@ -90,7 +90,6 @@ describe("analysisState", () => {
   });
 
   it("carries the unrun tiers through a clean report", () => {
-    // "Nothing found" and "nothing looked" must never read the same.
     const state = analysisState({
       ...base,
       report: report({ tiers: [{ tier: "shell", status: "unavailable" }] }),
@@ -108,7 +107,6 @@ describe("analysisState", () => {
   });
 
   it("keeps showing a stale report while the next check runs", () => {
-    // Blanking the panel mid-keystroke reads as "your finding went away".
     const state = analysisState({
       ...base,
       report: report({ findings: [finding()] }),

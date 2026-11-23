@@ -19,7 +19,6 @@ describe("isSealed", () => {
 
 describe("preserveSeal", () => {
   it("keeps the sealed state when an incoming hydration lacks seal stamps", () => {
-    // Stale workspace read resolving after the seal must not un-seal the REE.
     expect(preserveSeal(sealed, unsealed)).toBe(sealed);
   });
 

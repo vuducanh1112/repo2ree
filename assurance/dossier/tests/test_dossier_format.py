@@ -1,5 +1,3 @@
-"""A dossier's manifest round-trips, and anything else is refused with the directory named."""
-
 from __future__ import annotations
 
 from pathlib import Path

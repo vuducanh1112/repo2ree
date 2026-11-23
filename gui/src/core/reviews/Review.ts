@@ -8,17 +8,8 @@ export type ExperimentEnvironmentComparisonVerdict =
   | "different"
   | "inconclusive";
 
-/**
- * What the reviewer's side of a comparison was produced from, and therefore
- * what its verdict is worth. `independent` means the outside world produced it
- * — the origin was fetched, the runtime was rebuilt. `bundled` means it came
- * out of the REE itself, so agreement says the shipped bytes match the author's
- * own evidence and nothing more. The two must never be presented alike: a
- * `bundled` verdict is an integrity check, not a reproduction.
- */
 export type ReviewEvidenceBasis = "independent" | "bundled";
 
-/** What a step should reproduce from; `auto` lets the backend take the strongest available. */
 export type ReviewBasisRequest = "auto" | ReviewEvidenceBasis;
 
 export interface ReviewSourceComparison {
@@ -28,7 +19,6 @@ export interface ReviewSourceComparison {
   verdict: SourceComparisonVerdict;
 }
 
-/** One package the author's and the reviewer's runtimes disagree about. */
 export interface ReviewPackageDelta {
   ecosystem: string;
   name: string;
@@ -36,12 +26,6 @@ export interface ReviewPackageDelta {
   observedVersion?: string;
 }
 
-/**
- * How a reviewer's rebuilt runtime compares to the author's. A container build
- * is rarely bit-reproducible, so `identical` (matching runtime digests) is the
- * lucky case and `equivalent` (matching SBOM dependency closures) is the
- * verdict a faithful rebuild normally earns.
- */
 export interface ReviewBuildComparison {
   basis: ReviewEvidenceBasis;
   verdict: ExperimentEnvironmentComparisonVerdict;
@@ -57,14 +41,6 @@ export interface ReviewBuildComparison {
   versionMismatches: ReviewPackageDelta[];
 }
 
-/**
- * Whether the author's activation, run alone, enters the experiment environment an attempt certified.
- *
- * Not a comparison — there is no author artifact to reproduce here, so whether
- * it hands over is the whole claim. `basis` is inherited from the steps
- * before it rather than chosen: activation runs in the workspace the build left
- * behind and cannot tell whether the runtime there was rebuilt or unpacked.
- */
 export interface ReviewActivationOutcome {
   basis: ReviewEvidenceBasis;
   verdict: ActivationVerdict;
@@ -74,26 +50,8 @@ export interface ReviewActivationOutcome {
 
 export type ActivationVerdict = "passed" | "failed";
 
-/**
- * What one experiment's reproduction settled. `reproduced` is the ordinary
- * pass: the author's own verify script accepted the reviewer's results.
- * `identical` adds that the declared outputs came out byte for byte the same —
- * more than the author claimed, and never required, since timestamps and seeds
- * land in output files on every honest re-run. `inconclusive` means there was
- * no bound criterion to meet: the author never ran it, or the author and
- * reviewer criterion digests differ.
- */
 export type ExperimentVerdict = "identical" | "reproduced" | "different" | "inconclusive";
 
-/**
- * Whether one experiment's result reproduced, judged by the author's own verify
- * script rather than by output bytes.
- *
- * `verifyScriptDigest` is not decoration: a `reproduced` verdict is worth
- * exactly as much as the script that granted it, and those range from a
- * tolerance check against reference values to `test -f results.csv`. Showing
- * which criterion ran is what makes the verdict auditable rather than asserted.
- */
 export interface ReviewExperimentComparison {
   basis: ReviewEvidenceBasis;
   verdict: ExperimentVerdict;
@@ -109,7 +67,6 @@ export interface ReviewExperimentComparison {
   experimentEnvironmentDigest?: string;
 }
 
-/** The lifecycle state of one step within a review attempt. */
 export interface ReviewStepState {
   step: ReviewStepKey;
   status: ReviewStatus;
@@ -125,12 +82,6 @@ export interface ReviewAttempt {
   sourceComparison?: ReviewSourceComparison;
   experimentEnvironmentComparison?: ReviewBuildComparison;
   activationOutcome?: ReviewActivationOutcome;
-  /**
-   * One entry per experiment this attempt has reproduced, keyed by name — the
-   * one step with more than one subject, so the one step whose evidence is a
-   * list. Absent names have not been run; the step's own `ReviewStepState` says
-   * only where the lifecycle stands.
-   */
   experimentComparisons: ReviewExperimentComparison[];
   failure?: string;
 }

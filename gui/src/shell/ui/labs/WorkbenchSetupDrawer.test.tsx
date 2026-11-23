@@ -56,8 +56,6 @@ describe("WorkbenchSetupDrawer", () => {
       }),
     });
 
-    // The lab is settled before this drawer opens, so it states it rather than
-    // asking again.
     expect(screen.getByText("lab-host")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
@@ -136,7 +134,6 @@ describe("WorkbenchSetupDrawer", () => {
 
     await user.click(screen.getByRole("button", { name: "Provision workbench" }));
 
-    // A bare "failed" tells the author nothing they can act on.
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveAttribute("data-tone", "danger");
     expect(alert).not.toHaveTextContent(/^Provisioning failed$/);

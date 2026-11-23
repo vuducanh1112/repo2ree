@@ -1,5 +1,3 @@
-"""Preserve full REE directories before their owners destroy them."""
-
 from __future__ import annotations
 
 import fcntl
@@ -137,7 +135,7 @@ class TestRecorder:
         for directory, dirs, files in root.walk(follow_symlinks=False):
             if ".git" in dirs and "ree.json" in files:
                 self.local(directory)
-                dirs.clear()  # Reviews are included in the author directory copy.
+                dirs.clear()
             else:
                 dirs[:] = [name for name in dirs if name not in {".git", "workspace", "upstream", "node_modules"}]
 

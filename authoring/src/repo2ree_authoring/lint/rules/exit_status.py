@@ -1,5 +1,3 @@
-"""Report pipelines that can hide the run command's exit status."""
-
 from __future__ import annotations
 
 from typing import ClassVar

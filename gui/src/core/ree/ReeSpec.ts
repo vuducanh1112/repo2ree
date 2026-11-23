@@ -1,12 +1,3 @@
-// ReeSpec is the persisted specification of a REE (Reusable Execution Environment),
-// the product object. Keep this type narrow - only persisted REE fields. Anything
-// UI-, runtime-, or session-flavored belongs in the corresponding slice under
-// application/.
-
-// ================================================
-// Hardware types
-// ================================================
-
 export type DeviceModel = string;
 
 export interface CPUDefinition {
@@ -53,10 +44,6 @@ export interface NetworkDefinition {
   extraInfo: Record<string, unknown>;
 }
 
-// ================================================
-// Experiment types
-// ================================================
-
 export interface ExperimentResourceEstimates {
   cpu: string;
   memory: string;
@@ -65,16 +52,6 @@ export interface ExperimentResourceEstimates {
   network: string;
 }
 
-// A Runnable is an experiment: what is executed inside the experiment environment.
-// Each owns a run script — a workspace-relative shell script
-// that fully defines how it executes (e.g. its own `docker run …`) — and an
-// optional verify script that checks the run's results afterwards: a plain
-// script run from the workspace root after the run script, with nothing
-// injected into its environment, whose exit code is the verdict (0 = pass). It
-// reads whatever it checks straight from the workspace (to check stdout, the
-// run script materializes it to a file). `outputPaths` declares the workspace
-// files the run (re)writes — disclosure and drift exclusion, no matcher
-// semantics.
 export interface ReeRunnable {
   description: string;
   runScript: string;
@@ -87,15 +64,6 @@ export interface ReeRunnable {
 export interface ReeExperiment extends ReeRunnable {
   name: string;
 }
-
-// Reserved script paths are backend-owned: the intent arrives with experiment
-// run-script paths already settled by the backend, and the remaining paths
-// (build and activate scripts, unsaved experiment scripts) come from
-// GET /script-templates — see shell/data/scriptTemplates.
-
-// ================================================
-// REE types
-// ================================================
 
 export interface ReeContributor {
   identifier: string;
@@ -127,24 +95,13 @@ export interface ReeSpec {
   catalogMetadata: ReeCatalogMetadata;
   originUrl: string;
   sourceType: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
-  /** The concrete commit acquisition resolved the git source to — its reproducibility
-   *  receipt, persisted onto the intent and re-fetched at seal. Distinct from the
-   *  acquisition *input* ref (the requested commit/branch/tag), which is a transient
-   *  form field, not persisted intent. Empty for non-git/upload sources. */
   resolvedRevision: string;
   experimentEnvironmentPath: string;
   sbom: string;
-  /** Intrinsic content identity of the acquired source tree. Not an archival
-   *  claim: deposit identifiers name a deposit of a sealed REE and live in
-   *  archive-binding attestations, not on the spec. */
   swhid: string;
   experiments?: ReeExperiment[];
   hbom: Hbom;
 }
-
-// ================================================
-// Factories
-// ================================================
 
 export function createEmptyReeCatalogMetadata(): ReeCatalogMetadata {
   return {
@@ -179,14 +136,6 @@ export function createEmptyReeExperiment(): ReeExperiment {
   };
 }
 
-/** The source-identity ReeSpec fields, zeroed — one definition every
- *  clear/switch path spreads in, so a newly added identity field can't be
- *  cleared in one path and forgotten in another.
- *
- *  Deliberately excludes `swhid`: unlike these, it is still serialized in the
- *  autosave patch and has a client-side author (the Software Heritage archival
- *  step), so zeroing it locally would clobber a backend-computed value. It is
- *  cleared by the backend on source reset and must be handled there, not here. */
 export function clearedSourceIdentityReeSpec(): Pick<
   ReeSpec,
   "originUrl" | "sourceType" | "resolvedRevision"

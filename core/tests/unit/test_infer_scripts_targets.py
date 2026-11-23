@@ -1,11 +1,3 @@
-"""Orchestration-level coverage for ``infer_scripts`` / ``resolve_target``.
-
-The build DAG has its own suite; this pins the target-resolution and
-report-assembly paths around it: reserved-path resolution per kind, selector
-validation, and the well-formed ``not_inferred`` result for targets whose DAG
-is not registered yet (activation/experiment in Phase 1).
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -53,7 +45,6 @@ def test_resolve_target_requires_experiment_name_for_experiment() -> None:
 
 
 def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path) -> None:
-    # Verify targets remain deferred in Phase 1 (no verification-claim field yet).
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     report = infer_scripts(
         tmp_path,
@@ -63,7 +54,6 @@ def test_unregistered_target_kinds_return_wellformed_not_inferred(tmp_path: Path
         assert result.status == "not_inferred"
         assert result.application == "unavailable"
         assert result.candidates == []
-        # A placeholder-but-valid trace, never a raised error.
         assert result.decision.steps == []
 
 
@@ -75,21 +65,17 @@ def test_infer_scripts_rejects_a_missing_source_directory(tmp_path: Path) -> Non
 def test_report_ships_the_static_dag_executed(tmp_path: Path) -> None:
     (tmp_path / "Dockerfile").write_text("FROM x\n")
     report = infer_scripts(tmp_path, [ScriptTargetSelectorArg(kind="build_experiment_environment")])
-    # The full static graph for the build target travels alongside the trace.
     keys = {dag.key for dag in report.dags}
     assert keys == {"build-experiment-environment-inference"}
     build_dag = next(dag for dag in report.dags if dag.key == "build-experiment-environment-inference")
-    # The trace references a DAG that is actually included, by key and version.
     trace = report.results[0].decision
     assert trace.dag == build_dag.key
     assert trace.version == build_dag.version
-    # It is the full graph (all branches), not just the traversed path.
     assert len(build_dag.nodes) > len(trace.steps)
 
 
 def test_report_deduplicates_dags_across_targets(tmp_path: Path) -> None:
     (tmp_path / "Dockerfile").write_text("FROM x\n")
-    # Two build requests share one DAG; it must appear once.
     report = infer_scripts(
         tmp_path,
         [

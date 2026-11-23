@@ -1,13 +1,8 @@
-/* The experiments catalog: each experiment is an independent claim about what
- * the assembled REE does. */
-
 .list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
-
-/* --- One experiment card -------------------------------------------------- */
 
 .card {
   overflow: hidden;
@@ -79,7 +74,6 @@
   color: var(--ink-subtle);
 }
 
-/* The three facts a card advertises without being opened. */
 .fact {
   padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-round);
@@ -137,7 +131,6 @@
   color: var(--ink-subtle);
 }
 
-/* Two lines of the description, then elided. */
 .description {
   display: -webkit-box;
   overflow: hidden;
@@ -153,8 +146,6 @@
   justify-content: flex-end;
   padding: 0 var(--space-3) var(--space-2-5);
 }
-
-/* --- Nothing recorded yet ------------------------------------------------- */
 
 .emptyState {
   display: flex;
@@ -194,7 +185,6 @@
   }
 }
 
-/* The tally at the foot: whether every experiment is fully specified. */
 .tally {
   display: inline-flex;
   align-items: center;
@@ -251,8 +241,6 @@
   gap: var(--space-2-5);
   flex-wrap: wrap;
 }
-
-/* --- The experiment detail view ------------------------------------------- */
 
 .detailBody {
   display: flex;
@@ -314,8 +302,6 @@
   gap: var(--space-2-5);
   flex-shrink: 0;
 }
-
-/* --- Run result ----------------------------------------------------------- */
 
 .resultHead {
   display: flex;
@@ -389,18 +375,12 @@
   color: var(--ink-subtle);
 }
 
-/* --- Estimates and output paths ------------------------------------------- */
-
 .estimateGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-2-5);
 }
 
-/* --- Quick add ----------------------------------------------------------- */
-
-/* Prefilled starting points, sitting with the catalog's own Add control rather
- * than in a column of their own. */
 .quickAdd {
   display: flex;
   align-items: center;
@@ -420,7 +400,6 @@
   color: var(--ink-subtle);
 }
 
-/* The page's single column, now that the aside is gone. */
 .stack {
   display: flex;
   flex-direction: column;

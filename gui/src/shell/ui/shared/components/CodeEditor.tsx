@@ -15,20 +15,14 @@ import { tags } from "@lezer/highlight";
 import { type Ref, useEffect, useImperativeHandle, useRef } from "react";
 import styles from "./CodeEditor.module.css";
 
-/** One positioned remark to underline in the document.
- *
- * Deliberately not the API's `Finding`: the editor knows about lines and
- * severities, not about lint tiers or blocking policy. */
 export interface CodeEditorMark {
   line: number | null | undefined;
   column?: number | null;
   severity: "error" | "warning" | "info";
   message: string;
-  /** The rule that produced the mark, shown in the hover panel. */
   source?: string;
 }
 
-/** The imperative surface: the panel below the editor asks to be taken to a line. */
 export interface CodeEditorHandle {
   focusLine: (line: number) => void;
 }
@@ -36,15 +30,12 @@ export interface CodeEditorHandle {
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
-  /** Labels the contenteditable, which CodeMirror gives `role="textbox"`. */
   ariaLabel: string;
   disabled?: boolean;
   marks?: readonly CodeEditorMark[];
   handleRef?: Ref<CodeEditorHandle>;
 }
 
-/* Colors are custom properties rather than values: the theme layer owns the
- * palette, and a CodeMirror theme is just CSS in an object. */
 const highlightStyle = HighlightStyle.define([
   { tag: tags.comment, color: "var(--code-comment)", fontStyle: "italic" },
   { tag: [tags.keyword, tags.controlKeyword, tags.moduleKeyword], color: "var(--code-keyword)" },
@@ -65,8 +56,6 @@ const editorTheme = EditorView.theme({
     backgroundColor: "transparent",
     fontSize: "var(--text-label)",
   },
-  // The container owns the focus ring, so that a focused editor is skinned
-  // exactly like a focused input rather than by CodeMirror's own outline.
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": {
     fontFamily: "var(--font-mono)",
@@ -88,8 +77,6 @@ const editorTheme = EditorView.theme({
     backgroundColor: "var(--surface-selected)",
   },
   ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--ink-default)" },
-  // CodeMirror draws its squiggle as a background image with a baked-in color.
-  // A wavy underline says the same thing in a color the theme owns.
   ".cm-lintRange": { backgroundImage: "none" },
   ".cm-lintRange-error": { textDecoration: "underline wavy var(--tone-danger-line)" },
   ".cm-lintRange-warning": { textDecoration: "underline wavy var(--tone-warning-line)" },
@@ -114,17 +101,11 @@ const editorTheme = EditorView.theme({
   ".cm-diagnostic": { borderLeft: "none", padding: "var(--space-1) var(--space-2)" },
 });
 
-/** Turn a one-based line/column mark into a document range.
- *
- * Marks arrive from an analysis of source that may already have moved on, so
- * every coordinate is clamped rather than trusted. A mark without a column
- * covers its whole line, which is what a whole-script rule means. */
 function markRange(doc: Text, mark: CodeEditorMark): { from: number; to: number } | null {
   if (!mark.line || mark.line < 1 || mark.line > doc.lines) return null;
   const line = doc.line(mark.line);
   const column = mark.column && mark.column > 0 ? mark.column - 1 : 0;
   const from = Math.min(line.from + column, line.to);
-  // An empty range renders nothing, so a mark at end of line covers the line.
   return from === line.to && line.from < line.to
     ? { from: line.from, to: line.to }
     : {
@@ -143,11 +124,6 @@ function diagnostics(doc: Text, marks: readonly CodeEditorMark[]): Diagnostic[] 
 
 const NO_MARKS: readonly CodeEditorMark[] = [];
 
-/** A CodeMirror 6 editor skinned as one of the form controls.
- *
- * The view is uncontrolled — CodeMirror owns the document and this component
- * pushes the `value` prop in only when the two have actually diverged, so that
- * a re-render never disturbs the selection of someone mid-edit. */
 export function CodeEditor({
   value,
   onChange,
@@ -158,7 +134,6 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // Read through refs so that a new callback or label never rebuilds the view.
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const editableRef = useRef(new Compartment());

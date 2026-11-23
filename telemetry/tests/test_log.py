@@ -146,7 +146,7 @@ def test_run_log_logger_does_not_propagate_to_root() -> None:
 def test_emit_run_log_without_export_is_a_noop() -> None:
     log.configure_run_log_export(None)
 
-    log.emit_run_log("ree-1", "run-1", "stdout", "info", "dropped")  # must not raise or print
+    log.emit_run_log("ree-1", "run-1", "stdout", "info", "dropped")
 
 
 def test_setup_logs_is_noop_without_endpoint() -> None:

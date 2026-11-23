@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""The machine-readable environment contract, from runtime schemas.
-
-``contracts/config/environment.json`` publishes it (``scripts/contracts.py``); ``--show OWNER`` lists its variables.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -16,9 +11,6 @@ from repo2ree_workbench.config import WorkbenchEnvironment
 
 ROOT = Path(__file__).resolve().parents[2]
 
-# Variables owned by launchers, deployment adapters, or shared protocol code do
-# not belong to one service settings model. They are declared here so they are
-# still part of the checked contract rather than an invisible exception list.
 NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "BASH_SOURCE": ("bash", "external"),
     "COVERAGE_FILE": ("coverage", "external"),
@@ -96,10 +88,6 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "VITE_GITHUB_URL": ("gui", "build"),
 }
 
-# Some internal environment names are derived from manifest data and therefore
-# cannot be enumerated without coupling this contract to one particular tools
-# bundle. Patterns keep those namespaces governed without pretending the set is
-# static.
 ENVIRONMENT_PATTERNS: dict[str, tuple[str, str]] = {
     r"^REPO2REE_TOOL_[A-Z0-9_]+$": ("tool-injection", "internal"),
 }

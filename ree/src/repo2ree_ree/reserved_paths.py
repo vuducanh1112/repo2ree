@@ -7,9 +7,7 @@ RESERVED_SCRIPT_DIR = "ree-scripts"
 RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/build_experiment_environment.sh"
 RESERVED_ACTIVATE_EXPERIMENT_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/activate_experiment_environment.sh"
 RESERVED_EXPERIMENT_SCRIPT_DIR = f"{RESERVED_SCRIPT_DIR}/experiments"
-# How each of the REE's scripts is launched; every REE starts with one that runs them directly.
 RESERVED_LAUNCH_SCRIPT = f"{RESERVED_SCRIPT_DIR}/launch.sh"
-# The author's check of the working environment, run there before the scripts; every REE starts with one that passes.
 RESERVED_CHECK_WORKING_ENVIRONMENT_SCRIPT = f"{RESERVED_SCRIPT_DIR}/check_working_environment.sh"
 
 RESERVED_OVERLAY_SCRIPTS = (
@@ -33,7 +31,6 @@ def experiment_verify_script_path(name: str) -> str:
 
 
 def is_overlay_path(path: str) -> bool:
-    """Whether ``path`` may be in an REE's overlay: one of its scripts, and nothing else."""
     normalized = PurePosixPath(path)
     if str(normalized) in (
         RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,

@@ -1,13 +1,3 @@
-"""Example-based coverage for the HBOM hardware profilers.
-
-The profilers parse the output of ``/proc``/``/sys`` reads and of ``lsblk``,
-``lspci`` and ``nvidia-smi``. The I/O is threaded through a path argument (the
-``/proc``/``/sys`` readers) or funnelled through a pure parse helper (the
-command readers), so the parsing is exercised against canned fixtures with no
-real hardware. The invariant-style checks live in
-``test_hbom_profilers_properties.py``.
-"""
-
 from __future__ import annotations
 
 import subprocess
@@ -38,8 +28,6 @@ def _completed(stdout: str, returncode: int = 0) -> subprocess.CompletedProcess[
     return subprocess.CompletedProcess(args=["x"], returncode=returncode, stdout=stdout, stderr="")
 
 
-# A two-socket, four-core, two-thread machine — enough distinct fields to drive
-# every branch of the topology derivation.
 _CPUINFO_TWO_SOCKET = """\
 processor\t: 0
 vendor_id\t: GenuineIntel
@@ -100,10 +88,10 @@ class TestParseCpuinfo:
         parsed = _parse_cpuinfo_text(_CPUINFO_TWO_SOCKET)
         assert parsed["vendor"] == "GenuineIntel"
         assert parsed["model_name"] == "Intel(R) Xeon(R) Gold 6248"
-        assert parsed["quantity"] == 2  # two distinct physical ids
+        assert parsed["quantity"] == 2
         assert parsed["cores_per_cpu"] == 4
-        assert parsed["threads_per_core"] == 2  # 8 siblings / 4 cores
-        assert parsed["logical_cpus"] == 3  # three processor blocks
+        assert parsed["threads_per_core"] == 2
+        assert parsed["logical_cpus"] == 3
 
     def test_empty_text_is_empty(self) -> None:
         assert _parse_cpuinfo_text("") == {}
@@ -133,8 +121,6 @@ class TestParseCpuinfo:
         assert definition.extra_info["logical_cpus"] == 3
 
     def test_profile_cpus_missing_file_uses_platform(self, tmp_path: Path) -> None:
-        # No /proc/cpuinfo: still yields exactly one entry keyed by a platform
-        # fallback, with valid ge=1 counts.
         cpus = profile_cpus(tmp_path / "absent")
         assert len(cpus) == 1
         (definition,) = cpus.values()
@@ -147,7 +133,6 @@ class TestProfileMemory:
         meminfo.write_text("MemTotal:       16384000 kB\nMemFree: 100 kB\n")
         memory = profile_memory(meminfo)
         definition = memory["Installed Memory"]
-        # 16384000 KiB = 15.62 GiB.
         assert definition.capacity_bytes == 16384000 * 1024
         assert definition.extra_info["aggregate"] is True
 
@@ -298,7 +283,7 @@ class TestProfileGpusDispatch:
     def test_falls_back_to_lspci(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def fake(*args: str, **_kwargs: object) -> subprocess.CompletedProcess[str] | None:
             if args[0] == "nvidia-smi":
-                return None  # binary absent
+                return None
             return _completed("01:00.0 VGA compatible controller: Intel Corporation UHD 630\n")
 
         monkeypatch.setattr(gpu_profiler, "run_command", fake)
@@ -339,12 +324,9 @@ class TestProfileStorageDispatch:
 
 class TestGenerateHbom:
     def test_smoke_returns_valid_hbom(self) -> None:
-        # Runs the real profilers against the host; the exact hardware varies,
-        # but the aggregate must always validate and carry the platform banner.
         hbom = generate_hbom()
         assert isinstance(hbom, HBOM)
         assert "platform_system" in hbom.extra_info
-        # CPU profiling always yields at least the platform fallback entry.
         assert len(hbom.cpus) >= 1
 
 
@@ -366,7 +348,6 @@ class TestProfileNetwork:
         net_root = tmp_path / "net"
         net_root.mkdir()
         iface = self._make_iface(net_root, "eth0", speed="10000")
-        # A driver symlink resolves to its module name.
         driver = tmp_path / "drivers" / "ixgbe"
         driver.mkdir(parents=True)
         (iface / "device" / "driver").symlink_to(driver)

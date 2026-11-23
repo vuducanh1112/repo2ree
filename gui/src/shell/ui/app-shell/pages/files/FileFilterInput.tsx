@@ -5,8 +5,6 @@ import styles from "./FilesPage.module.css";
 interface FileFilterInputProps {
   query: string;
   onChange: (q: string) => void;
-  /** Where the pane places the control; a measurement, so it rides a custom
-   * property rather than a class. */
   margin?: string | number;
 }
 

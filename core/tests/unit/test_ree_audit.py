@@ -1,5 +1,3 @@
-"""What the audit says about receipts the REE has since moved out from under."""
-
 from __future__ import annotations
 
 from dataclasses import replace
@@ -162,7 +160,6 @@ def test_editing_the_build_experiment_environment_script_leaves_the_build_receip
     experiment_environment = audit(edited).build_experiment_environment
     assert experiment_environment.evidence == "stale"
     assert experiment_environment.reasons == ("build experiment environment script changed",)
-    # The receipt is kept, not deleted: it is still what that run recorded.
     assert experiment_environment.receipt_run_id == RunId("build-1")
 
 
@@ -188,7 +185,6 @@ def test_stale_steps_names_every_stale_step_including_experiments() -> None:
     )
     assert audit(ree).stale_steps() == ()
 
-    # Edit both the build script and the experiment's run script.
     definition = ree.subject.definition
     edited = replace_definition(
         ree,
@@ -218,12 +214,6 @@ def _cross_checked_ree(
     sbom_digest: Digest = _SBOM_DIGEST,
     report_digest: Digest = _REPORT_DIGEST,
 ) -> Ree:
-    """A built REE whose SBOM has been generated, evaluated, and cross-checked.
-
-    The checked ``sbom_digest`` / ``report_digest`` are the cross-check's view
-    of its two inputs; passing a different one is how a test says "that
-    document was regenerated after the cross-check ran".
-    """
     ree = _built_ree()
     ree = commit_receipt(
         ree,
@@ -293,30 +283,18 @@ def test_regenerating_either_cross_checked_document_leaves_the_cross_check_stale
 
 
 def test_a_stale_cross_check_reaches_the_seal_gate() -> None:
-    """It is a step like any other: the generic walk must pick it up."""
     stale = audit(_cross_checked_ree(sbom_digest=_OTHER_DIGEST)).stale_steps()
 
     assert [name for name, _ in stale] == ["cross_check_sbom"]
 
 
 def test_stale_steps_walks_every_step_the_audit_reports() -> None:
-    """A step added to ``ReeAudit`` must be reachable from ``stale_steps``.
-
-    Seal refuses on what this walk finds, so a step it does not reach is a step
-    whose staleness would be published as though it held.
-    """
     reported = set(ReeAudit.model_fields) - {"reproducibility"}
 
     assert reported == {"experiments", *_STEP_FIELDS}
 
 
-# ================================================
-# Receipts that outlive their declaration
-# ================================================
-
-
 def test_removing_the_source_declaration_leaves_its_receipt_stale() -> None:
-    """The steps whose comparisons all pass vacuously get the generic reason."""
     orphaned = replace_definition(
         _built_ree(),
         _built_ree().subject.definition.model_copy(update={"source": None}),
@@ -356,18 +334,10 @@ def test_evidence_standing_is_the_table_it_documents(
     complaints: bool,
     expected: str,
 ) -> None:
-    """Pin the classification itself, apart from which comparisons feed it."""
     assert _evidence_standing(applicable=applicable, has_receipt=has_receipt, complaints=complaints) == expected
 
 
 def test_an_observed_hardware_receipt_stands_without_a_declaration() -> None:
-    """The observation is the content, not evidence for something declared.
-
-    ``observe_hardware`` files this receipt and never declares
-    ``definition.hbom`` — an author may observe the machine without stating
-    a requirement. Reading that as an orphan would refuse the seal on a
-    perfectly consistent REE.
-    """
     observed = commit_receipt(
         _built_ree(),
         ObserveHardwareReceipt(

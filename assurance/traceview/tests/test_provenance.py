@@ -1,5 +1,3 @@
-"""A sealed REE's provenance: each step's evidence at seal, the operation that produced it, and its chain."""
-
 from __future__ import annotations
 
 from traceview_scenario import SPEC, build_spans, recorded, trace_of
@@ -50,14 +48,12 @@ def test_each_step_is_traced_to_the_operation_that_last_produced_it() -> None:
         "generate_sbom": "current",
         "activate_experiment_environment": "missing",
     }
-    # Experiment environment went stale and was rebuilt: its receipt is the first build's, refreshed in place.
     assert origins["build_experiment_environment"].produced_by == "build_experiment_environment"
     assert origins["build_experiment_environment"].later == (
         "current → stale by authoring",
         "stale → current by build_experiment_environment",
     )
     assert origins["activate_experiment_environment"].change is None
-    # Declared from the start, and never run.
     assert origins["activate_experiment_environment"].history == ("missing",)
     assert provenance.after_seal == 0
 
@@ -68,7 +64,6 @@ def test_every_link_carries_the_rules_its_own_events_triggered() -> None:
     experiment_environment = next(
         origin for origin in provenance.steps if origin.step == "build_experiment_environment"
     )
-    # Which rules a subject triggers is the specification's to say; each link holds only its own subject's.
     assert {rule.rule for rule in experiment_environment.rules} <= triggered_by("Receipt")
     links = {link.label.split(" ", 1)[0]: link for link in experiment_environment.chain}
     assert {rule.rule for rule in links["attempt"].rules} <= triggered_by("Attempt")
@@ -94,5 +89,5 @@ def test_provenance_renders_as_a_tree() -> None:
     assert "SEALED @c8000000" in text
     assert "└─ activate_experiment_environment" in text
     assert "never produced: missing" in text
-    tree = text.split("\n[git]")[0]  # Above the legend.
+    tree = text.split("\n[git]")[0]
     assert "✗" not in tree

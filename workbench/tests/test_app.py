@@ -64,7 +64,6 @@ def test_main_composes_telemetry_experiment_environment_and_control_connection(
     kwargs = workbench_args[3]
     assert isinstance(kwargs, dict)
     assert kwargs["enrollment_token"] == opaque
-    # How the machine runs scripts is what ree said, passed along in the hello.
     assert kwargs["machine"] == MachineFacts(arch="aarch64", gpus=1)
     service = workbench_args[1]
     assert isinstance(service, WorkbenchService)

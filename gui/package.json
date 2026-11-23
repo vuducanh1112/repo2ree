@@ -5,6 +5,8 @@
   "scripts": {
     "check:core-purity": "node scripts/checkCorePurity.mjs",
     "check:style-architecture": "node scripts/checkStyleArchitecture.mjs",
+    "check:no-comments": "node scripts/noComments.mjs",
+    "fix:no-comments": "node scripts/noComments.mjs --fix",
     "vocabulary:sites": "node scripts/vocabularySites.mjs",
     "dev": "vite",
     "build": "vite build",

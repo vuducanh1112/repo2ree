@@ -1,27 +1,16 @@
-"""The specification's words traceview draws by, in one place.
-
-Traceview groups and labels evidence by the subjects, facts, states, and values the behaviour
-specification names. Spelled out wherever they are used, a rename in the specification left
-pages quietly empty; here, test_terms holds each one to the current specification instead.
-"""
-
-# Subjects.
 REE = "Ree"
 ATTEMPT = "Attempt"
 ACTION = "AuthorApiAction"
 RECEIPT = "Receipt"
-# A command is started by one exchange and followed to its end by others.
 START_RUN = "start_run"
 FOLLOW_RUN = "follow_run"
 
-# AuthorApiAction's facts, and the action that creates an REE.
 ACTION_NAME = "action"
-RUN_ID = "run_id"  # Carried by the long actions the author watches as runs.
+RUN_ID = "run_id"
 ATTEMPT_ID = "attempt_id"
 FAILURE_CATEGORY = "failure_category"
 PROVISION = "create_ree"
-LOAD_BUNDLE = "load_ree_bundle"  # Restores an REE from a bundle, as an action and as its attempt's operation.
-# The actions that only read the REE, which the lifecycle leaves out: polling a run is most of them.
+LOAD_BUNDLE = "load_ree_bundle"
 READS = (
     "view_ree",
     "view_ree_state",
@@ -36,7 +25,6 @@ READS = (
     "watch_action",
 )
 
-# Attempt's facts and states.
 OPERATION = "operation"
 OUTCOME = "outcome"
 COMMIT = "commit"
@@ -48,10 +36,8 @@ COMPLETED = "completed"
 CAPTURED = "captured"
 CAPTURE_FAILED = "capture_failed"
 
-# Ree's state once frozen.
 SEALED = "sealed"
 
-# Receipt: what caused a change of standing, its standings, and its kinds in authoring order.
 CAUSE = "cause"
 BASELINE = "baseline"
 KIND = "kind"
@@ -69,7 +55,6 @@ STEP_ORDER = (
     "activate_experiment_environment",
 )
 
-# A workbench's connection, its store, the facts it is drawn by, and the state it opens in.
 SESSION = "WorkbenchSession"
 STORE_ID = "store_id"
 WORKBENCH_ID = "workbench_id"
@@ -78,8 +63,6 @@ REASON = "reason"
 CLOSE_CODE = "close_code"
 OPENED = "opened"
 LOST = "lost"
-# The fact a command's requests name their session by.
 SESSION_FACT = "session"
 
-# The fact a follow's outcome says how the command ended by.
 STATUS = "status"

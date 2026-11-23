@@ -1,9 +1,3 @@
-"""Keep reports/overview/ bounded: the newest overviews, and the one `latest` points to.
-
-Every overview build prunes after it writes. Only a folder whose manifest says the overview
-wrote it is ever removed; anything else in reports/overview/ is left alone.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -17,7 +11,6 @@ KEEP = 3
 
 
 def stale_overviews(overviews: Path, keep: int = KEEP) -> list[Path]:
-    """The overviews beyond the newest ``keep``, never the one ``latest`` points to."""
     if not overviews.is_dir():
         return []
     latest = overviews / "latest"

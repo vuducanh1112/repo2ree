@@ -1,13 +1,3 @@
-"""Concrete authored-state inputs for script inference, over ``ReeLayout``.
-
-The pure inference engine sees only the ``ArtifactAccessor`` protocol; this is
-the workbench-side implementation that reads the built experiment environment artifact (in the
-workspace) and the written reserved scripts (in the overlay). It resolves a
-workspace-relative path against the workspace first, then the overlay, so both
-namespaces are reachable through one accessor. Digests are streamed in chunks
-and cached so a large experiment environment image is hashed at most once per request.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -25,15 +15,11 @@ _DIGEST_CHUNK = 1024 * 1024
 
 
 class LayoutArtifactAccessor:
-    """Read-only view of authored bytes under a workbench layout."""
-
     def __init__(self, layout: ReeLayout) -> None:
         self._layout = layout
         self._digests: dict[str, str | None] = {}
 
     def _resolve(self, rel_path: str) -> Path | None:
-        # Workspace (built artifacts) wins over overlay (written scripts); both
-        # are reachable, and their path namespaces do not collide.
         for resolver in (self._layout.workspace_file, self._layout.overlay_file):
             try:
                 candidate = resolver(rel_path)
@@ -91,12 +77,6 @@ class LayoutArtifactAccessor:
 
 
 def _declared_experiment_environment_path(definition: ReeDefinition | None) -> str | None:
-    """Where the author says the build leaves its experiment environment, if they have said yet.
-
-    Absent on a fresh REE: the build script is seeded before there is a source,
-    so inference runs against a recipe whose destination is still unchosen and
-    warns about exactly that (``experiment_environment_declaration_missing``).
-    """
     build = definition.experiment_environment if definition else None
     return str(build.artifact_path) if build and build.artifact_path else None
 
@@ -104,7 +84,6 @@ def _declared_experiment_environment_path(definition: ReeDefinition | None) -> s
 def build_experiment_environment_inputs(
     layout: ReeLayout, definition: ReeDefinition | None
 ) -> ExperimentEnvironmentInputs:
-    """Assemble the authored-state inputs for one inference request."""
     return ExperimentEnvironmentInputs(
         declared_experiment_environment_path=_declared_experiment_environment_path(definition),
         experiments=list(definition.experiments) if definition else [],
