@@ -638,7 +638,7 @@
     },
     "LoadReeBundle": {
       "additionalProperties": false,
-      "description": "Load what another REE of the exercise exports, as it stands at this step.",
+      "description": "Load what another REE of the exercise exports, as it stands at this step, damaged on its way as ``corruption``\nnames.",
       "properties": {
         "ree": {
           "pattern": "^[a-z][a-z0-9-]{0,31}$",
@@ -654,6 +654,19 @@
         "exported_by": {
           "pattern": "^[a-z][a-z0-9-]{0,31}$",
           "title": "Exported By",
+          "type": "string"
+        },
+        "corruption": {
+          "default": "intact",
+          "enum": [
+            "intact",
+            "truncated",
+            "unknown_head",
+            "objects_removed",
+            "file_changed",
+            "foreign_commit"
+          ],
+          "title": "Corruption",
           "type": "string"
         }
       },

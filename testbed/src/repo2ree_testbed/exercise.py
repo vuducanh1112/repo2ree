@@ -27,6 +27,10 @@ ExperimentName = Annotated[str, Field(min_length=1)]
 # How replay makes a signature over what the step signs: as a signer would, or wrong in one named way.
 SealSignature = Literal["valid", "foreign_key", "other_seal", "other_claim", "tampered"]
 ReviewSignature = Literal["valid", "foreign_key", "other_seal", "other_record", "tampered"]
+# How replay hands over the bundle a step loads: as it was given, or damaged on its way in one named way: cut short,
+# naming a head no history in it holds, with the objects of its REE's history gone, with a file beside that history
+# changed, or with a commit ree did not make added to that history and named as its head.
+BundleCorruption = Literal["intact", "truncated", "unknown_head", "objects_removed", "file_changed", "foreign_commit"]
 FaultKind = Literal["kill", "no_space", "history_locked"]
 # Where in a step's attempt a fault lands: each state the specification gives an attempt before it settles.
 FaultPoint = Literal["pending", "executing", "completed"]
@@ -99,10 +103,13 @@ class RemoveSource(_Step):
 
 
 class LoadReeBundle(_Step):
-    """Load what another REE of the exercise exports, as it stands at this step."""
+    """Load what another REE of the exercise exports, as it stands at this step, damaged on its way as ``corruption``
+    names."""
 
     operation: Literal["load_ree_bundle"] = "load_ree_bundle"
     exported_by: Label
+    # Left out where it is intact, so an exercise written before bundles could be damaged keeps its digest.
+    corruption: BundleCorruption = Field(default="intact", exclude_if=lambda corruption: corruption == "intact")
 
 
 class PatchReeDefinition(_Step):

@@ -28,6 +28,7 @@ from repo2ree_testbed.exercise import (
     AcquireSource,
     ActivateExperimentEnvironment,
     BuildExperimentEnvironment,
+    BundleCorruption,
     CheckWorkingEnvironment,
     CrossCheckSbom,
     Drift,
@@ -224,7 +225,14 @@ def _deviation(ree: Label, others: tuple[Label, ...]) -> st.SearchStrategy[Step]
         st.builds(SignReview, ree=st.just(ree), review=reviews, signature=st.sampled_from(get_args(ReviewSignature))),
     ]
     if others:
-        operations.append(st.sampled_from(others).map(lambda other: LoadReeBundle(ree=ree, exported_by=other)))
+        operations.append(
+            st.builds(
+                LoadReeBundle,
+                ree=st.just(ree),
+                exported_by=st.sampled_from(others),
+                corruption=st.sampled_from(get_args(BundleCorruption)),
+            )
+        )
     return st.one_of(operations)
 
 

@@ -73,6 +73,7 @@ from repo2ree_testbed.exercise import (
     Uploaded,
     WriteScript,
 )
+from repo2ree_testbed.exercise_bundle import corrupted
 from repo2ree_testbed.exercise_signing import review_bundle, seal_bundle
 from repo2ree_testbed.showcases import ALL_PROJECTS, Project, ProjectName
 
@@ -380,7 +381,7 @@ class CliReplay:
             case AcquireSource(source=Uploaded(project=project)):
                 fixture = PROJECTS[project]
                 return Prepared(staged=self._staged(index, fixture.upload_name, fixture.archive()))
-            case LoadReeBundle(exported_by=exporter):
+            case LoadReeBundle(exported_by=exporter, corruption=corruption):
                 bundle_id = f"bundle-{index}"
                 journal.bundle(bundle_id, exporter)
                 answer = self.run(self.root(exporter), ("bundle",), None)
@@ -389,7 +390,9 @@ class CliReplay:
                     journal.refused(bundle_id, exporter, answer.exit)
                     return Prepared((exported,), made=False)
                 journal.exported(bundle_id, exporter, bundle_heads(answer.stdout))
-                return Prepared((exported,), self._staged(index, "ree.zip", answer.stdout))
+                return Prepared(
+                    (exported,), self._staged(index, "ree.zip", corrupted(answer.stdout, corruption, index))
+                )
             case SignRee(signature=signature):
                 shown, seal = self._seal(step.ree)
                 return Prepared((shown,), self._staged(index, "seal.sigstore.json", seal_bundle(seal, signature)))
