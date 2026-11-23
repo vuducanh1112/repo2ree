@@ -197,7 +197,8 @@ def check_excludes(model: Model, require: ExclusionRequirement, occurrence: Occu
 def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -> Finding | None:
     """The first instance of ``require.entity`` the evidence orders after the trigger, in its partition, as it
     reaches one of ``require.reached``, satisfies ``require.where``, unless the trigger's instance left the state it
-    reached before that; none following holds."""
+    reached before that; none following holds. One the evidence cannot order against the trigger, under way as it
+    happened, that satisfies ``require.beside`` holds it in place of the first after it."""
     following: list[tuple[Instance, Reached]] = []
     unordered: list[Event] = []
     for instance in model.instances.get(require.entity, {}).values():
@@ -208,6 +209,11 @@ def check_next(model: Model, require: NextRequirement, occurrence: Occurrence) -
             continue
         order = model.precedes(occurrence.event, reached.event)
         if order is None:
+            if require.beside is not None and any(
+                item.state in require.beside.reached and matches(require.beside.where, item.facts, occurrence.facts)
+                for item in instance.reached
+            ):
+                return None
             unordered.append(reached.event)
         elif order:
             following.append((instance, reached))

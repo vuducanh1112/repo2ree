@@ -3,7 +3,7 @@
   "$id": "urn:repo2ree:contracts:behaviour:events",
   "title": "repo2ree behaviour journal record",
   "description": "One line of a behaviour journal. Generated from assurance/spec/vocabulary by `python -m scripts.contracts write behaviour-schema`; do not edit. Sequence, epochs, and the header are checked per journal by `python -m repo2ree_assurance_checker validate-journal`.",
-  "x-vocabulary": "sha256:9f3867735e9bb162db4bc958949b460773a5e0246d876f50351327096b6eab83",
+  "x-vocabulary": "sha256:57ca071e0b1a4c76eadc5eba7f41636b4da56241290859821ede963e396e9c9c",
   "x-operations": {
     "operations": {
       "initialize_ree": "Start a new REE: its definition, its scripts, and the first commit of its history.",
@@ -334,6 +334,12 @@
                 "null"
               ]
             },
+            "drift_after": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "drift_found": {
               "type": "array",
               "items": {
@@ -431,6 +437,12 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "drift_after": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "drift_found": {
                     "type": "array",
@@ -531,6 +543,12 @@
                       "null"
                     ]
                   },
+                  "drift_after": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
                   "drift_found": {
                     "type": "array",
                     "items": {
@@ -628,6 +646,12 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "drift_after": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   },
                   "drift_found": {
                     "type": "array",

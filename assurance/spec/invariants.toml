@@ -92,15 +92,17 @@ require = { entity = "Attempt", key_from = "attempt_id", reached = ["captured", 
 
 # ---- REE domain ---------------------------------------------------------------
 
-# Anything can change an REE's files between its attempts: an editor, a disk, another program, git. The product must
-# notice before it acts on them: the attempt that comes next, while the drift lasts, names every file or ref that
-# drifted, and records it as the script edit it is, or is refused.
+# Anything can change an REE's files, between its attempts or while one runs: an editor, a disk, another program, git.
+# The product must notice before it acts on them: the attempt that comes next, while the drift lasts, names every file
+# or ref that drifted, and records it as the script edit it is, or is refused. One that drifted while an attempt ran
+# is found by that attempt once its handler returns, so the evidence says which attempt it changed beside; the
+# environment's journal cannot order it against that attempt, only against the command that ran it.
 [[invariant]]
 id = "drift-is-found-by-the-next-attempt"
 pattern = "next"
-summary = "The first attempt in an REE after one of its files drifted names that file among what it found."
+summary = "The first attempt in an REE after one of its files drifted names that file among what it found, unless the attempt it drifted beside named it once its handler ran."
 when = { entity = "Drift", to = "arisen" }
-require = { entity = "Attempt", reached = "pending", where = { drift_found = { has = "path" } } }
+require = { entity = "Attempt", reached = "pending", where = { drift_found = { has = "path" } }, beside = { reached = "completed", where = { drift_after = { has = "path" } } } }
 
 # A bundle is how an REE leaves the machine it was made on, and the REE that loads it takes in its history as its
 # own. What it carries is what ree recorded: the head of each history in it is a commit an attempt captured, never

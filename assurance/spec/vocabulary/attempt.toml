@@ -36,6 +36,9 @@ record = { type = "str", required_in = ["capture_failed"] }
 # in the overlay, that the attempt records of it. An attempt that found drift and records none of it is refused.
 drift_found = "[str]"
 drift_recorded = "str?"
+# Every file of the REE that changed beside the attempt while its handler ran, by its path from the REE, found once
+# the handler returned. The handler ran on a stage of its own, so none of it reached the attempt or its commit.
+drift_after = "[str]"
 
 [facts.outcome]
 type = "str"

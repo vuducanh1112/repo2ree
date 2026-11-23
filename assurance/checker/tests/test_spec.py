@@ -288,6 +288,22 @@ def test_incoherent_invariants_are_rejected(change: dict[str, Any], message: str
         docs.parse()
 
 
+@pytest.mark.parametrize(
+    ("beside", "message"),
+    [
+        ({"reached": "done", "where": {"drift_after": {"has": "path"}}}, "unknown 'beside' states"),
+        ({"reached": "completed", "where": {"colour": "red"}}, "'beside' names undeclared facts"),
+        ({"reached": "completed", "where": {"drift_after": {"has": "colour"}}}, "not a trigger fact"),
+    ],
+)
+def test_incoherent_besides_are_rejected(beside: dict[str, Any], message: str) -> None:
+    docs = documents()
+    drift = next(item for item in docs.invariants["invariant"] if item["id"] == "drift-is-found-by-the-next-attempt")
+    drift["require"] = {**drift["require"], "beside": beside}
+    with pytest.raises(ValidationError, match=message):
+        docs.parse()
+
+
 def test_owners_and_boundary_ends_must_be_declared_components() -> None:
     docs = documents()
     docs.components["component"] = [item for item in docs.components["component"] if item["name"] != "core"]

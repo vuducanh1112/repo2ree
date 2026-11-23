@@ -551,7 +551,11 @@ def attempt_events(
             "drift_found": [item.get("path") for item in record.get("drift_found") or [] if isinstance(item, dict)],
             "drift_recorded": record.get("drift_recorded"),
         },
-        "completed": {"outcome": record.get("operation_status")},
+        "completed": {
+            "outcome": record.get("operation_status"),
+            # What had changed beside it once its handler ran: it ran on a stage, so none of it was its doing.
+            "drift_after": [item.get("path") for item in record.get("drift_after") or [] if isinstance(item, dict)],
+        },
         "captured": {"commit": commit.id, "changed": commit.tree != commit.parent_tree} if commit else {},
         "capture_failed": {"error": record.get("capture_error") or ""} | ({"record": digest} if digest else {}),
     }

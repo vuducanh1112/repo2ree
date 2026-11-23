@@ -63,13 +63,28 @@ class ExclusionRequirement(SpecModel):
     in_states: tuple[Name, ...] = Field(min_length=1)
 
 
+class Beside(SpecModel):
+    """What an instance the evidence cannot order against the trigger, one under way as it happened, satisfies as it
+    reaches one of these states, so that it answers for the trigger in place of the first one after it."""
+
+    reached: tuple[Name, ...] = Field(min_length=1)
+    where: Condition = Field(min_length=1)
+
+    @field_validator("reached", mode="before")
+    @classmethod
+    def _reached(cls, value: object) -> object:
+        return (value,) if isinstance(value, str) else value
+
+
 class NextRequirement(SpecModel):
     """The first instance of the entity in the trigger's partition that the evidence orders after the trigger, as
-    it reaches one of these states, satisfies the condition, unless the trigger's instance moved on before it."""
+    it reaches one of these states, satisfies the condition, unless the trigger's instance moved on before it, or an
+    instance under way as it happened satisfies ``beside``."""
 
     entity: Name
     reached: tuple[Name, ...] = Field(min_length=1)
     where: Condition = Field(min_length=1)
+    beside: Beside | None = None
 
     @field_validator("reached", mode="before")
     @classmethod
@@ -209,4 +224,8 @@ def spell_out_groups(invariant: dict[str, Any], groups: FactGroups) -> dict[str,
         when["where"] = spelled(when.get("entity"), when["where"])
     if "where" in require:
         require["where"] = spelled(require.get("entity", when.get("entity")), require["where"])
+    if isinstance(require.get("beside"), dict) and "where" in require["beside"]:
+        beside = dict(require["beside"])
+        beside["where"] = spelled(require.get("entity"), beside["where"])
+        require["beside"] = beside
     return invariant | {"when": when} | ({"require": require} if require else {})

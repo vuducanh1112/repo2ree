@@ -174,6 +174,7 @@ class Recorder:
         failed_record: str | None = None,
         drift_found: tuple[str, ...] = (),
         drift_recorded: str | None = None,
+        drift_after: tuple[str, ...] = (),
         commit: str | None = None,
     ) -> None:
         """An attempt's phases; with ``failed_record``, its capture failed and that is its record's digest."""
@@ -183,7 +184,7 @@ class Recorder:
             pending["dispatched_by"] = dispatched_by
         steps: list[tuple[str | None, str, dict[str, Any]]] = [(None, "pending", pending), ("pending", "executing", {})]
         if completed:
-            steps.append(("executing", "completed", {"outcome": outcome}))
+            steps.append(("executing", "completed", {"outcome": outcome, "drift_after": list(drift_after)}))
         if completed and failed_record is not None:
             steps.append(("completed", "capture_failed", {"error": "locked", "record": failed_record}))
         elif completed and captured:
@@ -237,13 +238,16 @@ class Recorder:
         for record in (request, answer):
             self._add(source, owner="environment", subject="export_bundle", key=key, **record)
 
-    def command(self, key: str, source: str = "environment-000001") -> str:
-        """The environment running one of ree's commands; returns its reference, which the attempts it runs cite."""
+    def command(self, key: str, source: str = "environment-000001", *, beside: str | None = None) -> str:
+        """The environment running one of ree's commands; returns its reference, which the attempts it runs cite.
+        With ``beside``, it changes that file of the REE while the command runs."""
         facts = {"run_id": "run-1"}
         self._add(
             source, kind="send", owner="environment", subject="run_command", key=key, message="run_command", facts=facts
         )
         request = f"{source}#{self.positions[source]}"
+        if beside is not None:
+            self.drift(f"beside-{key}", beside, part="overlay", source=source)
         exited = {"exit": 0, "commit": f"c-{key}"}
         self._add(
             source, kind="receive", owner="environment", subject="run_command", key=key, message="exited", facts=exited
@@ -1207,6 +1211,34 @@ def test_an_attempt_the_evidence_cannot_order_against_a_drift_is_inconclusive() 
     recorder.attempt("a1")
 
     assert verdicts(recorder, environment(), git(REE))[DRIFT] == "inconclusive"
+
+
+def test_a_drift_while_an_attempt_runs_that_the_attempt_names_after_its_handler_holds() -> None:
+    recorder = Recorder()
+    command = recorder.command("a1", beside="overlay/ree-scripts/launch.sh")
+    recorder.attempt("a1", dispatched_by=command, drift_after=("overlay/ree-scripts/launch.sh",), commit="c-a1")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "passed"
+
+
+def test_a_drift_while_an_attempt_runs_that_it_does_not_name_cannot_be_placed_against_it() -> None:
+    recorder = Recorder()
+    command = recorder.command("a1", beside="overlay/ree-scripts/launch.sh")
+    recorder.attempt("a1", dispatched_by=command, commit="c-a1")
+    recorder.attempt("a2", dispatched_by=recorder.command("a2"), commit="c-a2")
+
+    assert verdicts(recorder, environment(), git(REE))[DRIFT] == "inconclusive"
+
+
+def test_an_attempt_that_names_a_drift_after_its_handler_is_not_the_first_after_it() -> None:
+    recorder = Recorder()
+    recorder.drift("d1", "overlay/ree-scripts/launch.sh", part="overlay")
+    command = recorder.command("a1")
+    recorder.attempt("a1", dispatched_by=command, drift_after=("overlay/ree-scripts/launch.sh",), commit="c-a1")
+
+    assert findings(recorder, DRIFT, environment(), git(REE)) == [
+        "violated: Attempt a1, the first after it, reached pending with {'drift_found': []}"
+    ]
 
 
 def test_a_drift_undone_before_the_next_attempt_owes_it_nothing() -> None:

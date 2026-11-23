@@ -256,6 +256,13 @@ class Spec(SpecModel):
                 raise ValueError(f"{invariant.id}: requirement 'where' names undeclared facts {sorted(unknown)}")
             for fact, condition in require.where.items():
                 check_condition(invariant.id, fact, condition, following.allowed, trigger_allowed, trigger_facts)
+            if require.beside is not None:
+                if not set(require.beside.reached) <= set(following.states):
+                    raise ValueError(f"{invariant.id}: unknown 'beside' states {list(require.beside.reached)}")
+                if unknown := set(require.beside.where) - set(following.facts):
+                    raise ValueError(f"{invariant.id}: 'beside' names undeclared facts {sorted(unknown)}")
+                for fact, condition in require.beside.where.items():
+                    check_condition(invariant.id, fact, condition, following.allowed, trigger_allowed, trigger_facts)
             if following.partition != self.trigger_partition(when):
                 raise ValueError(f"{invariant.id}: trigger and requirement are partitioned differently")
         if isinstance(require, EachRequirement):
