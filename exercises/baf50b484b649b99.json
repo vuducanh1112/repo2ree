@@ -1,0 +1,71 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author",
+      "reviewer"
+    ],
+    "steps": [
+      {
+        "ree": "author",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "author",
+        "operation": "acquire_source",
+        "source": {
+          "kind": "uploaded",
+          "project": "instant"
+        }
+      },
+      {
+        "ree": "reviewer",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "load_ree_bundle",
+        "exported_by": "author"
+      }
+    ],
+    "faults": [],
+    "drifts": []
+  },
+  "origin": {
+    "kind": "searched",
+    "search": "spec-cov",
+    "run": "a0ea285e2fd34cefa0a1ec5adfc04b16",
+    "commit": "35fa110dba3c44477417eca3f1f160267c1f4696",
+    "dirty": false,
+    "kept_for": {
+      "kind": "new_reached",
+      "items": [
+        "bundles-carry-what-attempts-captured"
+      ]
+    }
+  },
+  "expects": {
+    "kind": "conforms"
+  },
+  "reached": {
+    "spec_digest": "sha256:4198047d2f6f03fff95592a90cd73843c421f6e8d4c8c81bc0fa3ee10d1d23b5",
+    "items": [
+      "Attempt (none) -> pending",
+      "Attempt completed -> captured",
+      "Attempt executing -> completed",
+      "Attempt pending -> executing",
+      "aggregate:Ree",
+      "boundary:export_bundle",
+      "boundary:run_command",
+      "bundles-carry-what-attempts-captured",
+      "document:scripts-are-their-digests",
+      "document:standings-are-the-receipts-basis",
+      "evidence",
+      "machine:Attempt",
+      "machine:Receipt",
+      "machine:Ree",
+      "receipts-come-from-their-producers",
+      "ree-changes-through-operations"
+    ]
+  }
+}
