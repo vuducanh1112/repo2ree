@@ -96,7 +96,13 @@ CAMPAIGN_HEADERS = [
 ]
 
 
-def campaigns_table(found: Sequence[Campaign]) -> str:
+def _kept_case(digest: str, present: frozenset[str]) -> str:
+    if digest in present:
+        return case_link(digest)
+    return f'<code>{esc(digest)}</code> <span class="muted">removed</span>'
+
+
+def campaigns_table(found: Sequence[Campaign], present: frozenset[str]) -> str:
     if not found:
         return '<p class="muted">None recorded.</p>'
     rows = [
@@ -110,7 +116,7 @@ def campaigns_table(found: Sequence[Campaign]) -> str:
             str(campaign.settings.examples),
             str(campaign.settings.steps),
             f"{campaign.rounds} ({campaign.rounds_found})",
-            "<br>".join(f"{case_link(item.case)} {kept_for(item.kept_for)}" for item in campaign.kept),
+            "<br>".join(f"{_kept_case(item.case, present)} {kept_for(item.kept_for)}" for item in campaign.kept),
             str(campaign.unconfirmed),
             _exit(campaign),
         ]
@@ -151,7 +157,12 @@ def page_exercises(exercises: Exercises) -> Page:
     recorded = frozenset(campaign.run for campaign in exercises.campaigns)
     body = (
         "<h1>Exercises</h1>"
-        + section("campaigns", "Search campaigns", "", campaigns_table(exercises.campaigns))
+        + section(
+            "campaigns",
+            "Search campaigns",
+            "",
+            campaigns_table(exercises.campaigns, frozenset(case.digest for case in exercises.cases)),
+        )
         + section("cases", "Cases", "", cases_table(exercises.cases, recorded))
     )
     return Page(EXERCISES, "Exercises", f"{len(exercises.cases)} cases", body)

@@ -78,7 +78,8 @@ def exercises(**cases: Any) -> Exercises:
         "rounds_found": 6,
         "unconfirmed": 1,
         "kept": [
-            {"case": SEARCHED, "kept_for": {"kind": "new_reached", "items": ["evidence"]}, "steps": 2, "worker": 3}
+            {"case": SEARCHED, "kept_for": {"kind": "new_reached", "items": ["evidence"]}, "steps": 2, "worker": 3},
+            {"case": "0123456789abcdef", "kept_for": {"kind": "showed_problems"}, "steps": 4, "worker": 1},
         ],
         "exit": 0,
     }
@@ -113,6 +114,8 @@ def test_the_exercises_page_lists_the_campaigns_and_every_case_linked_to_its_pag
     assert f'href="{case_slug(WRITTEN)}.html"' in body
     assert 'href="exercises.html#campaign-run-1"' in body
     assert "hand-written" in body
+    assert '<code>0123456789abcdef</code> <span class="muted">removed</span>' in body
+    assert 'href="exercises/0123456789abcdef.html"' not in body
 
 
 def test_without_campaigns_the_page_says_how_to_record_one() -> None:

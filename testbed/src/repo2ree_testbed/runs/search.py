@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -174,7 +173,8 @@ class Search:
     def confirm(self, found: _Found) -> Path | None:
         exercise = found.trace.exercise
         again = self._judged(exercise, f"confirm-{self.worker}")
-        lock = Path(tempfile.gettempdir()) / f"repo2ree-search-{execution_id()}.lock"
+        lock = _log().with_name("search.lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
         with lock.open("a") as held:
             fcntl.flock(held, fcntl.LOCK_EX)
             self.refresh()

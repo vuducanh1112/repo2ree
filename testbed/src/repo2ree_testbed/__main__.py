@@ -17,6 +17,7 @@ COMMANDS = {
     "coverage": "repo2ree_testbed.python_coverage",
     "exercise-coverage": "repo2ree_testbed.runs.exercise_coverage",
     "exercise-export": "repo2ree_testbed.runs.exercise_export",
+    "exercise-reduce": "repo2ree_testbed.runs.exercise_reduce",
     "search": "repo2ree_testbed.runs.search",
     "machine": "repo2ree_testbed.runs.machine",
     "record": "repo2ree_testbed.runs.record",
