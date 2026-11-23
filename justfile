@@ -76,7 +76,7 @@ prune *args:
 # Build the repository overview in reports/overview/<revision>/ (reports/overview/latest): zones, gates, behaviour and its coverage by the gate and the showcases, architecture, recipes, configuration, API.
 [group('Repository')]
 [parallel]
-repo-overview: generate-diagrams export-zones export-contracts export-vocabulary export-spec _overview-behaviour export-operations export-just-recipes
+repo-overview: generate-diagrams export-zones export-vocabulary export-operations
     python -m repo2ree_repoview overview
 
 # Write the zones and each tracked file's place as JSON (repo2ree-zones/1) for the overview.
