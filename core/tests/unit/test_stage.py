@@ -8,8 +8,10 @@ from recorded_ree import as_recorded
 
 from repo2ree_core.operations import dispatch
 from repo2ree_core.operations.initialize import initialize_ree
+from repo2ree_core.operations.session import run_session
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.operation_history import read_operation_history
 from repo2ree_protocol.command import PatchReeDefinitionArgs, PatchReeDefinitionCommand
 from repo2ree_protocol.result import ActionResult, DriftedFile
 from repo2ree_protocol.tools import find_tool
@@ -63,6 +65,8 @@ def test_an_edit_beside_a_running_attempt_is_neither_seen_nor_committed_and_is_f
     assert ree.overlay_file("kept.txt").read_text() == "edited beside the attempt"
     assert ree.overlay_file("written.txt").read_text() == "by the attempt"
     assert result.history.drift_after == [DriftedFile(path="overlay/kept.txt", part="overlay")]
+    [record] = [item for item in read_operation_history(ree).operations if item.run_id == "patch-run"]
+    assert record.drift_after == [DriftedFile(path="overlay/kept.txt", part="overlay")]
     assert not (ree.root / ".stage").exists()
 
     monkeypatch.undo()
@@ -83,6 +87,35 @@ def test_a_file_the_attempt_changed_and_was_edited_beside_it_keeps_the_edit(ree,
     assert git(ree, "show", f"{result.history.after_snapshot_id}:overlay/kept.txt") == "by the attempt"
     assert ree.overlay_file("kept.txt").read_text() == "edited beside the attempt"
     assert result.history.drift_after == [DriftedFile(path="overlay/kept.txt", part="overlay")]
+
+
+def test_an_edit_beside_an_attempt_whose_executor_was_lost_is_named_when_it_is_settled(ree, monkeypatch):
+    def dies(*_args, layout, **_kwargs):
+        ree.overlay_file("kept.txt").write_text("edited beside the attempt")
+        layout.overlay_file("kept.txt").write_text("partial")
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(dispatch, "handle_patch_ree_definition", dies)
+    with pytest.raises(KeyboardInterrupt):
+        run_session(
+            PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "lost"})),
+            layout=ree,
+            emit=lambda *args: None,
+            run_id="run-lost",
+        )
+    monkeypatch.undo()
+    [lost] = read_operation_history(ree).operations[-1:]
+
+    run_session(
+        PatchReeDefinitionCommand(args=PatchReeDefinitionArgs(patch={"name": "after"})),
+        layout=ree,
+        emit=lambda *args: None,
+        run_id="run-next",
+    )
+
+    settled = next(item for item in read_operation_history(ree).operations if item.attempt_id == lost.attempt_id)
+    assert settled.operation_status == "interrupted"
+    assert settled.drift_after == [DriftedFile(path="overlay/kept.txt", part="overlay")]
 
 
 def test_an_attempt_left_clean_finds_nothing_after_it(ree):

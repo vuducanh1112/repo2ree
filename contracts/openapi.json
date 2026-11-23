@@ -13843,6 +13843,13 @@
             ],
             "title": "Drift Recorded"
           },
+          "drift_after": {
+            "items": {
+              "$ref": "#/components/schemas/DriftedFile"
+            },
+            "type": "array",
+            "title": "Drift After"
+          },
           "step_evidence_after": {
             "anyOf": [
               {

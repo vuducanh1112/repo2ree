@@ -40,6 +40,9 @@ class OperationRecord(BaseModel):
     # drift records the one script edit it names in ``drift_recorded``, or is refused.
     drift_found: list[DriftedFile] = Field(default_factory=list)
     drift_recorded: str | None = None
+    # What had changed beside the attempt once its handler returned: every file of the REE no longer as the attempt
+    # found it. The handler ran on a stage, so none of it reached the attempt or its commit; the next command finds it.
+    drift_after: list[DriftedFile] = Field(default_factory=list)
     step_evidence_after: dict[str, str] | None = None
     # Each phase the attempt entered, appended and written before the next begins:
     # pending, executing, completed, then captured or capture_failed. The record of

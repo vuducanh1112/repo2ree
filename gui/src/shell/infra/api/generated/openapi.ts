@@ -3214,6 +3214,8 @@ export interface components {
             drift_found?: components["schemas"]["DriftedFile"][];
             /** Drift Recorded */
             drift_recorded?: string | null;
+            /** Drift After */
+            drift_after?: components["schemas"]["DriftedFile"][];
             /** Step Evidence After */
             step_evidence_after?: {
                 [key: string]: string;

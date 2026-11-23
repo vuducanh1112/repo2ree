@@ -5744,6 +5744,13 @@
           "default": null,
           "title": "Drift Recorded"
         },
+        "drift_after": {
+          "items": {
+            "$ref": "#/$defs/DriftedFile"
+          },
+          "title": "Drift After",
+          "type": "array"
+        },
         "step_evidence_after": {
           "anyOf": [
             {

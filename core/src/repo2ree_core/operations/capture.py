@@ -4,10 +4,11 @@ All dispatched commands cooperate on the author REE lock. Review snapshots
 live in their own attempt directories; external writers are not synchronized.
 A pending record means completion is unresolved, not that execution rolled back.
 
-The integrity check holds on both sides of an attempt: it begins only on an REE whose files are as its histories'
-heads hold them, and once it is captured they are as the new head holds them, or the check says what is not. Between
-the two, the handler runs on a stage (``operations.stage``), and the attempt commits what the handler changed there:
-a canceled attempt commits nothing it changed, and one whose capture failed changed nothing of the REE's files.
+The integrity check holds on both sides of an attempt's handler: the attempt begins only on an REE whose files are
+as its histories' heads hold them, and once the handler returns, the attempt records what is no longer so
+(``drift_after``): what changed beside it while it ran. The handler runs on a stage (``operations.stage``), and the
+attempt commits what the handler changed there: a canceled attempt commits nothing it changed, and one whose capture
+failed changed nothing of the REE's files.
 Loading a bundle replaces the REE, its histories with it, so it alone runs on the REE's files, rolled back as before.
 """
 
@@ -78,7 +79,6 @@ def capture_command(
     )
     record_path = scope.git_dir / "repo2ree" / "operations" / f"{record.attempt_id}.json"
     result: ActionResult | None = None
-    drift_after: list[DriftedFile] = []
     try:
         with ExitStack() as stack:
             history = stack.enter_context(open_history(layout))
@@ -126,6 +126,8 @@ def capture_command(
                 record.operation_status = result.status
                 record.operation_failure = result.failure
                 record.result = result
+                if stage is not None:
+                    record.drift_after = _drift_beside(layout, record.drift_recorded, edited, log)
                 record.phases.append("completed")
                 # Preserve the handler outcome even if snapshot publication fails.
                 write_json_atomic(record_path, record.model_dump(mode="json"))
@@ -167,7 +169,6 @@ def capture_command(
             elif edited is not None and records_edit is not None and result.status != "succeeded":
                 # Not recorded, so still drift, for the next command to find.
                 layout.overlay_file(records_edit).write_bytes(edited)
-            drift_after = _drift_after(layout, log)
             # The commit is authoritative. Cleanup is best-effort; a stale
             # pending record is reconciled with the published attempt on read.
             with suppress(OSError):
@@ -203,20 +204,26 @@ def capture_command(
             outputs=result.outputs if result is not None else {},
         )
         return failed.model_copy(update={"context": context, "history": _references(record, record_digest)})
-    return result.model_copy(update={"history": _references(record, drift_after=drift_after)})
+    return result.model_copy(update={"history": _references(record)})
 
 
 # Operations that replace the REE, its histories with it, so they run on its files rather than on a stage.
 _ON_THE_REE = frozenset({"load_ree_bundle"})
 
 
-def _drift_after(layout: ReeLayout, log: LogSink) -> list[DriftedFile]:
-    """The integrity check once the attempt is captured: what of the REE is not as the attempt left it."""
+def _drift_beside(layout: ReeLayout, recorded: str | None, edited: bytes | None, log: LogSink) -> list[DriftedFile]:
+    """The integrity check once a staged handler returned: what of the REE is no longer as the attempt found it, so
+    changed beside it. The script edit the attempt records is its own, while it is as the attempt found it, or
+    whenever the attempt kept none of it (``edited``) to compare."""
     try:
         drift = find_drift(layout)
     except (HistoryCaptureError, OSError, ValueError) as exc:
-        log("system", "warn", f"Cannot check the REE once the attempt was captured: {exc}")
+        log("system", "warn", f"Cannot check the REE once the handler returned: {exc}")
         return []
+    if recorded is not None:
+        with suppress(OSError):
+            if edited is None or (layout.root / recorded).read_bytes() == edited:
+                drift = [item for item in drift if item.path != recorded]
     if drift:
         log(
             "system",
@@ -352,6 +359,8 @@ def settle_interrupted(
         record.operation_status = "interrupted"
         record.operation_failure = result.failure
         record.result = result
+        if staged:
+            record.drift_after = _drift_beside(layout, record.drift_recorded, None, log)
         record.phases.append("completed")
         try:
             write_json_atomic(record_path, record.model_dump(mode="json"))
@@ -488,9 +497,7 @@ def step_evidence(layout: ReeLayout, log: LogSink) -> dict[str, str] | None:
     return standing
 
 
-def _references(
-    record: OperationRecord, record_digest: str | None = None, *, drift_after: list[DriftedFile] | None = None
-) -> HistoryReference:
+def _references(record: OperationRecord, record_digest: str | None = None) -> HistoryReference:
     return HistoryReference.model_validate(
         {
             "schema_version": record.schema_version,
@@ -504,6 +511,6 @@ def _references(
             "operation_failure": record.operation_failure.model_dump(mode="json") if record.operation_failure else None,
             "changed": record.changed if record.capture_status == "captured" else None,
             "record_digest": record_digest,
-            "drift_after": [item.model_dump() for item in drift_after or []],
+            "drift_after": [item.model_dump() for item in record.drift_after],
         }
     )

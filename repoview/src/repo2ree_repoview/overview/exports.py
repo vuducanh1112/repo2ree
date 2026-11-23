@@ -216,6 +216,13 @@ class ExclusionRequirement(Document):
     in_states: tuple[str, ...]
 
 
+class Beside(Document):
+    """A condition an instance under way as the trigger happened may meet in place of the first one after it."""
+
+    reached: tuple[str, ...]
+    where: Conditions
+
+
 class NextRequirement(Document):
     """A condition on the first instance of an entity after the trigger."""
 
@@ -223,6 +230,7 @@ class NextRequirement(Document):
     entity: str
     reached: tuple[str, ...]
     where: Conditions
+    beside: Beside | None = None
 
 
 class EachRequirement(Document):

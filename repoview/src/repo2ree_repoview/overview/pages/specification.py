@@ -98,8 +98,14 @@ def requirement_text(spec: Spec, invariant: Invariant) -> str:
             trigger = invariant.when.entity if isinstance(invariant.when, EntityTrigger) else ""
             return where(guard.where, entity_groups(spec, trigger)).removeprefix(" where ")
         case NextRequirement() as following:
-            conditions = where(following.where, entity_groups(spec, following.entity)).removeprefix(" where ")
-            return f"the first {following.entity} after it, as it reaches {' | '.join(following.reached)}: {conditions}"
+            groups = entity_groups(spec, following.entity)
+            conditions = where(following.where, groups).removeprefix(" where ")
+            text = f"the first {following.entity} after it, as it reaches {' | '.join(following.reached)}: {conditions}"
+            if following.beside is None:
+                return text
+            beside = where(following.beside.where, groups).removeprefix(" where ")
+            states = " | ".join(following.beside.reached)
+            return f"{text}; or one under way as it happened, as it reaches {states}: {beside}"
         case EachRequirement() as each:
             states = " | ".join(each.reached)
             return f"each of its {each.of} is the {each.fact} of a {each.entity} that reached {states} before it"

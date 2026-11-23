@@ -83,8 +83,7 @@ class HistoryReference(BaseModel):
     # For a failed capture: the digest of the record core left beside the history, which stands in
     # for the commit a capture would have made. None when even that record could not be written.
     record_digest: str | None = None
-    # What the integrity check found of the REE not as this attempt left it, once it was captured: changed beside
-    # the attempt while it ran. The attempt's commit holds none of it; the next command finds it as drift.
+    # What had changed beside the attempt once its handler returned, as its record names it.
     drift_after: list[DriftedFile] = Field(default_factory=list)
 
 
