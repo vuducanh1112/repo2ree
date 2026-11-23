@@ -86,17 +86,17 @@ test-e2e-cli jobs=E2E_JOBS *select: (_tier-cli jobs "tests" select) (assess-beha
 re-measure-exercise-branch-cov which="stale":
     python -m repo2ree_testbed exercise-coverage {{ if which == "all" { "--all" } else { "" } }}
 
-# Search for exercises that break `ree schema` or the specification, steered toward the rules and transitions of the specification, not gated: Hypothesis draws `examples` exercises of up to `steps` steps, replays each through `ree` on this machine, and shrinks the first with a problem no case names into a new case in exercises/, expecting those problems. Each exercise's trace and what it reached are kept under the run's exercises/<run>/spec-cov/, each line of its coverage.ndjson naming the rules and transitions no exercise before it reached (e.g. `just pbt-cli-spec-cov 100`).
+# Search for exercises worth keeping as cases, steered toward the rules and transitions of the specification, not gated: Hypothesis draws `examples` exercises of up to `steps` steps per round and replays each through `ree` on this machine; the first that shows a problem no case names, or reaches a rule or transition no case reaches, is shrunk to the fewest steps that still do, replayed again, and kept in exercises/. Round after round for `hours`, in `workers` processes side by side, each keeping at most `keep` cases that add at least `least` items (e.g. `just pbt-cli-spec-cov 50 30 20 10 8`, or on a machine overnight: `just on-wip-detached vm pbt-cli-spec-cov 50 30 20 10 8`). Each exercise's trace is kept under the run's exercises/<run>/, its rounds and kept cases in search.ndjson there.
 [group('E2E tests')]
-[metadata("runs", "testbed/suites/exercise/test_searches.py", "exercises")]
-pbt-cli-spec-cov examples="25" steps="30":
-    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_searches.py::test_any_exercise_conforms_steered_by_spec_coverage") }} -p no:cacheprovider
+[metadata("runs", "testbed/src/repo2ree_testbed/runs/search.py", "exercises")]
+pbt-cli-spec-cov examples="25" steps="30" keep="3" hours="" workers="1" least="1":
+    python -m repo2ree_testbed search spec-cov --examples {{ quote(examples) }} --steps {{ quote(steps) }} --keep {{ quote(keep) }} --workers {{ quote(workers) }} --least {{ quote(least) }} {{ if hours != "" { "--hours " + quote(hours) } else { "" } }}
 
-# The same search steered toward the arcs this implementation executes beyond those the exercise cases cover, each `ree` command measured by coverage.py, not gated: it measures stale cases first, and once it ends keeps up to `keep` conforming exercises that add the most new arcs as new cases with their coverage. Each exercise's trace and coverage data are kept under the run's exercises/<run>/branch-cov/ (e.g. `just pbt-cli-branch-cov 100 30 5`).
+# The same search steered toward the arcs this implementation executes beyond those the exercise cases cover, each `ree` command measured by coverage.py, not gated: it measures stale cases first, and keeps an exercise that executes at least `least` arcs no case covers, shrunk and with its coverage (e.g. `just on-wip-detached vm pbt-cli-branch-cov 50 30 20 10 8`).
 [group('E2E tests')]
-[metadata("runs", "testbed/suites/exercise/test_searches.py", "exercises")]
-pbt-cli-branch-cov examples="25" steps="30" keep="3":
-    EXERCISE_EXAMPLES={{ quote(examples) }} EXERCISE_STEPS={{ quote(steps) }} EXERCISE_KEEP={{ quote(keep) }} python -m pytest {{ quote(ROOT + "/testbed/suites/exercise/test_searches.py::test_any_exercise_conforms_steered_by_branch_coverage") }} -p no:cacheprovider
+[metadata("runs", "testbed/src/repo2ree_testbed/runs/search.py", "exercises")]
+pbt-cli-branch-cov examples="25" steps="30" keep="3" hours="" workers="1" least="10":
+    python -m repo2ree_testbed search branch-cov --examples {{ quote(examples) }} --steps {{ quote(steps) }} --keep {{ quote(keep) }} --workers {{ quote(workers) }} --least {{ quote(least) }} {{ if hours != "" { "--hours " + quote(hours) } else { "" } }}
 
 # Fuzz every API operation against its contract on one stack, not gated.
 [group('E2E tests')]
@@ -165,6 +165,11 @@ on machine +recipe: (machine-gc machine) && (machine-tidy machine)
 [group('Machines')]
 on-wip machine +recipe: (machine-gc machine) && (machine-tidy machine)
     python -m repo2ree_testbed machine run --wip {{ quote(machine) }} {{ recipe }}
+
+# Start a recipe on a machine against the working tree, committed beside the branch, and return without following it: `just machine jobs <machine>` shows it, and `just machine fetch <machine>` brings back what it wrote, kept cases in exercises/ included, once it ended (e.g. `just on-wip-detached vm pbt-cli-spec-cov 50 30 20 10 8`).
+[group('Machines')]
+on-wip-detached machine +recipe: (machine-gc machine)
+    python -m repo2ree_testbed machine run --wip --detach {{ quote(machine) }} {{ recipe }}
 
 # Run the assurance gate on a machine with that machine's jobs, and check its receipt holds for HEAD.
 [group('Machines')]

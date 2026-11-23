@@ -181,7 +181,7 @@ def test_a_remote_gate_runs_detached_in_the_dev_container_of_a_clone_and_brings_
     assert "while ! test -f test-artifacts/machine-job/exit && alive /repo2ree; do" in show
     [(fetch, unpack)] = runner.piped
     assert _on_host(fetch) == (
-        "cd repo2ree && { find test-artifacts .receipts logs \\( -type f -o -type d -empty \\)"
+        "cd repo2ree && { find test-artifacts .receipts logs exercises \\( -type f -o -type d -empty \\)"
         " -cnewer test-artifacts/machine-job/pid"
         " ! -path 'test-artifacts/machine-job/*' ! -name '*.tar' ! -name '*.tar.gz' ! -name '*.tgz'"
         " ! -path '*/artifacts/archives/*' ! -path '*/artifacts/*/ree*.zip' ! -path '*/artifacts/kept-rees/*'"
@@ -657,3 +657,28 @@ def test_fetching_brings_back_every_job_that_ended_unseen_and_starts_nothing(
 def test_fetching_with_nothing_ended_says_so(capsys: pytest.CaptureFixture[str]) -> None:
     assert Machine("vm", VM, FakeRunner([(".", "running", GATE)])).fetch() == 0
     assert "no ended job" in capsys.readouterr().out
+
+
+def test_a_detached_run_starts_its_job_and_returns_without_following_it_or_bringing_anything_back() -> None:
+    runner = FakeRunner(("none", ""))
+
+    assert run_recipe(Machine("vm", VM, runner), ["pbt-cli-spec-cov"], detach=True) == 0
+
+    assert _pushed(runner)
+    assert _started(runner)
+    assert not runner.ran(SHOW)
+    assert not runner.piped
+
+
+def test_a_detached_run_of_a_job_running_already_leaves_it_running() -> None:
+    runner = FakeRunner(("running", f"{REVISION} just pbt-cli-spec-cov"))
+
+    assert run_recipe(Machine("vm", VM, runner), ["pbt-cli-spec-cov"], detach=True) == 0
+
+    assert not _pushed(runner)
+    assert not runner.ran(SHOW)
+
+
+def test_this_checkout_runs_no_recipe_detached() -> None:
+    with pytest.raises(SystemExit):
+        run_recipe(Machine("local", MachineConfig(), FakeRunner()), ["pbt-cli-spec-cov"], detach=True)

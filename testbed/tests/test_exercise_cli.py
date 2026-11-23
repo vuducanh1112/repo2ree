@@ -35,7 +35,6 @@ from repo2ree_testbed.exercise_case import (
     CoveredFile,
     HandWritten,
     Shows,
-    adding,
     blobs,
     case_of,
     cases,
@@ -294,20 +293,3 @@ def test_a_case_s_coverage_is_kept_apart_and_read_back_with_it(tmp_path: Path) -
     assert read == case
     assert unmeasured(read) is None
     assert unmeasured(read.model_copy(update={"coverage": None})) == f"{case.digest} has no coverage measured yet"
-
-
-def test_the_exercises_kept_add_the_most_beyond_the_baseline_and_each_other() -> None:
-    def measured(name: str, arcs: Arcs) -> Trace:
-        exercise = Exercise(rees=(AUTHOR,), steps=(InitializeRee(ree=AUTHOR, name=name),))
-        return Trace(exercise=exercise, replayed=(), problems=(), reached=(), spec_digest=SEAL, arcs=arcs)
-
-    baseline: Arcs = {"a.py": ((1, 2),)}
-    wide = measured("wide", {"a.py": ((1, 2), (2, 3), (3, 4), (4, 5))})
-    overlapping = measured("overlapping", {"a.py": ((2, 3),), "b.py": ((1, 2),)})
-    covered_already = measured("covered", {"a.py": ((1, 2),)})
-    chosen = adding([covered_already, overlapping, wide], baseline, 3)
-    assert [(trace.exercise.steps[0].name, gained) for trace, gained in chosen] == [  # type: ignore[union-attr]
-        ("wide", {"a.py": ((2, 3), (3, 4), (4, 5))}),
-        ("overlapping", {"b.py": ((1, 2),)}),
-    ]
-    assert len(adding([wide, overlapping], baseline, 1)) == 1

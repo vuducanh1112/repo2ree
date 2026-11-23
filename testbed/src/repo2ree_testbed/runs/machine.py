@@ -139,13 +139,16 @@ class Machine:
     def remote(self) -> bool:
         return self.config.host is not None
 
-    def run(self, revision: str, argv: Sequence[str]) -> int:
+    def run(self, revision: str, argv: Sequence[str], *, detach: bool = False) -> int:
         if not self.remote:
             return self.runner.call(argv)
         command = f"{revision} {shlex.join(argv)}"
         jobs = self.jobs()
         same = next((job for job in jobs if job.command == command and job.state in ("running", "ended")), None)
         if same is not None:
+            if same.state == "running" and detach:
+                print(f">> {self.name} is running `{command}` already: {self._later()}")
+                return 0
             if same.state == "running":
                 print(f">> {self.name} is running `{command}` already; showing it")
                 if not self._show(same.workspace):
@@ -159,6 +162,9 @@ class Machine:
         self._ship(revision, workspace)
         self._up(workspace)
         self._start(workspace, argv)
+        if detach:
+            print(f">> started `{command}` on {self.name} in {workspace.host}: {self._later()}")
+            return 0
         if not self._show(workspace):
             return INTERRUPTED
         return self._bring_back(self.job(workspace))
@@ -403,6 +409,9 @@ class Machine:
             return False
         return True
 
+    def _later(self) -> str:
+        return f"just machine jobs {self.name} shows it, just machine fetch {self.name} brings it back once it ended"
+
     def _bring_back(self, job: Job) -> int:
         workspace = job.workspace
         read, exit_line = self.runner.capture(self._in(workspace, f"cat {JOB}/exit 2>/dev/null; echo"))
@@ -428,7 +437,7 @@ class Machine:
     def _written(self) -> str:
         kinds = r"\( -type f -o -type d -empty \)"
         tests = " ".join([kinds, f"-cnewer {JOB}/pid", f"! -path '{JOB}/*'", *SLIM_EXCLUDES])
-        return f"{{ find test-artifacts .receipts logs {tests} 2>/dev/null || true; }}"
+        return f"{{ find test-artifacts .receipts logs exercises {tests} 2>/dev/null || true; }}"
 
     def _exec(self, workspace: Workspace, *, detached: bool = False) -> str:
         mode = "-d" if detached else "-T"
@@ -524,10 +533,12 @@ def gate(machine: Machine, jobs: int | None) -> int:
     return run_recipe(machine, ["assurance-gate", str(jobs or machine.config.jobs)])
 
 
-def run_recipe(machine: Machine, recipe: Sequence[str], *, wip: bool = False) -> int:
+def run_recipe(machine: Machine, recipe: Sequence[str], *, wip: bool = False, detach: bool = False) -> int:
     if not machine.remote:
+        if detach:
+            raise SystemExit(f">> {machine.name} is this checkout; run the recipe here to follow it")
         return machine.run("HEAD", ["just", *recipe])
-    return machine.run(working_tree_commit() if wip else committed_head(), ["just", *recipe])
+    return machine.run(working_tree_commit() if wip else committed_head(), ["just", *recipe], detach=detach)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -557,6 +568,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     gating.add_argument("--jobs", type=int, help="stacks side by side per tier (default: the machine's)")
     running = commands.add_parser("run", help="run a just recipe there and bring back what it wrote")
     running.add_argument("--wip", action="store_true", help="run the working tree, committed beside the branch")
+    running.add_argument("--detach", action="store_true", help="start it and return; fetch its results once it ended")
     running.add_argument("machine")
     running.add_argument("recipe", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
@@ -594,7 +606,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return machine.fetch_archives()
     if not args.recipe:
         parser.error("run needs a recipe")
-    return run_recipe(machine, args.recipe, wip=args.wip)
+    return run_recipe(machine, args.recipe, wip=args.wip, detach=args.detach)
 
 
 if __name__ == "__main__":

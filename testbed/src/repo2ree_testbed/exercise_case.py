@@ -13,9 +13,7 @@ from repo2ree_testbed.exercise_verdict import (
     Arcs,
     Problem,
     Trace,
-    arc_count,
     arcs_union,
-    arcs_without,
     digest,
     judge,
     keep,
@@ -58,7 +56,12 @@ class NewArcs(_Model):
     files: dict[str, int]
 
 
-type KeptFor = Annotated[ShowedProblems | NewArcs, Field(discriminator="kind")]
+class NewReached(_Model):
+    kind: Literal["new_reached"] = "new_reached"
+    items: tuple[str, ...]
+
+
+type KeptFor = Annotated[ShowedProblems | NewArcs | NewReached, Field(discriminator="kind")]
 
 
 class Searched(_Model):
@@ -185,19 +188,6 @@ def covered(found: Sequence[ExerciseCase]) -> Arcs:
         if case.coverage is not None:
             together = arcs_union(together, case.coverage.arcs)
     return together
-
-
-def adding(candidates: Sequence[Trace], baseline: Arcs, most: int) -> list[tuple[Trace, Arcs]]:
-    chosen: list[tuple[Trace, Arcs]] = []
-    so_far = baseline
-    for _ in range(most):
-        gains = [(trace, arcs_without(trace.arcs or {}, so_far)) for trace in candidates]
-        best = max(gains, key=lambda gain: arc_count(gain[1]), default=None)
-        if best is None or not arc_count(best[1]):
-            break
-        chosen.append(best)
-        so_far = arcs_union(so_far, best[1])
-    return chosen
 
 
 def unmet(case: ExerciseCase, trace: Trace) -> list[str]:
