@@ -63,7 +63,6 @@ describe("review mutations", () => {
 
     expect(reviewAcquireSource).toHaveBeenCalledWith("ree-1", { basis: "bundled" });
     expect(reviewBuildExperimentEnvironment).toHaveBeenCalledWith("ree-1", "review-1", {
-      prune_workspace: false,
       basis: "auto",
     });
     expect(reviewActivateExperimentEnvironment).toHaveBeenCalledWith("ree-1", "review-1");

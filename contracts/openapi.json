@@ -15436,7 +15436,7 @@
           "experiment_environment_digest"
         ],
         "title": "ReviewActivateExperimentEnvironmentReceipt",
-        "description": "The author's activation, run alone in the review's workspace around a command that does nothing."
+        "description": "The author's activation, run alone in a workspace of its own around a command that does nothing."
       },
       "ReviewBuildExperimentEnvironmentPayload": {
         "properties": {
@@ -15450,11 +15450,6 @@
               }
             ],
             "title": "Idempotency Key"
-          },
-          "prune_workspace": {
-            "type": "boolean",
-            "title": "Prune Workspace",
-            "default": false
           },
           "basis": {
             "type": "string",
@@ -15551,6 +15546,16 @@
             "type": "string",
             "title": "Produced Artifact Digest"
           },
+          "overlay_digest": {
+            "type": "string",
+            "title": "Overlay Digest",
+            "x-digest-of": {
+              "covers": "tree",
+              "entries": [
+                "overlay"
+              ]
+            }
+          },
           "launch_script_digest": {
             "anyOf": [
               {
@@ -15583,7 +15588,8 @@
           "recorded_at",
           "status",
           "artifact_path",
-          "produced_artifact_digest"
+          "produced_artifact_digest",
+          "overlay_digest"
         ],
         "title": "ReviewBuildExperimentEnvironmentReceipt"
       },

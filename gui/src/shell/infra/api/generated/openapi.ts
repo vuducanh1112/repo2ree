@@ -3754,7 +3754,7 @@ export interface components {
         };
         /**
          * ReviewActivateExperimentEnvironmentReceipt
-         * @description The author's activation, run alone in the review's workspace around a command that does nothing.
+         * @description The author's activation, run alone in a workspace of its own around a command that does nothing.
          */
         ReviewActivateExperimentEnvironmentReceipt: {
             /**
@@ -3804,11 +3804,6 @@ export interface components {
             /** Idempotency Key */
             idempotency_key?: string | null;
             /**
-             * Prune Workspace
-             * @default false
-             */
-            prune_workspace: boolean;
-            /**
              * Basis
              * @default auto
              * @enum {string}
@@ -3852,6 +3847,8 @@ export interface components {
             artifact_path: string;
             /** Produced Artifact Digest */
             produced_artifact_digest: string;
+            /** Overlay Digest */
+            overlay_digest: string;
             /** Launch Script Digest */
             launch_script_digest?: string | null;
             launched?: components["schemas"]["Launched"] | null;

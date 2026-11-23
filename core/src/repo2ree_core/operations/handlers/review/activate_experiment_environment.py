@@ -24,11 +24,11 @@ from repo2ree_core.operations.steps.review import (
     open_review_run,
 )
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.workspace.attempt import discard
 from repo2ree_protocol.command import ReviewActivateExperimentEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewActivateExperimentEnvironmentOutputs
 from repo2ree_protocol.result import ActionResult
-from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import ReeDefinition
 from repo2ree_ree.primitives import WorkspacePath
 from repo2ree_ree.review import (
@@ -62,7 +62,6 @@ _STEP = ReviewRunnableStep(
     requires="build_experiment_environment",
     requires_message="Certify the experiment environment before testing the activation",
     experiment_environment_purpose="to activate",
-    experiment_environment_retry_purpose="to activate",
     admit=_admit,
     select=_select,
     unresolvable="the author baseline cannot be activated",
@@ -92,15 +91,9 @@ def handle_review_activate_experiment_environment(
     activation, certified, outcome = opened.runnable, opened.certified, opened.outcome
     verdict: ActivationVerdict = "passed" if outcome.status == "succeeded" else "failed"
     timing = opened.timer.finish()
-    # No snapshot digest and no drift verdict, for the same reason the build
-    # review records neither: both describe an author's workspace drifting from
-    # what it was materialized from, and a review namespace is materialized
-    # fresh from its own acquisition every time.
-    activate_script_digest = digest_file_if_exists(opened.review_layout.workspace / activation.activate_script)
+    activate_script_digest = digest_file_if_exists(opened.workspace / activation.activate_script)
     if activate_script_digest is None:
         return opened.step.stop("failed", "the activate experiment environment script disappeared after it ran")
-    if certified.experiment_environment_digest is None:
-        return opened.step.stop("failed", "the certified experiment environment disappeared after activation")
     receipt = ReviewActivateExperimentEnvironmentReceipt(
         **review_receipt_envelope(
             run_id,
@@ -110,7 +103,7 @@ def handle_review_activate_experiment_environment(
         activate_experiment_environment_script_digest=activate_script_digest,
         exit_code=outcome.run_outputs.exit_code,
         experiment_environment_path=WorkspacePath(certified.experiment_environment_path),
-        experiment_environment_digest=Digest(certified.experiment_environment_digest),
+        experiment_environment_digest=certified.experiment_environment_digest,
         launch_script_digest=opened.launch_script_digest,
         launched=outcome.launched,
     )
@@ -138,6 +131,7 @@ def handle_review_activate_experiment_environment(
         basis=certified.basis,
         experiment_environment_digest=certified.experiment_environment_digest,
     )
+    discard(opened.review_layout, run_id)
 
     outputs = ReviewActivateExperimentEnvironmentOutputs(
         review_id=args.review_id,

@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from repo2ree_ree.primitives import Digest, LaunchOption, ReePath, RunId, SourceType, Swhid, UtcInstant, WorkspacePath
-from repo2ree_ree.receipt import Launched
+from repo2ree_ree.receipt import Launched, OverlayDigest
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ReviewStepKey = Literal[
@@ -71,13 +71,15 @@ class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
     build_experiment_environment_script_digest: Digest | None = None
     artifact_path: WorkspacePath
     produced_artifact_digest: Digest
+    # The overlay this build copied from the author's, which every later step of the review runs on.
+    overlay_digest: OverlayDigest
     # The author's launch script the step ran under, and where that put it; both absent when it ran directly.
     launch_script_digest: Digest | None = None
     launched: Launched | None = None
 
 
 class ReviewActivateExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
-    """The author's activation, run alone in the review's workspace around a command that does nothing."""
+    """The author's activation, run alone in a workspace of its own around a command that does nothing."""
 
     operation: Literal["activate_experiment_environment"] = "activate_experiment_environment"
     activate_experiment_environment_script_digest: Digest

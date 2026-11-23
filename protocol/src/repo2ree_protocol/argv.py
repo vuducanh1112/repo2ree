@@ -5,7 +5,7 @@ A field's spelling follows from its type and its markers:
 * ``Verb``: the field names the command, which its verb spells, so it is no option;
 * ``Positional``: a positional argument, in field order;
 * ``Stdin``: what is read on stdin, text as it is and anything else as JSON;
-* ``bool``: a flag, ``--prune-workspace`` for true and ``--no-prune-workspace`` for false;
+* ``bool``: a flag, ``--again`` for true and ``--no-again`` for false;
 * a model (``ReviewLaunch``): its own fields as dotted options, ``--launch.mode native``;
 * a list of script targets: ``--target kind`` or ``--target kind:experiment``, once per target;
 * a list or tuple of anything else: its option once per element;
@@ -66,7 +66,7 @@ def encode_args(args: BaseModel) -> tuple[list[str], bytes | None]:
 
 
 def option_name(name: str) -> str:
-    """The option that spells the field ``name``: ``--prune-workspace``, ``--launch.mode``."""
+    """The option that spells the field ``name``: ``--again``, ``--launch.mode``."""
     return "--" + name.replace("_", "-")
 
 

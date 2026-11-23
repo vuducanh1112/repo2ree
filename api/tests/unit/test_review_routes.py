@@ -125,9 +125,6 @@ def test_start_build_review_targets_the_named_attempt(
     assert isinstance(command, ReviewBuildExperimentEnvironmentCommand)
     # The build joins the attempt named in the path rather than opening a new one.
     assert command.args.review_id == "review-one"
-    # The rebuilt workspace survives by default: activation runs in it, and on an
-    # independent basis the experiment environment it holds exists nowhere else.
-    assert command.args.prune_workspace is False
     assert command.args.basis == "auto"
 
 

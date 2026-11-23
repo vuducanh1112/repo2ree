@@ -12,12 +12,13 @@ The ``require_*`` / ``open_*`` helpers return either their value or the
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Protocol
 
-from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.digests import digest_file, digest_tree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.evidence.review.records import attempt_basis, step_state, with_step
 from repo2ree_core.evidence.review.store import read_review_record, write_review_record
@@ -26,8 +27,10 @@ from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
-from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout, ReviewLayout
+from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
+from repo2ree_core.workspace.attempt import environment_in_workspace, fresh, overlay_onto
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
@@ -278,114 +281,90 @@ def require_completed_step(
 
 @dataclass(frozen=True)
 class CertifiedExperimentEnvironment:
-    """The experiment environment a review attempt certified, confirmed still to be that one.
+    """The experiment environment a review attempt certified, as its build receipt records it.
 
-    ``experiment_environment_path`` is empty for a baseline that declares no experiment environment artifact (a
-    native experiment), in which case ``experiment_environment_digest`` is None. Reports what
-    the attempt has, not what a caller needs — steps that cannot run without a
-    experiment environment say so themselves.
+    That the file kept beside the review is still this one is checked where a step lays out its workspace.
     """
 
     basis: EvidenceBasis
     experiment_environment_receipt: ReviewBuildExperimentEnvironmentReceipt
     experiment_environment_path: str
-    experiment_environment_digest: str | None
+    experiment_environment_digest: Digest
 
 
 def require_certified_experiment_environment(
     record: ReviewRecord,
-    review_layout: ReviewLayout,
     *,
     stop: ReviewHalt,
     purpose: str,
-    retry_purpose: str,
 ) -> CertifiedExperimentEnvironment | ActionResult:
     """The apparatus every post-build review step runs against, or the halt.
 
-    Checks the three things that must hold before a step runs *inside* what the
-    build left behind: the attempt settled a basis and a build receipt, its
-    workspace is still there, and the experiment environment in that workspace is byte-for-byte
-    the one the build certified.
-
-    ``purpose`` completes "This attempt has recorded no experiment environment …" and
-    ``retry_purpose`` completes "… re-run the build review …", so each step says
-    what *it* was trying to do.
+    ``purpose`` completes "This attempt has recorded no experiment environment …", so each step says what *it* was
+    trying to do.
     """
     basis = attempt_basis(record)
-    if basis is None or record.receipts.build_experiment_environment is None:
+    receipt = record.receipts.build_experiment_environment
+    if basis is None or receipt is None:
         return stop("failed", f"This attempt has recorded no experiment environment {purpose}")
-
-    # Reclaiming the workspace is a supported choice at build time, so hitting
-    # this is the reviewer's own doing: say how to undo it rather than reporting
-    # a bare missing path.
-    if not review_layout.workspace.is_dir():
-        return stop(
-            "failed",
-            f"This attempt's workspace was reclaimed after the build; re-run the build review {retry_purpose}",
-        )
-
-    experiment_environment_path = (record.receipts.build_experiment_environment.artifact_path or "").strip()
-    experiment_environment = (
-        workspace_experiment_environment(review_layout, experiment_environment_path)
-        if experiment_environment_path
-        else None
-    )
-    experiment_environment_digest = digest_file_if_exists(experiment_environment) if experiment_environment else None
-    if experiment_environment_path and experiment_environment_digest is None:
-        return stop(
-            "failed",
-            "the certified experiment environment is no longer in this attempt's workspace "
-            f"at {experiment_environment_path}",
-        )
-    if (
-        experiment_environment_path
-        and experiment_environment_digest != record.receipts.build_experiment_environment.produced_artifact_digest
-    ):
-        return stop(
-            "failed",
-            f"the experiment environment at {experiment_environment_path} is not the one "
-            "this attempt certified; re-run the build review",
-        )
-
     return CertifiedExperimentEnvironment(
         basis=basis,
-        experiment_environment_receipt=record.receipts.build_experiment_environment,
-        experiment_environment_path=experiment_environment_path,
-        experiment_environment_digest=experiment_environment_digest,
+        experiment_environment_receipt=receipt,
+        experiment_environment_path=str(receipt.artifact_path),
+        experiment_environment_digest=receipt.produced_artifact_digest,
     )
 
 
-def workspace_experiment_environment_candidates(
-    layout: ReeLayout, experiment_environment_path: str
-) -> tuple[Path, ...]:
-    """Where an experiment environment can sit in a materialized workspace, declared path first.
-
-    Normally there is one answer. The exception is a baseline loaded from a
-    bundle: packaging lifted the experiment environment into ``artifacts/`` and rewrote the
-    declared path to ``artifacts/<basename>``, discarding the workspace path the
-    build script writes to. The remap keeps the basename, so undoing it is a
-    lookup rather than a guess.
-
-    Takes any REE root rather than a review layout: nothing here is the
-    reviewer's, and an author's workspace loaded from a bundle carries the same
-    remap.
-    """
-    declared = layout.workspace / experiment_environment_path
-    parts = PurePosixPath(experiment_environment_path).parts
-    if len(parts) == 2 and parts[0] == ARTIFACTS_DIRNAME:
-        return (declared, layout.workspace / parts[1])
-    return (declared,)
+# ================================================
+# The workspace a review step runs in
+# ================================================
 
 
-def workspace_experiment_environment(layout: ReeLayout, experiment_environment_path: str) -> Path:
-    """The experiment environment in a materialized workspace, wherever it legitimately landed.
+def _review_source(review: ReviewLayout, record: ReviewRecord, workspace: Path) -> None:
+    receipt = record.receipts.acquire_source
+    if receipt is None or receipt.observed_swhid is None:
+        raise ReePreconditionError("this review has recorded no source it acquired")
+    if not review.upstream.is_dir() or directory_swhid(review.upstream) != receipt.observed_swhid:
+        raise ReePreconditionError("the source in this review is not the one its acquisition observed")
+    shutil.copytree(review.upstream, workspace, symlinks=True, dirs_exist_ok=True)
 
-    Falls back to the declared path when none of the candidates exist, so a miss
-    is reported against the path the author declared rather than against a
-    fallback the author never named.
-    """
-    candidates = workspace_experiment_environment_candidates(layout, experiment_environment_path)
-    return next((candidate for candidate in candidates if candidate.is_file()), candidates[0])
+
+def _review_overlay(review: ReviewLayout, record: ReviewRecord) -> None:
+    build = record.receipts.build_experiment_environment
+    if build is None:
+        raise ReePreconditionError("this review has certified no experiment environment")
+    if digest_tree(review.overlay) != build.overlay_digest:
+        raise ReePreconditionError("the overlay in this review is not the one its build copied")
+
+
+def _review_environment(review: ReviewLayout, record: ReviewRecord, workspace: Path) -> None:
+    build = record.receipts.build_experiment_environment
+    if build is None:
+        raise ReePreconditionError("this review has certified no experiment environment")
+    declared = str(build.artifact_path)
+    kept = review.kept_environment(declared)
+    if not kept.is_file():
+        raise ReePreconditionError(f"the experiment environment this review certified is missing: {declared}")
+    if digest_file(kept) != build.produced_artifact_digest:
+        raise ReePreconditionError(f"the experiment environment at {declared} is not the one this review certified")
+    target = environment_in_workspace(workspace, declared)[-1]
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(kept, target)
+
+
+def lay_out_review(review: ReviewLayout, record: ReviewRecord, run_id: str, *, after_build: bool) -> Path:
+    """A fresh workspace for the review attempt ``run_id``: the source as the review's acquisition observed it and the
+    overlay the review holds over it; ``after_build``, that overlay as the review's build copied it and the experiment
+    environment the build certified, where the author's scripts look for it. Raises ReePreconditionError when what
+    the review records is not there as it records it."""
+    workspace = fresh(review, run_id)
+    _review_source(review, record, workspace)
+    if after_build:
+        _review_overlay(review, record)
+    overlay_onto(review, workspace)
+    if after_build:
+        _review_environment(review, record, workspace)
+    return workspace
 
 
 # ================================================
@@ -433,7 +412,6 @@ class ReviewRunnableStep:
     requires: ReviewStepKey
     requires_message: str
     experiment_environment_purpose: str
-    experiment_environment_retry_purpose: str
     admit: ReviewAdmission
     #: Resolve the runnable this step runs, and the label it runs under. Raises
     #: ``ValueError`` when the baseline cannot produce it.
@@ -455,6 +433,8 @@ class ReviewRun:
 
     ree_layout: ReeLayout
     review_layout: ReviewLayout
+    # Where the run ran, laid out for it alone; discarded once the handler has settled the step.
+    workspace: Path
     step: ReviewStep
     timer: OperationTimer
     certified: CertifiedExperimentEnvironment
@@ -510,10 +490,8 @@ def open_review_run(
 
     certified = require_certified_experiment_environment(
         started.record,
-        review_layout,
         stop=started.stop,
         purpose=step.experiment_environment_purpose,
-        retry_purpose=step.experiment_environment_retry_purpose,
     )
     if isinstance(certified, ActionResult):
         return certified
@@ -527,23 +505,28 @@ def open_review_run(
     except ValueError as exc:
         return started.stop("failed", f"{step.unresolvable}: {exc}")
 
+    try:
+        workspace = lay_out_review(review_layout, started.record, run_id, after_build=True)
+    except ReePreconditionError as exc:
+        return started.stop("failed", f"cannot lay out a workspace {step.experiment_environment_purpose}: {exc}")
+
     # Absent apparatus is a fact about the baseline, not a verdict about it:
     # fail the step rather than settle a verdict nothing ever exercised.
     script = runnable.run_script or runnable.activate_script
-    if not (review_layout.workspace / script).is_file():
+    if not (workspace / script).is_file():
         return started.stop(
             "failed",
             f"the author baseline declares {step.script_noun} that is not there: {script}",
         )
 
     try:
-        launch = review_launch(started.record, ree, review_layout.workspace)
+        launch = review_launch(started.record, ree, workspace)
     except ReePreconditionError as exc:
         return started.stop("failed", f"cannot launch the author's scripts: {exc}")
     runnable = replace(runnable, launch=launch)
 
     outcome = run_runnable(
-        workspace=review_layout.workspace.resolve(),
+        workspace=workspace.resolve(),
         runnable=runnable,
         label=label,
         run_id=run_id,
@@ -556,6 +539,7 @@ def open_review_run(
     return ReviewRun(
         ree_layout=layout,
         review_layout=review_layout,
+        workspace=workspace,
         step=started,
         timer=timer,
         certified=certified,

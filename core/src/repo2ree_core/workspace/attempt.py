@@ -15,11 +15,11 @@ from __future__ import annotations
 import os
 import shutil
 import tarfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
-from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, ReeLayout
 from repo2ree_ree.model import Ree
 
 # Where an attempt's workspace is, beside the run's log, by the run's id.
@@ -72,19 +72,44 @@ def _environment(layout: ReeLayout, ree: Ree, workspace: Path) -> None:
     shutil.copy2(kept, target)
 
 
+def fresh(layout: ReeLayout, run_id: str) -> Path:
+    """An empty workspace for the attempt ``run_id``, once the workspaces earlier attempts left are removed."""
+    _clear(layout)
+    workspace = attempt_workspace(layout, run_id)
+    workspace.mkdir(parents=True)
+    return workspace
+
+
+def overlay_onto(layout: ReeLayout, workspace: Path) -> None:
+    """The overlay ``layout`` holds, over what ``workspace`` holds."""
+    if layout.overlay.is_dir():
+        shutil.copytree(layout.overlay, workspace, symlinks=True, dirs_exist_ok=True)
+
+
 def lay_out(layout: ReeLayout, ree: Ree, run_id: str, *, environment: bool) -> Path:
     """A fresh workspace for the attempt ``run_id``: the source as acquired, the overlay over it, and, with
     ``environment``, the built experiment environment at its declared path. Raises ReePreconditionError when what the
     REE records is not there as it records it."""
-    _clear(layout)
-    workspace = attempt_workspace(layout, run_id)
-    workspace.mkdir(parents=True)
+    workspace = fresh(layout, run_id)
     _source(layout, ree, workspace)
-    if layout.overlay.is_dir():
-        shutil.copytree(layout.overlay, workspace, symlinks=True, dirs_exist_ok=True)
+    overlay_onto(layout, workspace)
     if environment:
         _environment(layout, ree, workspace)
     return workspace
+
+
+def environment_in_workspace(workspace: Path, declared: str) -> tuple[Path, ...]:
+    """Where an experiment environment declared at ``declared`` can sit in a workspace, declared path first.
+
+    Normally there is one answer. The exception is a baseline loaded from a bundle: packaging lifted the experiment
+    environment into ``artifacts/`` and rewrote the declared path to ``artifacts/<basename>``, discarding the workspace
+    path the build script writes to. The remap keeps the basename, so the last candidate is where the author's scripts
+    write it and look for it.
+    """
+    parts = PurePosixPath(declared).parts
+    if len(parts) == 2 and parts[0] == ARTIFACTS_DIRNAME:
+        return (workspace / declared, workspace / parts[1])
+    return (workspace / declared,)
 
 
 def keep_environment(layout: ReeLayout, workspace: Path, declared: str) -> Path | None:

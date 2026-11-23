@@ -46,10 +46,7 @@ export function useStartBuildExperimentEnvironmentReviewMutation() {
 
   return useMutation({
     mutationFn: ({ reviewId, basis = "auto" }: { reviewId: string; basis?: ReviewBasisRequest }) =>
-      // The rebuilt workspace is kept: activation runs in it, and on an
-      // independent basis the runtime it holds exists nowhere else.
       runtime.reeApi.reviewBuildExperimentEnvironment(reeId, reviewId, {
-        prune_workspace: false,
         basis,
       }),
     onSuccess: invalidate,

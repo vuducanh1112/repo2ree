@@ -954,16 +954,6 @@
           "type": "text"
         },
         {
-          "name": "--prune-workspace",
-          "kind": "option",
-          "required": false,
-          "multiple": false,
-          "help": "Reclaim the review's workspace after the build; the review then ends there.",
-          "flag": true,
-          "default": false,
-          "negation": "--no-prune-workspace"
-        },
-        {
           "name": "--basis",
           "kind": "option",
           "required": false,
@@ -7027,7 +7017,7 @@
     },
     "ReviewActivateExperimentEnvironmentReceipt": {
       "additionalProperties": false,
-      "description": "The author's activation, run alone in the review's workspace around a command that does nothing.",
+      "description": "The author's activation, run alone in a workspace of its own around a command that does nothing.",
       "properties": {
         "schema_version": {
           "const": 1,
@@ -7245,6 +7235,16 @@
           "title": "Produced Artifact Digest",
           "type": "string"
         },
+        "overlay_digest": {
+          "title": "Overlay Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "tree",
+            "entries": [
+              "overlay"
+            ]
+          }
+        },
         "launch_script_digest": {
           "anyOf": [
             {
@@ -7277,7 +7277,8 @@
         "recorded_at",
         "status",
         "artifact_path",
-        "produced_artifact_digest"
+        "produced_artifact_digest",
+        "overlay_digest"
       ],
       "title": "ReviewBuildExperimentEnvironmentReceipt",
       "type": "object"

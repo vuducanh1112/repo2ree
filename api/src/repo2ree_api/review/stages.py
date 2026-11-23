@@ -50,10 +50,6 @@ class ReviewAcquireSourcePayload(CreateRunPayload):
 class ReviewBuildExperimentEnvironmentPayload(CreateRunPayload):
     """Reproduce the experiment environment build inside an existing review attempt."""
 
-    # The rebuilt workspace is kept, because activation and the experiments run
-    # in it and the experiment environment exists nowhere else (see ReviewBuildExperimentEnvironmentArgs).
-    # A reviewer who wants only a build verdict passes true to reclaim it.
-    prune_workspace: bool = False
     basis: ReviewBasis = "auto"
 
 
@@ -103,7 +99,6 @@ def review_build_experiment_environment_route(
     command = ReviewBuildExperimentEnvironmentCommand(
         args=ReviewBuildExperimentEnvironmentArgs(
             review_id=review_id,
-            prune_workspace=payload.prune_workspace,
             basis=payload.basis,
         )
     )

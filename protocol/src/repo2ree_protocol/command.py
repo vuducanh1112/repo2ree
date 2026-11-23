@@ -100,15 +100,6 @@ class ReviewBuildExperimentEnvironmentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     review_id: Annotated[str, Field(description="The review, an attempt of its own beside the REE.")]
-    # Activation and the experiments run *in* the workspace this step leaves
-    # behind, and on an ``independent`` basis the experiment environment exists nowhere else —
-    # so reclaiming it here would end the attempt at the build. Off by default
-    # for that reason; a reviewer who wants only a build verdict passes true and
-    # keeps the evidence it rests on (receipts, the reviewer's SBOM, the
-    # comparison), which is kept regardless.
-    prune_workspace: bool = Field(
-        default=False, description="Reclaim the review's workspace after the build; the review then ends there."
-    )
     # ``independent`` runs the author's build script over the reviewer's own
     # source; ``bundled`` certifies the experiment environment artifact the REE already ships
     # instead of building one, for baselines whose build cannot run here.

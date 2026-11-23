@@ -6,8 +6,8 @@ dependency closure — over one of two bases: ``independent`` (rebuilt here) or
 ``bundled`` (the artifact the REE ships, an integrity check rather than a
 reproduction).
 
-Both bases leave the same workspace behind, because activation and the
-experiments run in it and cannot tell the difference. See
+Both bases keep the experiment environment in the same place, beside the review, from where activation and the
+experiments take it into workspaces of their own and cannot tell the difference. See
 ``docs/engineering/explanation/review-evidence.md``.
 """
 
@@ -18,32 +18,26 @@ from pathlib import Path
 
 from repo2ree_core.analysis.sbom.cyclonedx import ObservedPackage, parse_cyclonedx
 from repo2ree_core.analysis.sbom.scan import is_experiment_environment_archive, scan_experiment_environment_archive
-from repo2ree_core.digests import digest_file_if_exists
+from repo2ree_core.digests import digest_file_if_exists, digest_tree
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.evidence.review.comparison import compare_build_experiment_environments
 from repo2ree_core.evidence.review.records import resolve_basis, review_receipt_envelope
 from repo2ree_core.evidence.review.store import write_review_build_evidence
-from repo2ree_core.execution.process import (
-    CancelCheck,
-    format_command,
-    run_streaming_process,
-)
+from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.execution.runners import run_workspace_script
 from repo2ree_core.operations.steps.review import (
     begin_review_step,
     launch_digest,
+    lay_out_review,
     require_completed_step,
     require_ree_baseline,
     require_review_record,
     review_launch,
-    workspace_experiment_environment,
-    workspace_experiment_environment_candidates,
 )
 from repo2ree_core.persistence.directory import ReeDirectory
-from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
 from repo2ree_core.time_utils import OperationTimer
+from repo2ree_core.workspace.attempt import discard, environment_in_workspace
 from repo2ree_protocol.command import ReviewBasis, ReviewBuildExperimentEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewBuildExperimentEnvironmentOutputs
@@ -52,7 +46,11 @@ from repo2ree_ree.model import Ree
 from repo2ree_ree.primitives import ReePath, WorkspacePath
 from repo2ree_ree.receipt import BuildExperimentEnvironmentReceipt, GenerateSbomReceipt
 from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
-from repo2ree_ree.review import EvidenceBasis, ExperimentEnvironmentComparison, ReviewBuildExperimentEnvironmentReceipt
+from repo2ree_ree.review import (
+    EvidenceBasis,
+    ExperimentEnvironmentComparison,
+    ReviewBuildExperimentEnvironmentReceipt,
+)
 
 
 def handle_review_build_experiment_environment(
@@ -113,33 +111,23 @@ def handle_review_build_experiment_environment(
     if basis is None:
         return stop("failed", _basis_refusal(args.basis))
 
-    # 1. Assemble the reviewer's own workspace: their upstream + the author's
-    #    recipe, merged by the script the author's workbench runs. Both bases
-    #    need it — it is what activation and the experiments run *in*.
+    # 1. The author's recipe, copied into the review: every later step of the review runs on this copy.
     try:
         _stage_author_overlay(layout, review_layout)
     except OSError as exc:
         return stop("failed", f"could not stage the author overlay: {exc}")
+    overlay_digest = digest_tree(review_layout.overlay)
 
-    write_atomic(review_layout.materialize_script, build_materialize_sh())
-    command = ["sh", str(review_layout.materialize_script)]
-    log("system", "info", f"review {args.review_id}: materializing into {review_layout.workspace}")
-    log("system", "info", format_command(command))
-    materialized = run_streaming_process(command, log=log, is_canceled=is_canceled)
-    if materialized.canceled or is_canceled():
-        return stop("canceled", "materialization canceled")
-    if materialized.returncode != 0:
-        return stop("failed", f"materialize script exited {materialized.returncode}")
-
-    # 2. Before anything runs there, the author's check of the working environment.
+    # 2. Before anything runs, the author's check of the working environment, in a workspace of its own.
     check = ree.subject.definition.check_working_environment
     try:
-        check_launch = review_launch(started, ree, review_layout.workspace)
+        workspace = lay_out_review(review_layout, started, run_id, after_build=False)
+        check_launch = review_launch(started, ree, workspace)
     except ReePreconditionError as exc:
-        return stop("failed", f"cannot launch the author's check: {exc}")
+        return stop("failed", f"cannot run the author's check: {exc}")
     log("system", "info", f"review {args.review_id}: checking the working environment with the author's check")
     checked = run_workspace_script(
-        review_layout.workspace.resolve(),
+        workspace.resolve(),
         str(check.check_working_environment_script_path),
         log=log,
         is_canceled=is_canceled,
@@ -150,31 +138,35 @@ def handle_review_build_experiment_environment(
     if checked.status != "succeeded":
         return stop("failed", f"the working environment does not pass the author's check (exit {checked.exit_code})")
 
-    # 3. Put an experiment environment in that workspace: build one, or stage the shipped one.
+    # 3. Keep an experiment environment beside the review: build one in a fresh workspace, or take the shipped one.
+    kept = review_layout.kept_environment(experiment_environment_path)
+    kept.unlink(missing_ok=True)
+    kept.parent.mkdir(parents=True, exist_ok=True)
     if basis == "bundled" and bundled_experiment_environment is not None:
         log(
             "system",
             "info",
-            f"review {args.review_id}: staging the experiment environment "
-            f"the REE ships at {experiment_environment_path}",
+            f"review {args.review_id}: taking the experiment environment the REE ships "
+            f"at {experiment_environment_path}",
         )
         try:
-            experiment_environment_abs = _stage_bundled_experiment_environment(
-                review_layout, bundled_experiment_environment, experiment_environment_path
-            )
+            # Copied rather than linked: a hard link would let a script the review runs write through to author
+            # evidence.
+            shutil.copyfile(bundled_experiment_environment, kept)
         except OSError as exc:
-            return stop("failed", f"could not stage the bundled experiment environment: {exc}")
+            return stop("failed", f"could not take the bundled experiment environment: {exc}")
         build_experiment_environment_script_digest = None
         launch, launched = None, None
     else:
         try:
-            launch = review_launch(started, ree, review_layout.workspace)
+            workspace = lay_out_review(review_layout, started, run_id, after_build=False)
+            launch = review_launch(started, ree, workspace)
         except ReePreconditionError as exc:
-            return stop("failed", f"cannot launch the author's build: {exc}")
+            return stop("failed", f"cannot run the author's build: {exc}")
         # The author's build script, run from that workspace, unmodified.
         log("system", "info", f"Build script: {RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT}")
         outcome = run_workspace_script(
-            review_layout.workspace.resolve(),
+            workspace.resolve(),
             RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT,
             log=log,
             is_canceled=is_canceled,
@@ -185,13 +177,18 @@ def handle_review_build_experiment_environment(
             return stop("canceled", "build canceled")
         if outcome.status != "succeeded":
             return stop("failed", f"build script exited {outcome.exit_code}")
-        experiment_environment_abs = workspace_experiment_environment(review_layout, experiment_environment_path)
         build_experiment_environment_script_digest = digest_file_if_exists(
-            review_layout.workspace / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
+            workspace / RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SCRIPT
         )
+        produced = next(
+            (place for place in environment_in_workspace(workspace, experiment_environment_path) if place.is_file()),
+            None,
+        )
+        if produced is not None:
+            produced.replace(kept)
 
     # 4. Certify the experiment environment, however it got there.
-    observed_artifact_digest = digest_file_if_exists(experiment_environment_abs)
+    observed_artifact_digest = digest_file_if_exists(kept)
     if observed_artifact_digest is None:
         return stop("failed", f"the build produced no experiment environment artifact at {experiment_environment_path}")
 
@@ -199,7 +196,7 @@ def handle_review_build_experiment_environment(
         ree,
         layout,
         review_layout,
-        experiment_environment_abs=experiment_environment_abs,
+        experiment_environment_abs=kept,
         experiment_environment_path=experiment_environment_path,
         observed_artifact_digest=observed_artifact_digest,
         basis=basis,
@@ -212,9 +209,6 @@ def handle_review_build_experiment_environment(
         return stop("canceled", "certification canceled")
 
     timing = timer.finish()
-    # No snapshot digest and no drift verdict: both describe an author's
-    # workspace drifting away from what it was materialized from, and a review
-    # namespace is materialized fresh from its own acquisition every time.
     receipt = ReviewBuildExperimentEnvironmentReceipt(
         **review_receipt_envelope(run_id, timing, "succeeded"),
         # A bundled certification ran no build script, so it names none: the
@@ -225,6 +219,7 @@ def handle_review_build_experiment_environment(
         build_experiment_environment_script_digest=build_experiment_environment_script_digest,
         artifact_path=WorkspacePath(experiment_environment_path),
         produced_artifact_digest=observed_artifact_digest,
+        overlay_digest=overlay_digest,
         launch_script_digest=launch_digest(ree, launch),
         launched=launched,
     )
@@ -243,8 +238,7 @@ def handle_review_build_experiment_environment(
         experiment_environment_digest=observed_artifact_digest,
     )
 
-    if args.prune_workspace:
-        _prune_rebuilt_tree(review_layout, log=log)
+    discard(review_layout, run_id)
 
     outputs = ReviewBuildExperimentEnvironmentOutputs(
         review_id=args.review_id,
@@ -255,12 +249,11 @@ def handle_review_build_experiment_environment(
 
 
 def _stage_author_overlay(ree_layout: ReeLayout, review_layout: ReviewLayout) -> None:
-    """Copy the author's recipe files into the attempt, replacing any prior copy.
+    """Copy the author's recipe files into the review, replacing any prior copy.
 
-    A copy rather than a reference: the merge writes into the attempt's own
-    workspace and a build script may write beside itself, neither of which may
-    reach author evidence. Re-copying means an overlay edited between attempts
-    is picked up.
+    A copy rather than a reference: the review's steps run on what the review records, and the author's overlay
+    may change after the build certified what it held. Re-copying means a build run again picks up an overlay edited
+    since.
     """
     if review_layout.overlay.exists():
         shutil.rmtree(review_layout.overlay)
@@ -374,24 +367,6 @@ def _author_packages(ree_layout: ReeLayout, *, log: LogSink) -> list[ObservedPac
     return parse_cyclonedx(document.read_text(encoding="utf-8"))
 
 
-def _stage_bundled_experiment_environment(
-    review_layout: ReviewLayout, shipped: Path, experiment_environment_path: str
-) -> Path:
-    """Copy the shipped experiment environment into the workspace, where a rebuild would leave it.
-
-    The author's activation and experiment scripts reach for it at the path
-    their own build wrote — the last candidate when the declared path has been
-    remapped into ``artifacts/``.
-
-    Copied rather than linked: the workspace is the reviewer's to run scripts in,
-    and a hard link would let one of them write through to author evidence.
-    """
-    target = workspace_experiment_environment_candidates(review_layout, experiment_environment_path)[-1]
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(shipped, target)
-    return target
-
-
 def _has_build_recipe(ree_layout: ReeLayout, review_layout: ReviewLayout) -> bool:
     """Whether a build script exists to run over the reviewer's own source.
 
@@ -461,17 +436,3 @@ def _log_verdict(comparison: ExperimentEnvironmentComparison, *, log: LogSink) -
             "this verdict certifies the experiment environment the REE ships against the author's own record — "
             "nothing was rebuilt, so it is an integrity check rather than an independent reproduction",
         )
-
-
-def _prune_rebuilt_tree(review_layout: ReviewLayout, *, log: LogSink) -> None:
-    """Drop the reconstructible bulk, keeping every artefact the verdict rests on.
-
-    Never fatal: the verdict is already recorded, and failing a completed review
-    over reclaimed disk space would be the wrong trade.
-    """
-    for directory in (review_layout.workspace, review_layout.overlay):
-        try:
-            if directory.is_dir():
-                shutil.rmtree(directory)
-        except OSError as exc:
-            log("system", "warn", f"could not prune {directory.name}/: {exc}")

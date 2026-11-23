@@ -130,7 +130,6 @@ describe("ReeApi", () => {
     await api.reviewAcquireSource(reeId, { basis: "auto" });
     await api.reviewBuildExperimentEnvironment(reeId, "review/1", {
       basis: "auto",
-      prune_workspace: false,
     });
     await api.reviewActivateExperimentEnvironment(reeId, "review/1");
     await api.reviewRunExperiment(reeId, "review/1", "hello world");

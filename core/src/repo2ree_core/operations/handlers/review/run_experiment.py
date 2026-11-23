@@ -25,6 +25,7 @@ from repo2ree_core.operations.steps.review import (
 )
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
+from repo2ree_core.workspace.attempt import discard
 from repo2ree_protocol.command import ReviewRunExperimentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewRunExperimentOutputs
@@ -80,7 +81,6 @@ def _step(experiment_name: str) -> ReviewRunnableStep:
         requires="activate_experiment_environment",
         requires_message="Probe the experiment environment before reproducing results in it",
         experiment_environment_purpose="to run experiments in",
-        experiment_environment_retry_purpose="to reproduce results",
         admit=_admit,
         select=select,
         unresolvable="the author baseline cannot run this experiment",
@@ -109,9 +109,9 @@ def handle_review_run_experiment(
 
     experiment, certified, outcome = opened.runnable, opened.certified, opened.outcome
     review_layout = opened.review_layout
-    run_script_digest = digest_file_if_exists(review_layout.workspace / experiment.run_script)
-    verify_script_digest = digest_file_if_exists(review_layout.workspace / experiment.verify_script)
-    activate_script_digest = digest_file_if_exists(review_layout.workspace / experiment.activate_script)
+    run_script_digest = digest_file_if_exists(opened.workspace / experiment.run_script)
+    verify_script_digest = digest_file_if_exists(opened.workspace / experiment.verify_script)
+    activate_script_digest = digest_file_if_exists(opened.workspace / experiment.activate_script)
 
     comparison = _certify(
         opened.ree_layout,
@@ -120,7 +120,7 @@ def handle_review_run_experiment(
         basis=certified.basis,
         run_exit_code=outcome.run_outputs.exit_code,
         observed_verify_exit_code=outcome.run_outputs.verify_exit_code,
-        observed_output_digest=digest_output_paths(review_layout.workspace, list(experiment.output_paths)),
+        observed_output_digest=digest_output_paths(opened.workspace, list(experiment.output_paths)),
         experiment_environment_digest=certified.experiment_environment_digest,
         # The criterion as it stood in the workspace it ran in. Certification
         # compares this with the author receipt before granting a verdict.
@@ -148,12 +148,8 @@ def handle_review_run_experiment(
         verify_script_path=ReePath(experiment.verify_script) if experiment.verify_script else None,
         verify_script_digest=verify_script_digest,
         verify_exit_code=outcome.run_outputs.verify_exit_code,
-        experiment_environment_path=WorkspacePath(certified.experiment_environment_path)
-        if certified.experiment_environment_path
-        else None,
-        experiment_environment_digest=Digest(certified.experiment_environment_digest)
-        if certified.experiment_environment_digest
-        else None,
+        experiment_environment_path=WorkspacePath(certified.experiment_environment_path),
+        experiment_environment_digest=certified.experiment_environment_digest,
         produced_output_digest=Digest(comparison.observed_output_digest) if comparison.observed_output_digest else None,
         launch_script_digest=opened.launch_script_digest,
         launched=outcome.launched,
@@ -171,6 +167,7 @@ def handle_review_run_experiment(
         basis=certified.basis,
         experiment_environment_digest=certified.experiment_environment_digest,
     )
+    discard(review_layout, run_id)
 
     outputs = ReviewRunExperimentOutputs(
         review_id=args.review_id,
