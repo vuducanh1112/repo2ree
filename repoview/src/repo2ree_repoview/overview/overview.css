@@ -154,3 +154,8 @@ ul.decided ul{margin:2px 0;padding-left:18px;color:var(--muted)}
 .filetree .meta{color:var(--muted);margin-left:10px;font-size:12px}
 .filetree .lfs{color:#7c3aed}
 .filetree pre.code{margin:4px 0 8px;font-size:12px}
+.flame-panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;margin:8px 0}
+.flame{width:100%;height:auto;display:block}
+.flame-bar rect{fill:var(--chip);stroke:var(--panel);stroke-width:1}
+.flame-bar:hover rect{stroke:var(--ink);stroke-width:1.5}
+.flame-label{fill:var(--ink);font:11px ui-monospace,Menlo,monospace;pointer-events:none}

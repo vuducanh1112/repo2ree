@@ -19,6 +19,7 @@ from repo2ree_repoview.overview.exports import (
     VocabularyGraph,
     Zones,
 )
+from repo2ree_repoview.overview.flames import flames
 from repo2ree_repoview.overview.html import FRAME, Page, esc
 from repo2ree_repoview.overview.pages.aggregate import page_aggregate
 from repo2ree_repoview.overview.pages.architecture import page_architecture
@@ -166,7 +167,8 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
     }
     showcase_evidence = bundle_runs(bundle, showcase_runs)
     verdicts = judged_now()
-    timings = summarize(read_invocations())
+    invocations = read_invocations()
+    timings = summarize(invocations)
     bundle.write(
         "inputs/timings.json", timings.model_dump_json(indent=2), str(LOGS.relative_to(ROOT)), Origin(kind="timings")
     )
@@ -208,7 +210,7 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         page_interfaces(cli, api),
         page_contracts(bundle, registry, environment),
         page_vocabulary_graph(vocabulary),
-        page_recipes(recipes, bundle, timings),
+        page_recipes(recipes, bundle, timings, flames(invocations, recipes)),
     ]
     manifest = bundle.manifest(now.provenance, receipt.revision if receipt else None)
     everything = [page_home(now, receipt_states(now, receipt), pages, zones, manifest), *pages]

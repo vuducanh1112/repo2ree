@@ -3,6 +3,7 @@ from __future__ import annotations
 from repo2ree_repoview.diagrams.recipes import Recipe
 from repo2ree_repoview.overview.bundle import Bundle
 from repo2ree_repoview.overview.figures import DIAGRAMS, diagram
+from repo2ree_repoview.overview.flames import Flames, graph_svg
 from repo2ree_repoview.overview.html import Page, esc, filter_box, section, table
 from repo2ree_repoview.overview.timings import Timing, Timings
 
@@ -54,7 +55,31 @@ def commands_table(timings: Timings) -> str:
     )
 
 
-def page_recipes(recipes: dict[str, Recipe], bundle: Bundle, timings: Timings) -> Page:
+def flames_section(found: Flames) -> str:
+    root = [frame for frame in found.frames if len(frame.path) == 1]
+    work = root[0].cost if root else 0.0
+    frames = table(
+        ["Path", "Work per run", "Own"],
+        [
+            [
+                " &rsaquo; ".join(f"<code>{esc(part)}</code>" for part in frame.path),
+                esc(seconds(frame.cost)),
+                esc(seconds(frame.own)),
+            ]
+            for frame in sorted(found.frames, key=lambda frame: -frame.cost)
+        ],
+    )
+    return (
+        f"<h3>Flamegraph: <code>just {esc(found.command)}</code>, {found.runs} green runs on "
+        f"{esc(found.machine)} in two weeks</h3>"
+        f'<p class="lede">The work a run does, not how long it takes: each recipe under the one that first depends '
+        f"on it, as wide as the time it and everything under it work, on average per run, {esc(seconds(work))} in "
+        "all, widest first. Recipes side by side add up here though they overlap in time, so this is what a run "
+        "costs the machine.</p>" + graph_svg(found) + f"<details><summary>As a table</summary>{frames}</details>"
+    )
+
+
+def page_recipes(recipes: dict[str, Recipe], bundle: Bundle, timings: Timings, found: tuple[Flames, ...]) -> Page:
     listed = sorted(recipes.values(), key=lambda r: (r.group, r.name))
     rows = [
         [
@@ -77,6 +102,7 @@ def page_recipes(recipes: dict[str, Recipe], bundle: Bundle, timings: Timings) -
         "Recipe dependency graph",
         "Prerequisites point to the recipe that consumes them.",
     )
+    body += "".join(flames_section(flames) for flames in found)
     if timings.commands:
         body += (
             "<h3>Recorded commands</h3>"
