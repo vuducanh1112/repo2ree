@@ -182,24 +182,150 @@
     "spec_digest": "sha256:4198047d2f6f03fff95592a90cd73843c421f6e8d4c8c81bc0fa3ee10d1d23b5",
     "features": [
       {
-        "family": "transition",
+        "family": "context",
         "entity": "Attempt",
-        "move": "(none) -> pending"
+        "move": "(none) -> pending",
+        "ree": "author",
+        "store": "ree"
       },
       {
-        "family": "transition",
+        "family": "context",
         "entity": "Attempt",
-        "move": "completed -> captured"
+        "move": "completed -> captured",
+        "ree": "author",
+        "store": "ree"
       },
       {
-        "family": "transition",
+        "family": "context",
         "entity": "Attempt",
-        "move": "executing -> completed"
+        "move": "executing -> completed",
+        "ree": "author",
+        "store": "ree"
       },
       {
-        "family": "transition",
+        "family": "context",
         "entity": "Attempt",
-        "move": "pending -> executing"
+        "move": "pending -> executing",
+        "ree": "author",
+        "store": "ree"
+      },
+      {
+        "family": "outcome",
+        "command": "acquire-source",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "activate-experiment-environment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "build-experiment-environment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "cat",
+        "ree": "author",
+        "exit": 0
+      },
+      {
+        "family": "outcome",
+        "command": "check-working-environment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "initialize-ree",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "patch-ree-definition",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "review acquire-source",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "review activate-experiment-environment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "review build-experiment-environment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "review run-experiment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "run-experiment",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "seal-ree",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "show",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "sign-ree",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "sign-review",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "outcome",
+        "command": "write-script",
+        "ree": "author",
+        "exit": 0,
+        "status": "succeeded"
       },
       {
         "family": "rule",
@@ -300,6 +426,151 @@
       {
         "family": "rule",
         "rule": "sealed-without-stale-evidence"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "aggregate:Ree",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "aggregate:Review",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "boundary:run_command",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:carried-evidence-is-its-digests",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:contents-are-the-bundle",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:review-expectations-are-the-authors",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:review-experiments-follow-a-passed-activation",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:review-names-a-seal-beside-it",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:review-observations-are-its-receipts",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:review-signatures-are-the-review",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:review-verdicts-follow-their-ladders",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:scripts-are-their-digests",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:sealed-results-are-what-ran",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:signatures-are-the-seal",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:standings-are-the-receipts-basis",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "document:the-seal-is-the-subject",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "evidence",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "machine:Attempt",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "machine:Receipt",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "machine:Ree",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "machine:Review",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "receipts-come-from-their-producers",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "ree-changes-through-operations",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "sealed-rees-are-only-signed",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "sealed-without-stale-evidence",
+        "verdict": "held"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "(none) -> pending"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "completed -> captured"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "executing -> completed"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "pending -> executing"
       }
     ]
   }

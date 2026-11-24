@@ -1,0 +1,83 @@
+{
+  "exercise": {
+    "format": "repo2ree-exercise/1",
+    "rees": [
+      "author",
+      "reviewer"
+    ],
+    "steps": [
+      {
+        "ree": "reviewer",
+        "operation": "initialize_ree"
+      },
+      {
+        "ree": "reviewer",
+        "operation": "load_ree_bundle",
+        "exported_by": "author"
+      }
+    ],
+    "faults": [],
+    "drifts": []
+  },
+  "origin": {
+    "kind": "searched",
+    "search": "branch-cov",
+    "run": "a874583940de4820b7875d3de3d94b56",
+    "commit": "773ea50782f05cad59faf1bb9b5d35d26a584a9c",
+    "dirty": true,
+    "kept_for": {
+      "kind": "new_arcs",
+      "files": {
+        "cli/src/repo2ree_cli/cli.py": 11
+      }
+    }
+  },
+  "expects": {
+    "kind": "conforms"
+  },
+  "features": {
+    "spec_digest": "sha256:4198047d2f6f03fff95592a90cd73843c421f6e8d4c8c81bc0fa3ee10d1d23b5",
+    "features": [
+      {
+        "family": "outcome",
+        "command": "bundle",
+        "ree": "reviewer",
+        "exit": 2
+      },
+      {
+        "family": "outcome",
+        "command": "initialize-ree",
+        "ree": "reviewer",
+        "exit": 0,
+        "status": "succeeded"
+      },
+      {
+        "family": "rule",
+        "rule": "boundary:export_bundle"
+      },
+      {
+        "family": "rule",
+        "rule": "boundary:run_command"
+      },
+      {
+        "family": "rule",
+        "rule": "evidence"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "boundary:export_bundle",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "boundary:run_command",
+        "verdict": "held"
+      },
+      {
+        "family": "rule_outcome",
+        "rule": "evidence",
+        "verdict": "held"
+      }
+    ]
+  }
+}
