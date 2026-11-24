@@ -1,0 +1,31 @@
+{
+  "run": "a1063d3ec5954bf29b321b10fac4ce4b",
+  "search": "spec-cov",
+  "settings": {
+    "examples": 3,
+    "steps": 3,
+    "keep": 1,
+    "least": 1,
+    "hours": 3.0,
+    "workers": 0
+  },
+  "commit": "6b4409eafbc93dd46522e872e766cffee133a82a",
+  "dirty": false,
+  "machine": "vm",
+  "started": "2026-11-23T23:51:04.021294Z",
+  "ended": "2026-11-23T23:52:28.554762Z",
+  "rounds": 8,
+  "rounds_found": 1,
+  "unconfirmed": 0,
+  "kept": [
+    {
+      "case": "5dd9af40da7d6b13",
+      "kept_for": {
+        "kind": "showed_problems"
+      },
+      "steps": 2,
+      "worker": 0
+    }
+  ],
+  "exit": 1
+}
