@@ -98,6 +98,23 @@ def machine_ree(machine: Machine) -> RunRee:
     return run
 
 
+type Measuring = Callable[[Path], RunRee]
+
+
+def covered_machine_ree(machine: Machine) -> Measuring:
+    def measuring(data: Path) -> RunRee:
+        data.mkdir(parents=True, exist_ok=True)
+        variables = {"COVERAGE_FILE": str(data / ".coverage")}
+
+        def run(root: Path, words: Sequence[str], stdin: bytes | None) -> Answer:
+            done = machine.ree(root, *words, stdin=stdin, variables=variables, inside=False, program="ree-measured")
+            return Answer(done.status, done.stdout, done.stderr)
+
+        return run
+
+    return measuring
+
+
 def covered_ree(data: Path) -> RunRee:
     data.mkdir(parents=True, exist_ok=True)
     measured = [sys.executable, "-m", "coverage", "run", "--parallel-mode", f"--rcfile={ROOT / 'pyproject.toml'}"]

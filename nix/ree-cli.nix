@@ -35,7 +35,7 @@ let
   #
   # cryptography checks that a signature the REE is given is its
   # certificate key's (repo2ree_ree.signature), imported only then too.
-  python = pkgs.python313.withPackages (
+  pythonPackages =
     ps: with ps; [
       click
       cryptography
@@ -45,8 +45,8 @@ let
       opentelemetry-sdk
       opentelemetry-exporter-otlp-proto-common
       sigstore
-    ]
-  );
+    ];
+  python = pkgs.python313.withPackages pythonPackages;
 
   # Filter to just the Python sources so unrelated repo files don't
   # invalidate the closure hash on every edit.
@@ -104,6 +104,7 @@ in
 {
   inherit
     python
+    pythonPackages
     srcs
     pythonPath
     bin

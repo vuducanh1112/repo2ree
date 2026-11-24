@@ -94,6 +94,16 @@ omit = [
     "*/tests/*",
 ]
 
+# The testbed's bare-measured machine runs the executor from its sources in the Nix store; combining its data
+# (testbed/environments/bare-measured) files each source under the package's place in this checkout.
+[tool.coverage.paths]
+ree = ["ree/src/repo2ree_ree", "/nix/store/*-source/repo2ree_ree"]
+protocol = ["protocol/src/repo2ree_protocol", "/nix/store/*-source/repo2ree_protocol"]
+telemetry = ["telemetry/src/repo2ree_telemetry", "/nix/store/*-source/repo2ree_telemetry"]
+authoring = ["authoring/src/repo2ree_authoring", "/nix/store/*-source/repo2ree_authoring"]
+core = ["core/src/repo2ree_core", "/nix/store/*-source/repo2ree_core"]
+cli = ["cli/src/repo2ree_cli", "/nix/store/*-source/repo2ree_cli"]
+
 [tool.coverage.report]
 show_missing = true
 skip_covered = false

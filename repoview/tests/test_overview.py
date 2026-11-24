@@ -88,6 +88,7 @@ def test_the_overview_of_this_tree_is_a_whole_bundle(tmp_path: Path, exports: Pa
         f"{name}.html"
         for name in (
             *("index", "zones", "assurance-gate", "receipts", "operations", "vocabulary", "specification", "coverage"),
+            "specification-core",
             "showcase-gate",
             "exercises",
             *("ree", "review", "architecture", "interfaces", "interfaces-cli", "interfaces-api", "contracts"),

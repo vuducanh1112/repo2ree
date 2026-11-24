@@ -4,21 +4,18 @@ from datetime import datetime
 from typing import Any
 
 from repo2ree_repoview.overview.exports import (
+    Behaviour,
     Campaign,
     CaseOrigin,
     CaseReplay,
     ExerciseCase,
     ExerciseProblem,
     Exercises,
-    Feature,
-    FeatureFamily,
-    InContext,
     KeptFor,
+    Move,
     Outcome,
-    RuleOutcome,
-    RuleTriggered,
     StepRun,
-    TransitionTaken,
+    Verdict,
 )
 from repo2ree_repoview.overview.html import Page, esc, filter_box, in_frame, rule_link, section, table
 
@@ -59,86 +56,100 @@ def kept_for(found: KeptFor | None) -> str:
             return "&ndash;"
         case KeptFor(kind="showed_problems"):
             return '<span class="no">new problem</span>'
-        case KeptFor(kind="new_features", features=features):
-            return f"+{len(features)} features"
+        case KeptFor(kind="new_behaviours", behaviours=behaviours):
+            return f"+{len(behaviours)} behaviours"
         case KeptFor(files=files):
             return f"+{sum(files.values())} arcs"
 
 
-FAMILY_TITLES: dict[FeatureFamily, str] = {
-    "rule": "Rules triggered",
-    "transition": "Transitions taken",
-    "context": "Transitions by REE and store",
-    "outcome": "Command outcomes",
-    "rule_outcome": "Rule outcomes",
-}
 VERDICT_TONES = {"held": "ok", "violated": "no", "inconclusive": "ex"}
+AGGREGATE_NAMES = {"Ree": "the REE", "Review": "a review"}
+FIELD_VERBS = {("unset", "set"): "sets", ("set", "set"): "changes", ("set", "unset"): "clears"}
+BEHAVIOURS_LEDE = (
+    "A behaviour is one thing replaying a case did that the CLI-core specification names: a rule decided one way, "
+    "an operation taking one edge of the REE's or a review's lifecycle or of one of their fields, or a command "
+    "ending one way. The specification declares each rule held and each edge by each operation that may take it; a "
+    "search keeps a case that covers behaviours, or code arcs, no other case does. A violated rule or a command's "
+    "outcome is covered too, though nothing declares it."
+)
+CASE_BEHAVIOURS_LEDE = (
+    "What replaying this case did, as the specification names it; <em>only here</em>: no other case does."
+)
 
 
-def feature_label(feature: Feature) -> str:
-    match feature:
-        case RuleTriggered(rule=rule):
-            return rule_link(rule)
-        case TransitionTaken(entity=entity, move=move):
-            return f"<code>{esc(entity)} {esc(move)}</code>"
-        case InContext(entity=entity, move=move, ree=ree, store=store):
-            where = f"{esc(ree or 'no REE')}, {'a review' if store == 'review' else 'its REE'}"
-            return f"<code>{esc(entity)} {esc(move)}</code> in {where}"
-        case Outcome(command=command, ree=ree, exit=exit, status=status, category=category):
-            answer = " / ".join(esc(part) for part in (status, category) if part) or "no result"
-            return f"<code>ree {esc(command)}</code> by {esc(ree)}: exit {exit}, {answer}"
-        case RuleOutcome(rule=rule, verdict=verdict):
+BETWEEN_OPERATIONS = "(between operations)"
+
+
+def _operation(name: str) -> str:
+    return "a change outside ree" if name == BETWEEN_OPERATIONS else f"<code>{esc(name)}</code>"
+
+
+def _move_label(move: Move) -> str:
+    whose = AGGREGATE_NAMES.get(move.aggregate, esc(move.aggregate))
+    if move.part == "lifecycle":
+        if move.source == "(none)":
+            return f"{_operation(move.operation)} makes {whose}, {esc(move.target)}"
+        return f"{_operation(move.operation)} takes {whose} from {esc(move.source)} to {esc(move.target)}"
+    field = f"{whose}'s <code>{esc(move.machine)}</code>"
+    if move.source == "(none)":
+        return f"{_operation(move.operation)} starts {field} {esc(move.target)}"
+    if verb := FIELD_VERBS.get((move.source, move.target)):
+        return f"{_operation(move.operation)} {verb} {field}"
+    return f"{_operation(move.operation)} takes {field} from {esc(move.source)} to {esc(move.target)}"
+
+
+def behaviour_label(behaviour: Behaviour) -> str:
+    match behaviour:
+        case Verdict(rule=rule, verdict=verdict):
             return f'{rule_link(rule)} <span class="{VERDICT_TONES[verdict]}">{verdict}</span>'
+        case Move() as move:
+            return _move_label(move)
+        case Outcome(command=command, status=None):
+            return f"<code>ree {esc(command)}</code> ended without a result"
+        case Outcome(command=command, status=status, category=category):
+            failure = f" ({esc(category)})" if category else ""
+            return f"<code>ree {esc(command)}</code> {esc(status)}{failure}"
 
 
-def _key(feature: Feature) -> str:
-    return feature.model_dump_json()
+def _key(behaviour: Behaviour) -> tuple[int, str]:
+    return ("verdict", "move", "outcome").index(behaviour.kind), behaviour.model_dump_json()
 
 
-def _ordered(features: set[Feature]) -> list[Feature]:
-    return sorted(features, key=_key)
+def _ordered(behaviours: set[Behaviour]) -> list[Behaviour]:
+    return sorted(behaviours, key=_key)
 
 
-def _of(features: Sequence[Feature], family: FeatureFamily) -> list[Feature]:
-    return _ordered({feature for feature in features if feature.family == family})
-
-
-def features_overview(exercises: Exercises) -> str:
-    by_feature: dict[Feature, list[str]] = {}
+def behaviours_overview(exercises: Exercises) -> str:
+    by_behaviour: dict[Behaviour, list[str]] = {}
     for case in exercises.cases:
-        for feature in case.features.features:
-            by_feature.setdefault(feature, []).append(case.digest)
+        for behaviour in case.behaviours.behaviours:
+            by_behaviour.setdefault(behaviour, []).append(case.digest)
     declared = set(exercises.declared)
-    summary = []
-    for family, title in FAMILY_TITLES.items():
-        covered = _of(list(by_feature), family)
-        possible = _of(list(declared), family)
-        share = f"{len(covered)} of {len(possible)}" if possible else str(len(covered))
-        summary.append([title, share])
+    covered = declared & set(by_behaviour)
+    beyond = set(by_behaviour) - declared
+    summary = (
+        f"<p>{len(covered)} of the {len(declared)} declared behaviours covered, "
+        f"and {len(beyond)} more that nothing declares.</p>"
+    )
     rows = [
         [
-            FAMILY_TITLES[feature.family],
-            feature_label(feature),
-            str(len(digests)),
-            " ".join(case_link(digest) for digest in digests[:6]) + (" &hellip;" if len(digests) > 6 else ""),
+            behaviour_label(behaviour),
+            str(len(by_behaviour[behaviour])),
+            " ".join(case_link(digest) for digest in by_behaviour[behaviour][:6])
+            + (" &hellip;" if len(by_behaviour[behaviour]) > 6 else ""),
         ]
-        for feature, digests in sorted(by_feature.items(), key=lambda item: (item[0].family, _key(item[0])))
+        for behaviour in _ordered(set(by_behaviour))
     ]
-    gaps = _ordered(declared - set(by_feature))
+    gaps = _ordered(declared - set(by_behaviour))
     missing = (
         f"<h3>Declared, covered by no case ({len(gaps)})</h3><ul>"
-        + "".join(f"<li>{feature_label(feature)}</li>" for feature in gaps)
+        + "".join(f"<li>{behaviour_label(behaviour)}</li>" for behaviour in gaps)
         + "</ul>"
         if gaps
         else ""
     )
-    listed = table(["Family", "Feature", "Cases", "Covered by"], rows, "features-table")
-    return (
-        table(["Family", "Covered"], summary)
-        + filter_box("features-table", "filter")
-        + f'<div class="table-scroll">{listed}</div>'
-        + missing
-    )
+    listed = table(["Behaviour", "Cases", "Covered by"], rows, "behaviours-table")
+    return summary + filter_box("behaviours-table", "filter") + f'<div class="table-scroll">{listed}</div>' + missing
 
 
 def origin(found: CaseOrigin, recorded: frozenset[str] = frozenset()) -> str:
@@ -226,13 +237,13 @@ def cases_table(found: Sequence[ExerciseCase], recorded: frozenset[str]) -> str:
             str(len(case.drifts)),
             str(len(case.faults)),
             expects(case),
-            f"{len(case.features.features)} (+{len(case.unique_features)})",
+            f"{len(case.behaviours.behaviours)} (+{len(case.unique_behaviours)})",
             _arcs(case),
             _when(case.replay.when) if case.replay else "&ndash;",
         ]
         for case in found
     ]
-    headers = ["Case", "Origin", "REEs", "Steps", "Drifts", "Faults", "Expects", "Features", "Arcs", "Replayed"]
+    headers = ["Case", "Origin", "REEs", "Steps", "Drifts", "Faults", "Expects", "Behaviours", "Arcs", "Replayed"]
     return filter_box("cases", "filter") + f'<div class="table-scroll">{table(headers, rows, "cases")}</div>'
 
 
@@ -246,11 +257,11 @@ def page_exercises(exercises: Exercises) -> Page:
             "",
             campaigns_table(exercises.campaigns, frozenset(case.digest for case in exercises.cases)),
         )
-        + section("features", "Covered features", "", features_overview(exercises))
+        + section("behaviours", "Covered behaviours", BEHAVIOURS_LEDE, behaviours_overview(exercises))
         + section("cases", "Cases", "", cases_table(exercises.cases, recorded))
     )
-    covered = {feature for case in exercises.cases for feature in case.features.features}
-    return Page(EXERCISES, "Exercises", f"{len(exercises.cases)} cases, {len(covered)} features", body)
+    covered = {behaviour for case in exercises.cases for behaviour in case.behaviours.behaviours}
+    return Page(EXERCISES, "Exercises", f"{len(exercises.cases)} cases, {len(covered)} behaviours", body)
 
 
 def _set(value: Any) -> Any:
@@ -368,29 +379,32 @@ def sequence_section(case: ExerciseCase) -> str:
     return section("sequence", "Sequence", "", body)
 
 
-def features_section(case: ExerciseCase) -> str:
-    unique = set(case.unique_features)
-    body = "".join(
-        f"<h3>{FAMILY_TITLES[family]} ({len(found)})</h3><ul>"
+def behaviours_section(case: ExerciseCase) -> str:
+    unique = set(case.unique_behaviours)
+    found = _ordered(set(case.behaviours.behaviours))
+    body = (
+        "<ul>"
         + "".join(
-            f"<li>{feature_label(feature)}"
-            + (' <span class="ex">only here</span>' if feature in unique else "")
+            f"<li>{behaviour_label(behaviour)}"
+            + (' <span class="ex">only here</span>' if behaviour in unique else "")
             + "</li>"
-            for feature in found
+            for behaviour in found
         )
         + "</ul>"
-        for family in FAMILY_TITLES
-        if (found := _of(case.features.features, family))
+        if found
+        else ""
     )
-    if case.replay is not None and set(case.replay.features) != set(case.features.features):
-        gained = _ordered(set(case.replay.features) - set(case.features.features))
-        lost = _ordered(set(case.features.features) - set(case.replay.features))
+    if case.replay is not None and set(case.replay.behaviours) != set(case.behaviours.behaviours):
+        gained = _ordered(set(case.replay.behaviours) - set(case.behaviours.behaviours))
+        lost = _ordered(set(case.behaviours.behaviours) - set(case.replay.behaviours))
         body += (
             '<p class="ex">Its newest replay covers otherwise: '
-            f"+{', '.join(map(feature_label, gained)) or 'nothing'}; "
-            f"&minus;{', '.join(map(feature_label, lost)) or 'nothing'}</p>"
+            f"+{', '.join(map(behaviour_label, gained)) or 'nothing'}; "
+            f"&minus;{', '.join(map(behaviour_label, lost)) or 'nothing'}</p>"
         )
-    return section("features", "Covered features", "", body or '<p class="muted">None recorded.</p>')
+    return section(
+        "behaviours", "Covered behaviours", CASE_BEHAVIOURS_LEDE, body or '<p class="muted">None recorded.</p>'
+    )
 
 
 def coverage_section(case: ExerciseCase) -> str:
@@ -437,7 +451,7 @@ def page_exercise(case: ExerciseCase, *, session: bool = False) -> Page:
         + _facts(case, session)
         + steps_section(case)
         + sequence_section(case)
-        + features_section(case)
+        + behaviours_section(case)
         + coverage_section(case)
     )
     return Page(case_slug(case.digest), f"Exercise {case.digest}", "", body)

@@ -4,11 +4,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from repo2ree_testbed.exercise_behaviours import Behaviour
 from repo2ree_testbed.exercise_case import CASES, COVERAGE, ExerciseCase, HandWritten, cases, unmeasured
-from repo2ree_testbed.exercise_features import Feature
 
 type Arc = tuple[str, int, int]
-type Ground = frozenset[Feature | Arc]
+type Ground = frozenset[Behaviour | Arc]
 
 
 def ground(case: ExerciseCase) -> Ground:
@@ -17,7 +17,7 @@ def ground(case: ExerciseCase) -> Ground:
         if case.coverage is not None
         else set()
     )
-    return frozenset({*case.features.features, *arcs})
+    return frozenset({*case.behaviours.behaviours, *arcs})
 
 
 @dataclass(frozen=True)
@@ -33,7 +33,7 @@ def reduce(found: Sequence[ExerciseCase]) -> Reduction:
         key=lambda case: (len(case.exercise.steps), case.digest),
     )
     grounds = {case.digest: ground(case) for case in found}
-    held: set[Feature | Arc] = set().union(*(grounds[case.digest] for case in fixed))
+    held: set[Behaviour | Arc] = set().union(*(grounds[case.digest] for case in fixed))
     wanted = set().union(*(grounds[case.digest] for case in searched)) - held
     chosen: list[ExerciseCase] = []
     while wanted:

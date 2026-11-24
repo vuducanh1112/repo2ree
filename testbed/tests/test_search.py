@@ -6,23 +6,23 @@ from pathlib import Path
 import pytest
 
 from repo2ree_testbed.exercise import Exercise
+from repo2ree_testbed.exercise_behaviours import Verdict
 from repo2ree_testbed.exercise_case import (
     Campaign,
     CampaignSettings,
     KeptCase,
     NewArcs,
-    NewFeatures,
+    NewBehaviours,
     Searched,
     Shows,
     cases,
 )
-from repo2ree_testbed.exercise_features import RuleTriggered
 from repo2ree_testbed.exercise_verdict import Problem, Trace
 from repo2ree_testbed.runs.search import Event, Judge, Kept, RoundEnded, Search, Unconfirmed, run, summed
 
 COVERED = "testbed/src/repo2ree_testbed/runs/search.py"
 PROBLEM = Problem(kind="violated", rule="machine:Attempt", subject="Attempt a")
-SHALLOW, DEEP = RuleTriggered(rule="shallow"), RuleTriggered(rule="deep")
+SHALLOW, DEEP = Verdict(rule="shallow", verdict="held"), Verdict(rule="deep", verdict="held")
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +38,7 @@ def deep_from(steps: int, *, problem: bool = False, arcs: bool = False) -> Judge
             exercise=exercise,
             replayed=(),
             problems=(PROBLEM,) if deep and problem else (),
-            features=(DEEP, SHALLOW) if deep else (SHALLOW,),
+            behaviours=(DEEP, SHALLOW) if deep else (SHALLOW,),
             spec_digest="sha256:spec",
             arcs=({COVERED: ((1, 2), (2, 3)) if deep and arcs else ((1, 2),)} if measured else None),
         )
@@ -50,7 +50,7 @@ def searching(tmp_path: Path, **given: object) -> Search:
     search = Search(search="spec-cov", directory=tmp_path / "cases", examples=60, steps=8, least=1, judge=deep_from(3))
     for name, value in given.items():
         setattr(search, name, value)
-    search.features = frozenset({SHALLOW})
+    search.behaviours = frozenset({SHALLOW})
     search.arcs = {COVERED: ((1, 2),)}
     return search
 
@@ -67,8 +67,8 @@ def test_an_exercise_reaching_what_no_case_reaches_is_kept_shrunk_to_the_fewest_
     assert len(case.exercise.steps) == 3
     assert isinstance(case.origin, Searched)
     assert case.origin.search == "spec-cov"
-    assert case.origin.kept_for == NewFeatures(features=(DEEP,))
-    assert case.features.features == (DEEP, SHALLOW)
+    assert case.origin.kept_for == NewBehaviours(behaviours=(DEEP,))
+    assert case.behaviours.behaviours == (DEEP, SHALLOW)
     assert search.round() is None
 
 
@@ -82,7 +82,7 @@ def test_an_exercise_covering_something_new_while_showing_a_problem_is_kept_expe
     [case] = cases(tmp_path / "cases")
     assert len(case.exercise.steps) == 2
     assert isinstance(case.origin, Searched)
-    assert case.origin.kept_for == NewFeatures(features=(DEEP,))
+    assert case.origin.kept_for == NewBehaviours(behaviours=(DEEP,))
     assert isinstance(case.expects, Shows)
 
 
@@ -146,7 +146,7 @@ def test_a_campaign_sums_its_rounds_and_the_cases_it_kept() -> None:
         machine="vm",
         started=datetime.now(UTC),
     )
-    kept = NewFeatures(features=(DEEP,))
+    kept = NewBehaviours(behaviours=(DEEP,))
     events: list[Event] = [
         RoundEnded(worker=0, round=1, found=True, seconds=1.0),
         Kept(worker=0, case="abc", steps=3, kept_for=kept),

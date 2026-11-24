@@ -257,6 +257,34 @@ class Aggregate(Document):
     machines: tuple[SubMachine, ...]
 
 
+class DocumentRule(Document):
+    id: str
+    pattern: Literal["standing", "digest", "signature", "reference", "agrees", "verdict"]
+    summary: str
+
+
+class DocumentRules(Document):
+    aggregate: str
+    document: str | None
+    rules: tuple[DocumentRule, ...]
+
+
+type SourceKind = Literal["vocabulary", "entities", "boundaries", "aggregates", "documents", "invariants", "components"]
+
+
+class Source(Document):
+    path: str
+    kind: SourceKind
+    names: tuple[str, ...]
+
+
+class Scope(Document):
+    components: tuple[str, ...]
+    entities: tuple[str, ...]
+    boundaries: tuple[str, ...]
+    rules: tuple[str, ...]
+
+
 class Spec(Export):
     FORMAT = "repo2ree-behaviour-spec/1"
 
@@ -267,6 +295,9 @@ class Spec(Export):
     boundaries: dict[str, Boundary]
     invariants: tuple[Invariant, ...]
     aggregates: dict[str, Aggregate] = Field(default_factory=dict)
+    documents: dict[str, DocumentRules]
+    sources: tuple[Source, ...]
+    cli_core: Scope
 
 
 class Entry(Document):
@@ -471,51 +502,38 @@ class ShowcaseRuns(Export):
         return tuple(tier.run for tier in self.tiers if tier.run)
 
 
-type FeatureFamily = Literal["rule", "transition", "context", "outcome", "rule_outcome"]
+type BehaviourKind = Literal["verdict", "move", "outcome"]
 
 
-class RuleTriggered(Document):
-    family: Literal["rule"]
-    rule: str
-
-
-class TransitionTaken(Document):
-    family: Literal["transition"]
-    entity: str
-    move: str
-
-
-class InContext(Document):
-    family: Literal["context"]
-    entity: str
-    move: str
-    ree: str | None = None
-    store: Literal["ree", "review"]
-
-
-class Outcome(Document):
-    family: Literal["outcome"]
-    command: str
-    ree: str
-    exit: int
-    status: str | None = None
-    category: str | None = None
-
-
-class RuleOutcome(Document):
-    family: Literal["rule_outcome"]
+class Verdict(Document):
+    kind: Literal["verdict"]
     rule: str
     verdict: Literal["held", "violated", "inconclusive"]
 
 
-type Feature = Annotated[
-    RuleTriggered | TransitionTaken | InContext | Outcome | RuleOutcome, Field(discriminator="family")
-]
+class Move(Document):
+    kind: Literal["move"]
+    aggregate: str
+    machine: str
+    part: Literal["lifecycle", "field"]
+    operation: str
+    source: str
+    target: str
+
+
+class Outcome(Document):
+    kind: Literal["outcome"]
+    command: str
+    status: str | None = None
+    category: str | None = None
+
+
+type Behaviour = Annotated[Verdict | Move | Outcome, Field(discriminator="kind")]
 
 
 class KeptFor(Document):
-    kind: Literal["showed_problems", "new_arcs", "new_features"]
-    features: tuple[Feature, ...] = ()
+    kind: Literal["showed_problems", "new_arcs", "new_behaviours"]
+    behaviours: tuple[Behaviour, ...] = ()
     files: dict[str, int] = Field(default_factory=dict)
 
 
@@ -539,9 +557,9 @@ class CaseExpectation(Document):
     problems: tuple[ExerciseProblem, ...] = ()
 
 
-class CaseFeatures(Document):
+class CaseBehaviours(Document):
     spec_digest: str
-    features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
 
 
 class CampaignSettings(Document):
@@ -594,7 +612,7 @@ class CaseReplay(Document):
     when: str
     spec_digest: str
     problems: tuple[ExerciseProblem, ...]
-    features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
     steps: tuple[StepRun, ...]
     session: str
 
@@ -617,8 +635,8 @@ class ExerciseCase(Document):
     exercise: dict[str, Any]
     origin: CaseOrigin
     expects: CaseExpectation
-    features: CaseFeatures
-    unique_features: tuple[Feature, ...]
+    behaviours: CaseBehaviours
+    unique_behaviours: tuple[Behaviour, ...]
     coverage: CaseCoverage | None
     replay: CaseReplay | None
 
@@ -643,5 +661,5 @@ class Exercises(Export):
     FORMAT = "repo2ree-exercises/1"
 
     campaigns: tuple[Campaign, ...]
-    declared: tuple[Feature, ...]
+    declared: tuple[Behaviour, ...]
     cases: tuple[ExerciseCase, ...]

@@ -1,5 +1,7 @@
 import argparse
 import json
+import subprocess
+import sys
 from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,17 +12,17 @@ from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.cli_session import CliCommand
 from repo2ree_testbed.exercise import Exercise
+from repo2ree_testbed.exercise_behaviours import Behaviour, declared
 from repo2ree_testbed.exercise_case import (
     CASES,
     Campaign,
-    CaseFeatures,
+    CaseBehaviours,
     ExerciseCase,
     Expectation,
     Origin,
     campaigns,
     cases,
 )
-from repo2ree_testbed.exercise_features import Feature, declared
 from repo2ree_testbed.exercise_verdict import Arcs, Problem, Trace, arcs_union, arcs_without
 from repo2ree_testbed.runs import session
 
@@ -47,7 +49,7 @@ class Replay(_Model):
     when: datetime
     spec_digest: str
     problems: tuple[Problem, ...]
-    features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
     steps: tuple[StepRun, ...]
     session: str
 
@@ -70,8 +72,8 @@ class CaseExport(_Model):
     exercise: Exercise
     origin: Origin
     expects: Expectation
-    features: CaseFeatures
-    unique_features: tuple[Feature, ...]
+    behaviours: CaseBehaviours
+    unique_behaviours: tuple[Behaviour, ...]
     coverage: CoverageSummary | None
     replay: Replay | None
 
@@ -79,7 +81,7 @@ class CaseExport(_Model):
 class ExercisesExport(_Model):
     format: Literal["repo2ree-exercises/1"] = "repo2ree-exercises/1"
     campaigns: tuple[Campaign, ...]
-    declared: tuple[Feature, ...]
+    declared: tuple[Behaviour, ...]
     cases: tuple[CaseExport, ...]
 
 
@@ -157,7 +159,7 @@ def replay_of(workdir: Path, trace: Trace) -> Replay:
         when=datetime.fromtimestamp((workdir / "trace.json").stat().st_mtime, UTC),
         spec_digest=trace.spec_digest,
         problems=trace.problems,
-        features=trace.features,
+        behaviours=trace.behaviours,
         steps=tuple(steps),
         session=_from_root(session_page(workdir, trace)),
     )
@@ -182,12 +184,9 @@ def newest_replay(runs: Path, digest: str) -> tuple[Path, Trace] | None:
     return None
 
 
-def declared_in(workdirs: Sequence[Path]) -> tuple[Feature, ...]:
-    reports = [workdir / "check" / "assurance.json" for workdir in workdirs]
-    newest = max(
-        (report for report in reports if report.is_file()), key=lambda report: report.stat().st_mtime, default=None
-    )
-    return declared(json.loads(newest.read_text())) if newest is not None else ()
+def specified() -> tuple[Behaviour, ...]:
+    command = [sys.executable, "-m", "repo2ree_assurance_checker", "export"]
+    return declared(json.loads(subprocess.run(command, capture_output=True, text=True, check=True).stdout))
 
 
 def _coverage(case: ExerciseCase, others: Arcs) -> CoverageSummary | None:
@@ -205,35 +204,34 @@ def _coverage(case: ExerciseCase, others: Arcs) -> CoverageSummary | None:
     )
 
 
-def exported(found: Sequence[ExerciseCase], recorded: Sequence[Campaign], runs: Path) -> ExercisesExport:
+def exported(
+    found: Sequence[ExerciseCase], recorded: Sequence[Campaign], runs: Path, declared: tuple[Behaviour, ...] = ()
+) -> ExercisesExport:
     exports = []
-    replayed: list[Path] = []
     for case in found:
         others = [other for other in found if other.digest != case.digest]
-        covered_elsewhere = {feature for other in others for feature in other.features.features}
+        covered_elsewhere = {behaviour for other in others for behaviour in other.behaviours.behaviours}
         arcs_elsewhere: Arcs = {}
         for other in others:
             if other.coverage is not None:
                 arcs_elsewhere = arcs_union(arcs_elsewhere, other.coverage.arcs)
         newest = newest_replay(runs, case.digest)
         replay = replay_of(*newest) if newest is not None else None
-        if newest is not None:
-            replayed.append(newest[0])
         exports.append(
             CaseExport(
                 digest=case.digest,
                 exercise=case.exercise,
                 origin=case.origin,
                 expects=case.expects,
-                features=case.features,
-                unique_features=tuple(
-                    feature for feature in case.features.features if feature not in covered_elsewhere
+                behaviours=case.behaviours,
+                unique_behaviours=tuple(
+                    behaviour for behaviour in case.behaviours.behaviours if behaviour not in covered_elsewhere
                 ),
                 coverage=_coverage(case, arcs_elsewhere),
                 replay=replay,
             )
         )
-    return ExercisesExport(campaigns=tuple(recorded), declared=declared_in(replayed), cases=tuple(exports))
+    return ExercisesExport(campaigns=tuple(recorded), declared=declared, cases=tuple(exports))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -241,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-o", "--output", type=Path, required=True, help="write the export here")
     parser.add_argument("--cases", type=Path, default=CASES, help="where the cases and their campaigns are")
     args = parser.parse_args(argv)
-    export = exported(cases(args.cases), campaigns(args.cases), run_dir() / "exercises")
+    export = exported(cases(args.cases), campaigns(args.cases), run_dir() / "exercises", specified())
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(export.model_dump_json(indent=2) + "\n")
     return 0

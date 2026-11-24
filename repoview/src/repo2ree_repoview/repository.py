@@ -15,6 +15,20 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], cwd=ROOT, check=True, capture_output=True, text=True).stdout.strip()
 
 
+class Commit(Record):
+    revision: str
+    committed: str
+    subject: str
+
+
+def file_history(path: str) -> tuple[Commit, ...]:
+    log = git("log", "--follow", "--format=%H%x1f%cI%x1f%s%x1e", "--", path)
+    entries = (entry.strip().split("\x1f") for entry in log.split("\x1e") if entry.strip())
+    return tuple(
+        Commit(revision=revision, committed=committed, subject=subject) for revision, committed, subject in entries
+    )
+
+
 class Provenance(Record):
     revision: str
     tree: str

@@ -87,6 +87,7 @@
           workbench-image = import ./nix/workbench-image.nix { inherit pkgs buildRevision; };
           # The machines the environments tier installs a workbench on.
           testbed-environment-bare = testbedEnvironments.bare;
+          testbed-environment-bare-measured = testbedEnvironments.bare-measured;
           testbed-environment-docker = testbedEnvironments.docker;
           testbed-environment-podman = testbedEnvironments.podman;
           testbed-environment-slurm = testbedEnvironments.slurm;

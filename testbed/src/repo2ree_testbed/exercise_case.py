@@ -10,7 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.exercise import Exercise
-from repo2ree_testbed.exercise_features import Feature, ordered
+from repo2ree_testbed.exercise_behaviours import Behaviour, ordered
+from repo2ree_testbed.exercise_cli import Measuring, covered_ree
 from repo2ree_testbed.exercise_verdict import (
     Arcs,
     Problem,
@@ -59,12 +60,12 @@ class NewArcs(_Model):
     files: dict[str, int]
 
 
-class NewFeatures(_Model):
-    kind: Literal["new_features"] = "new_features"
-    features: tuple[Feature, ...]
+class NewBehaviours(_Model):
+    kind: Literal["new_behaviours"] = "new_behaviours"
+    behaviours: tuple[Behaviour, ...]
 
 
-type KeptFor = Annotated[ShowedProblems | NewArcs | NewFeatures, Field(discriminator="kind")]
+type KeptFor = Annotated[ShowedProblems | NewArcs | NewBehaviours, Field(discriminator="kind")]
 
 
 class Searched(_Model):
@@ -91,9 +92,9 @@ class Shows(_Model):
 type Expectation = Annotated[Conforms | Shows, Field(discriminator="kind")]
 
 
-class CaseFeatures(_Model):
+class CaseBehaviours(_Model):
     spec_digest: str
-    features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
 
 
 class CoveredFile(_Model):
@@ -126,7 +127,7 @@ class ExerciseCase(_Model):
     exercise: Exercise
     origin: Origin
     expects: Expectation
-    features: CaseFeatures
+    behaviours: CaseBehaviours
     coverage: CaseCoverage | None = Field(default=None, exclude=True)
 
     @property
@@ -136,8 +137,10 @@ class ExerciseCase(_Model):
 
 def case_of(trace: Trace, origin: Origin, coverage: CaseCoverage | None = None) -> ExerciseCase:
     expects: Expectation = Shows(problems=trace.problems) if trace.problems else Conforms()
-    features = CaseFeatures(spec_digest=trace.spec_digest, features=trace.features)
-    return ExerciseCase(exercise=trace.exercise, origin=origin, expects=expects, features=features, coverage=coverage)
+    behaviours = CaseBehaviours(spec_digest=trace.spec_digest, behaviours=trace.behaviours)
+    return ExerciseCase(
+        exercise=trace.exercise, origin=origin, expects=expects, behaviours=behaviours, coverage=coverage
+    )
 
 
 def write(case: ExerciseCase, directory: Path = CASES) -> Path:
@@ -167,11 +170,13 @@ def cases(directory: Path = CASES) -> tuple[ExerciseCase, ...]:
     return tuple(found)
 
 
-def measure(case: ExerciseCase, workdir: Path, directory: Path = CASES) -> tuple[ExerciseCase, list[str]]:
-    trace = judge(case.exercise, workdir, measured=True)
+def measure(
+    case: ExerciseCase, workdir: Path, directory: Path = CASES, measuring: Measuring = covered_ree
+) -> tuple[ExerciseCase, list[str]]:
+    trace = judge(case.exercise, workdir, measured=True, measuring=measuring)
     keep(workdir, trace)
-    features = CaseFeatures(spec_digest=trace.spec_digest, features=trace.features)
-    measured = case.model_copy(update={"features": features, "coverage": coverage_of(trace.arcs or {})})
+    behaviours = CaseBehaviours(spec_digest=trace.spec_digest, behaviours=trace.behaviours)
+    measured = case.model_copy(update={"behaviours": behaviours, "coverage": coverage_of(trace.arcs or {})})
     write(measured, directory)
     return measured, unmet(case, trace)
 
@@ -197,16 +202,16 @@ def unmet(case: ExerciseCase, trace: Trace) -> list[str]:
 
 
 def drifted(case: ExerciseCase, trace: Trace) -> str | None:
-    now, then = set(trace.features), set(case.features.features)
+    now, then = set(trace.behaviours), set(case.behaviours.behaviours)
     if now == then:
         return None
     against = (
         "the same specification"
-        if trace.spec_digest == case.features.spec_digest
-        else f"specification {trace.spec_digest}, recorded against {case.features.spec_digest}"
+        if trace.spec_digest == case.behaviours.spec_digest
+        else f"specification {trace.spec_digest}, recorded against {case.behaviours.spec_digest}"
     )
-    gained = [feature.model_dump_json() for feature in ordered(now - then)]
-    lost = [feature.model_dump_json() for feature in ordered(then - now)]
+    gained = [behaviour.model_dump_json() for behaviour in ordered(now - then)]
+    lost = [behaviour.model_dump_json() for behaviour in ordered(then - now)]
     return f"{case.digest} covers otherwise against {against}: gained {gained}, lost {lost}"
 
 

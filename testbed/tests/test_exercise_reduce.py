@@ -3,9 +3,10 @@ from pathlib import Path
 import pytest
 
 from repo2ree_testbed.exercise import Exercise, InitializeRee
+from repo2ree_testbed.exercise_behaviours import Verdict
 from repo2ree_testbed.exercise_case import (
+    CaseBehaviours,
     CaseCoverage,
-    CaseFeatures,
     Conforms,
     CoveredFile,
     ExerciseCase,
@@ -16,7 +17,6 @@ from repo2ree_testbed.exercise_case import (
     cases,
     write,
 )
-from repo2ree_testbed.exercise_features import RuleTriggered
 from repo2ree_testbed.runs.exercise_reduce import main, reduce
 
 FILE = "testbed/src/repo2ree_testbed/runs/exercise_reduce.py"
@@ -43,7 +43,9 @@ def case(
         exercise=exercise,
         origin=origin,
         expects=Conforms(),
-        features=CaseFeatures(spec_digest="sha256:spec", features=tuple(RuleTriggered(rule=rule) for rule in reached)),
+        behaviours=CaseBehaviours(
+            spec_digest="sha256:spec", behaviours=tuple(Verdict(rule=rule, verdict="held") for rule in reached)
+        ),
         coverage=coverage,
     )
 

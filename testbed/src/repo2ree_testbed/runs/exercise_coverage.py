@@ -1,31 +1,32 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
+from pathlib import Path
 
-from repo2ree_testbed.artifacts import execution_id, run_dir
-from repo2ree_testbed.exercise_case import CASES, cases, measure, unmeasured
+from repo2ree_testbed.exercise_case import CASES, cases, unmeasured
+from repo2ree_testbed.exercise_measure import measure_all
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="repo2ree_testbed exercise-coverage")
     parser.add_argument("--all", action="store_true", help="measure every case, not only the stale and unmeasured")
-    args = parser.parse_args()
-    unmatched = 0
-    for case in cases(CASES):
+    parser.add_argument("--jobs", type=int, default=1, help="cases replayed side by side, each in its own process")
+    parser.add_argument("--cases", type=Path, default=CASES, help="where the cases are")
+    args = parser.parse_args(argv)
+    chosen = []
+    for case in cases(args.cases):
         reason = unmeasured(case)
         if reason is None and not args.all:
             continue
         print(reason or f"{case.digest}: measured again", flush=True)
-        workdir = run_dir() / "exercises" / execution_id() / "coverage" / case.digest
-        shutil.rmtree(workdir, ignore_errors=True)
-        measured, differences = measure(case, workdir)
-        files = measured.coverage.files if measured.coverage else {}
-        print(f"  {sum(len(file.arcs) for file in files.values())} arcs in {len(files)} files", flush=True)
-        for difference in differences:
+        chosen.append(case)
+    unmatched = 0
+    for done in measure_all(chosen, args.cases, "coverage", args.jobs):
+        print(f"{done.case.digest}: {done.arcs} arcs in {done.files} files", flush=True)
+        for difference in done.differences:
             unmatched += 1
-            print(f"  replay differs from the case: {difference}", file=sys.stderr)
+            print(f"  {done.case.digest}: replay differs from the case: {difference}", file=sys.stderr)
     return 1 if unmatched else 0
 
 

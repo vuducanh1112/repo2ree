@@ -17,8 +17,8 @@ from pydantic import BaseModel, ConfigDict
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.exercise import Exercise
-from repo2ree_testbed.exercise_cli import CliReplay, Ran, Replayed, RunRee, covered_ree, local_ree
-from repo2ree_testbed.exercise_features import Feature, from_report, ordered, outcomes
+from repo2ree_testbed.exercise_behaviours import Behaviour, from_report, ordered, outcomes
+from repo2ree_testbed.exercise_cli import CliReplay, Measuring, Ran, Replayed, RunRee, covered_ree, local_ree
 
 CLI_SCHEMA: Final = ROOT / "contracts/cli/cli.schema.json"
 
@@ -52,7 +52,7 @@ class Problem(_Model):
 
 class Judged(_Model):
     problems: tuple[Problem, ...]
-    features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
     spec_digest: str
 
 
@@ -80,7 +80,7 @@ class Trace(_Model):
     exercise: Exercise
     replayed: tuple[Replayed, ...]
     problems: tuple[Problem, ...]
-    features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
     spec_digest: str
     arcs: Arcs | None = None
 
@@ -97,15 +97,15 @@ class Covered(_Model):
     digest: str
     steps: int
     problems: int
-    features: tuple[Feature, ...]
-    new_features: tuple[Feature, ...]
+    behaviours: tuple[Behaviour, ...]
+    new_behaviours: tuple[Behaviour, ...]
     arcs: int | None = None
     new_arcs: Arcs | None = None
 
 
 class SoFar(_Model):
     exercises: int = 0
-    features: tuple[Feature, ...] = ()
+    behaviours: tuple[Behaviour, ...] = ()
     arcs: Arcs = {}
 
 
@@ -172,7 +172,7 @@ def behaviour(histories: Sequence[Path], output: Path, journals: Path | None = N
         for finding in rule["findings"]
         if finding["verdict"] == "violated"
     ]
-    return Judged(problems=tuple(violated), features=from_report(result), spec_digest=result["spec_digest"])
+    return Judged(problems=tuple(violated), behaviours=from_report(result), spec_digest=result["spec_digest"])
 
 
 def digest(exercise: Exercise) -> str:
@@ -194,9 +194,16 @@ def arcs_executed(data: Path) -> Arcs:
     }
 
 
-def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: RunRee = local_ree) -> Trace:
+def judge(
+    exercise: Exercise,
+    workdir: Path,
+    *,
+    measured: bool = False,
+    run: RunRee = local_ree,
+    measuring: Measuring = covered_ree,
+) -> Trace:
     data = workdir / "coverage"
-    replay = CliReplay(covered_ree(data) if measured else run, workdir)
+    replay = CliReplay(measuring(data) if measured else run, workdir)
     replayed = replay.replay(exercise)
     checked = behaviour(replay.histories(exercise), workdir / "check", replay.journals)
     problems = (*answer_problems(replayed), *checked.problems)
@@ -205,7 +212,7 @@ def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: Run
         exercise=exercise,
         replayed=replayed,
         problems=problems,
-        features=ordered([*checked.features, *outcomes(replayed, schema_command)]),
+        behaviours=ordered([*checked.behaviours, *outcomes(replayed, schema_command)]),
         spec_digest=checked.spec_digest,
         arcs=arcs,
     )
@@ -220,8 +227,8 @@ def keep(workdir: Path, trace: Trace, *, slim: bool = False) -> None:
         digest=trace.digest,
         steps=len(trace.exercise.steps),
         problems=len(trace.problems),
-        features=trace.features,
-        new_features=tuple(feature for feature in trace.features if feature not in set(so_far.features)),
+        behaviours=trace.behaviours,
+        new_behaviours=tuple(behaviour for behaviour in trace.behaviours if behaviour not in set(so_far.behaviours)),
         arcs=trace.arc_count if trace.arcs is not None else None,
         new_arcs=arcs_without(arcs, so_far.arcs) if trace.arcs is not None else None,
     )
@@ -229,7 +236,7 @@ def keep(workdir: Path, trace: Trace, *, slim: bool = False) -> None:
         index.write(covered.model_dump_json() + "\n")
     together = SoFar(
         exercises=so_far.exercises + 1,
-        features=ordered([*so_far.features, *trace.features]),
+        behaviours=ordered([*so_far.behaviours, *trace.behaviours]),
         arcs=arcs_union(so_far.arcs, arcs),
     )
     so_far_file.write_text(together.model_dump_json() + "\n")

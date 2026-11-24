@@ -43,6 +43,9 @@ def spec(*invariants: dict[str, Any]) -> Spec:
             "entities": {"Job": job()},
             "boundaries": {},
             "invariants": list(invariants),
+            "documents": {},
+            "sources": [],
+            "cli_core": {"components": [], "entities": [], "boundaries": [], "rules": []},
         }
     )
 

@@ -1,29 +1,31 @@
 from typing import Any
 
-from repo2ree_repoview.overview.exports import Exercises
-from repo2ree_repoview.overview.pages.exercises import case_slug, page_exercise, page_exercises
+from repo2ree_repoview.overview.exports import Exercises, Move
+from repo2ree_repoview.overview.pages.exercises import behaviour_label, case_slug, page_exercise, page_exercises
 
 SEARCHED = "0dde2001bd088a93"
 WRITTEN = "1f4f416e432bba33"
-EVIDENCE = {"family": "rule", "rule": "evidence"}
-PENDING = {"family": "transition", "entity": "Attempt", "move": "(none) -> pending"}
-IN_REVIEW = {
-    "family": "context",
-    "entity": "Attempt",
-    "move": "(none) -> pending",
-    "ree": "reviewer",
-    "store": "review",
+HELD = {"kind": "verdict", "rule": "evidence", "verdict": "held"}
+SEALED = {
+    "kind": "move",
+    "aggregate": "Ree",
+    "machine": "lifecycle",
+    "part": "lifecycle",
+    "operation": "seal_ree",
+    "source": "draft",
+    "target": "sealed",
 }
-REFUSED = {
-    "family": "outcome",
-    "command": "load-ree-bundle",
-    "ree": "reviewer",
-    "exit": 2,
-    "status": "failed",
-    "category": "validation",
+SOURCE_SET = {
+    "kind": "move",
+    "aggregate": "Ree",
+    "machine": "definition.source",
+    "part": "field",
+    "operation": "acquire_source",
+    "source": "unset",
+    "target": "set",
 }
-HELD = {"family": "rule_outcome", "rule": "evidence", "verdict": "held"}
-UNTAKEN = {"family": "transition", "entity": "Attempt", "move": "pending -> executing"}
+REFUSED = {"kind": "outcome", "command": "load-ree-bundle", "status": "failed", "category": "validation"}
+UNSET = {**SOURCE_SET, "operation": "remove_source", "source": "set", "target": "unset"}
 
 
 def _case(digest: str, origin: dict[str, Any], **parts: Any) -> dict[str, Any]:
@@ -41,8 +43,8 @@ def _case(digest: str, origin: dict[str, Any], **parts: Any) -> dict[str, Any]:
         },
         "origin": origin,
         "expects": {"kind": "conforms"},
-        "features": {"spec_digest": "sha256:spec", "features": [EVIDENCE, PENDING, IN_REVIEW, REFUSED, HELD]},
-        "unique_features": [IN_REVIEW, REFUSED],
+        "behaviours": {"spec_digest": "sha256:spec", "behaviours": [HELD, SEALED, SOURCE_SET, REFUSED]},
+        "unique_behaviours": [SOURCE_SET, REFUSED],
         "coverage": None,
         "replay": None,
         **parts,
@@ -55,7 +57,7 @@ def exercises(**cases: Any) -> Exercises:
         "when": "2026-11-23T12:00:00+00:00",
         "spec_digest": "sha256:spec",
         "problems": [],
-        "features": [EVIDENCE, PENDING, IN_REVIEW, REFUSED, HELD],
+        "behaviours": [HELD, SEALED, SOURCE_SET, REFUSED],
         "steps": [
             {
                 "step": 0,
@@ -97,7 +99,12 @@ def exercises(**cases: Any) -> Exercises:
         "rounds_found": 6,
         "unconfirmed": 1,
         "kept": [
-            {"case": SEARCHED, "kept_for": {"kind": "new_features", "features": [EVIDENCE]}, "steps": 2, "worker": 3},
+            {
+                "case": SEARCHED,
+                "kept_for": {"kind": "new_behaviours", "behaviours": [HELD]},
+                "steps": 2,
+                "worker": 3,
+            },
             {"case": "0123456789abcdef", "kept_for": {"kind": "showed_problems"}, "steps": 4, "worker": 1},
         ],
         "exit": 0,
@@ -106,7 +113,7 @@ def exercises(**cases: Any) -> Exercises:
         {
             "format": "repo2ree-exercises/1",
             "campaigns": [campaign],
-            "declared": [EVIDENCE, PENDING, UNTAKEN],
+            "declared": [HELD, SEALED, UNSET],
             "cases": [
                 _case(
                     SEARCHED,
@@ -114,7 +121,7 @@ def exercises(**cases: Any) -> Exercises:
                         "kind": "searched",
                         "search": "spec-cov",
                         "run": "run-1",
-                        "kept_for": {"kind": "new_features", "features": [EVIDENCE]},
+                        "kept_for": {"kind": "new_behaviours", "behaviours": [HELD]},
                     },
                     replay=replay,
                 ),
@@ -166,21 +173,25 @@ def test_a_case_without_a_replay_draws_the_exercise_as_written() -> None:
     assert "initialize_ree</text>" in page.body
 
 
-def test_the_exercises_page_shows_each_family_covered_of_what_is_declared_and_what_no_case_covers() -> None:
+def test_the_exercises_page_shows_what_is_declared_covered_each_behaviour_in_words_and_what_no_case_covers() -> None:
     body = page_exercises(exercises()).body
 
-    assert "<td>Transitions taken</td><td>1 of 2</td>" in body
-    assert "<td>Rules triggered</td><td>1 of 1</td>" in body
-    assert "<td>Command outcomes</td><td>1</td>" in body
-    assert "<code>ree load-ree-bundle</code> by reviewer: exit 2, failed / validation" in body
-    assert "<code>Attempt (none) -&gt; pending</code> in reviewer, a review" in body
+    assert "2 of the 3 declared behaviours covered, and 2 more that nothing declares." in body
+    assert "<code>ree load-ree-bundle</code> failed (validation)" in body
+    assert "<code>seal_ree</code> takes the REE from draft to sealed" in body
+    assert "<code>acquire_source</code> sets the REE's <code>definition.source</code>" in body
     assert "Declared, covered by no case (1)" in body
-    assert "<code>Attempt pending -&gt; executing</code>" in body
+    assert "<code>remove_source</code> clears the REE's <code>definition.source</code>" in body
 
 
-def test_a_case_page_lists_its_features_by_family_marking_those_only_it_covers() -> None:
+def test_a_case_page_lists_its_behaviours_marking_those_only_it_covers() -> None:
     body = page_exercise(exercises().cases[0], session=True).body
 
-    assert "<h3>Command outcomes (1)</h3>" in body
-    assert "<h3>Transitions by REE and store (1)</h3>" in body
-    assert body.count("only here") == 2
+    assert body.count("<li>") >= 4
+    assert body.count('<span class="ex">only here</span>') == 2
+
+
+def test_a_change_no_operation_made_reads_as_one_outside_ree() -> None:
+    outside = Move.model_validate({**SOURCE_SET, "operation": "(between operations)", "source": "set"})
+
+    assert behaviour_label(outside) == "a change outside ree changes the REE's <code>definition.source</code>"

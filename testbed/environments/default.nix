@@ -6,9 +6,18 @@
 
 let
   machine = import ./machine.nix { inherit pkgs buildRevision; };
+  executor = import ../../nix/ree-cli.nix { inherit pkgs buildRevision; };
 in
 {
   bare = import ./bare { inherit machine; };
+  bare-measured = import ./bare-measured {
+    inherit
+      machine
+      pkgs
+      executor
+      buildRevision
+      ;
+  };
   docker = import ./docker { inherit machine pkgs; };
   podman = import ./podman { inherit machine pkgs; };
   slurm = import ./slurm { inherit machine pkgs; };

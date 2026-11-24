@@ -15,6 +15,7 @@ _SOURCE_ONLY = frozenset({"REPO2REE_CLI_PATH", "WORKBENCH_TOOLS_BUNDLE"})
 
 class EnvironmentName(StrEnum):
     BARE = "bare"
+    BARE_MEASURED = "bare-measured"
     DOCKER = "docker"
     PODMAN = "podman"
     SLURM = "slurm"
@@ -47,6 +48,7 @@ ENVIRONMENTS: dict[EnvironmentName, Environment] = {
     environment.name: environment
     for environment in (
         Environment(EnvironmentName.BARE),
+        Environment(EnvironmentName.BARE_MEASURED),
         Environment(
             EnvironmentName.DOCKER,
             engine="docker",

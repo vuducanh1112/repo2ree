@@ -34,6 +34,7 @@ from repo2ree_repoview.overview.pages.receipts import page_receipts
 from repo2ree_repoview.overview.pages.recipes import page_recipes
 from repo2ree_repoview.overview.pages.showcase_ree import authoring_test, page_showcase_ree, review_test
 from repo2ree_repoview.overview.pages.specification import page_specification
+from repo2ree_repoview.overview.pages.specification_core import SPECIFICATION, page_specification_core
 from repo2ree_repoview.overview.pages.vocabulary import page_vocabulary
 from repo2ree_repoview.overview.pages.vocabulary_graph import page_vocabulary_graph
 from repo2ree_repoview.overview.pages.zones import page_zones
@@ -58,7 +59,7 @@ from repo2ree_repoview.overview.receipt import (
 from repo2ree_repoview.overview.showcase_ree import SealedRee, preserved_ree
 from repo2ree_repoview.overview.showcase_review import FinalReview, preserved_review
 from repo2ree_repoview.overview.timings import LOGS, read_invocations, summarize
-from repo2ree_repoview.repository import ROOT, Head
+from repo2ree_repoview.repository import ROOT, Head, file_history
 from repo2ree_repoview.stamp import read_recorded_stamp
 
 STYLE = (Path(__file__).with_name("overview.css")).read_text()
@@ -215,6 +216,10 @@ def build(output: Path | None, exports: Path = EXPORTS) -> Path:
         (bundle.root / f"{page.slug}.html").write_text(frame(page, everything, now), encoding="utf-8")
     subpages = [
         *((page, SHOWCASES) for page in showcase_ree_pages(showcases, showcase_records)),
+        (
+            page_specification_core(spec, {source.path: file_history(source.path) for source in spec.sources}),
+            SPECIFICATION,
+        ),
         (page_cli(cli), INTERFACES),
         (page_api(api), INTERFACES),
         (page_environment(environment), CONTRACTS),

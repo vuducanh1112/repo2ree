@@ -25,8 +25,9 @@ from repo2ree_repoview.overview.exports import (
     Spec,
 )
 from repo2ree_repoview.overview.figures import inlined
-from repo2ree_repoview.overview.html import Page, esc, rule_link, section, table
+from repo2ree_repoview.overview.html import Page, esc, link_card, rule_link, section, table
 from repo2ree_repoview.overview.pages.aggregate import without_machine
+from repo2ree_repoview.overview.pages.specification_core import SPEC_CORE_PAGE, core_teaser
 from repo2ree_repoview.overview.spec_diagrams import SYSTEM, machine_drawing
 
 
@@ -182,6 +183,7 @@ def listed_values(spec: Spec) -> str:
     return "".join(out)
 
 
+WITHOUT_SERVICES = "The specification without the API and workbench"
 SETTLES: dict[bool | str, str] = {
     True: "must be terminal when its owner's journal closes",
     "final": "must be terminal when its owner's journal closes for good",
@@ -245,6 +247,7 @@ def page_specification(spec: Spec, bundle: Bundle) -> Page:
         for pattern, rules in sorted(patterns.items())
     )
     body = (
+        f'<div class="cards">{link_card(SPEC_CORE_PAGE, "CLI ↔ Core", core_teaser(spec), WITHOUT_SERVICES)}</div>'
         '<h3>System map</h3><div class="diagram svgwrap">' + inlined(bundle, SYSTEM) + "</div><h3>State machines</h3>"
         '<p class="lede">Where an instance starts, which edges it may take, and when it must have settled. '
         "Every other edge is a violation; nothing may leave a terminal state.</p>"

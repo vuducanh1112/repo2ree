@@ -56,12 +56,13 @@ class Machine:
         stdin: bytes | None = None,
         variables: dict[str, str] | None = None,
         inside: bool = True,
+        program: str = "ree",
     ) -> Done:
         if inside:
-            command = machine_exec(ENVIRONMENTS[self.environment], self.container, ["ree", *words], variables, root)
+            command = machine_exec(ENVIRONMENTS[self.environment], self.container, [program, *words], variables, root)
         else:
             command = machine_exec(
-                ENVIRONMENTS[self.environment], self.container, ["ree", "-C", str(root), *words], variables
+                ENVIRONMENTS[self.environment], self.container, [program, "-C", str(root), *words], variables
             )
         printed: list[Printed] = []
         arrived = threading.Lock()

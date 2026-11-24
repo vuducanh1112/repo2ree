@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from repo2ree_testbed.artifacts import execution_id, run_dir
 from repo2ree_testbed.exercise import Exercise
+from repo2ree_testbed.exercise_behaviours import Behaviour, ordered
 from repo2ree_testbed.exercise_case import (
     CASES,
     Campaign,
@@ -24,20 +25,19 @@ from repo2ree_testbed.exercise_case import (
     KeptCase,
     KeptFor,
     NewArcs,
-    NewFeatures,
+    NewBehaviours,
     SearchName,
     case_of,
     cases,
     checked_out,
     coverage_of,
     covered,
-    measure,
     searched,
     unmeasured,
     write,
     write_campaign,
 )
-from repo2ree_testbed.exercise_features import Feature, ordered
+from repo2ree_testbed.exercise_measure import machine_for, measure_all, on_machine
 from repo2ree_testbed.exercise_strategy import exercises
 from repo2ree_testbed.exercise_verdict import Arcs, Trace, arc_count, arcs_union, arcs_without, digest, judge, keep
 
@@ -95,7 +95,7 @@ class Search:
     least: int
     worker: int = 0
     judge: Judge = replay
-    features: frozenset[Feature] = frozenset()
+    behaviours: frozenset[Behaviour] = frozenset()
     arcs: Arcs = field(default_factory=dict)
     events: list[Event] = field(default_factory=list)
 
@@ -109,7 +109,7 @@ class Search:
 
     def refresh(self) -> None:
         found = cases(self.directory)
-        self.features = self.features | {feature for case in found for feature in case.features.features}
+        self.behaviours = self.behaviours | {behaviour for case in found for behaviour in case.behaviours.behaviours}
         if self.measured:
             self.arcs = arcs_union(self.arcs, covered(found))
 
@@ -127,15 +127,15 @@ class Search:
             if arc_count(beyond) >= self.least:
                 return NewArcs(files={path: len(pairs) for path, pairs in beyond.items()})
             return None
-        fresh = ordered(set(trace.features) - self.features)
-        return NewFeatures(features=fresh) if len(fresh) >= self.least else None
+        fresh = ordered(set(trace.behaviours) - self.behaviours)
+        return NewBehaviours(behaviours=fresh) if len(fresh) >= self.least else None
 
     def _steer(self, trace: Trace) -> None:
         if self.measured:
             target(arc_count(arcs_without(trace.arcs or {}, self.arcs)), label="arcs beyond the cases")
         else:
-            target(len(set(trace.features) - self.features), label="features beyond the cases")
-            target(len(trace.features), label="features covered")
+            target(len(set(trace.behaviours) - self.behaviours), label="behaviours beyond the cases")
+            target(len(trace.behaviours), label="behaviours covered")
 
     def round(self) -> _Found | None:
         @settings(
@@ -179,21 +179,20 @@ class Search:
                 return None
             coverage = coverage_of(again.arcs) if again.arcs is not None else None
             path = write(case_of(again, searched(self.search, execution_id(), kept_for), coverage), self.directory)
-        self.features = self.features | set(again.features)
+        self.behaviours = self.behaviours | set(again.behaviours)
         self.arcs = arcs_union(self.arcs, again.arcs or {})
         self.events.append(Kept(worker=self.worker, case=path.stem, steps=len(exercise.steps), kept_for=kept_for))
         return path
 
 
-def measure_stale(directory: Path) -> None:
+def measure_stale(directory: Path, jobs: int) -> None:
+    stale = []
     for case in cases(directory):
-        reason = unmeasured(case)
-        if reason is None:
-            continue
-        print(f">> {reason}; measuring it", flush=True)
-        workdir = run_dir() / "exercises" / execution_id() / "baseline" / case.digest
-        shutil.rmtree(workdir, ignore_errors=True)
-        measure(case, workdir, directory)
+        if (reason := unmeasured(case)) is not None:
+            print(f">> {reason}; measuring it", flush=True)
+            stale.append(case)
+    for done in measure_all(stale, directory, "baseline", jobs):
+        print(f">> {done.case.digest}: measured, {done.arcs} arcs", flush=True)
 
 
 def _log() -> Path:
@@ -312,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
     code = 1
     try:
         if args.search == "branch-cov":
-            measure_stale(args.cases)
+            measure_stale(args.cases, args.workers)
         code = _workers(args, until) if args.workers > 1 else _search(args, until)
     finally:
         write_campaign(summed(campaign, _events(), code), args.cases)
@@ -320,15 +319,17 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _search(args: argparse.Namespace, until: float | None) -> int:
-    search = Search(
-        search=args.search,
-        directory=args.cases,
-        examples=args.examples,
-        steps=args.steps,
-        least=args.least,
-        worker=args.worker,
-    )
-    return run(search, until=until, keep_at_most=args.keep)
+    with machine_for(f"search-{args.worker}", run_dir() / "exercises" / execution_id()) as machine:
+        search = Search(
+            search=args.search,
+            directory=args.cases,
+            examples=args.examples,
+            steps=args.steps,
+            least=args.least,
+            worker=args.worker,
+            judge=on_machine(machine),
+        )
+        return run(search, until=until, keep_at_most=args.keep)
 
 
 if __name__ == "__main__":
