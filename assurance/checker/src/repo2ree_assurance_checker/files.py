@@ -5,7 +5,9 @@ import subprocess
 import tomllib
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from repo2ree_assurance_checker.spec import TREE_FORMAT, Spec, operation_problems, parse_spec
 
@@ -49,7 +51,53 @@ def load_spec(directory: Path = SPEC_DIR) -> Spec:
     return spec
 
 
-def load_spec_at(revision: str, executable: str = "git") -> Spec:
+type SourceKind = Literal["vocabulary", "entities", "boundaries", "aggregates", "documents", "invariants", "components"]
+
+
+SOURCE_KIND = TypeAdapter[SourceKind](SourceKind)
+
+
+class Source(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    path: str
+    kind: SourceKind
+    names: tuple[str, ...]
+
+
+def _names(kind: SourceKind, document: dict[str, Any]) -> tuple[str, ...]:
+    match kind:
+        case "invariants":
+            return tuple(str(invariant["id"]) for invariant in document.get("invariant", []))
+        case "components":
+            return tuple(str(component["name"]) for component in document.get("component", []))
+        case "documents":
+            return (str(document.get("document") or document["aggregate"]),)
+        case _:
+            return (str(document["name"]),)
+
+
+def sources(documents: dict[str, dict[str, Any]], relative: str) -> tuple[Source, ...]:
+    found = []
+    for path, document in sorted(documents.items()):
+        try:
+            kind = SOURCE_KIND.validate_python(path.removeprefix(f"{relative}/").split("/")[0].removesuffix(".toml"))
+        except ValidationError as error:
+            raise ValueError(f"{path}: no part of the specification") from error
+        found.append(Source(path=path, kind=kind, names=_names(kind, document)))
+    return tuple(found)
+
+
+def spec_sources(directory: Path = SPEC_DIR) -> tuple[Source, ...]:
+    relative = directory.resolve().relative_to(ROOT).as_posix()
+    documents = {
+        path.resolve().relative_to(ROOT).as_posix(): tomllib.loads(path.read_text())
+        for path in sorted(directory.rglob("*.toml"))
+    }
+    return sources(documents, relative)
+
+
+def _documents_at(revision: str, executable: str) -> tuple[str, dict[str, dict[str, Any]]]:
     def run(*args: str) -> str:
         return subprocess.run([executable, "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout
 
@@ -57,7 +105,21 @@ def load_spec_at(revision: str, executable: str = "git") -> Spec:
         relative = directory.relative_to(ROOT).as_posix()
         if paths := run("ls-tree", "-r", "--name-only", revision, "--", relative).split():
             break
-    documents = {path: tomllib.loads(run("show", f"{revision}:{path}")) for path in paths if path.endswith(".toml")}
+    return relative, {
+        path: tomllib.loads(run("show", f"{revision}:{path}")) for path in paths if path.endswith(".toml")
+    }
+
+
+def spec_sources_at(revision: str, executable: str = "git") -> tuple[Source, ...]:
+    relative, documents = _documents_at(revision, executable)
+    return sources(documents, relative)
+
+
+def load_spec_at(revision: str, executable: str = "git") -> Spec:
+    def run(*args: str) -> str:
+        return subprocess.run([executable, "-C", str(ROOT), *args], capture_output=True, text=True, check=True).stdout
+
+    relative, documents = _documents_at(revision, executable)
 
     def under(subdirectory: str) -> list[dict[str, Any]]:
         prefix = f"{relative}/{subdirectory}/"

@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from repo2ree_assurance_checker.files import Source
+from repo2ree_assurance_checker.scope import cli_core
 from repo2ree_assurance_checker.spec import (
     CitedEntity,
     CitedMessage,
@@ -46,7 +48,7 @@ def _tagged(model: BaseModel) -> dict[str, Any]:
     return {"kind": KINDS[type(model)], **_dump(model)}
 
 
-def export_spec(spec: Spec) -> dict[str, Any]:
+def export_spec(spec: Spec, sources: tuple[Source, ...]) -> dict[str, Any]:
     entities = {
         name: _dump(entity) | {"edges": {state: sorted(targets) for state, targets in entity.edges.items()}}
         for name, entity in spec.entities.items()
@@ -68,6 +70,14 @@ def export_spec(spec: Spec) -> dict[str, Any]:
         name: _dump(aggregate) | {"machines": [_dump(machine) for machine in aggregate.machines]}
         for name, aggregate in spec.aggregates.items()
     }
+    documents = {
+        name: {
+            "aggregate": rules.aggregate,
+            "document": rules.document,
+            "rules": [_dump(rule) for rule in rules.rules],
+        }
+        for name, rules in spec.documents.items()
+    }
     return {
         "format": FORMAT,
         "digest": spec.digest,
@@ -77,4 +87,7 @@ def export_spec(spec: Spec) -> dict[str, Any]:
         "boundaries": boundaries,
         "invariants": invariants,
         "aggregates": aggregates,
+        "documents": documents,
+        "sources": [_dump(source) for source in sources],
+        "cli_core": _dump(cli_core(spec)),
     }

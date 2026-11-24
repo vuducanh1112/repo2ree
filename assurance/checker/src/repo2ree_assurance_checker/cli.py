@@ -9,7 +9,7 @@ from pathlib import Path
 from repo2ree_assurance_checker.contract import journal_problems
 from repo2ree_assurance_checker.dossier import load_dossier
 from repo2ree_assurance_checker.export import export_spec
-from repo2ree_assurance_checker.files import SPEC_DIR, load_spec, load_spec_at
+from repo2ree_assurance_checker.files import SPEC_DIR, load_spec, load_spec_at, spec_sources, spec_sources_at
 from repo2ree_assurance_checker.html import render_html
 from repo2ree_assurance_checker.report import render_json, render_markdown
 from repo2ree_assurance_checker.sources import combine, load_evidence
@@ -71,8 +71,11 @@ def describe(spec: Spec, _args: argparse.Namespace) -> int:
 
 
 def export(spec: Spec, args: argparse.Namespace) -> int:
-    chosen = spec if args.at is None else load_spec_at(args.at, args.git_executable)
-    _write(args.output, json.dumps(export_spec(chosen), indent=2) + "\n")
+    if args.at is None:
+        chosen, found = spec, spec_sources(args.spec)
+    else:
+        chosen, found = load_spec_at(args.at, args.git_executable), spec_sources_at(args.at, args.git_executable)
+    _write(args.output, json.dumps(export_spec(chosen, found), indent=2) + "\n")
     return 0
 
 
