@@ -18,6 +18,7 @@ from repo2ree_assurance_checker.check.results import (
     Judgement,
     MoveCount,
     RuleResult,
+    edge,
     finding,
 )
 from repo2ree_assurance_checker.evidence import Event, Evidence
@@ -110,7 +111,19 @@ def replay(spec: Spec, evidence: Evidence) -> tuple[Model, list[RuleResult], Cov
         else rule
         for rule in rules
     ]
-    return model, rules, Coverage(transitions=transitions, messages=messages)
+    partitions = {name: by_partition(instances[name], transitions[name]) for name in sorted(spec.entities)}
+    return model, rules, Coverage(transitions=transitions, messages=messages, partitions=partitions)
+
+
+def by_partition(instances: dict[str, Instance], declared: dict[str, int]) -> dict[str, dict[str, int]]:
+    counts: dict[str, dict[str, int]] = {}
+    for instance in instances.values():
+        for reached in instance.reached:
+            move = edge(reached.event.source_state, reached.event.target_state or "")
+            if move in declared:
+                partition = counts.setdefault(reached.event.partition or "", {})
+                partition[move] = partition.get(move, 0) + 1
+    return {partition: dict(sorted(moves.items())) for partition, moves in sorted(counts.items())}
 
 
 def check(spec: Spec, evidence: Evidence) -> CheckResult:

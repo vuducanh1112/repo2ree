@@ -1273,3 +1273,23 @@ def test_a_refused_bundle_carries_nothing() -> None:
     recorder.bundle("b1")
 
     assert verdicts(recorder, environment(), git(REE))[BUNDLE] == "not_triggered"
+
+
+def test_the_transitions_covered_are_also_counted_in_each_partition_they_were_recorded_in() -> None:
+    recorder = Recorder()
+    complete_command(recorder)
+    complete_command(recorder, "run-2", "a2")
+    events = tuple(
+        event.model_copy(update={"partition": "elsewhere"})
+        if event.subject == "Attempt" and event.key == "a2"
+        else event
+        for event in recorder.events
+    )
+    result = check(SPEC, Evidence(sources=(journal(), bench(), git(REE)), events=events))
+
+    covered = {move: count for move, count in result.coverage.transitions["Attempt"].items() if count}
+    assert result.coverage.partitions["Attempt"] == {
+        "elsewhere": dict.fromkeys(covered, 1),
+        REE: dict.fromkeys(covered, 1),
+    }
+    assert all(count == 2 for count in covered.values())

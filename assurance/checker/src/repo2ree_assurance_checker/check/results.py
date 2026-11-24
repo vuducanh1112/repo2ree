@@ -45,6 +45,7 @@ class Extra(EvidenceModel):
 class Coverage(EvidenceModel):
     transitions: dict[str, dict[str, int]]
     messages: dict[str, dict[str, int]]
+    partitions: dict[str, dict[str, dict[str, int]]]
 
 
 class MoveCount(EvidenceModel):
