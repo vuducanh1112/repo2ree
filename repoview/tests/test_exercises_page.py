@@ -195,3 +195,19 @@ def test_a_change_no_operation_made_reads_as_one_outside_ree() -> None:
     outside = Move.model_validate({**SOURCE_SET, "operation": "(between operations)", "source": "set"})
 
     assert behaviour_label(outside) == "a change outside ree changes the REE's <code>definition.source</code>"
+
+
+def test_each_case_shows_the_commit_it_was_measured_at_and_whether_what_it_executes_changed_since() -> None:
+    def coverage(stale: bool) -> dict[str, Any]:
+        files = [{"path": "core/src/a.py", "arcs": 3, "unique": 1, "stale": stale}]
+        return {"commit": "19c4b63931c2abcd", "dirty": False, "files": files}
+
+    found = exercises().model_dump(by_alias=True)
+    found["cases"][0]["coverage"] = coverage(stale=False)
+    found["cases"][1]["coverage"] = coverage(stale=True)
+    body = page_exercises(Exercises.model_validate(found)).body
+
+    assert "<th>Measured at</th>" in body
+    assert body.count("<code>19c4b639</code>") == 2
+    assert ">current</span>" in body
+    assert 'title="1 file it executes changed since: core/src/a.py">stale</span>' in body

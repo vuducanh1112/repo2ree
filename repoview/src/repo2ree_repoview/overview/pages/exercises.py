@@ -223,8 +223,19 @@ def _arcs(case: ExerciseCase) -> str:
     if case.coverage is None:
         return "&ndash;"
     files = case.coverage.files
-    stale = ' <span class="ex">stale</span>' if any(found.stale for found in files) else ""
-    return f"{sum(found.arcs for found in files)} (+{sum(found.unique for found in files)}){stale}"
+    return f"{sum(found.arcs for found in files)} (+{sum(found.unique for found in files)})"
+
+
+def measured(case: ExerciseCase) -> str:
+    coverage = case.coverage
+    if coverage is None:
+        return '<span class="muted">not measured</span>'
+    commit = f"<code>{esc(coverage.commit[:8])}</code>" + (' <span class="ex">dirty</span>' if coverage.dirty else "")
+    changed = [found.path for found in coverage.files if found.stale]
+    if not changed:
+        return f'{commit} <span class="ok" title="no file it executes changed since">current</span>'
+    tip = f"{len(changed)} file{'s' if len(changed) != 1 else ''} it executes changed since: " + ", ".join(changed)
+    return f'{commit} <span class="ex" title="{esc(tip)}">stale</span>'
 
 
 def cases_table(found: Sequence[ExerciseCase], recorded: frozenset[str]) -> str:
@@ -239,11 +250,11 @@ def cases_table(found: Sequence[ExerciseCase], recorded: frozenset[str]) -> str:
             expects(case),
             f"{len(case.behaviours.behaviours)} (+{len(case.unique_behaviours)})",
             _arcs(case),
-            _when(case.replay.when) if case.replay else "&ndash;",
+            measured(case),
         ]
         for case in found
     ]
-    headers = ["Case", "Origin", "REEs", "Steps", "Drifts", "Faults", "Expects", "Behaviours", "Arcs", "Replayed"]
+    headers = ["Case", "Origin", "REEs", "Steps", "Drifts", "Faults", "Expects", "Behaviours", "Arcs", "Measured at"]
     return filter_box("cases", "filter") + f'<div class="table-scroll">{table(headers, rows, "cases")}</div>'
 
 
