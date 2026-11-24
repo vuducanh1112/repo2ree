@@ -25,6 +25,7 @@ from repo2ree_testbed.exercise import (
 )
 from repo2ree_testbed.exercise_case import CASES, ExerciseCase
 from repo2ree_testbed.exercise_cli import HISTORY_REF, CliReplay, _git, _rewrite, local_ree
+from repo2ree_testbed.exercise_features import RuleTriggered
 from repo2ree_testbed.exercise_verdict import Trace, judge
 
 RULE = "drift-is-found-by-the-next-attempt"
@@ -50,7 +51,7 @@ def answered(trace: Trace, step: int) -> dict[str, JsonValue]:
 
 
 def found(trace: Trace) -> None:
-    assert RULE in trace.reached
+    assert RuleTriggered(rule=RULE) in trace.features
     assert [problem for problem in trace.problems if problem.rule == RULE] == []
 
 

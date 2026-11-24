@@ -46,26 +46,83 @@
   "expects": {
     "kind": "conforms"
   },
-  "reached": {
+  "features": {
     "spec_digest": "sha256:12e57e4aaad99980537a635ac7860a3fad227c9e24b87da39a7fe9c3e0cb48d4",
-    "items": [
-      "Attempt (none) -> pending",
-      "Attempt completed -> captured",
-      "Attempt executing -> completed",
-      "Attempt pending -> executing",
-      "Drift (none) -> arisen",
-      "Drift arisen -> undone",
-      "aggregate:Ree",
-      "boundary:run_command",
-      "document:scripts-are-their-digests",
-      "document:standings-are-the-receipts-basis",
-      "drift-is-found-by-the-next-attempt",
-      "evidence",
-      "machine:Attempt",
-      "machine:Drift",
-      "machine:Receipt",
-      "machine:Ree",
-      "ree-changes-through-operations"
+    "features": [
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "(none) -> pending"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "completed -> captured"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "executing -> completed"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "pending -> executing"
+      },
+      {
+        "family": "transition",
+        "entity": "Drift",
+        "move": "(none) -> arisen"
+      },
+      {
+        "family": "transition",
+        "entity": "Drift",
+        "move": "arisen -> undone"
+      },
+      {
+        "family": "rule",
+        "rule": "aggregate:Ree"
+      },
+      {
+        "family": "rule",
+        "rule": "boundary:run_command"
+      },
+      {
+        "family": "rule",
+        "rule": "document:scripts-are-their-digests"
+      },
+      {
+        "family": "rule",
+        "rule": "document:standings-are-the-receipts-basis"
+      },
+      {
+        "family": "rule",
+        "rule": "drift-is-found-by-the-next-attempt"
+      },
+      {
+        "family": "rule",
+        "rule": "evidence"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Attempt"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Drift"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Receipt"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Ree"
+      },
+      {
+        "family": "rule",
+        "rule": "ree-changes-through-operations"
+      }
     ]
   }
 }

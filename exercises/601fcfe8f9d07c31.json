@@ -162,7 +162,8 @@
         "signature": "valid"
       }
     ],
-    "faults": []
+    "faults": [],
+    "drifts": []
   },
   "origin": {
     "kind": "hand_written"
@@ -170,29 +171,93 @@
   "expects": {
     "kind": "conforms"
   },
-  "reached": {
+  "features": {
     "spec_digest": "sha256:4a6ea49ef042ee7e06b42666bc33b8ce27f1fcde4ebbafd63af20e3a703d90b0",
-    "items": [
-      "Attempt (none) -> pending",
-      "Attempt completed -> captured",
-      "Attempt executing -> completed",
-      "Attempt pending -> executing",
-      "aggregate:Ree",
-      "document:carried-evidence-is-its-digests",
-      "document:contents-are-the-bundle",
-      "document:scripts-are-their-digests",
-      "document:sealed-results-are-what-ran",
-      "document:signatures-are-the-seal",
-      "document:standings-are-the-receipts-basis",
-      "document:the-seal-is-the-subject",
-      "evidence",
-      "machine:Attempt",
-      "machine:Receipt",
-      "machine:Ree",
-      "receipts-come-from-their-producers",
-      "ree-changes-through-operations",
-      "sealed-rees-are-only-signed",
-      "sealed-without-stale-evidence"
+    "features": [
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "(none) -> pending"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "completed -> captured"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "executing -> completed"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "pending -> executing"
+      },
+      {
+        "family": "rule",
+        "rule": "aggregate:Ree"
+      },
+      {
+        "family": "rule",
+        "rule": "document:carried-evidence-is-its-digests"
+      },
+      {
+        "family": "rule",
+        "rule": "document:contents-are-the-bundle"
+      },
+      {
+        "family": "rule",
+        "rule": "document:scripts-are-their-digests"
+      },
+      {
+        "family": "rule",
+        "rule": "document:sealed-results-are-what-ran"
+      },
+      {
+        "family": "rule",
+        "rule": "document:signatures-are-the-seal"
+      },
+      {
+        "family": "rule",
+        "rule": "document:standings-are-the-receipts-basis"
+      },
+      {
+        "family": "rule",
+        "rule": "document:the-seal-is-the-subject"
+      },
+      {
+        "family": "rule",
+        "rule": "evidence"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Attempt"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Receipt"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Ree"
+      },
+      {
+        "family": "rule",
+        "rule": "receipts-come-from-their-producers"
+      },
+      {
+        "family": "rule",
+        "rule": "ree-changes-through-operations"
+      },
+      {
+        "family": "rule",
+        "rule": "sealed-rees-are-only-signed"
+      },
+      {
+        "family": "rule",
+        "rule": "sealed-without-stale-evidence"
+      }
     ]
   }
 }

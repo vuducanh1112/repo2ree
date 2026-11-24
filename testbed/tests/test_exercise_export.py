@@ -8,10 +8,12 @@ from repo2ree_testbed.api_models import DefinitionPatch
 from repo2ree_testbed.exercise import Exercise, InitializeRee, PatchReeDefinition
 from repo2ree_testbed.exercise_case import HandWritten, case_of, cases, write
 from repo2ree_testbed.exercise_cli import Ran, Replayed
+from repo2ree_testbed.exercise_features import RuleTriggered
 from repo2ree_testbed.exercise_verdict import Trace
 from repo2ree_testbed.runs.exercise_export import exported
 
 AUTHOR = "author"
+EVIDENCE = RuleTriggered(rule="evidence")
 IDENTITY = ("-c", "user.name=ree", "-c", "user.email=ree@repo2ree.invalid")
 
 
@@ -37,7 +39,7 @@ def test_a_case_is_exported_with_its_newest_replay_and_its_session(tmp_path: Pat
             PatchReeDefinition(ree=AUTHOR, patch=DefinitionPatch(name="second")),
         ),
     )
-    trace = Trace(exercise=exercise, replayed=(), problems=(), reached=("evidence",), spec_digest="sha256:spec")
+    trace = Trace(exercise=exercise, replayed=(), problems=(), features=(EVIDENCE,), spec_digest="sha256:spec")
     directory = tmp_path / "cases"
     write(case_of(trace, HandWritten()), directory)
     [case] = cases(directory)
@@ -63,12 +65,12 @@ def test_a_case_is_exported_with_its_newest_replay_and_its_session(tmp_path: Pat
     page = Path(found.replay.session).read_text()
     assert "ree patch-ree-definition" in page
     assert second[:10] in page
-    assert found.unique_reached == ("evidence",)
+    assert found.unique_features == (EVIDENCE,)
 
 
 def test_a_case_with_no_replay_kept_is_exported_without_one(tmp_path: Path) -> None:
     exercise = Exercise(rees=(AUTHOR,), steps=(InitializeRee(ree=AUTHOR, name="first"),))
-    trace = Trace(exercise=exercise, replayed=(), problems=(), reached=(), spec_digest="sha256:spec")
+    trace = Trace(exercise=exercise, replayed=(), problems=(), features=(), spec_digest="sha256:spec")
 
     [found] = exported([case_of(trace, HandWritten())], [], tmp_path / "runs").cases
 

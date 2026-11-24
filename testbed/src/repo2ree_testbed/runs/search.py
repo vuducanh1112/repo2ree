@@ -24,21 +24,20 @@ from repo2ree_testbed.exercise_case import (
     KeptCase,
     KeptFor,
     NewArcs,
-    NewReached,
+    NewFeatures,
     SearchName,
-    ShowedProblems,
     case_of,
     cases,
     checked_out,
     coverage_of,
     covered,
-    known,
     measure,
     searched,
     unmeasured,
     write,
     write_campaign,
 )
+from repo2ree_testbed.exercise_features import Feature, ordered
 from repo2ree_testbed.exercise_strategy import exercises
 from repo2ree_testbed.exercise_verdict import Arcs, Trace, arc_count, arcs_union, arcs_without, digest, judge, keep
 
@@ -96,8 +95,7 @@ class Search:
     least: int
     worker: int = 0
     judge: Judge = replay
-    known: frozenset[tuple[str, str, str]] = frozenset()
-    reached: frozenset[str] = frozenset()
+    features: frozenset[Feature] = frozenset()
     arcs: Arcs = field(default_factory=dict)
     events: list[Event] = field(default_factory=list)
 
@@ -111,8 +109,7 @@ class Search:
 
     def refresh(self) -> None:
         found = cases(self.directory)
-        self.known = known(self.directory)
-        self.reached = self.reached | {item for case in found for item in case.reached.items}
+        self.features = self.features | {feature for case in found for feature in case.features.features}
         if self.measured:
             self.arcs = arcs_union(self.arcs, covered(found))
 
@@ -125,24 +122,20 @@ class Search:
         return trace
 
     def worth(self, trace: Trace) -> KeptFor | None:
-        if any(problem.known_as not in self.known for problem in trace.problems):
-            return ShowedProblems()
-        if trace.problems:
-            return None
         if self.measured:
             beyond = arcs_without(trace.arcs or {}, self.arcs)
             if arc_count(beyond) >= self.least:
                 return NewArcs(files={path: len(pairs) for path, pairs in beyond.items()})
             return None
-        fresh = tuple(sorted(set(trace.reached) - self.reached))
-        return NewReached(items=fresh) if len(fresh) >= self.least else None
+        fresh = ordered(set(trace.features) - self.features)
+        return NewFeatures(features=fresh) if len(fresh) >= self.least else None
 
     def _steer(self, trace: Trace) -> None:
         if self.measured:
             target(arc_count(arcs_without(trace.arcs or {}, self.arcs)), label="arcs beyond the cases")
         else:
-            target(len(set(trace.reached) - self.reached), label="rules and transitions beyond the cases")
-            target(len(trace.reached), label="rules and transitions reached")
+            target(len(set(trace.features) - self.features), label="features beyond the cases")
+            target(len(trace.features), label="features covered")
 
     def round(self) -> _Found | None:
         @settings(
@@ -186,8 +179,7 @@ class Search:
                 return None
             coverage = coverage_of(again.arcs) if again.arcs is not None else None
             path = write(case_of(again, searched(self.search, execution_id(), kept_for), coverage), self.directory)
-        self.known = self.known | {problem.known_as for problem in again.problems}
-        self.reached = self.reached | set(again.reached)
+        self.features = self.features | set(again.features)
         self.arcs = arcs_union(self.arcs, again.arcs or {})
         self.events.append(Kept(worker=self.worker, case=path.stem, steps=len(exercise.steps), kept_for=kept_for))
         return path
@@ -258,7 +250,7 @@ def run(search: Search, *, until: float | None, keep_at_most: int) -> int:
                 _record(event)
             if path is not None:
                 kept += 1
-                problems = problems or isinstance(found.kept_for, ShowedProblems)
+                problems = problems or bool(found.trace.problems)
                 print(f">> worker {search.worker} kept {path} for {found.kept_for.kind}", flush=True)
         if until is None or time.time() >= until:
             break

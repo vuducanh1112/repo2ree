@@ -471,9 +471,51 @@ class ShowcaseRuns(Export):
         return tuple(tier.run for tier in self.tiers if tier.run)
 
 
+type FeatureFamily = Literal["rule", "transition", "context", "outcome", "rule_outcome"]
+
+
+class RuleTriggered(Document):
+    family: Literal["rule"]
+    rule: str
+
+
+class TransitionTaken(Document):
+    family: Literal["transition"]
+    entity: str
+    move: str
+
+
+class InContext(Document):
+    family: Literal["context"]
+    entity: str
+    move: str
+    ree: str | None = None
+    store: Literal["ree", "review"]
+
+
+class Outcome(Document):
+    family: Literal["outcome"]
+    command: str
+    ree: str
+    exit: int
+    status: str | None = None
+    category: str | None = None
+
+
+class RuleOutcome(Document):
+    family: Literal["rule_outcome"]
+    rule: str
+    verdict: Literal["held", "violated", "inconclusive"]
+
+
+type Feature = Annotated[
+    RuleTriggered | TransitionTaken | InContext | Outcome | RuleOutcome, Field(discriminator="family")
+]
+
+
 class KeptFor(Document):
-    kind: Literal["showed_problems", "new_arcs", "new_reached"]
-    items: tuple[str, ...] = ()
+    kind: Literal["showed_problems", "new_arcs", "new_features"]
+    features: tuple[Feature, ...] = ()
     files: dict[str, int] = Field(default_factory=dict)
 
 
@@ -497,9 +539,9 @@ class CaseExpectation(Document):
     problems: tuple[ExerciseProblem, ...] = ()
 
 
-class CaseReached(Document):
+class CaseFeatures(Document):
     spec_digest: str
-    items: tuple[str, ...]
+    features: tuple[Feature, ...]
 
 
 class CampaignSettings(Document):
@@ -552,7 +594,7 @@ class CaseReplay(Document):
     when: str
     spec_digest: str
     problems: tuple[ExerciseProblem, ...]
-    reached: tuple[str, ...]
+    features: tuple[Feature, ...]
     steps: tuple[StepRun, ...]
     session: str
 
@@ -575,8 +617,8 @@ class ExerciseCase(Document):
     exercise: dict[str, Any]
     origin: CaseOrigin
     expects: CaseExpectation
-    reached: CaseReached
-    unique_reached: tuple[str, ...]
+    features: CaseFeatures
+    unique_features: tuple[Feature, ...]
     coverage: CaseCoverage | None
     replay: CaseReplay | None
 
@@ -601,4 +643,5 @@ class Exercises(Export):
     FORMAT = "repo2ree-exercises/1"
 
     campaigns: tuple[Campaign, ...]
+    declared: tuple[Feature, ...]
     cases: tuple[ExerciseCase, ...]

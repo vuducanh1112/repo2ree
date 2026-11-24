@@ -1,10 +1,11 @@
 import argparse
+import json
 from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, JsonValue
+from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
 
 from repo2ree_testbed.artifacts import ROOT, run_dir
 from repo2ree_testbed.cli_session import CliCommand
@@ -12,13 +13,14 @@ from repo2ree_testbed.exercise import Exercise
 from repo2ree_testbed.exercise_case import (
     CASES,
     Campaign,
+    CaseFeatures,
     ExerciseCase,
     Expectation,
     Origin,
-    Reached,
     campaigns,
     cases,
 )
+from repo2ree_testbed.exercise_features import Feature, declared
 from repo2ree_testbed.exercise_verdict import Arcs, Problem, Trace, arcs_union, arcs_without
 from repo2ree_testbed.runs import session
 
@@ -45,7 +47,7 @@ class Replay(_Model):
     when: datetime
     spec_digest: str
     problems: tuple[Problem, ...]
-    reached: tuple[str, ...]
+    features: tuple[Feature, ...]
     steps: tuple[StepRun, ...]
     session: str
 
@@ -68,8 +70,8 @@ class CaseExport(_Model):
     exercise: Exercise
     origin: Origin
     expects: Expectation
-    reached: Reached
-    unique_reached: tuple[str, ...]
+    features: CaseFeatures
+    unique_features: tuple[Feature, ...]
     coverage: CoverageSummary | None
     replay: Replay | None
 
@@ -77,6 +79,7 @@ class CaseExport(_Model):
 class ExercisesExport(_Model):
     format: Literal["repo2ree-exercises/1"] = "repo2ree-exercises/1"
     campaigns: tuple[Campaign, ...]
+    declared: tuple[Feature, ...]
     cases: tuple[CaseExport, ...]
 
 
@@ -154,7 +157,7 @@ def replay_of(workdir: Path, trace: Trace) -> Replay:
         when=datetime.fromtimestamp((workdir / "trace.json").stat().st_mtime, UTC),
         spec_digest=trace.spec_digest,
         problems=trace.problems,
-        reached=trace.reached,
+        features=trace.features,
         steps=tuple(steps),
         session=_from_root(session_page(workdir, trace)),
     )
@@ -164,9 +167,27 @@ def _from_root(path: Path) -> str:
     return str(path.relative_to(ROOT)) if path.is_relative_to(ROOT) else str(path)
 
 
-def newest_replay(runs: Path, digest: str) -> Path | None:
+def _trace(workdir: Path) -> Trace | None:
+    try:
+        return Trace.model_validate_json((workdir / "trace.json").read_text())
+    except ValidationError:
+        return None
+
+
+def newest_replay(runs: Path, digest: str) -> tuple[Path, Trace] | None:
     found = [trace.parent for trace in runs.glob(f"*/*/{digest}/trace.json") if (trace.parent / "rees").is_dir()]
-    return max(found, key=lambda workdir: (workdir / "trace.json").stat().st_mtime, default=None)
+    for workdir in sorted(found, key=lambda workdir: (workdir / "trace.json").stat().st_mtime, reverse=True):
+        if (trace := _trace(workdir)) is not None:
+            return workdir, trace
+    return None
+
+
+def declared_in(workdirs: Sequence[Path]) -> tuple[Feature, ...]:
+    reports = [workdir / "check" / "assurance.json" for workdir in workdirs]
+    newest = max(
+        (report for report in reports if report.is_file()), key=lambda report: report.stat().st_mtime, default=None
+    )
+    return declared(json.loads(newest.read_text())) if newest is not None else ()
 
 
 def _coverage(case: ExerciseCase, others: Arcs) -> CoverageSummary | None:
@@ -186,30 +207,33 @@ def _coverage(case: ExerciseCase, others: Arcs) -> CoverageSummary | None:
 
 def exported(found: Sequence[ExerciseCase], recorded: Sequence[Campaign], runs: Path) -> ExercisesExport:
     exports = []
+    replayed: list[Path] = []
     for case in found:
         others = [other for other in found if other.digest != case.digest]
-        reached_elsewhere = {item for other in others for item in other.reached.items}
+        covered_elsewhere = {feature for other in others for feature in other.features.features}
         arcs_elsewhere: Arcs = {}
         for other in others:
             if other.coverage is not None:
                 arcs_elsewhere = arcs_union(arcs_elsewhere, other.coverage.arcs)
-        workdir = newest_replay(runs, case.digest)
-        replay = (
-            replay_of(workdir, Trace.model_validate_json((workdir / "trace.json").read_text())) if workdir else None
-        )
+        newest = newest_replay(runs, case.digest)
+        replay = replay_of(*newest) if newest is not None else None
+        if newest is not None:
+            replayed.append(newest[0])
         exports.append(
             CaseExport(
                 digest=case.digest,
                 exercise=case.exercise,
                 origin=case.origin,
                 expects=case.expects,
-                reached=case.reached,
-                unique_reached=tuple(item for item in case.reached.items if item not in reached_elsewhere),
+                features=case.features,
+                unique_features=tuple(
+                    feature for feature in case.features.features if feature not in covered_elsewhere
+                ),
                 coverage=_coverage(case, arcs_elsewhere),
                 replay=replay,
             )
         )
-    return ExercisesExport(campaigns=tuple(recorded), cases=tuple(exports))
+    return ExercisesExport(campaigns=tuple(recorded), declared=declared_in(replayed), cases=tuple(exports))
 
 
 def main(argv: list[str] | None = None) -> int:

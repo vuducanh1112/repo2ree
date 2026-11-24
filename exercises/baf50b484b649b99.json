@@ -38,34 +38,89 @@
     "commit": "35fa110dba3c44477417eca3f1f160267c1f4696",
     "dirty": false,
     "kept_for": {
-      "kind": "new_reached",
-      "items": [
-        "bundles-carry-what-attempts-captured"
+      "kind": "new_features",
+      "features": [
+        {
+          "family": "rule",
+          "rule": "bundles-carry-what-attempts-captured"
+        }
       ]
     }
   },
   "expects": {
     "kind": "conforms"
   },
-  "reached": {
+  "features": {
     "spec_digest": "sha256:4198047d2f6f03fff95592a90cd73843c421f6e8d4c8c81bc0fa3ee10d1d23b5",
-    "items": [
-      "Attempt (none) -> pending",
-      "Attempt completed -> captured",
-      "Attempt executing -> completed",
-      "Attempt pending -> executing",
-      "aggregate:Ree",
-      "boundary:export_bundle",
-      "boundary:run_command",
-      "bundles-carry-what-attempts-captured",
-      "document:scripts-are-their-digests",
-      "document:standings-are-the-receipts-basis",
-      "evidence",
-      "machine:Attempt",
-      "machine:Receipt",
-      "machine:Ree",
-      "receipts-come-from-their-producers",
-      "ree-changes-through-operations"
+    "features": [
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "(none) -> pending"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "completed -> captured"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "executing -> completed"
+      },
+      {
+        "family": "transition",
+        "entity": "Attempt",
+        "move": "pending -> executing"
+      },
+      {
+        "family": "rule",
+        "rule": "aggregate:Ree"
+      },
+      {
+        "family": "rule",
+        "rule": "boundary:export_bundle"
+      },
+      {
+        "family": "rule",
+        "rule": "boundary:run_command"
+      },
+      {
+        "family": "rule",
+        "rule": "bundles-carry-what-attempts-captured"
+      },
+      {
+        "family": "rule",
+        "rule": "document:scripts-are-their-digests"
+      },
+      {
+        "family": "rule",
+        "rule": "document:standings-are-the-receipts-basis"
+      },
+      {
+        "family": "rule",
+        "rule": "evidence"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Attempt"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Receipt"
+      },
+      {
+        "family": "rule",
+        "rule": "machine:Ree"
+      },
+      {
+        "family": "rule",
+        "rule": "receipts-come-from-their-producers"
+      },
+      {
+        "family": "rule",
+        "rule": "ree-changes-through-operations"
+      }
     ]
   }
 }

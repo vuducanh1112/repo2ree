@@ -5,6 +5,25 @@ from repo2ree_repoview.overview.pages.exercises import case_slug, page_exercise,
 
 SEARCHED = "0dde2001bd088a93"
 WRITTEN = "1f4f416e432bba33"
+EVIDENCE = {"family": "rule", "rule": "evidence"}
+PENDING = {"family": "transition", "entity": "Attempt", "move": "(none) -> pending"}
+IN_REVIEW = {
+    "family": "context",
+    "entity": "Attempt",
+    "move": "(none) -> pending",
+    "ree": "reviewer",
+    "store": "review",
+}
+REFUSED = {
+    "family": "outcome",
+    "command": "load-ree-bundle",
+    "ree": "reviewer",
+    "exit": 2,
+    "status": "failed",
+    "category": "validation",
+}
+HELD = {"family": "rule_outcome", "rule": "evidence", "verdict": "held"}
+UNTAKEN = {"family": "transition", "entity": "Attempt", "move": "pending -> executing"}
 
 
 def _case(digest: str, origin: dict[str, Any], **parts: Any) -> dict[str, Any]:
@@ -22,8 +41,8 @@ def _case(digest: str, origin: dict[str, Any], **parts: Any) -> dict[str, Any]:
         },
         "origin": origin,
         "expects": {"kind": "conforms"},
-        "reached": {"spec_digest": "sha256:spec", "items": ["evidence", "Attempt (none) -> pending"]},
-        "unique_reached": ["evidence"],
+        "features": {"spec_digest": "sha256:spec", "features": [EVIDENCE, PENDING, IN_REVIEW, REFUSED, HELD]},
+        "unique_features": [IN_REVIEW, REFUSED],
         "coverage": None,
         "replay": None,
         **parts,
@@ -36,7 +55,7 @@ def exercises(**cases: Any) -> Exercises:
         "when": "2026-11-23T12:00:00+00:00",
         "spec_digest": "sha256:spec",
         "problems": [],
-        "reached": ["evidence", "Attempt (none) -> pending"],
+        "features": [EVIDENCE, PENDING, IN_REVIEW, REFUSED, HELD],
         "steps": [
             {
                 "step": 0,
@@ -78,7 +97,7 @@ def exercises(**cases: Any) -> Exercises:
         "rounds_found": 6,
         "unconfirmed": 1,
         "kept": [
-            {"case": SEARCHED, "kept_for": {"kind": "new_reached", "items": ["evidence"]}, "steps": 2, "worker": 3},
+            {"case": SEARCHED, "kept_for": {"kind": "new_features", "features": [EVIDENCE]}, "steps": 2, "worker": 3},
             {"case": "0123456789abcdef", "kept_for": {"kind": "showed_problems"}, "steps": 4, "worker": 1},
         ],
         "exit": 0,
@@ -87,6 +106,7 @@ def exercises(**cases: Any) -> Exercises:
         {
             "format": "repo2ree-exercises/1",
             "campaigns": [campaign],
+            "declared": [EVIDENCE, PENDING, UNTAKEN],
             "cases": [
                 _case(
                     SEARCHED,
@@ -94,7 +114,7 @@ def exercises(**cases: Any) -> Exercises:
                         "kind": "searched",
                         "search": "spec-cov",
                         "run": "run-1",
-                        "kept_for": {"kind": "new_reached", "items": ["evidence"]},
+                        "kept_for": {"kind": "new_features", "features": [EVIDENCE]},
                     },
                     replay=replay,
                 ),
@@ -144,3 +164,23 @@ def test_a_case_without_a_replay_draws_the_exercise_as_written() -> None:
     assert "session/index.html" not in page.body
     assert '<svg class="seq"' in page.body
     assert "initialize_ree</text>" in page.body
+
+
+def test_the_exercises_page_shows_each_family_covered_of_what_is_declared_and_what_no_case_covers() -> None:
+    body = page_exercises(exercises()).body
+
+    assert "<td>Transitions taken</td><td>1 of 2</td>" in body
+    assert "<td>Rules triggered</td><td>1 of 1</td>" in body
+    assert "<td>Command outcomes</td><td>1</td>" in body
+    assert "<code>ree load-ree-bundle</code> by reviewer: exit 2, failed / validation" in body
+    assert "<code>Attempt (none) -&gt; pending</code> in reviewer, a review" in body
+    assert "Declared, covered by no case (1)" in body
+    assert "<code>Attempt pending -&gt; executing</code>" in body
+
+
+def test_a_case_page_lists_its_features_by_family_marking_those_only_it_covers() -> None:
+    body = page_exercise(exercises().cases[0], session=True).body
+
+    assert "<h3>Command outcomes (1)</h3>" in body
+    assert "<h3>Transitions by REE and store (1)</h3>" in body
+    assert body.count("only here") == 2

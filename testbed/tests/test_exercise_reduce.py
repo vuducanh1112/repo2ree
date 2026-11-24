@@ -5,24 +5,21 @@ import pytest
 from repo2ree_testbed.exercise import Exercise, InitializeRee
 from repo2ree_testbed.exercise_case import (
     CaseCoverage,
+    CaseFeatures,
     Conforms,
     CoveredFile,
     ExerciseCase,
     HandWritten,
     NewArcs,
-    Reached,
     Searched,
-    ShowedProblems,
-    Shows,
     blobs,
     cases,
     write,
 )
-from repo2ree_testbed.exercise_verdict import Problem
+from repo2ree_testbed.exercise_features import RuleTriggered
 from repo2ree_testbed.runs.exercise_reduce import main, reduce
 
 FILE = "testbed/src/repo2ree_testbed/runs/exercise_reduce.py"
-PROBLEM = Problem(kind="violated", rule="machine:Attempt", subject="Attempt a")
 
 
 def case(
@@ -32,7 +29,6 @@ def case(
     arcs: tuple[tuple[int, int], ...] = (),
     *,
     written: bool = False,
-    problem: bool = False,
 ) -> ExerciseCase:
     exercise = Exercise(rees=("author",), steps=tuple(InitializeRee(ree="author", name=name) for _ in range(steps)))
     origin = (
@@ -40,16 +36,14 @@ def case(
         if written
         else Searched(search="branch-cov", run="run", commit="c", dirty=False, kept_for=NewArcs(files={FILE: 1}))
     )
-    if problem and not written:
-        origin = origin.model_copy(update={"kept_for": ShowedProblems()})
     coverage = CaseCoverage(
         commit="c", dirty=False, files={FILE: CoveredFile(blob=blobs((FILE,))[FILE] or "", arcs=arcs)}
     )
     return ExerciseCase(
         exercise=exercise,
         origin=origin,
-        expects=Shows(problems=(PROBLEM,)) if problem else Conforms(),
-        reached=Reached(spec_digest="sha256:spec", items=reached),
+        expects=Conforms(),
+        features=CaseFeatures(spec_digest="sha256:spec", features=tuple(RuleTriggered(rule=rule) for rule in reached)),
         coverage=coverage,
     )
 
@@ -91,15 +85,6 @@ def test_a_hand_written_case_stays_though_it_adds_nothing() -> None:
     assert reduce([written, searched]).removed == ()
 
 
-def test_a_problem_no_kept_case_names_any_longer_is_reported() -> None:
-    wider = case("wider", 3, ("evidence",), ((1, 2),))
-    showing = case("showing", 4, ("evidence",), ((1, 2),), problem=True)
-
-    reduction = reduce([wider, showing])
-
-    assert reduction.unnamed == (PROBLEM.known_as,)
-
-
 def test_the_redundant_cases_and_their_coverage_are_deleted(tmp_path: Path) -> None:
     kept = case("kept", 3, ("evidence",), ((1, 2),))
     redundant = case("redundant", 4, ("evidence",), ((1, 2),))
@@ -122,4 +107,4 @@ def test_without_current_coverage_nothing_is_removed(tmp_path: Path, capsys: pyt
     assert main(["--cases", str(tmp_path)]) == 1
 
     assert len(cases(tmp_path)) == 2
-    assert "re-measure-exercise-branch-cov" in capsys.readouterr().err
+    assert "re-measure-exercises" in capsys.readouterr().err

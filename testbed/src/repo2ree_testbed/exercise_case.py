@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.exercise import Exercise
+from repo2ree_testbed.exercise_features import Feature, ordered
 from repo2ree_testbed.exercise_verdict import (
     Arcs,
     Problem,
@@ -58,12 +59,12 @@ class NewArcs(_Model):
     files: dict[str, int]
 
 
-class NewReached(_Model):
-    kind: Literal["new_reached"] = "new_reached"
-    items: tuple[str, ...]
+class NewFeatures(_Model):
+    kind: Literal["new_features"] = "new_features"
+    features: tuple[Feature, ...]
 
 
-type KeptFor = Annotated[ShowedProblems | NewArcs | NewReached, Field(discriminator="kind")]
+type KeptFor = Annotated[ShowedProblems | NewArcs | NewFeatures, Field(discriminator="kind")]
 
 
 class Searched(_Model):
@@ -90,9 +91,9 @@ class Shows(_Model):
 type Expectation = Annotated[Conforms | Shows, Field(discriminator="kind")]
 
 
-class Reached(_Model):
+class CaseFeatures(_Model):
     spec_digest: str
-    items: tuple[str, ...]
+    features: tuple[Feature, ...]
 
 
 class CoveredFile(_Model):
@@ -125,7 +126,7 @@ class ExerciseCase(_Model):
     exercise: Exercise
     origin: Origin
     expects: Expectation
-    reached: Reached
+    features: CaseFeatures
     coverage: CaseCoverage | None = Field(default=None, exclude=True)
 
     @property
@@ -135,8 +136,8 @@ class ExerciseCase(_Model):
 
 def case_of(trace: Trace, origin: Origin, coverage: CaseCoverage | None = None) -> ExerciseCase:
     expects: Expectation = Shows(problems=trace.problems) if trace.problems else Conforms()
-    reached = Reached(spec_digest=trace.spec_digest, items=trace.reached)
-    return ExerciseCase(exercise=trace.exercise, origin=origin, expects=expects, reached=reached, coverage=coverage)
+    features = CaseFeatures(spec_digest=trace.spec_digest, features=trace.features)
+    return ExerciseCase(exercise=trace.exercise, origin=origin, expects=expects, features=features, coverage=coverage)
 
 
 def write(case: ExerciseCase, directory: Path = CASES) -> Path:
@@ -169,19 +170,10 @@ def cases(directory: Path = CASES) -> tuple[ExerciseCase, ...]:
 def measure(case: ExerciseCase, workdir: Path, directory: Path = CASES) -> tuple[ExerciseCase, list[str]]:
     trace = judge(case.exercise, workdir, measured=True)
     keep(workdir, trace)
-    measured = case.model_copy(update={"coverage": coverage_of(trace.arcs or {})})
-    if measured.coverage is not None:
-        write_coverage(case.digest, measured.coverage, directory)
+    features = CaseFeatures(spec_digest=trace.spec_digest, features=trace.features)
+    measured = case.model_copy(update={"features": features, "coverage": coverage_of(trace.arcs or {})})
+    write(measured, directory)
     return measured, unmet(case, trace)
-
-
-def known(directory: Path = CASES) -> frozenset[tuple[str, str, str]]:
-    return frozenset(
-        problem.known_as
-        for case in cases(directory)
-        if isinstance(case.expects, Shows)
-        for problem in case.expects.problems
-    )
 
 
 def covered(found: Sequence[ExerciseCase]) -> Arcs:
@@ -205,15 +197,17 @@ def unmet(case: ExerciseCase, trace: Trace) -> list[str]:
 
 
 def drifted(case: ExerciseCase, trace: Trace) -> str | None:
-    now, then = set(trace.reached), set(case.reached.items)
+    now, then = set(trace.features), set(case.features.features)
     if now == then:
         return None
     against = (
         "the same specification"
-        if trace.spec_digest == case.reached.spec_digest
-        else f"specification {trace.spec_digest}, recorded against {case.reached.spec_digest}"
+        if trace.spec_digest == case.features.spec_digest
+        else f"specification {trace.spec_digest}, recorded against {case.features.spec_digest}"
     )
-    return f"{case.digest} reaches otherwise against {against}: gained {sorted(now - then)}, lost {sorted(then - now)}"
+    gained = [feature.model_dump_json() for feature in ordered(now - then)]
+    lost = [feature.model_dump_json() for feature in ordered(then - now)]
+    return f"{case.digest} covers otherwise against {against}: gained {gained}, lost {lost}"
 
 
 def unmeasured(case: ExerciseCase) -> str | None:

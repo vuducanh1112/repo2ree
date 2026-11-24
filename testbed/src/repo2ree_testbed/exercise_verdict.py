@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict
 from repo2ree_testbed.artifacts import ROOT
 from repo2ree_testbed.exercise import Exercise
 from repo2ree_testbed.exercise_cli import CliReplay, Ran, Replayed, RunRee, covered_ree, local_ree
+from repo2ree_testbed.exercise_features import Feature, from_report, ordered, outcomes
 
 CLI_SCHEMA: Final = ROOT / "contracts/cli/cli.schema.json"
 
@@ -51,7 +52,7 @@ class Problem(_Model):
 
 class Judged(_Model):
     problems: tuple[Problem, ...]
-    reached: tuple[str, ...]
+    features: tuple[Feature, ...]
     spec_digest: str
 
 
@@ -79,7 +80,7 @@ class Trace(_Model):
     exercise: Exercise
     replayed: tuple[Replayed, ...]
     problems: tuple[Problem, ...]
-    reached: tuple[str, ...]
+    features: tuple[Feature, ...]
     spec_digest: str
     arcs: Arcs | None = None
 
@@ -96,15 +97,15 @@ class Covered(_Model):
     digest: str
     steps: int
     problems: int
-    reached: tuple[str, ...]
-    new_reached: tuple[str, ...]
+    features: tuple[Feature, ...]
+    new_features: tuple[Feature, ...]
     arcs: int | None = None
     new_arcs: Arcs | None = None
 
 
 class SoFar(_Model):
     exercises: int = 0
-    reached: tuple[str, ...] = ()
+    features: tuple[Feature, ...] = ()
     arcs: Arcs = {}
 
 
@@ -171,14 +172,7 @@ def behaviour(histories: Sequence[Path], output: Path, journals: Path | None = N
         for finding in rule["findings"]
         if finding["verdict"] == "violated"
     ]
-    rules = [rule["rule"] for rule in result["rules"] if rule["triggered"]]
-    edges = [
-        f"{entity} {edge}"
-        for entity, counts in result["coverage"]["transitions"].items()
-        for edge, count in counts.items()
-        if count
-    ]
-    return Judged(problems=tuple(violated), reached=tuple(sorted([*rules, *edges])), spec_digest=result["spec_digest"])
+    return Judged(problems=tuple(violated), features=from_report(result), spec_digest=result["spec_digest"])
 
 
 def digest(exercise: Exercise) -> str:
@@ -211,7 +205,7 @@ def judge(exercise: Exercise, workdir: Path, *, measured: bool = False, run: Run
         exercise=exercise,
         replayed=replayed,
         problems=problems,
-        reached=checked.reached,
+        features=ordered([*checked.features, *outcomes(replayed, schema_command)]),
         spec_digest=checked.spec_digest,
         arcs=arcs,
     )
@@ -226,8 +220,8 @@ def keep(workdir: Path, trace: Trace, *, slim: bool = False) -> None:
         digest=trace.digest,
         steps=len(trace.exercise.steps),
         problems=len(trace.problems),
-        reached=trace.reached,
-        new_reached=tuple(item for item in trace.reached if item not in set(so_far.reached)),
+        features=trace.features,
+        new_features=tuple(feature for feature in trace.features if feature not in set(so_far.features)),
         arcs=trace.arc_count if trace.arcs is not None else None,
         new_arcs=arcs_without(arcs, so_far.arcs) if trace.arcs is not None else None,
     )
@@ -235,7 +229,7 @@ def keep(workdir: Path, trace: Trace, *, slim: bool = False) -> None:
         index.write(covered.model_dump_json() + "\n")
     together = SoFar(
         exercises=so_far.exercises + 1,
-        reached=tuple(sorted({*so_far.reached, *trace.reached})),
+        features=ordered([*so_far.features, *trace.features]),
         arcs=arcs_union(so_far.arcs, arcs),
     )
     so_far_file.write_text(together.model_dump_json() + "\n")

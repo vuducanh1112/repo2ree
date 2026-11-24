@@ -10,8 +10,15 @@ from repo2ree_repoview.overview.exports import (
     ExerciseCase,
     ExerciseProblem,
     Exercises,
+    Feature,
+    FeatureFamily,
+    InContext,
     KeptFor,
+    Outcome,
+    RuleOutcome,
+    RuleTriggered,
     StepRun,
+    TransitionTaken,
 )
 from repo2ree_repoview.overview.html import Page, esc, filter_box, in_frame, rule_link, section, table
 
@@ -52,10 +59,86 @@ def kept_for(found: KeptFor | None) -> str:
             return "&ndash;"
         case KeptFor(kind="showed_problems"):
             return '<span class="no">new problem</span>'
-        case KeptFor(kind="new_reached", items=items):
-            return f"+{len(items)} spec"
+        case KeptFor(kind="new_features", features=features):
+            return f"+{len(features)} features"
         case KeptFor(files=files):
             return f"+{sum(files.values())} arcs"
+
+
+FAMILY_TITLES: dict[FeatureFamily, str] = {
+    "rule": "Rules triggered",
+    "transition": "Transitions taken",
+    "context": "Transitions by REE and store",
+    "outcome": "Command outcomes",
+    "rule_outcome": "Rule outcomes",
+}
+VERDICT_TONES = {"held": "ok", "violated": "no", "inconclusive": "ex"}
+
+
+def feature_label(feature: Feature) -> str:
+    match feature:
+        case RuleTriggered(rule=rule):
+            return rule_link(rule)
+        case TransitionTaken(entity=entity, move=move):
+            return f"<code>{esc(entity)} {esc(move)}</code>"
+        case InContext(entity=entity, move=move, ree=ree, store=store):
+            where = f"{esc(ree or 'no REE')}, {'a review' if store == 'review' else 'its REE'}"
+            return f"<code>{esc(entity)} {esc(move)}</code> in {where}"
+        case Outcome(command=command, ree=ree, exit=exit, status=status, category=category):
+            answer = " / ".join(esc(part) for part in (status, category) if part) or "no result"
+            return f"<code>ree {esc(command)}</code> by {esc(ree)}: exit {exit}, {answer}"
+        case RuleOutcome(rule=rule, verdict=verdict):
+            return f'{rule_link(rule)} <span class="{VERDICT_TONES[verdict]}">{verdict}</span>'
+
+
+def _key(feature: Feature) -> str:
+    return feature.model_dump_json()
+
+
+def _ordered(features: set[Feature]) -> list[Feature]:
+    return sorted(features, key=_key)
+
+
+def _of(features: Sequence[Feature], family: FeatureFamily) -> list[Feature]:
+    return _ordered({feature for feature in features if feature.family == family})
+
+
+def features_overview(exercises: Exercises) -> str:
+    by_feature: dict[Feature, list[str]] = {}
+    for case in exercises.cases:
+        for feature in case.features.features:
+            by_feature.setdefault(feature, []).append(case.digest)
+    declared = set(exercises.declared)
+    summary = []
+    for family, title in FAMILY_TITLES.items():
+        covered = _of(list(by_feature), family)
+        possible = _of(list(declared), family)
+        share = f"{len(covered)} of {len(possible)}" if possible else str(len(covered))
+        summary.append([title, share])
+    rows = [
+        [
+            FAMILY_TITLES[feature.family],
+            feature_label(feature),
+            str(len(digests)),
+            " ".join(case_link(digest) for digest in digests[:6]) + (" &hellip;" if len(digests) > 6 else ""),
+        ]
+        for feature, digests in sorted(by_feature.items(), key=lambda item: (item[0].family, _key(item[0])))
+    ]
+    gaps = _ordered(declared - set(by_feature))
+    missing = (
+        f"<h3>Declared, covered by no case ({len(gaps)})</h3><ul>"
+        + "".join(f"<li>{feature_label(feature)}</li>" for feature in gaps)
+        + "</ul>"
+        if gaps
+        else ""
+    )
+    listed = table(["Family", "Feature", "Cases", "Covered by"], rows, "features-table")
+    return (
+        table(["Family", "Covered"], summary)
+        + filter_box("features-table", "filter")
+        + f'<div class="table-scroll">{listed}</div>'
+        + missing
+    )
 
 
 def origin(found: CaseOrigin, recorded: frozenset[str] = frozenset()) -> str:
@@ -143,13 +226,13 @@ def cases_table(found: Sequence[ExerciseCase], recorded: frozenset[str]) -> str:
             str(len(case.drifts)),
             str(len(case.faults)),
             expects(case),
-            f"{len(case.reached.items)} (+{len(case.unique_reached)})",
+            f"{len(case.features.features)} (+{len(case.unique_features)})",
             _arcs(case),
             _when(case.replay.when) if case.replay else "&ndash;",
         ]
         for case in found
     ]
-    headers = ["Case", "Origin", "REEs", "Steps", "Drifts", "Faults", "Expects", "Spec", "Arcs", "Replayed"]
+    headers = ["Case", "Origin", "REEs", "Steps", "Drifts", "Faults", "Expects", "Features", "Arcs", "Replayed"]
     return filter_box("cases", "filter") + f'<div class="table-scroll">{table(headers, rows, "cases")}</div>'
 
 
@@ -163,9 +246,11 @@ def page_exercises(exercises: Exercises) -> Page:
             "",
             campaigns_table(exercises.campaigns, frozenset(case.digest for case in exercises.cases)),
         )
+        + section("features", "Covered features", "", features_overview(exercises))
         + section("cases", "Cases", "", cases_table(exercises.cases, recorded))
     )
-    return Page(EXERCISES, "Exercises", f"{len(exercises.cases)} cases", body)
+    covered = {feature for case in exercises.cases for feature in case.features.features}
+    return Page(EXERCISES, "Exercises", f"{len(exercises.cases)} cases, {len(covered)} features", body)
 
 
 def _set(value: Any) -> Any:
@@ -283,28 +368,29 @@ def sequence_section(case: ExerciseCase) -> str:
     return section("sequence", "Sequence", "", body)
 
 
-def _item(item: str, unique: set[str]) -> str:
-    only = ' <span class="ex">only here</span>' if item in unique else ""
-    shown = rule_link(item) if " " not in item else f"<code>{esc(item)}</code>"
-    return f"<li>{shown}{only}</li>"
-
-
-def spec_section(case: ExerciseCase) -> str:
-    unique = set(case.unique_reached)
-    rules = [item for item in case.reached.items if " " not in item]
-    transitions = [item for item in case.reached.items if " " in item]
-    body = (
-        f"<h3>Rules ({len(rules)})</h3><ul>{''.join(_item(item, unique) for item in rules)}</ul>"
-        f"<h3>Transitions ({len(transitions)})</h3><ul>{''.join(_item(item, unique) for item in transitions)}</ul>"
-    )
-    if case.replay is not None and set(case.replay.reached) != set(case.reached.items):
-        gained = sorted(set(case.replay.reached) - set(case.reached.items))
-        lost = sorted(set(case.reached.items) - set(case.replay.reached))
-        body += (
-            f'<p class="ex">Replay differs: +{esc(", ".join(gained) or "nothing")}; '
-            f"&minus;{esc(', '.join(lost) or 'nothing')}</p>"
+def features_section(case: ExerciseCase) -> str:
+    unique = set(case.unique_features)
+    body = "".join(
+        f"<h3>{FAMILY_TITLES[family]} ({len(found)})</h3><ul>"
+        + "".join(
+            f"<li>{feature_label(feature)}"
+            + (' <span class="ex">only here</span>' if feature in unique else "")
+            + "</li>"
+            for feature in found
         )
-    return section("spec", "Specification coverage", "", body)
+        + "</ul>"
+        for family in FAMILY_TITLES
+        if (found := _of(case.features.features, family))
+    )
+    if case.replay is not None and set(case.replay.features) != set(case.features.features):
+        gained = _ordered(set(case.replay.features) - set(case.features.features))
+        lost = _ordered(set(case.features.features) - set(case.replay.features))
+        body += (
+            '<p class="ex">Its newest replay covers otherwise: '
+            f"+{', '.join(map(feature_label, gained)) or 'nothing'}; "
+            f"&minus;{', '.join(map(feature_label, lost)) or 'nothing'}</p>"
+        )
+    return section("features", "Covered features", "", body or '<p class="muted">None recorded.</p>')
 
 
 def coverage_section(case: ExerciseCase) -> str:
@@ -351,7 +437,7 @@ def page_exercise(case: ExerciseCase, *, session: bool = False) -> Page:
         + _facts(case, session)
         + steps_section(case)
         + sequence_section(case)
-        + spec_section(case)
+        + features_section(case)
         + coverage_section(case)
     )
     return Page(case_slug(case.digest), f"Exercise {case.digest}", "", body)

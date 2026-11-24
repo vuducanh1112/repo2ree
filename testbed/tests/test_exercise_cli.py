@@ -40,12 +40,12 @@ from repo2ree_testbed.exercise_case import (
     cases,
     coverage_of,
     drifted,
-    known,
     unmeasured,
     unmet,
     write,
 )
 from repo2ree_testbed.exercise_cli import Answer, CliReplay, Ran, Replayed, command_of
+from repo2ree_testbed.exercise_features import Feature, RuleTriggered, Transition
 from repo2ree_testbed.exercise_signing import OTHER_SEAL, REVIEW_PREDICATE, SEAL_PREDICATE, review_bundle, seal_bundle
 from repo2ree_testbed.exercise_strategy import ALONE, AUTHOR, EXPERIMENT, REVIEWER, REVIEWING, exercises
 from repo2ree_testbed.exercise_verdict import (
@@ -208,8 +208,11 @@ def test_an_answer_ree_schema_does_not_declare_is_a_problem() -> None:
     assert keys[2]
 
 
-def trace_of(exercise: Exercise, *problems: Problem, reached: tuple[str, ...] = ("machine:Attempt",)) -> Trace:
-    return Trace(exercise=exercise, replayed=(), problems=problems, reached=reached, spec_digest=SEAL)
+ATTEMPT_RULE, REE_RULE = RuleTriggered(rule="machine:Attempt"), RuleTriggered(rule="machine:Ree")
+
+
+def trace_of(exercise: Exercise, *problems: Problem, features: tuple[Feature, ...] = (ATTEMPT_RULE,)) -> Trace:
+    return Trace(exercise=exercise, replayed=(), problems=problems, features=features, spec_digest=SEAL)
 
 
 ALONE_EXERCISE = Exercise(rees=(AUTHOR,), steps=(RemoveSource(ree=AUTHOR),))
@@ -225,7 +228,6 @@ def test_a_case_expects_what_its_trace_showed_and_is_read_back_by_its_exercise(t
     assert write(conforming, tmp_path).name == f"{digest(ALONE_EXERCISE)}.json"
     write(showing, tmp_path)
     assert set(cases(tmp_path)) == {conforming, showing}
-    assert known(tmp_path) == {NO_EDGE.known_as}
 
 
 def test_a_case_is_unmet_by_a_problem_it_does_not_name_or_one_no_longer_shown() -> None:
@@ -241,30 +243,34 @@ def test_a_case_is_unmet_by_a_problem_it_does_not_name_or_one_no_longer_shown() 
     ]
 
 
-def test_what_a_case_reaches_otherwise_is_told_not_failed() -> None:
+def test_what_a_case_covers_otherwise_is_told_not_failed() -> None:
     case = case_of(trace_of(ALONE_EXERCISE), HandWritten())
     assert drifted(case, trace_of(ALONE_EXERCISE)) is None
-    told = drifted(case, trace_of(ALONE_EXERCISE, reached=("machine:Ree",)))
+    told = drifted(case, trace_of(ALONE_EXERCISE, features=(REE_RULE,)))
     assert told is not None
-    assert "gained ['machine:Ree'], lost ['machine:Attempt']" in told
-    assert unmet(case, trace_of(ALONE_EXERCISE, reached=("machine:Ree",))) == []
+    assert f"gained [{REE_RULE.model_dump_json()!r}], lost [{ATTEMPT_RULE.model_dump_json()!r}]" in told
+    assert unmet(case, trace_of(ALONE_EXERCISE, features=(REE_RULE,))) == []
 
 
-def test_each_line_names_what_no_exercise_before_it_reached(tmp_path: Path) -> None:
-    def kept(name: str, reached: tuple[str, ...], arcs: Arcs) -> None:
+def test_each_line_names_what_no_exercise_before_it_covered(tmp_path: Path) -> None:
+    def kept(name: str, features: tuple[Feature, ...], arcs: Arcs) -> None:
         exercise = Exercise(rees=(AUTHOR,), steps=(InitializeRee(ree=AUTHOR, name=name),))
         workdir = tmp_path / name
         workdir.mkdir()
-        keep(workdir, Trace(exercise=exercise, replayed=(), problems=(), reached=reached, spec_digest=SEAL, arcs=arcs))
+        keep(
+            workdir, Trace(exercise=exercise, replayed=(), problems=(), features=features, spec_digest=SEAL, arcs=arcs)
+        )
 
-    kept("first", ("machine:Attempt", "Attempt pending -> executing"), {"cli/a.py": ((1, 2), (2, 3))})
+    pending = Transition(entity="Attempt", move="pending -> executing")
+    completed = Transition(entity="Attempt", move="executing -> completed")
+    kept("first", (ATTEMPT_RULE, pending), {"cli/a.py": ((1, 2), (2, 3))})
     second_arcs: Arcs = {"cli/a.py": ((2, 3), (3, 4)), "core/b.py": ((5, 6),)}
-    kept("second", ("machine:Attempt", "Attempt executing -> completed"), second_arcs)
+    kept("second", (ATTEMPT_RULE, completed), second_arcs)
     first, second = (
         Covered.model_validate_json(line) for line in (tmp_path / "coverage.ndjson").read_text().splitlines()
     )
-    assert (first.arcs, first.new_reached) == (2, ("machine:Attempt", "Attempt pending -> executing"))
-    assert second.new_reached == ("Attempt executing -> completed",)
+    assert (first.arcs, first.new_features) == (2, (ATTEMPT_RULE, pending))
+    assert second.new_features == (completed,)
     assert (second.arcs, second.new_arcs) == (3, {"cli/a.py": ((3, 4),), "core/b.py": ((5, 6),)})
     so_far = SoFar.model_validate_json((tmp_path / "covered.json").read_text())
     assert so_far.exercises == 2

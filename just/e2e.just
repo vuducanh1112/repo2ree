@@ -80,19 +80,19 @@ test-e2e-chaos seeds="4" steps="12" jobs=E2E_JOBS: build-e2e-bundles
 [group('E2E tests')]
 test-e2e-cli jobs=E2E_JOBS *select: (_tier-cli jobs "tests" select) (assess-behaviour "--invocation" REPO2REE_TEST_RUN_ID)
 
-# Measure the code the exercise cases cover, each replayed through `ree` on this machine under coverage.py: the cases whose coverage is stale (a covered file changed) or not measured yet, or with `all` every case. Writes exercises/coverage/<digest>.json (e.g. `just re-measure-exercise-branch-cov all`).
+# Replay exercise cases through `ree` on this machine under coverage.py and record again what each covers: the arcs it executes in exercises/coverage/<digest>.json, and its features (the rules it triggers, the transitions it takes and in which REE and store, each command's outcome, each rule held, violated or inconclusive) in the case. The cases whose coverage is stale (a covered file changed) or not measured yet, or with `all` every case (e.g. `just re-measure-exercises all`).
 [group('E2E tests')]
 [metadata("runs", "exercises")]
-re-measure-exercise-branch-cov which="stale":
+re-measure-exercises which="stale":
     python -m repo2ree_testbed exercise-coverage {{ if which == "all" { "--all" } else { "" } }}
 
-# Remove the searched cases that reach no rule or transition and execute no arc the other cases do not, keeping the fewest that together reach and cover all the cases do; hand-written cases stay. Every case's coverage must be measured and current (e.g. `just reduce-exercises --dry-run`).
+# Remove the searched cases that cover no feature and execute no arc the other cases do not, keeping the fewest that together cover all the cases do; hand-written cases stay. Every case's coverage must be measured and current (e.g. `just reduce-exercises --dry-run`).
 [group('E2E tests')]
 [metadata("runs", "exercises")]
 reduce-exercises *args:
     python -m repo2ree_testbed exercise-reduce {{ args }}
 
-# Search for exercises worth keeping as cases, steered toward the rules and transitions of the specification, not gated: Hypothesis draws `examples` exercises of up to `steps` steps per round and replays each through `ree` on this machine; the first that shows a problem no case names, or reaches a rule or transition no case reaches, is shrunk to the fewest steps that still do, replayed again, and kept in exercises/. Round after round for `hours`, in `workers` processes side by side, each keeping at most `keep` cases that add at least `least` items (e.g. `just pbt-cli-spec-cov 50 30 20 10 8`, or on a machine overnight: `just on-wip-detached vm pbt-cli-spec-cov 50 30 20 10 8`). Each exercise's trace is kept under the run's exercises/<run>/, its rounds and kept cases in search.ndjson there.
+# Search for exercises worth keeping as cases, steered toward features no case covers, not gated: a rule triggered, a transition taken and in which REE and store, a command's outcome, a rule held, violated or inconclusive. Hypothesis draws `examples` exercises of up to `steps` steps per round and replays each through `ree` on this machine; the first that covers at least `least` features no case covers is shrunk to the fewest steps that still do, replayed again, and kept in exercises/, expecting whatever problems it shows. Round after round for `hours`, in `workers` processes side by side, each keeping at most `keep` cases (e.g. `just pbt-cli-spec-cov 50 30 20 10 8`, or on a machine overnight: `just on-wip-detached vm pbt-cli-spec-cov 50 30 20 10 8`). Each exercise's trace is kept under the run's exercises/<run>/, its rounds and kept cases in search.ndjson there.
 [group('E2E tests')]
 [metadata("runs", "testbed/src/repo2ree_testbed/runs/search.py", "exercises")]
 pbt-cli-spec-cov examples="25" steps="30" keep="3" hours="" workers="1" least="1":

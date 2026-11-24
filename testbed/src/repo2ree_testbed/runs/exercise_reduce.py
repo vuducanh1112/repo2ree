@@ -4,30 +4,26 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from repo2ree_testbed.exercise_case import CASES, COVERAGE, ExerciseCase, HandWritten, Shows, cases, unmeasured
+from repo2ree_testbed.exercise_case import CASES, COVERAGE, ExerciseCase, HandWritten, cases, unmeasured
+from repo2ree_testbed.exercise_features import Feature
 
-type Ground = frozenset[tuple[str, ...]]
+type Arc = tuple[str, int, int]
+type Ground = frozenset[Feature | Arc]
 
 
 def ground(case: ExerciseCase) -> Ground:
-    reached = {("reached", item) for item in case.reached.items}
     arcs = (
-        {("arc", path, str(start), str(end)) for path, pairs in case.coverage.arcs.items() for start, end in pairs}
+        {(path, start, end) for path, pairs in case.coverage.arcs.items() for start, end in pairs}
         if case.coverage is not None
         else set()
     )
-    return frozenset(reached | arcs)
+    return frozenset({*case.features.features, *arcs})
 
 
 @dataclass(frozen=True)
 class Reduction:
     kept: tuple[ExerciseCase, ...]
     removed: tuple[ExerciseCase, ...]
-    unnamed: tuple[tuple[str, str, str], ...]
-
-
-def _named(found: Sequence[ExerciseCase]) -> set[tuple[str, str, str]]:
-    return {problem.known_as for case in found if isinstance(case.expects, Shows) for problem in case.expects.problems}
 
 
 def reduce(found: Sequence[ExerciseCase]) -> Reduction:
@@ -37,7 +33,7 @@ def reduce(found: Sequence[ExerciseCase]) -> Reduction:
         key=lambda case: (len(case.exercise.steps), case.digest),
     )
     grounds = {case.digest: ground(case) for case in found}
-    held: set[tuple[str, ...]] = set().union(*(grounds[case.digest] for case in fixed))
+    held: set[Feature | Arc] = set().union(*(grounds[case.digest] for case in fixed))
     wanted = set().union(*(grounds[case.digest] for case in searched)) - held
     chosen: list[ExerciseCase] = []
     while wanted:
@@ -52,8 +48,7 @@ def reduce(found: Sequence[ExerciseCase]) -> Reduction:
     kept = {case.digest for case in [*fixed, *chosen]}
     survivors = tuple(case for case in found if case.digest in kept)
     removed = tuple(case for case in found if case.digest not in kept)
-    unnamed = tuple(sorted(_named(found) - _named(survivors), key=str))
-    return Reduction(kept=survivors, removed=removed, unnamed=unnamed)
+    return Reduction(kept=survivors, removed=removed)
 
 
 def remove(case: ExerciseCase, directory: Path) -> None:
@@ -70,15 +65,13 @@ def main(argv: list[str] | None = None) -> int:
     if stale := [reason for case in found if (reason := unmeasured(case)) is not None]:
         for reason in stale:
             print(f">> {reason}", file=sys.stderr)
-        print(">> measure them first: just re-measure-exercise-branch-cov", file=sys.stderr)
+        print(">> measure them first: just re-measure-exercises", file=sys.stderr)
         return 1
     reduction = reduce(found)
     for case in reduction.removed:
-        print(f">> {case.digest} ({len(case.exercise.steps)} steps) reaches nothing the kept cases do not", flush=True)
+        print(f">> {case.digest} ({len(case.exercise.steps)} steps) covers nothing the kept cases do not", flush=True)
         if not args.dry_run:
             remove(case, args.cases)
-    for problem in reduction.unnamed:
-        print(f">> no kept case names {problem} any longer", flush=True)
     verb = "would keep" if args.dry_run else "kept"
     print(f">> {verb} {len(reduction.kept)} of {len(found)} cases", flush=True)
     return 0
