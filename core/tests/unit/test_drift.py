@@ -79,6 +79,23 @@ def test_a_record_changed_outside_ree_is_refused_and_never_absorbed(ree):
     assert record.drift_found == [DriftedFile(path="ree.json", part="records")]
 
 
+def test_a_record_ree_cannot_read_any_longer_is_refused_as_drift_and_put_back_carries_on(ree):
+    recorded = ree.manifest.read_bytes()
+    head = git(ree, "rev-parse", "HEAD")
+    ree.manifest.write_text("changed outside ree")
+
+    assert find_drift(ree) == [DriftedFile(path="ree.json", part="records")]
+    result = patch(ree)
+
+    assert result.status == "failed"
+    assert result.failure.category == "precondition"
+    assert result.failure.details == {"code": "drift"}
+    assert "ree.json" in result.failure.message
+    assert git(ree, "rev-parse", "HEAD") == head
+    ree.manifest.write_bytes(recorded)
+    assert patch(ree).status == "succeeded"
+
+
 def test_drift_stays_until_it_is_undone(ree):
     script = ree.overlay_file(RESERVED_LAUNCH_SCRIPT)
     original = script.read_bytes()

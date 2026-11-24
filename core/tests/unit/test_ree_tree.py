@@ -54,7 +54,7 @@ def test_what_a_capture_commits_the_tree_marks_as_committed(tmp_path: Path) -> N
             path.write_text("x", encoding="utf-8")
     for name in (".gitattributes", ".gitignore", "run.sh", "REPRODUCING.md"):
         (tmp_path / name).write_text("x", encoding="utf-8")
-    plan = capture_plan(layout, None)
+    plan = capture_plan(layout, frozenset())
     assert plan.entries
     for entry in plan.entries:
         assert REE_TREE.find(entry.path).capture == entry.storage, entry.path

@@ -37,7 +37,7 @@ class CapturePlan(BaseModel):
         return self
 
 
-def capture_plan(layout: ReeLayout, ree: Ree | None) -> CapturePlan:
+def capture_plan(layout: ReeLayout, lfs: frozenset[str]) -> CapturePlan:
     paths: set[Path] = set()
     fixed = [*layout.history_files, layout.sbom, layout.reproducibility_report]
     controls = (tree.GIT_ATTRIBUTES, tree.GIT_IGNORE, tree.REPRODUCER_SCRIPT, tree.REPRODUCER_README)
@@ -53,7 +53,6 @@ def capture_plan(layout: ReeLayout, ree: Ree | None) -> CapturePlan:
                 paths.update(directory / name for name in files)
     if isinstance(layout, ReviewLayout) and layout.runs.exists():
         paths.update(layout.runs.glob("*.receipt.json"))
-    lfs = {str(path) for path in ree.subject.capture.lfs_paths} if ree else set()
     paths.update(layout.root / path for path in lfs)
     entries = []
     for path in sorted(paths):

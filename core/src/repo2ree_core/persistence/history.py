@@ -43,11 +43,15 @@ def _walk_failed(error: OSError) -> None:
     raise HistoryCaptureError(f"Cannot enumerate REE files: {error}") from error
 
 
-def selected_files(layout: ReeLayout) -> list[Path]:
+def lfs_paths_of(layout: ReeLayout) -> frozenset[str]:
     ree = ReeDirectory(layout).read_ree() if layout.manifest.is_file() else None
+    return frozenset(str(path) for path in ree.subject.capture.lfs_paths) if ree else frozenset()
+
+
+def selected_files(layout: ReeLayout, lfs: frozenset[str]) -> list[Path]:
     return [
         layout.root / entry.path
-        for entry in capture_plan(layout, ree).entries
+        for entry in capture_plan(layout, lfs).entries
         if not _internal_temporary(layout, layout.root / entry.path)
     ]
 
@@ -167,19 +171,15 @@ class GitHistory:
             raise HistoryCaptureError("Cannot read the initial REE snapshot")
         return result.stdout.decode().strip()
 
-    def _selected_files(self) -> list[Path]:
-        return selected_files(self.layout)
-
-    def _tree(self, *, store: bool = True) -> str:
+    def _tree(self, *, store: bool = True, lfs_paths: frozenset[str] | None = None) -> str:
+        lfs_paths = lfs_paths_of(self.layout) if lfs_paths is None else lfs_paths
         with tempfile.TemporaryDirectory(dir=self.layout.git_dir, prefix="capture-") as temporary:
             index = Path(temporary) / "index"
             self.git("read-tree", "--empty", index=index)
-            ree = ReeDirectory(self.layout).read_ree() if self.layout.manifest.is_file() else None
-            lfs_paths = set(ree.subject.capture.lfs_paths) if ree else set()
             written = ("-w",) if store else ()
             entries: list[tuple[str, str, str]] = []
             plain: list[tuple[str, str]] = []
-            for path in self._selected_files():
+            for path in selected_files(self.layout, lfs_paths):
                 relative = path.relative_to(self.layout.root).as_posix()
                 info = path.lstat()
                 if stat.S_ISLNK(info.st_mode):
@@ -212,7 +212,7 @@ class GitHistory:
         base = base or self.head_snapshot()
         if base is None:
             return []
-        tree = self._tree(store=False)
+        tree = self._tree(store=False, lfs_paths=frozenset(self.lfs_paths_at(base)))
         listed = self.git("diff-tree", "-r", "-z", "--no-renames", "--name-status", f"{base}^{{tree}}", tree)
         fields = listed.stdout.decode().split("\0")
         return [(fields[index + 1], fields[index][0]) for index in range(0, len(fields) - 1, 2)]
@@ -261,7 +261,7 @@ class GitHistory:
             if kind != "blob":
                 raise HistoryCaptureError(f"Cannot restore {os.fsdecode(raw_path)}: not a file")
             recorded[os.fsdecode(raw_path)] = (mode, oid)
-        for path in self._selected_files():
+        for path in selected_files(self.layout, lfs_paths_of(self.layout)):
             if path.relative_to(self.layout.root).as_posix() not in recorded:
                 path.unlink()
         manifest = self.layout.manifest.relative_to(self.layout.root).as_posix()

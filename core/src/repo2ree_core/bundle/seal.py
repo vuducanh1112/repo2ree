@@ -93,7 +93,7 @@ def seal_ree(
     ree = ree.model_copy(update={"subject": ree.subject.model_copy(update={"capture": policy})})
     prepare_reproducer(layout, ree)
     write_capture_controls(layout, ree)
-    plan = capture_plan(layout, ree)
+    plan = capture_plan(layout, frozenset(str(path) for path in policy.lfs_paths))
     selected = [
         entry
         for entry in plan.entries
