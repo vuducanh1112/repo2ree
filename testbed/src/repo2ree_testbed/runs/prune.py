@@ -11,8 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from repo2ree_testbed.artifacts import ROOT, domain_dir, run_dir
+from repo2ree_testbed.exercise_case import CASES, cases
 from repo2ree_testbed.preservation import PreservationManifest
 from repo2ree_testbed.records import Receipt, RunRecord, read
+from repo2ree_testbed.runs.exercise_export import newest_replay
 
 RECEIPT = ROOT / ".receipts/assurance-gate.json"
 PER_TEST_RUN = re.compile(r"^(?P<tier>.+)-(?P<stamp>\d{8}-\d{6})$")
@@ -109,6 +111,29 @@ def plan_case_recordings(base: Path, now: float) -> Plan:
     return Plan(sorted(remove), sorted(keep))
 
 
+def _touched(run: Path) -> float:
+    return max(path.stat().st_mtime for path in (run, *run.iterdir()))
+
+
+def plan_exercise_runs(root: Path, kept: set[Path], now: float) -> Plan:
+    remove: list[Path] = []
+    keep: list[Path] = []
+    for run in sorted(path for path in root.iterdir() if path.is_dir()) if root.is_dir() else []:
+        held = {workdir for workdir in kept if workdir.is_relative_to(run)}
+        if now - _touched(run) < IN_PROGRESS_SECONDS:
+            keep.append(run)
+        elif not held:
+            remove.append(run)
+        else:
+            keep.extend(sorted(held))
+            remove.extend(workdir for workdir in sorted(run.glob("*/*")) if workdir.is_dir() and workdir not in held)
+    return Plan(remove, keep)
+
+
+def newest_replays(runs: Path) -> set[Path]:
+    return {replay[0] for case in cases(CASES) if (replay := newest_replay(runs, case.digest)) is not None}
+
+
 def plan_session_files(base: Path, now: float) -> Plan:
     files = sorted(base.glob("*.json")) if base.is_dir() else []
     return Plan([path for path in files if age(path, now) > STALE_RECORDING_SECONDS], [])
@@ -137,6 +162,7 @@ def prune(*, keep_runs: int = 5, keep_suite: int = 3, dry_run: bool = False) -> 
         plan_control_state(root, now),
         *(plan_case_recordings(base, now) for base in recordings),
         *(plan_session_files(base, now) for base in sessions),
+        plan_exercise_runs(root / "exercises", newest_replays(root / "exercises"), now),
     ]
     remove = [path for plan in plans for path in plan.remove]
     freed = 0
@@ -151,7 +177,7 @@ def prune(*, keep_runs: int = 5, keep_suite: int = 3, dry_run: bool = False) -> 
         else:
             path.unlink(missing_ok=True)
     if not dry_run:
-        for base in recordings:
+        for base in (*recordings, root / "exercises"):
             if base.is_dir():
                 remove_empty_directories(base)
     verb = "would free" if dry_run else "freed"

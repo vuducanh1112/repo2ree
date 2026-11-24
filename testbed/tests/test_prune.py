@@ -195,3 +195,34 @@ def test_a_passed_test_not_yet_assessed_is_no_problem() -> None:
     run = RunRecord(tier="t", suite="s", build_revision="", jobs=1, tests=(test,))
     assert not run.problem()
     assert run.with_tests((test.judged("violated"),)).problem()
+
+
+def exercise_run(root: Path, name: str, *workdirs: str, stamp: float = OLD) -> Path:
+    run = root / name
+    for workdir in workdirs:
+        (run / workdir / "rees").mkdir(parents=True)
+    for path in (run, *run.glob("*"), *run.glob("*/*")):
+        os.utime(path, (stamp, stamp))
+    return run
+
+
+def test_exercise_runs_keep_each_case_s_newest_replay_and_runs_in_progress(tmp_path: Path) -> None:
+    search = exercise_run(tmp_path, "search", "spec-cov-0/aaaa", "confirm-0/bbbb")
+    measured = exercise_run(tmp_path, "measured", "coverage/bbbb", "coverage/cccc")
+    older = exercise_run(tmp_path, "older", "coverage/cccc")
+    running = exercise_run(tmp_path, "running", "branch-cov-0/dddd", stamp=NOW)
+    kept = {measured / "coverage/bbbb", measured / "coverage/cccc"}
+
+    plan = prune.plan_exercise_runs(tmp_path, kept, NOW)
+
+    assert set(plan.remove) == {search, older}
+    assert set(plan.keep) == {*kept, running}
+
+
+def test_a_run_holding_a_newest_replay_loses_everything_else(tmp_path: Path) -> None:
+    run = exercise_run(tmp_path, "search", "spec-cov-0/aaaa", "spec-cov-0/bbbb", "confirm-0/bbbb")
+
+    plan = prune.plan_exercise_runs(tmp_path, {run / "confirm-0/bbbb"}, NOW)
+
+    assert set(plan.remove) == {run / "spec-cov-0/aaaa", run / "spec-cov-0/bbbb"}
+    assert plan.keep == [run / "confirm-0/bbbb"]

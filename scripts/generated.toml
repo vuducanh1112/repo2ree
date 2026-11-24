@@ -15,8 +15,8 @@ roots = ["test-artifacts", "reports", "logs", "dist", "sites", ".receipts"]
 ignore = [".DS_Store"]
 
 [owners.testbed]
-summary = "Per-test e2e runs (with the MP4s `just render-cli-sessions` renders beside a run's terminal recordings), suite recordings, stack state, test case recordings and sessions"
-retention = "The newest runs per tier, problems, and the receipt's; a month for recordings and sessions"
+summary = "Per-test e2e runs (with the MP4s `just render-cli-sessions` renders beside a run's terminal recordings), suite recordings, stack state, test case recordings and sessions, and the runs exercises are replayed in"
+retention = "The newest runs per tier, problems, and the receipt's; a month for recordings and sessions; each exercise case's newest replay, which the overview shows, and exercise runs of the last six hours"
 prune = ["python", "-m", "repo2ree_testbed", "prune"]
 claims = [
   "test-artifacts/e2e",
@@ -28,6 +28,7 @@ claims = [
   "test-artifacts/python/sessions",
   "test-artifacts/assurance/tests",
   "test-artifacts/assurance/sessions",
+  "test-artifacts/exercises",
 ]
 
 [owners.testbed-rewritten]
