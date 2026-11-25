@@ -6,6 +6,7 @@ from repo2ree_core.analysis.sbom.equivalence import (
     closure_verdict,
     compare_sbom_closures,
 )
+from repo2ree_ree.primitives import GitRevision
 from repo2ree_ree.review import (
     ComparisonVerdict,
     EvidenceBasis,
@@ -23,19 +24,29 @@ def compare_source_swhids(
     observed: str,
     *,
     basis: EvidenceBasis = "independent",
+    expected_revision: GitRevision | None = None,
+    observed_revision: GitRevision | None = None,
+    history_failure: str | None = None,
 ) -> SourceComparison:
     normalized_expected = expected.strip() or None
     normalized_observed = observed.strip() or None
+    commit_differs = expected_revision is not None and (
+        history_failure is not None or observed_revision != expected_revision
+    )
+    verdict: ComparisonVerdict
     if normalized_expected is None or normalized_observed is None:
-        verdict: ComparisonVerdict = "inconclusive"
-    elif normalized_expected == normalized_observed:
-        verdict = "identical"
-    else:
+        verdict = "inconclusive"
+    elif normalized_expected != normalized_observed or commit_differs:
         verdict = "different"
+    else:
+        verdict = "identical"
     return SourceComparison(
         basis=basis,
         expected_swhid=normalized_expected,
         observed_swhid=normalized_observed,
+        expected_revision=expected_revision,
+        observed_revision=observed_revision,
+        history_failure=history_failure,
         verdict=verdict,
     )
 

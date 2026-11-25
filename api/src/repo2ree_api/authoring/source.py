@@ -38,6 +38,7 @@ def acquire_source_route(ree_id: str, payload: AcquireSourcePayload) -> RunSumma
         "origin_url": payload.origin_url,
         "source_type": payload.source_type,
         "revision": payload.revision,
+        "history": payload.history,
     }
 
     run_state = start_single_command_run(
@@ -49,6 +50,7 @@ def acquire_source_route(ree_id: str, payload: AcquireSourcePayload) -> RunSumma
                 origin_url=payload.origin_url,
                 source_type=payload.source_type,
                 revision=(payload.revision or "").strip(),
+                history=payload.history,
             )
         ),
         request_payload=request_payload,

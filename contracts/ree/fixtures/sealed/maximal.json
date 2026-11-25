@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:dad587345389abbadf83ba09b26ffca71b50526db171e4ba4d1d5a11b616981b",
+    "ree_digest": "sha256:77634cf7a8de8baeacaa560c6a164add427542fb0def90d2f875ab3f37355fb9",
     "sealed_at": "2026-10-01T09:30:00.123456Z"
   },
   "subject": {
@@ -151,6 +151,7 @@
       },
       "name": "maximal",
       "source": {
+        "history": "full",
         "origin_url": "https://example.org/maximal.git",
         "requested_ref": "v1.0",
         "source_type": "git"
@@ -381,6 +382,8 @@
       "acquire_source": {
         "duration_ms": 1250,
         "finished_at": "2026-10-01T08:00:01.250000Z",
+        "history": "full",
+        "history_digest": "sha256:36df5987662a52d633ad0df08372303b53cdac87d1b60c0c2095efb7586ad4ed",
         "observed_swhid": "swh:1:rev:0123456789abcdef0123456789abcdef01234567",
         "operation": "acquire_source",
         "origin_url": "https://example.org/maximal.git",

@@ -30,7 +30,7 @@ _SCRIPT_DIGEST = digest_bytes(_SCRIPT)
 _OTHER_DIGEST = digest_bytes(b"edited")
 _SNAPSHOT_DIGEST = SNAPSHOT_DIGEST
 _EXPERIMENT_ENVIRONMENT_DIGEST = digest_bytes(b"experiment_environment")
-_SOURCE = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
+_SOURCE = SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball")
 
 
 def _ree(*, build_experiment_environment_script_digest: Digest = _SCRIPT_DIGEST) -> Ree:

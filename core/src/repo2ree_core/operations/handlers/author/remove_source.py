@@ -41,6 +41,7 @@ def handle_remove_source(
         store.workspace.clear()
         for path in (
             layout.snapshot_archive,
+            layout.source_history,
             layout.acquire_script,
             layout.materialize_script,
         ):

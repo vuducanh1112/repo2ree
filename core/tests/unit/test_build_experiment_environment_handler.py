@@ -21,7 +21,7 @@ from repo2ree_ree.reserved_paths import RESERVED_BUILD_EXPERIMENT_ENVIRONMENT_SC
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
 _SNAPSHOT_DIGEST = SNAPSHOT_DIGEST
 _SCRIPT = b"#!/bin/sh\nprintf experiment environment > runtime.tar\n"
-_ORIGIN_URL = "https://example.test/repo.git"
+_ORIGIN_URL = "https://example.test/repo.tar.gz"
 
 
 def _source_receipt() -> AcquireSourceReceipt:
@@ -32,15 +32,14 @@ def _source_receipt() -> AcquireSourceReceipt:
         duration_ms=0,
         recorded_at=_NOW,
         origin_url=_ORIGIN_URL,
-        source_type="git",
-        resolved_revision="abc123",
+        source_type="tarball",
         snapshot_digest=_SNAPSHOT_DIGEST,
     )
 
 
 def _ree(*, with_source: bool = True, with_experiment_environment: bool = True, origin_url: str = _ORIGIN_URL) -> Ree:
     definition = ree_definition(
-        source=SourceDefinition(origin_url=origin_url, source_type="git") if with_source else None,
+        source=SourceDefinition(origin_url=origin_url, source_type="tarball") if with_source else None,
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_SCRIPT),
             build_experiment_environment_script_size=len(_SCRIPT),
@@ -244,7 +243,7 @@ def test_build_is_rejected_when_the_source_receipt_has_gone_stale(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    repointed = _ree(origin_url="https://example.test/other.git")
+    repointed = _ree(origin_url="https://example.test/other.tar.gz")
     _layout, store = _workbench(tmp_path, monkeypatch, repointed)
     monkeypatch.setattr(build_experiment_environment, "run_workspace_script", _successful_build(_layout))
 

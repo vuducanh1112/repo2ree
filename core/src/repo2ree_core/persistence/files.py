@@ -68,13 +68,14 @@ def safe_extract_zip(archive: Path, destination: Path) -> None:
             zf.extract(member, destination)
 
 
-def pack_directory_tar_gz(source_path: Path, archive_path: Path) -> Digest:
+def pack_directory_tar_gz(source_path: Path, archive_path: Path, *, left_out: frozenset[str] = frozenset()) -> Digest:
     archive_path.parent.mkdir(parents=True, exist_ok=True)
     with archive_path.open("wb") as raw:
         writer = HashingWriter(raw)
         with tarfile.open(fileobj=writer, mode="w:gz") as tar:  # type: ignore[call-overload]
             for item in sorted(source_path.iterdir(), key=lambda path: path.name):
-                tar.add(item, arcname=item.name)
+                if item.name not in left_out:
+                    tar.add(item, arcname=item.name)
     return writer.digest
 
 

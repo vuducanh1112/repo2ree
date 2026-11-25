@@ -30,7 +30,7 @@ def load_ree(layout: ReeLayout, store: ReeDirectory | None = None) -> Ree:
 def observe_source_slot(layout: ReeLayout, *, upload_token: str = "") -> SourceSlot:
     return SourceSlot(
         upstream_populated=layout.upstream.is_dir() and any(layout.upstream.iterdir()),
-        snapshot_archive_present=layout.snapshot_archive.exists(),
+        snapshot_archive_present=layout.snapshot_archive.exists() or layout.source_history.exists(),
         staged_upload_present=bool(upload_token) and layout.upload_staging_file(upload_token).is_file(),
     )
 

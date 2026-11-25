@@ -33,7 +33,7 @@ def _launch(body: bytes = _LAUNCH) -> LaunchDefinition:
 
 def _ree(launch: LaunchDefinition) -> Ree:
     definition = ree_definition(
-        source=SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
+        source=SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball"),
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_BUILD),
             build_experiment_environment_script_size=len(_BUILD),
@@ -47,8 +47,8 @@ def _ree(launch: LaunchDefinition) -> Ree:
         finished_at=_NOW,
         duration_ms=0,
         recorded_at=_NOW,
-        origin_url="https://example.test/repo.git",
-        source_type="git",
+        origin_url="https://example.test/repo.tar.gz",
+        source_type="tarball",
         snapshot_digest=SNAPSHOT_DIGEST,
     )
     return commit_receipt(Ree(subject=ReeSubject(definition=definition)), source)

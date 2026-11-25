@@ -15,6 +15,7 @@ from repo2ree_core.persistence.layout import (
     BUNDLE_RESULTS_PREFIX,
     BUNDLE_SIGNATURES_PREFIX,
     BUNDLE_SNAPSHOT_ENTRY_PATH,
+    BUNDLE_SOURCE_HISTORY_ENTRY_PATH,
     ReeLayout,
 )
 from repo2ree_core.persistence.ree_manifest import parse_ree_manifest
@@ -74,6 +75,7 @@ def restore_ree_bundle(
         shutil.rmtree(target, ignore_errors=True)
         target.mkdir(parents=True, exist_ok=True)
     source_restored = _restore_file(bundle_root / BUNDLE_SNAPSHOT_ENTRY_PATH, layout.snapshot_archive)
+    _restore_file(bundle_root / BUNDLE_SOURCE_HISTORY_ENTRY_PATH, layout.source_history)
     overlay_files = _restore_tree(bundle_root / BUNDLE_OVERLAY_PREFIX, layout.overlay)
     artifact_files = _restore_tree(bundle_root / BUNDLE_ARTIFACTS_PREFIX, layout.artifacts)
     _restore_tree(bundle_root / BUNDLE_RESULTS_PREFIX, layout.results)

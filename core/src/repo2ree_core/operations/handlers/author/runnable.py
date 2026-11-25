@@ -14,11 +14,12 @@ from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.execution.working_environment import observe_working_environment
 from repo2ree_core.failures import failed_from_exception
+from repo2ree_core.operations.steps.source_repository import lay_out_run
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
-from repo2ree_core.workspace.attempt import discard, lay_out
+from repo2ree_core.workspace.attempt import discard
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
 from repo2ree_protocol.result import ActionResult
@@ -56,7 +57,7 @@ def handle_runnable_operation(
         if not again and (current := _current_receipt(ree, definition)) is not None:
             return _already_current(definition, current, log)
         experiment_environment_path, experiment_environment_digest = _check_preconditions(ree, definition)
-        workspace = lay_out(layout, ree, run_id, environment=True)
+        workspace = lay_out_run(layout, ree, run_id, environment=True)
         activation = _check_activation(ree, workspace)
         if isinstance(definition, ExperimentDefinition):
             _check_experiment_scripts(definition, workspace)

@@ -57,8 +57,8 @@ def _source_receipt() -> AcquireSourceReceipt:
         finished_at=_NOW,
         duration_ms=0,
         recorded_at=_NOW,
-        origin_url="https://example.test/repo.git",
-        source_type="git",
+        origin_url="https://example.test/repo.tar.gz",
+        source_type="tarball",
         snapshot_digest=_SNAPSHOT,
     )
 

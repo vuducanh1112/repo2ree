@@ -1075,6 +1075,8 @@ export interface components {
             source_type: "git" | "tarball" | "zip";
             /** Revision */
             revision?: string | null;
+            /** History */
+            history?: ("full" | "tip") | null;
             /** Idempotency Key */
             idempotency_key?: string | null;
         };
@@ -1113,6 +1115,10 @@ export interface components {
             requested_ref?: string | null;
             /** Resolved Revision */
             resolved_revision?: string | null;
+            /** History */
+            history?: ("full" | "tip") | null;
+            /** History Digest */
+            history_digest?: string | null;
             /** Observed Swhid */
             observed_swhid?: string | null;
             /** Snapshot Digest */
@@ -3408,6 +3414,12 @@ export interface components {
             expected_swhid?: string | null;
             /** Observed Swhid */
             observed_swhid?: string | null;
+            /** Expected Revision */
+            expected_revision?: string | null;
+            /** Observed Revision */
+            observed_revision?: string | null;
+            /** History */
+            history?: ("full" | "tip") | null;
         };
         /** ReviewActivateExperimentEnvironmentReceipt */
         ReviewActivateExperimentEnvironmentReceipt: {
@@ -4066,6 +4078,12 @@ export interface components {
             expected_swhid?: string | null;
             /** Observed Swhid */
             observed_swhid?: string | null;
+            /** Expected Revision */
+            expected_revision?: string | null;
+            /** Observed Revision */
+            observed_revision?: string | null;
+            /** History Failure */
+            history_failure?: string | null;
             /**
              * Verdict
              * @enum {string}
@@ -4083,6 +4101,8 @@ export interface components {
             source_type: "" | "git" | "hg" | "svn" | "cvs" | "bzr" | "tarball" | "zip";
             /** Requested Ref */
             requested_ref?: string | null;
+            /** History */
+            history?: ("full" | "tip") | null;
         };
         /** SourceUploadCompletePayload */
         SourceUploadCompletePayload: {

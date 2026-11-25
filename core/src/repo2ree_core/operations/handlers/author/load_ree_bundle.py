@@ -4,12 +4,14 @@ import tempfile
 from pathlib import Path
 
 from repo2ree_core.bundle.restore import restore_ree_bundle
+from repo2ree_core.digests import digest_file
 from repo2ree_core.execution.process import CancelCheck, format_command, run_streaming_process
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import safe_extract_zip, write_atomic
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
 from repo2ree_core.reproduction.materialize_workspace import build_materialize_sh
+from repo2ree_core.source_repo import SourceHistoryError, verify_source_history
 from repo2ree_core.workspace.materialization import record_materialization
 from repo2ree_protocol.command import LoadReeBundleArgs
 from repo2ree_protocol.frames import LogSink
@@ -63,6 +65,8 @@ def handle_load_ree_bundle(
 
     if is_canceled():
         return ActionResult(status="canceled")
+    if (refused := _refuse_unheld_history(layout, log=log)) is not None:
+        return refused
     restored = _restored_files(layout, sealed=loaded.sealed)
     rebuilt = _rebuild_derived_trees(layout, restored_source=loaded.source_restored, log=log, is_canceled=is_canceled)
     _put_back(restored)
@@ -74,6 +78,28 @@ def handle_load_ree_bundle(
         exit_code=0,
         outputs=LoadReeBundleOutputs(archive_name=args.archive_name, loaded=loaded).model_dump(mode="json"),
     )
+
+
+def _refuse_unheld_history(layout: ReeLayout, *, log: LogSink) -> ActionResult | None:
+    receipt = ReeDirectory(layout).read_ree().subject.receipts.acquire_source
+    if receipt is None or receipt.history_digest is None or not layout.source_history.is_file():
+        return None
+    try:
+        if digest_file(layout.source_history) != receipt.history_digest:
+            raise SourceHistoryError("the bundle's source history is not the one its REE acquired")
+        if receipt.resolved_revision is None or receipt.history is None or receipt.observed_swhid is None:
+            raise SourceHistoryError("the REE records a source history but not the commit it holds")
+        verify_source_history(
+            layout.source_history,
+            revision=receipt.resolved_revision,
+            swhid=receipt.observed_swhid,
+            history=receipt.history,
+        )
+    except SourceHistoryError as exc:
+        log("system", "error", f"the bundle's source history does not hold: {exc}")
+        return ActionResult.failed("validation", f"the bundle's source history does not hold: {exc}")
+    log("system", "info", f"the bundle's source history ({receipt.history}) holds commit {receipt.resolved_revision}")
+    return None
 
 
 def _restored_files(layout: ReeLayout, *, sealed: bool) -> dict[Path, bytes | None]:

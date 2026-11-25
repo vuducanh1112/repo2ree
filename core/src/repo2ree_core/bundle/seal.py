@@ -77,6 +77,11 @@ def seal_ree(
             raise ValueError("Selected source snapshot is unavailable")
         if layout.snapshot_archive.is_file():
             paths.add(layout.snapshot_archive.relative_to(layout.root).as_posix())
+        acquired = ree.subject.receipts.acquire_source
+        if acquired is not None and acquired.history_digest is not None:
+            if not layout.source_history.is_file():
+                raise ValueError("Selected source history is unavailable")
+            paths.add(layout.source_history.relative_to(layout.root).as_posix())
     experiment_environment = ree.subject.definition.experiment_environment
     if experiment_environment_included and experiment_environment.artifact_path:
         source = store.author_artifact(str(experiment_environment.artifact_path))

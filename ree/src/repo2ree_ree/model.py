@@ -12,6 +12,7 @@ from repo2ree_ree.primitives import (
     ExperimentEnvironmentPath,
     OverlayPath,
     ReePath,
+    SourceHistory,
     SourceType,
     UtcInstant,
     WorkspacePath,
@@ -71,11 +72,14 @@ class SourceDefinition(_DomainModel):
     origin_url: str | None = None
     source_type: SourceType
     requested_ref: str | None = None
+    history: SourceHistory | None = None
 
     @model_validator(mode="after")
     def _complete_source(self) -> SourceDefinition:
         if not self.source_type:
             raise ValueError("a present source definition requires a source type")
+        if (self.source_type == "git") != (self.history is not None):
+            raise ValueError("a git source declares its history, full or tip, and no other source has one")
         return self
 
 

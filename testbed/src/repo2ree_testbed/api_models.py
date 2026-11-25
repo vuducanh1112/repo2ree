@@ -56,6 +56,9 @@ class Run(_Response):
 class SourceComparison(_Response):
     basis: ComparisonBasis
     verdict: SourceVerdict
+    expected_revision: str | None = None
+    observed_revision: str | None = None
+    history_failure: str | None = None
 
 
 class ExperimentEnvironmentComparison(_Response):
@@ -105,6 +108,7 @@ class AcquireSourceReceipt(_Response):
     source_type: ReceiptSourceType
     origin_url: str | None = None
     resolved_revision: str | None = None
+    history: Literal["full", "tip"] | None = None
     observed_swhid: str | None = None
 
 
@@ -225,6 +229,7 @@ class InferenceReport(_Response):
 class SourceAcquire(_Payload):
     origin_url: str
     source_type: AcquirableSourceType
+    revision: str | None = None
 
 
 class SourceReviewRequest(_Payload):

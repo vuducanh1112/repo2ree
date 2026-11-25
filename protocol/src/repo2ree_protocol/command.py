@@ -128,6 +128,10 @@ class AcquireSourceArgs(BaseModel):
         default=None, description="What the origin serves; by default read off the URL."
     )
     revision: str = Field(default="", description="The git commit, branch or tag; by default the origin's HEAD.")
+    history: Literal["full", "tip"] | None = Field(
+        default=None,
+        description="A git source's history: full carries its ancestry, tip the commit alone; by default full.",
+    )
     upload_token: str = Field(default="", description="The staged archive's token.")
     archive_name: str = Field(default="", description="The staged archive's file name.")
 

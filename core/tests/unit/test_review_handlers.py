@@ -19,7 +19,9 @@ from repo2ree_core.operations.handlers.review import (
     run_experiment,
 )
 from repo2ree_core.persistence.directory import ReeDirectory
+from repo2ree_core.persistence.files import pack_directory_tar_gz
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.source_repo import pack_source_history
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_protocol.command import (
     ReviewAcquireSourceArgs,
@@ -42,6 +44,7 @@ from repo2ree_ree.model import (
 )
 from repo2ree_ree.primitives import (
     ExperimentEnvironmentPath,
+    GitRevision,
     LaunchOption,
     OverlayPath,
     RunId,
@@ -262,7 +265,9 @@ def test_source_review_reads_definition_and_author_receipt(
             Ree(
                 subject=ReeSubject(
                     definition=ree_definition(
-                        source=SourceDefinition(origin_url=str(origin), source_type="git", requested_ref=revision)
+                        source=SourceDefinition(
+                            origin_url=str(origin), source_type="git", requested_ref=revision, history="full"
+                        )
                     ),
                     receipts=ReeReceipts(
                         acquire_source=AcquireSourceReceipt(
@@ -274,7 +279,9 @@ def test_source_review_reads_definition_and_author_receipt(
                             origin_url=str(origin),
                             source_type="git",
                             requested_ref=revision,
-                            resolved_revision=revision,
+                            resolved_revision=GitRevision(revision),
+                            history="full",
+                            history_digest=digest_bytes(b"history"),
                             observed_swhid=Swhid(swhid),
                             snapshot_digest=digest_bytes(b"snapshot"),
                         )
@@ -294,6 +301,9 @@ def test_source_review_reads_definition_and_author_receipt(
     assert result.status == "succeeded"
     assert result.outputs["comparison"]["verdict"] == "identical"
     assert result.outputs["receipt"]["requested_ref"] == revision
+    assert result.outputs["receipt"]["observed_revision"] == revision
+    assert result.outputs["receipt"]["history"] == "full"
+    assert result.outputs["comparison"]["observed_revision"] == revision
     assert (layout.review(_REVIEW_ID).upstream / "source.txt").read_text() == "source\n"
     record = read_review_record(layout.review(_REVIEW_ID))
     assert record is not None
@@ -306,6 +316,75 @@ def test_source_review_reads_definition_and_author_receipt(
     ), "a draft is named by what it declares, and by no seal"
     assert record.machine.system
     assert record.machine.architecture
+
+
+def test_a_bundled_history_of_another_commit_with_the_same_files_is_a_different_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if shutil.which("git") is None:
+        pytest.skip("git is required for a source history")
+    origin = tmp_path / "origin"
+    subprocess.run(["git", "init", "-q", str(origin)], check=True)
+    (origin / "source.txt").write_text("source\n")
+    git = ["git", "-C", str(origin), "-c", "user.name=Test", "-c", "user.email=test@example.test"]
+    subprocess.run([*git, "add", "source.txt"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "source"], check=True)
+    subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "the same files, another commit"], check=True)
+    claimed = subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    subprocess.run([*git, "checkout", "-q", "--detach", "HEAD~1"], check=True)
+
+    layout = ReeLayout(tmp_path / "ree")
+    store = ReeDirectory(layout)
+    store.ensure_dirs()
+    files = tmp_path / "files"
+    files.mkdir()
+    (files / "source.txt").write_text("source\n")
+    snapshot = pack_directory_tar_gz(files, layout.snapshot_archive)
+    held = pack_source_history(origin, layout.source_history)
+    assert held.revision != claimed
+    store.write_ree(
+        with_fixed_scripts(
+            layout,
+            Ree(
+                subject=ReeSubject(
+                    definition=ree_definition(
+                        source=SourceDefinition(origin_url=str(origin), source_type="git", history="full")
+                    ),
+                    receipts=ReeReceipts(
+                        acquire_source=AcquireSourceReceipt(
+                            run_id=RunId("author-source"),
+                            started_at=_NOW,
+                            finished_at=_NOW,
+                            duration_ms=0,
+                            recorded_at=_NOW,
+                            origin_url=str(origin),
+                            source_type="git",
+                            resolved_revision=GitRevision(claimed),
+                            history="full",
+                            history_digest=held.digest,
+                            observed_swhid=Swhid(directory_swhid(files)),
+                            snapshot_digest=snapshot,
+                        )
+                    ),
+                )
+            ),
+        )
+    )
+
+    result = acquire_source.handle_review_acquire_source(
+        ReviewAcquireSourceArgs(review_id=_REVIEW_ID, basis="bundled"),
+        run_id="review-source",
+        log=lambda *_: None,
+        is_canceled=lambda: False,
+        layout=layout,
+    )
+
+    assert result.status == "succeeded"
+    comparison = result.outputs["comparison"]
+    assert comparison["expected_swhid"] == comparison["observed_swhid"]
+    assert comparison["verdict"] == "different"
+    assert "holds commit" in comparison["history_failure"]
 
 
 def test_bundled_experiment_environment_review_records_only_the_input_it_used(

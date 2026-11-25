@@ -61,9 +61,8 @@ def _ree(
         ree,
         AcquireSourceReceipt(
             **_envelope("source-1"),
-            origin_url="https://example.test/repo.git",
-            source_type="git",
-            resolved_revision="abc123",
+            origin_url="https://example.test/repo.tar.gz",
+            source_type="tarball",
             snapshot_digest=_SNAPSHOT,
         ),
     )

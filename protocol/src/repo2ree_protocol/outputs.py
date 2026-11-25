@@ -76,6 +76,7 @@ class AcquireSourceOutputs(BaseModel):
     source_type: str
     requested_ref: str | None = None
     resolved_revision: str | None = None
+    history: Literal["full", "tip"] | None = None
     upload_token: str | None = None
     archive_name: str | None = None
     snapshot_digest: str

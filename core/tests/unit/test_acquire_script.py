@@ -35,8 +35,10 @@ def test_generated_acquire_sh_is_valid_posix(kwargs):
 
 
 def test_acquire_sh_is_deterministic_for_equal_inputs():
-    kwargs = {"origin_url": "https://example.com/repo.git", "source_type": "git", "swhid": "swh:1:dir:x"}
-    assert build_acquire_sh(**kwargs) == build_acquire_sh(**kwargs)
+    def built() -> bytes:
+        return build_acquire_sh(origin_url="https://example.com/repo.git", source_type="git", swhid="swh:1:dir:x")
+
+    assert built() == built()
 
 
 def test_bakes_origin_swhid_and_only_the_relevant_fetch_command():
@@ -45,15 +47,57 @@ def test_bakes_origin_swhid_and_only_the_relevant_fetch_command():
     assert "SWHID='swh:1:dir:z'" in script
     assert "@@" not in script
     assert 'case "$SOURCE_TYPE"' not in script
-    assert "git clone --depth 1" in script
+    assert "git clone -q --no-tags --depth 1" in script
     assert "unzip -q" not in script
+
+
+def test_a_full_history_clones_the_ancestry():
+    script = build_acquire_sh(origin_url="https://e/r.git", source_type="git", history="full").decode()
+    assert 'git clone -q "$ORIGIN_URL"' in script
+    assert "--depth" not in script
 
 
 def test_bakes_git_revision_and_pins_the_fetch():
     script = build_acquire_sh(origin_url="https://e/r.git", source_type="git", revision="deadbeef").decode()
     assert "rev='deadbeef'" in script
-    assert "fetch -q --depth 1 origin" in script
-    assert "git clone --depth 1" not in script
+    assert "fetch -q --no-tags --depth 1 origin" in script
+    assert "git clone" not in script
+
+
+def test_a_pinned_full_history_fetches_the_revision_with_its_ancestry_and_tags():
+    script = build_acquire_sh(
+        origin_url="https://e/r.git", source_type="git", revision="deadbeef", history="full"
+    ).decode()
+    assert 'fetch -q --no-tags origin "$rev"' in script
+    assert "'+refs/tags/*:refs/tags/*'" in script
+    assert "--depth" not in script
+
+
+def test_fetches_a_pinned_revision_with_its_history(tmp_path):
+    if shutil.which("git") is None:
+        pytest.skip("git is required to exercise the generated git fetch command")
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    git = ["git", "-C", str(origin), "-c", "user.name=t", "-c", "user.email=t@e"]
+    subprocess.run(["git", "init", "-q", str(origin)], check=True)
+    for content in ("first", "second", "third"):
+        (origin / "v.txt").write_text(f"{content}\n")
+        subprocess.run([*git, "add", "."], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", content], check=True)
+        if content == "first":
+            subprocess.run([*git, "tag", "-a", "v1", "-m", "v1"], check=True)
+    pinned = subprocess.run([*git, "rev-parse", "HEAD~1"], check=True, capture_output=True, text=True).stdout.strip()
+
+    result = _run(
+        build_acquire_sh(origin_url=str(origin), source_type="git", revision=pinned, history="full"), tmp_path
+    )
+
+    assert result.returncode == 0, result.stderr
+    upstream = tmp_path / UPSTREAM_DIRNAME
+    inspect = ["git", "-C", str(upstream)]
+    assert (upstream / "v.txt").read_text() == "second\n"
+    assert subprocess.run([*inspect, "rev-list", "--count", "HEAD"], capture_output=True, text=True).stdout == "2\n"
+    assert "v1" in subprocess.run([*inspect, "tag"], capture_output=True, text=True).stdout
 
 
 def test_fetches_recorded_git_revision_when_snapshot_missing(tmp_path):

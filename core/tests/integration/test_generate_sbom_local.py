@@ -53,8 +53,8 @@ def test_scanner_process_publishes_sbom_and_commits_receipt(
             finished_at=_NOW,
             duration_ms=0,
             recorded_at=_NOW,
-            origin_url="https://example.test/repo.git",
-            source_type="git",
+            origin_url="https://example.test/repo.tar.gz",
+            source_type="tarball",
             snapshot_digest=digest_bytes(b"snapshot"),
         ),
     )

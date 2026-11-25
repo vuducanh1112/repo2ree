@@ -13,6 +13,7 @@ from repo2ree_ree.paths import validate_path_segment, validate_relative_path
 from repo2ree_ree.scalar import StringValue
 
 SourceType = Literal["", "git", "hg", "svn", "cvs", "bzr", "tarball", "zip"]
+SourceHistory = Literal["full", "tip"]
 
 
 class RunId(StringValue):
@@ -59,8 +60,15 @@ class ReeRevision(Digest):
     pass
 
 
+_GIT_OBJECT_ID = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+
+
 class GitRevision(StringValue):
-    pass
+    @classmethod
+    def validate(cls, value: str) -> str:
+        if not _GIT_OBJECT_ID.match(value):
+            raise ValueError(f"a git revision is a full lowercase commit id: {value!r}")
+        return value
 
 
 class Swhid(StringValue):
@@ -93,6 +101,7 @@ __all__ = [
     "ReeRevision",
     "RunId",
     "ScriptPath",
+    "SourceHistory",
     "SourceType",
     "Swhid",
     "UtcInstant",

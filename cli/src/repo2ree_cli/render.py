@@ -118,6 +118,8 @@ def document(doc: WorkbenchReeDocument) -> str:
     if source is not None:
         origin = source.origin_url or "uploaded archive"
         lines.append(f"source: {source.source_type} from {origin}, {source.observed_swhid}")
+        if source.resolved_revision is not None:
+            lines.append(f"  commit {source.resolved_revision}, {_history_words(source.history)}")
     else:
         lines.append("source: none")
     environment = definition.experiment_environment
@@ -169,6 +171,8 @@ def review(record: ReviewRecord) -> str:
     if record.source_comparison is not None:
         source = record.source_comparison
         lines.append(f"  source: {source.verdict} ({source.basis})")
+        if source.history_failure is not None:
+            lines.append(f"    the source's history does not hold: {source.history_failure}")
     if record.experiment_environment_comparison is not None:
         environment = record.experiment_environment_comparison
         lines.append(
@@ -229,9 +233,16 @@ def _inferred(result: TargetInferenceResult, current: str | None) -> str:
     return "\n".join(lines)
 
 
+def _history_words(history: str | None) -> str:
+    return "with its history" if history == "full" else "the commit alone"
+
+
 def acquired(outputs: AcquireSourceOutputs) -> str:
     origin = outputs.origin_url or outputs.archive_name or "an uploaded archive"
-    return f"source: {outputs.source_type} from {origin}\n  {outputs.swhid or outputs.snapshot_digest}"
+    lines = [f"source: {outputs.source_type} from {origin}", f"  {outputs.swhid or outputs.snapshot_digest}"]
+    if outputs.resolved_revision is not None:
+        lines.append(f"  commit {outputs.resolved_revision}, {_history_words(outputs.history)}")
+    return "\n".join(lines)
 
 
 def patched(outputs: PatchReeDefinitionOutputs) -> str:

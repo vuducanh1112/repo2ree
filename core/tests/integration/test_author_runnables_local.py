@@ -81,8 +81,8 @@ def test_activation_and_experiment_scripts_commit_successful_receipts(
             finished_at=_NOW,
             duration_ms=0,
             recorded_at=_NOW,
-            origin_url="https://example.test/repo.git",
-            source_type="git",
+            origin_url="https://example.test/repo.tar.gz",
+            source_type="tarball",
             snapshot_digest=digest_bytes(b"snapshot"),
         ),
     )

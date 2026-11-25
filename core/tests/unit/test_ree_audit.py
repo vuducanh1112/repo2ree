@@ -49,7 +49,7 @@ _EXPERIMENT_ENVIRONMENT_DIGEST = digest_bytes(b"experiment_environment")
 _SBOM_DIGEST = digest_bytes(b"sbom")
 _REPORT_DIGEST = digest_bytes(b"report")
 _NOW = parse_utc_instant("2026-08-03T00:00:00Z")
-_SOURCE = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
+_SOURCE = SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball")
 _EXPERIMENT_ENVIRONMENT_PATH = ExperimentEnvironmentPath("runtime.tar")
 _EXPERIMENT_NAME = "demo"
 
@@ -168,7 +168,7 @@ def test_repointing_the_source_leaves_the_source_receipt_stale() -> None:
     repointed = replace_definition(
         ree,
         ree.subject.definition.model_copy(
-            update={"source": _SOURCE.model_copy(update={"origin_url": "https://example.test/other.git"})}
+            update={"source": _SOURCE.model_copy(update={"origin_url": "https://example.test/other.tar.gz"})}
         ),
     )
 

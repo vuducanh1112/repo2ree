@@ -4,7 +4,18 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from repo2ree_ree.primitives import Digest, LaunchOption, ReePath, RunId, SourceType, Swhid, UtcInstant, WorkspacePath
+from repo2ree_ree.primitives import (
+    Digest,
+    GitRevision,
+    LaunchOption,
+    ReePath,
+    RunId,
+    SourceHistory,
+    SourceType,
+    Swhid,
+    UtcInstant,
+    WorkspacePath,
+)
 from repo2ree_ree.receipt import Launched, OverlayDigest
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
@@ -55,6 +66,9 @@ class ReviewAcquireSourceReceipt(ReviewReceiptEnvelope):
     requested_ref: str | None = None
     expected_swhid: Swhid | None = None
     observed_swhid: Swhid | None = None
+    expected_revision: GitRevision | None = None
+    observed_revision: GitRevision | None = None
+    history: SourceHistory | None = None
 
 
 class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
@@ -100,6 +114,9 @@ class SourceComparison(_ReviewModel):
     basis: EvidenceBasis = "independent"
     expected_swhid: str | None = None
     observed_swhid: str | None = None
+    expected_revision: GitRevision | None = None
+    observed_revision: GitRevision | None = None
+    history_failure: str | None = None
     verdict: ComparisonVerdict
 
 

@@ -204,6 +204,17 @@
           "multiple": false,
           "help": "The git commit, branch or tag; by default the origin's HEAD.",
           "type": "text"
+        },
+        {
+          "name": "--history",
+          "kind": "option",
+          "required": false,
+          "multiple": false,
+          "help": "A git source's history: full carries its ancestry, tip the commit alone; by default full.",
+          "choices": [
+            "full",
+            "tip"
+          ]
         }
       ],
       "stdin": null,
@@ -1564,6 +1575,22 @@
           "default": null,
           "title": "Resolved Revision"
         },
+        "history": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "tip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History"
+        },
         "upload_token": {
           "anyOf": [
             {
@@ -1701,6 +1728,40 @@
           ],
           "default": null,
           "title": "Resolved Revision"
+        },
+        "history": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "tip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History"
+        },
+        "history_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "x-digest-of": {
+                "covers": "file",
+                "entries": [
+                  "source-history.bundle"
+                ]
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History Digest"
         },
         "observed_swhid": {
           "anyOf": [
@@ -6961,6 +7022,46 @@
           ],
           "default": null,
           "title": "Observed Swhid"
+        },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Revision"
+        },
+        "observed_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Revision"
+        },
+        "history": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "tip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History"
         }
       },
       "required": [
@@ -8858,6 +8959,42 @@
           "default": null,
           "title": "Observed Swhid"
         },
+        "expected_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Revision"
+        },
+        "observed_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Revision"
+        },
+        "history_failure": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History Failure"
+        },
         "verdict": {
           "enum": [
             "identical",
@@ -8914,6 +9051,22 @@
           ],
           "default": null,
           "title": "Requested Ref"
+        },
+        "history": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "tip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History"
         }
       },
       "required": [

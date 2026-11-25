@@ -24,7 +24,7 @@ from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, observe_source_slot, save_ree
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
-from repo2ree_core.source_repo import directory_swhid, resolved_git_head
+from repo2ree_core.source_repo import SourceHistoryError, directory_swhid, pack_source_history
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.frames import LogSink
@@ -32,7 +32,7 @@ from repo2ree_protocol.outputs import AcquireSourceOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import Ree, SourceDefinition
-from repo2ree_ree.primitives import Swhid
+from repo2ree_ree.primitives import GitRevision, SourceHistory, Swhid
 from repo2ree_ree.receipt import AcquireSourceReceipt
 
 
@@ -46,8 +46,10 @@ class _Acquisition:
 
 @dataclass(frozen=True)
 class _ObservedSource:
-    resolved_revision: str | None
+    resolved_revision: GitRevision | None
     swhid: Swhid | None
+    history: SourceHistory | None = None
+    history_digest: Digest | None = None
 
 
 def handle_acquire_source(
@@ -84,9 +86,13 @@ def handle_acquire_source(
     if isinstance(performed, ActionResult):
         return performed
     snapshot_digest = performed
-    observed = _observe_acquired_source(layout, acquisition.definition, log=log)
     try:
-        _validate_observation(acquisition.definition, observed)
+        observed = _observe_acquired_source(layout, acquisition.definition, log=log)
+    except SourceHistoryError as exc:
+        log("system", "error", f"the source's history could not be packed: {exc}")
+        return ActionResult.failed("execution", f"the source's history could not be packed: {exc}")
+    try:
+        _validate_observation(acquisition.definition, observed, log=log)
     except ValueError as exc:
         log("system", "error", f"acquired source failed identity validation: {exc}")
         return ActionResult.failed("validation", str(exc))
@@ -98,6 +104,8 @@ def handle_acquire_source(
         source_type=acquisition.definition.source_type,
         requested_ref=acquisition.definition.requested_ref,
         resolved_revision=observed.resolved_revision,
+        history=observed.history,
+        history_digest=observed.history_digest,
         observed_swhid=observed.swhid,
         snapshot_digest=snapshot_digest,
     )
@@ -139,14 +147,19 @@ def _acquisition_from(args: AcquireSourceArgs) -> _Acquisition:
             raise ValueError("a download acquisition needs an origin URL")
         if args.source_type is None:
             raise ValueError("a download acquisition needs a source type")
+        if args.source_type != "git" and args.history is not None:
+            raise ValueError("only a git source has a history to carry")
         return _Acquisition(
             mode="download",
             definition=SourceDefinition(
                 origin_url=args.origin_url.strip(),
                 source_type=args.source_type,
                 requested_ref=requested_ref,
+                history=(args.history or "full") if args.source_type == "git" else None,
             ),
         )
+    if args.history is not None:
+        raise ValueError("an uploaded archive has no history to carry")
     if not args.upload_token or not args.archive_name:
         raise ValueError("an upload acquisition needs an upload token and archive name")
     source_type: Literal["zip", "tarball"] = "zip" if args.archive_name.lower().endswith(".zip") else "tarball"
@@ -165,7 +178,12 @@ def _current_receipt(layout: ReeLayout, ree: Ree, acquisition: _Acquisition) -> 
     if ree.subject.definition.source != acquisition.definition or audit(ree).acquire_source.evidence != "current":
         return None
     archive = layout.snapshot_archive
-    return receipt if archive.is_file() and digest_file(archive) == receipt.snapshot_digest else None
+    if not archive.is_file() or digest_file(archive) != receipt.snapshot_digest:
+        return None
+    if receipt.history_digest is None:
+        return receipt
+    held = layout.source_history
+    return receipt if held.is_file() and digest_file(held) == receipt.history_digest else None
 
 
 def _check_preconditions(ree: Ree, acquisition: _Acquisition, layout: ReeLayout) -> None:
@@ -230,6 +248,7 @@ def _write_acquire_script(definition: SourceDefinition, *, log: LogSink, layout:
             origin_url=definition.origin_url or "",
             source_type=definition.source_type,
             revision=definition.requested_ref or "",
+            history=definition.history or "tip",
         ),
     )
     log("system", "info", f"wrote acquire script → {ACQUIRE_SCRIPT_FILENAME}")
@@ -262,17 +281,19 @@ def _observe_acquired_source(
         swhid = Swhid(observed) if observed else None
     except Exception as exc:
         log("system", "warn", f"swhid computation skipped: {exc}")
+    if definition.source_type != "git":
+        return _ObservedSource(resolved_revision=None, swhid=swhid)
+    packed = pack_source_history(layout.upstream, layout.source_history)
+    log("system", "info", f"packed the source's history ({packed.history}) → {layout.source_history.name}")
+    return _ObservedSource(
+        resolved_revision=packed.revision,
+        swhid=swhid,
+        history=packed.history,
+        history_digest=packed.digest,
+    )
 
-    resolved_revision: str | None = None
-    if definition.source_type == "git":
-        try:
-            resolved_revision = resolved_git_head(layout.upstream) or None
-        except Exception as exc:
-            log("system", "warn", f"revision resolution skipped: {exc}")
-    return _ObservedSource(resolved_revision=resolved_revision, swhid=swhid)
 
-
-def _validate_observation(definition: SourceDefinition, observed: _ObservedSource) -> None:
+def _validate_observation(definition: SourceDefinition, observed: _ObservedSource, *, log: LogSink) -> None:
     if definition.source_type == "git" and observed.resolved_revision is None:
         raise ValueError("git acquisition did not produce a resolved revision")
     requested = definition.requested_ref
@@ -280,9 +301,11 @@ def _validate_observation(definition: SourceDefinition, observed: _ObservedSourc
         requested
         and observed.resolved_revision
         and re.fullmatch(r"(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})", requested)
-        and requested.lower() != observed.resolved_revision.lower()
+        and requested.lower() != observed.resolved_revision
     ):
         raise ValueError(f"requested immutable revision {requested!r} resolved to {observed.resolved_revision!r}")
+    if definition.history == "full" and observed.history == "tip":
+        log("system", "warn", "the origin served the commit alone: the source carries no history beyond it")
 
 
 def _outputs(acquisition: _Acquisition, receipt: AcquireSourceReceipt) -> AcquireSourceOutputs:
@@ -291,7 +314,8 @@ def _outputs(acquisition: _Acquisition, receipt: AcquireSourceReceipt) -> Acquir
         origin_url=receipt.origin_url,
         source_type=receipt.source_type,
         requested_ref=receipt.requested_ref,
-        resolved_revision=receipt.resolved_revision,
+        resolved_revision=str(receipt.resolved_revision) if receipt.resolved_revision else None,
+        history=receipt.history,
         upload_token=acquisition.upload_token or None,
         archive_name=acquisition.archive_name or None,
         snapshot_digest=str(receipt.snapshot_digest),

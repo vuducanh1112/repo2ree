@@ -14,6 +14,7 @@ from repo2ree_core.execution.experiment.run import ExperimentRunOutcome, run_run
 from repo2ree_core.execution.experiment.spec import RunnableSpec
 from repo2ree_core.execution.launch import Launch, declared_launch
 from repo2ree_core.execution.process import CancelCheck
+from repo2ree_core.operations.steps.source_repository import lay_review_repository
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.source_repo.swhid import directory_swhid
@@ -233,6 +234,7 @@ def _review_source(review: ReviewLayout, record: ReviewRecord, workspace: Path) 
     if not review.upstream.is_dir() or directory_swhid(review.upstream) != receipt.observed_swhid:
         raise ReePreconditionError("the source in this review is not the one its acquisition observed")
     shutil.copytree(review.upstream, workspace, symlinks=True, dirs_exist_ok=True)
+    lay_review_repository(review, record, workspace)
 
 
 def _review_overlay(review: ReviewLayout, record: ReviewRecord) -> None:

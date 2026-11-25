@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from repo2ree_core.persistence.layout import SNAPSHOT_FILENAME, UPSTREAM_DIRNAME
 from repo2ree_core.reproduction.shell import assert_no_placeholders, shell_single_quote, shell_text
+from repo2ree_ree.primitives import SourceHistory
 
 _TEMPLATE = shell_text("""
     #!/bin/sh
@@ -73,36 +74,61 @@ _TEMPLATE = shell_text("""
 """)
 
 
-def _fetch_source_function(source_type: str, revision: str) -> str:
-    if source_type == "git":
-        if revision:
-            return shell_text("""
-                fetch_source() {
-                  dest=$1
-                  rev=@@REVISION@@
-                  [ -n "$ORIGIN_URL" ] || die "no origin recorded; cannot fetch"
-                  command -v git >/dev/null 2>&1 || die "git is required to fetch this source"
-                  say "Fetching source from $ORIGIN_URL (git, pinned to $rev)"
-                  git init -q "$dest"
-                  git -C "$dest" remote add origin "$ORIGIN_URL"
-                  if git -C "$dest" fetch -q --depth 1 origin "$rev" 2>/dev/null; then
-                    git -C "$dest" checkout -q FETCH_HEAD
-                  else
-                    say "shallow fetch of $rev rejected; falling back to full clone"
-                    git -C "$dest" fetch -q origin
-                    git -C "$dest" checkout -q "$rev"
-                  fi
-                }
-            """).replace("@@REVISION@@", shell_single_quote(revision))
-        return shell_text("""
+_GIT_FETCH = {
+    ("tip", True): """
+        say "Fetching source from $ORIGIN_URL (git, pinned to $rev, the commit alone)"
+        git init -q "$dest"
+        git -C "$dest" remote add origin "$ORIGIN_URL"
+        git -C "$dest" fetch -q --no-tags --depth 1 origin "$rev" \\
+          || die "the origin serves no shallow fetch of $rev"
+        git -C "$dest" checkout -q --detach FETCH_HEAD
+    """,
+    ("tip", False): """
+        say "Fetching source from $ORIGIN_URL (git, the commit alone)"
+        git clone -q --no-tags --depth 1 "$ORIGIN_URL" "$dest"
+    """,
+    ("full", True): """
+        say "Fetching source from $ORIGIN_URL (git, pinned to $rev, with its history)"
+        git init -q "$dest"
+        git -C "$dest" remote add origin "$ORIGIN_URL"
+        if git -C "$dest" fetch -q --no-tags origin "$rev" 2>/dev/null; then
+          git -C "$dest" checkout -q --detach FETCH_HEAD
+        else
+          say "the origin serves no fetch of $rev alone; fetching every branch"
+          git -C "$dest" fetch -q --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+          git -C "$dest" checkout -q --detach "$rev"
+        fi
+        git -C "$dest" fetch -q --no-tags origin '+refs/tags/*:refs/tags/*' \\
+          || say "the origin serves no tags; the history carries none"
+    """,
+    ("full", False): """
+        say "Fetching source from $ORIGIN_URL (git, with its history)"
+        git clone -q "$ORIGIN_URL" "$dest"
+    """,
+}
+
+
+def _git_fetch_function(revision: str, history: SourceHistory) -> str:
+    body = shell_text(_GIT_FETCH[(history, bool(revision))]).rstrip()
+    indented = "\n".join(f"  {line}" for line in body.splitlines())
+    return (
+        shell_text("""
             fetch_source() {
               dest=$1
+              rev=@@REVISION@@
               [ -n "$ORIGIN_URL" ] || die "no origin recorded; cannot fetch"
               command -v git >/dev/null 2>&1 || die "git is required to fetch this source"
-              say "Fetching source from $ORIGIN_URL (git)"
-              git clone --depth 1 "$ORIGIN_URL" "$dest"
+            @@BODY@@
             }
         """)
+        .replace("@@BODY@@", indented)
+        .replace("@@REVISION@@", shell_single_quote(revision))
+    )
+
+
+def _fetch_source_function(source_type: str, revision: str, history: SourceHistory) -> str:
+    if source_type == "git":
+        return _git_fetch_function(revision, history)
 
     if source_type == "tarball":
         return shell_text("""
@@ -157,13 +183,20 @@ def _fetch_source_function(source_type: str, revision: str) -> str:
     """).replace("@@MESSAGE@@", shell_single_quote(message))
 
 
-def build_acquire_sh(*, origin_url: str = "", source_type: str = "", revision: str = "", swhid: str = "") -> bytes:
+def build_acquire_sh(
+    *,
+    origin_url: str = "",
+    source_type: str = "",
+    revision: str = "",
+    swhid: str = "",
+    history: SourceHistory = "tip",
+) -> bytes:
     script = (
         _TEMPLATE.replace("@@ORIGIN_URL@@", shell_single_quote(origin_url))
         .replace("@@SWHID@@", shell_single_quote(swhid))
         .replace("@@UPSTREAM_DIRNAME@@", shell_single_quote(UPSTREAM_DIRNAME))
         .replace("@@SNAPSHOT_FILENAME@@", shell_single_quote(SNAPSHOT_FILENAME))
-        .replace("@@FETCH_SOURCE@@", _fetch_source_function(source_type, revision).rstrip())
+        .replace("@@FETCH_SOURCE@@", _fetch_source_function(source_type, revision, history).rstrip())
     )
     script = assert_no_placeholders(script, artifact="acquire_source.sh")
     return script.encode("utf-8")

@@ -280,7 +280,7 @@ def _cross_check_ree(
     sbom_digest = sbom_digest or digest_bytes(json.dumps(_SBOM).encode())
     definition = ree_definition(
         name="demo",
-        source=SourceDefinition(origin_url="https://example.test/repo.git", source_type="git"),
+        source=SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball"),
         experiment_environment=ExperimentEnvironmentDefinition(
             build_experiment_environment_script_digest=digest_bytes(_BUILD),
             build_experiment_environment_script_size=len(_BUILD),
@@ -292,8 +292,8 @@ def _cross_check_ree(
         ree,
         AcquireSourceReceipt(
             **_envelope("source-1"),
-            origin_url="https://example.test/repo.git",
-            source_type="git",
+            origin_url="https://example.test/repo.tar.gz",
+            source_type="tarball",
             snapshot_digest=_SNAPSHOT,
         ),
     )

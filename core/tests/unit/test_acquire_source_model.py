@@ -17,6 +17,10 @@ from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import digest_bytes
 from repo2ree_ree.model import Ree, SourceDefinition
+from repo2ree_ree.primitives import GitRevision
+
+_PACKED = GitRevision("c" * 40)
+_HISTORY_DIGEST = digest_bytes(b"history")
 
 
 def _workbench(
@@ -48,6 +52,28 @@ def test_download_request_becomes_the_source_definition() -> None:
     assert acquisition.definition.origin_url == "https://example.test/repo.git"
     assert acquisition.definition.source_type == "git"
     assert acquisition.definition.requested_ref == "main"
+    assert acquisition.definition.history == "full"
+
+
+def test_a_git_download_may_carry_the_commit_alone() -> None:
+    acquisition = _acquisition_from(
+        AcquireSourceArgs(mode="download", origin_url="https://example.test/repo.git", source_type="git", history="tip")
+    )
+
+    assert acquisition.definition.history == "tip"
+
+
+def test_only_a_git_source_has_a_history() -> None:
+    with pytest.raises(ValueError, match="only a git source"):
+        _acquisition_from(
+            AcquireSourceArgs(
+                mode="download", origin_url="https://example.test/s.tar.gz", source_type="tarball", history="full"
+            )
+        )
+    with pytest.raises(ValueError, match="no history"):
+        _acquisition_from(
+            AcquireSourceArgs(mode="upload", upload_token="u", archive_name="s.zip", history="tip")  # noqa: S106
+        )
 
 
 def test_upload_format_is_preserved_in_the_source_definition() -> None:
@@ -65,12 +91,14 @@ def test_acquisition_rejects_a_different_resolved_immutable_revision() -> None:
         origin_url="https://example.test/repo.git",
         source_type="git",
         requested_ref="a" * 40,
+        history="full",
     )
 
     with pytest.raises(ValueError, match="requested immutable revision"):
         _validate_observation(
             definition,
-            _ObservedSource(resolved_revision="b" * 40, swhid=None),
+            _ObservedSource(resolved_revision=GitRevision("b" * 40), swhid=None),
+            log=lambda *args: None,
         )
 
 
@@ -85,7 +113,9 @@ def test_successful_acquisition_commits_definition_and_one_receipt(
     monkeypatch.setattr(
         acquire_source,
         "_observe_acquired_source",
-        lambda *args, **kwargs: _ObservedSource(resolved_revision="abc123", swhid=None),
+        lambda *args, **kwargs: _ObservedSource(
+            resolved_revision=_PACKED, swhid=None, history="full", history_digest=_HISTORY_DIGEST
+        ),
     )
     monkeypatch.setattr(
         acquire_source,
@@ -111,7 +141,9 @@ def test_successful_acquisition_commits_definition_and_one_receipt(
     assert committed.subject.definition.source is not None
     assert committed.subject.definition.source.requested_ref == "main"
     assert committed.subject.receipts.acquire_source is not None
-    assert committed.subject.receipts.acquire_source.resolved_revision == "abc123"
+    assert committed.subject.receipts.acquire_source.resolved_revision == _PACKED
+    assert committed.subject.receipts.acquire_source.history == "full"
+    assert committed.subject.receipts.acquire_source.history_digest == _HISTORY_DIGEST
     assert committed.subject.receipts.acquire_source.snapshot_digest == snapshot_digest
 
 
@@ -153,7 +185,7 @@ def test_identity_validation_failure_commits_no_source_evidence(
     monkeypatch.setattr(
         acquire_source,
         "_observe_acquired_source",
-        lambda *args, **kwargs: _ObservedSource(resolved_revision="b" * 40, swhid=None),
+        lambda *args, **kwargs: _ObservedSource(resolved_revision=GitRevision("b" * 40), swhid=None),
     )
 
     result = acquire_source.handle_acquire_source(
@@ -187,7 +219,9 @@ def test_materialization_failure_happens_after_source_commit(
     monkeypatch.setattr(
         acquire_source,
         "_observe_acquired_source",
-        lambda *args, **kwargs: _ObservedSource(resolved_revision="abc123", swhid=None),
+        lambda *args, **kwargs: _ObservedSource(
+            resolved_revision=_PACKED, swhid=None, history="full", history_digest=_HISTORY_DIGEST
+        ),
     )
     monkeypatch.setattr(
         acquire_source,

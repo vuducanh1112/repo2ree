@@ -91,6 +91,40 @@
           "default": null,
           "title": "Resolved Revision"
         },
+        "history": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "tip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History"
+        },
+        "history_digest": {
+          "anyOf": [
+            {
+              "type": "string",
+              "x-digest-of": {
+                "covers": "file",
+                "entries": [
+                  "source-history.bundle"
+                ]
+              }
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History Digest"
+        },
         "observed_swhid": {
           "anyOf": [
             {
@@ -2208,6 +2242,22 @@
           ],
           "default": null,
           "title": "Requested Ref"
+        },
+        "history": {
+          "anyOf": [
+            {
+              "enum": [
+                "full",
+                "tip"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "History"
         }
       },
       "required": [

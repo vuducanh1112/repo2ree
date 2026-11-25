@@ -24,6 +24,7 @@ ACQUIRE_SCRIPT = "acquire_source.sh"
 MATERIALIZE_SCRIPT = "materialize_workspace.sh"
 MATERIALIZE_MARKER = ".workspace.materialized.json"
 SNAPSHOT = "snapshot.tar.gz"
+SOURCE_HISTORY = "source-history.bundle"
 UPSTREAM = "upstream"
 OVERLAY = "overlay"
 ARTIFACTS = "artifacts"
@@ -227,7 +228,14 @@ REE_TREE = _directory(
     _file(ACQUIRE_SCRIPT, "repo2ree", "git", "Fills upstream/ from the origin, or from the snapshot beside it."),
     _file(MATERIALIZE_SCRIPT, "repo2ree", "git", "Derives workspace/ from upstream/ and overlay/."),
     _file(MATERIALIZE_MARKER, "repo2ree", "git", "What workspace/ was last materialized from, for drift checks."),
-    _file(SNAPSHOT, "acquired", "lfs", "The frozen upstream archive."),
+    _file(SNAPSHOT, "acquired", "lfs", "The frozen upstream archive: the source's files, without its repository."),
+    _file(
+        SOURCE_HISTORY,
+        "acquired",
+        "lfs",
+        "A git source's history: a git bundle of the acquired commit with its ancestry, or of the commit alone, "
+        "and the annotated tags in it.",
+    ),
     _directory(UPSTREAM, "derived", "never", "The snapshot, extracted; read only."),
     _directory(OVERLAY, "authored", "git", "The author's files, laid over upstream/ in the workspace.", _SCRIPTS),
     _directory(

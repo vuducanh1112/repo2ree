@@ -11,11 +11,12 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.execution.runners import run_workspace_script
 from repo2ree_core.execution.working_environment import observe_working_environment
 from repo2ree_core.failures import failed_from_exception
+from repo2ree_core.operations.steps.source_repository import lay_out_run
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_core.persistence.repository import ReeRevisionConflictError, load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
-from repo2ree_core.workspace.attempt import discard, lay_out
+from repo2ree_core.workspace.attempt import discard
 from repo2ree_protocol.command import CheckWorkingEnvironmentArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import RunnableOperationOutputs
@@ -64,7 +65,7 @@ def handle_check_working_environment(
             return ActionResult(
                 status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json", exclude_none=True)
             )
-        workspace = lay_out(layout, ree, run_id, environment=False)
+        workspace = lay_out_run(layout, ree, run_id, environment=False)
         declared = declared_check(ree, workspace)
         launch = declared_launch(ree.subject.definition.launch, workspace)
     except ReePreconditionError as exc:

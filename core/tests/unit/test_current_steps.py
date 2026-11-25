@@ -24,7 +24,7 @@ def _acquired(tmp_path: Path) -> ReeLayout:
     layout = ReeLayout(tmp_path / "ree")
     store = ReeDirectory(layout)
     store.ensure_dirs()
-    source = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
+    source = SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball")
     receipt = AcquireSourceReceipt(
         run_id=RunId("source-1"),
         started_at=_NOW,
@@ -32,8 +32,7 @@ def _acquired(tmp_path: Path) -> ReeLayout:
         duration_ms=0,
         recorded_at=_NOW,
         origin_url=source.origin_url,
-        source_type="git",
-        resolved_revision="abc123",
+        source_type="tarball",
         snapshot_digest=SNAPSHOT_DIGEST,
     )
     store.write_ree(commit_receipt(Ree(subject=ReeSubject(definition=ree_definition(source=source))), receipt))
@@ -82,12 +81,12 @@ def test_the_same_download_asked_for_again_fetches_nothing_and_another_is_refuse
 
     def acquire(origin_url: str) -> str:
         return acquire_source.handle_acquire_source(
-            AcquireSourceArgs(mode="download", origin_url=origin_url, source_type="git"),
+            AcquireSourceArgs(mode="download", origin_url=origin_url, source_type="tarball"),
             layout=layout,
             run_id="acquire-again",
             log=lambda *a: None,
             is_canceled=lambda: False,
         ).status
 
-    assert acquire("https://example.test/repo.git") == "succeeded"
-    assert acquire("https://example.test/another.git") == "failed"
+    assert acquire("https://example.test/repo.tar.gz") == "succeeded"
+    assert acquire("https://example.test/another.tar.gz") == "failed"

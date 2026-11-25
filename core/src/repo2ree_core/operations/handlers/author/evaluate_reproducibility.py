@@ -7,12 +7,13 @@ from repo2ree_core.domain.ree.envelope import receipt_envelope
 from repo2ree_core.domain.ree.transitions import ReePreconditionError, commit_receipt, revision_of
 from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.failures import failed_from_exception
+from repo2ree_core.operations.steps.source_repository import lay_out_run
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.files import write_json_atomic
 from repo2ree_core.persistence.layout import ARTIFACTS_DIRNAME, REPRODUCIBILITY_REPORT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, save_ree
 from repo2ree_core.time_utils import OperationTimer
-from repo2ree_core.workspace.attempt import discard, lay_out
+from repo2ree_core.workspace.attempt import discard
 from repo2ree_protocol.command import EvaluateReproducibilityArgs
 from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import EvaluateOutputs
@@ -54,7 +55,7 @@ def handle_evaluate_reproducibility(
     before_revision = revision_of(ree)
     timer = OperationTimer.start()
     try:
-        workspace = lay_out(layout, ree, run_id, environment=False)
+        workspace = lay_out_run(layout, ree, run_id, environment=False)
     except ReePreconditionError as exc:
         return ActionResult.failed("precondition", f"cannot evaluate reproducibility: {exc}")
     log("system", "info", f"Workspace: {workspace}")

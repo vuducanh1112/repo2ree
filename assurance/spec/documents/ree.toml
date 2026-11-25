@@ -32,6 +32,7 @@ absent = "unevidenced"
 summary = "Every file a receipt digested is, wherever the commit holds it, the file with that digest."
 pairs = [
     { digest = "receipts.acquire_source.snapshot_digest", path = "snapshot.tar.gz" },
+    { digest = "receipts.acquire_source.history_digest", path = "source-history.bundle" },
     { digest = "receipts.evaluate_reproducibility.report_digest", path = "artifacts/reproducibility-report.json" },
     { digest = "receipts.generate_sbom.sbom_digest", path = "artifacts/sbom.json" },
     { digest = "receipts.build_experiment_environment.produced_artifact_digest", file = "receipts.build_experiment_environment.artifact_path", root = "artifacts/" },

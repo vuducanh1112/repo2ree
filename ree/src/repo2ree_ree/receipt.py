@@ -10,8 +10,10 @@ from repo2ree_ree.primitives import (
     ArtifactPath,
     Digest,
     ExperimentEnvironmentPath,
+    GitRevision,
     OverlayPath,
     RunId,
+    SourceHistory,
     SourceType,
     Swhid,
     UtcInstant,
@@ -30,6 +32,7 @@ _VERIFY_SCRIPT = "overlay/ree-scripts/experiments/{experiment_slug}.verify.sh"
 _ENVIRONMENT = ("workspace/{experiment_environment}", "artifacts/{experiment_environment}")
 
 SnapshotDigest = Annotated[Digest, digest_of("file", "snapshot.tar.gz")]
+HistoryDigest = Annotated[Digest, digest_of("file", "source-history.bundle")]
 OverlayDigest = Annotated[Digest, digest_of("tree", "overlay")]
 ReportDigest = Annotated[Digest, digest_of("file", "artifacts/reproducibility-report.json")]
 SbomDigest = Annotated[Digest, digest_of("file", "artifacts/sbom.json")]
@@ -83,9 +86,20 @@ class AcquireSourceReceipt(ReceiptEnvelope):
     origin_url: str | None = None
     source_type: SourceType
     requested_ref: str | None = None
-    resolved_revision: str | None = None
+    resolved_revision: GitRevision | None = None
+    history: SourceHistory | None = None
+    history_digest: HistoryDigest | None = None
     observed_swhid: Swhid | None = None
     snapshot_digest: SnapshotDigest
+
+    @model_validator(mode="after")
+    def _git_carries_its_history(self) -> AcquireSourceReceipt:
+        held = (self.resolved_revision is not None, self.history is not None, self.history_digest is not None)
+        if self.source_type == "git" and not all(held):
+            raise ValueError("a git source records its revision, its history and the history's digest")
+        if self.source_type != "git" and any(held):
+            raise ValueError("only a git source records a revision and a history")
+        return self
 
 
 class EvaluateReproducibilityReceipt(ReceiptEnvelope):

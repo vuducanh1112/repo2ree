@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tarfile
 import zipfile
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import pytest
 
 from repo2ree_core.operations.handlers.author import acquire_source, remove_source
 from repo2ree_core.operations.initialize import initialize_ree
+from repo2ree_core.operations.steps.source_repository import lay_out_run
 from repo2ree_core.persistence.directory import ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout
 from repo2ree_protocol.command import AcquireSourceArgs
@@ -68,11 +70,16 @@ def test_local_git_download_remove_and_reacquire(
     first_receipt = store.read_ree().subject.receipts.acquire_source
     assert first_receipt is not None
     assert first_receipt.resolved_revision == first_revision
+    assert first_receipt.history == "full"
+    assert layout.source_history.is_file()
+    with tarfile.open(layout.snapshot_archive) as snapshot:
+        assert not any(name.split("/")[0] == ".git" for name in snapshot.getnames())
 
     removed = remove_source.handle_remove_source(log=lambda *args: None, is_canceled=lambda: False, layout=layout)
     assert removed.status == "succeeded"
     assert store.read_ree().subject.receipts.acquire_source is None
     assert not layout.snapshot_archive.exists()
+    assert not layout.source_history.exists()
 
     second_revision = _commit(origin, "second\n")
     reacquired = acquire_source.handle_acquire_source(
@@ -93,6 +100,15 @@ def test_local_git_download_remove_and_reacquire(
     second_receipt = store.read_ree().subject.receipts.acquire_source
     assert second_receipt is not None
     assert second_receipt.resolved_revision == second_revision
+
+    workspace = lay_out_run(layout, store.read_ree(), "run-1", environment=False)
+    inspect = ["git", "-C", str(workspace)]
+    assert subprocess.run([*inspect, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip() == (
+        second_revision
+    )
+    assert subprocess.run([*inspect, "rev-list", "--count", "HEAD"], capture_output=True, text=True).stdout == "2\n"
+    assert subprocess.run([*inspect, "status", "--porcelain"], capture_output=True, text=True).stdout == ""
+    assert subprocess.run([*inspect, "remote"], capture_output=True, text=True).stdout == ""
 
 
 def test_staged_zip_upload_is_snapshotted_extracted_and_committed(

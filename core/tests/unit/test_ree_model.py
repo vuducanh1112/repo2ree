@@ -128,7 +128,7 @@ def test_seal_binds_and_freezes_the_subject() -> None:
 
 
 def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> None:
-    source = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
+    source = SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball")
     source_receipt = AcquireSourceReceipt(
         run_id=RunId("source-1"),
         started_at=_NOW,
@@ -167,7 +167,7 @@ def test_clear_source_preserves_recipe_definition_but_clears_source_chain() -> N
 
 
 def test_bundle_payload_is_not_audited_until_the_ree_is_sealed() -> None:
-    source = SourceDefinition(origin_url="https://example.test/repo.git", source_type="git")
+    source = SourceDefinition(origin_url="https://example.test/repo.tar.gz", source_type="tarball")
     receipt = AcquireSourceReceipt(
         run_id=RunId("source-1"),
         started_at=_NOW,

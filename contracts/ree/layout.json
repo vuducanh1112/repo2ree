@@ -61,7 +61,14 @@
         "kind": "file",
         "origin": "acquired",
         "capture": "lfs",
-        "description": "The frozen upstream archive."
+        "description": "The frozen upstream archive: the source's files, without its repository."
+      },
+      {
+        "name": "source-history.bundle",
+        "kind": "file",
+        "origin": "acquired",
+        "capture": "lfs",
+        "description": "A git source's history: a git bundle of the acquired commit with its ancestry, or of the commit alone, and the annotated tags in it."
       },
       {
         "name": "upstream",

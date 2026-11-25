@@ -15,6 +15,7 @@ from repo2ree_core.operations.steps.review import begin_review_step, refuse_sign
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
+from repo2ree_core.source_repo import SourceHistoryError, pack_source_history, verify_source_history
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
@@ -22,7 +23,8 @@ from repo2ree_protocol.frames import LogSink
 from repo2ree_protocol.outputs import ReviewAcquireSourceOutputs
 from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.model import Ree, SourceDefinition
-from repo2ree_ree.primitives import Swhid
+from repo2ree_ree.primitives import GitRevision, SourceHistory, Swhid
+from repo2ree_ree.receipt import AcquireSourceReceipt
 from repo2ree_ree.review import EvidenceBasis, ReviewAcquireSourceReceipt
 
 
@@ -77,7 +79,17 @@ def handle_review_acquire_source(
     source = ree.subject.definition.source
     author_source = ree.subject.receipts.acquire_source
     expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
-    comparison = compare_source_swhids(expected_swhid, observed_swhid, basis=basis)
+    observed_revision, history, history_failure = _review_history(
+        review_layout, author_source, observed_swhid, basis=basis, log=log
+    )
+    comparison = compare_source_swhids(
+        expected_swhid,
+        observed_swhid,
+        basis=basis,
+        expected_revision=author_source.resolved_revision if author_source else None,
+        observed_revision=observed_revision,
+        history_failure=history_failure,
+    )
     timing = timer.finish()
     receipt = ReviewAcquireSourceReceipt(
         **review_receipt_envelope(run_id, timing, "succeeded"),
@@ -86,13 +98,21 @@ def handle_review_acquire_source(
         requested_ref=source.requested_ref if basis == "independent" and source else None,
         expected_swhid=Swhid(comparison.expected_swhid) if comparison.expected_swhid else None,
         observed_swhid=Swhid(comparison.observed_swhid) if comparison.observed_swhid else None,
+        expected_revision=comparison.expected_revision,
+        observed_revision=observed_revision,
+        history=history,
     )
     write_review_source_evidence(review_layout, receipt, comparison)
     log(
         "system",
         "info" if comparison.verdict == "identical" else "warn",
         f"source comparison {comparison.verdict} ({basis}): expected {comparison.expected_swhid or 'none'}, "
-        f"observed {comparison.observed_swhid or 'none'}",
+        f"observed {comparison.observed_swhid or 'none'}"
+        + (
+            f"; commit expected {comparison.expected_revision}, observed {observed_revision or 'none'}"
+            if comparison.expected_revision
+            else ""
+        ),
     )
     if basis == "bundled":
         log(
@@ -118,6 +138,36 @@ def handle_review_acquire_source(
         comparison=comparison,
     )
     return ActionResult(status="succeeded", exit_code=0, outputs=outputs.model_dump(mode="json"))
+
+
+def _review_history(
+    review_layout: ReviewLayout,
+    author_source: AcquireSourceReceipt | None,
+    observed_swhid: str,
+    *,
+    basis: EvidenceBasis,
+    log: LogSink,
+) -> tuple[GitRevision | None, SourceHistory | None, str | None]:
+    if author_source is None or author_source.resolved_revision is None or author_source.history is None:
+        return None, None, None
+    held = review_layout.source_history
+    try:
+        if basis == "independent":
+            packed = pack_source_history(review_layout.upstream, held)
+            revision, history = packed.revision, packed.history
+        else:
+            revision, history = author_source.resolved_revision, author_source.history
+        if not observed_swhid:
+            return revision, history, "the source's files hold no identity to hold the history to"
+        verify_source_history(held, revision=revision, swhid=Swhid(observed_swhid), history=history)
+    except SourceHistoryError as exc:
+        log("system", "warn", f"the source's history does not hold: {exc}")
+        held.unlink(missing_ok=True)
+        return None, None, str(exc)
+    if history != author_source.history:
+        return revision, history, f"the history is {history}, the author's {author_source.history}"
+    log("system", "info", f"the source's history ({history}) holds commit {revision} and its files")
+    return revision, history, None
 
 
 def _has_acquirable_origin(source: SourceDefinition | None) -> bool:
@@ -150,9 +200,13 @@ def _stage_acquisition(
     log: LogSink,
 ) -> None:
     shutil.rmtree(review_layout.upstream, ignore_errors=True)
+    review_layout.source_history.unlink(missing_ok=True)
     if basis == "bundled":
         shutil.copyfile(ree_layout.snapshot_archive, review_layout.snapshot_archive)
         log("system", "info", f"staged the author snapshot into {review_layout.snapshot_archive}")
+        if ree_layout.source_history.is_file():
+            shutil.copyfile(ree_layout.source_history, review_layout.source_history)
+            log("system", "info", f"staged the author's source history into {review_layout.source_history}")
         author_source = ree.subject.receipts.acquire_source
         expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
         write_atomic(review_layout.acquire_script, build_acquire_sh(swhid=expected_swhid))
@@ -168,7 +222,10 @@ def _stage_acquisition(
         build_acquire_sh(
             origin_url=source.origin_url or "",
             source_type=source.source_type,
-            revision=source.requested_ref or "",
+            revision=str(author_source.resolved_revision)
+            if author_source and author_source.resolved_revision
+            else source.requested_ref or "",
             swhid=expected_swhid,
+            history=author_source.history if author_source and author_source.history else "tip",
         ),
     )

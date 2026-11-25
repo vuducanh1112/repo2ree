@@ -41,6 +41,7 @@ class AcquireSourcePayload(StrictRequestModel):
     origin_url: str
     source_type: Literal["git", "tarball", "zip"]
     revision: str | None = None
+    history: Literal["full", "tip"] | None = None
     idempotency_key: str | None = None
 
 
