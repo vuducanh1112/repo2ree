@@ -34,7 +34,14 @@ def test_map_draws_every_component(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_a_diff_against_the_committed_specification_says_what_changed(tmp_path: Path) -> None:
-    env = {**os.environ, "GIT_INDEX_FILE": str(tmp_path / "index")}
+    env = {
+        **os.environ,
+        "GIT_INDEX_FILE": str(tmp_path / "index"),
+        "GIT_AUTHOR_NAME": "test",
+        "GIT_AUTHOR_EMAIL": "test@localhost",
+        "GIT_COMMITTER_NAME": "test",
+        "GIT_COMMITTER_EMAIL": "test@localhost",
+    }
 
     def git(*args: str) -> str:
         return subprocess.run(["git", *args], capture_output=True, text=True, check=True, env=env).stdout.strip()
