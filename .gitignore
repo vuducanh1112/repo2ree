@@ -48,8 +48,6 @@ coverage.xml
 
 fastapi.log
 .env.example
-.vale/styles/proselint/
-.vale/styles/write-good/
 /.lycheecache
 
 # Generated history views of local recordings
