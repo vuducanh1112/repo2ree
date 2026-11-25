@@ -749,6 +749,7 @@
         "podman",
         "python_docker",
         "python_venv",
+        "repo2ree_dev",
         "slurm",
         "stochastic",
         "unpinned"

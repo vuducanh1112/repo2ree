@@ -24,6 +24,7 @@ class ProjectName(StrEnum):
     PODMAN = "podman"
     PYTHON_DOCKER = "python_docker"
     PYTHON_VENV = "python_venv"
+    REPO2REE_DEV = "repo2ree_dev"
     SLURM = "slurm"
     STOCHASTIC = "stochastic"
     UNPINNED = "unpinned"
@@ -72,6 +73,14 @@ DOCKER = ((BUILD, InferenceRule.DOCKERFILE), (ACTIVATE, InferenceRule.DOCKER_ACT
 PODMAN_SCRIPTS = ((BUILD, InferenceRule.PODMAN_BUILD), (ACTIVATE, InferenceRule.PODMAN_ACTIVATE))
 API_TIER = "showcase-api"
 CLI_TIER = "showcase-cli"
+REAL_WORLD_SUITE = ROOT / "testbed/suites/real_world"
+REAL_WORLD_TIER = "showcase-real-world"
+
+
+@dataclass(frozen=True)
+class GitOrigin:
+    url: str
+    revision: str
 
 
 @dataclass(frozen=True)
@@ -83,6 +92,7 @@ class Project:
     network: bool = False
     outputs: tuple[str, ...] = (RESULT,)
     inferred: tuple[tuple[RecipeScript, InferenceRule], ...] = ()
+    origin: GitOrigin | None = None
 
     def rule(self, script: RecipeScript) -> InferenceRule | None:
         return dict(self.inferred).get(script)
@@ -217,6 +227,18 @@ UNPINNED = Project(
     verdict="different",
     inferred=((ACTIVATE, InferenceRule.VENV_ACTIVATE),),
 )
+REPO2REE_DEV = Project(
+    name=ProjectName.REPO2REE_DEV,
+    experiment_environment_path=".repo2ree/artifacts/dev-environment.tar",
+    experiment="commit-gate",
+    verdict="reproduced",
+    network=True,
+    outputs=(".receipts/commit-gate.json",),
+    origin=GitOrigin(
+        url="https://github.com/vuducanh1112/repo2ree.git",
+        revision="7235286f87edb7e53aff71e25ca59827f8dc28b1",
+    ),
+)
 ALL_PROJECTS: tuple[Project, ...] = (
     APPTAINER,
     CONDA,
@@ -228,6 +250,7 @@ ALL_PROJECTS: tuple[Project, ...] = (
     PODMAN,
     PYTHON_DOCKER,
     PYTHON_VENV,
+    REPO2REE_DEV,
     SLURM,
     STOCHASTIC,
     UNPINNED,
@@ -299,6 +322,21 @@ def _refusals() -> list[str]:
 
 if _refused := _refusals():
     raise ValueError("; ".join(_refused))
+
+
+REAL_WORLD: dict[ProjectName, EnvironmentName] = {ProjectName.REPO2REE_DEV: EnvironmentName.DOCKER}
+
+
+def real_world_suite(name: ProjectName) -> Path:
+    return REAL_WORLD_SUITE / name
+
+
+def real_world_machine_of(node: str) -> EnvironmentName:
+    parts = Path(node.split("::", 1)[0]).parts
+    suite = REAL_WORLD_SUITE.relative_to(ROOT).parts
+    if parts[: len(suite)] != suite or len(parts) <= len(suite) + 1:
+        raise ValueError(f"{node} is no test of a real-world showcase")
+    return REAL_WORLD[ProjectName(parts[len(suite)])]
 
 
 def api_suite(name: ShowcaseName) -> Path:

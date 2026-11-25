@@ -18,8 +18,11 @@ from repo2ree_testbed.showcases import (
     GUI_SHOWCASES,
     GUI_SUITE,
     PROJECTS,
+    REAL_WORLD,
+    REAL_WORLD_SUITE,
     REQUIRED_SCRIPTS,
     SHOWCASES,
+    SOURCE,
     Project,
     ProjectName,
     ShowcaseName,
@@ -30,6 +33,8 @@ from repo2ree_testbed.showcases import (
     environments_in_use,
     gui_machines,
     machine_of,
+    real_world_machine_of,
+    real_world_suite,
 )
 from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
 
@@ -42,7 +47,10 @@ def test_a_showcase_has_an_api_test_of_each_workflow(name: ShowcaseName, workflo
 
 @pytest.mark.parametrize("project", ALL_PROJECTS, ids=lambda project: project.name)
 def test_a_project_is_a_source_tree_beside_a_recipe_for_each_script_it_does_not_infer(project: Project) -> None:
-    assert any(project.source.iterdir())
+    if project.origin is None:
+        assert any(project.source.iterdir())
+    else:
+        assert not (project.directory / SOURCE).exists(), "a project fetched from its origin carries no source tree"
     for script in REQUIRED_SCRIPTS:
         if project.rule(script) is None:
             assert project.recipe(script)
@@ -137,6 +145,23 @@ def test_the_cli_tier_runs_no_control_plane_and_the_api_tier_does() -> None:
     ).deployment.control_plane
     with pytest.raises(SystemExit):
         parse(["--script", str(RUNNERS["cli"]), "--tier", CLI_TIER, "--no-control-plane"])
+
+
+def test_every_real_world_suite_directory_is_a_real_world_showcase() -> None:
+    ignored = {"__pycache__"}
+    assert {path.name for path in REAL_WORLD_SUITE.iterdir() if path.is_dir() and path.name not in ignored} == set(
+        REAL_WORLD
+    )
+    assert not set(REAL_WORLD) & {ProjectName(name) for name in ShowcaseName}, "a real-world showcase runs on demand"
+
+
+def test_a_real_world_showcase_runs_on_the_machine_it_names() -> None:
+    for name, environment in REAL_WORLD.items():
+        [test] = real_world_suite(name).glob("test_*.py")
+        node = f"{test.relative_to(ROOT)}::test"
+        assert real_world_machine_of(node) == environment
+    with pytest.raises(ValueError, match="no test of a real-world showcase"):
+        real_world_machine_of("testbed/suites/showcase/conda/test_conda_authoring.py::test")
 
 
 def test_every_project_checks_what_its_scripts_need() -> None:

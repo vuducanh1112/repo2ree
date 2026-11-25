@@ -192,8 +192,14 @@ class CliClient:
         archive = self._staged(ree_id, fixture.archive(), fixture.upload_name)
         self._outputs(ree_id, "acquire-source", "--archive", archive)
 
-    def fetch_source(self, ree_id: str, origin_url: str, source_type: AcquirableSourceType) -> Run:
-        return self._step(ree_id, "acquire-source", "--origin-url", origin_url, "--source-type", source_type)
+    def fetch_source(
+        self, ree_id: str, origin_url: str, source_type: AcquirableSourceType, revision: str | None = None
+    ) -> Run:
+        pinned = ("--revision", revision) if revision else ()
+        return self._step(ree_id, "acquire-source", "--origin-url", origin_url, "--source-type", source_type, *pinned)
+
+    def observe_hardware(self, ree_id: str) -> None:
+        self._outputs(ree_id, "observe-hardware")
 
     def declare_name(self, ree_id: str, name: str) -> None:
         self._outputs(ree_id, "patch-ree-definition", "--name", name)
