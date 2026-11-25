@@ -81,6 +81,9 @@
           # manifests, and a generated `activate`. Tar it to distribute.
           workbench-bundle = import ./nix/workbench-bundle.nix { inherit pkgs buildRevision; };
           cli-bundle = import ./nix/cli-bundle.nix { inherit pkgs buildRevision; };
+          # ree as one file for a Linux host with no nix: it unpacks its closure once and runs it in a
+          # user namespace (nix/ree-standalone.nix).
+          ree-standalone = import ./nix/ree-standalone.nix { inherit pkgs buildRevision; };
           tools-bundle = import ./nix/tools-bundle.nix { inherit pkgs; };
           # The workbench closure as an image to derive from — not a workbench you can
           # run on its own: it carries no toolchain.

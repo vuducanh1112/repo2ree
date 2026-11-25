@@ -86,6 +86,7 @@ NON_SERVICE_ENVIRONMENT: dict[str, tuple[str, str]] = {
     "VITE_API_BASE_URL": ("gui", "build"),
     "VITE_BUILD_REVISION": ("gui", "build"),
     "VITE_GITHUB_URL": ("gui", "build"),
+    "XDG_CACHE_HOME": ("operating-system", "external"),
 }
 
 ENVIRONMENT_PATTERNS: dict[str, tuple[str, str]] = {

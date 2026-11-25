@@ -928,6 +928,13 @@
         "default": null,
         "title": "Workbench Tools Bundle"
       }
+    },
+    "XDG_CACHE_HOME": {
+      "kind": "external",
+      "owner": "operating-system",
+      "schema": {
+        "type": "string"
+      }
     }
   },
   "version": 1
