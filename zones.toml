@@ -136,6 +136,7 @@ summary = "End-to-end tests no gate runs yet, each on a stack of its own."
 [product.groups.ungated.paths]
 "testbed/suites/slurm/" = "REEs whose author's scripts submit their work to the cluster"
 "testbed/suites/showcase/" = "The API showcases: authoring and review of each, without a browser"
+"testbed/suites/real_world/" = "The real-world showcases: whole projects authored and reviewed end to end, on demand"
 
 [product.groups.examples]
 summary = "Inputs shared by the suites, demos, and manual tries."
@@ -147,6 +148,7 @@ summary = "How the product is built, deployed, and described to clients."
 [product.groups.packaging.paths]
 "nix/clean-py-src.nix" = "Python sources stripped for builds"
 "nix/cli-bundle.nix" = "The ree bundle injected into workbenches"
+"nix/ree-standalone.nix" = "ree as one file for a Linux host with no nix"
 "nix/tools-bundle.nix" = "The tools bundle injected into workbenches"
 "nix/ree-cli.nix" = "The ree package"
 "nix/workbench.nix" = "The workbench package"
