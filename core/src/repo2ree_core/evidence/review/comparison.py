@@ -27,6 +27,7 @@ def compare_source_swhids(
     expected_revision: GitRevision | None = None,
     observed_revision: GitRevision | None = None,
     history_failure: str | None = None,
+    lfs_failure: str | None = None,
 ) -> SourceComparison:
     normalized_expected = expected.strip() or None
     normalized_observed = observed.strip() or None
@@ -34,7 +35,9 @@ def compare_source_swhids(
         history_failure is not None or observed_revision != expected_revision
     )
     verdict: ComparisonVerdict
-    if normalized_expected is None or normalized_observed is None:
+    if lfs_failure is not None:
+        verdict = "different"
+    elif normalized_expected is None or normalized_observed is None:
         verdict = "inconclusive"
     elif normalized_expected != normalized_observed or commit_differs:
         verdict = "different"
@@ -47,6 +50,7 @@ def compare_source_swhids(
         expected_revision=expected_revision,
         observed_revision=observed_revision,
         history_failure=history_failure,
+        lfs_failure=lfs_failure,
         verdict=verdict,
     )
 

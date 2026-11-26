@@ -146,6 +146,14 @@
               "snapshot.tar.gz"
             ]
           }
+        },
+        "lfs_files": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/LfsFile"
+          },
+          "title": "Lfs Files",
+          "type": "array"
         }
       },
       "required": [
@@ -1553,6 +1561,41 @@
         "node"
       ],
       "title": "Launched",
+      "type": "object"
+    },
+    "LfsFile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string",
+          "x-relative-to": [
+            "workspace"
+          ]
+        },
+        "digest": {
+          "title": "Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "workspace"
+            ],
+            "named_by": "lfs_files[*].path"
+          }
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "digest",
+        "size"
+      ],
+      "title": "LfsFile",
       "type": "object"
     },
     "MemoryDefinition": {

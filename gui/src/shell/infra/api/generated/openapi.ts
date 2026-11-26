@@ -1123,6 +1123,11 @@ export interface components {
             observed_swhid?: string | null;
             /** Snapshot Digest */
             snapshot_digest: string;
+            /**
+             * Lfs Files
+             * @default []
+             */
+            lfs_files: components["schemas"]["LfsFile"][];
         };
         /** ActionResult */
         ActionResult: {
@@ -2667,6 +2672,15 @@ export interface components {
             /** Slurm Step Id */
             slurm_step_id?: string | null;
         };
+        /** LfsFile */
+        LfsFile: {
+            /** Path */
+            path: string;
+            /** Digest */
+            digest: string;
+            /** Size */
+            size: number;
+        };
         /** LintReport */
         LintReport: {
             /**
@@ -3420,6 +3434,11 @@ export interface components {
             observed_revision?: string | null;
             /** History */
             history?: ("full" | "tip") | null;
+            /**
+             * Lfs Files
+             * @default []
+             */
+            lfs_files: components["schemas"]["LfsFile"][];
         };
         /** ReviewActivateExperimentEnvironmentReceipt */
         ReviewActivateExperimentEnvironmentReceipt: {
@@ -4084,6 +4103,8 @@ export interface components {
             observed_revision?: string | null;
             /** History Failure */
             history_failure?: string | null;
+            /** Lfs Failure */
+            lfs_failure?: string | null;
             /**
              * Verdict
              * @enum {string}

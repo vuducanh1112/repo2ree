@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import stat
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+
+from repo2ree_core.persistence.lfs import LfsPointer
 
 _MODE_FILE = b"100644"
 _MODE_EXEC = b"100755"
@@ -51,31 +54,61 @@ def hash_directory_entries(entries: list[_TreeEntry]) -> bytes:
     return _git_object_id(b"tree", payload)
 
 
-def _entry_for(path: Path) -> _TreeEntry | None:
-    name = path.name.encode()
-    if path.is_symlink():
-        target = path.readlink()
-        return _TreeEntry(_MODE_SYMLINK, name, content_object_id(str(target).encode()))
-    if path.is_dir():
-        if path.name in _EXCLUDED_DIRS:
-            return None
-        return _TreeEntry(_MODE_DIR, name, _directory_object_id(path))
-    if path.is_file():
-        mode = _MODE_EXEC if path.stat().st_mode & stat.S_IXUSR else _MODE_FILE
-        return _TreeEntry(mode, name, content_object_id(path.read_bytes()))
-    return None
+class LfsPayloadError(ValueError):
+    pass
 
 
-def _directory_object_id(directory: Path) -> bytes:
-    entries = [entry for child in directory.iterdir() if (entry := _entry_for(child)) is not None]
-    return hash_directory_entries(entries)
+@dataclass
+class _Walk:
+    root: Path
+    lfs: Mapping[str, LfsPointer]
+    seen: set[str]
+
+    def entry_for(self, path: Path) -> _TreeEntry | None:
+        name = path.name.encode()
+        if path.is_symlink():
+            target = path.readlink()
+            return _TreeEntry(_MODE_SYMLINK, name, content_object_id(str(target).encode()))
+        if path.is_dir():
+            if path.name in _EXCLUDED_DIRS:
+                return None
+            return _TreeEntry(_MODE_DIR, name, self.directory_object_id(path))
+        if path.is_file():
+            mode = _MODE_EXEC if path.stat().st_mode & stat.S_IXUSR else _MODE_FILE
+            relative = path.relative_to(self.root).as_posix()
+            if (pointer := self.lfs.get(relative)) is not None:
+                self.seen.add(relative)
+                return _TreeEntry(mode, name, content_object_id(_payload_as_pointer(path, relative, pointer)))
+            return _TreeEntry(mode, name, content_object_id(path.read_bytes()))
+        return None
+
+    def directory_object_id(self, directory: Path) -> bytes:
+        entries = [entry for child in directory.iterdir() if (entry := self.entry_for(child)) is not None]
+        return hash_directory_entries(entries)
 
 
-def directory_swhid(directory: Path | str) -> str:
+def _payload_as_pointer(path: Path, relative: str, pointer: LfsPointer) -> bytes:
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as stream:
+        while chunk := stream.read(1 << 20):
+            digest.update(chunk)
+            size += len(chunk)
+    if (digest.hexdigest(), size) != (pointer.oid, pointer.size):
+        if path.stat().st_size < 1024 and LfsPointer.parse(path.read_bytes()) == pointer:
+            raise LfsPayloadError(f"{relative} is still its LFS pointer: its content did not arrive")
+        raise LfsPayloadError(f"{relative} is not the content its LFS pointer names (sha256:{pointer.oid})")
+    return pointer.encode()
+
+
+def directory_swhid(directory: Path | str, *, lfs: Mapping[str, LfsPointer] | None = None) -> str:
     root = Path(directory)
     if not root.is_dir():
         raise NotADirectoryError(f"not a directory: {root}")
-    swhid = _SWHID_DIR_PREFIX + _directory_object_id(root).hex()
+    walk = _Walk(root, lfs or {}, set())
+    swhid = _SWHID_DIR_PREFIX + walk.directory_object_id(root).hex()
+    if missing := sorted(set(walk.lfs) - walk.seen):
+        raise LfsPayloadError(f"{len(missing)} LFS files are missing, the first {missing[0]}")
 
     assert len(swhid) == len(_SWHID_DIR_PREFIX) + 40, f"malformed directory SWHID: {swhid}"  # noqa: S101
     return swhid

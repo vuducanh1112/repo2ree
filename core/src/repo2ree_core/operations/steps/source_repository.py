@@ -6,7 +6,7 @@ from repo2ree_core.digests import digest_file
 from repo2ree_core.domain.ree.transitions import ReePreconditionError
 from repo2ree_core.execution.launch import RECORD_PREFIX
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
-from repo2ree_core.source_repo import lay_source_repository
+from repo2ree_core.source_repo import lay_source_repository, lfs_pointers
 from repo2ree_core.workspace.attempt import lay_out
 from repo2ree_ree.model import Ree
 from repo2ree_ree.reserved_paths import RESERVED_SCRIPT_DIR
@@ -32,6 +32,7 @@ def lay_out_run(layout: ReeLayout, ree: Ree, run_id: str, *, environment: bool) 
         revision=receipt.resolved_revision,
         history=receipt.history,
         left_out=_left_out(ree.subject.definition.experiment_environment.artifact_path),
+        lfs=lfs_pointers(receipt.lfs_files),
     )
     return workspace
 
@@ -49,4 +50,5 @@ def lay_review_repository(review: ReviewLayout, record: ReviewRecord, workspace:
         revision=receipt.observed_revision,
         history=receipt.history,
         left_out=_left_out(build.artifact_path if build else None),
+        lfs=lfs_pointers(receipt.lfs_files),
     )

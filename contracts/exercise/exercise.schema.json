@@ -741,10 +741,12 @@
       "enum": [
         "apptainer",
         "conda",
+        "heat_suicide_projection",
         "instant",
         "instant_docker",
         "java_maven",
         "notebook",
+        "p_hacking_replication",
         "plotting",
         "podman",
         "python_docker",
@@ -752,6 +754,7 @@
         "repo2ree_dev",
         "slurm",
         "stochastic",
+        "trr341_drought_camelina",
         "unpinned"
       ],
       "title": "ProjectName",

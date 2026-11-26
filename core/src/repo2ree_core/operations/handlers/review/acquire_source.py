@@ -14,8 +14,17 @@ from repo2ree_core.execution.process import CancelCheck, format_command, run_str
 from repo2ree_core.operations.steps.review import begin_review_step, refuse_signed_review, require_ree_baseline
 from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.persistence.lfs import LfsPointer
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
-from repo2ree_core.source_repo import SourceHistoryError, pack_source_history, verify_source_history
+from repo2ree_core.source_repo import (
+    LfsPayloadError,
+    SourceHistoryError,
+    bundled_lfs_manifest,
+    lfs_files,
+    lfs_manifest,
+    pack_source_history,
+    verify_source_history,
+)
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer
 from repo2ree_protocol.command import ReviewAcquireSourceArgs, ReviewBasis
@@ -75,9 +84,15 @@ def handle_review_acquire_source(
     if result.returncode != 0:
         return stop("failed", f"acquire script exited {result.returncode}")
 
-    observed_swhid = directory_swhid(review_layout.upstream)
     source = ree.subject.definition.source
     author_source = ree.subject.receipts.acquire_source
+    lfs = _review_lfs(review_layout, author_source, basis=basis, log=log)
+    lfs_failure: str | None = None
+    try:
+        observed_swhid = directory_swhid(review_layout.upstream, lfs=lfs)
+    except LfsPayloadError as exc:
+        log("system", "warn", f"the source's Git LFS files did not arrive whole: {exc}")
+        observed_swhid, lfs_failure = "", str(exc)
     expected_swhid = str(author_source.observed_swhid) if author_source and author_source.observed_swhid else ""
     observed_revision, history, history_failure = _review_history(
         review_layout, author_source, observed_swhid, basis=basis, log=log
@@ -89,6 +104,7 @@ def handle_review_acquire_source(
         expected_revision=author_source.resolved_revision if author_source else None,
         observed_revision=observed_revision,
         history_failure=history_failure,
+        lfs_failure=lfs_failure,
     )
     timing = timer.finish()
     receipt = ReviewAcquireSourceReceipt(
@@ -101,6 +117,7 @@ def handle_review_acquire_source(
         expected_revision=comparison.expected_revision,
         observed_revision=observed_revision,
         history=history,
+        lfs_files=lfs_files(lfs) if lfs_failure is None else (),
     )
     write_review_source_evidence(review_layout, receipt, comparison)
     log(
@@ -168,6 +185,32 @@ def _review_history(
         return revision, history, f"the history is {history}, the author's {author_source.history}"
     log("system", "info", f"the source's history ({history}) holds commit {revision} and its files")
     return revision, history, None
+
+
+def _review_lfs(
+    review_layout: ReviewLayout,
+    author_source: AcquireSourceReceipt | None,
+    *,
+    basis: EvidenceBasis,
+    log: LogSink,
+) -> dict[str, LfsPointer]:
+    if author_source is None or author_source.resolved_revision is None or author_source.history is None:
+        return {}
+    try:
+        if basis == "independent":
+            lfs = lfs_manifest(review_layout.upstream, "HEAD")
+        elif review_layout.source_history.is_file():
+            lfs = bundled_lfs_manifest(
+                review_layout.source_history, revision=author_source.resolved_revision, history=author_source.history
+            )
+        else:
+            return {}
+    except SourceHistoryError as exc:
+        log("system", "warn", f"the files the source keeps in Git LFS could not be read: {exc}")
+        return {}
+    if lfs:
+        log("system", "info", f"the source keeps {len(lfs)} files in Git LFS: each holds to its pointer")
+    return lfs
 
 
 def _has_acquirable_origin(source: SourceDefinition | None) -> bool:

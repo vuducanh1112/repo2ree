@@ -16,7 +16,7 @@ from repo2ree_ree.primitives import (
     UtcInstant,
     WorkspacePath,
 )
-from repo2ree_ree.receipt import Launched, OverlayDigest
+from repo2ree_ree.receipt import Launched, LfsFile, OverlayDigest
 
 ReviewStatus = Literal["running", "completed", "failed", "canceled"]
 ReviewStepKey = Literal[
@@ -69,6 +69,7 @@ class ReviewAcquireSourceReceipt(ReviewReceiptEnvelope):
     expected_revision: GitRevision | None = None
     observed_revision: GitRevision | None = None
     history: SourceHistory | None = None
+    lfs_files: tuple[LfsFile, ...] = ()
 
 
 class ReviewBuildExperimentEnvironmentReceipt(ReviewReceiptEnvelope):
@@ -117,6 +118,7 @@ class SourceComparison(_ReviewModel):
     expected_revision: GitRevision | None = None
     observed_revision: GitRevision | None = None
     history_failure: str | None = None
+    lfs_failure: str | None = None
     verdict: ComparisonVerdict
 
 

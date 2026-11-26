@@ -1784,6 +1784,14 @@
               "snapshot.tar.gz"
             ]
           }
+        },
+        "lfs_files": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/LfsFile"
+          },
+          "title": "Lfs Files",
+          "type": "array"
         }
       },
       "required": [
@@ -5455,6 +5463,41 @@
       "title": "Launched",
       "type": "object"
     },
+    "LfsFile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string",
+          "x-relative-to": [
+            "workspace"
+          ]
+        },
+        "digest": {
+          "title": "Digest",
+          "type": "string",
+          "x-digest-of": {
+            "covers": "file",
+            "entries": [
+              "workspace"
+            ],
+            "named_by": "lfs_files[*].path"
+          }
+        },
+        "size": {
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "digest",
+        "size"
+      ],
+      "title": "LfsFile",
+      "type": "object"
+    },
     "LintReport": {
       "additionalProperties": false,
       "properties": {
@@ -7062,6 +7105,14 @@
           ],
           "default": null,
           "title": "History"
+        },
+        "lfs_files": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/LfsFile"
+          },
+          "title": "Lfs Files",
+          "type": "array"
         }
       },
       "required": [
@@ -8994,6 +9045,18 @@
           ],
           "default": null,
           "title": "History Failure"
+        },
+        "lfs_failure": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lfs Failure"
         },
         "verdict": {
           "enum": [

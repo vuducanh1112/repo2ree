@@ -24,7 +24,14 @@ from repo2ree_core.persistence.files import write_atomic
 from repo2ree_core.persistence.layout import ACQUIRE_SCRIPT_FILENAME, ReeLayout
 from repo2ree_core.persistence.repository import load_ree, observe_source_slot, save_ree
 from repo2ree_core.reproduction.acquire_source import build_acquire_sh
-from repo2ree_core.source_repo import SourceHistoryError, directory_swhid, pack_source_history
+from repo2ree_core.source_repo import (
+    LfsPayloadError,
+    SourceHistoryError,
+    directory_swhid,
+    lfs_files,
+    lfs_manifest,
+    pack_source_history,
+)
 from repo2ree_core.time_utils import OperationTimer, format_duration_ms
 from repo2ree_protocol.command import AcquireSourceArgs
 from repo2ree_protocol.frames import LogSink
@@ -33,7 +40,7 @@ from repo2ree_protocol.result import ActionResult
 from repo2ree_ree.digest import Digest
 from repo2ree_ree.model import Ree, SourceDefinition
 from repo2ree_ree.primitives import GitRevision, SourceHistory, Swhid
-from repo2ree_ree.receipt import AcquireSourceReceipt
+from repo2ree_ree.receipt import AcquireSourceReceipt, LfsFile
 
 
 @dataclass(frozen=True)
@@ -50,6 +57,7 @@ class _ObservedSource:
     swhid: Swhid | None
     history: SourceHistory | None = None
     history_digest: Digest | None = None
+    lfs_files: tuple[LfsFile, ...] = ()
 
 
 def handle_acquire_source(
@@ -91,6 +99,9 @@ def handle_acquire_source(
     except SourceHistoryError as exc:
         log("system", "error", f"the source's history could not be packed: {exc}")
         return ActionResult.failed("execution", f"the source's history could not be packed: {exc}")
+    except LfsPayloadError as exc:
+        log("system", "error", f"the source's Git LFS files did not arrive whole: {exc}")
+        return ActionResult.failed("validation", f"the source's Git LFS files did not arrive whole: {exc}")
     try:
         _validate_observation(acquisition.definition, observed, log=log)
     except ValueError as exc:
@@ -108,6 +119,7 @@ def handle_acquire_source(
         history_digest=observed.history_digest,
         observed_swhid=observed.swhid,
         snapshot_digest=snapshot_digest,
+        lfs_files=observed.lfs_files,
     )
     updated = ree
     if updated.subject.definition.source is None:
@@ -275,10 +287,15 @@ def _observe_acquired_source(
     *,
     log: LogSink,
 ) -> _ObservedSource:
+    lfs = lfs_manifest(layout.upstream, "HEAD") if definition.source_type == "git" else {}
+    if lfs:
+        log("system", "info", f"the source keeps {len(lfs)} files in Git LFS: each holds to its pointer")
     swhid: Swhid | None = None
     try:
-        observed = directory_swhid(layout.upstream)
+        observed = directory_swhid(layout.upstream, lfs=lfs)
         swhid = Swhid(observed) if observed else None
+    except LfsPayloadError:
+        raise
     except Exception as exc:
         log("system", "warn", f"swhid computation skipped: {exc}")
     if definition.source_type != "git":
@@ -290,6 +307,7 @@ def _observe_acquired_source(
         swhid=swhid,
         history=packed.history,
         history_digest=packed.digest,
+        lfs_files=lfs_files(lfs),
     )
 
 

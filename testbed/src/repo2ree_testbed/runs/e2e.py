@@ -85,6 +85,12 @@ def parse(argv: list[str] | None = None) -> Invocation:
         help="start no API and no workbench service: the client runs ree on each test's machine itself",
     )
     parser.add_argument(
+        "--machines",
+        type=positive,
+        default=1,
+        help="with --no-control-plane: machines started for each test, each with an engine and caches of its own",
+    )
+    parser.add_argument(
         "--sigstore",
         action="store_true",
         help="start a Sigstore of the run's own on the machines' network, for its tests to sign with",
@@ -108,6 +114,8 @@ def parse(argv: list[str] | None = None) -> Invocation:
         parser.error("--script needs --tier <name> to say which tier it measures")
     if args.no_control_plane and not (args.script and args.per_test):
         parser.error("--no-control-plane runs a script's tests each on its machine: it needs --script and --per-test")
+    if args.machines > 1 and not args.no_control_plane:
+        parser.error("--machines starts the machines ree runs on itself: it needs --no-control-plane")
     client: Client
     if args.project:
         playwright = Playwright(args.project, gui_machines())
@@ -126,6 +134,7 @@ def parse(argv: list[str] | None = None) -> Invocation:
         cli_bundle=args.cli_bundle,
         tools_bundle=args.tools_bundle,
         control_plane=not args.no_control_plane,
+        machines=args.machines,
     )
     schedule = PerTest(args.jobs, select) if args.per_test else WholeSuite()
     return Invocation(deployment, client, schedule, args.exit_on, sigstore=args.sigstore)

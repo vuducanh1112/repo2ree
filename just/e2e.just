@@ -139,11 +139,11 @@ author-example-bundle machine="local":
 _author-example-bundle: (_tier-showcase-cli "1" "test_the_example_ree_is_sealed_without_its_experiment_environment")
     python scripts/example_bundle.py stage
 
-# Run the real-world showcases, whole projects end to end through `ree`, each on the machine it names: heavy, so on demand, not gated. The repo2ree dev environment builds its 8 GB image and runs the commit gate twice, about 15 minutes.
+# Run the real-world showcases, whole projects end to end through `ree`, each authored on the machine it names and reviewed on a second, fresh one: heavy, so on demand, not gated.
 [group('E2E tests')]
 [metadata("runs", "testbed/suites/real_world")]
 test-showcase-real-world jobs="1" *select: (_load-environment "docker")
-    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/real_world/run_real_world_showcase.py") }} --tier showcase-real-world --per-test --exit-on tests --no-control-plane --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
+    python -m repo2ree_testbed e2e --script {{ quote(ROOT + "/testbed/suites/real_world/run_real_world_showcase.py") }} --tier showcase-real-world --per-test --exit-on tests --no-control-plane --machines 2 --jobs {{ quote(jobs) }} {{ if select != "" { "--select " + quote(select) } else { "" } }}
 
 # Build and load the image of each machine an API showcase runs on.
 [private]

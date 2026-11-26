@@ -15,9 +15,9 @@ from typing import IO, Final
 from repo2ree_testbed.cli_cast import Printed, Stream
 from repo2ree_testbed.stack.environments import (
     ENVIRONMENTS,
-    MACHINE_CONTAINER_VARIABLE,
+    MACHINE_CONTAINERS_VARIABLE,
     MACHINE_VARIABLE,
-    MACHINE_WORKDIR_VARIABLE,
+    MACHINE_WORKDIRS_VARIABLE,
     EnvironmentName,
     machine_exec,
 )
@@ -41,12 +41,20 @@ class Machine:
 
     @classmethod
     def of_this_test(cls) -> Machine | None:
+        machines = cls.all_of_this_test()
+        return machines[0] if machines else None
+
+    @classmethod
+    def all_of_this_test(cls) -> tuple[Machine, ...]:
         if not os.environ.get(MACHINE_VARIABLE):
-            return None
-        return cls(
-            EnvironmentName(os.environ[MACHINE_VARIABLE]),
-            os.environ[MACHINE_CONTAINER_VARIABLE],
-            Path(os.environ[MACHINE_WORKDIR_VARIABLE]),
+            return ()
+        environment = EnvironmentName(os.environ[MACHINE_VARIABLE])
+        containers = os.environ[MACHINE_CONTAINERS_VARIABLE].split(os.pathsep)
+        workdirs = os.environ[MACHINE_WORKDIRS_VARIABLE].split(os.pathsep)
+        if len(containers) != len(workdirs):
+            raise ValueError(f"{len(containers)} machine containers but {len(workdirs)} workdirs")
+        return tuple(
+            cls(environment, container, Path(workdir)) for container, workdir in zip(containers, workdirs, strict=True)
         )
 
     def ree(

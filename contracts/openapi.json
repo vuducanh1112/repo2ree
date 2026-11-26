@@ -9136,6 +9136,14 @@
                 "snapshot.tar.gz"
               ]
             }
+          },
+          "lfs_files": {
+            "items": {
+              "$ref": "#/components/schemas/LfsFile"
+            },
+            "type": "array",
+            "title": "Lfs Files",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -13244,6 +13252,41 @@
         ],
         "title": "Launched"
       },
+      "LfsFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "x-relative-to": [
+              "workspace"
+            ]
+          },
+          "digest": {
+            "type": "string",
+            "title": "Digest",
+            "x-digest-of": {
+              "covers": "file",
+              "entries": [
+                "workspace"
+              ],
+              "named_by": "lfs_files[*].path"
+            }
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Size"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "digest",
+          "size"
+        ],
+        "title": "LfsFile"
+      },
       "LintReport": {
         "properties": {
           "schema_version": {
@@ -15333,6 +15376,14 @@
               }
             ],
             "title": "History"
+          },
+          "lfs_files": {
+            "items": {
+              "$ref": "#/components/schemas/LfsFile"
+            },
+            "type": "array",
+            "title": "Lfs Files",
+            "default": []
           }
         },
         "additionalProperties": false,
@@ -17278,6 +17329,17 @@
               }
             ],
             "title": "History Failure"
+          },
+          "lfs_failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lfs Failure"
           },
           "verdict": {
             "type": "string",

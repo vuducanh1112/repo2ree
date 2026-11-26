@@ -17,6 +17,7 @@ from repo2ree_core.execution.process import CancelCheck
 from repo2ree_core.operations.steps.source_repository import lay_review_repository
 from repo2ree_core.persistence.directory import UNREADABLE_DOCUMENT, ReeDirectory
 from repo2ree_core.persistence.layout import ReeLayout, ReviewLayout
+from repo2ree_core.source_repo import LfsPayloadError, lfs_pointers
 from repo2ree_core.source_repo.swhid import directory_swhid
 from repo2ree_core.time_utils import OperationTimer, OperationTiming, format_duration_ms
 from repo2ree_core.workspace.attempt import environment_in_workspace, fresh, overlay_onto
@@ -231,7 +232,13 @@ def _review_source(review: ReviewLayout, record: ReviewRecord, workspace: Path) 
     receipt = record.receipts.acquire_source
     if receipt is None or receipt.observed_swhid is None:
         raise ReePreconditionError("this review has recorded no source it acquired")
-    if not review.upstream.is_dir() or directory_swhid(review.upstream) != receipt.observed_swhid:
+    try:
+        held = review.upstream.is_dir() and (
+            directory_swhid(review.upstream, lfs=lfs_pointers(receipt.lfs_files)) == receipt.observed_swhid
+        )
+    except LfsPayloadError:
+        held = False
+    if not held:
         raise ReePreconditionError("the source in this review is not the one its acquisition observed")
     shutil.copytree(review.upstream, workspace, symlinks=True, dirs_exist_ok=True)
     lay_review_repository(review, record, workspace)

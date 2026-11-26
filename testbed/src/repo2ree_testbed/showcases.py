@@ -16,10 +16,12 @@ from repo2ree_testbed.stack.environments import EnvironmentName
 class ProjectName(StrEnum):
     APPTAINER = "apptainer"
     CONDA = "conda"
+    HEAT_SUICIDE_PROJECTION = "heat_suicide_projection"
     INSTANT = "instant"
     INSTANT_DOCKER = "instant_docker"
     JAVA_MAVEN = "java_maven"
     NOTEBOOK = "notebook"
+    P_HACKING_REPLICATION = "p_hacking_replication"
     PLOTTING = "plotting"
     PODMAN = "podman"
     PYTHON_DOCKER = "python_docker"
@@ -27,6 +29,7 @@ class ProjectName(StrEnum):
     REPO2REE_DEV = "repo2ree_dev"
     SLURM = "slurm"
     STOCHASTIC = "stochastic"
+    TRR341_DROUGHT_CAMELINA = "trr341_drought_camelina"
     UNPINNED = "unpinned"
 
 
@@ -84,6 +87,26 @@ class GitOrigin:
 
 
 @dataclass(frozen=True)
+class Experiment:
+    name: str
+    verdict: ExpectedVerdict
+    outputs: tuple[str, ...]
+    recipe: str
+
+    @classmethod
+    def kept(cls, name: str, verdict: ExpectedVerdict, outputs: tuple[str, ...]) -> Experiment:
+        return cls(name, verdict, outputs, f"experiments/{name}")
+
+    @property
+    def run_script(self) -> str:
+        return f"ree-scripts/experiments/{self.name}.sh"
+
+    @property
+    def verify_script(self) -> str:
+        return f"ree-scripts/experiments/{self.name}.verify.sh"
+
+
+@dataclass(frozen=True)
 class Project:
     name: ProjectName
     experiment_environment_path: str
@@ -93,6 +116,15 @@ class Project:
     outputs: tuple[str, ...] = (RESULT,)
     inferred: tuple[tuple[RecipeScript, InferenceRule], ...] = ()
     origin: GitOrigin | None = None
+    more_experiments: tuple[Experiment, ...] = ()
+
+    @property
+    def experiments(self) -> tuple[Experiment, ...]:
+        return (Experiment(self.experiment, self.verdict, self.outputs, "experiment"), *self.more_experiments)
+
+    def experiment_recipe(self, experiment: Experiment) -> tuple[str, str]:
+        recipe = self.directory / "recipe"
+        return (recipe / f"{experiment.recipe}.sh").read_text(), (recipe / f"{experiment.recipe}.verify.sh").read_text()
 
     def rule(self, script: RecipeScript) -> InferenceRule | None:
         return dict(self.inferred).get(script)
@@ -239,13 +271,78 @@ REPO2REE_DEV = Project(
         revision="7235286f87edb7e53aff71e25ca59827f8dc28b1",
     ),
 )
+P_HACKING_REPLICATION = Project(
+    name=ProjectName.P_HACKING_REPLICATION,
+    experiment_environment_path=".repo2ree/artifacts/experiment-environment.tar",
+    experiment="replication",
+    verdict="reproduced",
+    network=True,
+    outputs=("output/tables", "output/build/tables", "output/pcurve"),
+    origin=GitOrigin(
+        url="https://github.com/mikenguyen13/p-hacking-publication-bias-information-systems.git",
+        revision="d6f1689ffd216d934e10640637e07d0d4c96404c",
+    ),
+)
+HEAT_SUICIDE_PROJECTION = Project(
+    name=ProjectName.HEAT_SUICIDE_PROJECTION,
+    experiment_environment_path=".repo2ree/artifacts/experiment-environment.tar",
+    experiment="pipeline",
+    verdict="reproduced",
+    network=True,
+    outputs=(
+        "results",
+        "data/output/1st_coef_vcov.RData",
+        "data/output/mvoverall.RData",
+        "data/output/mypred.RData",
+        "data/output/metavariable.RData",
+        "data/output/blupres.RData",
+        "data/output/New_blups.RData",
+        "data/modeled/modeled_suicide.RData",
+        "data/output/ANAF.RData",
+        "data/output/ANAF_city.RData",
+    ),
+    origin=GitOrigin(
+        url="https://git.codeocean.com/capsule-3406373.git",
+        revision="db9ea6577484fd488aa131f2907027601402ffaf",
+    ),
+)
+_CAMELINA_WORKFLOWS: tuple[tuple[str, ExpectedVerdict], ...] = (
+    ("Fig1_plant_area_gsw_tleaf", "reproduced"),
+    ("Fig2_secondary_stems", "reproduced"),
+    ("Fig2_yield_seedweight_seedsize", "reproduced"),
+    ("Fig3_mucilage_stem_class", "reproduced"),
+    ("Fig3_seed_mucilage", "reproduced"),
+    ("Fig4_IC_monosaccharides", "reproduced"),
+    ("Fig5_germination", "reproduced"),
+    ("TabS1_germination_AxT_by_condition", "identical"),
+    ("TabS2_stem_count_ANCOVA", "identical"),
+    ("TabS3_mucilage_germination", "identical"),
+    ("Manuscript_figures", "reproduced"),
+)
+TRR341_DROUGHT_CAMELINA = Project(
+    name=ProjectName.TRR341_DROUGHT_CAMELINA,
+    experiment_environment_path=".repo2ree/artifacts/experiment-environment.tar",
+    experiment="all",
+    verdict="reproduced",
+    network=True,
+    outputs=("runs",),
+    origin=GitOrigin(
+        url="https://git.nfdi4plants.org/usadellab/TRR341_A4_Drought_Camelina.git",
+        revision="7681382898658500dc2e315ac4f8aeb7fd66627e",
+    ),
+    more_experiments=tuple(
+        Experiment.kept(workflow, verdict, (f"runs/{workflow}",)) for workflow, verdict in _CAMELINA_WORKFLOWS
+    ),
+)
 ALL_PROJECTS: tuple[Project, ...] = (
     APPTAINER,
     CONDA,
+    HEAT_SUICIDE_PROJECTION,
     INSTANT,
     INSTANT_DOCKER,
     JAVA_MAVEN,
     NOTEBOOK,
+    P_HACKING_REPLICATION,
     PLOTTING,
     PODMAN,
     PYTHON_DOCKER,
@@ -253,6 +350,7 @@ ALL_PROJECTS: tuple[Project, ...] = (
     REPO2REE_DEV,
     SLURM,
     STOCHASTIC,
+    TRR341_DROUGHT_CAMELINA,
     UNPINNED,
 )
 
@@ -324,7 +422,12 @@ if _refused := _refusals():
     raise ValueError("; ".join(_refused))
 
 
-REAL_WORLD: dict[ProjectName, EnvironmentName] = {ProjectName.REPO2REE_DEV: EnvironmentName.DOCKER}
+REAL_WORLD: dict[ProjectName, EnvironmentName] = {
+    ProjectName.HEAT_SUICIDE_PROJECTION: EnvironmentName.DOCKER,
+    ProjectName.P_HACKING_REPLICATION: EnvironmentName.DOCKER,
+    ProjectName.REPO2REE_DEV: EnvironmentName.DOCKER,
+    ProjectName.TRR341_DROUGHT_CAMELINA: EnvironmentName.DOCKER,
+}
 
 
 def real_world_suite(name: ProjectName) -> Path:

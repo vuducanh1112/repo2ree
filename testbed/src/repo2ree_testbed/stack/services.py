@@ -17,6 +17,7 @@ class Deployment:
     environment: Environment | None = None
     control_plane: bool = True
     sigstore: Path | None = None
+    machines: int = 1
 
 
 @dataclass(frozen=True)

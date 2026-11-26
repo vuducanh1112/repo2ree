@@ -81,6 +81,7 @@ describe("shell/data/ree/reeMapping", () => {
       resolved_revision: "abc",
       observed_swhid: "swh:1:dir:value",
       snapshot_digest: "sha256:value",
+      lfs_files: [],
     };
 
     expect(mapReeDetailToReeProject(document).authorReceipts).toMatchObject([
@@ -189,6 +190,7 @@ describe("shell/data/ree/reeMapping", () => {
       resolved_revision: "abc",
       observed_swhid: "swh:1:dir:value",
       snapshot_digest: "sha256:value",
+      lfs_files: [],
     };
     const project = mapReeDetailToReeProject({
       ...withReceipt,

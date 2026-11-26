@@ -24,9 +24,9 @@ from repo2ree_testbed.records import DossierManifest, read
 from repo2ree_testbed.stack.clients import Client, Launch, Started
 from repo2ree_testbed.stack.environments import (
     DNS_VARIABLE,
-    MACHINE_CONTAINER_VARIABLE,
+    MACHINE_CONTAINERS_VARIABLE,
     MACHINE_VARIABLE,
-    MACHINE_WORKDIR_VARIABLE,
+    MACHINE_WORKDIRS_VARIABLE,
     machine_command,
 )
 from repo2ree_testbed.stack.injector import (
@@ -150,8 +150,7 @@ class E2EStack:
         self.port: int | None = None
         self.backend: subprocess.Popen[bytes] | None = None
         self.locations: list[subprocess.Popen[bytes]] = []
-        self.machine: subprocess.Popen[bytes] | None = None
-        self.machine_state = self.control_state / ("workbench-1" if deployment.control_plane else "machine")
+        self.machines: list[subprocess.Popen[bytes]] = []
         self.launches: list[tuple[list[str], dict[str, str], Path]] = []
         self.relays: dict[int, Relay] = {}
         self.rivals: dict[int, subprocess.Popen[bytes]] = {}
@@ -295,37 +294,56 @@ class E2EStack:
 
         wait_until(f"{len(services)} store workbench(es)", ready)
 
-    def start_machine(self) -> None:
+    def machine_state(self, index: int) -> Path:
+        if self.deployment.control_plane:
+            return self.control_state / f"workbench-{index}"
+        return self.control_state / ("machine" if index == 1 else f"machine-{index}")
+
+    def machine_container(self, index: int) -> str:
+        return f"{self.layout.run_token}-{index}"
+
+    def start_machines(self) -> None:
+        for index in range(1, self.deployment.machines + 1):
+            self.start_machine(index)
+
+    def start_machine(self, index: int) -> None:
         machine = self.deployment.environment
         if machine is None:
             raise RuntimeError("with no control plane the client runs ree on the test's machine, and it names none")
-        self.machine_state.mkdir(parents=True, exist_ok=True)
-        ready = self.machine_state / "ready"
+        state = self.machine_state(index)
+        state.mkdir(parents=True, exist_ok=True)
+        ready = state / "ready"
         environment: dict[str, str] = {}
         telemetry = (self.layout.telemetry,) if self.layout.telemetry is not None else ()
         if self.layout.telemetry is not None:
-            environment["TRACE_FILE"] = str(self.layout.telemetry / "cli.ndjson")
+            trace = "cli.ndjson" if index == 1 else f"cli-{index}.ndjson"
+            environment["TRACE_FILE"] = str(self.layout.telemetry / trace)
         if machine.nested_daemon:
             environment[DNS_VARIABLE] = ",".join(host_nameservers(machine.image))
         command = machine_command(
             machine,
             environment,
             ["sh", "-c", 'touch "$0" && exec sleep infinity', str(ready)],
-            container=f"{self.layout.run_token}-1",
+            container=self.machine_container(index),
             owner=self.layout.run_token,
             network=workbench_host()[1],
-            mounts=(self.machine_state, *telemetry),
+            mounts=(state, *telemetry),
         )
-        log = self.layout.logs / f"machine-{self.deployment.tier}.log"
-        print(f">> starting the {machine.name} machine, with no service on it (log: {log})")
-        self.machine = process = self.launch(command, self.environment, log)
+        suffix = "" if index == 1 else f"-{index}"
+        log = self.layout.logs / f"machine-{self.deployment.tier}{suffix}.log"
+        print(
+            f">> starting the {machine.name} machine {index}/{self.deployment.machines}, with no service on it"
+            f" (log: {log})"
+        )
+        process = self.launch(command, self.environment, log)
+        self.machines.append(process)
 
         def started() -> bool:
             if process.poll() is not None:
-                raise RuntimeError(f"the {machine.name} machine exited before it was ready (log: {log})")
+                raise RuntimeError(f"the {machine.name} machine {index} exited before it was ready (log: {log})")
             return ready.exists()
 
-        wait_until(f"the {machine.name} machine", started)
+        wait_until(f"the {machine.name} machine {index}", started)
 
     def launch(self, command: list[str], environment: dict[str, str], log: Path) -> subprocess.Popen[bytes]:
         return subprocess.Popen(
@@ -426,7 +444,7 @@ class E2EStack:
         if not self.restarting.acquire(blocking=False):
             return None
         try:
-            infrastructure = [process for process in [self.backend, self.machine, *self.locations] if process]
+            infrastructure = [process for process in [self.backend, *self.machines, *self.locations] if process]
             return next((process for process in infrastructure if process.poll() is not None), None)
         finally:
             self.restarting.release()
@@ -442,12 +460,14 @@ class E2EStack:
             FAULTS_URL: self.injector.url,
         }
         if (machine := self.deployment.environment) is not None:
-            workdir = self.machine_state / "cli"
-            workdir.mkdir(parents=True, exist_ok=True)
+            indexes = range(1, (1 if self.deployment.control_plane else self.deployment.machines) + 1)
+            workdirs = [self.machine_state(index) / "cli" for index in indexes]
+            for workdir in workdirs:
+                workdir.mkdir(parents=True, exist_ok=True)
             environment |= {
                 MACHINE_VARIABLE: machine.name,
-                MACHINE_CONTAINER_VARIABLE: f"{self.layout.run_token}-1",
-                MACHINE_WORKDIR_VARIABLE: str(workdir),
+                MACHINE_CONTAINERS_VARIABLE: os.pathsep.join(self.machine_container(index) for index in indexes),
+                MACHINE_WORKDIRS_VARIABLE: os.pathsep.join(str(workdir) for workdir in workdirs),
             }
         running = self.client.start(self.api_url, environment, self.selection, launch)
         self.running = running
@@ -485,7 +505,8 @@ class E2EStack:
             for rival in self.rivals.values():
                 terminate(rival)
             terminate(self.backend)
-            terminate(self.machine)
+            for machine in self.machines:
+                terminate(machine)
             for relay in self.relays.values():
                 relay.close()
         if self.api_url or not self.deployment.control_plane:
@@ -573,7 +594,7 @@ class E2EStack:
         else:
             with self.phase("machine"):
                 self.prepare()
-                self.start_machine()
+                self.start_machines()
         with self.phase("client"):
             self.client_status = self.run_client()
         print(">> stopping workbench service and backend (SIGTERM so coverage can flush)")

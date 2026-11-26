@@ -81,35 +81,47 @@ _GIT_FETCH = {
         git -C "$dest" remote add origin "$ORIGIN_URL"
         git -C "$dest" fetch -q --no-tags --depth 1 origin "$rev" \\
           || die "the origin serves no shallow fetch of $rev"
-        git -C "$dest" checkout -q --detach FETCH_HEAD
+        GIT_LFS_SKIP_SMUDGE=1 git -C "$dest" checkout -q --detach FETCH_HEAD
     """,
     ("tip", False): """
         say "Fetching source from $ORIGIN_URL (git, the commit alone)"
-        git clone -q --no-tags --depth 1 "$ORIGIN_URL" "$dest"
+        GIT_LFS_SKIP_SMUDGE=1 git clone -q --no-tags --depth 1 "$ORIGIN_URL" "$dest"
     """,
     ("full", True): """
         say "Fetching source from $ORIGIN_URL (git, pinned to $rev, with its history)"
         git init -q "$dest"
         git -C "$dest" remote add origin "$ORIGIN_URL"
         if git -C "$dest" fetch -q --no-tags origin "$rev" 2>/dev/null; then
-          git -C "$dest" checkout -q --detach FETCH_HEAD
+          GIT_LFS_SKIP_SMUDGE=1 git -C "$dest" checkout -q --detach FETCH_HEAD
         else
           say "the origin serves no fetch of $rev alone; fetching every branch"
           git -C "$dest" fetch -q --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
-          git -C "$dest" checkout -q --detach "$rev"
+          GIT_LFS_SKIP_SMUDGE=1 git -C "$dest" checkout -q --detach "$rev"
         fi
         git -C "$dest" fetch -q --no-tags origin '+refs/tags/*:refs/tags/*' \\
           || say "the origin serves no tags; the history carries none"
     """,
     ("full", False): """
         say "Fetching source from $ORIGIN_URL (git, with its history)"
-        git clone -q "$ORIGIN_URL" "$dest"
+        GIT_LFS_SKIP_SMUDGE=1 git clone -q "$ORIGIN_URL" "$dest"
     """,
 }
 
 
+_LFS_FETCH = shell_text("""
+      if git -C "$dest" grep -q -I -F -e 'version https://git-lfs.github.com/spec/v1' HEAD -- 2>/dev/null; then
+        command -v git-lfs >/dev/null 2>&1 || die "the source keeps files in Git LFS: git-lfs is required to fetch them"
+        say "Fetching the files the source keeps in Git LFS"
+        git -C "$dest" lfs install --local --skip-smudge >/dev/null
+        git -C "$dest" lfs fetch origin "$(git -C "$dest" rev-parse HEAD)" \\
+          || die "the origin serves no Git LFS content for this commit"
+        git -C "$dest" lfs checkout
+      fi
+""").rstrip()
+
+
 def _git_fetch_function(revision: str, history: SourceHistory) -> str:
-    body = shell_text(_GIT_FETCH[(history, bool(revision))]).rstrip()
+    body = shell_text(_GIT_FETCH[(history, bool(revision))]).rstrip() + "\n" + _LFS_FETCH
     indented = "\n".join(f"  {line}" for line in body.splitlines())
     return (
         shell_text("""

@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:f114a778a754dd5987cd1d9b8ab739dede660e709152fadae030e7d09ce85c6f",
+    "ree_digest": "sha256:2b62439aa4176241c4288d8d9aaee7346aba9a872c92789a5f98049e8963f932",
     "sealed_at": "2026-11-18T12:13:29.017411Z"
   },
   "subject": {
@@ -169,6 +169,7 @@
       "acquire_source": {
         "duration_ms": 109,
         "finished_at": "2026-11-18T12:12:13.622767Z",
+        "lfs_files": [],
         "observed_swhid": "swh:1:dir:d628538e71146ddab265cb55b04a35c2bf22e7ba",
         "operation": "acquire_source",
         "recorded_at": "2026-11-18T12:12:13.622767Z",

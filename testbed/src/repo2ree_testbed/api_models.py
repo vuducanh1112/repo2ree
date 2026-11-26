@@ -59,6 +59,7 @@ class SourceComparison(_Response):
     expected_revision: str | None = None
     observed_revision: str | None = None
     history_failure: str | None = None
+    lfs_failure: str | None = None
 
 
 class ExperimentEnvironmentComparison(_Response):
@@ -87,7 +88,18 @@ class ReviewRunExperimentReceipt(_Response):
     launched: Launched | None = None
 
 
+class LfsFile(_Response):
+    path: str
+    digest: str
+    size: int
+
+
+class ReviewAcquireSourceReceipt(_Response):
+    lfs_files: tuple[LfsFile, ...] = ()
+
+
 class ReviewReceipts(_Response):
+    acquire_source: ReviewAcquireSourceReceipt | None = None
     experiments: tuple[ReviewRunExperimentReceipt, ...] = ()
 
 
@@ -110,6 +122,7 @@ class AcquireSourceReceipt(_Response):
     resolved_revision: str | None = None
     history: Literal["full", "tip"] | None = None
     observed_swhid: str | None = None
+    lfs_files: tuple[LfsFile, ...] = ()
 
 
 class GenerateSbomReceipt(_Response):

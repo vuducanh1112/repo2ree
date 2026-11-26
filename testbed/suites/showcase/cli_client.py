@@ -35,7 +35,7 @@ from repo2ree_testbed.cli_cast import append_command, cast_file
 from repo2ree_testbed.cli_machine import Done, Machine, keep_histories
 from repo2ree_testbed.cli_session import LOG_LINES, CliCommand, append, kept_result, kept_stdin, session_file
 from repo2ree_testbed.run_watch import INSTANT_RUN, RunWatch
-from repo2ree_testbed.showcases import Project
+from repo2ree_testbed.showcases import Experiment, Project
 from repo2ree_testbed.stack.environments import (
     MACHINE_VARIABLE,
 )
@@ -211,11 +211,13 @@ class CliClient:
         patch = DefinitionPatch(hbom=HardwarePatch(cpus={model: cpu})).model_dump(exclude_none=True)
         self._outputs(ree_id, "patch-ree-definition", stdin=json.dumps(patch).encode())
 
-    def declare_experiment(self, ree_id: str, fixture: Project) -> None:
-        outputs = [word for path in fixture.outputs for word in ("--output", str(path))]
-        self._outputs(ree_id, "patch-ree-definition", "--experiment", fixture.experiment, *outputs)
-        self._write(ree_id, fixture.experiment_script, fixture.recipe("experiment.sh"))
-        self._write(ree_id, fixture.experiment_verify, fixture.recipe("experiment.verify.sh"))
+    def declare_experiment(self, ree_id: str, fixture: Project, experiment: Experiment | None = None) -> None:
+        declared = experiment or fixture.experiments[0]
+        run, verify = fixture.experiment_recipe(declared)
+        outputs = [word for path in declared.outputs for word in ("--output", str(path))]
+        self._outputs(ree_id, "patch-ree-definition", "--experiment", declared.name, *outputs)
+        self._write(ree_id, declared.run_script, run)
+        self._write(ree_id, declared.verify_script, verify)
 
     def evaluate(self, ree_id: str, *, watch: RunWatch = INSTANT_RUN) -> Run:
         return self._step(ree_id, "evaluate-reproducibility")
@@ -263,11 +265,12 @@ class CliClient:
             self._write_proposed(ree_id, "activate_experiment_environment", rule)
         return self._step(ree_id, "activate-experiment-environment")
 
-    def run_experiment(self, ree_id: str, fixture: Project) -> Run:
-        self.declare_experiment(ree_id, fixture)
-        self.infer(ree_id, "experiment_run", experiment=fixture.experiment)
-        self.infer(ree_id, "experiment_verify", experiment=fixture.experiment)
-        return self._step(ree_id, "run-experiment", fixture.experiment)
+    def run_experiment(self, ree_id: str, fixture: Project, experiment: Experiment | None = None) -> Run:
+        declared = experiment or fixture.experiments[0]
+        self.declare_experiment(ree_id, fixture, declared)
+        self.infer(ree_id, "experiment_run", experiment=declared.name)
+        self.infer(ree_id, "experiment_verify", experiment=declared.name)
+        return self._step(ree_id, "run-experiment", declared.name)
 
     def author(self, ree_id: str, fixture: Project) -> None:
         self.upload_source(ree_id, fixture)
@@ -402,8 +405,25 @@ def client() -> Client:
     return CliClient(machine, ARCHIVE_DIR, KEPT_REE_DIR, session_file(), cast_file())
 
 
+@pytest.fixture(scope="session")
+def reviewer() -> CliClient:
+    machines = Machine.all_of_this_test()
+    if len(machines) < 2:
+        raise RuntimeError("a review on a machine of its own needs a second machine: run the tier with --machines 2")
+    return CliClient(machines[1], ARCHIVE_DIR, KEPT_REE_DIR, session_file(), cast_file())
+
+
 @pytest.fixture
 def new_ree(client: CliClient, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
+    yield from _created(client, request)
+
+
+@pytest.fixture
+def new_reviewer_ree(reviewer: CliClient, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
+    yield from _created(reviewer, request)
+
+
+def _created(client: CliClient, request: pytest.FixtureRequest) -> Iterator[Callable[..., str]]:
     created: list[str] = []
     label = re.sub(r"[^a-z0-9]+", "-", request.node.name.lower()).strip("-")
 

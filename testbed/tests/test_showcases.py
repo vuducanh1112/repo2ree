@@ -1,9 +1,12 @@
+import os
 import subprocess
+from pathlib import Path
 from typing import get_args
 
 import pytest
 
 from repo2ree_testbed.artifacts import ROOT
+from repo2ree_testbed.cli_machine import Machine
 from repo2ree_testbed.runs.api_showcase import RUNNERS, e2e_arguments
 from repo2ree_testbed.runs.e2e import parse
 from repo2ree_testbed.showcases import (
@@ -36,7 +39,13 @@ from repo2ree_testbed.showcases import (
     real_world_machine_of,
     real_world_suite,
 )
-from repo2ree_testbed.stack.environments import ENVIRONMENTS, EnvironmentName
+from repo2ree_testbed.stack.environments import (
+    ENVIRONMENTS,
+    MACHINE_CONTAINERS_VARIABLE,
+    MACHINE_VARIABLE,
+    MACHINE_WORKDIRS_VARIABLE,
+    EnvironmentName,
+)
 
 
 @pytest.mark.parametrize("name", list(ShowcaseName))
@@ -145,6 +154,29 @@ def test_the_cli_tier_runs_no_control_plane_and_the_api_tier_does() -> None:
     ).deployment.control_plane
     with pytest.raises(SystemExit):
         parse(["--script", str(RUNNERS["cli"]), "--tier", CLI_TIER, "--no-control-plane"])
+
+
+def test_a_tier_with_no_control_plane_may_start_several_machines_for_each_test() -> None:
+    no_control_plane = ["--script", str(RUNNERS["cli"]), "--tier", CLI_TIER, "--per-test", "--no-control-plane"]
+    assert parse(no_control_plane).deployment.machines == 1
+    assert parse([*no_control_plane, "--machines", "2"]).deployment.machines == 2
+    with pytest.raises(SystemExit):
+        parse(["--script", str(RUNNERS["cli"]), "--tier", CLI_TIER, "--per-test", "--machines", "2"])
+
+
+def test_a_test_reads_its_machines_in_the_order_the_stack_started_them(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(MACHINE_VARIABLE, EnvironmentName.DOCKER)
+    monkeypatch.setenv(MACHINE_CONTAINERS_VARIABLE, os.pathsep.join(("run-1", "run-2")))
+    monkeypatch.setenv(MACHINE_WORKDIRS_VARIABLE, os.pathsep.join(("/state/machine/cli", "/state/machine-2/cli")))
+    first, second = Machine.all_of_this_test()
+    assert (first.container, first.workdir) == ("run-1", Path("/state/machine/cli"))
+    assert (second.container, second.workdir) == ("run-2", Path("/state/machine-2/cli"))
+    assert Machine.of_this_test() == first
+    monkeypatch.setenv(MACHINE_WORKDIRS_VARIABLE, "/state/machine/cli")
+    with pytest.raises(ValueError, match="2 machine containers but 1 workdirs"):
+        Machine.all_of_this_test()
+    monkeypatch.delenv(MACHINE_VARIABLE)
+    assert Machine.of_this_test() is None
 
 
 def test_every_real_world_suite_directory_is_a_real_world_showcase() -> None:

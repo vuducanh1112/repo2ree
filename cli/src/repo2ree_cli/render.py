@@ -173,6 +173,8 @@ def review(record: ReviewRecord) -> str:
         lines.append(f"  source: {source.verdict} ({source.basis})")
         if source.history_failure is not None:
             lines.append(f"    the source's history does not hold: {source.history_failure}")
+        if source.lfs_failure is not None:
+            lines.append(f"    the source's Git LFS files did not arrive whole: {source.lfs_failure}")
     if record.experiment_environment_comparison is not None:
         environment = record.experiment_environment_comparison
         lines.append(

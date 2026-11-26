@@ -17,6 +17,7 @@ from repo2ree_ree.primitives import (
     SourceType,
     Swhid,
     UtcInstant,
+    WorkspacePath,
 )
 from repo2ree_ree.working_environment import WorkingEnvironmentObservation
 
@@ -81,6 +82,12 @@ class Launched(_ReceiptModel):
     slurm_step_id: str | None = None
 
 
+class LfsFile(_ReceiptModel):
+    path: WorkspacePath
+    digest: Annotated[Digest, digest_of("file", "workspace", named_by="lfs_files[*].path")]
+    size: int = Field(ge=0)
+
+
 class AcquireSourceReceipt(ReceiptEnvelope):
     operation: Literal["acquire_source"] = "acquire_source"
     origin_url: str | None = None
@@ -91,14 +98,15 @@ class AcquireSourceReceipt(ReceiptEnvelope):
     history_digest: HistoryDigest | None = None
     observed_swhid: Swhid | None = None
     snapshot_digest: SnapshotDigest
+    lfs_files: tuple[LfsFile, ...] = ()
 
     @model_validator(mode="after")
     def _git_carries_its_history(self) -> AcquireSourceReceipt:
         held = (self.resolved_revision is not None, self.history is not None, self.history_digest is not None)
         if self.source_type == "git" and not all(held):
             raise ValueError("a git source records its revision, its history and the history's digest")
-        if self.source_type != "git" and any(held):
-            raise ValueError("only a git source records a revision and a history")
+        if self.source_type != "git" and (any(held) or self.lfs_files):
+            raise ValueError("only a git source records a revision, a history and files kept in Git LFS")
         return self
 
 

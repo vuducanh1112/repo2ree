@@ -1,6 +1,6 @@
 {
   "seal": {
-    "ree_digest": "sha256:77634cf7a8de8baeacaa560c6a164add427542fb0def90d2f875ab3f37355fb9",
+    "ree_digest": "sha256:3af7338e5b1e77546539d105e2f506330a5c9ebeec49e5269bee0faeb2e0ef9e",
     "sealed_at": "2026-10-01T09:30:00.123456Z"
   },
   "subject": {
@@ -384,6 +384,13 @@
         "finished_at": "2026-10-01T08:00:01.250000Z",
         "history": "full",
         "history_digest": "sha256:36df5987662a52d633ad0df08372303b53cdac87d1b60c0c2095efb7586ad4ed",
+        "lfs_files": [
+          {
+            "path": "data/measurements.csv",
+            "digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "size": 4096
+          }
+        ],
         "observed_swhid": "swh:1:rev:0123456789abcdef0123456789abcdef01234567",
         "operation": "acquire_source",
         "origin_url": "https://example.org/maximal.git",
