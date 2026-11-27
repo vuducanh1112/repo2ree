@@ -47,12 +47,20 @@ def _api_test(showcase: Showcase, workflow: str) -> ShowcaseTest | None:
     )
 
 
+def _real_world_test(showcase: Showcase) -> ShowcaseTest | None:
+    return next((t for t in showcase.tests if t.test is not None), None)
+
+
 def authoring_test(showcase: Showcase) -> ShowcaseTest | None:
-    return _api_test(showcase, "authoring")
+    return _real_world_test(showcase) if showcase.kind == "real_world" else _api_test(showcase, "authoring")
 
 
 def review_test(showcase: Showcase) -> ShowcaseTest | None:
-    return _api_test(showcase, "review")
+    return _real_world_test(showcase) if showcase.kind == "real_world" else _api_test(showcase, "review")
+
+
+def _test_named(showcase: Showcase, workflow: str) -> str:
+    return "test" if showcase.kind == "real_world" else f"API {workflow} test"
 
 
 def badge(written: Written) -> str:
@@ -394,15 +402,20 @@ def review_body(review: FinalReview, test: ShowcaseTest) -> str:
 
 def review_section(showcase: Showcase, test: ShowcaseTest | None, review: FinalReview | None) -> str:
     title = "Final review"
+    left = (
+        f"The review the {esc(showcase.name)} showcase's test ran on a second machine from the sealed REE alone"
+        if showcase.kind == "real_world"
+        else f"The review the {esc(showcase.name)} showcase's review test left"
+    )
     lede = (
-        f"The review the {esc(showcase.name)} showcase's review test left, as its own history holds it at its last "
-        "commit: a reviewer's verdict on each part of a sealed REE. A bundled basis checks against what the REE "
-        "carries; an independent one rebuilds from the recorded origin and recipe."
+        f"{left}, as its own history holds it at its last commit: a reviewer's verdict on each part of a sealed REE. "
+        "A bundled basis checks against what the REE carries; an independent one rebuilds from the recorded origin "
+        "and recipe."
     )
     if test is None:
-        body = '<p class="muted">This clone has no run of its API review test.</p>'
+        body = f'<p class="muted">This clone has no run of its {_test_named(showcase, "review")}.</p>'
     elif review is None:
-        body = '<p class="no">Its review test preserved no review.</p>'
+        body = f'<p class="no">Its {_test_named(showcase, "review")} preserved no review.</p>'
     else:
         body = review_body(review, test)
     return section(review_anchor(showcase.name), title, lede, body)
@@ -418,18 +431,18 @@ def page_showcase_ree(
     title = f"{showcase.name} REE"
     lede = (
         f'The REE the <a href="showcase-gate.html#showcase-{esc(showcase.name)}">{esc(showcase.name)}</a> showcase\'s '
-        "authoring test sealed, as the test preserved it. Each script is matched against what inference proposed "
-        "in the REE's own history: written as inferred, chosen over what inference proposed, written where inference "
-        "proposed nothing, or written without inference being asked. Where inference was asked, its decision graph "
-        "shows the path its last answer took and what each check observed."
+        f"{_test_named(showcase, 'authoring')} sealed, as the test preserved it. Each script is matched against what "
+        "inference proposed in the REE's own history: written as inferred, chosen over what inference proposed, "
+        "written where inference proposed nothing, or written without inference being asked. Where inference was "
+        "asked, its decision graph shows the path its last answer took and what each check observed."
     )
     if test is None:
-        body = '<p class="muted">This clone has no run of its API authoring test.</p>'
+        body = f'<p class="muted">This clone has no run of its {_test_named(showcase, "authoring")}.</p>'
     elif ree is None:
-        body = '<p class="no">Its authoring test preserved no sealed REE.</p>'
+        body = f'<p class="no">Its {_test_named(showcase, "authoring")} preserved no sealed REE.</p>'
     else:
         body = ree_body(ree, test)
-    teaser = f"What {showcase.name}'s authoring test sealed, and what its reviewer found"
+    teaser = f"What {showcase.name}'s {_test_named(showcase, 'authoring')} sealed, and what its reviewer found"
     return Page(
         slug(showcase.name),
         title,

@@ -473,6 +473,7 @@ class ShowcaseTier(Document):
     surface: Literal["api", "cli", "browser"]
     environments: tuple[str, ...]
     recipe: str
+    selection: Literal["whole", "each_test"]
     run: str | None
 
 
@@ -487,7 +488,7 @@ class ShowcaseTest(Document):
 
 class Showcase(Document):
     name: str
-    kind: Literal["showcase", "feature"]
+    kind: Literal["showcase", "feature", "real_world"]
     environment: str | None
     tests: tuple[ShowcaseTest, ...]
 
@@ -499,7 +500,8 @@ class ShowcaseRuns(Export):
     showcases: tuple[Showcase, ...]
 
     def runs(self) -> tuple[str, ...]:
-        return tuple(tier.run for tier in self.tiers if tier.run)
+        per_test = (test.run for showcase in self.showcases for test in showcase.tests if test.run)
+        return tuple(dict.fromkeys([*(tier.run for tier in self.tiers if tier.run), *per_test]))
 
 
 type BehaviourKind = Literal["verdict", "move", "outcome"]

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from repo2ree_repoview.overview.bundle import Bundle
-from repo2ree_repoview.overview.exports import Operations, Showcase, ShowcaseRuns, ShowcaseTest, Spec
+from repo2ree_repoview.overview.exports import Operations, Showcase, ShowcaseRuns, ShowcaseTest, ShowcaseTier, Spec
 from repo2ree_repoview.overview.figures import inlined
 from repo2ree_repoview.overview.html import Page, esc, in_frame, rule_anchor, section, table
 from repo2ree_repoview.overview.pages.aggregate import without_machine
@@ -181,6 +181,28 @@ def page_coverage(
     return Page("coverage", "Coverage", teaser, section("coverage", "Coverage", lede, body))
 
 
+def tier_runs(showcases: ShowcaseRuns, tier: ShowcaseTier) -> list[str]:
+    if tier.selection == "whole":
+        return [tier.run] if tier.run else []
+    ran = (test.run for showcase in showcases.showcases for test in showcase.tests if test.tier == tier.tier)
+    return sorted({run for run in ran if run}, key=lambda run: Path(run).name)
+
+
+def run_cells(run: str, record: RunRecord, verdicts: dict[tuple[str, str], str] | None) -> list[str]:
+    name = Path(run).name
+    outcomes = Counter(test.outcome or "unknown" for test in record.tests)
+    judged = Counter((verdicts or {}).get((name, test.name), "not assessed") for test in record.tests)
+    ran = " · ".join(
+        f'<span class="{"ok" if outcome == "passed" else "no"}">{count} {esc(outcome)}</span>'
+        for outcome, count in outcomes.items()
+    )
+    behaved = " · ".join(
+        f'<span class="{TONE.get(verdict, "ex")}">{count} {esc(verdict)}</span>' for verdict, count in judged.items()
+    )
+    built = f"{esc(record.build_revision[:10])}{f', {esc(record.platform)}' if record.platform else ''}"
+    return [f"<code>{esc(name)}</code>", built, f"{ran}<br>behaviour: {behaved}"]
+
+
 def showcase_rows(
     showcases: ShowcaseRuns, records: dict[str, RunRecord], verdicts: dict[tuple[str, str], str] | None
 ) -> list[list[str]]:
@@ -191,27 +213,12 @@ def showcase_rows(
             if tier.environments
             else '<span class="muted">default stack</span>'
         )
-        record = records.get(tier.run) if tier.run else None
-        if tier.run is None or record is None:
+        described = [f"<code>{esc(tier.tier)}</code>", esc(tier.surface), machine]
+        found = [(run, record) for run in tier_runs(showcases, tier) if (record := records.get(run)) is not None]
+        if not found:
             missing = f'<span class="no">no run in this clone</span>: <code>{esc(tier.recipe)}</code>'
-            rows.append([f"<code>{esc(tier.tier)}</code>", esc(tier.surface), machine, missing, "", ""])
-            continue
-        name = Path(tier.run).name
-        outcomes = Counter(test.outcome or "unknown" for test in record.tests)
-        judged = Counter((verdicts or {}).get((name, test.name), "not assessed") for test in record.tests)
-        ran = " · ".join(
-            f'<span class="{"ok" if outcome == "passed" else "no"}">{count} {esc(outcome)}</span>'
-            for outcome, count in outcomes.items()
-        )
-        behaved = " · ".join(
-            f'<span class="{TONE.get(verdict, "ex")}">{count} {esc(verdict)}</span>'
-            for verdict, count in judged.items()
-        )
-        tally = f"{ran}<br>behaviour: {behaved}"
-        built = f"{esc(record.build_revision[:10])}{f', {esc(record.platform)}' if record.platform else ''}"
-        rows.append(
-            [f"<code>{esc(tier.tier)}</code>", esc(tier.surface), machine, f"<code>{esc(name)}</code>", built, tally]
-        )
+            rows.append([*described, missing, "", ""])
+        rows += [[*described, *run_cells(run, record, verdicts)] for run, record in found]
     return rows
 
 
@@ -237,29 +244,37 @@ def showcase_section(
 ) -> str:
     rows = []
     for test in showcase.tests:
+        workflow = esc(test.workflow or ("authoring and review" if showcase.kind == "real_world" else ""))
         if test.run is None or test.test is None:
             missing = f'<span class="no">not in this clone</span>: <code>{esc(tiers.get(test.tier, ""))}</code>'
-            rows.append([esc(test.workflow or ""), esc(test.surface), test_title(test), missing, "", ""])
+            rows.append([workflow, esc(test.surface), test_title(test), missing, "", ""])
             continue
         key = (Path(test.run).name, test.test)
         verdict = (verdicts or {}).get(key, "not assessed")
+        run = f'<br><span class="muted">in <code>{esc(key[0])}</code></span>' if showcase.kind == "real_world" else ""
         rows.append(
             [
-                esc(test.workflow or ""),
+                workflow,
                 esc(test.surface),
                 test_title(test),
-                outcome_of(records.get(test.run), test.test),
+                outcome_of(records.get(test.run), test.test) + run,
                 f'<span class="{TONE.get(verdict, "ex")}">{esc(verdict)}</span>',
                 evidence_links(bundle, evidence.tests.get(key), SHOWCASES),
             ]
         )
-    machine = f" · API on <code>{esc(showcase.environment)}</code>" if showcase.environment else ""
     page = esc(showcase_ree_slug(showcase.name))
+    machine = (
+        f" · authored on one <code>{esc(showcase.environment)}</code> machine, reviewed on a second"
+        if showcase.kind == "real_world" and showcase.environment
+        else (f" · API on <code>{esc(showcase.environment)}</code>" if showcase.environment else "")
+    )
     kind = (
-        f' · <a href="{page}.html">final REE</a>'
-        f' · <a href="{page}.html#{esc(review_anchor(showcase.name))}">final review</a>'
-        if showcase.kind == "showcase"
-        else ' <span class="muted">feature</span>'
+        ' <span class="muted">feature</span>'
+        if showcase.kind == "feature"
+        else (
+            f' · <a href="{page}.html">final REE</a>'
+            f' · <a href="{page}.html#{esc(review_anchor(showcase.name))}">final review</a>'
+        )
     )
     return f'<h4 id="showcase-{esc(showcase.name)}"><code>{esc(showcase.name)}</code>{kind}{machine}</h4>' + table(
         ["Workflow", "Surface", "Test", "Outcome", "Behaviour", "Evidence"], rows
@@ -291,7 +306,11 @@ def page_showcase_coverage(
     needs: list[TierNeed],
 ) -> Page:
     tiers = {tier.tier: tier.recipe for tier in showcases.tiers}
-    listed = "".join(showcase_section(s, tiers, records, verdicts, evidence, bundle) for s in showcases.showcases)
+    gated = [s for s in showcases.showcases if s.kind != "real_world"]
+    real_world = [s for s in showcases.showcases if s.kind == "real_world"]
+    listed = "".join(showcase_section(s, tiers, records, verdicts, evidence, bundle) for s in gated)
+    on_demand = " ".join(dict.fromkeys(tiers[test.tier] for s in real_world for test in s.tests))
+    beyond = "".join(showcase_section(s, tiers, records, verdicts, evidence, bundle) for s in real_world)
     runs = table(
         ["Tier", "Surface", "Machines", "Run", "Built from", "Outcomes; behaviour as this tree judges it"],
         showcase_rows(showcases, records, verdicts),
@@ -305,6 +324,15 @@ def page_showcase_coverage(
         )
         + "<h3>Each showcase, in its newest run</h3>"
         + listed
+        + (
+            "<h3>Real-world showcases, on demand</h3>"
+            '<p class="lede">Whole projects from their git origins, each authored and sealed on one machine and '
+            "reviewed on a second, fresh one. They take too long for a gate: none requires them, and "
+            f"<code>{esc(on_demand)}</code> runs them on demand, each project alone if selected. Each shows "
+            "the newest run that ran it.</p>" + beyond
+            if real_world
+            else ""
+        )
         + "<h3>The runs they come from</h3>"
         + runs
         + "<h2>Coverage</h2>"

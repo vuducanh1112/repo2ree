@@ -127,7 +127,7 @@ def _preserved(test: ShowcaseTest | None, records: dict[str, RunRecord]) -> tupl
 def showcase_ree_pages(showcases: ShowcaseRuns, records: dict[str, RunRecord]) -> list[Page]:
     pages = []
     for showcase in showcases.showcases:
-        if showcase.kind != "showcase":
+        if showcase.kind == "feature":
             continue
         authoring, reviewing = authoring_test(showcase), review_test(showcase)
         ree: SealedRee | None = None

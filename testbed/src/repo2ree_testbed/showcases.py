@@ -434,6 +434,10 @@ def real_world_suite(name: ProjectName) -> Path:
     return REAL_WORLD_SUITE / name
 
 
+def real_world_test(name: ProjectName) -> Path:
+    return real_world_suite(name) / f"test_{name}.py"
+
+
 def real_world_machine_of(node: str) -> EnvironmentName:
     parts = Path(node.split("::", 1)[0]).parts
     suite = REAL_WORLD_SUITE.relative_to(ROOT).parts

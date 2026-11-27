@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 from repo2ree_repoview.overview.exports import Showcase, ShowcaseTest
-from repo2ree_repoview.overview.pages.showcase_ree import page_showcase_ree
+from repo2ree_repoview.overview.pages.showcase_ree import authoring_test, page_showcase_ree, review_test
 from repo2ree_repoview.overview.showcase_review import preserved_review
 
 SOURCE = "swh:1:dir:aa"
@@ -131,3 +131,17 @@ def test_the_page_shows_each_verdict_its_basis_and_its_evidence(tmp_path: Path) 
     assert '<code>run_experiment</code> <span class="no">failed</span> verify exited 1' in body
     assert "no run of its API review test" in page_showcase_ree(showcase, None, None, None, None).body
     assert "preserved no review" in page_showcase_ree(showcase, None, None, reviewing, None).body
+
+
+def test_a_real_world_showcase_reads_its_ree_and_its_review_from_its_one_test(tmp_path: Path) -> None:
+    found = preserved_review(reviewed_test(tmp_path), ("author", "reviewer"))
+    test = ShowcaseTest(surface="cli", workflow=None, file="w.py", tier="showcase-real-world", run="r", test="w.py::t")
+    showcase = Showcase(name="world", kind="real_world", environment="docker", tests=(test,))
+
+    assert authoring_test(showcase) == review_test(showcase) == test
+    body = page_showcase_ree(showcase, review_test(showcase), None, review_test(showcase), found).body
+
+    assert "The review the world showcase's test ran on a second machine from the sealed REE alone, as" in body
+    assert "Its test preserved no sealed REE." in body
+    assert '<code>review-new</code><br><span class="ok">completed</span>' in body
+    assert "no run of its test." in page_showcase_ree(showcase, None, None, None, None).body

@@ -14,18 +14,22 @@ from repo2ree_testbed.showcases import (
     FEATURES_ENVIRONMENT,
     GUI_SHOWCASES,
     GUI_SUITE,
+    REAL_WORLD,
+    REAL_WORLD_TIER,
     SHOWCASES,
     ShowcaseName,
     Workflow,
     api_test,
     environments_in_use,
     gui_machines,
+    real_world_test,
 )
 from repo2ree_testbed.stack.environments import EnvironmentName
 
 BROWSER_TIER = "showcase"
 
 Surface = Literal["api", "cli", "browser"]
+Selection = Literal["whole", "each_test"]
 
 
 class ShowcaseTier(BaseModel):
@@ -35,6 +39,7 @@ class ShowcaseTier(BaseModel):
     surface: Surface
     environments: tuple[EnvironmentName, ...]
     recipe: str
+    selection: Selection
     run: str | None
 
 
@@ -53,7 +58,7 @@ class Showcase(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     name: str
-    kind: Literal["showcase", "feature"]
+    kind: Literal["showcase", "feature", "real_world"]
     environment: EnvironmentName | None
     tests: tuple[ShowcaseTest, ...]
 
@@ -66,19 +71,27 @@ class ShowcaseRuns(BaseModel):
     showcases: tuple[Showcase, ...]
 
 
-def newest(tier: str, runs: Path) -> Path | None:
+def runs_of(tier: str, runs: Path, *, whole: bool) -> list[Path]:
     found = [
         record_path.parent
-        for record_path in sorted(runs.glob("*/run.json"))
-        if (record := read(RunRecord, record_path)) is not None and record.tier == tier and not record.selected
+        for record_path in runs.glob("*/run.json")
+        if (record := read(RunRecord, record_path)) is not None
+        and record.tier == tier
+        and not (whole and record.selected)
     ]
-    return max(found, key=lambda run: run.name, default=None)
+    return sorted(found, key=lambda run: run.name)
+
+
+def newest(tier: str, runs: Path) -> Path | None:
+    return next(reversed(runs_of(tier, runs, whole=True)), None)
+
+
+def relative(run: Path) -> str:
+    return str(run.relative_to(ROOT)) if run.is_relative_to(ROOT) else str(run)
 
 
 def named(run: Path | None) -> str | None:
-    if run is None:
-        return None
-    return str(run.relative_to(ROOT)) if run.is_relative_to(ROOT) else str(run)
+    return None if run is None else relative(run)
 
 
 def api_file(test: str) -> str:
@@ -90,18 +103,22 @@ def browser_file(test: str) -> str:
 
 
 class _Found:
-    def __init__(self, tiers: tuple[ShowcaseTier, ...]) -> None:
-        self.runs = {tier.tier: tier.run for tier in tiers}
-        self.files: dict[tuple[str, str], list[str]] = {}
+    def __init__(self, tiers: tuple[ShowcaseTier, ...], runs: Path) -> None:
+        self.files: dict[tuple[str, str], tuple[str, list[str]]] = {}
         for tier in tiers:
-            record = read(RunRecord, ROOT / tier.run / "run.json") if tier.run else None
-            for test in record.tests if record else ():
-                file = browser_file(test.name) if tier.surface == "browser" else api_file(test.name)
-                self.files.setdefault((tier.tier, file), []).append(test.name)
+            read_from = runs_of(tier.tier, runs, whole=False) if tier.selection == "each_test" else []
+            for run in [ROOT / tier.run] if tier.run else read_from:
+                record = read(RunRecord, run / "run.json")
+                ran: dict[str, list[str]] = {}
+                for test in record.tests if record else ():
+                    file = browser_file(test.name) if tier.surface == "browser" else api_file(test.name)
+                    ran.setdefault(file, []).append(test.name)
+                for file, names in ran.items():
+                    self.files[(tier.tier, file)] = (relative(run), names)
 
     def tests(self, surface: Surface, workflow: Workflow | None, tier: str, file: str) -> list[ShowcaseTest]:
-        run = self.runs.get(tier)
-        found: list[str | None] = [*self.files.get((tier, file), [])] if run else []
+        run, names = self.files.get((tier, file), (None, []))
+        found: list[str | None] = [*names]
         return [
             ShowcaseTest(surface=surface, workflow=workflow, file=file, tier=tier, run=run if test else None, test=test)
             for test in found or [None]
@@ -132,6 +149,9 @@ def showcases(found: _Found) -> tuple[Showcase, ...]:
             tests += found.tests("browser", None, BROWSER_TIER, from_root(GUI_SUITE / files.gui))
         machine = FEATURES_ENVIRONMENT if files.api else None
         listed.append(Showcase(name=feature, kind="feature", environment=machine, tests=tuple(tests)))
+    for project, environment in REAL_WORLD.items():
+        tests = found.tests("cli", None, REAL_WORLD_TIER, from_root(real_world_test(project)))
+        listed.append(Showcase(name=project, kind="real_world", environment=environment, tests=tuple(tests)))
     return tuple(listed)
 
 
@@ -145,6 +165,7 @@ def showcase_runs(runs: Path) -> ShowcaseRuns:
         surface="browser",
         environments=tuple(environment for environment in EnvironmentName if environment in browser_machines()),
         recipe="just test-showcase",
+        selection="whole",
         run=named(newest(BROWSER_TIER, runs)),
     )
     api = ShowcaseTier(
@@ -152,6 +173,7 @@ def showcase_runs(runs: Path) -> ShowcaseRuns:
         surface="api",
         environments=environments_in_use(),
         recipe=f"just test-{API_TIER}",
+        selection="whole",
         run=named(newest(API_TIER, runs)),
     )
     cli = ShowcaseTier(
@@ -159,10 +181,19 @@ def showcase_runs(runs: Path) -> ShowcaseRuns:
         surface="cli",
         environments=environments_in_use(),
         recipe=f"just test-{CLI_TIER}",
+        selection="whole",
         run=named(newest(CLI_TIER, runs)),
     )
-    tiers = (browser, api, cli)
-    return ShowcaseRuns(tiers=tiers, showcases=showcases(_Found(tiers)))
+    real_world = ShowcaseTier(
+        tier=REAL_WORLD_TIER,
+        surface="cli",
+        environments=tuple(environment for environment in EnvironmentName if environment in REAL_WORLD.values()),
+        recipe=f"just test-{REAL_WORLD_TIER}",
+        selection="each_test",
+        run=None,
+    )
+    tiers = (browser, api, cli, real_world)
+    return ShowcaseRuns(tiers=tiers, showcases=showcases(_Found(tiers, runs)))
 
 
 def main() -> int:

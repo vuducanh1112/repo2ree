@@ -148,6 +148,7 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
                     "surface": "browser",
                     "environments": [],
                     "recipe": "just test-showcase",
+                    "selection": "whole",
                     "run": None,
                 },
                 {
@@ -155,6 +156,7 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
                     "surface": "api",
                     "environments": ["bare", "docker"],
                     "recipe": "just test-showcase-api",
+                    "selection": "whole",
                     "run": f"test-artifacts/e2e/{RUN}",
                 },
             ],
@@ -231,3 +233,72 @@ def test_the_showcase_gate_lists_each_showcase_with_its_evidence_and_coverage(tm
     assert 'href="evidence.html?from=showcase-gate#t/verification/assurance.html"' in page.body
     assert "operations.html#" not in page.body
     assert "1 tests in 1 runs" in page.teaser
+
+
+def test_the_showcase_gate_lists_the_real_world_showcases_apart_each_in_the_newest_run_that_ran_it(
+    tmp_path: Path,
+) -> None:
+    spec = Spec.model_validate_json(exported(SPEC_EXPORT))
+    older, newer = "showcase-real-world-1", "showcase-real-world-2"
+    showcases = ShowcaseRuns.model_validate(
+        {
+            "format": "repo2ree-showcase-runs/2",
+            "tiers": [
+                {
+                    "tier": "showcase-real-world",
+                    "surface": "cli",
+                    "environments": ["docker"],
+                    "recipe": "just test-showcase-real-world",
+                    "selection": "each_test",
+                    "run": None,
+                }
+            ],
+            "showcases": [
+                {
+                    "name": name,
+                    "kind": "real_world",
+                    "environment": "docker",
+                    "tests": [
+                        {
+                            "surface": "cli",
+                            "workflow": None,
+                            "file": f"testbed/suites/real_world/{name}/test_{name}.py",
+                            "tier": "showcase-real-world",
+                            "run": f"test-artifacts/e2e/{run}",
+                            "test": f"test_{name}.py::t",
+                        }
+                    ],
+                }
+                for name, run in (("one", older), ("two", newer))
+            ],
+        }
+    )
+    records = {
+        f"test-artifacts/e2e/{run}": RunRecord.model_validate(
+            {"tests": [{"name": f"test_{name}.py::t", "directory": "tests/t", "outcome": "passed"}]}
+        )
+        for name, run in (("one", older), ("two", newer))
+    }
+
+    page = page_showcase_coverage(
+        spec,
+        showcases,
+        records,
+        None,
+        Exercised(Counter(), Counter(), Counter()),
+        {},
+        Evidence(),
+        Bundle(tmp_path / "overview", "a" * 40),
+        [],
+    )
+
+    assert showcases.runs() == (f"test-artifacts/e2e/{older}", f"test-artifacts/e2e/{newer}")
+    assert "<h3>Real-world showcases, on demand</h3>" in page.body
+    assert "<code>just test-showcase-real-world</code> runs them on demand" in page.body
+    assert (
+        '<h4 id="showcase-one"><code>one</code> · <a href="showcase-ree-one.html">final REE</a>'
+        ' · <a href="showcase-ree-one.html#showcase-review-one">final review</a>'
+        " · authored on one <code>docker</code> machine, reviewed on a second</h4>"
+    ) in page.body
+    assert f'<span class="muted">in <code>{newer}</code></span>' in page.body
+    assert page.body.count("<td><code>showcase-real-world</code></td>") == 2

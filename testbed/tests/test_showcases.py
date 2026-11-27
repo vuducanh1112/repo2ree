@@ -38,6 +38,7 @@ from repo2ree_testbed.showcases import (
     machine_of,
     real_world_machine_of,
     real_world_suite,
+    real_world_test,
 )
 from repo2ree_testbed.stack.environments import (
     ENVIRONMENTS,
@@ -190,6 +191,7 @@ def test_every_real_world_suite_directory_is_a_real_world_showcase() -> None:
 def test_a_real_world_showcase_runs_on_the_machine_it_names() -> None:
     for name, environment in REAL_WORLD.items():
         [test] = real_world_suite(name).glob("test_*.py")
+        assert test == real_world_test(name)
         node = f"{test.relative_to(ROOT)}::test"
         assert real_world_machine_of(node) == environment
     with pytest.raises(ValueError, match="no test of a real-world showcase"):
